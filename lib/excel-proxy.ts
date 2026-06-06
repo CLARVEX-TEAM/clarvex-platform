@@ -18,26 +18,26 @@ export async function downloadExcelWorkbook(sourceUrl: string | null) {
     throw new Error("La fuente no tiene una URL configurada.");
   }
 
-  const workerUrl = process.env.EXCEL_PROXY_WORKER_URL?.trim();
-  if (!workerUrl || workerUrl.includes("TU_WORKER")) {
+  const workerBaseUrl = process.env.EXCEL_PROXY_WORKER_URL?.trim();
+  if (!workerBaseUrl || workerBaseUrl.includes("TU_WORKER")) {
     throw new Error("Configura EXCEL_PROXY_WORKER_URL con la URL del Worker de Cloudflare.");
   }
 
-  const requestUrl = buildWorkerDownloadUrl(workerUrl, sourceUrl);
+  const workerUrl = buildWorkerDownloadUrl(workerBaseUrl, sourceUrl);
 
-  console.info(`[excel-proxy] GET ${requestUrl.toString()}`);
+  console.log("Excel proxy URL:", workerUrl);
 
-  const response = await fetch(requestUrl, {
+  const response = await fetch(workerUrl, {
     method: "GET",
     cache: "no-store",
     signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS)
   });
-  console.info(`[excel-proxy] Worker HTTP ${response.status} ${requestUrl.toString()}`);
+  console.log("Worker status:", response.status);
 
   if (!response.ok) {
-    const workerError = await readWorkerError(response);
-    console.error(`[excel-proxy] Worker error body (200 chars): ${workerError.preview || "<empty>"}`);
-    throw new Error(workerError.message || `El Worker respondio con HTTP ${response.status}.`);
+    const workerError = await response.text();
+    console.error("Worker response:", workerError);
+    throw new Error(workerError || `El Worker respondio con HTTP ${response.status}.`);
   }
 
   const contentType = response.headers.get("content-type")?.split(";")[0].trim().toLowerCase() ?? "";
@@ -46,7 +46,9 @@ export async function downloadExcelWorkbook(sourceUrl: string | null) {
     ((contentType === "application/octet-stream" || contentType === "application/zip") && contentDisposition.includes(".xlsx"));
 
   if (!isExcel) {
-    throw new Error(`El Worker no devolvio un archivo Excel valido (content-type: ${contentType || "desconocido"}).`);
+    const workerText = await response.text();
+    console.error("Worker response:", workerText);
+    throw new Error(workerText || `El Worker no devolvio un archivo Excel valido (content-type: ${contentType || "desconocido"}).`);
   }
 
   const declaredSize = Number(response.headers.get("content-length") ?? 0);
@@ -74,12 +76,11 @@ export async function downloadExcelWorkbook(sourceUrl: string | null) {
 
 export function buildWorkerDownloadUrl(workerUrl: string, sourceUrl: string) {
   try {
-    const requestUrl = new URL(workerUrl);
-    requestUrl.pathname = "/download";
-    requestUrl.search = "";
-    requestUrl.hash = "";
-    requestUrl.searchParams.set("url", sourceUrl);
-    return requestUrl;
+    const baseUrl = new URL(workerUrl);
+    if (baseUrl.pathname !== "/" || baseUrl.search || baseUrl.hash) {
+      throw new Error("La variable debe contener solo el dominio base del Worker.");
+    }
+    return `${baseUrl.origin}/download?url=${encodeURIComponent(sourceUrl)}`;
   } catch {
     throw new Error("EXCEL_PROXY_WORKER_URL no es una URL valida.");
   }
@@ -106,27 +107,4 @@ export function summarizeWorkbook(workbook: XLSX.WorkBook): WorkbookSummary {
     sheets,
     recordsProcessed: sheets.reduce((total, sheet) => total + sheet.rowCount, 0)
   };
-}
-
-async function readWorkerError(response: Response) {
-  try {
-    const text = await response.text();
-    if (!text) return { message: "", preview: "" };
-    const preview = text.replace(/\s+/g, " ").trim().slice(0, 200);
-
-    try {
-      const payload = JSON.parse(text) as { error?: unknown; message?: unknown };
-      if (typeof payload.error === "string") return { message: payload.error, preview };
-      if (typeof payload.message === "string") return { message: payload.message, preview };
-    } catch {
-      // The Worker may return a plain-text explanation.
-    }
-
-    return {
-      message: text.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().slice(0, 400),
-      preview
-    };
-  } catch {
-    return { message: "", preview: "" };
-  }
 }

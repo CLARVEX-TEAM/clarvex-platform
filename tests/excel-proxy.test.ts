@@ -9,18 +9,15 @@ test("construye la descarga del Worker usando /download", () => {
     sourceUrl
   );
 
-  assert.equal(result.origin, "https://clarvexteam.jhernandezl2c.workers.dev");
-  assert.equal(result.pathname, "/download");
-  assert.equal(result.searchParams.get("url"), sourceUrl);
-  assert.match(result.toString(), /\/download\?url=/);
+  assert.equal(
+    result,
+    `https://clarvexteam.jhernandezl2c.workers.dev/download?url=${encodeURIComponent(sourceUrl)}`
+  );
 });
 
-test("reemplaza cualquier ruta previa del Worker por /download", () => {
-  const result = buildWorkerDownloadUrl(
-    "https://clarvexteam.jhernandezl2c.workers.dev/old-route?legacy=1",
+test("rechaza una variable del Worker que ya contiene una ruta", () => {
+  assert.throws(() => buildWorkerDownloadUrl(
+    "https://clarvexteam.jhernandezl2c.workers.dev/download",
     "https://example.com/file.xlsx"
-  );
-
-  assert.equal(result.pathname, "/download");
-  assert.equal(result.searchParams.has("legacy"), false);
+  ), /URL no es una URL valida/);
 });
