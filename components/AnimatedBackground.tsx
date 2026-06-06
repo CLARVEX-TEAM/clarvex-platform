@@ -13,19 +13,25 @@ export function AnimatedBackground() {
     const media = gsap.matchMedia();
     media.add("(prefers-reduced-motion: no-preference)", () => {
       const blobs = gsap.utils.toArray<HTMLElement>(".ambient-blob");
-      const movements = [
-        { x: 54, y: 38, scale: 1.08, duration: 20 },
-        { x: -46, y: 52, scale: 1.12, duration: 24 },
-        { x: 36, y: -42, scale: 1.06, duration: 22 }
+      const paths = [
+        [
+          { x: 72, y: 34, scale: 1.06, duration: 24 },
+          { x: 28, y: 82, scale: 0.98, duration: 26 }
+        ],
+        [
+          { x: -64, y: 58, scale: 1.09, duration: 28 },
+          { x: -24, y: -36, scale: 1.02, duration: 30 }
+        ],
+        [
+          { x: 48, y: -72, scale: 1.05, duration: 25 },
+          { x: -56, y: -18, scale: 0.97, duration: 27 }
+        ]
       ];
 
       blobs.forEach((blob, index) => {
-        gsap.to(blob, {
-          ...movements[index],
-          repeat: -1,
-          yoyo: true,
-          ease: "sine.inOut",
-          force3D: true
+        const timeline = gsap.timeline({ repeat: -1, yoyo: true });
+        paths[index].forEach((step) => {
+          timeline.to(blob, { ...step, ease: "sine.inOut", force3D: true });
         });
       });
     });
