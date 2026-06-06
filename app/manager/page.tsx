@@ -68,23 +68,23 @@ export default function ManagerDashboard() {
         }
       />
       <AppFrame>
-        <Card className="premium-hero mb-3 rounded-[28px] px-4 py-3.5">
-          <div className="absolute -right-12 -top-12 size-36 rounded-full bg-volt/15 blur-3xl" />
-          <div className="absolute -bottom-14 left-10 size-32 rounded-full bg-sky/10 blur-3xl" />
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <p className="text-[11px] font-black uppercase tracking-[0.13em] text-muted">Meta diaria tienda</p>
+        <section className="manager-sales-hero mb-3 rounded-[28px] border border-volt/25 px-4 py-3.5">
+          <div className="flex items-center justify-between gap-4">
+            <div className="min-w-0">
+              <p className="text-[11px] font-black uppercase tracking-[0.13em] text-volt/90">Venta tienda</p>
               <h2 className="mt-1 text-[2.25rem] font-black leading-none tracking-[-0.045em] text-ink">{money(store?.dailySales ?? 0)}</h2>
-              <p className="mt-1 text-xs text-ink/58">Meta diaria {money(store?.dailyGoal ?? 0)}</p>
+              <div className="mt-2 flex items-baseline gap-2">
+                <span className="text-xs font-bold text-muted">Meta diaria</span>
+                <span className="text-sm font-black text-ink/85">{money(store?.dailyGoal ?? 0)}</span>
+              </div>
             </div>
-            <ProgressRing value={storeProgress} size={68} />
+            <div className="shrink-0 text-center">
+              <ProgressRing value={storeProgress} size={68} />
+              <p className="mt-1 text-[10px] font-black uppercase tracking-[0.1em] text-muted">Indicador</p>
+            </div>
           </div>
           <ProgressBar value={storeProgress} />
-          <div className="mt-2.5 flex items-center justify-between rounded-[20px] border border-white/10 bg-white/[0.06] px-3 py-1.5 shadow-[inset_0_1px_0_rgb(255_255_255_/_0.1)]">
-            <span className="text-xs font-bold text-muted">Estado de venta</span>
-            <Badge tone={storeProgress >= 80 ? "success" : "warn"}>{storeProgress}% cumplimiento</Badge>
-          </div>
-        </Card>
+        </section>
 
         <div className="grid grid-cols-2 gap-3">
           <StatCard compact label="Ventas" value={money(store?.dailySales ?? 0)} detail="Hoy" progress={storeProgress} delta="+12%" icon={<ShoppingBag size={15} />} />
