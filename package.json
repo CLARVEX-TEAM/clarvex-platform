@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "test": "tsx --test tests/*.test.ts",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:seed": "tsx prisma/seed.ts"
@@ -16,18 +17,18 @@
     "bcryptjs": "^2.4.3",
     "clsx": "^2.1.1",
     "framer-motion": "^12.40.0",
-    "jsonwebtoken": "^9.0.2",
+    "jose": "^6.2.3",
     "lucide-react": "^0.468.0",
     "next": "^14.2.18",
     "prisma": "^5.22.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "recharts": "^3.8.1",
-    "tailwind-merge": "^3.6.0"
+    "tailwind-merge": "^3.6.0",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
-    "@types/jsonwebtoken": "^9.0.7",
     "@types/node": "^22.10.1",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",

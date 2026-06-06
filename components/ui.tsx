@@ -405,8 +405,7 @@ export function LiquidBottomNav() {
   const pathname = usePathname();
 
   useEffect(() => {
-    const session = getSession();
-    setHomeHref(session?.role === "ASESOR" ? "/advisor" : "/manager");
+    getSession().then((session) => setHomeHref(session?.role === "ASESOR" ? "/advisor" : "/manager"));
   }, []);
 
   return (

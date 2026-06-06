@@ -6,7 +6,7 @@ import { fetchAppData, type AppData } from "@/lib/app-data";
 import { getSession } from "@/lib/auth";
 import { money } from "@/lib/format";
 import type { Activity, User } from "@/lib/types";
-import { AppFrame, AppHeader, Badge, BottomNav, Card, ProgressBar, ProgressRing } from "@/components/ui";
+import { AppFrame, AppHeader, Badge, BottomNav, Button, Card, ProgressBar, ProgressRing } from "@/components/ui";
 import { TaskList } from "@/components/TaskList";
 
 const days = ["Hoy", "Man", "Mie", "Jue", "Vie", "Sab", "Dom"];
@@ -23,9 +23,16 @@ export default function PlanPage() {
   const [data, setData] = useState<AppData | null>(null);
   const [session, setSession] = useState<User | null>(null);
   const [selectedDay, setSelectedDay] = useState("Hoy");
+  const [userId, setUserId] = useState("");
+  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const [dailyGoal, setDailyGoal] = useState("");
+  const [focus, setFocus] = useState("");
+  const [message, setMessage] = useState("");
+  const [activities, setActivities] = useState("");
+  const [formStatus, setFormStatus] = useState("");
 
   useEffect(() => {
-    setSession(getSession());
+    getSession().then(setSession);
     fetchAppData().then(setData).catch(() => setData(null));
   }, []);
 
@@ -45,6 +52,17 @@ export default function PlanPage() {
   const visiblePlans = isAdvisor && session ? data.plans.filter((plan) => plan.userId === session.id) : data.plans;
   const totalActivities = visiblePlans.flatMap((plan) => plan.activities);
   const dayProgress = totalActivities.length ? Math.round((totalActivities.filter((activity) => activity.completed).length / totalActivities.length) * 100) : 0;
+
+  async function createPlan(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!data) return;
+    setFormStatus("Guardando...");
+    const response = await fetch("/api/plans", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId, date, dailyGoal: Number(dailyGoal), focus, message, activities: activities.split("\n").map((item) => item.trim()).filter(Boolean) }) });
+    const payload = await response.json() as { plan?: AppData["plans"][number]; error?: string };
+    if (!response.ok || !payload.plan) { setFormStatus(payload.error ?? "No se pudo crear el plan."); return; }
+    setData({ ...data, plans: [payload.plan, ...data.plans] });
+    setDailyGoal(""); setFocus(""); setMessage(""); setActivities(""); setFormStatus("Plan creado.");
+  }
 
   return (
     <>
@@ -80,14 +98,18 @@ export default function PlanPage() {
               <CalendarDays className="text-volt" size={18} />
               <h2 className="text-lg font-black">Crear plan</h2>
             </div>
-            <div className="mt-4 grid gap-3">
-              <input className="min-h-12 rounded-2xl border border-line bg-panel px-3 py-3 text-ink outline-none focus:border-volt" value="2026-06-05" readOnly aria-label="Fecha" />
-              <select className="min-h-12 rounded-2xl border border-line bg-panel px-3 py-3 text-ink outline-none focus:border-volt" aria-label="Asesor">
-                {advisors.map((advisor) => <option key={advisor.id}>{advisor.name}</option>)}
+            <form className="mt-4 grid gap-3" onSubmit={createPlan}>
+              <input type="date" className="min-h-12 rounded-2xl border border-line bg-panel px-3 py-3 text-ink outline-none focus:border-volt" value={date} onChange={(event) => setDate(event.target.value)} aria-label="Fecha" required />
+              <select value={userId} onChange={(event) => setUserId(event.target.value)} className="min-h-12 rounded-2xl border border-line bg-panel px-3 py-3 text-ink outline-none focus:border-volt" aria-label="Asesor" required>
+                <option value="">Selecciona asesor</option>{advisors.map((advisor) => <option key={advisor.id} value={advisor.id}>{advisor.name}</option>)}
               </select>
-              <input className="min-h-12 rounded-2xl border border-line bg-panel px-3 py-3 text-ink outline-none focus:border-volt" placeholder="Meta del dia" value="$22,000" readOnly />
-              <textarea className="min-h-24 rounded-2xl border border-line bg-panel px-3 py-3 text-ink outline-none focus:border-volt" placeholder="Enfoque y mensaje personalizado" value="Elevar conversion en probador y cerrar accesorios." readOnly />
-            </div>
+              <input type="number" min="0" value={dailyGoal} onChange={(event) => setDailyGoal(event.target.value)} className="min-h-12 rounded-2xl border border-line bg-panel px-3 py-3 text-ink outline-none focus:border-volt" placeholder="Meta del dia" required />
+              <input value={focus} onChange={(event) => setFocus(event.target.value)} className="min-h-12 rounded-2xl border border-line bg-panel px-3 py-3 text-ink outline-none focus:border-volt" placeholder="Enfoque del dia" required />
+              <textarea value={message} onChange={(event) => setMessage(event.target.value)} className="min-h-20 rounded-2xl border border-line bg-panel px-3 py-3 text-ink outline-none focus:border-volt" placeholder="Mensaje personalizado" required />
+              <textarea value={activities} onChange={(event) => setActivities(event.target.value)} className="min-h-24 rounded-2xl border border-line bg-panel px-3 py-3 text-ink outline-none focus:border-volt" placeholder={"Actividades, una por linea"} required />
+              {formStatus ? <p className="text-sm font-semibold text-muted">{formStatus}</p> : null}
+              <Button type="submit" className="w-full">Crear plan</Button>
+            </form>
           </Card>
         ) : null}
 

@@ -26,7 +26,7 @@ export default function KpisPage() {
   const [simulatedSales, setSimulatedSales] = useState("");
 
   useEffect(() => {
-    setSession(getSession());
+    getSession().then(setSession);
     fetchAppData().then(setData).catch(() => setData(null));
   }, []);
 

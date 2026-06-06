@@ -6,17 +6,19 @@ import { Activity, BookOpen, CalendarDays, CheckCircle2, CheckSquare, ClipboardL
 import { getSession, logout } from "@/lib/auth";
 import { fetchAppData, type AppData } from "@/lib/app-data";
 import { completion, money } from "@/lib/format";
+import type { User } from "@/lib/types";
 import { AppFrame, AppHeader, Badge, BottomNav, Card, ProfileAvatar, ProgressBar, ProgressRing, QuickLink, StatCard, priorityTone } from "@/components/ui";
 
 export default function ManagerDashboard() {
   const router = useRouter();
   const [data, setData] = useState<AppData | null>(null);
+  const [manager, setManager] = useState<User | null>(null);
 
   useEffect(() => {
-    if (!getSession()) {
-      router.replace("/login");
-      return;
-    }
+    getSession().then((session) => {
+      if (!session) router.replace("/login");
+      else setManager(session);
+    });
     fetchAppData().then(setData).catch(() => setData(null));
   }, [router]);
 
@@ -44,7 +46,6 @@ export default function ManagerDashboard() {
     .sort((a, b) => (a.kpi?.ranking ?? 99) - (b.kpi?.ranking ?? 99));
 
   const userName = (id: string) => data.users.find((user) => user.id === id)?.name ?? "Equipo";
-  const manager = getSession();
   const greeting = manager?.name ? `Hola, ${manager.name}` : "Hola, gerente";
 
   return (
@@ -55,8 +56,8 @@ export default function ManagerDashboard() {
         avatar={manager?.avatar}
         action={
           <button
-            onClick={() => {
-              logout();
+            onClick={async () => {
+              await logout();
               router.push("/login");
             }}
             className="liquid-glass grid size-11 place-items-center rounded-[22px] text-ink/62 transition active:scale-95"

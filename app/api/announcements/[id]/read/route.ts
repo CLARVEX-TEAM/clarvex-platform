@@ -1,35 +1,21 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
+import { isApiError, parseJson, requireSession } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request, { params }: { params: { id: string } }) {
-  const { actorId, userId, read } = await request.json();
-
-  if (!actorId || !userId) {
-    return NextResponse.json({ error: "Actor y usuario son requeridos." }, { status: 400 });
-  }
-
-  const actor = await prisma.user.findUnique({ where: { id: actorId } });
-  if (!actor) {
-    return NextResponse.json({ error: "Actor no encontrado." }, { status: 404 });
-  }
-
-  if (actor.role === "ASESOR" && actor.id !== userId) {
-    return NextResponse.json({ error: "Un asesor solo puede marcar su propia lectura." }, { status: 403 });
-  }
-
-  if (read) {
-    await prisma.announcementRead.upsert({
-      where: { announcementId_userId: { announcementId: params.id, userId } },
-      update: { readAt: new Date() },
-      create: { announcementId: params.id, userId }
-    });
+  const session = await requireSession();
+  if (isApiError(session)) return session;
+  const parsed = await parseJson(request, z.object({ read: z.boolean() }));
+  if ("response" in parsed) return parsed.response;
+  const announcement = await prisma.announcement.findFirst({ where: { id: params.id, storeId: session.storeId } });
+  if (!announcement) return NextResponse.json({ error: "Comunicado no encontrado." }, { status: 404 });
+  if (parsed.data.read) {
+    await prisma.announcementRead.upsert({ where: { announcementId_userId: { announcementId: params.id, userId: session.userId } }, update: { readAt: new Date() }, create: { announcementId: params.id, userId: session.userId } });
   } else {
-    await prisma.announcementRead.deleteMany({
-      where: { announcementId: params.id, userId }
-    });
+    await prisma.announcementRead.deleteMany({ where: { announcementId: params.id, userId: session.userId } });
   }
-
   return NextResponse.json({ ok: true });
 }

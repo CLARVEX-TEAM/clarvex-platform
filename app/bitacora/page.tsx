@@ -7,6 +7,9 @@ import { AppFrame, AppHeader, Badge, BottomNav, Button, Card, StatCard } from "@
 
 export default function BitacoraPage() {
   const [data, setData] = useState<AppData | null>(null);
+  const [category, setCategory] = useState("Apertura");
+  const [description, setDescription] = useState("");
+  const [formStatus, setFormStatus] = useState("");
 
   useEffect(() => {
     fetchAppData().then(setData).catch(() => setData(null));
@@ -25,6 +28,17 @@ export default function BitacoraPage() {
   const entries = [...data.logEntries].sort((a, b) => a.date.localeCompare(b.date));
   const latest = entries[entries.length - 1];
   const userName = (id: string) => data.users.find((user) => user.id === id)?.name ?? "Equipo";
+
+  async function createLog(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!data) return;
+    setFormStatus("Guardando...");
+    const response = await fetch("/api/logs", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ category, description }) });
+    const payload = await response.json() as { logEntry?: AppData["logEntries"][number]; error?: string };
+    if (!response.ok || !payload.logEntry) { setFormStatus(payload.error ?? "No se pudo guardar el registro."); return; }
+    setData({ ...data, logEntries: [...data.logEntries, payload.logEntry] });
+    setDescription(""); setFormStatus("Registro guardado.");
+  }
 
   return (
     <>
@@ -58,15 +72,16 @@ export default function BitacoraPage() {
             </div>
             <PenLine className="text-volt" size={20} />
           </div>
-          <div className="mt-4 grid gap-3">
-            <select className="min-h-12 rounded-2xl border border-line/80 bg-panel/75 px-3 py-3 text-ink outline-none transition focus:border-volt focus:ring-4 focus:ring-volt/15">
+          <form className="mt-4 grid gap-3" onSubmit={createLog}>
+            <select value={category} onChange={(event) => setCategory(event.target.value)} className="min-h-12 rounded-2xl border border-line/80 bg-panel/75 px-3 py-3 text-ink outline-none transition focus:border-volt focus:ring-4 focus:ring-volt/15">
               <option>Apertura</option><option>Cliente</option><option>Inventario</option><option>Equipo</option><option>Cierre</option>
             </select>
-            <textarea className="min-h-24 rounded-2xl border border-line/80 bg-panel/75 px-3 py-3 text-ink outline-none transition placeholder:text-ink/34 focus:border-volt focus:ring-4 focus:ring-volt/15" placeholder="Descripcion del registro" />
-            <Button type="button" className="w-full" icon={<FileText size={17} />}>
+            <textarea value={description} onChange={(event) => setDescription(event.target.value)} className="min-h-24 rounded-2xl border border-line/80 bg-panel/75 px-3 py-3 text-ink outline-none transition placeholder:text-ink/34 focus:border-volt focus:ring-4 focus:ring-volt/15" placeholder="Descripcion del registro" required />
+            {formStatus ? <p className="text-sm font-semibold text-muted">{formStatus}</p> : null}
+            <Button type="submit" className="w-full" icon={<FileText size={17} />}>
               Guardar registro
             </Button>
-          </div>
+          </form>
         </Card>
 
         <div className="space-y-3">

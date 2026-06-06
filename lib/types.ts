@@ -8,7 +8,6 @@ export type User = {
   employeeNumber: string;
   role: Role;
   avatar: string;
-  pinHash?: string | null;
   photoUrl?: string | null;
   biometricEnabled?: boolean;
   lastLoginAt?: string | null;

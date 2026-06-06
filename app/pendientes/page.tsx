@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { AlertTriangle, Plus, UserRound } from "lucide-react";
 import { fetchAppData, type AppData } from "@/lib/app-data";
 import { getSession } from "@/lib/auth";
-import type { User } from "@/lib/types";
+import type { Pending, User } from "@/lib/types";
 import { AppFrame, AppHeader, Badge, BottomNav, Card, FloatingActionButton, PremiumButton, priorityTone, statusTone } from "@/components/ui";
 
 type Filter = "todos" | "urgentes" | "hoy";
@@ -13,9 +13,17 @@ export default function PendientesPage() {
   const [data, setData] = useState<AppData | null>(null);
   const [session, setSession] = useState<User | null>(null);
   const [filter, setFilter] = useState<Filter>("todos");
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [category, setCategory] = useState("OPERACION");
+  const [priority, setPriority] = useState("MEDIA");
+  const [ownerId, setOwnerId] = useState("");
+  const [dueDate, setDueDate] = useState(new Date().toISOString().slice(0, 10));
+  const [editId, setEditId] = useState<string | null>(null);
+  const [formStatus, setFormStatus] = useState("");
 
   useEffect(() => {
-    setSession(getSession());
+    getSession().then(setSession);
     fetchAppData().then(setData).catch(() => setData(null));
   }, []);
 
@@ -39,6 +47,42 @@ export default function PendientesPage() {
     if (filter === "hoy") return pending.dueDate.includes("2026-06-05") || pending.status !== "completado";
     return true;
   });
+
+  function resetForm() {
+    setTitle(""); setDescription(""); setCategory("OPERACION"); setPriority("MEDIA");
+    setOwnerId(""); setDueDate(new Date().toISOString().slice(0, 10)); setEditId(null);
+  }
+
+  function editPending(pending: Pending) {
+    setEditId(pending.id); setTitle(pending.title); setDescription(pending.description);
+    setCategory(pending.category.toUpperCase()); setPriority(pending.priority.toUpperCase());
+    setOwnerId(pending.ownerId); setDueDate(pending.dueDate); setFormStatus("");
+    document.getElementById("crear-pendiente")?.scrollIntoView({ behavior: "smooth" });
+  }
+
+  async function savePending(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!data) return;
+    setFormStatus("Guardando...");
+    const response = await fetch(editId ? `/api/pendings/${editId}` : "/api/pendings", {
+      method: editId ? "PATCH" : "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title, description, category, priority, ownerId, dueDate })
+    });
+    const payload = await response.json() as { pending?: Pending; error?: string };
+    if (!response.ok || !payload.pending) { setFormStatus(payload.error ?? "No se pudo guardar."); return; }
+    setData({ ...data, pendings: editId ? data.pendings.map((item) => item.id === editId ? payload.pending! : item) : [payload.pending, ...data.pendings] });
+    setFormStatus(editId ? "Pendiente actualizado." : "Pendiente creado.");
+    resetForm();
+  }
+
+  async function changeStatus(id: string, status: "PENDIENTE" | "EN_PROCESO" | "COMPLETADO") {
+    if (!data) return;
+    const response = await fetch(`/api/pendings/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status }) });
+    const payload = await response.json() as { pending?: Pending; error?: string };
+    if (response.ok && payload.pending) setData({ ...data, pendings: data.pendings.map((item) => item.id === id ? payload.pending! : item) });
+    else setFormStatus(payload.error ?? "No se pudo cambiar el estado.");
+  }
 
   return (
     <>
@@ -82,20 +126,27 @@ export default function PendientesPage() {
 
         {!isAdvisor ? (
           <Card className="mb-5" id="crear-pendiente">
-            <h2 className="text-lg font-black">Crear pendiente</h2>
-            <div className="mt-4 grid gap-3">
-              <input className="min-h-12 rounded-2xl border border-line bg-panel px-3 py-3 outline-none focus:border-volt" placeholder="Titulo" />
-              <textarea className="min-h-20 rounded-2xl border border-line bg-panel px-3 py-3 outline-none focus:border-volt" placeholder="Descripcion" />
+            <h2 className="text-lg font-black">{editId ? "Editar pendiente" : "Crear pendiente"}</h2>
+            <form className="mt-4 grid gap-3" onSubmit={savePending}>
+              <input value={title} onChange={(event) => setTitle(event.target.value)} className="min-h-12 rounded-2xl border border-line bg-panel px-3 py-3 outline-none focus:border-volt" placeholder="Titulo" required />
+              <textarea value={description} onChange={(event) => setDescription(event.target.value)} className="min-h-20 rounded-2xl border border-line bg-panel px-3 py-3 outline-none focus:border-volt" placeholder="Descripcion" required />
               <div className="grid grid-cols-2 gap-3">
-                <select className="min-h-12 rounded-2xl border border-line bg-panel px-3 py-3 outline-none focus:border-volt">
-                  <option>operacion</option><option>equipo</option><option>comercial</option><option>cliente</option><option>inventario</option><option>mantenimiento</option>
+                <select value={category} onChange={(event) => setCategory(event.target.value)} className="min-h-12 rounded-2xl border border-line bg-panel px-3 py-3 outline-none focus:border-volt">
+                  <option value="OPERACION">operacion</option><option value="EQUIPO">equipo</option><option value="COMERCIAL">comercial</option><option value="CLIENTE">cliente</option><option value="INVENTARIO">inventario</option><option value="MANTENIMIENTO">mantenimiento</option>
                 </select>
-                <select className="min-h-12 rounded-2xl border border-line bg-panel px-3 py-3 outline-none focus:border-volt">
-                  <option>media</option><option>alta</option><option>critica</option><option>baja</option>
+                <select value={priority} onChange={(event) => setPriority(event.target.value)} className="min-h-12 rounded-2xl border border-line bg-panel px-3 py-3 outline-none focus:border-volt">
+                  <option value="MEDIA">media</option><option value="ALTA">alta</option><option value="CRITICA">critica</option><option value="BAJA">baja</option>
                 </select>
               </div>
-              <PremiumButton type="button" variant="primary" icon={<Plus size={17} />}>Crear pendiente</PremiumButton>
-            </div>
+              <div className="grid grid-cols-2 gap-3">
+                <select value={ownerId} onChange={(event) => setOwnerId(event.target.value)} className="min-h-12 rounded-2xl border border-line bg-panel px-3 py-3 outline-none focus:border-volt" required>
+                  <option value="">Responsable</option>{data.users.map((user) => <option key={user.id} value={user.id}>{user.name}</option>)}
+                </select>
+                <input type="date" value={dueDate} onChange={(event) => setDueDate(event.target.value)} className="min-h-12 rounded-2xl border border-line bg-panel px-3 py-3 outline-none focus:border-volt" required />
+              </div>
+              {formStatus ? <p className="text-sm font-semibold text-muted">{formStatus}</p> : null}
+              <PremiumButton type="submit" variant="primary" icon={<Plus size={17} />}>{editId ? "Guardar cambios" : "Crear pendiente"}</PremiumButton>
+            </form>
           </Card>
         ) : null}
 
@@ -115,6 +166,7 @@ export default function PendientesPage() {
                 <Info label="Responsable" value={userName(pending.ownerId)} icon={<UserRound size={14} />} />
                 <Info label="Limite" value={pending.dueDate} />
               </div>
+              {!isAdvisor ? <div className="mt-3 grid grid-cols-2 gap-2"><button onClick={() => editPending(pending)} className="liquid-glass min-h-11 rounded-2xl text-sm font-black">Editar</button><select value={pending.status === "en proceso" ? "EN_PROCESO" : pending.status.toUpperCase()} onChange={(event) => void changeStatus(pending.id, event.target.value as "PENDIENTE" | "EN_PROCESO" | "COMPLETADO")} className="min-h-11 rounded-2xl border border-line bg-panel px-3 text-sm font-black"><option value="PENDIENTE">Pendiente</option><option value="EN_PROCESO">En proceso</option><option value="COMPLETADO">Cerrar</option></select></div> : null}
             </Card>
           ))}
           {visiblePendings.length === 0 ? (

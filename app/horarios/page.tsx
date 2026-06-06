@@ -12,7 +12,7 @@ export default function HorariosPage() {
   const [session, setSession] = useState<User | null>(null);
 
   useEffect(() => {
-    setSession(getSession());
+    getSession().then(setSession);
     fetchAppData().then(setData).catch(() => setData(null));
   }, []);
 

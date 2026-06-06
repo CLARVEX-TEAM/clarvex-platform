@@ -8,8 +8,9 @@ export default function HomePage() {
   const router = useRouter();
 
   useEffect(() => {
-    const session = getSession();
-    router.replace(session?.role === "ASESOR" ? "/advisor" : session ? "/manager" : "/login");
+    getSession().then((session) => {
+      router.replace(session?.role === "ASESOR" ? "/advisor" : session ? "/manager" : "/login");
+    });
   }, [router]);
 
   return <main className="min-h-screen bg-void" />;

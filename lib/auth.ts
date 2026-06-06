@@ -1,51 +1,47 @@
-import { users } from "@/lib/demo-data";
 import type { User } from "@/lib/types";
 
-const KEY = "clarvex.session";
+type EmployeeLookup = {
+  user: User;
+  requiresPinSetup: boolean;
+};
 
-export function getSession(): User | null {
-  if (typeof window === "undefined") return null;
-  const raw = window.localStorage.getItem(KEY);
-  if (!raw) return null;
-  try {
-    return JSON.parse(raw) as User;
-  } catch {
-    return null;
-  }
+async function request<T>(url: string, init?: RequestInit): Promise<T> {
+  const response = await fetch(url, init);
+  const payload = await response.json() as T & { error?: string };
+  if (!response.ok) throw new Error(payload.error ?? "No fue posible completar la solicitud.");
+  return payload;
 }
 
-export function loginDemo(userId: string) {
-  const user = users.find((item) => item.id === userId);
-  if (!user) throw new Error("Usuario demo no encontrado");
-  window.localStorage.setItem(KEY, JSON.stringify(user));
-  return user;
+export async function getSession(): Promise<User | null> {
+  const response = await fetch("/api/auth/session", { cache: "no-store" });
+  if (!response.ok) return null;
+  return ((await response.json()) as { user: User }).user;
 }
 
-export function loginByEmployeeNumber(employeeNumber: string) {
-  const cleanNumber = employeeNumber.trim();
-  const user = users.find((item) => item.employeeNumber === cleanNumber);
-  if (!user) throw new Error("Numero de empleado no encontrado");
-  window.localStorage.setItem(KEY, JSON.stringify(user));
-  return user;
-}
-
-export async function loginByEmployeeNumberFromDb(employeeNumber: string) {
-  const response = await fetch("/api/auth/employee-login", {
+export async function inspectEmployee(employeeNumber: string) {
+  return request<EmployeeLookup>("/api/auth/employee-login", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ employeeNumber })
+    body: JSON.stringify({ action: "inspect", employeeNumber })
   });
-
-  if (!response.ok) throw new Error("Numero de empleado no encontrado");
-  const payload = await response.json() as { user: User };
-  window.localStorage.setItem(KEY, JSON.stringify(payload.user));
-  return payload.user;
 }
 
-export function logout() {
-  window.localStorage.removeItem(KEY);
+export async function loginWithPin(employeeNumber: string, pin: string) {
+  return request<{ user: User }>("/api/auth/employee-login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action: "login", employeeNumber, pin })
+  });
 }
 
-export function saveSession(user: User) {
-  window.localStorage.setItem(KEY, JSON.stringify(user));
+export async function createPin(employeeNumber: string, pin: string) {
+  return request<{ user: User }>("/api/auth/employee-login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action: "setup", employeeNumber, pin })
+  });
+}
+
+export async function logout() {
+  await fetch("/api/auth/session", { method: "DELETE" });
 }

@@ -13,13 +13,15 @@ export function TaskList({ activities }: { activities: Activity[] }) {
         <TaskItem
           key={activity.id}
           activity={activity}
-          onToggle={(completed) => {
+          onToggle={async (completed) => {
+            const previous = items;
             setItems((current) => current.map((item) => (item.id === activity.id ? { ...item, completed } : item)));
-            fetch(`/api/activities/${activity.id}`, {
-              method: "PATCH",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ completed })
-            }).catch(() => undefined);
+            try {
+              const response = await fetch(`/api/activities/${activity.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ completed }) });
+              if (!response.ok) throw new Error("No se pudo actualizar la actividad.");
+            } catch {
+              setItems(previous);
+            }
           }}
         />
       ))}

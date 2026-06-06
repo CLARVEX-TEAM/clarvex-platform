@@ -16,12 +16,10 @@ export default function AdvisorDashboard() {
   const [data, setData] = useState<AppData | null>(null);
 
   useEffect(() => {
-    const session = getSession();
-    if (!session) {
-      router.replace("/login");
-      return;
-    }
-    setUser(session);
+    getSession().then((session) => {
+      if (!session) router.replace("/login");
+      else setUser(session);
+    });
     fetchAppData().then(setData).catch(() => setData(null));
   }, [router]);
 
@@ -52,8 +50,8 @@ export default function AdvisorDashboard() {
         avatar={user.avatar}
         action={
           <button
-            onClick={() => {
-              logout();
+            onClick={async () => {
+              await logout();
               router.push("/login");
             }}
             className="liquid-glass grid size-11 place-items-center rounded-[22px] text-ink/62 transition active:scale-95"

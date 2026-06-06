@@ -19,7 +19,7 @@ export default function ComunicadosPage() {
   const [filter, setFilter] = useState<Filter>("todos");
 
   useEffect(() => {
-    setSession(getSession());
+    getSession().then(setSession);
     fetchAppData()
       .then((payload) => {
         setData(payload);
@@ -28,32 +28,31 @@ export default function ComunicadosPage() {
       .catch(() => setData(null));
   }, []);
 
-  function toggleRead(id: string, userId: string) {
+  async function toggleRead(id: string) {
     if (!session) return;
-    if (session.role === "ASESOR" && userId !== session.id) return;
-
     const current = announcements.find((item) => item.id === id);
-    const read = !current?.readBy.includes(userId);
+    if (!current) return;
+    const previous = announcements;
+    const read = !current.readBy.includes(session.id);
 
     setAnnouncements((current) =>
       current.map((item) =>
         item.id === id
-          ? { ...item, readBy: item.readBy.includes(userId) ? item.readBy.filter((reader) => reader !== userId) : [...item.readBy, userId] }
+          ? { ...item, readBy: item.readBy.includes(session.id) ? item.readBy.filter((reader) => reader !== session.id) : [...item.readBy, session.id] }
           : item
       )
     );
 
-    fetch(`/api/announcements/${id}/read`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ actorId: session.id, userId, read })
-    }).catch(() => undefined);
+    try {
+      const response = await fetch(`/api/announcements/${id}/read`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ read }) });
+      if (!response.ok) throw new Error("No se pudo actualizar la lectura.");
+    } catch {
+      setAnnouncements(previous);
+    }
   }
 
   async function publishAnnouncement(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const session = getSession();
-
     if (!session) {
       setStatus("Inicia sesion para publicar.");
       return;
@@ -70,7 +69,7 @@ export default function ComunicadosPage() {
       const response = await fetch("/api/announcements", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, body, authorId: session.id })
+        body: JSON.stringify({ title, body })
       });
 
       if (!response.ok) throw new Error("No se pudo publicar.");
@@ -165,7 +164,7 @@ export default function ComunicadosPage() {
                     <div className="mt-4 grid gap-2">
                       {session?.role === "ASESOR" && session ? (
                         <button
-                          onClick={() => toggleRead(item.id, session.id)}
+                          onClick={() => void toggleRead(item.id)}
                           className="liquid-glass flex items-center justify-between rounded-2xl p-3"
                         >
                           <span className="font-semibold">Mi lectura</span>
@@ -178,14 +177,13 @@ export default function ComunicadosPage() {
                       {session?.role !== "ASESOR" ? advisors.map((advisor) => {
                         const read = item.readBy.includes(advisor.id);
                         return (
-                          <button
+                          <div
                             key={advisor.id}
-                            onClick={() => toggleRead(item.id, advisor.id)}
                             className="liquid-glass flex items-center justify-between rounded-2xl p-3"
                           >
                             <span className="font-semibold">{advisor.name}</span>
                             <Badge tone={read ? "done" : "warn"}>{read ? "leido" : "pendiente"}</Badge>
-                          </button>
+                          </div>
                         );
                       }) : null}
                     </div>

@@ -1,4 +1,4 @@
-const CACHE_NAME = "clarvex-team-v2";
+const CACHE_NAME = "clarvex-team-v3";
 const CORE_ASSETS = ["/", "/login", "/manifest.webmanifest", "/icon.svg"];
 
 self.addEventListener("install", (event) => {
@@ -18,7 +18,8 @@ self.addEventListener("activate", (event) => {
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
   const url = new URL(event.request.url);
-  if (url.pathname.startsWith("/_next/")) return;
+  if (url.pathname.startsWith("/_next/") || url.pathname.startsWith("/api/")) return;
+  if (event.request.mode === "navigate" && url.pathname !== "/" && url.pathname !== "/login") return;
 
   event.respondWith(
     fetch(event.request)
