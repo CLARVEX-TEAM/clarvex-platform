@@ -16,7 +16,6 @@ import {
   CalendarDays,
   Check,
   CheckSquare,
-  ChevronLeft,
   Home,
   ListChecks,
   Plus,
@@ -248,52 +247,6 @@ export function ProfileAvatar({
     <span className={cn("grid shrink-0 place-items-center bg-volt/15 font-black text-volt shadow-[inset_0_1px_0_rgb(255_255_255_/_0.16),0_12px_28px_rgb(0_0_0_/_0.26)] ring-1 ring-volt/25", sizes[size], className)}>
       {initials}
     </span>
-  );
-}
-
-export function PinPad({
-  value,
-  onChange,
-  length = 4
-}: {
-  value: string;
-  onChange: (value: string) => void;
-  length?: number;
-}) {
-  const digits = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "back"];
-  const masked = Array.from({ length }, (_, index) => index < value.length);
-
-  return (
-    <div>
-      <div className="mb-4 flex justify-center gap-3">
-        {masked.map((filled, index) => (
-        <span key={index} className={cn("size-3 rounded-full border transition", filled ? "border-volt bg-volt shadow-[0_0_14px_rgb(37_99_235_/_0.28)]" : "border-line bg-slate-100")} />
-        ))}
-      </div>
-      <div className="grid grid-cols-3 gap-3">
-        {digits.map((digit, index) => {
-          if (!digit) return <span key={index} />;
-          return (
-            <motion.button
-              key={digit}
-              type="button"
-              whileTap={{ scale: 0.94 }}
-              onClick={() => {
-                if (digit === "back") {
-                  onChange(value.slice(0, -1));
-                  return;
-                }
-                if (value.length < length) onChange(`${value}${digit}`);
-              }}
-              className="liquid-glass grid min-h-14 place-items-center rounded-[24px] text-xl font-black text-ink"
-              aria-label={digit === "back" ? "Borrar PIN" : `Numero ${digit}`}
-            >
-              {digit === "back" ? <ChevronLeft size={22} /> : digit}
-            </motion.button>
-          );
-        })}
-      </div>
-    </div>
   );
 }
 

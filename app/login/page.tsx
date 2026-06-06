@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { BadgeCheck, Camera, Fingerprint, LogIn, ShieldCheck, Sparkles } from "lucide-react";
 import { createPin, inspectEmployee, loginWithPin } from "@/lib/auth";
 import type { User } from "@/lib/types";
-import { Badge, Button, Card, PinPad, ProfileAvatar } from "@/components/ui";
+import { Badge, Button, Card, ProfileAvatar } from "@/components/ui";
 
 type Step = "employee" | "pin" | "confirm" | "profile" | "ready";
 
@@ -40,13 +40,13 @@ export default function LoginPage() {
     }
   }
 
-  async function finishLogin() {
+  async function finishLogin(pinValue = pin) {
     setBusy(true);
     setError("");
     try {
       const result = requiresPinSetup
-        ? await createPin(employeeNumber, pin)
-        : await loginWithPin(employeeNumber, pin);
+        ? await createPin(employeeNumber, pinValue)
+        : await loginWithPin(employeeNumber, pinValue);
       router.replace(result.user.role === "ASESOR" ? "/advisor" : "/manager");
       router.refresh();
     } catch (cause) {
@@ -55,6 +55,21 @@ export default function LoginPage() {
     } finally {
       setBusy(false);
     }
+  }
+
+  function updatePin(value: string) {
+    const nextPin = value.replace(/\D/g, "").slice(0, 4);
+    setPin(nextPin);
+    setError("");
+    if (nextPin.length !== 4 || busy) return;
+    if (requiresPinSetup) setStep("confirm");
+    else void finishLogin(nextPin);
+  }
+
+  function updateConfirmation(value: string) {
+    const nextPin = value.replace(/\D/g, "").slice(0, 4);
+    setConfirmPin(nextPin);
+    if (nextPin.length === 4 && nextPin === pin) setStep("profile");
   }
 
   return (
@@ -86,7 +101,7 @@ export default function LoginPage() {
           {step === "employee" ? (
             <form className="space-y-3" onSubmit={nextFromEmployee}>
               <label className="block text-sm font-bold text-ink/75" htmlFor="employeeNumber">Numero de empleado</label>
-              <input id="employeeNumber" value={employeeNumber} onChange={(event) => { setEmployeeNumber(event.target.value.replace(/\D/g, "")); setError(""); }} inputMode="numeric" autoComplete="username" className="min-h-14 w-full rounded-2xl border border-line/80 bg-panel/75 px-4 text-center text-xl font-black tracking-[0.18em] text-ink outline-none shadow-inner transition placeholder:text-muted/40 focus:border-volt focus:ring-4 focus:ring-volt/18" placeholder="81893" />
+              <input id="employeeNumber" type="tel" value={employeeNumber} onChange={(event) => { setEmployeeNumber(event.target.value.replace(/\D/g, "")); setError(""); }} inputMode="numeric" autoComplete="username" autoFocus className="min-h-14 w-full rounded-2xl border border-line/80 bg-panel/75 px-4 text-center text-xl font-black tracking-[0.18em] text-ink outline-none shadow-inner transition placeholder:text-muted/40 focus:border-volt focus:ring-4 focus:ring-volt/18" placeholder="81893" />
               {error ? <p className="text-sm font-semibold text-orchid">{error}</p> : null}
               <Button className="w-full" type="submit" variant="primary" disabled={busy || !employeeNumber}>Continuar</Button>
             </form>
@@ -95,7 +110,24 @@ export default function LoginPage() {
           {step === "pin" ? (
             <div className="space-y-4">
               {user ? <div className="flex items-center gap-3 rounded-2xl border border-volt/25 bg-volt/10 p-3"><ProfileAvatar name={user.name} photoUrl={user.photoUrl} size="sm" /><div><p className="font-black">{user.name}</p><p className="text-xs text-muted">{requiresPinSetup ? "Crea tu PIN de primer ingreso" : "Ingresa tu PIN"}</p></div></div> : null}
-              <PinPad value={pin} onChange={(value) => { setPin(value); setError(""); }} />
+              <label className="grid gap-2 text-sm font-bold text-ink/75" htmlFor="pin">
+                PIN de 4 digitos
+                <input
+                  id="pin"
+                  name="pin"
+                  type="password"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  autoComplete={requiresPinSetup ? "new-password" : "current-password"}
+                  autoFocus
+                  maxLength={4}
+                  value={pin}
+                  onChange={(event) => updatePin(event.target.value)}
+                  className="min-h-14 w-full rounded-2xl border border-line bg-panel px-4 text-center text-2xl font-black tracking-[0.65em] text-ink outline-none transition focus:border-volt focus:ring-4 focus:ring-volt/15"
+                  aria-describedby="pin-help"
+                />
+              </label>
+              <p id="pin-help" className="text-center text-xs text-muted">El teclado numerico de tu dispositivo se abrira automaticamente.</p>
               {error ? <p className="text-sm font-semibold text-orchid">{error}</p> : null}
               <Button className="w-full" variant="primary" disabled={busy || pin.length < 4} onClick={() => requiresPinSetup ? setStep("confirm") : void finishLogin()}>{requiresPinSetup ? "Guardar PIN" : "Entrar"}</Button>
             </div>
@@ -104,7 +136,22 @@ export default function LoginPage() {
           {step === "confirm" ? (
             <div className="space-y-4">
               <div><h2 className="text-xl font-black">Confirma tu PIN</h2><p className="mt-1 text-sm text-muted">Debe coincidir con el PIN anterior.</p></div>
-              <PinPad value={confirmPin} onChange={setConfirmPin} />
+              <label className="grid gap-2 text-sm font-bold text-ink/75" htmlFor="confirmPin">
+                Repite tu PIN
+                <input
+                  id="confirmPin"
+                  name="confirmPin"
+                  type="password"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  autoComplete="new-password"
+                  autoFocus
+                  maxLength={4}
+                  value={confirmPin}
+                  onChange={(event) => updateConfirmation(event.target.value)}
+                  className="min-h-14 w-full rounded-2xl border border-line bg-panel px-4 text-center text-2xl font-black tracking-[0.65em] text-ink outline-none transition focus:border-volt focus:ring-4 focus:ring-volt/15"
+                />
+              </label>
               {confirmPin.length === 4 && confirmPin !== pin ? <p className="text-sm font-semibold text-orchid">Los PIN no coinciden.</p> : null}
               <Button className="w-full" variant="primary" disabled={confirmPin.length < 4 || confirmPin !== pin} onClick={() => setStep("profile")}>Confirmar PIN</Button>
             </div>
