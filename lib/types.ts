@@ -25,7 +25,10 @@ export type Kpi = {
   pieces: number;
   transactions: number;
   ranking: number;
-  discountMargin: number;
+  grossSales: number | null;
+  discountAmount: number | null;
+  discountMargin: number | null;
+  discountLimit: number | null;
   commissionAmount: number;
   commissionPercent: number;
 };

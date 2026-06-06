@@ -15,6 +15,7 @@ import {
   RefreshCw,
   Settings2,
   Share2,
+  Tags,
   Target,
   Wifi,
   X
@@ -36,7 +37,8 @@ const modules: Record<DataSourceType, { label: string; icon: typeof CalendarDays
   KPIS: { label: "KPIs", icon: Gauge, description: "Venta, conversion y productividad." },
   METAS: { label: "Metas", icon: Target, description: "Objetivos diarios y mensuales." },
   COMISIONES: { label: "Comisiones", icon: CircleDollarSign, description: "Reglas, niveles y resultados." },
-  COMUNICADOS: { label: "Comunicados", icon: Megaphone, description: "Avisos y confirmaciones de lectura." }
+  COMUNICADOS: { label: "Comunicados", icon: Megaphone, description: "Avisos y confirmaciones de lectura." },
+  DESCUENTOS_POS: { label: "Descuentos POS", icon: Tags, description: "Venta bruta, descuentos y limite permitido." }
 };
 
 const providers: Array<{ value: DataSourceProvider; label: string; icon: typeof Database }> = [
@@ -202,7 +204,7 @@ export default function DataCenterPage() {
           <div className="flex items-start justify-between gap-4">
             <div>
               <p className="text-[11px] font-black uppercase tracking-[0.14em] text-volt">Integraciones de tienda</p>
-              <h2 className="mt-1 text-2xl font-black tracking-[-0.035em]">{connectedCount} de 5 vinculadas</h2>
+              <h2 className="mt-1 text-2xl font-black tracking-[-0.035em]">{connectedCount} de {dataSourceTypes.length} vinculadas</h2>
               <p className="mt-1 max-w-[15rem] text-[13px] leading-5 text-muted">Prepara Excel y SharePoint sin alterar la operacion actual.</p>
             </div>
             <span className="grid size-11 shrink-0 place-items-center rounded-[18px] border border-volt/25 bg-volt/12 text-volt">

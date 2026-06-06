@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const dataSourceTypes = ["HORARIOS", "KPIS", "METAS", "COMISIONES", "COMUNICADOS"] as const;
+export const dataSourceTypes = ["HORARIOS", "KPIS", "METAS", "COMISIONES", "COMUNICADOS", "DESCUENTOS_POS"] as const;
 export const dataSourceProviders = ["MANUAL", "EXCEL", "SHAREPOINT"] as const;
 export const dataSourceStatuses = ["CONNECTED", "DISCONNECTED", "ERROR"] as const;
 export const dataSourceFrequencies = ["MANUAL", "HOURLY", "DAILY", "WEEKLY"] as const;

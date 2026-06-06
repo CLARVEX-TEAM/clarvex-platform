@@ -157,11 +157,22 @@ function ResumenView({ activeKpi, dailyProgress }: { activeKpi: Kpi; dailyProgre
         <StatCard compact label="AUR" value={money(aur)} detail="Precio promedio pieza" tone="sky" icon={<Receipt size={15} />} />
         <StatCard compact label="EPT" value={ept.toFixed(2)} detail="Piezas por transaccion" tone="purple" icon={<BarChart3 size={15} />} />
         <StatCard compact label="Conversion" value={`${activeKpi.conversion}%`} detail="Trafico a venta" tone="ember" progress={activeKpi.conversion} icon={<Target size={15} />} />
-        <StatCard compact label="Margen DTO" value={`${activeKpi.discountMargin}%`} detail="Descuento aplicado" tone="orchid" icon={<Percent size={15} />} />
+        <StatCard
+          compact
+          label="Margen DTO"
+          value={hasPosDiscountData(activeKpi) ? `${activeKpi.discountMargin}%` : "Sin datos POS"}
+          detail={hasPosDiscountData(activeKpi) ? "Descuento sobre venta bruta" : "Vincula Descuentos POS"}
+          tone="orchid"
+          icon={<Percent size={15} />}
+        />
         <StatCard compact label="Comision" value={money(activeKpi.commissionAmount)} detail={`${activeKpi.commissionPercent}% estimado`} tone="volt" icon={<Trophy size={15} />} />
       </div>
     </>
   );
+}
+
+function hasPosDiscountData(kpi: Kpi) {
+  return kpi.grossSales !== null && kpi.discountAmount !== null && kpi.discountMargin !== null;
 }
 
 function VentasView({ activeKpi, chartData, dailyProgress }: { activeKpi: Kpi; chartData: Array<{ name: string; venta: number; meta: number; comision: number }>; dailyProgress: number }) {

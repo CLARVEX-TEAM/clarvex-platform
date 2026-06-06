@@ -41,6 +41,7 @@ enum DataSourceType {
   METAS
   COMISIONES
   COMUNICADOS
+  DESCUENTOS_POS
 }
 
 enum DataSourceProvider {
@@ -168,7 +169,10 @@ model Kpi {
   pieces         Int
   transactions   Int
   ranking        Int
-  discountMargin Decimal  @default(0) @db.Decimal(5, 2)
+  grossSales     Decimal? @db.Decimal(12, 2)
+  discountAmount Decimal? @db.Decimal(12, 2)
+  discountMargin Decimal? @db.Decimal(5, 2)
+  discountLimit  Decimal? @db.Decimal(5, 2)
   commissionAmount Decimal @default(0) @db.Decimal(12, 2)
   commissionPercent Decimal @default(0) @db.Decimal(5, 2)
   createdAt      DateTime @default(now())
