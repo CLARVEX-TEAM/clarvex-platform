@@ -8,6 +8,9 @@ import { parseScheduleWorkbook } from "@/lib/schedule-parser";
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
+const SCHEDULE_BATCH_SIZE = 25;
+const SCHEDULE_IMPORT_TIMEOUT_MS = 4 * 60 * 1000;
+
 export async function POST(_request: Request, { params }: { params: { id: string } }) {
   const session = await requireSession(["GERENTE", "SUBGERENTE"]);
   if (isApiError(session)) return session;
@@ -64,7 +67,9 @@ export async function POST(_request: Request, { params }: { params: { id: string
         registrosProcesados: scheduleMetrics.recordsProcessed,
         registrosCreados: scheduleMetrics.recordsCreated,
         registrosActualizados: scheduleMetrics.recordsUpdated,
-        errores: scheduleMetrics.errors
+        errores: scheduleMetrics.errors,
+        empleadosNoEncontrados: scheduleMetrics.employeesNotFound,
+        valoresDesconocidos: scheduleMetrics.unknownValues
       } : {}),
       dataSource: serializeDataSource(updated)
     });
@@ -112,45 +117,78 @@ async function importSchedules(workbook: Parameters<typeof parseScheduleWorkbook
   let recordsCreated = 0;
   let recordsUpdated = 0;
   const errors: string[] = [];
+  const importStartedAt = Date.now();
 
-  for (const record of matchedRecords) {
-    console.log("Procesando empleado", record.employeeNumber);
-    console.log("Fecha", record.date.toISOString());
-    const existingKey = `${record.userId}:${record.date.toISOString()}`;
-    const data = {
-      storeId,
-      day: record.day,
-      status: record.status,
-      statusRaw: record.statusRaw,
-      startTime: null,
-      endTime: null,
-      weekStart: record.weekStart
-    };
+  for (let batchStart = 0; batchStart < matchedRecords.length; batchStart += SCHEDULE_BATCH_SIZE) {
+    const batch = matchedRecords.slice(batchStart, batchStart + SCHEDULE_BATCH_SIZE);
+    console.log("Procesando lote de horarios", {
+      lote: Math.floor(batchStart / SCHEDULE_BATCH_SIZE) + 1,
+      registros: batch.length
+    });
 
-    try {
-      await prisma.schedule.upsert({
-        where: { userId_date: { userId: record.userId, date: record.date } },
-        update: data,
-        create: { ...data, userId: record.userId, date: record.date }
-      });
-      if (existingKeys.has(existingKey)) {
-        recordsUpdated += 1;
-      } else {
-        recordsCreated += 1;
-        existingKeys.add(existingKey);
+    for (const record of batch) {
+      if (Date.now() - importStartedAt >= SCHEDULE_IMPORT_TIMEOUT_MS) {
+        const pendingRecords = matchedRecords.slice(batchStart + batch.indexOf(record));
+        errors.push(...pendingRecords.map((pending) => (
+          `Empleado ${pending.employeeNumber}, fecha ${pending.date.toISOString().slice(0, 10)}: tiempo maximo de importacion excedido.`
+        )));
+        console.error("Importacion de horarios detenida por timeout", {
+          timeoutMs: SCHEDULE_IMPORT_TIMEOUT_MS,
+          registrosPendientes: pendingRecords.length
+        });
+        return buildScheduleMetrics(parsed, users.length, matchedRecords.length, recordsCreated, recordsUpdated, errors, employeesNotFound);
       }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Error desconocido";
-      const rowError = `Empleado ${record.employeeNumber}, fecha ${record.date.toISOString().slice(0, 10)}: ${message}`;
-      console.error("Error procesando horario:", rowError);
-      errors.push(rowError);
+
+      console.log("Procesando empleado", record.employeeNumber);
+      console.log("Fecha", record.date.toISOString());
+      const existingKey = `${record.userId}:${record.date.toISOString()}`;
+      const data = {
+        storeId,
+        day: record.day,
+        status: record.status,
+        statusRaw: record.statusRaw,
+        startTime: null,
+        endTime: null,
+        weekStart: record.weekStart
+      };
+
+      try {
+        await prisma.schedule.upsert({
+          where: { userId_date: { userId: record.userId, date: record.date } },
+          update: data,
+          create: { ...data, userId: record.userId, date: record.date }
+        });
+        if (existingKeys.has(existingKey)) {
+          recordsUpdated += 1;
+        } else {
+          recordsCreated += 1;
+          existingKeys.add(existingKey);
+        }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Error desconocido";
+        const rowError = `Empleado ${record.employeeNumber}, fecha ${record.date.toISOString().slice(0, 10)}: ${message}`;
+        console.error("Error procesando horario:", rowError);
+        errors.push(rowError);
+      }
     }
   }
 
+  return buildScheduleMetrics(parsed, users.length, matchedRecords.length, recordsCreated, recordsUpdated, errors, employeesNotFound);
+}
+
+function buildScheduleMetrics(
+  parsed: ReturnType<typeof parseScheduleWorkbook>,
+  employeesFound: number,
+  recordsProcessed: number,
+  recordsCreated: number,
+  recordsUpdated: number,
+  errors: string[],
+  employeesNotFound: string[]
+): ScheduleSyncMetrics {
   return {
     weeksProcessed: parsed.weeks.length,
-    employeesFound: users.length,
-    recordsProcessed: matchedRecords.length,
+    employeesFound,
+    recordsProcessed,
     recordsCreated,
     recordsUpdated,
     errors,
