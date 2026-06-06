@@ -1,0 +1,184 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  GERENTE
+  SUBGERENTE
+  ASESOR
+}
+
+enum PendingCategory {
+  OPERACION
+  EQUIPO
+  COMERCIAL
+  CLIENTE
+  INVENTARIO
+  MANTENIMIENTO
+}
+
+enum PendingPriority {
+  BAJA
+  MEDIA
+  ALTA
+  CRITICA
+}
+
+enum PendingStatus {
+  PENDIENTE
+  EN_PROCESO
+  COMPLETADO
+}
+
+model Store {
+  id             String         @id @default(cuid())
+  name           String
+  users          User[]
+  kpis           Kpi[]
+  schedules      Schedule[]
+  plans          DayPlan[]
+  pendings       Pending[]
+  logEntries     StoreLog[]
+  announcements  Announcement[]
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+}
+
+model User {
+  id                    String                 @id @default(cuid())
+  name                  String
+  email                 String                 @unique
+  employeeNumber        String                 @unique
+  passwordHash          String
+  role                  Role
+  storeId               String
+  store                 Store                  @relation(fields: [storeId], references: [id])
+  kpis                  Kpi[]
+  schedules             Schedule[]
+  plans                 DayPlan[]
+  assignedPendings      Pending[]              @relation("PendingOwner")
+  authoredLogs          StoreLog[]
+  authoredAnnouncements Announcement[]
+  announcementReads     AnnouncementRead[]
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+}
+
+model Kpi {
+  id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id])
+  storeId        String
+  store          Store    @relation(fields: [storeId], references: [id])
+  date           DateTime
+  dailySales     Decimal  @db.Decimal(12, 2)
+  monthlySales   Decimal  @db.Decimal(12, 2)
+  dailyGoal      Decimal  @db.Decimal(12, 2)
+  monthlyGoal    Decimal  @db.Decimal(12, 2)
+  avgTicket      Decimal  @db.Decimal(12, 2)
+  upt            Decimal  @db.Decimal(5, 2)
+  conversion     Decimal  @db.Decimal(5, 2)
+  pieces         Int
+  transactions   Int
+  ranking        Int
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model Schedule {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  storeId   String
+  store     Store    @relation(fields: [storeId], references: [id])
+  day       String
+  startTime String
+  endTime   String?
+  zone      String?
+  weekStart DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model DayPlan {
+  id        String     @id @default(cuid())
+  userId    String
+  user      User       @relation(fields: [userId], references: [id])
+  storeId   String
+  store     Store      @relation(fields: [storeId], references: [id])
+  date      DateTime
+  dailyGoal Decimal    @db.Decimal(12, 2)
+  focus     String
+  message   String
+  activities Activity[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+}
+
+model Activity {
+  id          String   @id @default(cuid())
+  planId      String
+  plan        DayPlan  @relation(fields: [planId], references: [id], onDelete: Cascade)
+  title       String
+  completed   Boolean  @default(false)
+  completedAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Pending {
+  id          String          @id @default(cuid())
+  storeId     String
+  store       Store           @relation(fields: [storeId], references: [id])
+  title       String
+  description String
+  category    PendingCategory
+  priority    PendingPriority
+  ownerId     String
+  owner       User            @relation("PendingOwner", fields: [ownerId], references: [id])
+  status      PendingStatus   @default(PENDIENTE)
+  dueDate     DateTime
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+}
+
+model StoreLog {
+  id          String   @id @default(cuid())
+  storeId     String
+  store       Store    @relation(fields: [storeId], references: [id])
+  authorId    String
+  author      User     @relation(fields: [authorId], references: [id])
+  category    String
+  description String
+  evidenceUrl String?
+  createdAt   DateTime @default(now())
+}
+
+model Announcement {
+  id        String             @id @default(cuid())
+  storeId   String
+  store     Store              @relation(fields: [storeId], references: [id])
+  authorId  String
+  author    User               @relation(fields: [authorId], references: [id])
+  title     String
+  body      String
+  reads     AnnouncementRead[]
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+}
+
+model AnnouncementRead {
+  id             String       @id @default(cuid())
+  announcementId String
+  announcement   Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User         @relation(fields: [userId], references: [id])
+  readAt         DateTime     @default(now())
+
+  @@unique([announcementId, userId])
+}
