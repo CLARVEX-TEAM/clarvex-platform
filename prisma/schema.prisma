@@ -173,6 +173,9 @@ model Kpi {
   commissionPercent Decimal @default(0) @db.Decimal(5, 2)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
+
+  @@unique([userId, date])
+  @@index([storeId, date])
 }
 
 model Schedule {

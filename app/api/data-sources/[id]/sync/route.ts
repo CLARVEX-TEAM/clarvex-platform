@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { isApiError, requireSession } from "@/lib/api";
-import { encodeSyncLogMessage, getNextSyncAt, serializeDataSource, type ScheduleSyncMetrics } from "@/lib/data-source";
+import { encodeSyncLogMessage, getNextSyncAt, serializeDataSource, type KpiSyncMetrics, type ScheduleSyncMetrics } from "@/lib/data-source";
 import { downloadExcelWorkbook, summarizeWorkbook } from "@/lib/excel-proxy";
+import { parseKpiWorkbook } from "@/lib/kpi-parser";
 import { prisma } from "@/lib/prisma";
 import { parseScheduleWorkbook } from "@/lib/schedule-parser";
 
@@ -10,6 +11,8 @@ export const runtime = "nodejs";
 
 const SCHEDULE_BATCH_SIZE = 25;
 const SCHEDULE_IMPORT_TIMEOUT_MS = 4 * 60 * 1000;
+const KPI_BATCH_SIZE = 25;
+const KPI_IMPORT_TIMEOUT_MS = 4 * 60 * 1000;
 
 export async function POST(_request: Request, { params }: { params: { id: string } }) {
   const session = await requireSession(["GERENTE", "SUBGERENTE"]);
@@ -38,19 +41,25 @@ export async function POST(_request: Request, { params }: { params: { id: string
     const scheduleMetrics = source.type === "HORARIOS"
       ? await importSchedules(excelWorkbook, session.storeId)
       : undefined;
+    const kpiMetrics = source.type === "KPIS"
+      ? await importKpis(excelWorkbook, session.storeId)
+      : undefined;
+    const syncMetrics = scheduleMetrics ?? kpiMetrics;
     const completedAt = new Date();
     const nextSyncAt = getNextSyncAt(source.frequency, completedAt);
     const successMessage = scheduleMetrics
       ? `Horarios sincronizados: ${scheduleMetrics.recordsCreated} creados, ${scheduleMetrics.recordsUpdated} actualizados, ${scheduleMetrics.errors.length} errores.`
+      : kpiMetrics
+        ? `KPIs sincronizados: ${kpiMetrics.recordsCreated} creados, ${kpiMetrics.recordsUpdated} actualizados, ${kpiMetrics.errors.length} errores.`
       : "Sincronizacion completada";
-    const recordsProcessed = scheduleMetrics
-      ? scheduleMetrics.recordsProcessed
+    const recordsProcessed = syncMetrics
+      ? syncMetrics.recordsProcessed
       : workbook.recordsProcessed;
     await prisma.syncLog.update({
       where: { id: log.id },
       data: {
         status: "SUCCESS",
-        message: encodeSyncLogMessage(successMessage, workbook.sheets, scheduleMetrics),
+        message: encodeSyncLogMessage(successMessage, workbook.sheets, syncMetrics),
         recordsProcessed
       }
     });
@@ -70,6 +79,14 @@ export async function POST(_request: Request, { params }: { params: { id: string
         errores: scheduleMetrics.errors,
         empleadosNoEncontrados: scheduleMetrics.employeesNotFound,
         valoresDesconocidos: scheduleMetrics.unknownValues
+      } : kpiMetrics ? {
+        empleadosProcesados: kpiMetrics.employeesProcessed,
+        registrosProcesados: kpiMetrics.recordsProcessed,
+        registrosCreados: kpiMetrics.recordsCreated,
+        registrosActualizados: kpiMetrics.recordsUpdated,
+        empleadosNoEncontrados: kpiMetrics.employeesNotFound,
+        errores: kpiMetrics.errors,
+        transaccionesCrmProcesadas: kpiMetrics.crmTransactionsProcessed
       } : {}),
       dataSource: serializeDataSource(updated)
     });
@@ -84,6 +101,159 @@ export async function POST(_request: Request, { params }: { params: { id: string
     ]);
     return NextResponse.json({ error: errorMessage }, { status: 502 });
   }
+}
+
+async function importKpis(workbook: Parameters<typeof parseKpiWorkbook>[0], storeId: string): Promise<KpiSyncMetrics> {
+  const parsed = parseKpiWorkbook(workbook);
+  const users = parsed.employeeNumbers.length > 0
+    ? await prisma.user.findMany({
+        where: { storeId, employeeNumber: { in: parsed.employeeNumbers } },
+        select: { id: true, employeeNumber: true }
+      })
+    : [];
+  const userByEmployee = new Map(users.map((user) => [user.employeeNumber, user.id]));
+  const employeesNotFound = parsed.employeeNumbers.filter((employeeNumber) => !userByEmployee.has(employeeNumber));
+  const matchedRecords = parsed.records.flatMap((record) => {
+    const userId = userByEmployee.get(record.employeeNumber);
+    return userId ? [{ ...record, userId, ranking: 0, monthlySales: 0, monthlyGoal: 0 }] : [];
+  });
+
+  applyKpiRankings(matchedRecords);
+  applyMonthlyTotals(matchedRecords);
+
+  const userIds = Array.from(new Set(matchedRecords.map((record) => record.userId)));
+  const dates = Array.from(new Map(matchedRecords.map((record) => [record.date.toISOString(), record.date])).values());
+  const existing = userIds.length > 0 && dates.length > 0
+    ? await prisma.kpi.findMany({
+        where: { storeId, userId: { in: userIds }, date: { in: dates } },
+        select: { userId: true, date: true }
+      })
+    : [];
+  const existingKeys = new Set(existing.map((kpi) => `${kpi.userId}:${kpi.date.toISOString()}`));
+  let recordsCreated = 0;
+  let recordsUpdated = 0;
+  const errors: string[] = [];
+  const importStartedAt = Date.now();
+
+  for (let batchStart = 0; batchStart < matchedRecords.length; batchStart += KPI_BATCH_SIZE) {
+    const batch = matchedRecords.slice(batchStart, batchStart + KPI_BATCH_SIZE);
+    console.log("Procesando lote de KPIs", {
+      lote: Math.floor(batchStart / KPI_BATCH_SIZE) + 1,
+      registros: batch.length
+    });
+
+    for (let index = 0; index < batch.length; index += 1) {
+      const record = batch[index];
+      if (Date.now() - importStartedAt >= KPI_IMPORT_TIMEOUT_MS) {
+        const pendingRecords = matchedRecords.slice(batchStart + index);
+        errors.push(...pendingRecords.map((pending) => (
+          `Empleado ${pending.employeeNumber}, fecha ${pending.date.toISOString().slice(0, 10)}: tiempo maximo de importacion excedido.`
+        )));
+        return buildKpiMetrics(parsed, users.length, matchedRecords.length, recordsCreated, recordsUpdated, employeesNotFound, errors);
+      }
+
+      const key = `${record.userId}:${record.date.toISOString()}`;
+      try {
+        await prisma.kpi.upsert({
+          where: { userId_date: { userId: record.userId, date: record.date } },
+          update: {
+            dailySales: record.dailySales,
+            monthlySales: record.monthlySales,
+            dailyGoal: record.dailyGoal,
+            monthlyGoal: record.monthlyGoal,
+            avgTicket: record.ept,
+            upt: record.upt,
+            pieces: record.pieces,
+            transactions: record.transactions,
+            ranking: record.ranking
+          },
+          create: {
+            userId: record.userId,
+            storeId,
+            date: record.date,
+            dailySales: record.dailySales,
+            monthlySales: record.monthlySales,
+            dailyGoal: record.dailyGoal,
+            monthlyGoal: record.monthlyGoal,
+            avgTicket: record.ept,
+            upt: record.upt,
+            conversion: 0,
+            pieces: record.pieces,
+            transactions: record.transactions,
+            ranking: record.ranking
+          }
+        });
+        if (existingKeys.has(key)) recordsUpdated += 1;
+        else {
+          recordsCreated += 1;
+          existingKeys.add(key);
+        }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Error desconocido";
+        const rowError = `Empleado ${record.employeeNumber}, fecha ${record.date.toISOString().slice(0, 10)}: ${message}`;
+        console.error("Error procesando KPI:", rowError);
+        errors.push(rowError);
+      }
+    }
+  }
+
+  return buildKpiMetrics(parsed, users.length, matchedRecords.length, recordsCreated, recordsUpdated, employeesNotFound, errors);
+}
+
+type MatchedKpiRecord = ReturnType<typeof parseKpiWorkbook>["records"][number] & {
+  userId: string;
+  ranking: number;
+  monthlySales: number;
+  monthlyGoal: number;
+};
+
+function applyKpiRankings(records: MatchedKpiRecord[]) {
+  const byDate = new Map<string, MatchedKpiRecord[]>();
+  for (const record of records) {
+    const key = record.date.toISOString();
+    byDate.set(key, [...(byDate.get(key) ?? []), record]);
+  }
+  for (const dailyRecords of Array.from(byDate.values())) {
+    dailyRecords.sort((left, right) => right.achievement - left.achievement || right.dailySales - left.dailySales);
+    dailyRecords.forEach((record, index) => { record.ranking = index + 1; });
+  }
+}
+
+function applyMonthlyTotals(records: MatchedKpiRecord[]) {
+  const totals = new Map<string, { sales: number; goal: number }>();
+  for (const record of records) {
+    const key = `${record.userId}:${record.date.toISOString().slice(0, 7)}`;
+    const total = totals.get(key) ?? { sales: 0, goal: 0 };
+    total.sales += record.dailySales;
+    total.goal += record.dailyGoal;
+    totals.set(key, total);
+  }
+  for (const record of records) {
+    const total = totals.get(`${record.userId}:${record.date.toISOString().slice(0, 7)}`);
+    record.monthlySales = total?.sales ?? 0;
+    record.monthlyGoal = total?.goal ?? 0;
+  }
+}
+
+function buildKpiMetrics(
+  parsed: ReturnType<typeof parseKpiWorkbook>,
+  employeesProcessed: number,
+  recordsProcessed: number,
+  recordsCreated: number,
+  recordsUpdated: number,
+  employeesNotFound: string[],
+  errors: string[]
+): KpiSyncMetrics {
+  return {
+    employeesProcessed,
+    recordsProcessed,
+    recordsCreated,
+    recordsUpdated,
+    employeesNotFound,
+    errors,
+    crmTransactionsProcessed: parsed.crmTransactionsTotal,
+    ignoredRows: parsed.ignoredRows
+  };
 }
 
 async function importSchedules(workbook: Parameters<typeof parseScheduleWorkbook>[0], storeId: string): Promise<ScheduleSyncMetrics> {

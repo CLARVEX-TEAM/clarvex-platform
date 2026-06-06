@@ -1,0 +1,230 @@
+import * as XLSX from "xlsx";
+
+export type ParsedKpiRecord = {
+  employeeNumber: string;
+  employeeName: string;
+  role: string;
+  date: Date;
+  dailyGoal: number;
+  dailySales: number;
+  transactions: number;
+  pieces: number;
+  crmTransactions: number;
+  upt: number;
+  aur: number;
+  ept: number;
+  achievement: number;
+};
+
+export type KpiParseResult = {
+  records: ParsedKpiRecord[];
+  employeeNumbers: string[];
+  crmTransactionsTotal: number;
+  ignoredRows: number;
+};
+
+type EmployeeGroup = {
+  employeeNumber: string;
+  employeeName: string;
+  role: string;
+  start: number;
+  end: number;
+  columns: Partial<Record<MetricKey, number>>;
+};
+
+type MetricKey = "dailyGoal" | "dailySales" | "transactions" | "pieces" | "crmTransactions";
+
+export function parseKpiWorkbook(workbook: XLSX.WorkBook): KpiParseResult {
+  const sheetName = workbook.SheetNames.find((name) => normalizeText(name) === "DIARIO DE VENTAS");
+  if (!sheetName) throw new Error('No se encontro la hoja "Diario de ventas".');
+
+  const rows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], {
+    header: 1,
+    blankrows: true,
+    defval: null,
+    raw: true
+  }) as unknown[][];
+  const headerRow = rows.findIndex((row) => {
+    const headers = row.map(normalizeText);
+    return headers.some((header) => header === "META DIARIA") && headers.some((header) => header.includes("VTAS TTLS SIN IVA"));
+  });
+  if (headerRow < 3) throw new Error("La hoja Diario de ventas no contiene el encabezado esperado en la fila 9.");
+
+  const groups = detectEmployeeGroups(rows, headerRow);
+  if (groups.length === 0) throw new Error("No se detectaron colaboradores en la fila 7 de Diario de ventas.");
+
+  const dateColumn = detectDateColumn(rows[headerRow] ?? []);
+  const records: ParsedKpiRecord[] = [];
+  let ignoredRows = 0;
+
+  for (let rowIndex = headerRow + 1; rowIndex < rows.length; rowIndex += 1) {
+    const row = rows[rowIndex] ?? [];
+    const rowLabel = normalizeText(row.slice(0, Math.max(2, groups[0].start)).join(" "));
+    if (!row.some((value) => cleanCell(value))) continue;
+    if (["TTLS", "BONOS", "INCIDENCIAS"].some((label) => rowLabel.includes(label))) {
+      ignoredRows += 1;
+      continue;
+    }
+
+    const date = findRowDate(row, dateColumn, groups[0].start);
+    if (!date) continue;
+
+    for (const group of groups) {
+      const dailyGoal = numericCell(row[group.columns.dailyGoal ?? -1]);
+      const dailySales = numericCell(row[group.columns.dailySales ?? -1]);
+      const transactions = integerCell(row[group.columns.transactions ?? -1]);
+      const pieces = integerCell(row[group.columns.pieces ?? -1]);
+      const crmTransactions = integerCell(row[group.columns.crmTransactions ?? -1]);
+      const hasData = [dailyGoal, dailySales, transactions, pieces, crmTransactions].some((value) => value !== 0);
+      if (!hasData) continue;
+
+      records.push({
+        employeeNumber: group.employeeNumber,
+        employeeName: group.employeeName,
+        role: group.role,
+        date,
+        dailyGoal,
+        dailySales,
+        transactions,
+        pieces,
+        crmTransactions,
+        upt: ratio(pieces, transactions),
+        aur: ratio(dailySales, pieces),
+        ept: ratio(dailySales, transactions),
+        achievement: dailyGoal > 0 ? round((dailySales / dailyGoal) * 100) : 0
+      });
+    }
+  }
+
+  const uniqueRecords = deduplicate(records);
+  return {
+    records: uniqueRecords,
+    employeeNumbers: Array.from(new Set(groups.map((group) => group.employeeNumber))),
+    crmTransactionsTotal: uniqueRecords.reduce((total, record) => total + record.crmTransactions, 0),
+    ignoredRows
+  };
+}
+
+function detectEmployeeGroups(rows: unknown[][], headerRow: number): EmployeeGroup[] {
+  const roleRow = headerRow - 3;
+  const employeeRowIndex = headerRow - 2;
+  const nameRow = headerRow - 1;
+  const employeeRow = rows[employeeRowIndex] ?? [];
+  const starts = employeeRow.flatMap((value, column) => {
+    const employeeNumber = employeeNumberCell(value);
+    return employeeNumber ? [{ employeeNumber, column }] : [];
+  });
+
+  return starts.map((item, index) => {
+    const end = starts[index + 1]?.column ?? Math.max(employeeRow.length, rows[headerRow]?.length ?? 0);
+    const headers = rows[headerRow] ?? [];
+    const columns: EmployeeGroup["columns"] = {};
+    for (let column = item.column; column < end; column += 1) {
+      const metric = metricFromHeader(headers[column]);
+      if (metric && columns[metric] === undefined) columns[metric] = column;
+    }
+
+    return {
+      employeeNumber: item.employeeNumber,
+      employeeName: firstValueInRange(rows[nameRow] ?? [], item.column, end),
+      role: firstValueInRange(rows[roleRow] ?? [], item.column, end),
+      start: item.column,
+      end,
+      columns
+    };
+  }).filter((group) => (
+    group.columns.dailyGoal !== undefined || group.columns.dailySales !== undefined
+  ));
+}
+
+function metricFromHeader(value: unknown): MetricKey | null {
+  const header = normalizeText(value);
+  if (header === "META DIARIA") return "dailyGoal";
+  if (header.includes("VTAS TTLS SIN IVA")) return "dailySales";
+  if (header === "TX TTLS") return "transactions";
+  if (header === "UNID TTLS") return "pieces";
+  if (header.includes("TX CAP CRM")) return "crmTransactions";
+  return null;
+}
+
+function detectDateColumn(headers: unknown[]) {
+  const column = headers.findIndex((header) => normalizeText(header).includes("FECHA"));
+  return column >= 0 ? column : 1;
+}
+
+function findRowDate(row: unknown[], preferredColumn: number, employeeStart: number) {
+  const preferred = parseExcelDate(row[preferredColumn]);
+  if (preferred) return preferred;
+  for (let column = 0; column < employeeStart; column += 1) {
+    const date = parseExcelDate(row[column]);
+    if (date) return date;
+  }
+  return null;
+}
+
+function parseExcelDate(value: unknown) {
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    return validUtcDate(value.getUTCFullYear(), value.getUTCMonth() + 1, value.getUTCDate());
+  }
+  if (typeof value === "number") {
+    const parsed = XLSX.SSF.parse_date_code(value);
+    return parsed ? validUtcDate(parsed.y, parsed.m, parsed.d) : null;
+  }
+  const match = cleanCell(value).match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{2}|\d{4})$/);
+  if (!match) return null;
+  const year = Number(match[3].length === 2 ? `20${match[3]}` : match[3]);
+  return validUtcDate(year, Number(match[2]), Number(match[1]));
+}
+
+function validUtcDate(year: number, month: number, day: number) {
+  const date = new Date(Date.UTC(year, month - 1, day));
+  return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day ? date : null;
+}
+
+function employeeNumberCell(value: unknown) {
+  const normalized = typeof value === "number" && Number.isFinite(value)
+    ? String(Math.trunc(value))
+    : cleanCell(value).replace(/\.0+$/, "").replace(/\s+/g, "");
+  return /^\d+$/.test(normalized) ? normalized : "";
+}
+
+function firstValueInRange(row: unknown[], start: number, end: number) {
+  for (let column = start; column < end; column += 1) {
+    const value = cleanCell(row[column]);
+    if (value) return value;
+  }
+  return "";
+}
+
+function numericCell(value: unknown) {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  const normalized = cleanCell(value).replace(/[$,%\s]/g, "").replace(/,/g, "");
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function integerCell(value: unknown) {
+  return Math.max(0, Math.round(numericCell(value)));
+}
+
+function ratio(numerator: number, denominator: number) {
+  return denominator > 0 ? round(numerator / denominator) : 0;
+}
+
+function round(value: number) {
+  return Math.round(value * 100) / 100;
+}
+
+function deduplicate(records: ParsedKpiRecord[]) {
+  const unique = new Map<string, ParsedKpiRecord>();
+  for (const record of records) unique.set(`${record.employeeNumber}:${record.date.toISOString()}`, record);
+  return Array.from(unique.values());
+}
+
+function cleanCell(value: unknown) {
+  return value === null || value === undefined ? "" : String(value).trim().replace(/\s+/g, " ");
+}
+
+function normalizeText(value: unknown) {
+  return cleanCell(value).normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[´']/g, "").toUpperCase();
+}

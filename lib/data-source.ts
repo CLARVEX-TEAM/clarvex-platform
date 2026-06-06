@@ -26,6 +26,19 @@ export type ScheduleSyncMetrics = {
   unknownValues: Record<string, number>;
 };
 
+export type KpiSyncMetrics = {
+  employeesProcessed: number;
+  recordsProcessed: number;
+  recordsCreated: number;
+  recordsUpdated: number;
+  employeesNotFound: string[];
+  errors: string[];
+  crmTransactionsProcessed: number;
+  ignoredRows: number;
+};
+
+export type DataSyncMetrics = ScheduleSyncMetrics | KpiSyncMetrics;
+
 export type DataSourceRecord = {
   id: string;
   type: DataSourceType;
@@ -97,7 +110,7 @@ export function serializeDataSource(source: SerializableDataSource): DataSourceR
   };
 }
 
-export function encodeSyncLogMessage(message: string, sheets: SheetSummary[] = [], details?: ScheduleSyncMetrics) {
+export function encodeSyncLogMessage(message: string, sheets: SheetSummary[] = [], details?: DataSyncMetrics) {
   return JSON.stringify({ message, sheets, details });
 }
 

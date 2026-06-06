@@ -16,7 +16,7 @@ export async function GET() {
 
   const [users, kpis, plans, pendings, logEntries, announcements, schedules, evidences, commissionRules] = await Promise.all([
     prisma.user.findMany({ where: { storeId: session.storeId }, orderBy: [{ role: "asc" }, { name: "asc" }] }),
-    prisma.kpi.findMany({ where: { storeId: session.storeId, ...own }, orderBy: [{ ranking: "asc" }, { createdAt: "desc" }] }),
+    prisma.kpi.findMany({ where: { storeId: session.storeId, ...own }, orderBy: [{ date: "desc" }, { ranking: "asc" }] }),
     prisma.dayPlan.findMany({ where: { storeId: session.storeId, ...own }, include: { activities: true }, orderBy: { date: "desc" } }),
     prisma.pending.findMany({ where: { storeId: session.storeId, ...(manager ? {} : { ownerId: session.userId }) }, orderBy: [{ priority: "desc" }, { dueDate: "asc" }] }),
     prisma.storeLog.findMany({ where: { storeId: session.storeId, ...(manager ? {} : { authorId: session.userId }) }, orderBy: { createdAt: "asc" } }),
