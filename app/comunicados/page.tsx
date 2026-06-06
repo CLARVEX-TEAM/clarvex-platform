@@ -97,7 +97,7 @@ export default function ComunicadosPage() {
     <>
       <AppHeader title="Comunicados" subtitle={session?.role === "ASESOR" ? "Lee avisos y confirma tu lectura." : "Publicacion, lectura y seguimiento por asesor."} backHref={session?.role === "ASESOR" ? "/advisor" : "/manager"} />
       <AppFrame>
-        <div className="no-scrollbar tab-glass-shell -mx-1 mb-5 flex gap-1 overflow-x-auto overflow-y-hidden p-1.5 scroll-px-4">
+        <div className="no-scrollbar tab-glass-shell -mx-1 mb-3 flex gap-1 overflow-x-auto overflow-y-hidden p-1 scroll-px-4">
           {[
             ["todos", "Todos"],
             ["no-leidos", "No leidos"],
@@ -106,22 +106,22 @@ export default function ComunicadosPage() {
             <button
               key={value}
               onClick={() => setFilter(value as Filter)}
-              className={`min-h-11 shrink-0 rounded-full px-4 text-sm font-black tracking-[-0.01em] transition active:scale-95 ${filter === value ? "bg-volt text-void shadow-[0_14px_34px_rgb(34_197_94_/_0.24),inset_0_1px_0_rgb(255_255_255_/_0.36)]" : "text-muted hover:text-ink"}`}
+              className={`min-h-10 shrink-0 rounded-full px-3.5 text-[13px] font-black tracking-[-0.01em] transition active:scale-95 ${filter === value ? "bg-volt text-void shadow-[0_10px_26px_rgb(34_197_94_/_0.22),inset_0_1px_0_rgb(255_255_255_/_0.36)]" : "text-muted hover:text-ink"}`}
             >
               {label}
             </button>
           ))}
         </div>
 
-        {!data ? <Card className="mb-5">Cargando comunicados desde PostgreSQL...</Card> : null}
+        {!data ? <Card className="mb-3">Cargando comunicados desde PostgreSQL...</Card> : null}
 
         {session?.role !== "ASESOR" ? (
-          <Card className="mb-5">
+          <Card className="mb-3">
             <div className="flex items-center gap-2">
               <Megaphone className="text-volt" size={18} />
               <h2 className="text-lg font-black">Publicar comunicado</h2>
             </div>
-            <form className="mt-4 grid gap-3" onSubmit={publishAnnouncement}>
+            <form className="mt-3 grid gap-2.5" onSubmit={publishAnnouncement}>
               <input
                 value={title}
                 onChange={(event) => setTitle(event.target.value)}
@@ -131,7 +131,7 @@ export default function ComunicadosPage() {
               <textarea
                 value={body}
                 onChange={(event) => setBody(event.target.value)}
-                className="min-h-24 rounded-2xl border border-line bg-panel px-3 py-3 outline-none focus:border-volt"
+                className="min-h-20 rounded-2xl border border-line bg-panel px-3 py-2.5 outline-none focus:border-volt"
                 placeholder="Mensaje para el equipo"
               />
               <Button type="submit" className="w-full" variant="primary" icon={<Send size={17} />}>
@@ -142,7 +142,7 @@ export default function ComunicadosPage() {
           </Card>
         ) : null}
 
-        <div className="space-y-4">
+        <div className="space-y-2.5">
           {visibleAnnouncements.map((item) => {
             const unread = session ? !item.readBy.includes(session.id) : false;
             const author = data?.users.find((user) => user.id === item.authorId)?.name ?? "Equipo";
@@ -161,11 +161,11 @@ export default function ComunicadosPage() {
                       <span className="text-xs font-bold text-muted">lectura del equipo</span>
                     </div>
                     <ProgressBar value={readProgress} />
-                    <div className="mt-4 grid gap-2">
+                    <div className="mt-2 grid gap-0 divide-y divide-white/[0.07] border-t border-white/[0.07]">
                       {session?.role === "ASESOR" && session ? (
                         <button
                           onClick={() => void toggleRead(item.id)}
-                          className="liquid-glass flex items-center justify-between rounded-2xl p-3"
+                          className="flex min-h-11 items-center justify-between py-2"
                         >
                           <span className="font-semibold">Mi lectura</span>
                           <Badge tone={item.readBy.includes(session.id) ? "done" : "warn"}>
@@ -179,7 +179,7 @@ export default function ComunicadosPage() {
                         return (
                           <div
                             key={advisor.id}
-                            className="liquid-glass flex items-center justify-between rounded-2xl p-3"
+                            className="flex min-h-10 items-center justify-between py-2 text-sm"
                           >
                             <span className="font-semibold">{advisor.name}</span>
                             <Badge tone={read ? "done" : "warn"}>{read ? "leido" : "pendiente"}</Badge>

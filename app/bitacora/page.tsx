@@ -44,27 +44,27 @@ export default function BitacoraPage() {
     <>
       <AppHeader title="Bitacora" subtitle="Registro cronologico de operacion de tienda." backHref="/manager" />
       <AppFrame>
-        <Card className="mb-5">
-          <div className="flex items-start justify-between gap-4">
+        <Card className="mb-3 py-3">
+          <div className="flex items-center justify-between gap-4">
             <div>
               <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-ink/45">Operacion</p>
-              <h2 className="mt-2 text-3xl font-black tracking-tight text-ink">{entries.length} registros</h2>
+              <h2 className="mt-1 text-2xl font-black tracking-tight text-ink">{entries.length} registros</h2>
               <p className="mt-1 text-sm text-ink/58">
                 Ultimo: {latest ? new Date(latest.date).toLocaleDateString("es-MX") : "sin registros"}
               </p>
             </div>
-            <div className="grid size-16 place-items-center rounded-[1.35rem] border border-orchid/25 bg-orchid/10 text-orchid">
-              <BookOpen size={25} />
+            <div className="grid size-12 place-items-center rounded-[1.1rem] border border-orchid/25 bg-orchid/10 text-orchid">
+              <BookOpen size={21} />
             </div>
           </div>
         </Card>
 
-        <div className="mb-5 grid grid-cols-2 gap-3">
-          <StatCard label="Categorias" value={String(new Set(entries.map((entry) => entry.category)).size)} detail="En uso" tone="mint" />
-          <StatCard label="Autores" value={String(new Set(entries.map((entry) => entry.authorId)).size)} detail="Equipo" tone="ember" />
+        <div className="mb-3 grid grid-cols-2 gap-3">
+          <StatCard compact label="Categorias" value={String(new Set(entries.map((entry) => entry.category)).size)} detail="En uso" tone="mint" />
+          <StatCard compact label="Autores" value={String(new Set(entries.map((entry) => entry.authorId)).size)} detail="Equipo" tone="ember" />
         </div>
 
-        <Card className="mb-5">
+        <Card className="mb-3">
           <div className="flex items-center justify-between gap-3">
             <div>
               <h2 className="text-lg font-black">Nuevo registro</h2>
@@ -72,11 +72,11 @@ export default function BitacoraPage() {
             </div>
             <PenLine className="text-volt" size={20} />
           </div>
-          <form className="mt-4 grid gap-3" onSubmit={createLog}>
+          <form className="mt-3 grid gap-2.5" onSubmit={createLog}>
             <select value={category} onChange={(event) => setCategory(event.target.value)} className="min-h-12 rounded-2xl border border-line/80 bg-panel/75 px-3 py-3 text-ink outline-none transition focus:border-volt focus:ring-4 focus:ring-volt/15">
               <option>Apertura</option><option>Cliente</option><option>Inventario</option><option>Equipo</option><option>Cierre</option>
             </select>
-            <textarea value={description} onChange={(event) => setDescription(event.target.value)} className="min-h-24 rounded-2xl border border-line/80 bg-panel/75 px-3 py-3 text-ink outline-none transition placeholder:text-ink/34 focus:border-volt focus:ring-4 focus:ring-volt/15" placeholder="Descripcion del registro" required />
+            <textarea value={description} onChange={(event) => setDescription(event.target.value)} className="min-h-20 rounded-2xl border border-line/80 bg-panel/75 px-3 py-2.5 text-ink outline-none transition placeholder:text-ink/34 focus:border-volt focus:ring-4 focus:ring-volt/15" placeholder="Descripcion del registro" required />
             {formStatus ? <p className="text-sm font-semibold text-muted">{formStatus}</p> : null}
             <Button type="submit" className="w-full" icon={<FileText size={17} />}>
               Guardar registro
@@ -97,8 +97,8 @@ export default function BitacoraPage() {
                     <Badge>{entry.category}</Badge>
                     <p className="text-xs text-ink/42">{new Date(entry.date).toLocaleString("es-MX")}</p>
                   </div>
-                  <p className="mt-3 text-ink/80">{entry.description}</p>
-                  <p className="mt-2 text-sm font-semibold text-mint">{index + 1}. {userName(entry.authorId)}</p>
+                  <p className="mt-2 text-[13px] leading-5 text-ink/80">{entry.description}</p>
+                  <p className="mt-1 text-xs font-semibold text-mint">{index + 1}. {userName(entry.authorId)}</p>
                 </div>
               </div>
             </Card>

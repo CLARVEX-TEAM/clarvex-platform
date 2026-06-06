@@ -88,7 +88,7 @@ export default function PendientesPage() {
     <>
       <AppHeader title="Pendientes" subtitle={isAdvisor ? "Tus pendientes asignados." : "Handover, responsables y fechas limite."} backHref={isAdvisor ? "/advisor" : "/manager"} />
       <AppFrame>
-        <div className="no-scrollbar tab-glass-shell -mx-1 mb-5 flex gap-1 overflow-x-auto overflow-y-hidden p-1.5 scroll-px-4">
+        <div className="no-scrollbar tab-glass-shell -mx-1 mb-3 flex gap-1 overflow-x-auto overflow-y-hidden p-1 scroll-px-4">
           {[
             ["todos", "Todos"],
             ["urgentes", "Urgentes"],
@@ -97,7 +97,7 @@ export default function PendientesPage() {
             <button
               key={value}
               onClick={() => setFilter(value as Filter)}
-              className={`min-h-11 shrink-0 rounded-full px-4 text-sm font-black tracking-[-0.01em] transition active:scale-95 ${filter === value ? "bg-volt text-void shadow-[0_14px_34px_rgb(34_197_94_/_0.24),inset_0_1px_0_rgb(255_255_255_/_0.36)]" : "text-muted hover:text-ink"}`}
+              className={`min-h-10 shrink-0 rounded-full px-3.5 text-[13px] font-black tracking-[-0.01em] transition active:scale-95 ${filter === value ? "bg-volt text-void shadow-[0_10px_26px_rgb(34_197_94_/_0.22),inset_0_1px_0_rgb(255_255_255_/_0.36)]" : "text-muted hover:text-ink"}`}
             >
               {label}
             </button>
@@ -105,19 +105,19 @@ export default function PendientesPage() {
         </div>
 
         {!isAdvisor ? (
-          <Card className="mb-5 border-volt/30 bg-volt/[0.055]">
+          <Card className="mb-3 border-volt/30 bg-volt/[0.055]">
             <div className="mb-3 flex items-center gap-2">
               <AlertTriangle className="text-volt" size={18} />
               <h2 className="text-lg font-black">Pendientes de gerencia</h2>
             </div>
-            <div className="space-y-2">
+            <div className="divide-y divide-white/[0.07]">
               {management.slice(0, 3).map((pending) => (
-                <div key={pending.id} className="liquid-glass rounded-2xl p-3">
+                <div key={pending.id} className="py-2.5">
                   <div className="flex items-center justify-between gap-2">
                     <p className="font-bold">{pending.title}</p>
                     <Badge tone={priorityTone(pending.priority)}>{pending.priority}</Badge>
                   </div>
-                  <p className="mt-1 text-sm text-muted">{pending.description}</p>
+                  <p className="mt-1 line-clamp-2 text-[13px] leading-5 text-muted">{pending.description}</p>
                 </div>
               ))}
             </div>
@@ -125,11 +125,11 @@ export default function PendientesPage() {
         ) : null}
 
         {!isAdvisor ? (
-          <Card className="mb-5" id="crear-pendiente">
+          <Card className="mb-3" id="crear-pendiente">
             <h2 className="text-lg font-black">{editId ? "Editar pendiente" : "Crear pendiente"}</h2>
-            <form className="mt-4 grid gap-3" onSubmit={savePending}>
+            <form className="mt-3 grid gap-2.5" onSubmit={savePending}>
               <input value={title} onChange={(event) => setTitle(event.target.value)} className="min-h-12 rounded-2xl border border-line bg-panel px-3 py-3 outline-none focus:border-volt" placeholder="Titulo" required />
-              <textarea value={description} onChange={(event) => setDescription(event.target.value)} className="min-h-20 rounded-2xl border border-line bg-panel px-3 py-3 outline-none focus:border-volt" placeholder="Descripcion" required />
+              <textarea value={description} onChange={(event) => setDescription(event.target.value)} className="min-h-16 rounded-2xl border border-line bg-panel px-3 py-2.5 outline-none focus:border-volt" placeholder="Descripcion" required />
               <div className="grid grid-cols-2 gap-3">
                 <select value={category} onChange={(event) => setCategory(event.target.value)} className="min-h-12 rounded-2xl border border-line bg-panel px-3 py-3 outline-none focus:border-volt">
                   <option value="OPERACION">operacion</option><option value="EQUIPO">equipo</option><option value="COMERCIAL">comercial</option><option value="CLIENTE">cliente</option><option value="INVENTARIO">inventario</option><option value="MANTENIMIENTO">mantenimiento</option>
@@ -150,23 +150,23 @@ export default function PendientesPage() {
           </Card>
         ) : null}
 
-        <div className="space-y-3">
+        <div className="space-y-2.5">
           {visiblePendings.map((pending) => (
             <Card key={pending.id}>
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <h2 className="font-black">{pending.title}</h2>
-                  <p className="mt-1 text-sm leading-6 text-muted">{pending.description}</p>
+                  <p className="mt-1 text-[13px] leading-5 text-muted">{pending.description}</p>
                 </div>
                 <Badge tone={priorityTone(pending.priority)}>{pending.priority}</Badge>
               </div>
-              <div className="mt-4 grid grid-cols-2 gap-2">
+              <div className="mt-2.5 grid grid-cols-2 border-y border-white/[0.07]">
                 <Info label="Categoria" value={pending.category} />
                 <Info label="Estado" value={pending.status} tone={statusTone(pending.status)} />
                 <Info label="Responsable" value={userName(pending.ownerId)} icon={<UserRound size={14} />} />
                 <Info label="Limite" value={pending.dueDate} />
               </div>
-              {!isAdvisor ? <div className="mt-3 grid grid-cols-2 gap-2"><button onClick={() => editPending(pending)} className="liquid-glass min-h-11 rounded-2xl text-sm font-black">Editar</button><select value={pending.status === "en proceso" ? "EN_PROCESO" : pending.status.toUpperCase()} onChange={(event) => void changeStatus(pending.id, event.target.value as "PENDIENTE" | "EN_PROCESO" | "COMPLETADO")} className="min-h-11 rounded-2xl border border-line bg-panel px-3 text-sm font-black"><option value="PENDIENTE">Pendiente</option><option value="EN_PROCESO">En proceso</option><option value="COMPLETADO">Cerrar</option></select></div> : null}
+              {!isAdvisor ? <div className="mt-2.5 grid grid-cols-2 gap-2"><button onClick={() => editPending(pending)} className="min-h-10 rounded-xl bg-white/[0.06] text-sm font-black">Editar</button><select value={pending.status === "en proceso" ? "EN_PROCESO" : pending.status.toUpperCase()} onChange={(event) => void changeStatus(pending.id, event.target.value as "PENDIENTE" | "EN_PROCESO" | "COMPLETADO")} className="min-h-10 rounded-xl border border-line bg-panel px-3 text-sm font-black"><option value="PENDIENTE">Pendiente</option><option value="EN_PROCESO">En proceso</option><option value="COMPLETADO">Cerrar</option></select></div> : null}
             </Card>
           ))}
           {visiblePendings.length === 0 ? (
@@ -185,9 +185,9 @@ export default function PendientesPage() {
 
 function Info({ label, value, tone, icon }: { label: string; value: string; tone?: Parameters<typeof Badge>[0]["tone"]; icon?: React.ReactNode }) {
   return (
-    <div className="rounded-2xl bg-white/[0.045] p-3">
+    <div className="border-b border-r border-white/[0.07] px-2 py-2 odd:border-l-0 even:border-r-0">
       <p className="text-[11px] font-black uppercase tracking-[0.12em] text-muted">{label}</p>
-      <div className="mt-2 flex items-center gap-1.5 text-sm font-bold text-ink">
+      <div className="mt-1 flex items-center gap-1.5 text-[13px] font-bold text-ink">
         {icon}
         {tone ? <Badge tone={tone}>{value}</Badge> : value}
       </div>

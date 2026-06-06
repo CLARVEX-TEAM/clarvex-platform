@@ -60,11 +60,11 @@ export function GlassCard({ children, className = "", ...props }: Omit<HTMLMotio
   return (
     <motion.section
       {...props}
-      initial={{ opacity: 0, y: 16, scale: 0.985, filter: "blur(6px)" }}
+      initial={{ opacity: 0, y: 10, scale: 0.99, filter: "blur(4px)" }}
       animate={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
       whileTap={{ scale: 0.99, y: 1 }}
       transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
-      className={cn("liquid-glass rounded-[30px] p-4 shadow-glass", className)}
+      className={cn("liquid-glass rounded-[26px] p-3.5 shadow-glass", className)}
     >
       {children}
     </motion.section>
@@ -132,7 +132,7 @@ export function statusTone(status: PendingStatus): Tone {
 export function ProgressBar({ value, tone = "volt" }: { value: number; tone?: Accent }) {
   const clamped = Math.max(0, Math.min(100, value));
   return (
-    <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/[0.075] shadow-[inset_0_1px_2px_rgb(0_0_0_/_0.26)]">
+    <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/[0.075] shadow-[inset_0_1px_2px_rgb(0_0_0_/_0.26)]">
       <motion.div
         className={cn("h-full rounded-full shadow-[0_0_20px_rgb(34_197_94_/_0.22)]", accentBg[tone])}
         initial={{ width: 0 }}
@@ -178,7 +178,8 @@ export function KPIStatCard({
   tone = "volt",
   progress,
   delta,
-  icon
+  icon,
+  compact = false
 }: {
   label: string;
   value: string;
@@ -187,17 +188,18 @@ export function KPIStatCard({
   progress?: number;
   delta?: string;
   icon?: React.ReactNode;
+  compact?: boolean;
 }) {
   const bars = progress !== undefined ? [34, 52, 46, Math.max(18, Math.min(92, progress)), Math.max(24, Math.min(96, progress + 8))] : [28, 45, 36, 58, 48];
   return (
-    <GlassCard className="min-h-[142px] p-4">
+    <GlassCard className={cn(compact ? "min-h-[98px] p-3" : "min-h-[142px] p-4")}>
       <div className="flex items-start justify-between gap-2">
         <p className="text-[11px] font-black uppercase tracking-[0.12em] text-muted">{label}</p>
-        {icon ? <span className={cn("grid size-9 place-items-center rounded-[18px] border border-white/10 bg-white/[0.06] shadow-[inset_0_1px_0_rgb(255_255_255_/_0.1)]", accentText[tone])}>{icon}</span> : null}
+        {icon ? <span className={cn("grid place-items-center border border-white/10 bg-white/[0.06] shadow-[inset_0_1px_0_rgb(255_255_255_/_0.1)]", compact ? "size-7 rounded-[14px]" : "size-9 rounded-[18px]", accentText[tone])}>{icon}</span> : null}
         {!icon && delta ? <StatusBadge tone="success">{delta}</StatusBadge> : null}
       </div>
-      <p className={cn("mt-3 text-[1.72rem] font-black leading-none tracking-[-0.03em]", accentText[tone])}>{value}</p>
-      <div className="mt-3 flex h-7 items-end gap-1.5">
+      <p className={cn("font-black leading-none tracking-[-0.03em]", compact ? "mt-1.5 text-[1.4rem]" : "mt-3 text-[1.72rem]", accentText[tone])}>{value}</p>
+      <div className={cn("flex items-end", compact ? "mt-2 h-3 gap-1" : "mt-3 h-7 gap-1.5")}>
         {bars.map((height, index) => (
           <motion.span
             key={index}
@@ -208,8 +210,8 @@ export function KPIStatCard({
           />
         ))}
       </div>
-      {progress !== undefined ? <ProgressBar value={progress} tone={tone} /> : null}
-      {detail ? <p className="mt-2 text-[13px] leading-5 text-muted">{detail}</p> : null}
+      {!compact && progress !== undefined ? <ProgressBar value={progress} tone={tone} /> : null}
+      {detail ? <p className={cn("text-muted", compact ? "mt-1.5 text-[11px] leading-4" : "mt-2 text-[13px] leading-5")}>{detail}</p> : null}
     </GlassCard>
   );
 }
@@ -300,11 +302,11 @@ export function TaskItem({ activity, onToggle }: { activity: Activity; onToggle?
     <motion.button
       whileTap={{ scale: 0.985, y: 1 }}
       onClick={() => onToggle?.(!activity.completed)}
-      className="liquid-glass flex w-full items-center gap-3 rounded-[24px] p-3 text-left transition hover:text-volt"
+      className="flex min-h-11 w-full items-center gap-3 border-b border-white/[0.07] px-1 py-2 text-left transition last:border-b-0 hover:text-volt"
     >
       <span
         className={cn(
-          "grid size-8 shrink-0 place-items-center rounded-xl border transition",
+          "grid size-7 shrink-0 place-items-center rounded-[10px] border transition",
           activity.completed ? "border-volt bg-volt/20 text-volt" : "border-white/15 text-transparent"
         )}
       >
@@ -335,21 +337,21 @@ export function NotificationCard({
   action?: React.ReactNode;
 }) {
   return (
-    <GlassCard className={cn(unread && "border-volt/35 bg-volt/[0.055]")}>
-      <div className="flex items-start gap-3">
-        <span className={cn("grid size-11 shrink-0 place-items-center rounded-[22px] border border-white/10", unread ? "bg-volt/16 text-volt" : "bg-white/[0.055] text-muted")}>
-          <Bell size={18} />
+    <GlassCard className={cn("p-3", unread && "border-volt/35 bg-volt/[0.055]")}>
+      <div className="flex items-start gap-2.5">
+        <span className={cn("grid size-9 shrink-0 place-items-center rounded-[16px] border border-white/10", unread ? "bg-volt/16 text-volt" : "bg-white/[0.055] text-muted")}>
+          <Bell size={16} />
         </span>
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <h2 className="text-lg font-black tracking-[-0.02em] text-ink">{title}</h2>
-              {meta ? <p className="mt-1 text-xs text-muted">{meta}</p> : null}
+              <h2 className="text-[15px] font-black leading-5 tracking-[-0.02em] text-ink">{title}</h2>
+              {meta ? <p className="mt-0.5 text-[11px] text-muted">{meta}</p> : null}
             </div>
             <StatusBadge tone={unread ? "success" : "default"}>{unread ? "nuevo" : "leido"}</StatusBadge>
           </div>
-          <p className="mt-3 text-sm leading-6 text-muted">{body}</p>
-          {action ? <div className="mt-4">{action}</div> : null}
+          <p className="mt-2 text-[13px] leading-5 text-muted">{body}</p>
+          {action ? <div className="mt-2.5">{action}</div> : null}
         </div>
       </div>
     </GlassCard>
@@ -370,20 +372,20 @@ export function AppHeader({
   avatar?: string;
 }) {
   return (
-    <header className="sticky top-0 z-20 border-b border-white/[0.055] bg-void/54 px-4 pb-2 pt-2 backdrop-blur-[34px]">
+    <header className="sticky top-0 z-20 border-b border-white/[0.055] bg-void/54 px-4 py-1.5 backdrop-blur-[34px]">
       <div className="mx-auto flex max-w-md items-center justify-between gap-3">
         <div className="flex min-w-0 items-start gap-3">
           {backHref ? (
-            <Link href={backHref} className="liquid-glass mt-1 grid size-10 shrink-0 place-items-center rounded-[22px] text-ink/70 transition active:scale-95" aria-label="Regresar al inicio">
+            <Link href={backHref} className="liquid-glass mt-0.5 grid size-9 shrink-0 place-items-center rounded-[18px] text-ink/70 transition active:scale-95" aria-label="Regresar al inicio">
               <ArrowLeft size={18} />
             </Link>
           ) : avatar ? (
-            <span className="mt-1 grid size-10 shrink-0 place-items-center rounded-[22px] border border-volt/25 bg-volt/15 text-sm font-black text-volt shadow-[inset_0_1px_0_rgb(255_255_255_/_0.14)]">{avatar}</span>
+            <span className="mt-0.5 grid size-9 shrink-0 place-items-center rounded-[18px] border border-volt/25 bg-volt/15 text-xs font-black text-volt shadow-[inset_0_1px_0_rgb(255_255_255_/_0.14)]">{avatar}</span>
           ) : null}
           <div className="min-w-0">
             <p className="text-[10px] font-black uppercase tracking-[0.16em] text-volt/90">CLARVEX Team</p>
-            <h1 className="mt-0.5 text-[1.28rem] font-black leading-tight tracking-[-0.035em] text-ink">{title}</h1>
-            <p className="mt-0.5 text-[12px] leading-4 text-muted">{subtitle}</p>
+            <h1 className="text-[1.15rem] font-black leading-tight tracking-[-0.035em] text-ink">{title}</h1>
+            <p className="text-[11px] leading-4 text-muted">{subtitle}</p>
           </div>
         </div>
         {action}
@@ -409,8 +411,8 @@ export function LiquidBottomNav() {
   }, []);
 
   return (
-    <nav className="pointer-events-none fixed inset-x-0 bottom-4 z-30 px-4">
-      <div className="liquid-glass pointer-events-auto mx-auto grid max-w-md grid-cols-5 gap-1 rounded-[36px] border-white/18 bg-card/35 p-2 shadow-[0_28px_92px_rgb(0_0_0_/_0.72),0_0_44px_rgb(34_197_94_/_0.055),inset_0_1px_0_rgb(255_255_255_/_0.24)] backdrop-blur-[40px]">
+    <nav className="pointer-events-none fixed inset-x-0 bottom-2 z-30 px-3">
+      <div className="liquid-glass pointer-events-auto mx-auto grid max-w-md grid-cols-5 gap-0.5 rounded-[28px] border-white/18 bg-card/35 p-1 shadow-[0_20px_64px_rgb(0_0_0_/_0.68),0_0_36px_rgb(34_197_94_/_0.05),inset_0_1px_0_rgb(255_255_255_/_0.24)] backdrop-blur-[40px]">
         {navItems.map((item) => {
           const href = item.href === "/manager" ? homeHref : item.href;
           const active = pathname === href || (item.href === "/manager" && (pathname === "/manager" || pathname === "/advisor"));
@@ -418,19 +420,19 @@ export function LiquidBottomNav() {
             <Link
               key={item.href}
               href={href}
-              className="relative flex min-h-12 flex-col items-center justify-center rounded-[28px] text-[10px] font-bold text-muted transition hover:text-volt active:scale-95"
+              className="relative flex min-h-11 flex-col items-center justify-center rounded-[22px] text-[9px] font-bold text-muted transition hover:text-volt active:scale-95"
             >
               {active ? (
                 <motion.span
                   layoutId="bottom-nav-active"
-                  className="absolute inset-0 rounded-[28px] border border-volt/35 bg-volt/18 shadow-[0_0_36px_rgb(34_197_94_/_0.28),inset_0_1px_0_rgb(255_255_255_/_0.26),inset_0_-1px_0_rgb(34_197_94_/_0.12)]"
+                  className="absolute inset-0 rounded-[22px] border border-volt/35 bg-volt/18 shadow-[0_0_28px_rgb(34_197_94_/_0.24),inset_0_1px_0_rgb(255_255_255_/_0.26)]"
                   transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
                 />
               ) : null}
-              <span className={cn("relative grid size-6 place-items-center", active && "text-volt")}>
-                <item.icon size={19} />
+              <span className={cn("relative grid size-5 place-items-center", active && "text-volt")}>
+                <item.icon size={17} />
               </span>
-              <span className={cn("relative mt-1", active && "text-volt")}>{item.label}</span>
+              <span className={cn("relative mt-0.5", active && "text-volt")}>{item.label}</span>
             </Link>
           );
         })}
@@ -447,7 +449,7 @@ export function AppFrame({ children }: { children: React.ReactNode }) {
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
-      className="mx-auto min-h-screen max-w-md px-4 pb-40 pt-4"
+      className="mx-auto min-h-screen max-w-md px-4 pb-24 pt-3"
     >
       {children}
     </motion.main>
@@ -456,9 +458,9 @@ export function AppFrame({ children }: { children: React.ReactNode }) {
 
 export function QuickLink({ href, icon: Icon, label }: { href: string; icon: LucideIcon; label: string }) {
   return (
-    <Link href={href} className="liquid-glass group flex min-h-16 items-center gap-3 rounded-[26px] px-4 text-sm font-black tracking-[-0.01em] text-ink/90 transition active:scale-[0.98]">
-      <span className="grid size-10 place-items-center rounded-[22px] border border-volt/20 bg-volt/12 text-volt shadow-[inset_0_1px_0_rgb(255_255_255_/_0.12)]">
-        <Icon size={20} />
+    <Link href={href} className="liquid-glass group flex min-h-12 items-center gap-2.5 rounded-[22px] px-3 text-[13px] font-black tracking-[-0.01em] text-ink/90 transition active:scale-[0.98]">
+      <span className="grid size-8 place-items-center rounded-[16px] border border-volt/20 bg-volt/12 text-volt shadow-[inset_0_1px_0_rgb(255_255_255_/_0.12)]">
+        <Icon size={17} />
       </span>
       {label}
     </Link>
@@ -467,7 +469,7 @@ export function QuickLink({ href, icon: Icon, label }: { href: string; icon: Luc
 
 export function FloatingActionButton({ href, icon: Icon = Plus, label }: { href: string; icon?: LucideIcon; label: string }) {
   return (
-    <Link href={href} className="fixed bottom-32 right-4 z-20 flex min-h-14 items-center gap-2 rounded-full bg-volt px-5 text-sm font-black text-void shadow-[0_18px_44px_rgb(34_197_94_/_0.3),inset_0_1px_0_rgb(255_255_255_/_0.32)] transition active:scale-95">
+    <Link href={href} className="fixed bottom-20 right-4 z-20 flex min-h-12 items-center gap-2 rounded-full bg-volt px-4 text-sm font-black text-void shadow-[0_18px_44px_rgb(34_197_94_/_0.3),inset_0_1px_0_rgb(255_255_255_/_0.32)] transition active:scale-95">
       <Icon size={18} />
       {label}
     </Link>

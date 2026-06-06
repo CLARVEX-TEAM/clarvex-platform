@@ -68,37 +68,37 @@ export default function PlanPage() {
     <>
       <AppHeader title="Plan del dia" subtitle={isAdvisor ? "Tu meta, enfoque y checklist." : "Metas, enfoque y checklist por asesor."} backHref={isAdvisor ? "/advisor" : "/manager"} />
       <AppFrame>
-        <div className="no-scrollbar tab-glass-shell -mx-1 mb-5 flex gap-1 overflow-x-auto overflow-y-hidden p-1.5 scroll-px-4">
+        <div className="no-scrollbar tab-glass-shell -mx-1 mb-3 flex gap-1 overflow-x-auto overflow-y-hidden p-1 scroll-px-4">
           {days.map((day) => (
             <button
               key={day}
               onClick={() => setSelectedDay(day)}
-              className={`min-h-11 shrink-0 rounded-full px-4 text-sm font-black tracking-[-0.01em] transition active:scale-95 ${selectedDay === day ? "bg-volt text-void shadow-[0_14px_34px_rgb(34_197_94_/_0.24),inset_0_1px_0_rgb(255_255_255_/_0.36)]" : "text-muted hover:text-ink"}`}
+              className={`min-h-10 shrink-0 rounded-full px-3 text-[13px] font-black tracking-[-0.01em] transition active:scale-95 ${selectedDay === day ? "bg-volt text-void shadow-[0_10px_26px_rgb(34_197_94_/_0.22),inset_0_1px_0_rgb(255_255_255_/_0.36)]" : "text-muted hover:text-ink"}`}
             >
               {day}
             </button>
           ))}
         </div>
 
-        <Card className="mb-5 border-volt/25 bg-volt/[0.045]">
-          <div className="flex items-start justify-between gap-4">
+        <Card className="mb-3 border-volt/25 bg-volt/[0.045] py-3">
+          <div className="flex items-center justify-between gap-4">
             <div>
               <p className="text-[11px] font-black uppercase tracking-[0.16em] text-muted">Progreso del dia</p>
-              <h2 className="mt-2 text-4xl font-black text-ink">{dayProgress}%</h2>
-              <p className="mt-1 text-sm text-muted">{totalActivities.filter((activity) => activity.completed).length} de {totalActivities.length} actividades</p>
+              <h2 className="mt-1 text-3xl font-black text-ink">{dayProgress}%</h2>
+              <p className="mt-1 text-xs text-muted">{totalActivities.filter((activity) => activity.completed).length} de {totalActivities.length} actividades</p>
             </div>
-            <ProgressRing value={dayProgress} />
+            <ProgressRing value={dayProgress} size={64} />
           </div>
           <ProgressBar value={dayProgress} />
         </Card>
 
         {!isAdvisor ? (
-          <Card className="mb-5">
+          <Card className="mb-3">
             <div className="flex items-center gap-2">
               <CalendarDays className="text-volt" size={18} />
               <h2 className="text-lg font-black">Crear plan</h2>
             </div>
-            <form className="mt-4 grid gap-3" onSubmit={createPlan}>
+            <form className="mt-3 grid gap-2.5" onSubmit={createPlan}>
               <input type="date" className="min-h-12 rounded-2xl border border-line bg-panel px-3 py-3 text-ink outline-none focus:border-volt" value={date} onChange={(event) => setDate(event.target.value)} aria-label="Fecha" required />
               <select value={userId} onChange={(event) => setUserId(event.target.value)} className="min-h-12 rounded-2xl border border-line bg-panel px-3 py-3 text-ink outline-none focus:border-volt" aria-label="Asesor" required>
                 <option value="">Selecciona asesor</option>{advisors.map((advisor) => <option key={advisor.id} value={advisor.id}>{advisor.name}</option>)}
@@ -113,7 +113,7 @@ export default function PlanPage() {
           </Card>
         ) : null}
 
-        <div className="space-y-4">
+        <div className="space-y-2.5">
           {visiblePlans.map((plan) => {
             const planProgress = plan.activities.length ? Math.round((plan.activities.filter((activity) => activity.completed).length / plan.activities.length) * 100) : 0;
             return (
@@ -128,7 +128,7 @@ export default function PlanPage() {
                 <p className="font-semibold text-volt">{plan.focus}</p>
                 <p className="mt-2 text-sm text-muted">{plan.message}</p>
                 <ProgressBar value={planProgress} />
-                <div className="mt-4 space-y-4">
+                <div className="mt-2.5 space-y-2.5">
                   {groupedActivities(plan.activities).map((group) => (
                     <section key={group.label}>
                       <div className="mb-2 flex items-center gap-2 text-sm font-black text-ink">

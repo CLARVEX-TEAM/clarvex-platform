@@ -73,13 +73,13 @@ export default function KpisPage() {
     <>
       <AppHeader title="KPIs" subtitle={isAdvisor ? "Tus indicadores personales." : "Venta, comision y ranking del equipo."} backHref={isAdvisor ? "/advisor" : "/manager"} />
       <AppFrame>
-        <div className="no-scrollbar tab-glass-shell -mx-1 mb-5 flex gap-1 overflow-x-auto overflow-y-hidden p-1.5 scroll-px-4">
+      <div className="no-scrollbar tab-glass-shell -mx-1 mb-3 flex gap-1 overflow-x-auto overflow-y-hidden p-1 scroll-px-4">
           {tabs.map((tab) => (
             <motion.button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               whileTap={{ scale: 0.96 }}
-              className={`relative min-h-11 shrink-0 rounded-full px-4 text-sm font-black tracking-[-0.01em] transition ${activeTab === tab.id ? "text-void" : "text-muted hover:text-ink"}`}
+              className={`relative min-h-10 shrink-0 rounded-full px-3.5 text-[13px] font-black tracking-[-0.01em] transition ${activeTab === tab.id ? "text-void" : "text-muted hover:text-ink"}`}
             >
               {activeTab === tab.id ? (
                 <motion.span
@@ -140,25 +140,25 @@ function ResumenView({ activeKpi, dailyProgress }: { activeKpi: Kpi; dailyProgre
 
   return (
     <>
-      <Card className="premium-hero mb-5 rounded-[32px] p-5">
-        <div className="flex items-start justify-between gap-4">
+      <Card className="premium-hero mb-3 rounded-[28px] px-4 py-3.5">
+        <div className="flex items-center justify-between gap-4">
           <div>
             <p className="text-[11px] font-black uppercase tracking-[0.13em] text-muted">Progreso de meta</p>
-            <h2 className="mt-2 text-[2.75rem] font-black leading-none tracking-[-0.045em] text-ink">{dailyProgress}%</h2>
-            <p className="mt-1 text-sm text-muted">{money(activeKpi.dailySales)} de {money(activeKpi.dailyGoal)}</p>
+            <h2 className="mt-1 text-[2.25rem] font-black leading-none tracking-[-0.045em] text-ink">{dailyProgress}%</h2>
+            <p className="mt-1 text-xs text-muted">{money(activeKpi.dailySales)} de {money(activeKpi.dailyGoal)}</p>
           </div>
-          <ProgressRing value={dailyProgress} />
+          <ProgressRing value={dailyProgress} size={68} />
         </div>
         <ProgressBar value={dailyProgress} />
       </Card>
 
       <div className="grid grid-cols-2 gap-3">
-        <StatCard label="UPT" value={String(activeKpi.upt)} detail="Unidades por ticket" icon={<ShoppingBag size={17} />} />
-        <StatCard label="AUR" value={money(aur)} detail="Precio promedio pieza" tone="sky" icon={<Receipt size={17} />} />
-        <StatCard label="EPT" value={ept.toFixed(2)} detail="Piezas por transaccion" tone="purple" icon={<BarChart3 size={17} />} />
-        <StatCard label="Conversion" value={`${activeKpi.conversion}%`} detail="Trafico a venta" tone="ember" progress={activeKpi.conversion} icon={<Target size={17} />} />
-        <StatCard label="Margen DTO" value={`${activeKpi.discountMargin}%`} detail="Descuento aplicado" tone="orchid" icon={<Percent size={17} />} />
-        <StatCard label="Comision" value={money(activeKpi.commissionAmount)} detail={`${activeKpi.commissionPercent}% estimado`} tone="volt" icon={<Trophy size={17} />} />
+        <StatCard compact label="UPT" value={String(activeKpi.upt)} detail="Unidades por ticket" icon={<ShoppingBag size={15} />} />
+        <StatCard compact label="AUR" value={money(aur)} detail="Precio promedio pieza" tone="sky" icon={<Receipt size={15} />} />
+        <StatCard compact label="EPT" value={ept.toFixed(2)} detail="Piezas por transaccion" tone="purple" icon={<BarChart3 size={15} />} />
+        <StatCard compact label="Conversion" value={`${activeKpi.conversion}%`} detail="Trafico a venta" tone="ember" progress={activeKpi.conversion} icon={<Target size={15} />} />
+        <StatCard compact label="Margen DTO" value={`${activeKpi.discountMargin}%`} detail="Descuento aplicado" tone="orchid" icon={<Percent size={15} />} />
+        <StatCard compact label="Comision" value={money(activeKpi.commissionAmount)} detail={`${activeKpi.commissionPercent}% estimado`} tone="volt" icon={<Trophy size={15} />} />
       </div>
     </>
   );
@@ -167,15 +167,15 @@ function ResumenView({ activeKpi, dailyProgress }: { activeKpi: Kpi; dailyProgre
 function VentasView({ activeKpi, chartData, dailyProgress }: { activeKpi: Kpi; chartData: Array<{ name: string; venta: number; meta: number; comision: number }>; dailyProgress: number }) {
   return (
     <>
-      <Card className="mb-5 rounded-[32px] p-5">
-        <div className="mb-4 flex items-center justify-between">
+      <Card className="mb-3 rounded-[26px] p-3.5">
+        <div className="mb-2.5 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <TrendingUp className="text-volt" size={18} />
             <h2 className="text-lg font-black">Ventas</h2>
           </div>
           <Badge>{dailyProgress}%</Badge>
         </div>
-        <div className="h-48">
+        <div className="h-36">
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={chartData} margin={{ left: 0, right: 0, top: 8, bottom: 0 }}>
               <defs>
@@ -192,10 +192,10 @@ function VentasView({ activeKpi, chartData, dailyProgress }: { activeKpi: Kpi; c
       </Card>
 
       <div className="grid grid-cols-2 gap-3">
-        <StatCard label="Venta diaria" value={money(activeKpi.dailySales)} detail="Hoy" progress={dailyProgress} icon={<ShoppingBag size={17} />} />
-        <StatCard label="Meta diaria" value={money(activeKpi.dailyGoal)} detail="Objetivo" tone="sky" progress={100} icon={<Target size={17} />} />
-        <StatCard label="Venta mensual" value={money(activeKpi.monthlySales)} detail="Mes actual" tone="purple" progress={completion(activeKpi.monthlySales, activeKpi.monthlyGoal)} icon={<TrendingUp size={17} />} />
-        <StatCard label="Transacciones" value={String(activeKpi.transactions)} detail="Tickets" tone="ember" icon={<Receipt size={17} />} />
+        <StatCard compact label="Venta diaria" value={money(activeKpi.dailySales)} detail="Hoy" progress={dailyProgress} icon={<ShoppingBag size={15} />} />
+        <StatCard compact label="Meta diaria" value={money(activeKpi.dailyGoal)} detail="Objetivo" tone="sky" progress={100} icon={<Target size={15} />} />
+        <StatCard compact label="Venta mensual" value={money(activeKpi.monthlySales)} detail="Mes actual" tone="purple" progress={completion(activeKpi.monthlySales, activeKpi.monthlyGoal)} icon={<TrendingUp size={15} />} />
+        <StatCard compact label="Transacciones" value={String(activeKpi.transactions)} detail="Tickets" tone="ember" icon={<Receipt size={15} />} />
       </div>
     </>
   );
@@ -226,25 +226,25 @@ function ComisionView({
 
   return (
     <>
-      <Card className="premium-hero mb-5 rounded-[32px] p-5">
+      <Card className="premium-hero mb-3 rounded-[28px] p-3.5">
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-[11px] font-black uppercase tracking-[0.13em] text-muted">Comision estimada</p>
-            <h2 className="mt-2 text-[2.55rem] font-black leading-none tracking-[-0.045em] text-ink">{money(simulatedCommission)}</h2>
+            <h2 className="mt-1 text-[2.1rem] font-black leading-none tracking-[-0.045em] text-ink">{money(simulatedCommission)}</h2>
             <p className="mt-1 text-sm text-muted">Nivel actual: {levelName}</p>
           </div>
-          <div className="grid size-16 place-items-center rounded-[28px] border border-purple/30 bg-purple/15 text-purple shadow-[inset_0_1px_0_rgb(255_255_255_/_0.18)]">
+          <div className="grid size-12 place-items-center rounded-[20px] border border-purple/30 bg-purple/15 text-purple shadow-[inset_0_1px_0_rgb(255_255_255_/_0.18)]">
             <Trophy size={26} />
           </div>
         </div>
-        <div className="mt-4 grid grid-cols-2 gap-3">
+        <div className="mt-2.5 grid grid-cols-2 gap-2">
           <Mini label="Porcentaje" value={`${appliedPercent}%`} />
           <Mini label="Cumplimiento" value={`${Math.round(simulatedAchievement)}%`} />
         </div>
       </Card>
 
-      <Card className="mb-5 rounded-[32px] p-5">
-        <div className="mb-4 flex items-center gap-2">
+      <Card className="mb-3 rounded-[26px] p-3.5">
+        <div className="mb-2.5 flex items-center gap-2">
           <Calculator className="text-volt" size={18} />
           <h2 className="text-lg font-black">Simulador de comision</h2>
         </div>
@@ -263,16 +263,16 @@ function ComisionView({
         </div>
       </Card>
 
-      <Card className="rounded-[32px] p-5">
-        <div className="mb-4 flex items-center justify-between">
+      <Card className="rounded-[26px] p-3.5">
+        <div className="mb-2.5 flex items-center justify-between">
           <h2 className="text-lg font-black">Escalera de niveles</h2>
           <Badge>{commissionRole}</Badge>
         </div>
-        <div className="space-y-3">
+        <div className="divide-y divide-white/[0.07]">
           {rules.filter((rule) => !rule.role || rule.role === commissionRole).map((rule) => {
             const active = rule.id === activeRule?.id;
             return (
-              <div key={rule.id} className={`liquid-glass rounded-[26px] p-3 ${active ? "border-volt/45 bg-volt/[0.07]" : ""}`}>
+              <div key={rule.id} className={`py-2.5 ${active ? "text-volt" : ""}`}>
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <p className="font-black">{rule.minAchievement}% a {rule.maxAchievement ?? "mas"}%</p>
@@ -294,15 +294,15 @@ function RankingView({ ranking }: { ranking: Array<{ advisor: User; kpi: Kpi }> 
 
   return (
     <>
-      <Card className="mb-5 rounded-[32px] p-5">
-        <div className="mb-4 flex items-center justify-between">
+      <Card className="mb-3 rounded-[26px] p-3.5">
+        <div className="mb-2.5 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <UsersRound className="text-volt" size={18} />
             <h2 className="text-lg font-black">Ranking asesores</h2>
           </div>
           <Badge>equipo</Badge>
         </div>
-        <div className="h-40">
+        <div className="h-28">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={data} margin={{ left: 0, right: 0, top: 8, bottom: 0 }}>
               <XAxis dataKey="name" tick={{ fill: "#94A3B8", fontSize: 10 }} axisLine={false} tickLine={false} />
@@ -313,11 +313,11 @@ function RankingView({ ranking }: { ranking: Array<{ advisor: User; kpi: Kpi }> 
         </div>
       </Card>
 
-      <div className="space-y-3">
+      <Card className="divide-y divide-white/[0.07] p-3.5">
         {ranking.map(({ advisor, kpi }) => {
           const progress = completion(kpi.dailySales, kpi.dailyGoal);
           return (
-            <Card key={advisor.id}>
+            <div key={advisor.id} className="py-3 first:pt-0 last:pb-0">
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
                   <ProfileAvatar name={advisor.name} photoUrl={advisor.photoUrl} size="md" />
@@ -328,22 +328,22 @@ function RankingView({ ranking }: { ranking: Array<{ advisor: User; kpi: Kpi }> 
                 </div>
                 <Badge>{progress}%</Badge>
               </div>
-              <div className="mt-4 grid grid-cols-2 gap-3">
+              <div className="mt-2 grid grid-cols-2 gap-2">
                 <Mini label="Venta" value={money(kpi.dailySales)} />
                 <Mini label="Comision" value={money(kpi.commissionAmount)} />
               </div>
               <ProgressBar value={progress} />
-            </Card>
+            </div>
           );
         })}
-      </div>
+      </Card>
     </>
   );
 }
 
 function Mini({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-[22px] border border-white/10 bg-white/[0.05] p-3 shadow-[inset_0_1px_0_rgb(255_255_255_/_0.08)]">
+    <div className="border-l border-white/[0.08] px-2 first:border-l-0">
       <p className="text-[11px] font-black uppercase tracking-[0.1em] text-muted">{label}</p>
       <p className="mt-1 font-black text-ink">{value}</p>
     </div>

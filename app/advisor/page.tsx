@@ -62,38 +62,38 @@ export default function AdvisorDashboard() {
         }
       />
       <AppFrame>
-        <Card className="premium-hero mb-5 rounded-[32px] p-5">
-          <div className="flex items-start justify-between gap-3">
+        <Card className="premium-hero mb-3 rounded-[28px] px-4 py-3.5">
+          <div className="flex items-center justify-between gap-3">
             <div>
               <p className="text-[11px] font-black uppercase tracking-[0.13em] text-muted">Meta diaria</p>
-              <h2 className="mt-2 text-[2.75rem] font-black leading-none tracking-[-0.045em] text-ink">{salesProgress}%</h2>
-              <p className="mt-1 text-sm text-ink/58">{money(kpi?.dailySales ?? 0)} de {money(kpi?.dailyGoal ?? 0)}</p>
+              <h2 className="mt-1 text-[2.25rem] font-black leading-none tracking-[-0.045em] text-ink">{salesProgress}%</h2>
+              <p className="mt-1 text-xs text-ink/58">{money(kpi?.dailySales ?? 0)} de {money(kpi?.dailyGoal ?? 0)}</p>
             </div>
-            <ProgressRing value={salesProgress} tone={salesProgress >= 80 ? "volt" : "ember"} />
+            <ProgressRing value={salesProgress} tone={salesProgress >= 80 ? "volt" : "ember"} size={68} />
           </div>
           <ProgressBar value={salesProgress} />
         </Card>
 
         <div className="grid grid-cols-2 gap-3">
-          <StatCard label="Meta" value={money(kpi?.dailyGoal ?? 0)} detail="Objetivo personal" progress={100} icon={<Target size={17} />} />
-          <StatCard label="Venta" value={money(kpi?.dailySales ?? 0)} detail={`${salesProgress}% cumplimiento`} tone="mint" progress={salesProgress} icon={<ShoppingBag size={17} />} />
-          <StatCard label="Tickets" value={String(kpi?.transactions ?? 0)} detail="Transacciones" tone="sky" icon={<Receipt size={17} />} />
-          <StatCard label="Comision" value={money(kpi?.commissionAmount ?? 0)} detail={`${kpi?.commissionPercent ?? 0}% estimado`} tone="purple" icon={<Trophy size={17} />} />
+          <StatCard compact label="Meta" value={money(kpi?.dailyGoal ?? 0)} detail="Objetivo personal" progress={100} icon={<Target size={15} />} />
+          <StatCard compact label="Venta" value={money(kpi?.dailySales ?? 0)} detail={`${salesProgress}% cumplimiento`} tone="mint" progress={salesProgress} icon={<ShoppingBag size={15} />} />
+          <StatCard compact label="Tickets" value={String(kpi?.transactions ?? 0)} detail="Transacciones" tone="sky" icon={<Receipt size={15} />} />
+          <StatCard compact label="Comision" value={money(kpi?.commissionAmount ?? 0)} detail={`${kpi?.commissionPercent ?? 0}% estimado`} tone="purple" icon={<Trophy size={15} />} />
         </div>
 
-        <Card className="mt-5">
+        <Card className="mt-3">
           <div className="mb-3 flex items-center justify-between gap-2">
             <h2 className="text-lg font-black">Plan del dia</h2>
             <Badge>{planDone}/{planTotal}</Badge>
           </div>
           <p className="text-sm font-semibold text-mint">{plan?.focus ?? "Sin plan asignado"}</p>
           <p className="mt-2 text-sm text-ink/58">{plan?.message ?? "Cuando gerencia cree un plan, aparecera aqui."}</p>
-          <div className="mt-4">
+          <div className="mt-2">
             <TaskList activities={plan?.activities ?? []} />
           </div>
         </Card>
 
-        <Card className="mt-5">
+        <Card className="mt-3">
           <h2 className="mb-3 text-lg font-black">KPIs principales</h2>
           <div className="grid grid-cols-2 gap-3 text-sm">
             <Metric label="Ticket promedio" value={money(kpi?.avgTicket ?? 0)} />
@@ -103,7 +103,7 @@ export default function AdvisorDashboard() {
           </div>
         </Card>
 
-        <Card className="mt-5">
+        <Card className="mt-3">
           <div className="mb-3 flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <Sparkles className="text-sky" size={18} />
@@ -111,7 +111,7 @@ export default function AdvisorDashboard() {
             </div>
             <Badge tone={unread.length ? "warn" : "success"}>{unread.length} sin leer</Badge>
           </div>
-          <div className="space-y-3">
+          <div className="space-y-2">
             {unread.slice(0, 2).map((item) => (
               <NotificationCard
                 key={item.id}
@@ -122,7 +122,7 @@ export default function AdvisorDashboard() {
               />
             ))}
             {unread.length === 0 ? (
-              <div className="liquid-glass rounded-[24px] p-3 text-sm text-muted">
+              <div className="border-t border-white/[0.07] py-2 text-[13px] text-muted">
                 Sin comunicados pendientes. Tu actividad esta al dia.
               </div>
             ) : null}
@@ -136,7 +136,7 @@ export default function AdvisorDashboard() {
 
 function Metric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="liquid-glass rounded-[24px] p-3">
+    <div className="border-b border-white/[0.07] px-1 py-2 last:border-b-0">
       <p className="text-ink/45">{label}</p>
       <p className="mt-1 text-lg font-black text-ink/90">{value}</p>
     </div>
