@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { SESSION_COOKIE, verifySessionToken } from "@/lib/session-token";
 
-const managerRoutes = ["/manager", "/pendientes", "/bitacora", "/comunicados"];
+const managerRoutes = ["/manager", "/pendientes", "/bitacora", "/comunicados", "/datos"];
 const advisorRoutes = ["/advisor", "/kpis", "/horarios", "/actividad"];
 const sharedRoutes = ["/plan", "/kpis", "/horarios"];
 
@@ -32,5 +32,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/login", "/manager/:path*", "/advisor/:path*", "/pendientes/:path*", "/bitacora/:path*", "/comunicados/:path*", "/plan/:path*", "/kpis/:path*", "/horarios/:path*", "/actividad/:path*"]
+  matcher: ["/login", "/manager/:path*", "/advisor/:path*", "/pendientes/:path*", "/bitacora/:path*", "/comunicados/:path*", "/datos/:path*", "/plan/:path*", "/kpis/:path*", "/horarios/:path*", "/actividad/:path*"]
 };

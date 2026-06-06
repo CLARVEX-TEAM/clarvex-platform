@@ -29,6 +29,7 @@ async function main() {
   }
 
   await prisma.evidence.deleteMany({ where: { storeId: store.id } });
+  await prisma.dataSource.deleteMany({ where: { storeId: store.id } });
   await prisma.commissionRule.deleteMany({ where: { storeId: store.id } });
   await prisma.kpi.deleteMany({ where: { storeId: store.id } });
   await prisma.pending.deleteMany({ where: { storeId: store.id } });

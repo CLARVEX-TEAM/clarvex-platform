@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Activity, BookOpen, CalendarDays, CheckCircle2, CheckSquare, ClipboardList, LogOut, Megaphone, Receipt, ShoppingBag, UsersRound } from "lucide-react";
+import { Activity, BookOpen, CalendarDays, CheckCircle2, CheckSquare, ClipboardList, Database, LogOut, Megaphone, Receipt, ShoppingBag, UsersRound } from "lucide-react";
 import { getSession, logout } from "@/lib/auth";
 import { fetchAppData, type AppData } from "@/lib/app-data";
 import { completion, money } from "@/lib/format";
@@ -118,6 +118,7 @@ export default function ManagerDashboard() {
           <QuickLink href="/pendientes" icon={ClipboardList} label="Crear pendiente" />
           <QuickLink href="/bitacora" icon={BookOpen} label="Bitacora" />
           <QuickLink href="/horarios" icon={CalendarDays} label="Horarios" />
+          <QuickLink href="/datos" icon={Database} label="Centro de Datos" className="col-span-2" />
         </section>
 
         <Card className="mt-3">

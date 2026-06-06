@@ -456,9 +456,9 @@ export function AppFrame({ children }: { children: React.ReactNode }) {
   );
 }
 
-export function QuickLink({ href, icon: Icon, label }: { href: string; icon: LucideIcon; label: string }) {
+export function QuickLink({ href, icon: Icon, label, className = "" }: { href: string; icon: LucideIcon; label: string; className?: string }) {
   return (
-    <Link href={href} className="liquid-glass group flex min-h-12 items-center gap-2.5 rounded-[22px] px-3 text-[13px] font-black tracking-[-0.01em] text-ink/90 transition active:scale-[0.98]">
+    <Link href={href} className={cn("liquid-glass group flex min-h-12 items-center gap-2.5 rounded-[22px] px-3 text-[13px] font-black tracking-[-0.01em] text-ink/90 transition active:scale-[0.98]", className)}>
       <span className="grid size-8 place-items-center rounded-[16px] border border-volt/20 bg-volt/12 text-volt shadow-[inset_0_1px_0_rgb(255_255_255_/_0.12)]">
         <Icon size={17} />
       </span>

@@ -35,6 +35,32 @@ enum PendingStatus {
   COMPLETADO
 }
 
+enum DataSourceType {
+  HORARIOS
+  KPIS
+  METAS
+  COMISIONES
+  COMUNICADOS
+}
+
+enum DataSourceProvider {
+  MANUAL
+  EXCEL
+  SHAREPOINT
+}
+
+enum DataSourceStatus {
+  CONNECTED
+  DISCONNECTED
+  ERROR
+}
+
+enum SyncLogStatus {
+  SUCCESS
+  ERROR
+  RUNNING
+}
+
 model Store {
   id             String         @id @default(cuid())
   name           String
@@ -47,8 +73,40 @@ model Store {
   announcements  Announcement[]
   evidences      Evidence[]
   commissionRules CommissionRule[]
+  dataSources     DataSource[]
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
+}
+
+model DataSource {
+  id         String             @id @default(cuid())
+  storeId    String
+  store      Store              @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  type       DataSourceType
+  provider   DataSourceProvider @default(MANUAL)
+  name       String
+  url        String?
+  status     DataSourceStatus   @default(DISCONNECTED)
+  lastSyncAt DateTime?
+  nextSyncAt DateTime?
+  syncLogs   SyncLog[]
+  createdAt  DateTime           @default(now())
+  updatedAt  DateTime           @updatedAt
+
+  @@unique([storeId, type])
+  @@index([storeId, status])
+}
+
+model SyncLog {
+  id               String        @id @default(cuid())
+  dataSourceId     String
+  dataSource       DataSource    @relation(fields: [dataSourceId], references: [id], onDelete: Cascade)
+  status           SyncLogStatus
+  message          String
+  recordsProcessed Int           @default(0)
+  createdAt        DateTime      @default(now())
+
+  @@index([dataSourceId, createdAt])
 }
 
 model User {
