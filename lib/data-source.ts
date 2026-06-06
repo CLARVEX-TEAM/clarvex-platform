@@ -34,6 +34,10 @@ export const dataSourceInput = z.object({
   name: z.string().trim().min(2).max(100),
   url: z.union([z.string().trim().url("La URL no es valida."), z.literal("")]).optional(),
   frequency: z.enum(dataSourceFrequencies)
+}).superRefine((data, context) => {
+  if (data.provider !== "MANUAL" && !data.url) {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ["url"], message: "La URL es obligatoria para Excel y SharePoint." });
+  }
 });
 
 type SerializableDataSource = {

@@ -134,9 +134,9 @@ export default function DataCenterPage() {
       });
       const payload = await response.json() as { dataSource?: DataSourceRecord; error?: string };
       if (!response.ok || !payload.dataSource) throw new Error(payload.error ?? "No se pudo guardar la fuente.");
-      setSources((current) => [...current.filter((source) => source.type !== payload.dataSource!.type), payload.dataSource!]);
+      await fetchSources();
       setConfig(null);
-      setMessage("Fuente vinculada correctamente.");
+      setMessage("Configuracion guardada en PostgreSQL.");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "No se pudo guardar la fuente.");
     } finally {
@@ -330,9 +330,9 @@ export default function DataCenterPage() {
 
 function SourceStatus({ status }: { status: DataSourceStatus }) {
   const config = {
-    CONNECTED: { label: "Vinculado", tone: "success" as const, dot: "bg-volt" },
-    DISCONNECTED: { label: "No vinculado", tone: "default" as const, dot: "bg-muted" },
-    ERROR: { label: "Error", tone: "danger" as const, dot: "bg-orchid" }
+    CONNECTED: { label: "CONNECTED", tone: "success" as const, dot: "bg-volt" },
+    DISCONNECTED: { label: "DISCONNECTED", tone: "default" as const, dot: "bg-muted" },
+    ERROR: { label: "ERROR", tone: "danger" as const, dot: "bg-orchid" }
   }[status];
   return <Badge tone={config.tone}><span className={`mr-1.5 size-1.5 rounded-full ${config.dot}`} />{config.label}</Badge>;
 }
