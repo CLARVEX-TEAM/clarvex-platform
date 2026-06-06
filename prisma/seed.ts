@@ -50,9 +50,15 @@ async function main() {
 
   await prisma.commissionRule.createMany({
     data: [
-      { storeId: store.id, role: Role.ASESOR, minSales: 0, maxSales: 14999, minAchievement: 0, maxAchievement: 79.99, commissionPercent: 1.5 },
-      { storeId: store.id, role: Role.ASESOR, minSales: 15000, maxSales: 24999, minAchievement: 80, maxAchievement: 99.99, commissionPercent: 2.5 },
-      { storeId: store.id, role: Role.ASESOR, minSales: 25000, minAchievement: 100, commissionPercent: 3.5 }
+      { storeId: store.id, role: Role.ASESOR, minAchievement: 0, maxAchievement: 99.99, commissionPercent: 1.53 },
+      { storeId: store.id, role: Role.ASESOR, minAchievement: 100, maxAchievement: 114.99, commissionPercent: 1.91 },
+      { storeId: store.id, role: Role.ASESOR, minAchievement: 115, commissionPercent: 2.29 },
+      { storeId: store.id, role: Role.SUBGERENTE, minAchievement: 0, maxAchievement: 99.99, commissionPercent: 0.93 },
+      { storeId: store.id, role: Role.SUBGERENTE, minAchievement: 100, maxAchievement: 114.99, commissionPercent: 1.16 },
+      { storeId: store.id, role: Role.SUBGERENTE, minAchievement: 115, commissionPercent: 1.39 },
+      { storeId: store.id, role: Role.GERENTE, minAchievement: 0, maxAchievement: 99.99, commissionPercent: 1.25 },
+      { storeId: store.id, role: Role.GERENTE, minAchievement: 100, maxAchievement: 114.99, commissionPercent: 1.56 },
+      { storeId: store.id, role: Role.GERENTE, minAchievement: 115, commissionPercent: 1.87 }
     ]
   });
 

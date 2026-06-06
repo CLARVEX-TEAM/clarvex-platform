@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
@@ -15,8 +16,9 @@ import {
   CalendarDays,
   Check,
   CheckSquare,
+  ChevronLeft,
   Home,
-  Megaphone,
+  ListChecks,
   Plus,
   UserRound
 } from "lucide-react";
@@ -25,20 +27,24 @@ import { cn } from "@/lib/utils";
 import type { Activity, PendingStatus, Priority } from "@/lib/types";
 
 type Tone = "default" | "success" | "done" | "warn" | "danger" | "info";
-type Accent = "volt" | "mint" | "ember" | "orchid";
+type Accent = "volt" | "mint" | "ember" | "orchid" | "purple" | "sky";
 
 const accentText: Record<Accent, string> = {
   volt: "text-volt",
   mint: "text-volt",
   ember: "text-ember",
-  orchid: "text-orchid"
+  orchid: "text-orchid",
+  purple: "text-purple",
+  sky: "text-sky"
 };
 
 const accentBg: Record<Accent, string> = {
   volt: "bg-volt",
   mint: "bg-volt",
   ember: "bg-ember",
-  orchid: "bg-orchid"
+  orchid: "bg-orchid",
+  purple: "bg-purple",
+  sky: "bg-sky"
 };
 
 const badgeTones: Record<Tone, string> = {
@@ -54,10 +60,11 @@ export function GlassCard({ children, className = "", ...props }: Omit<HTMLMotio
   return (
     <motion.section
       {...props}
-      initial={{ opacity: 0, y: 12, filter: "blur(3px)" }}
-      animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-      transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
-      className={cn("liquid-glass rounded-[1.55rem] p-4 shadow-glass", className)}
+      initial={{ opacity: 0, y: 16, scale: 0.985, filter: "blur(6px)" }}
+      animate={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
+      whileTap={{ scale: 0.99, y: 1 }}
+      transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+      className={cn("liquid-glass rounded-[30px] p-4 shadow-glass", className)}
     >
       {children}
     </motion.section>
@@ -86,8 +93,8 @@ export function PremiumButton({
       whileTap={{ scale: 0.965, y: 1 }}
       whileHover={{ y: -1 }}
       className={cn(
-        "inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl px-4 text-sm font-black transition focus:outline-none focus:ring-4 focus:ring-volt/20 disabled:cursor-not-allowed disabled:opacity-55",
-        variant === "primary" && "bg-volt text-void shadow-[0_18px_40px_rgb(34_197_94_/_0.24)] hover:bg-[#16A34A]",
+        "inline-flex min-h-12 items-center justify-center gap-2 rounded-full px-4 text-sm font-black tracking-[-0.01em] transition focus:outline-none focus:ring-4 focus:ring-volt/20 disabled:cursor-not-allowed disabled:opacity-55",
+        variant === "primary" && "bg-volt text-void shadow-[0_18px_44px_rgb(34_197_94_/_0.26),inset_0_1px_0_rgb(255_255_255_/_0.32)] hover:bg-[#16A34A]",
         variant === "glass" && "liquid-glass text-ink hover:text-volt",
         variant === "ghost" && "bg-white/[0.045] text-ink hover:bg-white/[0.075]",
         className
@@ -104,7 +111,7 @@ export const Button = PremiumButton;
 
 export function StatusBadge({ children, tone = "default" }: { children: React.ReactNode; tone?: Tone }) {
   return (
-    <span className={cn("inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-black", badgeTones[tone])}>
+    <span className={cn("inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-black tracking-[-0.01em]", badgeTones[tone])}>
       {children}
     </span>
   );
@@ -125,9 +132,9 @@ export function statusTone(status: PendingStatus): Tone {
 export function ProgressBar({ value, tone = "volt" }: { value: number; tone?: Accent }) {
   const clamped = Math.max(0, Math.min(100, value));
   return (
-    <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/[0.07]">
+    <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/[0.075] shadow-[inset_0_1px_2px_rgb(0_0_0_/_0.26)]">
       <motion.div
-        className={cn("h-full rounded-full", accentBg[tone])}
+        className={cn("h-full rounded-full shadow-[0_0_20px_rgb(34_197_94_/_0.22)]", accentBg[tone])}
         initial={{ width: 0 }}
         animate={{ width: `${clamped}%` }}
         transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
@@ -142,7 +149,7 @@ export function ProgressRing({ value, tone = "volt", size = 76 }: { value: numbe
   const circumference = 2 * Math.PI * radius;
 
   return (
-    <div className="relative grid place-items-center" style={{ width: size, height: size }}>
+    <div className="relative grid place-items-center rounded-full bg-white/[0.035] shadow-[inset_0_1px_0_rgb(255_255_255_/_0.1)]" style={{ width: size, height: size }}>
       <svg viewBox="0 0 72 72" className="size-full -rotate-90 drop-shadow-[0_0_18px_rgb(34_197_94_/_0.18)]">
         <circle cx="36" cy="36" r={radius} fill="none" stroke="currentColor" strokeWidth="7" className="text-white/10" />
         <motion.circle
@@ -181,28 +188,119 @@ export function KPIStatCard({
   delta?: string;
   icon?: React.ReactNode;
 }) {
+  const bars = progress !== undefined ? [34, 52, 46, Math.max(18, Math.min(92, progress)), Math.max(24, Math.min(96, progress + 8))] : [28, 45, 36, 58, 48];
   return (
-    <GlassCard className="min-h-[132px]">
+    <GlassCard className="min-h-[142px] p-4">
       <div className="flex items-start justify-between gap-2">
-        <p className="text-[11px] font-black uppercase tracking-[0.14em] text-muted">{label}</p>
-        {icon ? <span className={cn("grid size-8 place-items-center rounded-xl bg-white/[0.055]", accentText[tone])}>{icon}</span> : null}
+        <p className="text-[11px] font-black uppercase tracking-[0.12em] text-muted">{label}</p>
+        {icon ? <span className={cn("grid size-9 place-items-center rounded-[18px] border border-white/10 bg-white/[0.06] shadow-[inset_0_1px_0_rgb(255_255_255_/_0.1)]", accentText[tone])}>{icon}</span> : null}
         {!icon && delta ? <StatusBadge tone="success">{delta}</StatusBadge> : null}
       </div>
-      <p className={cn("mt-3 text-2xl font-black leading-none", accentText[tone])}>{value}</p>
+      <p className={cn("mt-3 text-[1.72rem] font-black leading-none tracking-[-0.03em]", accentText[tone])}>{value}</p>
+      <div className="mt-3 flex h-7 items-end gap-1.5">
+        {bars.map((height, index) => (
+          <motion.span
+            key={index}
+            initial={{ height: 4, opacity: 0.35 }}
+            animate={{ height: `${height}%`, opacity: 1 }}
+            transition={{ delay: index * 0.035, duration: 0.28 }}
+            className={cn("w-full rounded-full bg-white/10", index >= 3 && accentBg[tone])}
+          />
+        ))}
+      </div>
       {progress !== undefined ? <ProgressBar value={progress} tone={tone} /> : null}
-      {detail ? <p className="mt-2 text-sm text-muted">{detail}</p> : null}
+      {detail ? <p className="mt-2 text-[13px] leading-5 text-muted">{detail}</p> : null}
     </GlassCard>
   );
 }
 
 export const StatCard = KPIStatCard;
 
+export function ProfileAvatar({
+  name,
+  photoUrl,
+  size = "md",
+  className = ""
+}: {
+  name: string;
+  photoUrl?: string | null;
+  size?: "sm" | "md" | "lg";
+  className?: string;
+}) {
+  const initials = name.slice(0, 2).toUpperCase();
+  const sizes = {
+    sm: "size-10 rounded-2xl text-sm",
+    md: "size-12 rounded-[1.15rem] text-base",
+    lg: "size-20 rounded-[1.55rem] text-2xl"
+  };
+
+  if (photoUrl) {
+    return (
+      <span className={cn("relative block shrink-0 overflow-hidden ring-1 ring-white/15", sizes[size], className)}>
+        <Image src={photoUrl} alt={name} fill sizes="80px" className="object-cover" />
+      </span>
+    );
+  }
+
+  return (
+    <span className={cn("grid shrink-0 place-items-center bg-volt/15 font-black text-volt shadow-[inset_0_1px_0_rgb(255_255_255_/_0.16),0_12px_28px_rgb(0_0_0_/_0.26)] ring-1 ring-volt/25", sizes[size], className)}>
+      {initials}
+    </span>
+  );
+}
+
+export function PinPad({
+  value,
+  onChange,
+  length = 4
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  length?: number;
+}) {
+  const digits = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "back"];
+  const masked = Array.from({ length }, (_, index) => index < value.length);
+
+  return (
+    <div>
+      <div className="mb-4 flex justify-center gap-3">
+        {masked.map((filled, index) => (
+          <span key={index} className={cn("size-3 rounded-full border transition", filled ? "border-volt bg-volt shadow-[0_0_18px_rgb(34_197_94_/_0.45)]" : "border-white/18 bg-white/[0.04]")} />
+        ))}
+      </div>
+      <div className="grid grid-cols-3 gap-3">
+        {digits.map((digit, index) => {
+          if (!digit) return <span key={index} />;
+          return (
+            <motion.button
+              key={digit}
+              type="button"
+              whileTap={{ scale: 0.94 }}
+              onClick={() => {
+                if (digit === "back") {
+                  onChange(value.slice(0, -1));
+                  return;
+                }
+                if (value.length < length) onChange(`${value}${digit}`);
+              }}
+              className="liquid-glass grid min-h-14 place-items-center rounded-[24px] text-xl font-black text-ink"
+              aria-label={digit === "back" ? "Borrar PIN" : `Numero ${digit}`}
+            >
+              {digit === "back" ? <ChevronLeft size={22} /> : digit}
+            </motion.button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export function TaskItem({ activity, onToggle }: { activity: Activity; onToggle?: (completed: boolean) => void }) {
   return (
     <motion.button
       whileTap={{ scale: 0.985, y: 1 }}
       onClick={() => onToggle?.(!activity.completed)}
-      className="liquid-glass flex w-full items-center gap-3 rounded-2xl p-3 text-left transition hover:text-volt"
+      className="liquid-glass flex w-full items-center gap-3 rounded-[24px] p-3 text-left transition hover:text-volt"
     >
       <span
         className={cn(
@@ -239,13 +337,13 @@ export function NotificationCard({
   return (
     <GlassCard className={cn(unread && "border-volt/35 bg-volt/[0.055]")}>
       <div className="flex items-start gap-3">
-        <span className={cn("grid size-11 shrink-0 place-items-center rounded-2xl", unread ? "bg-volt/16 text-volt" : "bg-white/[0.055] text-muted")}>
+        <span className={cn("grid size-11 shrink-0 place-items-center rounded-[22px] border border-white/10", unread ? "bg-volt/16 text-volt" : "bg-white/[0.055] text-muted")}>
           <Bell size={18} />
         </span>
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <h2 className="text-lg font-black text-ink">{title}</h2>
+              <h2 className="text-lg font-black tracking-[-0.02em] text-ink">{title}</h2>
               {meta ? <p className="mt-1 text-xs text-muted">{meta}</p> : null}
             </div>
             <StatusBadge tone={unread ? "success" : "default"}>{unread ? "nuevo" : "leido"}</StatusBadge>
@@ -272,20 +370,20 @@ export function AppHeader({
   avatar?: string;
 }) {
   return (
-    <header className="sticky top-0 z-20 border-b border-white/[0.06] bg-void/72 px-4 pb-3 pt-5 backdrop-blur-2xl">
+    <header className="sticky top-0 z-20 border-b border-white/[0.055] bg-void/54 px-4 pb-2 pt-2 backdrop-blur-[34px]">
       <div className="mx-auto flex max-w-md items-center justify-between gap-3">
         <div className="flex min-w-0 items-start gap-3">
           {backHref ? (
-            <Link href={backHref} className="liquid-glass mt-1 grid size-10 shrink-0 place-items-center rounded-2xl text-ink/70" aria-label="Regresar al inicio">
+            <Link href={backHref} className="liquid-glass mt-1 grid size-10 shrink-0 place-items-center rounded-[22px] text-ink/70 transition active:scale-95" aria-label="Regresar al inicio">
               <ArrowLeft size={18} />
             </Link>
           ) : avatar ? (
-            <span className="mt-1 grid size-10 shrink-0 place-items-center rounded-2xl bg-volt/15 text-sm font-black text-volt">{avatar}</span>
+            <span className="mt-1 grid size-10 shrink-0 place-items-center rounded-[22px] border border-volt/25 bg-volt/15 text-sm font-black text-volt shadow-[inset_0_1px_0_rgb(255_255_255_/_0.14)]">{avatar}</span>
           ) : null}
           <div className="min-w-0">
-            <p className="text-[11px] font-black uppercase tracking-[0.2em] text-volt">CLARVEX Team</p>
-            <h1 className="mt-1 text-2xl font-black tracking-tight text-ink">{title}</h1>
-            <p className="mt-1 text-sm text-muted">{subtitle}</p>
+            <p className="text-[10px] font-black uppercase tracking-[0.16em] text-volt/90">CLARVEX Team</p>
+            <h1 className="mt-0.5 text-[1.28rem] font-black leading-tight tracking-[-0.035em] text-ink">{title}</h1>
+            <p className="mt-0.5 text-[12px] leading-4 text-muted">{subtitle}</p>
           </div>
         </div>
         {action}
@@ -299,7 +397,7 @@ const navItems: { href: string; label: string; icon: LucideIcon }[] = [
   { href: "/plan", label: "Plan", icon: CheckSquare },
   { href: "/pendientes", label: "Pend.", icon: AlertTriangle },
   { href: "/kpis", label: "KPIs", icon: BarChart3 },
-  { href: "/comunicados", label: "Com.", icon: Megaphone }
+  { href: "/comunicados", label: "Actividad", icon: ListChecks }
 ];
 
 export function LiquidBottomNav() {
@@ -313,7 +411,7 @@ export function LiquidBottomNav() {
 
   return (
     <nav className="pointer-events-none fixed inset-x-0 bottom-4 z-30 px-4">
-      <div className="liquid-glass pointer-events-auto mx-auto grid max-w-md grid-cols-5 gap-1 rounded-[2.2rem] border-white/15 bg-card/55 p-2">
+      <div className="liquid-glass pointer-events-auto mx-auto grid max-w-md grid-cols-5 gap-1 rounded-[36px] border-white/18 bg-card/35 p-2 shadow-[0_28px_92px_rgb(0_0_0_/_0.72),0_0_44px_rgb(34_197_94_/_0.055),inset_0_1px_0_rgb(255_255_255_/_0.24)] backdrop-blur-[40px]">
         {navItems.map((item) => {
           const href = item.href === "/manager" ? homeHref : item.href;
           const active = pathname === href || (item.href === "/manager" && (pathname === "/manager" || pathname === "/advisor"));
@@ -321,13 +419,13 @@ export function LiquidBottomNav() {
             <Link
               key={item.href}
               href={href}
-              className="relative flex min-h-12 flex-col items-center justify-center rounded-[1.55rem] text-[11px] font-bold text-muted transition hover:text-volt"
+              className="relative flex min-h-12 flex-col items-center justify-center rounded-[28px] text-[10px] font-bold text-muted transition hover:text-volt active:scale-95"
             >
               {active ? (
                 <motion.span
                   layoutId="bottom-nav-active"
-                  className="absolute inset-0 rounded-[1.55rem] border border-volt/35 bg-volt/15 shadow-[0_0_28px_rgb(34_197_94_/_0.22)]"
-                  transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+                  className="absolute inset-0 rounded-[28px] border border-volt/35 bg-volt/18 shadow-[0_0_36px_rgb(34_197_94_/_0.28),inset_0_1px_0_rgb(255_255_255_/_0.26),inset_0_-1px_0_rgb(34_197_94_/_0.12)]"
+                  transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
                 />
               ) : null}
               <span className={cn("relative grid size-6 place-items-center", active && "text-volt")}>
@@ -350,7 +448,7 @@ export function AppFrame({ children }: { children: React.ReactNode }) {
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
-      className="mx-auto min-h-screen max-w-md px-4 pb-36 pt-3"
+      className="mx-auto min-h-screen max-w-md px-4 pb-40 pt-4"
     >
       {children}
     </motion.main>
@@ -359,8 +457,8 @@ export function AppFrame({ children }: { children: React.ReactNode }) {
 
 export function QuickLink({ href, icon: Icon, label }: { href: string; icon: LucideIcon; label: string }) {
   return (
-    <Link href={href} className="liquid-glass group flex min-h-16 items-center gap-3 rounded-2xl px-4 text-sm font-black text-ink/90">
-      <span className="grid size-10 place-items-center rounded-2xl bg-volt/12 text-volt">
+    <Link href={href} className="liquid-glass group flex min-h-16 items-center gap-3 rounded-[26px] px-4 text-sm font-black tracking-[-0.01em] text-ink/90 transition active:scale-[0.98]">
+      <span className="grid size-10 place-items-center rounded-[22px] border border-volt/20 bg-volt/12 text-volt shadow-[inset_0_1px_0_rgb(255_255_255_/_0.12)]">
         <Icon size={20} />
       </span>
       {label}
@@ -370,7 +468,7 @@ export function QuickLink({ href, icon: Icon, label }: { href: string; icon: Luc
 
 export function FloatingActionButton({ href, icon: Icon = Plus, label }: { href: string; icon?: LucideIcon; label: string }) {
   return (
-    <Link href={href} className="fixed bottom-28 right-4 z-20 flex min-h-14 items-center gap-2 rounded-full bg-volt px-5 text-sm font-black text-void shadow-[0_18px_42px_rgb(34_197_94_/_0.28)]">
+    <Link href={href} className="fixed bottom-32 right-4 z-20 flex min-h-14 items-center gap-2 rounded-full bg-volt px-5 text-sm font-black text-void shadow-[0_18px_44px_rgb(34_197_94_/_0.3),inset_0_1px_0_rgb(255_255_255_/_0.32)] transition active:scale-95">
       <Icon size={18} />
       {label}
     </Link>

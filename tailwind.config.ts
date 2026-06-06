@@ -14,7 +14,9 @@ const config: Config = {
         volt: "#22C55E",
         mint: "#22C55E",
         ember: "#F59E0B",
-        orchid: "#EF4444"
+        orchid: "#EF4444",
+        purple: "#8B5CF6",
+        sky: "#38BDF8"
       },
       boxShadow: {
         glow: "0 0 0 1px rgb(34 197 94 / 0.18), 0 24px 64px rgb(0 0 0 / 0.58)",

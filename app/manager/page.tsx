@@ -2,11 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { BookOpen, CalendarDays, CheckSquare, ClipboardList, LogOut, Megaphone, Receipt, ShoppingBag, UsersRound } from "lucide-react";
+import { Activity, BookOpen, CalendarDays, CheckCircle2, CheckSquare, ClipboardList, LogOut, Megaphone, Receipt, ShoppingBag, UsersRound } from "lucide-react";
 import { getSession, logout } from "@/lib/auth";
 import { fetchAppData, type AppData } from "@/lib/app-data";
 import { completion, money } from "@/lib/format";
-import { AppFrame, AppHeader, Badge, BottomNav, Card, ProgressBar, ProgressRing, QuickLink, StatCard, priorityTone } from "@/components/ui";
+import { AppFrame, AppHeader, Badge, BottomNav, Card, ProfileAvatar, ProgressBar, ProgressRing, QuickLink, StatCard, priorityTone } from "@/components/ui";
 
 export default function ManagerDashboard() {
   const router = useRouter();
@@ -45,11 +45,12 @@ export default function ManagerDashboard() {
 
   const userName = (id: string) => data.users.find((user) => user.id === id)?.name ?? "Equipo";
   const manager = getSession();
+  const greeting = manager?.name ? `Hola, ${manager.name}` : "Hola, gerente";
 
   return (
     <>
       <AppHeader
-        title="Dashboard gerente"
+        title={greeting}
         subtitle="Pulso de tienda, equipo y pendientes criticos."
         avatar={manager?.avatar}
         action={
@@ -58,7 +59,7 @@ export default function ManagerDashboard() {
               logout();
               router.push("/login");
             }}
-            className="liquid-glass grid size-11 place-items-center rounded-xl text-ink/62"
+            className="liquid-glass grid size-11 place-items-center rounded-[22px] text-ink/62 transition active:scale-95"
             aria-label="Cerrar sesion"
           >
             <LogOut size={18} />
@@ -66,24 +67,50 @@ export default function ManagerDashboard() {
         }
       />
       <AppFrame>
-        <Card className="mb-4 overflow-hidden border-volt/25 bg-volt/[0.045]">
+        <Card className="premium-hero mb-5 rounded-[32px] p-5">
+          <div className="absolute -right-12 -top-12 size-36 rounded-full bg-volt/15 blur-3xl" />
+          <div className="absolute -bottom-14 left-10 size-32 rounded-full bg-sky/10 blur-3xl" />
           <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="text-[11px] font-black uppercase tracking-[0.16em] text-muted">Meta diaria tienda</p>
-              <h2 className="mt-2 text-4xl font-black tracking-tight text-ink">{money(store?.dailySales ?? 0)}</h2>
+              <p className="text-[11px] font-black uppercase tracking-[0.13em] text-muted">Meta diaria tienda</p>
+              <h2 className="mt-2 text-[2.75rem] font-black leading-none tracking-[-0.045em] text-ink">{money(store?.dailySales ?? 0)}</h2>
               <p className="mt-1 text-sm text-ink/58">Meta diaria {money(store?.dailyGoal ?? 0)}</p>
             </div>
-            <ProgressRing value={storeProgress} />
+            <ProgressRing value={storeProgress} size={86} />
           </div>
           <ProgressBar value={storeProgress} />
+          <div className="mt-4 flex items-center justify-between rounded-[24px] border border-white/10 bg-white/[0.06] px-3 py-2 shadow-[inset_0_1px_0_rgb(255_255_255_/_0.1)]">
+            <span className="text-xs font-bold text-muted">Estado de venta</span>
+            <Badge tone={storeProgress >= 80 ? "success" : "warn"}>{storeProgress}% cumplimiento</Badge>
+          </div>
         </Card>
 
         <div className="grid grid-cols-2 gap-3">
           <StatCard label="Ventas" value={money(store?.dailySales ?? 0)} detail="Hoy" progress={storeProgress} delta="+12%" icon={<ShoppingBag size={17} />} />
-          <StatCard label="Tickets" value={String(store?.transactions ?? 0)} detail="Transacciones" tone="mint" icon={<Receipt size={17} />} />
-          <StatCard label="Clientes" value={`${store?.conversion ?? 0}%`} detail="Conversion" tone="ember" progress={store?.conversion ?? 0} icon={<UsersRound size={17} />} />
+          <StatCard label="Tickets" value={String(store?.transactions ?? 0)} detail="Transacciones" tone="sky" icon={<Receipt size={17} />} />
+          <StatCard label="Equipo" value={String(advisors.length)} detail="Asesores activos" tone="purple" icon={<UsersRound size={17} />} />
           <StatCard label="Criticos" value={String(critical.length)} detail="Alta y critica" tone="orchid" progress={Math.min(critical.length * 25, 100)} />
         </div>
+
+        <Card className="mt-5 rounded-[28px]">
+          <div className="mb-4 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Activity className="text-volt" size={18} />
+              <h2 className="text-lg font-black">Estado tienda</h2>
+            </div>
+            <Badge tone={storeProgress >= 80 ? "success" : "warn"}>{storeProgress >= 80 ? "en ritmo" : "en seguimiento"}</Badge>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="liquid-glass rounded-[24px] p-3">
+              <p className="text-xs font-black uppercase tracking-[0.1em] text-muted">Conversion</p>
+              <p className="mt-2 text-2xl font-black text-sky">{store?.conversion ?? 0}%</p>
+            </div>
+            <div className="liquid-glass rounded-[24px] p-3">
+              <p className="text-xs font-black uppercase tracking-[0.1em] text-muted">Plan diario</p>
+              <p className="mt-2 text-2xl font-black text-purple">{activityProgress}%</p>
+            </div>
+          </div>
+        </Card>
 
         <section className="mt-5 grid grid-cols-2 gap-3">
           <QuickLink href="/plan" icon={CheckSquare} label="Crear plan del dia" />
@@ -93,17 +120,31 @@ export default function ManagerDashboard() {
         </section>
 
         <Card className="mt-5">
+          <div className="mb-3 flex items-center gap-2">
+            <CheckCircle2 className="text-volt" size={18} />
+            <h2 className="text-lg font-black">Desempeno equipo</h2>
+          </div>
+          <p className="text-sm text-muted">{doneActivities} actividades completadas de {allActivities}. Ranking y pendientes se actualizan con datos actuales.</p>
+          <ProgressBar value={activityProgress} tone="purple" />
+        </Card>
+
+        <Card className="mt-5">
           <div className="mb-3 flex items-center justify-between">
             <h2 className="text-lg font-black">Ranking asesores</h2>
             <Badge>tienda</Badge>
+          </div>
+          <div className="mb-4 flex -space-x-3">
+            {advisors.map((advisor) => (
+              <ProfileAvatar key={advisor.id} name={advisor.name} photoUrl={advisor.photoUrl} size="sm" className="ring-2 ring-card" />
+            ))}
           </div>
           <div className="space-y-3">
             {ranking.map(({ advisor, kpi }) => {
               const progress = completion(kpi?.dailySales ?? 0, kpi?.dailyGoal ?? 0);
               return (
-              <div key={advisor.id} className="liquid-glass flex items-center justify-between rounded-2xl p-3">
+              <div key={advisor.id} className="liquid-glass flex items-center justify-between rounded-[28px] p-3">
                 <div className="flex items-center gap-3">
-                  <span className="grid size-10 place-items-center rounded-2xl bg-volt/12 text-sm font-black text-volt">{advisor.avatar}</span>
+                  <ProfileAvatar name={advisor.name} photoUrl={advisor.photoUrl} size="sm" />
                   <div>
                   <p className="font-bold">#{kpi?.ranking} {advisor.name}</p>
                   <p className="text-sm text-ink/50">{money(kpi?.dailySales ?? 0)} de {money(kpi?.dailyGoal ?? 0)}</p>
@@ -118,7 +159,7 @@ export default function ManagerDashboard() {
           </div>
         </Card>
 
-        <Card className="mt-5">
+        <Card className="mt-5 rounded-[28px]">
           <div className="mb-3 flex items-center gap-2">
             <Megaphone className="text-volt" size={18} />
             <h2 className="text-lg font-black">Comunicados recientes</h2>
@@ -135,7 +176,7 @@ export default function ManagerDashboard() {
           <h2 className="mb-3 text-lg font-black">Pendientes de gerencia</h2>
           <div className="space-y-2">
             {critical.map((pending) => (
-              <div key={pending.id} className="liquid-glass rounded-xl p-3">
+              <div key={pending.id} className="liquid-glass rounded-[28px] p-3">
                 <div className="flex items-center justify-between gap-2">
                   <p className="font-bold">{pending.title}</p>
                   <Badge tone={priorityTone(pending.priority)}>{pending.priority}</Badge>

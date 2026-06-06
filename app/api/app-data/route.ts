@@ -17,7 +17,7 @@ export async function GET() {
     prisma.announcement.findMany({ include: { reads: true }, orderBy: { createdAt: "desc" } }),
     prisma.schedule.findMany({ orderBy: [{ userId: "asc" }, { day: "asc" }] }),
     prisma.evidence.findMany({ orderBy: { createdAt: "desc" } }),
-    prisma.commissionRule.findMany({ orderBy: [{ active: "desc" }, { minSales: "asc" }] })
+    prisma.commissionRule.findMany({ orderBy: [{ active: "desc" }, { role: "asc" }, { minAchievement: "asc" }] })
   ]);
 
   return NextResponse.json({

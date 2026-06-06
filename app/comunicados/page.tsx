@@ -98,7 +98,7 @@ export default function ComunicadosPage() {
     <>
       <AppHeader title="Comunicados" subtitle={session?.role === "ASESOR" ? "Lee avisos y confirma tu lectura." : "Publicacion, lectura y seguimiento por asesor."} backHref={session?.role === "ASESOR" ? "/advisor" : "/manager"} />
       <AppFrame>
-        <div className="-mx-4 mb-4 flex gap-2 overflow-x-auto px-4 pb-2">
+        <div className="no-scrollbar tab-glass-shell -mx-1 mb-5 flex gap-1 overflow-x-auto overflow-y-hidden p-1.5 scroll-px-4">
           {[
             ["todos", "Todos"],
             ["no-leidos", "No leidos"],
@@ -107,7 +107,7 @@ export default function ComunicadosPage() {
             <button
               key={value}
               onClick={() => setFilter(value as Filter)}
-              className={`min-h-11 shrink-0 rounded-full px-4 text-sm font-black transition ${filter === value ? "bg-volt text-void" : "liquid-glass text-muted"}`}
+              className={`min-h-11 shrink-0 rounded-full px-4 text-sm font-black tracking-[-0.01em] transition active:scale-95 ${filter === value ? "bg-volt text-void shadow-[0_14px_34px_rgb(34_197_94_/_0.24),inset_0_1px_0_rgb(255_255_255_/_0.36)]" : "text-muted hover:text-ink"}`}
             >
               {label}
             </button>
