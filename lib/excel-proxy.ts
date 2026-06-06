@@ -13,7 +13,7 @@ export type WorkbookSummary = {
   recordsProcessed: number;
 };
 
-export async function downloadWorkbookSummary(sourceUrl: string | null): Promise<WorkbookSummary> {
+export async function downloadExcelWorkbook(sourceUrl: string | null) {
   if (!sourceUrl) {
     throw new Error("La fuente no tiene una URL configurada.");
   }
@@ -66,11 +66,19 @@ export async function downloadWorkbookSummary(sourceUrl: string | null): Promise
 
   let workbook: XLSX.WorkBook;
   try {
-    workbook = XLSX.read(buffer, { type: "array", dense: true });
+    workbook = XLSX.read(buffer, { type: "array", dense: true, cellDates: true });
   } catch {
     throw new Error("No se pudo interpretar el archivo recibido como Excel.");
   }
 
+  return workbook;
+}
+
+export async function downloadWorkbookSummary(sourceUrl: string | null): Promise<WorkbookSummary> {
+  return summarizeWorkbook(await downloadExcelWorkbook(sourceUrl));
+}
+
+export function summarizeWorkbook(workbook: XLSX.WorkBook): WorkbookSummary {
   const sheets = workbook.SheetNames.map((name) => {
     const sheet = workbook.Sheets[name];
     const rows = XLSX.utils.sheet_to_json(sheet, {

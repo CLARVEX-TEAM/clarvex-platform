@@ -21,7 +21,7 @@ export async function GET() {
     prisma.pending.findMany({ where: { storeId: session.storeId, ...(manager ? {} : { ownerId: session.userId }) }, orderBy: [{ priority: "desc" }, { dueDate: "asc" }] }),
     prisma.storeLog.findMany({ where: { storeId: session.storeId, ...(manager ? {} : { authorId: session.userId }) }, orderBy: { createdAt: "asc" } }),
     prisma.announcement.findMany({ where: { storeId: session.storeId }, include: { reads: true }, orderBy: { createdAt: "desc" } }),
-    prisma.schedule.findMany({ where: { storeId: session.storeId, ...own }, orderBy: [{ userId: "asc" }, { day: "asc" }] }),
+    prisma.schedule.findMany({ where: { storeId: session.storeId, ...own }, orderBy: [{ userId: "asc" }, { date: "asc" }] }),
     prisma.evidence.findMany({ where: { storeId: session.storeId, ...(manager ? {} : { uploadedById: session.userId }) }, orderBy: { createdAt: "desc" } }),
     prisma.commissionRule.findMany({ where: { storeId: session.storeId, ...(manager ? {} : { OR: [{ role: session.role }, { role: null }] }) }, orderBy: [{ active: "desc" }, { role: "asc" }, { minAchievement: "asc" }] })
   ]);
@@ -33,7 +33,7 @@ export async function GET() {
     pendings: pendings.map((pending) => ({ id: pending.id, title: pending.title, description: pending.description, category: lower(pending.category), priority: lower(pending.priority), ownerId: pending.ownerId, status: lower(pending.status), dueDate: pending.dueDate.toISOString().slice(0, 10) })),
     logEntries: logEntries.map((entry) => ({ id: entry.id, date: entry.createdAt.toISOString(), authorId: entry.authorId, category: entry.category, description: entry.description, evidenceUrl: entry.evidenceUrl })),
     announcements: announcements.map((announcement) => ({ id: announcement.id, title: announcement.title, body: announcement.body, authorId: announcement.authorId, date: announcement.createdAt.toISOString().slice(0, 10), readBy: announcement.reads.map((read) => read.userId) })),
-    schedules: schedules.map((shift) => ({ id: shift.id, userId: shift.userId, day: shift.day, start: shift.startTime, end: shift.endTime ?? "", zone: shift.zone ?? "" })),
+    schedules: schedules.map((shift) => ({ id: shift.id, userId: shift.userId, day: shift.day, start: shift.startTime ?? shift.statusRaw ?? shift.status, end: shift.endTime ?? "", zone: shift.zone ?? "" })),
     evidences: evidences.map((evidence) => ({ id: evidence.id, storeId: evidence.storeId, uploadedById: evidence.uploadedById, pendingId: evidence.pendingId, logEntryId: evidence.logEntryId, taskId: evidence.taskId, url: evidence.url, fileName: evidence.fileName, mimeType: evidence.mimeType, note: evidence.note, createdAt: evidence.createdAt.toISOString() })),
     commissionRules: commissionRules.map((rule) => ({ id: rule.id, storeId: rule.storeId, role: rule.role, minSales: Number(rule.minSales), maxSales: rule.maxSales === null ? null : Number(rule.maxSales), minAchievement: Number(rule.minAchievement), maxAchievement: rule.maxAchievement === null ? null : Number(rule.maxAchievement), commissionPercent: Number(rule.commissionPercent), active: rule.active }))
   }, { headers: { "Cache-Control": "private, no-store" } });

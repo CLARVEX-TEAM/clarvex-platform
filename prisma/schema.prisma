@@ -68,6 +68,15 @@ enum SyncLogStatus {
   RUNNING
 }
 
+enum ScheduleStatus {
+  WORKING
+  OFF
+  VACATION
+  PAID_DAY
+  INVENTORY
+  TERMINATED
+}
+
 model Store {
   id             String         @id @default(cuid())
   name           String
@@ -167,18 +176,24 @@ model Kpi {
 }
 
 model Schedule {
-  id        String   @id @default(cuid())
+  id        String         @id @default(cuid())
   userId    String
-  user      User     @relation(fields: [userId], references: [id])
+  user      User           @relation(fields: [userId], references: [id])
   storeId   String
-  store     Store    @relation(fields: [storeId], references: [id])
+  store     Store          @relation(fields: [storeId], references: [id])
+  date      DateTime
   day       String
-  startTime String
+  status    ScheduleStatus @default(WORKING)
+  statusRaw String?
+  startTime String?
   endTime   String?
   zone      String?
   weekStart DateTime
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  @@unique([userId, date])
+  @@index([storeId, date])
 }
 
 model DayPlan {

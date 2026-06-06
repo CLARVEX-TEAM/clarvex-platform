@@ -90,10 +90,10 @@ async function main() {
 
   await prisma.schedule.createMany({
     data: [
-      { userId: "waira", storeId: store.id, day: "Lun", startTime: "10:00", endTime: "18:00", zone: "Piso", weekStart: today },
-      { userId: "waira", storeId: store.id, day: "Vie", startTime: "13:00", endTime: "21:00", zone: "Piso", weekStart: today },
-      { userId: "jazmin", storeId: store.id, day: "Vie", startTime: "10:00", endTime: "18:00", zone: "Entrada", weekStart: today },
-      { userId: "alonso", storeId: store.id, day: "Vie", startTime: "11:00", endTime: "19:00", zone: "Bodega apoyo", weekStart: today }
+      { userId: "waira", storeId: store.id, date: new Date("2026-06-01T00:00:00.000Z"), day: "Lun", startTime: "10:00", endTime: "18:00", zone: "Piso", weekStart: new Date("2026-05-31T00:00:00.000Z") },
+      { userId: "waira", storeId: store.id, date: new Date("2026-06-05T00:00:00.000Z"), day: "Vie", startTime: "13:00", endTime: "21:00", zone: "Piso", weekStart: new Date("2026-05-31T00:00:00.000Z") },
+      { userId: "jazmin", storeId: store.id, date: new Date("2026-06-05T00:00:00.000Z"), day: "Vie", startTime: "10:00", endTime: "18:00", zone: "Entrada", weekStart: new Date("2026-05-31T00:00:00.000Z") },
+      { userId: "alonso", storeId: store.id, date: new Date("2026-06-05T00:00:00.000Z"), day: "Vie", startTime: "11:00", endTime: "19:00", zone: "Bodega apoyo", weekStart: new Date("2026-05-31T00:00:00.000Z") }
     ]
   });
 

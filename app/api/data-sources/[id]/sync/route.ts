@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { isApiError, requireSession } from "@/lib/api";
-import { encodeSyncLogMessage, getNextSyncAt, serializeDataSource } from "@/lib/data-source";
-import { downloadWorkbookSummary } from "@/lib/excel-proxy";
+import { encodeSyncLogMessage, getNextSyncAt, serializeDataSource, type ScheduleSyncMetrics } from "@/lib/data-source";
+import { downloadExcelWorkbook, summarizeWorkbook } from "@/lib/excel-proxy";
 import { prisma } from "@/lib/prisma";
+import { parseScheduleWorkbook } from "@/lib/schedule-parser";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -29,17 +30,26 @@ export async function POST(_request: Request, { params }: { params: { id: string
   });
 
   try {
-    const workbook = await downloadWorkbookSummary(source.url);
+    const excelWorkbook = await downloadExcelWorkbook(source.url);
+    const workbook = summarizeWorkbook(excelWorkbook);
+    const scheduleMetrics = source.type === "HORARIOS"
+      ? await importSchedules(excelWorkbook, session.storeId)
+      : undefined;
     const completedAt = new Date();
     const nextSyncAt = getNextSyncAt(source.frequency, completedAt);
-    const successMessage = "Sincronizacion completada";
+    const successMessage = scheduleMetrics
+      ? `Horarios sincronizados: ${scheduleMetrics.recordsCreated} creados, ${scheduleMetrics.recordsUpdated} actualizados.`
+      : "Sincronizacion completada";
+    const recordsProcessed = scheduleMetrics
+      ? scheduleMetrics.recordsCreated + scheduleMetrics.recordsUpdated
+      : workbook.recordsProcessed;
     const [, updated] = await prisma.$transaction([
       prisma.syncLog.update({
         where: { id: log.id },
         data: {
           status: "SUCCESS",
-          message: encodeSyncLogMessage(successMessage, workbook.sheets),
-          recordsProcessed: workbook.recordsProcessed
+          message: encodeSyncLogMessage(successMessage, workbook.sheets, scheduleMetrics),
+          recordsProcessed
         }
       }),
       prisma.dataSource.update({
@@ -65,4 +75,64 @@ export async function POST(_request: Request, { params }: { params: { id: string
     ]);
     return NextResponse.json({ error: errorMessage }, { status: 502 });
   }
+}
+
+async function importSchedules(workbook: Parameters<typeof parseScheduleWorkbook>[0], storeId: string): Promise<ScheduleSyncMetrics> {
+  const parsed = parseScheduleWorkbook(workbook);
+  if (parsed.weeks.length === 0) {
+    throw new Error("No se detectaron bloques semanales validos en el archivo de horarios.");
+  }
+  const employeeNumbers = parsed.employeeNumbers;
+  const users = employeeNumbers.length > 0
+    ? await prisma.user.findMany({
+        where: { storeId, employeeNumber: { in: employeeNumbers } },
+        select: { id: true, employeeNumber: true }
+      })
+    : [];
+  const userByEmployee = new Map(users.map((user) => [user.employeeNumber, user.id]));
+  const employeesNotFound = employeeNumbers.filter((employeeNumber) => !userByEmployee.has(employeeNumber));
+  const matchedRecords = parsed.records.flatMap((record) => {
+    const userId = userByEmployee.get(record.employeeNumber);
+    return userId ? [{ ...record, userId }] : [];
+  });
+
+  const userIds = Array.from(new Set(matchedRecords.map((record) => record.userId)));
+  const dates = Array.from(new Map(matchedRecords.map((record) => [record.date.toISOString(), record.date])).values());
+  const existing = userIds.length > 0 && dates.length > 0
+    ? await prisma.schedule.findMany({
+        where: { storeId, userId: { in: userIds }, date: { in: dates } },
+        select: { userId: true, date: true }
+      })
+    : [];
+  const existingKeys = new Set(existing.map((schedule) => `${schedule.userId}:${schedule.date.toISOString()}`));
+  const recordsUpdated = matchedRecords.filter((record) => existingKeys.has(`${record.userId}:${record.date.toISOString()}`)).length;
+  const recordsCreated = matchedRecords.length - recordsUpdated;
+
+  await prisma.$transaction(async (transaction) => {
+    for (const record of matchedRecords) {
+      const data = {
+        storeId,
+        day: record.day,
+        status: record.status,
+        statusRaw: record.statusRaw,
+        startTime: null,
+        endTime: null,
+        weekStart: record.weekStart
+      };
+      await transaction.schedule.upsert({
+        where: { userId_date: { userId: record.userId, date: record.date } },
+        update: data,
+        create: { ...data, userId: record.userId, date: record.date }
+      });
+    }
+  });
+
+  return {
+    weeksProcessed: parsed.weeks.length,
+    employeesFound: users.length,
+    recordsCreated,
+    recordsUpdated,
+    employeesNotFound,
+    unknownValues: parsed.unknownValues
+  };
 }

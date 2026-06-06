@@ -15,6 +15,15 @@ export type SheetSummary = {
   rowCount: number;
 };
 
+export type ScheduleSyncMetrics = {
+  weeksProcessed: number;
+  employeesFound: number;
+  recordsCreated: number;
+  recordsUpdated: number;
+  employeesNotFound: string[];
+  unknownValues: Record<string, number>;
+};
+
 export type DataSourceRecord = {
   id: string;
   type: DataSourceType;
@@ -86,8 +95,8 @@ export function serializeDataSource(source: SerializableDataSource): DataSourceR
   };
 }
 
-export function encodeSyncLogMessage(message: string, sheets: SheetSummary[] = []) {
-  return JSON.stringify({ message, sheets });
+export function encodeSyncLogMessage(message: string, sheets: SheetSummary[] = [], details?: ScheduleSyncMetrics) {
+  return JSON.stringify({ message, sheets, details });
 }
 
 function decodeSyncLogMessage(value: string): { message: string; sheets: SheetSummary[] } {
