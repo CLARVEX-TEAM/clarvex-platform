@@ -16,6 +16,7 @@ import {
   Settings2,
   Share2,
   Target,
+  Wifi,
   X
 } from "lucide-react";
 import { getSession } from "@/lib/auth";
@@ -25,7 +26,8 @@ import {
   type DataSourceProvider,
   type DataSourceRecord,
   type DataSourceStatus,
-  type DataSourceType
+  type DataSourceType,
+  type SheetSummary
 } from "@/lib/data-source";
 import { AppFrame, AppHeader, Badge, BottomNav, Button, Card } from "@/components/ui";
 
@@ -65,6 +67,8 @@ export default function DataCenterPage() {
   const [config, setConfig] = useState<ConfigState | null>(null);
   const [saving, setSaving] = useState(false);
   const [syncingId, setSyncingId] = useState<string | null>(null);
+  const [testingId, setTestingId] = useState<string | null>(null);
+  const [testedSheets, setTestedSheets] = useState<Record<string, SheetSummary[]>>({});
   const [message, setMessage] = useState("");
 
   useEffect(() => {
@@ -155,8 +159,34 @@ export default function DataCenterPage() {
       setMessage(payload.message ?? "Sincronizacion completada");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "No se pudo sincronizar.");
+      await fetchSources();
     } finally {
       setSyncingId(null);
+    }
+  }
+
+  async function testConnection(source: DataSourceRecord) {
+    setTestingId(source.id);
+    setMessage(`Probando conexion de ${modules[source.type].label}...`);
+    try {
+      const response = await fetch(`/api/data-sources/${source.id}/test`, { method: "POST" });
+      const payload = await response.json() as {
+        dataSource?: DataSourceRecord;
+        workbook?: { sheets: SheetSummary[]; recordsProcessed: number };
+        message?: string;
+        error?: string;
+      };
+      if (!response.ok || !payload.dataSource || !payload.workbook) {
+        throw new Error(payload.error ?? "No se pudo probar la conexion.");
+      }
+      setSources((current) => current.map((item) => item.id === source.id ? payload.dataSource! : item));
+      setTestedSheets((current) => ({ ...current, [source.id]: payload.workbook!.sheets }));
+      setMessage(payload.message ?? "Conexion correcta.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "No se pudo probar la conexion.");
+      await fetchSources();
+    } finally {
+      setTestingId(null);
     }
   }
 
@@ -187,6 +217,7 @@ export default function DataCenterPage() {
             const item = modules[type];
             const source = sourceByType.get(type);
             const status = source?.status ?? "DISCONNECTED";
+            const sheets = source ? testedSheets[source.id] ?? source.latestLog?.sheets ?? [] : [];
             const Icon = item.icon;
             return (
               <Card key={type} className="p-3">
@@ -208,11 +239,33 @@ export default function DataCenterPage() {
                       <DataPoint label="Proxima sync" value={formatDate(source?.nextSyncAt)} />
                       <DataPoint label="Frecuencia" value={frequencyLabel(source?.frequency ?? "MANUAL")} />
                     </div>
+                    {sheets.length > 0 ? (
+                      <div className="mt-2 rounded-2xl border border-line bg-slate-50 px-3 py-2">
+                        <p className="text-[10px] font-black uppercase tracking-[0.1em] text-muted">Hojas detectadas</p>
+                        <div className="mt-1.5 grid gap-1">
+                          {sheets.map((sheet) => (
+                            <div key={sheet.name} className="flex items-center justify-between gap-3 text-[11px]">
+                              <span className="truncate font-bold text-ink/80">{sheet.name}</span>
+                              <span className="shrink-0 font-semibold text-muted">{sheet.rowCount} filas</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
                     <div className="mt-2 grid grid-cols-2 gap-2">
                       <button
                         type="button"
+                        onClick={() => source && void testConnection(source)}
+                        disabled={!source || !source.url || testingId === source.id || syncingId === source.id}
+                        className="col-span-2 flex min-h-10 items-center justify-center gap-2 rounded-xl border border-line bg-white text-xs font-black text-ink/75 transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        <Wifi size={14} className={testingId === source?.id ? "animate-pulse" : "text-volt"} />
+                        {testingId === source?.id ? "Probando conexion" : "Probar conexion"}
+                      </button>
+                      <button
+                        type="button"
                         onClick={() => source && void syncSource(source)}
-                        disabled={!source || syncingId === source.id}
+                        disabled={!source || !source.url || syncingId === source.id || testingId === source.id}
                         className="flex min-h-10 items-center justify-center gap-2 rounded-xl bg-volt/12 text-xs font-black text-volt transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
                       >
                         <RefreshCw size={14} className={syncingId === source?.id ? "animate-spin" : ""} />

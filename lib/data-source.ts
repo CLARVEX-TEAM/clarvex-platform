@@ -10,6 +10,11 @@ export type DataSourceProvider = (typeof dataSourceProviders)[number];
 export type DataSourceStatus = (typeof dataSourceStatuses)[number];
 export type DataSourceFrequency = (typeof dataSourceFrequencies)[number];
 
+export type SheetSummary = {
+  name: string;
+  rowCount: number;
+};
+
 export type DataSourceRecord = {
   id: string;
   type: DataSourceType;
@@ -25,6 +30,7 @@ export type DataSourceRecord = {
     message: string;
     recordsProcessed: number;
     createdAt: string;
+    sheets: SheetSummary[];
   } | null;
 };
 
@@ -60,6 +66,7 @@ type SerializableDataSource = {
 
 export function serializeDataSource(source: SerializableDataSource): DataSourceRecord {
   const latestLog = source.syncLogs?.[0];
+  const logDetails = latestLog ? decodeSyncLogMessage(latestLog.message) : null;
   return {
     id: source.id,
     type: source.type,
@@ -70,8 +77,37 @@ export function serializeDataSource(source: SerializableDataSource): DataSourceR
     frequency: source.frequency,
     lastSyncAt: source.lastSyncAt?.toISOString() ?? null,
     nextSyncAt: source.nextSyncAt?.toISOString() ?? null,
-    latestLog: latestLog ? { ...latestLog, createdAt: latestLog.createdAt.toISOString() } : null
+    latestLog: latestLog && logDetails ? {
+      ...latestLog,
+      message: logDetails.message,
+      sheets: logDetails.sheets,
+      createdAt: latestLog.createdAt.toISOString()
+    } : null
   };
+}
+
+export function encodeSyncLogMessage(message: string, sheets: SheetSummary[] = []) {
+  return JSON.stringify({ message, sheets });
+}
+
+function decodeSyncLogMessage(value: string): { message: string; sheets: SheetSummary[] } {
+  try {
+    const parsed = JSON.parse(value) as { message?: unknown; sheets?: unknown };
+    const sheets = Array.isArray(parsed.sheets)
+      ? parsed.sheets.filter((sheet): sheet is SheetSummary => (
+          typeof sheet === "object" && sheet !== null &&
+          typeof (sheet as SheetSummary).name === "string" &&
+          typeof (sheet as SheetSummary).rowCount === "number"
+        ))
+      : [];
+
+    return {
+      message: typeof parsed.message === "string" ? parsed.message : value,
+      sheets
+    };
+  } catch {
+    return { message: value, sheets: [] };
+  }
 }
 
 export function getNextSyncAt(frequency: DataSourceFrequency, from = new Date()) {

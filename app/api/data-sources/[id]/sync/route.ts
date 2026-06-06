@@ -1,17 +1,11 @@
 import { NextResponse } from "next/server";
 import { isApiError, requireSession } from "@/lib/api";
-import { getNextSyncAt, serializeDataSource } from "@/lib/data-source";
+import { encodeSyncLogMessage, getNextSyncAt, serializeDataSource } from "@/lib/data-source";
+import { downloadWorkbookSummary } from "@/lib/excel-proxy";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
-
-const simulatedRecords = {
-  HORARIOS: 28,
-  KPIS: 15,
-  METAS: 5,
-  COMISIONES: 9,
-  COMUNICADOS: 4
-} as const;
+export const runtime = "nodejs";
 
 export async function POST(_request: Request, { params }: { params: { id: string } }) {
   const session = await requireSession(["GERENTE", "SUBGERENTE"]);
@@ -21,30 +15,29 @@ export async function POST(_request: Request, { params }: { params: { id: string
     where: { id: params.id, storeId: session.storeId }
   });
   if (!source) return NextResponse.json({ error: "Fuente de datos no encontrada." }, { status: 404 });
-  if (source.status === "DISCONNECTED") {
-    return NextResponse.json({ error: "Configura la fuente antes de sincronizar." }, { status: 409 });
-  }
 
   const log = await prisma.syncLog.create({
     data: {
       dataSourceId: source.id,
       status: "RUNNING",
-      message: "Sincronizacion en curso.",
+      message: encodeSyncLogMessage("Sincronizacion en curso."),
       recordsProcessed: 0
     }
   });
 
-  await new Promise((resolve) => setTimeout(resolve, 1000));
-
-  const completedAt = new Date();
-  const nextSyncAt = getNextSyncAt(source.frequency, completedAt);
-  const recordsProcessed = simulatedRecords[source.type];
-
   try {
+    const workbook = await downloadWorkbookSummary(source.url);
+    const completedAt = new Date();
+    const nextSyncAt = getNextSyncAt(source.frequency, completedAt);
+    const successMessage = "Sincronizacion completada";
     const [, updated] = await prisma.$transaction([
       prisma.syncLog.update({
         where: { id: log.id },
-        data: { status: "SUCCESS", message: "Sincronizacion completada", recordsProcessed }
+        data: {
+          status: "SUCCESS",
+          message: encodeSyncLogMessage(successMessage, workbook.sheets),
+          recordsProcessed: workbook.recordsProcessed
+        }
       }),
       prisma.dataSource.update({
         where: { id: source.id },
@@ -54,14 +47,19 @@ export async function POST(_request: Request, { params }: { params: { id: string
     ]);
 
     return NextResponse.json({
-      message: "Sincronizacion completada",
+      message: successMessage,
+      workbook,
       dataSource: serializeDataSource(updated)
     });
-  } catch {
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "No se pudo completar la sincronizacion.";
     await prisma.$transaction([
-      prisma.syncLog.update({ where: { id: log.id }, data: { status: "ERROR", message: "La sincronizacion simulada fallo." } }),
+      prisma.syncLog.update({
+        where: { id: log.id },
+        data: { status: "ERROR", message: encodeSyncLogMessage(errorMessage), recordsProcessed: 0 }
+      }),
       prisma.dataSource.update({ where: { id: source.id }, data: { status: "ERROR" } })
     ]);
-    return NextResponse.json({ error: "No se pudo completar la sincronizacion." }, { status: 500 });
+    return NextResponse.json({ error: errorMessage }, { status: 502 });
   }
 }
