@@ -31,7 +31,7 @@ type Accent = "volt" | "mint" | "ember" | "orchid" | "purple" | "sky";
 
 const accentText: Record<Accent, string> = {
   volt: "text-volt",
-  mint: "text-volt",
+  mint: "text-success",
   ember: "text-ember",
   orchid: "text-orchid",
   purple: "text-purple",
@@ -40,7 +40,7 @@ const accentText: Record<Accent, string> = {
 
 const accentBg: Record<Accent, string> = {
   volt: "bg-volt",
-  mint: "bg-volt",
+  mint: "bg-success",
   ember: "bg-ember",
   orchid: "bg-orchid",
   purple: "bg-purple",
@@ -48,9 +48,9 @@ const accentBg: Record<Accent, string> = {
 };
 
 const badgeTones: Record<Tone, string> = {
-  default: "border-white/10 bg-white/[0.055] text-muted",
-  success: "border-volt/30 bg-volt/12 text-volt",
-  done: "border-volt/30 bg-volt/12 text-volt",
+  default: "border-line bg-slate-50 text-muted",
+  success: "border-success/25 bg-success/10 text-success",
+  done: "border-success/25 bg-success/10 text-success",
   warn: "border-ember/35 bg-ember/12 text-ember",
   danger: "border-orchid/35 bg-orchid/12 text-orchid",
   info: "border-sky-400/25 bg-sky-400/10 text-sky-200"
@@ -64,7 +64,7 @@ export function GlassCard({ children, className = "", ...props }: Omit<HTMLMotio
       animate={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
       whileTap={{ scale: 0.99, y: 1 }}
       transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
-      className={cn("liquid-glass rounded-[26px] p-3.5 shadow-glass", className)}
+      className={cn("liquid-glass rounded-[28px] p-3.5 shadow-glass", className)}
     >
       {children}
     </motion.section>
@@ -94,9 +94,9 @@ export function PremiumButton({
       whileHover={{ y: -1 }}
       className={cn(
         "inline-flex min-h-12 items-center justify-center gap-2 rounded-full px-4 text-sm font-black tracking-[-0.01em] transition focus:outline-none focus:ring-4 focus:ring-volt/20 disabled:cursor-not-allowed disabled:opacity-55",
-        variant === "primary" && "bg-volt text-void shadow-[0_18px_44px_rgb(34_197_94_/_0.26),inset_0_1px_0_rgb(255_255_255_/_0.32)] hover:bg-[#16A34A]",
+        variant === "primary" && "bg-volt text-white shadow-[0_8px_20px_rgb(37_99_235_/_0.22)] hover:bg-[#1D4ED8]",
         variant === "glass" && "liquid-glass text-ink hover:text-volt",
-        variant === "ghost" && "bg-white/[0.045] text-ink hover:bg-white/[0.075]",
+        variant === "ghost" && "bg-slate-100 text-ink hover:bg-blue-50",
         className
       )}
       disabled={loading || disabled}
@@ -132,9 +132,9 @@ export function statusTone(status: PendingStatus): Tone {
 export function ProgressBar({ value, tone = "volt" }: { value: number; tone?: Accent }) {
   const clamped = Math.max(0, Math.min(100, value));
   return (
-    <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/[0.075] shadow-[inset_0_1px_2px_rgb(0_0_0_/_0.26)]">
+    <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-200">
       <motion.div
-        className={cn("h-full rounded-full shadow-[0_0_20px_rgb(34_197_94_/_0.22)]", accentBg[tone])}
+        className={cn("h-full rounded-full", accentBg[tone])}
         initial={{ width: 0 }}
         animate={{ width: `${clamped}%` }}
         transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
@@ -149,9 +149,9 @@ export function ProgressRing({ value, tone = "volt", size = 76 }: { value: numbe
   const circumference = 2 * Math.PI * radius;
 
   return (
-    <div className="relative grid place-items-center rounded-full bg-white/[0.035] shadow-[inset_0_1px_0_rgb(255_255_255_/_0.1)]" style={{ width: size, height: size }}>
-      <svg viewBox="0 0 72 72" className="size-full -rotate-90 drop-shadow-[0_0_18px_rgb(34_197_94_/_0.18)]">
-        <circle cx="36" cy="36" r={radius} fill="none" stroke="currentColor" strokeWidth="7" className="text-white/10" />
+    <div className="relative grid place-items-center rounded-full bg-blue-50" style={{ width: size, height: size }}>
+      <svg viewBox="0 0 72 72" className="size-full -rotate-90">
+        <circle cx="36" cy="36" r={radius} fill="none" stroke="currentColor" strokeWidth="7" className="text-slate-200" />
         <motion.circle
           cx="36"
           cy="36"
@@ -195,7 +195,7 @@ export function KPIStatCard({
     <GlassCard className={cn(compact ? "min-h-[98px] p-3" : "min-h-[142px] p-4")}>
       <div className="flex items-start justify-between gap-2">
         <p className="text-[11px] font-black uppercase tracking-[0.12em] text-muted">{label}</p>
-        {icon ? <span className={cn("grid place-items-center border border-white/10 bg-white/[0.06] shadow-[inset_0_1px_0_rgb(255_255_255_/_0.1)]", compact ? "size-7 rounded-[14px]" : "size-9 rounded-[18px]", accentText[tone])}>{icon}</span> : null}
+        {icon ? <span className={cn("grid place-items-center border border-line bg-blue-50", compact ? "size-7 rounded-[14px]" : "size-9 rounded-[18px]", accentText[tone])}>{icon}</span> : null}
         {!icon && delta ? <StatusBadge tone="success">{delta}</StatusBadge> : null}
       </div>
       <p className={cn("font-black leading-none tracking-[-0.03em]", compact ? "mt-1.5 text-[1.4rem]" : "mt-3 text-[1.72rem]", accentText[tone])}>{value}</p>
@@ -206,7 +206,7 @@ export function KPIStatCard({
             initial={{ height: 4, opacity: 0.35 }}
             animate={{ height: `${height}%`, opacity: 1 }}
             transition={{ delay: index * 0.035, duration: 0.28 }}
-            className={cn("w-full rounded-full bg-white/10", index >= 3 && accentBg[tone])}
+            className={cn("w-full rounded-full bg-slate-200", index >= 3 && accentBg[tone])}
           />
         ))}
       </div>
@@ -267,7 +267,7 @@ export function PinPad({
     <div>
       <div className="mb-4 flex justify-center gap-3">
         {masked.map((filled, index) => (
-          <span key={index} className={cn("size-3 rounded-full border transition", filled ? "border-volt bg-volt shadow-[0_0_18px_rgb(34_197_94_/_0.45)]" : "border-white/18 bg-white/[0.04]")} />
+        <span key={index} className={cn("size-3 rounded-full border transition", filled ? "border-volt bg-volt shadow-[0_0_14px_rgb(37_99_235_/_0.28)]" : "border-line bg-slate-100")} />
         ))}
       </div>
       <div className="grid grid-cols-3 gap-3">
@@ -339,7 +339,7 @@ export function NotificationCard({
   return (
     <GlassCard className={cn("p-3", unread && "border-volt/35 bg-volt/[0.055]")}>
       <div className="flex items-start gap-2.5">
-        <span className={cn("grid size-9 shrink-0 place-items-center rounded-[16px] border border-white/10", unread ? "bg-volt/16 text-volt" : "bg-white/[0.055] text-muted")}>
+        <span className={cn("grid size-9 shrink-0 place-items-center rounded-[16px] border border-line", unread ? "bg-volt/10 text-volt" : "bg-slate-100 text-muted")}>
           <Bell size={16} />
         </span>
         <div className="min-w-0 flex-1">
@@ -372,7 +372,7 @@ export function AppHeader({
   avatar?: string;
 }) {
   return (
-    <header className="sticky top-0 z-20 border-b border-white/[0.055] bg-void/54 px-4 py-1.5 backdrop-blur-[34px]">
+    <header className="sticky top-0 z-20 border-b border-line/80 bg-white/80 px-4 py-1.5 shadow-[0_4px_16px_rgb(15_23_42_/_0.04)] backdrop-blur-xl">
       <div className="mx-auto flex max-w-md items-center justify-between gap-3">
         <div className="flex min-w-0 items-start gap-3">
           {backHref ? (
@@ -412,7 +412,7 @@ export function LiquidBottomNav() {
 
   return (
     <nav className="pointer-events-none fixed inset-x-0 bottom-2 z-30 px-3">
-      <div className="liquid-glass pointer-events-auto mx-auto grid max-w-md grid-cols-5 gap-0.5 rounded-[28px] border-white/18 bg-card/35 p-1 shadow-[0_20px_64px_rgb(0_0_0_/_0.68),0_0_36px_rgb(34_197_94_/_0.05),inset_0_1px_0_rgb(255_255_255_/_0.24)] backdrop-blur-[40px]">
+      <div className="liquid-glass pointer-events-auto mx-auto grid max-w-md grid-cols-5 gap-0.5 rounded-[28px] border-line/80 bg-white/88 p-1 shadow-[0_12px_30px_rgb(15_23_42_/_0.12)] backdrop-blur-xl">
         {navItems.map((item) => {
           const href = item.href === "/manager" ? homeHref : item.href;
           const active = pathname === href || (item.href === "/manager" && (pathname === "/manager" || pathname === "/advisor"));
@@ -425,7 +425,7 @@ export function LiquidBottomNav() {
               {active ? (
                 <motion.span
                   layoutId="bottom-nav-active"
-                  className="absolute inset-0 rounded-[22px] border border-volt/35 bg-volt/18 shadow-[0_0_28px_rgb(34_197_94_/_0.24),inset_0_1px_0_rgb(255_255_255_/_0.26)]"
+                  className="absolute inset-0 rounded-[22px] bg-blue-50 ring-1 ring-volt/20"
                   transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
                 />
               ) : null}
@@ -469,7 +469,7 @@ export function QuickLink({ href, icon: Icon, label, className = "" }: { href: s
 
 export function FloatingActionButton({ href, icon: Icon = Plus, label }: { href: string; icon?: LucideIcon; label: string }) {
   return (
-    <Link href={href} className="fixed bottom-20 right-4 z-20 flex min-h-12 items-center gap-2 rounded-full bg-volt px-4 text-sm font-black text-void shadow-[0_18px_44px_rgb(34_197_94_/_0.3),inset_0_1px_0_rgb(255_255_255_/_0.32)] transition active:scale-95">
+    <Link href={href} className="fixed bottom-20 right-4 z-20 flex min-h-12 items-center gap-2 rounded-full bg-volt px-4 text-sm font-black text-white shadow-[0_8px_20px_rgb(37_99_235_/_0.24)] transition active:scale-95">
       <Icon size={18} />
       {label}
     </Link>

@@ -73,7 +73,7 @@ export default function PlanPage() {
             <button
               key={day}
               onClick={() => setSelectedDay(day)}
-              className={`min-h-10 shrink-0 rounded-full px-3 text-[13px] font-black tracking-[-0.01em] transition active:scale-95 ${selectedDay === day ? "bg-volt text-void shadow-[0_10px_26px_rgb(34_197_94_/_0.22),inset_0_1px_0_rgb(255_255_255_/_0.36)]" : "text-muted hover:text-ink"}`}
+              className={`min-h-10 shrink-0 rounded-full px-3 text-[13px] font-black tracking-[-0.01em] transition active:scale-95 ${selectedDay === day ? "bg-volt text-white shadow-[0_8px_18px_rgb(37_99_235_/_0.2)]" : "text-muted hover:text-ink"}`}
             >
               {day}
             </button>

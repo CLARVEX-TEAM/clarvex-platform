@@ -71,7 +71,7 @@ export default function LoginPage() {
         </div>
 
         <div className={`mb-4 grid gap-2 ${requiresPinSetup ? "grid-cols-5" : "grid-cols-3"}`}>
-          {steps.map((item, index) => <div key={item} className={`h-1.5 rounded-full transition ${index <= activeIndex ? "bg-volt" : "bg-white/10"}`} />)}
+          {steps.map((item, index) => <div key={item} className={`h-1.5 rounded-full transition ${index <= activeIndex ? "bg-volt" : "bg-slate-200"}`} />)}
         </div>
 
         <Card className="space-y-4 overflow-hidden">

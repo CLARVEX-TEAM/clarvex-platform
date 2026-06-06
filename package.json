@@ -13,10 +13,12 @@
     "prisma:seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
+    "@gsap/react": "^2.1.2",
     "@prisma/client": "^5.22.0",
     "bcryptjs": "^2.4.3",
     "clsx": "^2.1.1",
     "framer-motion": "^12.40.0",
+    "gsap": "^3.15.0",
     "jose": "^6.2.3",
     "lucide-react": "^0.468.0",
     "next": "^14.2.18",

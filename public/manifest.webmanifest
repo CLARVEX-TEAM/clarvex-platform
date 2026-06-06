@@ -4,8 +4,8 @@
   "description": "Operacion movil para equipos retail.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0B0F14",
-  "theme_color": "#0B0F14",
+  "background_color": "#F5F8FF",
+  "theme_color": "#F5F8FF",
   "orientation": "portrait",
   "icons": [
     {

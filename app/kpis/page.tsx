@@ -79,12 +79,12 @@ export default function KpisPage() {
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               whileTap={{ scale: 0.96 }}
-              className={`relative min-h-10 shrink-0 rounded-full px-3.5 text-[13px] font-black tracking-[-0.01em] transition ${activeTab === tab.id ? "text-void" : "text-muted hover:text-ink"}`}
+              className={`relative min-h-10 shrink-0 rounded-full px-3.5 text-[13px] font-black tracking-[-0.01em] transition ${activeTab === tab.id ? "text-white" : "text-muted hover:text-ink"}`}
             >
               {activeTab === tab.id ? (
                 <motion.span
                   layoutId="kpi-tab-active"
-                  className="absolute inset-0 rounded-full bg-volt shadow-[0_14px_34px_rgb(34_197_94_/_0.26),inset_0_1px_0_rgb(255_255_255_/_0.36)]"
+                  className="absolute inset-0 rounded-full bg-volt shadow-[0_8px_18px_rgb(37_99_235_/_0.2)]"
                   transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
                 />
               ) : null}
@@ -180,12 +180,12 @@ function VentasView({ activeKpi, chartData, dailyProgress }: { activeKpi: Kpi; c
             <AreaChart data={chartData} margin={{ left: 0, right: 0, top: 8, bottom: 0 }}>
               <defs>
                 <linearGradient id="kpiSales" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#22C55E" stopOpacity={0.5} />
-                  <stop offset="95%" stopColor="#22C55E" stopOpacity={0.02} />
+                  <stop offset="5%" stopColor="#2563EB" stopOpacity={0.34} />
+                  <stop offset="95%" stopColor="#2563EB" stopOpacity={0.02} />
                 </linearGradient>
               </defs>
-              <Tooltip contentStyle={{ background: "#111827", border: "1px solid #1E293B", borderRadius: 16, color: "#F8FAFC" }} />
-              <Area type="monotone" dataKey="venta" stroke="#22C55E" strokeWidth={3} fill="url(#kpiSales)" />
+              <Tooltip contentStyle={{ background: "#FFFFFF", border: "1px solid #E2E8F0", borderRadius: 16, color: "#0F172A", boxShadow: "0 8px 20px rgb(15 23 42 / 0.1)" }} />
+              <Area type="monotone" dataKey="venta" stroke="#2563EB" strokeWidth={3} fill="url(#kpiSales)" />
             </AreaChart>
           </ResponsiveContainer>
         </div>
@@ -255,7 +255,7 @@ function ComisionView({
           onChange={(event) => setSimulatedSales(event.target.value.replace(/[^\d.]/g, ""))}
           inputMode="decimal"
           placeholder={String(activeKpi.dailySales)}
-          className="mt-2 min-h-14 w-full rounded-[24px] border border-white/10 bg-white/[0.055] px-4 text-xl font-black text-ink outline-none transition placeholder:text-muted/45 focus:border-volt focus:ring-4 focus:ring-volt/20"
+          className="mt-2 min-h-14 w-full rounded-[24px] border border-line bg-blue-50 px-4 text-xl font-black text-ink outline-none transition placeholder:text-muted/60 focus:border-volt focus:ring-4 focus:ring-volt/15"
         />
         <div className="mt-4 grid grid-cols-2 gap-3">
           <Mini label="Resultado" value={money(simulatedCommission)} />
@@ -305,9 +305,9 @@ function RankingView({ ranking }: { ranking: Array<{ advisor: User; kpi: Kpi }> 
         <div className="h-28">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={data} margin={{ left: 0, right: 0, top: 8, bottom: 0 }}>
-              <XAxis dataKey="name" tick={{ fill: "#94A3B8", fontSize: 10 }} axisLine={false} tickLine={false} />
-              <Tooltip contentStyle={{ background: "#111827", border: "1px solid #1E293B", borderRadius: 16, color: "#F8FAFC" }} />
-              <Bar dataKey="venta" fill="#22C55E" radius={[10, 10, 10, 10]} />
+              <XAxis dataKey="name" tick={{ fill: "#64748B", fontSize: 10 }} axisLine={false} tickLine={false} />
+              <Tooltip contentStyle={{ background: "#FFFFFF", border: "1px solid #E2E8F0", borderRadius: 16, color: "#0F172A", boxShadow: "0 8px 20px rgb(15 23 42 / 0.1)" }} />
+              <Bar dataKey="venta" fill="#2563EB" radius={[10, 10, 10, 10]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
