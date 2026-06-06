@@ -65,7 +65,7 @@ type SerializableDataSource = {
 };
 
 export function serializeDataSource(source: SerializableDataSource): DataSourceRecord {
-  const latestLog = source.syncLogs?.[0];
+  const latestLog = source.lastSyncAt ? source.syncLogs?.[0] : undefined;
   const logDetails = latestLog ? decodeSyncLogMessage(latestLog.message) : null;
   return {
     id: source.id,

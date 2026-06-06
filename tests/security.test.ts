@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { canAccessAppData, canModifyPending, hashPin, publicUser, verifyPin } from "../lib/security";
+import { encodeSyncLogMessage, serializeDataSource } from "../lib/data-source";
 import type { Session } from "../lib/session-token";
 
 const advisorSession: Session = {
@@ -35,4 +36,26 @@ test("el usuario publico no expone hashes", () => {
   const result = publicUser({ id: "u1", name: "Usuario", employeeNumber: "1", role: "ASESOR" as const, photoUrl: null, biometricEnabled: false, lastLoginAt: null, pinHash: "secret", passwordHash: "secret" });
   assert.equal("pinHash" in result, false);
   assert.equal("passwordHash" in result, false);
+});
+
+test("una fuente sin sincronizacion vigente no expone resultados anteriores", () => {
+  const result = serializeDataSource({
+    id: "source-1",
+    type: "HORARIOS",
+    provider: "EXCEL",
+    name: "Horarios tienda",
+    url: "https://example.com/horarios.xlsx",
+    status: "DISCONNECTED",
+    frequency: "DAILY",
+    lastSyncAt: null,
+    nextSyncAt: null,
+    syncLogs: [{
+      status: "SUCCESS",
+      message: encodeSyncLogMessage("Sincronizacion completada", [{ name: "Hoja1", rowCount: 20 }]),
+      recordsProcessed: 20,
+      createdAt: new Date("2026-01-01T00:00:00.000Z")
+    }]
+  });
+
+  assert.equal(result.latestLog, null);
 });

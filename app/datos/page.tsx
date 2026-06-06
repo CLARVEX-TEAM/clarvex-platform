@@ -69,6 +69,7 @@ export default function DataCenterPage() {
   const [syncingId, setSyncingId] = useState<string | null>(null);
   const [testingId, setTestingId] = useState<string | null>(null);
   const [testedSheets, setTestedSheets] = useState<Record<string, SheetSummary[]>>({});
+  const [testedRecords, setTestedRecords] = useState<Record<string, number>>({});
   const [message, setMessage] = useState("");
 
   useEffect(() => {
@@ -138,6 +139,8 @@ export default function DataCenterPage() {
       });
       const payload = await response.json() as { dataSource?: DataSourceRecord; error?: string };
       if (!response.ok || !payload.dataSource) throw new Error(payload.error ?? "No se pudo guardar la fuente.");
+      setTestedSheets((current) => omitSourceResult(current, payload.dataSource!.id));
+      setTestedRecords((current) => omitSourceResult(current, payload.dataSource!.id));
       await fetchSources();
       setConfig(null);
       setMessage("Configuracion guardada en PostgreSQL.");
@@ -181,6 +184,7 @@ export default function DataCenterPage() {
       }
       setSources((current) => current.map((item) => item.id === source.id ? payload.dataSource! : item));
       setTestedSheets((current) => ({ ...current, [source.id]: payload.workbook!.sheets }));
+      setTestedRecords((current) => ({ ...current, [source.id]: payload.workbook!.recordsProcessed }));
       setMessage(payload.message ?? "Conexion correcta.");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "No se pudo probar la conexion.");
@@ -218,6 +222,10 @@ export default function DataCenterPage() {
             const source = sourceByType.get(type);
             const status = source?.status ?? "DISCONNECTED";
             const sheets = source ? testedSheets[source.id] ?? source.latestLog?.sheets ?? [] : [];
+            const recordsProcessed = source
+              ? testedRecords[source.id] ?? source.latestLog?.recordsProcessed
+              : undefined;
+            const canConnect = Boolean(source?.url && source.provider !== "MANUAL");
             const Icon = item.icon;
             return (
               <Card key={type} className="p-3">
@@ -233,11 +241,21 @@ export default function DataCenterPage() {
                       </div>
                       <SourceStatus status={status} />
                     </div>
-                    <div className="mt-2 grid grid-cols-2 border-y border-white/[0.07] py-2 text-[11px]">
+                    <div className="mt-2 flex items-center gap-2 border-y border-line py-2">
+                      <span className="grid size-8 shrink-0 place-items-center rounded-xl bg-blue-50 text-volt">
+                        <FileSpreadsheet size={15} />
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-muted">Archivo vinculado</p>
+                        <p className="truncate text-xs font-black text-ink/85">{source?.name ?? "Sin archivo configurado"}</p>
+                        {source?.url ? <p className="truncate text-[10px] text-muted">{linkedFileReference(source.url)}</p> : null}
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 py-1 text-[11px]">
                       <DataPoint label="Origen" value={providerLabel(source?.provider ?? "MANUAL")} />
                       <DataPoint label="Ultima sync" value={formatDate(source?.lastSyncAt)} />
-                      <DataPoint label="Proxima sync" value={formatDate(source?.nextSyncAt)} />
-                      <DataPoint label="Frecuencia" value={frequencyLabel(source?.frequency ?? "MANUAL")} />
+                      <DataPoint label="Resultado" value={syncResult(source)} />
+                      <DataPoint label="Registros" value={recordsProcessed !== undefined ? recordsProcessed.toLocaleString("es-MX") : "Sin procesar"} />
                     </div>
                     {sheets.length > 0 ? (
                       <div className="mt-2 rounded-2xl border border-line bg-slate-50 px-3 py-2">
@@ -256,7 +274,7 @@ export default function DataCenterPage() {
                       <button
                         type="button"
                         onClick={() => source && void testConnection(source)}
-                        disabled={!source || !source.url || testingId === source.id || syncingId === source.id}
+                        disabled={!canConnect || testingId === source?.id || syncingId === source?.id}
                         className="col-span-2 flex min-h-10 items-center justify-center gap-2 rounded-xl border border-line bg-white text-xs font-black text-ink/75 transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
                       >
                         <Wifi size={14} className={testingId === source?.id ? "animate-pulse" : "text-volt"} />
@@ -265,7 +283,7 @@ export default function DataCenterPage() {
                       <button
                         type="button"
                         onClick={() => source && void syncSource(source)}
-                        disabled={!source || !source.url || syncingId === source.id || testingId === source.id}
+                        disabled={!canConnect || syncingId === source?.id || testingId === source?.id}
                         className="flex min-h-10 items-center justify-center gap-2 rounded-xl bg-volt/12 text-xs font-black text-volt transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
                       >
                         <RefreshCw size={14} className={syncingId === source?.id ? "animate-spin" : ""} />
@@ -295,7 +313,7 @@ export default function DataCenterPage() {
               <div key={source.id} className="flex items-center justify-between py-2.5 text-sm">
                 <div>
                   <p className="font-bold">{modules[source.type].label}</p>
-                  <p className="text-xs text-muted">{providerLabel(source.provider)}</p>
+                  <p className="max-w-[12rem] truncate text-xs text-muted">{source.name} · {frequencyLabel(source.frequency)}</p>
                 </div>
                 <div className="flex items-center gap-2 text-xs font-bold text-ink/70">
                   {formatDate(source.nextSyncAt)} <ArrowRight size={14} className="text-volt" />
@@ -400,6 +418,29 @@ function providerLabel(provider: DataSourceProvider) {
 
 function frequencyLabel(frequency: DataSourceFrequency) {
   return frequencies.find((item) => item.value === frequency)?.label ?? frequency;
+}
+
+function syncResult(source?: DataSourceRecord) {
+  if (!source?.latestLog) return source?.status === "ERROR" ? "Error de conexion" : "Sin validar";
+  if (source.latestLog.status === "SUCCESS") return "Completado";
+  if (source.latestLog.status === "RUNNING") return "En proceso";
+  return source.latestLog.message || "Error";
+}
+
+function linkedFileReference(value: string) {
+  try {
+    const url = new URL(value);
+    const fileName = decodeURIComponent(url.pathname.split("/").filter(Boolean).at(-1) ?? "");
+    return fileName && fileName.includes(".") ? fileName : url.hostname;
+  } catch {
+    return value;
+  }
+}
+
+function omitSourceResult<T>(values: Record<string, T>, sourceId: string) {
+  const next = { ...values };
+  delete next[sourceId];
+  return next;
 }
 
 function formatDate(value?: string | null) {

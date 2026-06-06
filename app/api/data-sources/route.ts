@@ -30,15 +30,23 @@ export async function POST(request: Request) {
 
   const nextSyncAt = getNextSyncAt(parsed.data.frequency);
   const url = parsed.data.url || null;
+  const existing = await prisma.dataSource.findUnique({
+    where: { storeId_type: { storeId: session.storeId, type: parsed.data.type } }
+  });
+  const fileChanged = Boolean(existing) && (
+    existing?.url !== url || existing?.provider !== parsed.data.provider
+  );
+  const status = existing && !fileChanged ? existing.status : "DISCONNECTED";
   const source = await prisma.dataSource.upsert({
     where: { storeId_type: { storeId: session.storeId, type: parsed.data.type } },
     update: {
       provider: parsed.data.provider,
       name: parsed.data.name,
       url,
-      status: "CONNECTED",
+      status,
       frequency: parsed.data.frequency,
-      nextSyncAt
+      nextSyncAt,
+      ...(fileChanged ? { lastSyncAt: null } : {})
     },
     create: {
       storeId: session.storeId,
@@ -46,7 +54,7 @@ export async function POST(request: Request) {
       provider: parsed.data.provider,
       name: parsed.data.name,
       url,
-      status: "CONNECTED",
+      status,
       frequency: parsed.data.frequency,
       nextSyncAt
     },

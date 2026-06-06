@@ -15,6 +15,9 @@ export async function POST(_request: Request, { params }: { params: { id: string
     where: { id: params.id, storeId: session.storeId }
   });
   if (!source) return NextResponse.json({ error: "Fuente de datos no encontrada." }, { status: 404 });
+  if (source.provider === "MANUAL") {
+    return NextResponse.json({ error: "Selecciona Excel o SharePoint para sincronizar este modulo." }, { status: 409 });
+  }
 
   const log = await prisma.syncLog.create({
     data: {
