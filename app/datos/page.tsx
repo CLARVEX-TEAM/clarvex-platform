@@ -15,11 +15,13 @@ import {
   RefreshCw,
   Settings2,
   Share2,
-  Target
+  Target,
+  X
 } from "lucide-react";
 import { getSession } from "@/lib/auth";
 import {
   dataSourceTypes,
+  type DataSourceFrequency,
   type DataSourceProvider,
   type DataSourceRecord,
   type DataSourceStatus,
@@ -46,7 +48,15 @@ type ConfigState = {
   provider: DataSourceProvider;
   name: string;
   url: string;
+  frequency: DataSourceFrequency;
 };
+
+const frequencies: Array<{ value: DataSourceFrequency; label: string; detail: string }> = [
+  { value: "MANUAL", label: "Manual", detail: "Solo bajo demanda" },
+  { value: "HOURLY", label: "Cada hora", detail: "Actualizacion continua" },
+  { value: "DAILY", label: "Diaria", detail: "Cada 24 horas" },
+  { value: "WEEKLY", label: "Semanal", detail: "Cada 7 dias" }
+];
 
 export default function DataCenterPage() {
   const router = useRouter();
@@ -66,6 +76,20 @@ export default function DataCenterPage() {
       fetchSources();
     });
   }, [router]);
+
+  useEffect(() => {
+    if (!config) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !saving) setConfig(null);
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [config, saving]);
 
   async function fetchSources() {
     setLoading(true);
@@ -91,10 +115,10 @@ export default function DataCenterPage() {
       type,
       provider: source?.provider ?? "MANUAL",
       name: source?.name ?? modules[type].label,
-      url: source?.url ?? ""
+      url: source?.url ?? "",
+      frequency: source?.frequency ?? "MANUAL"
     });
     setMessage("");
-    requestAnimationFrame(() => document.getElementById("source-config")?.scrollIntoView({ behavior: "smooth", block: "center" }));
   }
 
   async function saveSource(event: React.FormEvent<HTMLFormElement>) {
@@ -106,7 +130,7 @@ export default function DataCenterPage() {
       const response = await fetch("/api/data-sources", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...config, url: config.provider === "MANUAL" ? "" : config.url })
+        body: JSON.stringify(config)
       });
       const payload = await response.json() as { dataSource?: DataSourceRecord; error?: string };
       if (!response.ok || !payload.dataSource) throw new Error(payload.error ?? "No se pudo guardar la fuente.");
@@ -182,7 +206,7 @@ export default function DataCenterPage() {
                       <DataPoint label="Origen" value={providerLabel(source?.provider ?? "MANUAL")} />
                       <DataPoint label="Ultima sync" value={formatDate(source?.lastSyncAt)} />
                       <DataPoint label="Proxima sync" value={formatDate(source?.nextSyncAt)} />
-                      <DataPoint label="Registro" value={source?.latestLog ? `${source.latestLog.recordsProcessed} registros` : "Sin actividad"} />
+                      <DataPoint label="Frecuencia" value={frequencyLabel(source?.frequency ?? "MANUAL")} />
                     </div>
                     <div className="mt-2 grid grid-cols-2 gap-2">
                       <button
@@ -204,40 +228,6 @@ export default function DataCenterPage() {
             );
           })}
         </section>
-
-        {config ? (
-          <Card id="source-config" className="mt-3 border-volt/25">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-[11px] font-black uppercase tracking-[0.13em] text-volt">Configurar fuente</p>
-                <h2 className="mt-1 text-lg font-black">{modules[config.type].label}</h2>
-              </div>
-              <button type="button" onClick={() => setConfig(null)} className="text-xs font-black text-muted">Cerrar</button>
-            </div>
-            <form className="mt-3 grid gap-2.5" onSubmit={saveSource}>
-              <div className="grid grid-cols-3 gap-2">
-                {providers.map((provider) => {
-                  const Icon = provider.icon;
-                  return (
-                    <button
-                      key={provider.value}
-                      type="button"
-                      onClick={() => setConfig({ ...config, provider: provider.value, url: provider.value === "MANUAL" ? "" : config.url })}
-                      className={`grid min-h-16 place-items-center rounded-2xl border text-[11px] font-black transition ${config.provider === provider.value ? "border-volt/40 bg-volt/12 text-volt" : "border-white/10 bg-white/[0.04] text-muted"}`}
-                    >
-                      <Icon size={18} />{provider.label}
-                    </button>
-                  );
-                })}
-              </div>
-              <input value={config.name} onChange={(event) => setConfig({ ...config, name: event.target.value })} className="min-h-11 rounded-2xl border border-line bg-panel px-3 outline-none focus:border-volt" placeholder="Nombre de la fuente" required />
-              {config.provider !== "MANUAL" ? (
-                <input type="url" value={config.url} onChange={(event) => setConfig({ ...config, url: event.target.value })} className="min-h-11 rounded-2xl border border-line bg-panel px-3 outline-none focus:border-volt" placeholder="URL de Excel o SharePoint" required />
-              ) : null}
-              <Button type="submit" variant="primary" loading={saving} className="w-full" icon={<Link2 size={17} />}>Guardar vinculacion</Button>
-            </form>
-          </Card>
-        ) : null}
 
         <Card className="mt-3">
           <div className="flex items-center gap-2">
@@ -264,6 +254,75 @@ export default function DataCenterPage() {
           </div>
         </Card>
       </AppFrame>
+      {config ? (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-void/78 px-3 pb-3 pt-16 backdrop-blur-md sm:items-center" onMouseDown={(event) => {
+          if (event.currentTarget === event.target && !saving) setConfig(null);
+        }}>
+          <section role="dialog" aria-modal="true" aria-labelledby="source-config-title" className="liquid-glass max-h-[calc(100dvh-5rem)] w-full max-w-md overflow-y-auto rounded-[30px] border-volt/25 p-4 shadow-[0_32px_100px_rgb(0_0_0_/_0.78)]">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-[11px] font-black uppercase tracking-[0.13em] text-volt">Configurar fuente</p>
+                <h2 id="source-config-title" className="mt-1 text-xl font-black tracking-[-0.03em]">{modules[config.type].label}</h2>
+                <p className="mt-1 text-xs text-muted">Los cambios se guardan para esta tienda.</p>
+              </div>
+              <button type="button" onClick={() => setConfig(null)} disabled={saving} className="grid size-10 shrink-0 place-items-center rounded-[16px] bg-white/[0.06] text-muted transition hover:text-ink disabled:opacity-40" aria-label="Cerrar configuracion">
+                <X size={18} />
+              </button>
+            </div>
+            <form className="mt-4 grid gap-3" onSubmit={saveSource}>
+              <fieldset>
+                <legend className="mb-2 text-xs font-black text-ink/75">Origen de datos</legend>
+                <div className="grid grid-cols-3 gap-2">
+                  {providers.map((provider) => {
+                    const Icon = provider.icon;
+                    return (
+                      <button
+                        key={provider.value}
+                        type="button"
+                        onClick={() => setConfig({ ...config, provider: provider.value })}
+                        className={`grid min-h-16 place-items-center rounded-2xl border text-[11px] font-black transition active:scale-[0.98] ${config.provider === provider.value ? "border-volt/40 bg-volt/12 text-volt" : "border-white/10 bg-white/[0.04] text-muted"}`}
+                        aria-pressed={config.provider === provider.value}
+                      >
+                        <Icon size={18} />{provider.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </fieldset>
+
+              <label className="grid gap-1.5 text-xs font-black text-ink/75">
+                Nombre de la fuente
+                <input autoFocus value={config.name} onChange={(event) => setConfig({ ...config, name: event.target.value })} className="min-h-11 rounded-2xl border border-line bg-panel px-3 text-sm font-semibold text-ink outline-none focus:border-volt focus:ring-4 focus:ring-volt/15" placeholder="Nombre de la fuente" required />
+              </label>
+
+              <label className="grid gap-1.5 text-xs font-black text-ink/75">
+                URL {config.provider === "MANUAL" ? "(opcional)" : ""}
+                <input type="url" value={config.url} onChange={(event) => setConfig({ ...config, url: event.target.value })} className="min-h-11 rounded-2xl border border-line bg-panel px-3 text-sm font-semibold text-ink outline-none focus:border-volt focus:ring-4 focus:ring-volt/15" placeholder="https://..." required={config.provider !== "MANUAL"} />
+              </label>
+
+              <fieldset>
+                <legend className="mb-2 text-xs font-black text-ink/75">Frecuencia de sincronizacion</legend>
+                <div className="grid grid-cols-2 gap-2">
+                  {frequencies.map((frequency) => (
+                    <button
+                      key={frequency.value}
+                      type="button"
+                      onClick={() => setConfig({ ...config, frequency: frequency.value })}
+                      className={`min-h-14 rounded-2xl border px-3 text-left transition active:scale-[0.98] ${config.frequency === frequency.value ? "border-volt/40 bg-volt/12" : "border-white/10 bg-white/[0.04]"}`}
+                      aria-pressed={config.frequency === frequency.value}
+                    >
+                      <span className={`block text-xs font-black ${config.frequency === frequency.value ? "text-volt" : "text-ink"}`}>{frequency.label}</span>
+                      <span className="mt-0.5 block text-[10px] text-muted">{frequency.detail}</span>
+                    </button>
+                  ))}
+                </div>
+              </fieldset>
+
+              <Button type="submit" variant="primary" loading={saving} className="w-full" icon={<Link2 size={17} />}>Guardar configuracion</Button>
+            </form>
+          </section>
+        </div>
+      ) : null}
       <BottomNav />
     </>
   );
@@ -284,6 +343,10 @@ function DataPoint({ label, value }: { label: string; value: string }) {
 
 function providerLabel(provider: DataSourceProvider) {
   return providers.find((item) => item.value === provider)?.label ?? provider;
+}
+
+function frequencyLabel(frequency: DataSourceFrequency) {
+  return frequencies.find((item) => item.value === frequency)?.label ?? frequency;
 }
 
 function formatDate(value?: string | null) {

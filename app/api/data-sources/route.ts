@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { isApiError, parseJson, requireSession } from "@/lib/api";
-import { dataSourceInput, serializeDataSource } from "@/lib/data-source";
+import { dataSourceInput, getNextSyncAt, serializeDataSource } from "@/lib/data-source";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -28,9 +28,7 @@ export async function POST(request: Request) {
   const parsed = await parseJson(request, dataSourceInput);
   if ("response" in parsed) return parsed.response;
 
-  const nextSyncAt = parsed.data.nextSyncAt
-    ? new Date(parsed.data.nextSyncAt)
-    : new Date(Date.now() + 24 * 60 * 60 * 1000);
+  const nextSyncAt = getNextSyncAt(parsed.data.frequency);
   const url = parsed.data.url || null;
   const source = await prisma.dataSource.upsert({
     where: { storeId_type: { storeId: session.storeId, type: parsed.data.type } },
@@ -39,6 +37,7 @@ export async function POST(request: Request) {
       name: parsed.data.name,
       url,
       status: "CONNECTED",
+      frequency: parsed.data.frequency,
       nextSyncAt
     },
     create: {
@@ -48,6 +47,7 @@ export async function POST(request: Request) {
       name: parsed.data.name,
       url,
       status: "CONNECTED",
+      frequency: parsed.data.frequency,
       nextSyncAt
     },
     include: sourceInclude

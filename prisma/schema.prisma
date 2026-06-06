@@ -55,6 +55,13 @@ enum DataSourceStatus {
   ERROR
 }
 
+enum DataSourceFrequency {
+  MANUAL
+  HOURLY
+  DAILY
+  WEEKLY
+}
+
 enum SyncLogStatus {
   SUCCESS
   ERROR
@@ -87,6 +94,7 @@ model DataSource {
   name       String
   url        String?
   status     DataSourceStatus   @default(DISCONNECTED)
+  frequency  DataSourceFrequency @default(MANUAL)
   lastSyncAt DateTime?
   nextSyncAt DateTime?
   syncLogs   SyncLog[]

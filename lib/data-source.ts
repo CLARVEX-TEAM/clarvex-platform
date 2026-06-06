@@ -3,10 +3,12 @@ import { z } from "zod";
 export const dataSourceTypes = ["HORARIOS", "KPIS", "METAS", "COMISIONES", "COMUNICADOS"] as const;
 export const dataSourceProviders = ["MANUAL", "EXCEL", "SHAREPOINT"] as const;
 export const dataSourceStatuses = ["CONNECTED", "DISCONNECTED", "ERROR"] as const;
+export const dataSourceFrequencies = ["MANUAL", "HOURLY", "DAILY", "WEEKLY"] as const;
 
 export type DataSourceType = (typeof dataSourceTypes)[number];
 export type DataSourceProvider = (typeof dataSourceProviders)[number];
 export type DataSourceStatus = (typeof dataSourceStatuses)[number];
+export type DataSourceFrequency = (typeof dataSourceFrequencies)[number];
 
 export type DataSourceRecord = {
   id: string;
@@ -15,6 +17,7 @@ export type DataSourceRecord = {
   name: string;
   url: string | null;
   status: DataSourceStatus;
+  frequency: DataSourceFrequency;
   lastSyncAt: string | null;
   nextSyncAt: string | null;
   latestLog: {
@@ -30,7 +33,7 @@ export const dataSourceInput = z.object({
   provider: z.enum(dataSourceProviders),
   name: z.string().trim().min(2).max(100),
   url: z.union([z.string().trim().url("La URL no es valida."), z.literal("")]).optional(),
-  nextSyncAt: z.string().datetime().nullable().optional()
+  frequency: z.enum(dataSourceFrequencies)
 });
 
 type SerializableDataSource = {
@@ -40,6 +43,7 @@ type SerializableDataSource = {
   name: string;
   url: string | null;
   status: DataSourceStatus;
+  frequency: DataSourceFrequency;
   lastSyncAt: Date | null;
   nextSyncAt: Date | null;
   syncLogs?: Array<{
@@ -59,8 +63,18 @@ export function serializeDataSource(source: SerializableDataSource): DataSourceR
     name: source.name,
     url: source.url,
     status: source.status,
+    frequency: source.frequency,
     lastSyncAt: source.lastSyncAt?.toISOString() ?? null,
     nextSyncAt: source.nextSyncAt?.toISOString() ?? null,
     latestLog: latestLog ? { ...latestLog, createdAt: latestLog.createdAt.toISOString() } : null
   };
+}
+
+export function getNextSyncAt(frequency: DataSourceFrequency, from = new Date()) {
+  const intervals: Record<Exclude<DataSourceFrequency, "MANUAL">, number> = {
+    HOURLY: 60 * 60 * 1000,
+    DAILY: 24 * 60 * 60 * 1000,
+    WEEKLY: 7 * 24 * 60 * 60 * 1000
+  };
+  return frequency === "MANUAL" ? null : new Date(from.getTime() + intervals[frequency]);
 }

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { isApiError, requireSession } from "@/lib/api";
-import { serializeDataSource } from "@/lib/data-source";
+import { getNextSyncAt, serializeDataSource } from "@/lib/data-source";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -37,7 +37,7 @@ export async function POST(_request: Request, { params }: { params: { id: string
   await new Promise((resolve) => setTimeout(resolve, 1000));
 
   const completedAt = new Date();
-  const nextSyncAt = new Date(completedAt.getTime() + 24 * 60 * 60 * 1000);
+  const nextSyncAt = getNextSyncAt(source.frequency, completedAt);
   const recordsProcessed = simulatedRecords[source.type];
 
   try {
