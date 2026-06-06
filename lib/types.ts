@@ -8,6 +8,10 @@ export type User = {
   employeeNumber: string;
   role: Role;
   avatar: string;
+  pinHash?: string | null;
+  photoUrl?: string | null;
+  biometricEnabled?: boolean;
+  lastLoginAt?: string | null;
 };
 
 export type Kpi = {
@@ -22,6 +26,9 @@ export type Kpi = {
   pieces: number;
   transactions: number;
   ranking: number;
+  discountMargin: number;
+  commissionAmount: number;
+  commissionPercent: number;
 };
 
 export type Activity = {
@@ -57,6 +64,7 @@ export type LogEntry = {
   authorId: string;
   category: string;
   description: string;
+  evidenceUrl?: string | null;
 };
 
 export type Announcement = {
@@ -75,4 +83,30 @@ export type ScheduleShift = {
   start: string;
   end: string;
   zone: string;
+};
+
+export type Evidence = {
+  id: string;
+  storeId: string;
+  uploadedById: string;
+  pendingId?: string | null;
+  logEntryId?: string | null;
+  taskId?: string | null;
+  url: string;
+  fileName?: string | null;
+  mimeType?: string | null;
+  note?: string | null;
+  createdAt: string;
+};
+
+export type CommissionRule = {
+  id: string;
+  storeId: string;
+  role?: Role | null;
+  minSales: number;
+  maxSales?: number | null;
+  minAchievement: number;
+  maxAchievement?: number | null;
+  commissionPercent: number;
+  active: boolean;
 };

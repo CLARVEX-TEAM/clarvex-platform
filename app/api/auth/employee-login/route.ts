@@ -18,13 +18,21 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Numero de empleado no encontrado." }, { status: 404 });
   }
 
+  const updatedUser = await prisma.user.update({
+    where: { id: user.id },
+    data: { lastLoginAt: new Date() }
+  });
+
   return NextResponse.json({
     user: {
-      id: user.id,
-      name: user.name,
-      employeeNumber: user.employeeNumber,
-      role: user.role,
-      avatar: user.name.slice(0, 2).toUpperCase()
+      id: updatedUser.id,
+      name: updatedUser.name,
+      employeeNumber: updatedUser.employeeNumber,
+      role: updatedUser.role,
+      avatar: updatedUser.name.slice(0, 2).toUpperCase(),
+      photoUrl: updatedUser.photoUrl,
+      biometricEnabled: updatedUser.biometricEnabled,
+      lastLoginAt: updatedUser.lastLoginAt?.toISOString() ?? null
     }
   });
 }

@@ -22,9 +22,23 @@ export async function POST(request: Request) {
 
   const secret = process.env.JWT_SECRET ?? "clarvex-demo-secret";
   const token = jwt.sign({ sub: user.id, role: user.role, storeId: user.storeId }, secret, { expiresIn: "7d" });
+  const updatedUser = await prisma.user.update({
+    where: { id: user.id },
+    data: { lastLoginAt: new Date() }
+  });
 
   return NextResponse.json({
     token,
-    user: { id: user.id, name: user.name, email: user.email, employeeNumber: user.employeeNumber, role: user.role, storeId: user.storeId }
+    user: {
+      id: updatedUser.id,
+      name: updatedUser.name,
+      email: updatedUser.email,
+      employeeNumber: updatedUser.employeeNumber,
+      role: updatedUser.role,
+      storeId: updatedUser.storeId,
+      photoUrl: updatedUser.photoUrl,
+      biometricEnabled: updatedUser.biometricEnabled,
+      lastLoginAt: updatedUser.lastLoginAt?.toISOString() ?? null
+    }
   });
 }

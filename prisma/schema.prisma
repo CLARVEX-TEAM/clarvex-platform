@@ -45,6 +45,8 @@ model Store {
   pendings       Pending[]
   logEntries     StoreLog[]
   announcements  Announcement[]
+  evidences      Evidence[]
+  commissionRules CommissionRule[]
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
 }
@@ -55,6 +57,10 @@ model User {
   email                 String                 @unique
   employeeNumber        String                 @unique
   passwordHash          String
+  pinHash               String?
+  photoUrl              String?
+  biometricEnabled      Boolean                @default(false)
+  lastLoginAt           DateTime?
   role                  Role
   storeId               String
   store                 Store                  @relation(fields: [storeId], references: [id])
@@ -63,6 +69,7 @@ model User {
   plans                 DayPlan[]
   assignedPendings      Pending[]              @relation("PendingOwner")
   authoredLogs          StoreLog[]
+  evidences             Evidence[]             @relation("EvidenceAuthor")
   authoredAnnouncements Announcement[]
   announcementReads     AnnouncementRead[]
   createdAt             DateTime               @default(now())
@@ -86,6 +93,9 @@ model Kpi {
   pieces         Int
   transactions   Int
   ranking        Int
+  discountMargin Decimal  @default(0) @db.Decimal(5, 2)
+  commissionAmount Decimal @default(0) @db.Decimal(12, 2)
+  commissionPercent Decimal @default(0) @db.Decimal(5, 2)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 }
@@ -115,20 +125,23 @@ model DayPlan {
   dailyGoal Decimal    @db.Decimal(12, 2)
   focus     String
   message   String
-  activities Activity[]
+  activities DayPlanTask[]
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
 }
 
-model Activity {
+model DayPlanTask {
   id          String   @id @default(cuid())
   planId      String
   plan        DayPlan  @relation(fields: [planId], references: [id], onDelete: Cascade)
   title       String
   completed   Boolean  @default(false)
   completedAt DateTime?
+  evidences   Evidence[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  @@map("Activity")
 }
 
 model Pending {
@@ -143,6 +156,7 @@ model Pending {
   owner       User            @relation("PendingOwner", fields: [ownerId], references: [id])
   status      PendingStatus   @default(PENDIENTE)
   dueDate     DateTime
+  evidences   Evidence[]
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt
 }
@@ -156,7 +170,42 @@ model StoreLog {
   category    String
   description String
   evidenceUrl String?
+  evidences   Evidence[]
   createdAt   DateTime @default(now())
+}
+
+model Evidence {
+  id           String       @id @default(cuid())
+  storeId      String
+  store        Store        @relation(fields: [storeId], references: [id])
+  uploadedById String
+  uploadedBy   User         @relation("EvidenceAuthor", fields: [uploadedById], references: [id])
+  pendingId    String?
+  pending      Pending?     @relation(fields: [pendingId], references: [id], onDelete: Cascade)
+  logEntryId   String?
+  logEntry     StoreLog?    @relation(fields: [logEntryId], references: [id], onDelete: Cascade)
+  taskId       String?
+  task         DayPlanTask? @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  url          String
+  fileName     String?
+  mimeType     String?
+  note         String?
+  createdAt    DateTime     @default(now())
+}
+
+model CommissionRule {
+  id                String   @id @default(cuid())
+  storeId           String
+  store             Store    @relation(fields: [storeId], references: [id])
+  role              Role?
+  minSales          Decimal  @default(0) @db.Decimal(12, 2)
+  maxSales          Decimal? @db.Decimal(12, 2)
+  minAchievement    Decimal  @default(0) @db.Decimal(5, 2)
+  maxAchievement    Decimal? @db.Decimal(5, 2)
+  commissionPercent Decimal  @default(0) @db.Decimal(5, 2)
+  active            Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 }
 
 model Announcement {

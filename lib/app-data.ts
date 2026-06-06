@@ -1,4 +1,4 @@
-import type { Announcement, DayPlan, Kpi, LogEntry, Pending, ScheduleShift, User } from "@/lib/types";
+import type { Announcement, CommissionRule, DayPlan, Evidence, Kpi, LogEntry, Pending, ScheduleShift, User } from "@/lib/types";
 
 export type AppData = {
   users: User[];
@@ -8,6 +8,8 @@ export type AppData = {
   logEntries: LogEntry[];
   announcements: Announcement[];
   schedules: ScheduleShift[];
+  evidences: Evidence[];
+  commissionRules: CommissionRule[];
 };
 
 export async function fetchAppData(): Promise<AppData> {

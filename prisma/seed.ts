@@ -23,11 +23,13 @@ async function main() {
   for (const [id, name, email, employeeNumber, role] of people) {
     await prisma.user.upsert({
       where: { email },
-      update: { name, employeeNumber, role, storeId: store.id },
-      create: { id, name, email, employeeNumber, role, passwordHash, storeId: store.id }
+      update: { name, employeeNumber, role, storeId: store.id, biometricEnabled: false },
+      create: { id, name, email, employeeNumber, role, passwordHash, pinHash: null, photoUrl: null, biometricEnabled: false, storeId: store.id }
     });
   }
 
+  await prisma.evidence.deleteMany({ where: { storeId: store.id } });
+  await prisma.commissionRule.deleteMany({ where: { storeId: store.id } });
   await prisma.kpi.deleteMany({ where: { storeId: store.id } });
   await prisma.pending.deleteMany({ where: { storeId: store.id } });
   await prisma.schedule.deleteMany({ where: { storeId: store.id } });
@@ -38,11 +40,19 @@ async function main() {
   const today = new Date("2026-06-05T12:00:00.000Z");
   await prisma.kpi.createMany({
     data: [
-      { userId: "itzel", storeId: store.id, date: today, dailySales: 49750, monthlySales: 694200, dailyGoal: 64000, monthlyGoal: 1080000, avgTicket: 1642, upt: 2.3, conversion: 30, pieces: 67, transactions: 30, ranking: 0 },
-      { userId: "waira", storeId: store.id, date: today, dailySales: 18400, monthlySales: 256800, dailyGoal: 22000, monthlyGoal: 360000, avgTicket: 1840, upt: 2.7, conversion: 34, pieces: 27, transactions: 10, ranking: 1 },
-      { userId: "jazmin", storeId: store.id, date: today, dailySales: 16250, monthlySales: 231400, dailyGoal: 21000, monthlyGoal: 345000, avgTicket: 1477, upt: 2.2, conversion: 29, pieces: 24, transactions: 11, ranking: 2 },
-      { userId: "alonso", storeId: store.id, date: today, dailySales: 13100, monthlySales: 204900, dailyGoal: 20500, monthlyGoal: 330000, avgTicket: 1638, upt: 2.0, conversion: 25, pieces: 16, transactions: 8, ranking: 3 },
-      { userId: "adrian", storeId: store.id, date: today, dailySales: 49750, monthlySales: 694200, dailyGoal: 64000, monthlyGoal: 1080000, avgTicket: 1642, upt: 2.3, conversion: 30, pieces: 67, transactions: 30, ranking: 0 }
+      { userId: "itzel", storeId: store.id, date: today, dailySales: 49750, monthlySales: 694200, dailyGoal: 64000, monthlyGoal: 1080000, avgTicket: 1642, upt: 2.3, conversion: 30, pieces: 67, transactions: 30, ranking: 0, discountMargin: 9, commissionAmount: 0, commissionPercent: 0 },
+      { userId: "waira", storeId: store.id, date: today, dailySales: 18400, monthlySales: 256800, dailyGoal: 22000, monthlyGoal: 360000, avgTicket: 1840, upt: 2.7, conversion: 34, pieces: 27, transactions: 10, ranking: 1, discountMargin: 8, commissionAmount: 552, commissionPercent: 3 },
+      { userId: "jazmin", storeId: store.id, date: today, dailySales: 16250, monthlySales: 231400, dailyGoal: 21000, monthlyGoal: 345000, avgTicket: 1477, upt: 2.2, conversion: 29, pieces: 24, transactions: 11, ranking: 2, discountMargin: 10, commissionAmount: 406.25, commissionPercent: 2.5 },
+      { userId: "alonso", storeId: store.id, date: today, dailySales: 13100, monthlySales: 204900, dailyGoal: 20500, monthlyGoal: 330000, avgTicket: 1638, upt: 2.0, conversion: 25, pieces: 16, transactions: 8, ranking: 3, discountMargin: 12, commissionAmount: 262, commissionPercent: 2 },
+      { userId: "adrian", storeId: store.id, date: today, dailySales: 49750, monthlySales: 694200, dailyGoal: 64000, monthlyGoal: 1080000, avgTicket: 1642, upt: 2.3, conversion: 30, pieces: 67, transactions: 30, ranking: 0, discountMargin: 9, commissionAmount: 0, commissionPercent: 0 }
+    ]
+  });
+
+  await prisma.commissionRule.createMany({
+    data: [
+      { storeId: store.id, role: Role.ASESOR, minSales: 0, maxSales: 14999, minAchievement: 0, maxAchievement: 79.99, commissionPercent: 1.5 },
+      { storeId: store.id, role: Role.ASESOR, minSales: 15000, maxSales: 24999, minAchievement: 80, maxAchievement: 99.99, commissionPercent: 2.5 },
+      { storeId: store.id, role: Role.ASESOR, minSales: 25000, minAchievement: 100, commissionPercent: 3.5 }
     ]
   });
 
@@ -80,8 +90,20 @@ async function main() {
     ]
   });
 
-  await prisma.storeLog.create({
+  const logEntry = await prisma.storeLog.create({
     data: { storeId: store.id, authorId: "adrian", category: "Apertura", description: "Equipo completo, piso listo y caja verificada sin diferencias." }
+  });
+
+  await prisma.evidence.create({
+    data: {
+      storeId: store.id,
+      uploadedById: "adrian",
+      logEntryId: logEntry.id,
+      url: "/demo/evidencia-apertura.jpg",
+      fileName: "evidencia-apertura.jpg",
+      mimeType: "image/jpeg",
+      note: "Referencia demo para futuras cargas de evidencia."
+    }
   });
 
   const announcement = await prisma.announcement.create({

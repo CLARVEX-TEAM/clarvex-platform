@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 export async function PATCH(request: Request, { params }: { params: { id: string } }) {
   const { completed } = await request.json();
 
-  const activity = await prisma.activity.update({
+  const activity = await prisma.dayPlanTask.update({
     where: { id: params.id },
     data: {
       completed: Boolean(completed),
