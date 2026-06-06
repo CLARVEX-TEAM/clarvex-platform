@@ -38,35 +38,39 @@ export async function POST(_request: Request, { params }: { params: { id: string
     const completedAt = new Date();
     const nextSyncAt = getNextSyncAt(source.frequency, completedAt);
     const successMessage = scheduleMetrics
-      ? `Horarios sincronizados: ${scheduleMetrics.recordsCreated} creados, ${scheduleMetrics.recordsUpdated} actualizados.`
+      ? `Horarios sincronizados: ${scheduleMetrics.recordsCreated} creados, ${scheduleMetrics.recordsUpdated} actualizados, ${scheduleMetrics.errors.length} errores.`
       : "Sincronizacion completada";
     const recordsProcessed = scheduleMetrics
-      ? scheduleMetrics.recordsCreated + scheduleMetrics.recordsUpdated
+      ? scheduleMetrics.recordsProcessed
       : workbook.recordsProcessed;
-    const [, updated] = await prisma.$transaction([
-      prisma.syncLog.update({
-        where: { id: log.id },
-        data: {
-          status: "SUCCESS",
-          message: encodeSyncLogMessage(successMessage, workbook.sheets, scheduleMetrics),
-          recordsProcessed
-        }
-      }),
-      prisma.dataSource.update({
-        where: { id: source.id },
-        data: { status: "CONNECTED", lastSyncAt: completedAt, nextSyncAt },
-        include: { syncLogs: { orderBy: { createdAt: "desc" }, take: 1 } }
-      })
-    ]);
+    await prisma.syncLog.update({
+      where: { id: log.id },
+      data: {
+        status: "SUCCESS",
+        message: encodeSyncLogMessage(successMessage, workbook.sheets, scheduleMetrics),
+        recordsProcessed
+      }
+    });
+    const updated = await prisma.dataSource.update({
+      where: { id: source.id },
+      data: { status: "CONNECTED", lastSyncAt: completedAt, nextSyncAt },
+      include: { syncLogs: { orderBy: { createdAt: "desc" }, take: 1 } }
+    });
 
     return NextResponse.json({
       message: successMessage,
       workbook,
+      ...(scheduleMetrics ? {
+        registrosProcesados: scheduleMetrics.recordsProcessed,
+        registrosCreados: scheduleMetrics.recordsCreated,
+        registrosActualizados: scheduleMetrics.recordsUpdated,
+        errores: scheduleMetrics.errors
+      } : {}),
       dataSource: serializeDataSource(updated)
     });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : "No se pudo completar la sincronizacion.";
-    await prisma.$transaction([
+    await Promise.allSettled([
       prisma.syncLog.update({
         where: { id: log.id },
         data: { status: "ERROR", message: encodeSyncLogMessage(errorMessage), recordsProcessed: 0 }
@@ -105,33 +109,51 @@ async function importSchedules(workbook: Parameters<typeof parseScheduleWorkbook
       })
     : [];
   const existingKeys = new Set(existing.map((schedule) => `${schedule.userId}:${schedule.date.toISOString()}`));
-  const recordsUpdated = matchedRecords.filter((record) => existingKeys.has(`${record.userId}:${record.date.toISOString()}`)).length;
-  const recordsCreated = matchedRecords.length - recordsUpdated;
+  let recordsCreated = 0;
+  let recordsUpdated = 0;
+  const errors: string[] = [];
 
-  await prisma.$transaction(async (transaction) => {
-    for (const record of matchedRecords) {
-      const data = {
-        storeId,
-        day: record.day,
-        status: record.status,
-        statusRaw: record.statusRaw,
-        startTime: null,
-        endTime: null,
-        weekStart: record.weekStart
-      };
-      await transaction.schedule.upsert({
+  for (const record of matchedRecords) {
+    console.log("Procesando empleado", record.employeeNumber);
+    console.log("Fecha", record.date.toISOString());
+    const existingKey = `${record.userId}:${record.date.toISOString()}`;
+    const data = {
+      storeId,
+      day: record.day,
+      status: record.status,
+      statusRaw: record.statusRaw,
+      startTime: null,
+      endTime: null,
+      weekStart: record.weekStart
+    };
+
+    try {
+      await prisma.schedule.upsert({
         where: { userId_date: { userId: record.userId, date: record.date } },
         update: data,
         create: { ...data, userId: record.userId, date: record.date }
       });
+      if (existingKeys.has(existingKey)) {
+        recordsUpdated += 1;
+      } else {
+        recordsCreated += 1;
+        existingKeys.add(existingKey);
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Error desconocido";
+      const rowError = `Empleado ${record.employeeNumber}, fecha ${record.date.toISOString().slice(0, 10)}: ${message}`;
+      console.error("Error procesando horario:", rowError);
+      errors.push(rowError);
     }
-  });
+  }
 
   return {
     weeksProcessed: parsed.weeks.length,
     employeesFound: users.length,
+    recordsProcessed: matchedRecords.length,
     recordsCreated,
     recordsUpdated,
+    errors,
     employeesNotFound,
     unknownValues: parsed.unknownValues
   };

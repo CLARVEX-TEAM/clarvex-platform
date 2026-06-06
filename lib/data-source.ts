@@ -18,8 +18,10 @@ export type SheetSummary = {
 export type ScheduleSyncMetrics = {
   weeksProcessed: number;
   employeesFound: number;
+  recordsProcessed: number;
   recordsCreated: number;
   recordsUpdated: number;
+  errors: string[];
   employeesNotFound: string[];
   unknownValues: Record<string, number>;
 };
