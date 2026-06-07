@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { isApiError, parseJson, requireSession } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
+import { createNotifications } from "@/lib/notifications";
 
 export const dynamic = "force-dynamic";
 
@@ -10,6 +11,17 @@ export async function POST(request: Request) {
   if (isApiError(session)) return session;
   const parsed = await parseJson(request, z.object({ title: z.string().trim().min(3).max(120), body: z.string().trim().min(3).max(2000) }));
   if ("response" in parsed) return parsed.response;
-  const announcement = await prisma.announcement.create({ data: { storeId: session.storeId, authorId: session.userId, ...parsed.data }, include: { reads: true } });
+  const announcement = await prisma.$transaction(async (tx) => {
+    const created = await tx.announcement.create({ data: { storeId: session.storeId, authorId: session.userId, ...parsed.data }, include: { reads: true } });
+    const advisors = await tx.user.findMany({ where: { storeId: session.storeId, role: "ASESOR" }, select: { id: true } });
+    await createNotifications(tx, advisors.map((advisor) => ({
+      storeId: session.storeId,
+      userId: advisor.id,
+      type: "NEW_ANNOUNCEMENT",
+      title: "Nuevo comunicado",
+      body: created.title
+    })));
+    return created;
+  });
   return NextResponse.json({ announcement: { id: announcement.id, title: announcement.title, body: announcement.body, authorId: announcement.authorId, date: announcement.createdAt.toISOString().slice(0, 10), readBy: [] } }, { status: 201 });
 }

@@ -78,6 +78,14 @@ enum ScheduleStatus {
   TERMINATED
 }
 
+enum NotificationType {
+  PLAN_READY
+  NEW_ANNOUNCEMENT
+  PENDING_ASSIGNED
+  TASK_COMPLETED
+  KPI_GOAL_REACHED
+}
+
 model Store {
   id             String         @id @default(cuid())
   name           String
@@ -91,6 +99,7 @@ model Store {
   evidences      Evidence[]
   commissionRules CommissionRule[]
   dataSources     DataSource[]
+  notifications   Notification[]
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
 }
@@ -149,8 +158,25 @@ model User {
   authoredAnnouncements Announcement[]
   announcementReads     AnnouncementRead[]
   employeeNumberAliases EmployeeNumberAlias[]
+  notifications         Notification[]
   createdAt             DateTime               @default(now())
   updatedAt             DateTime               @updatedAt
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  storeId   String
+  store     Store            @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      NotificationType
+  title     String
+  body      String
+  readAt    DateTime?
+  createdAt DateTime         @default(now())
+
+  @@index([userId, readAt, createdAt])
+  @@index([storeId, createdAt])
 }
 
 model EmployeeNumberAlias {

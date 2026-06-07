@@ -347,9 +347,34 @@ export function AppHeader({
             <p className="text-[11px] leading-4 text-muted">{subtitle}</p>
           </div>
         </div>
-        {action}
+        <div className="flex shrink-0 items-center gap-1.5">
+          <NotificationBell />
+          {action}
+        </div>
       </div>
     </header>
+  );
+}
+
+function NotificationBell() {
+  const pathname = usePathname();
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    const loadCount = () => fetch("/api/notifications?limit=1", { cache: "no-store" })
+      .then(async (response) => response.ok ? response.json() as Promise<{ unreadCount: number }> : { unreadCount: 0 })
+      .then((payload) => setUnreadCount(payload.unreadCount))
+      .catch(() => setUnreadCount(0));
+    void loadCount();
+    window.addEventListener("notifications-updated", loadCount);
+    return () => window.removeEventListener("notifications-updated", loadCount);
+  }, [pathname]);
+
+  return (
+    <Link href="/notificaciones" aria-label={unreadCount ? `${unreadCount} notificaciones no leidas` : "Abrir notificaciones"} className="liquid-glass relative grid size-11 place-items-center rounded-[22px] text-ink/62 transition active:scale-95">
+      <Bell size={18} />
+      {unreadCount > 0 ? <span className="absolute right-1.5 top-1.5 grid min-w-4 place-items-center rounded-full bg-rose-500 px-1 text-[9px] font-black leading-4 text-white">{unreadCount > 99 ? "99+" : unreadCount}</span> : null}
+    </Link>
   );
 }
 
