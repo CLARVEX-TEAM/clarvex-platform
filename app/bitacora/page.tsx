@@ -1,19 +1,27 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { BookOpen, CalendarClock, FileText, PenLine } from "lucide-react";
+import Image from "next/image";
+import { useEffect, useMemo, useState } from "react";
+import { BookOpen, CalendarClock, FileText, ImagePlus, PenLine, X } from "lucide-react";
 import { fetchAppData, type AppData } from "@/lib/app-data";
 import { AppFrame, AppHeader, Badge, BottomNav, Button, Card, StatCard } from "@/components/ui";
+import { ResourceDiscussion } from "@/components/ResourceDiscussion";
 
 export default function BitacoraPage() {
   const [data, setData] = useState<AppData | null>(null);
   const [category, setCategory] = useState("Apertura");
   const [description, setDescription] = useState("");
+  const [comment, setComment] = useState("");
+  const [evidence, setEvidence] = useState<File | null>(null);
+  const [evidenceNote, setEvidenceNote] = useState("");
   const [formStatus, setFormStatus] = useState("");
+  const preview = useMemo(() => evidence ? URL.createObjectURL(evidence) : null, [evidence]);
 
   useEffect(() => {
     fetchAppData().then(setData).catch(() => setData(null));
   }, []);
+
+  useEffect(() => () => { if (preview) URL.revokeObjectURL(preview); }, [preview]);
 
   if (!data) {
     return (
@@ -36,8 +44,20 @@ export default function BitacoraPage() {
     const response = await fetch("/api/logs", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ category, description }) });
     const payload = await response.json() as { logEntry?: AppData["logEntries"][number]; error?: string };
     if (!response.ok || !payload.logEntry) { setFormStatus(payload.error ?? "No se pudo guardar el registro."); return; }
+    if (comment.trim()) {
+      const commentResponse = await fetch("/api/comments", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ logEntryId: payload.logEntry.id, body: comment }) });
+      if (!commentResponse.ok) return setFormStatus("Registro guardado, pero el comentario no pudo guardarse.");
+    }
+    if (evidence) {
+      const form = new FormData();
+      form.set("file", evidence);
+      form.set("note", evidenceNote);
+      form.set("logEntryId", payload.logEntry.id);
+      const evidenceResponse = await fetch("/api/evidences/upload", { method: "POST", body: form });
+      if (!evidenceResponse.ok) return setFormStatus("Registro guardado, pero la evidencia no pudo subirse.");
+    }
     setData({ ...data, logEntries: [...data.logEntries, payload.logEntry] });
-    setDescription(""); setFormStatus("Registro guardado.");
+    setDescription(""); setComment(""); setEvidence(null); setEvidenceNote(""); setFormStatus("Registro guardado.");
   }
 
   return (
@@ -77,6 +97,18 @@ export default function BitacoraPage() {
               <option>Apertura</option><option>Cliente</option><option>Inventario</option><option>Equipo</option><option>Cierre</option>
             </select>
             <textarea value={description} onChange={(event) => setDescription(event.target.value)} className="min-h-20 rounded-2xl border border-line/80 bg-panel/75 px-3 py-2.5 text-ink outline-none transition placeholder:text-ink/34 focus:border-volt focus:ring-4 focus:ring-volt/15" placeholder="Descripcion del registro" required />
+            <textarea value={comment} onChange={(event) => setComment(event.target.value)} maxLength={1000} className="min-h-16 rounded-2xl border border-line/80 bg-panel/75 px-3 py-2.5 text-ink outline-none transition placeholder:text-ink/34 focus:border-volt focus:ring-4 focus:ring-volt/15" placeholder="Comentario adicional (opcional)" />
+            {preview ? (
+              <div className="relative h-40 overflow-hidden rounded-2xl bg-slate-100">
+                <Image src={preview} alt="Vista previa de evidencia" fill sizes="360px" className="object-cover" unoptimized />
+                <button type="button" onClick={() => setEvidence(null)} className="absolute right-2 top-2 grid size-9 place-items-center rounded-full bg-white/90" aria-label="Quitar evidencia"><X size={16} /></button>
+              </div>
+            ) : null}
+            <label className="flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-2xl border border-line bg-panel text-sm font-black text-ink">
+              <ImagePlus size={17} /> {evidence ? "Cambiar evidencia" : "Agregar evidencia"}
+              <input type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={(event) => setEvidence(event.target.files?.[0] ?? null)} />
+            </label>
+            {evidence ? <input value={evidenceNote} onChange={(event) => setEvidenceNote(event.target.value)} maxLength={500} className="min-h-12 rounded-2xl border border-line bg-panel px-3 outline-none focus:border-volt" placeholder="Nota de evidencia (opcional)" /> : null}
             {formStatus ? <p className="text-sm font-semibold text-muted">{formStatus}</p> : null}
             <Button type="submit" className="w-full" icon={<FileText size={17} />}>
               Guardar registro
@@ -99,6 +131,7 @@ export default function BitacoraPage() {
                   </div>
                   <p className="mt-2 text-[13px] leading-5 text-ink/80">{entry.description}</p>
                   <p className="mt-1 text-xs font-semibold text-mint">{index + 1}. {userName(entry.authorId)}</p>
+                  <ResourceDiscussion target={{ logEntryId: entry.id }} />
                 </div>
               </div>
             </Card>

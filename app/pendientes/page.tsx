@@ -6,6 +6,7 @@ import { fetchAppData, type AppData } from "@/lib/app-data";
 import { getSession } from "@/lib/auth";
 import type { Pending, User } from "@/lib/types";
 import { AppFrame, AppHeader, Badge, BottomNav, Card, FloatingActionButton, PremiumButton, priorityTone, statusTone } from "@/components/ui";
+import { ResourceDiscussion } from "@/components/ResourceDiscussion";
 
 type Filter = "todos" | "urgentes" | "hoy";
 
@@ -167,6 +168,7 @@ export default function PendientesPage() {
                 <Info label="Limite" value={pending.dueDate} />
               </div>
               {!isAdvisor ? <div className="mt-2.5 grid grid-cols-2 gap-2"><button onClick={() => editPending(pending)} className="min-h-10 rounded-xl bg-slate-100 text-sm font-black">Editar</button><select value={pending.status === "en proceso" ? "EN_PROCESO" : pending.status.toUpperCase()} onChange={(event) => void changeStatus(pending.id, event.target.value as "PENDIENTE" | "EN_PROCESO" | "COMPLETADO")} className="min-h-10 rounded-xl border border-line bg-panel px-3 text-sm font-black"><option value="PENDIENTE">Pendiente</option><option value="EN_PROCESO">En proceso</option><option value="COMPLETADO">Cerrar</option></select></div> : null}
+              <ResourceDiscussion target={{ pendingId: pending.id }} />
             </Card>
           ))}
           {visiblePendings.length === 0 ? (

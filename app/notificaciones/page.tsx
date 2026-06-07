@@ -1,12 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Bell, Check, CheckCheck, ClipboardCheck, Megaphone, Target, Trophy } from "lucide-react";
+import { Bell, Check, CheckCheck, ClipboardCheck, ImagePlus, Megaphone, MessageCircle, Target, Trophy } from "lucide-react";
 import { getSession } from "@/lib/auth";
 import type { User } from "@/lib/types";
 import { AppFrame, AppHeader, Badge, BottomNav, Button, Card } from "@/components/ui";
 
-type NotificationType = "PLAN_READY" | "NEW_ANNOUNCEMENT" | "PENDING_ASSIGNED" | "TASK_COMPLETED" | "KPI_GOAL_REACHED";
+type NotificationType = "PLAN_READY" | "NEW_ANNOUNCEMENT" | "PENDING_ASSIGNED" | "TASK_COMPLETED" | "KPI_GOAL_REACHED" | "COMMENT_ADDED" | "EVIDENCE_ADDED";
 type NotificationItem = { id: string; type: NotificationType; title: string; body: string; readAt: string | null; createdAt: string };
 
 const typeConfig = {
@@ -14,7 +14,9 @@ const typeConfig = {
   NEW_ANNOUNCEMENT: { label: "Comunicado", icon: Megaphone, tone: "warn" as const },
   PENDING_ASSIGNED: { label: "Pendiente", icon: Bell, tone: "danger" as const },
   TASK_COMPLETED: { label: "Tarea", icon: Check, tone: "success" as const },
-  KPI_GOAL_REACHED: { label: "Meta KPI", icon: Trophy, tone: "success" as const }
+  KPI_GOAL_REACHED: { label: "Meta KPI", icon: Trophy, tone: "success" as const },
+  COMMENT_ADDED: { label: "Comentario", icon: MessageCircle, tone: "default" as const },
+  EVIDENCE_ADDED: { label: "Evidencia", icon: ImagePlus, tone: "success" as const }
 };
 
 export default function NotificationsPage() {

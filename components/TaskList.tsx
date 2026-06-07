@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { TaskItem } from "@/components/ui";
 import type { Activity } from "@/lib/types";
+import { ResourceDiscussion } from "@/components/ResourceDiscussion";
 
 export function TaskList({ activities }: { activities: Activity[] }) {
   const [items, setItems] = useState(activities);
@@ -10,10 +11,10 @@ export function TaskList({ activities }: { activities: Activity[] }) {
   return (
     <div className="space-y-2">
       {items.map((activity) => (
-        <TaskItem
-          key={activity.id}
-          activity={activity}
-          onToggle={async (completed) => {
+        <div key={activity.id}>
+          <TaskItem
+            activity={activity}
+            onToggle={async (completed) => {
             const previous = items;
             setItems((current) => current.map((item) => (item.id === activity.id ? { ...item, completed } : item)));
             try {
@@ -22,8 +23,10 @@ export function TaskList({ activities }: { activities: Activity[] }) {
             } catch {
               setItems(previous);
             }
-          }}
-        />
+            }}
+          />
+          <ResourceDiscussion target={{ taskId: activity.id }} />
+        </div>
       ))}
     </div>
   );

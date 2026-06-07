@@ -84,6 +84,8 @@ enum NotificationType {
   PENDING_ASSIGNED
   TASK_COMPLETED
   KPI_GOAL_REACHED
+  COMMENT_ADDED
+  EVIDENCE_ADDED
 }
 
 model Store {
@@ -100,6 +102,7 @@ model Store {
   commissionRules CommissionRule[]
   dataSources     DataSource[]
   notifications   Notification[]
+  comments        Comment[]
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
 }
@@ -159,6 +162,7 @@ model User {
   announcementReads     AnnouncementRead[]
   employeeNumberAliases EmployeeNumberAlias[]
   notifications         Notification[]
+  comments              Comment[]              @relation("CommentAuthor")
   createdAt             DateTime               @default(now())
   updatedAt             DateTime               @updatedAt
 }
@@ -268,6 +272,7 @@ model DayPlanTask {
   completed   Boolean  @default(false)
   completedAt DateTime?
   evidences   Evidence[]
+  comments    Comment[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -287,6 +292,7 @@ model Pending {
   status      PendingStatus   @default(PENDIENTE)
   dueDate     DateTime
   evidences   Evidence[]
+  comments    Comment[]
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt
 }
@@ -301,6 +307,7 @@ model StoreLog {
   description String
   evidenceUrl String?
   evidences   Evidence[]
+  comments    Comment[]
   createdAt   DateTime @default(now())
 }
 
@@ -321,6 +328,31 @@ model Evidence {
   mimeType     String?
   note         String?
   createdAt    DateTime     @default(now())
+
+  @@index([storeId, pendingId])
+  @@index([storeId, taskId])
+  @@index([storeId, logEntryId])
+}
+
+model Comment {
+  id         String       @id @default(cuid())
+  storeId    String
+  store      Store        @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  authorId   String
+  author     User         @relation("CommentAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  pendingId  String?
+  pending    Pending?     @relation(fields: [pendingId], references: [id], onDelete: Cascade)
+  taskId     String?
+  task       DayPlanTask? @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  logEntryId String?
+  logEntry   StoreLog?    @relation(fields: [logEntryId], references: [id], onDelete: Cascade)
+  body       String
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+
+  @@index([storeId, pendingId, createdAt])
+  @@index([storeId, taskId, createdAt])
+  @@index([storeId, logEntryId, createdAt])
 }
 
 model CommissionRule {
