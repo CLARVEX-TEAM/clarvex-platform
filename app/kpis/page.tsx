@@ -6,7 +6,7 @@ import { Area, AreaChart, Bar, BarChart, ResponsiveContainer, Tooltip, XAxis } f
 import { BarChart3, Calculator, CalendarDays, Percent, Receipt, ShoppingBag, Target, TrendingUp, Trophy, UsersRound } from "lucide-react";
 import { getSession } from "@/lib/auth";
 import { completion, money } from "@/lib/format";
-import { isoWeekNumber, periodDateKey, type KpiPeriod } from "@/lib/kpi-period";
+import { periodDateKey, type KpiPeriod } from "@/lib/kpi-period";
 import type { KpiReportItem } from "@/lib/kpi-report";
 import type { CommissionRule, Role, User } from "@/lib/types";
 import { AppFrame, AppHeader, Badge, BottomNav, Card, ProfileAvatar, ProgressBar, ProgressRing, StatCard } from "@/components/ui";
@@ -17,6 +17,8 @@ type KpiResponse = {
   selectedDate: string;
   startDate: string;
   endDate: string;
+  weekNumber: number | null;
+  availableWeeks: Array<{ weekNumber: number; weekStart: string; weekEnd: string }>;
   currentUserId: string;
   role: Role;
   store: KpiReportItem | null;
@@ -55,6 +57,7 @@ export default function KpisPage() {
         const payload = await response.json() as KpiResponse & { error?: string };
         if (!response.ok) throw new Error(payload.error ?? "No se pudieron cargar los KPIs.");
         setReport(payload);
+        if (period === "week" && payload.startDate !== selectedDate) setSelectedDate(payload.startDate);
       })
       .catch((requestError: unknown) => {
         if (requestError instanceof DOMException && requestError.name === "AbortError") return;
@@ -76,13 +79,13 @@ export default function KpisPage() {
   const simulatedCommission = initialSimulation * (appliedPercent / 100);
   const chartData = report?.team.map((item) => ({ name: item.userName, venta: item.sales, meta: item.goal })) ?? [];
 
-  const rangeLabel = report ? formatPeriodLabel(report.period, report.startDate, report.endDate) : "Cargando periodo";
+  const rangeLabel = report ? formatPeriodLabel(report.period, report.startDate, report.endDate, report.weekNumber) : "Cargando periodo";
 
   return (
     <>
       <AppHeader title="KPIs" subtitle={isAdvisor ? "Tus indicadores por periodo." : "Venta, metas y ranking del equipo."} backHref={isAdvisor ? "/advisor" : "/manager"} />
       <AppFrame>
-        <PeriodSelector period={period} setPeriod={setPeriod} selectedDate={selectedDate} setSelectedDate={setSelectedDate} rangeLabel={rangeLabel} />
+        <PeriodSelector period={period} setPeriod={setPeriod} selectedDate={selectedDate} setSelectedDate={setSelectedDate} rangeLabel={rangeLabel} availableWeeks={report?.availableWeeks ?? []} />
 
         <div className="no-scrollbar tab-glass-shell -mx-1 mb-3 flex gap-1 overflow-x-auto overflow-y-hidden p-1">
           {tabs.map((tab) => (
@@ -110,7 +113,7 @@ export default function KpisPage() {
   );
 }
 
-function PeriodSelector({ period, setPeriod, selectedDate, setSelectedDate, rangeLabel }: { period: KpiPeriod; setPeriod: (period: KpiPeriod) => void; selectedDate: string; setSelectedDate: (date: string) => void; rangeLabel: string }) {
+function PeriodSelector({ period, setPeriod, selectedDate, setSelectedDate, rangeLabel, availableWeeks }: { period: KpiPeriod; setPeriod: (period: KpiPeriod) => void; selectedDate: string; setSelectedDate: (date: string) => void; rangeLabel: string; availableWeeks: Array<{ weekNumber: number; weekStart: string; weekEnd: string }> }) {
   return (
     <Card className="mb-3 p-3">
       <div className="flex rounded-full bg-slate-100 p-1" role="group" aria-label="Periodo de KPIs">
@@ -119,7 +122,7 @@ function PeriodSelector({ period, setPeriod, selectedDate, setSelectedDate, rang
       <div className="mt-3 flex items-center gap-3">
         <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-blue-50 text-volt"><CalendarDays size={18} /></span>
         <div className="min-w-0 flex-1"><p className="text-[11px] font-bold text-muted">Periodo seleccionado</p><p className="truncate text-sm font-black text-ink">{rangeLabel}</p></div>
-        {period === "week" ? <input aria-label="Seleccionar semana" type="date" value={selectedDate} onChange={(event) => setSelectedDate(event.target.value)} className="min-h-10 w-[8.3rem] rounded-xl bg-slate-100 px-2 text-xs font-bold text-ink outline-none focus:ring-4 focus:ring-volt/20" /> : <input aria-label="Seleccionar mes" type="month" value={selectedDate.slice(0, 7)} onChange={(event) => setSelectedDate(`${event.target.value}-01`)} className="min-h-10 w-[7.5rem] rounded-xl bg-slate-100 px-2 text-xs font-bold text-ink outline-none focus:ring-4 focus:ring-volt/20" />}
+        {period === "week" ? <select aria-label="Seleccionar semana RDV" value={selectedDate} onChange={(event) => setSelectedDate(event.target.value)} className="min-h-10 w-[8.3rem] rounded-xl bg-slate-100 px-2 text-xs font-bold text-ink outline-none focus:ring-4 focus:ring-volt/20">{availableWeeks.map((week) => <option key={`${week.weekNumber}-${week.weekStart}`} value={week.weekStart}>Semana {week.weekNumber}</option>)}</select> : <input aria-label="Seleccionar mes" type="month" value={selectedDate.slice(0, 7)} onChange={(event) => setSelectedDate(`${event.target.value}-01`)} className="min-h-10 w-[7.5rem] rounded-xl bg-slate-100 px-2 text-xs font-bold text-ink outline-none focus:ring-4 focus:ring-volt/20" />}
       </div>
     </Card>
   );
@@ -148,5 +151,5 @@ function Mini({ label, value }: { label: string; value: string }) { return <div 
 function findCommissionRule(rules: CommissionRule[], role: Role, achievement: number, sales: number) { return rules.filter((rule) => rule.active && (!rule.role || rule.role === role)).find((rule) => achievement >= rule.minAchievement && (rule.maxAchievement == null || achievement <= rule.maxAchievement) && sales >= rule.minSales && (rule.maxSales == null || sales <= rule.maxSales)); }
 function getAchievement(sales: number, goal: number) { return goal > 0 ? (sales / goal) * 100 : 0; }
 function localDateKey(date: Date) { return periodDateKey(new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()))); }
-function formatPeriodLabel(period: KpiPeriod, startValue: string, endValue: string) { const start = new Date(`${startValue}T00:00:00Z`); if (period === "month") return start.toLocaleDateString("es-MX", { month: "long", year: "numeric", timeZone: "UTC" }).replace(/^./, (letter) => letter.toUpperCase()); const end = new Date(`${endValue}T00:00:00Z`); const startLabel = start.toLocaleDateString("es-MX", { day: "numeric", month: "short", timeZone: "UTC" }).replace(".", ""); const endLabel = end.toLocaleDateString("es-MX", { day: "numeric", month: "short", timeZone: "UTC" }).replace(".", ""); return `Semana ${isoWeekNumber(start)} · ${startLabel} - ${endLabel}`; }
+function formatPeriodLabel(period: KpiPeriod, startValue: string, endValue: string, weekNumber: number | null) { const start = new Date(`${startValue}T00:00:00Z`); if (period === "month") return start.toLocaleDateString("es-MX", { month: "long", year: "numeric", timeZone: "UTC" }).replace(/^./, (letter) => letter.toUpperCase()); const end = new Date(`${endValue}T00:00:00Z`); const startLabel = start.toLocaleDateString("es-MX", { day: "numeric", month: "short", timeZone: "UTC" }).replace(".", ""); const endLabel = end.toLocaleDateString("es-MX", { day: "numeric", month: "short", timeZone: "UTC" }).replace(".", ""); return `Semana ${weekNumber ?? "RDV"} · ${startLabel} - ${endLabel}`; }
 const tooltipStyle = { background: "#FFFFFF", border: "1px solid #E2E8F0", borderRadius: 12, color: "#0F172A", boxShadow: "0 6px 14px rgb(15 23 42 / 0.08)" };

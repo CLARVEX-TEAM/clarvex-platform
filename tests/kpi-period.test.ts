@@ -1,16 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { getKpiPeriodRange, periodDateKey } from "../lib/kpi-period";
+import { getKpiMonthRange, periodDateKey } from "../lib/kpi-period";
 import { aggregateKpis, aggregateStore } from "../lib/kpi-report";
 
-test("limita la semana KPI de lunes a domingo", () => {
-  const range = getKpiPeriodRange("week", new Date("2026-06-07T00:00:00.000Z"));
-  assert.equal(periodDateKey(range.start), "2026-06-01");
-  assert.equal(periodDateKey(range.end), "2026-06-07");
-});
-
 test("limita el mes KPI al calendario seleccionado", () => {
-  const range = getKpiPeriodRange("month", new Date("2026-06-18T00:00:00.000Z"));
+  const range = getKpiMonthRange(new Date("2026-06-18T00:00:00.000Z"));
   assert.equal(periodDateKey(range.start), "2026-06-01");
   assert.equal(periodDateKey(range.end), "2026-06-30");
 });

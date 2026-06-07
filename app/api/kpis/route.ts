@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isApiError, requireSession } from "@/lib/api";
 import { aggregateKpis, aggregateStore } from "@/lib/kpi-report";
-import { getKpiPeriodRange, parsePeriodDate, periodDateKey, type KpiPeriod } from "@/lib/kpi-period";
+import { getKpiMonthRange, parsePeriodDate, periodDateKey, type KpiPeriod } from "@/lib/kpi-period";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -15,12 +15,31 @@ export async function GET(request: NextRequest) {
   const period = periodParam as KpiPeriod;
   const selectedDate = parsePeriodDate(request.nextUrl.searchParams.get("date"));
   if (!selectedDate) return NextResponse.json({ error: "date debe usar formato YYYY-MM-DD." }, { status: 400 });
-  const { start, end } = getKpiPeriodRange(period, selectedDate);
   const manager = session.role === "GERENTE" || session.role === "SUBGERENTE";
+  const userFilter = manager ? {} : { userId: session.userId };
+  const availableWeekRows = await prisma.kpi.findMany({
+    where: { storeId: session.storeId, ...userFilter, weekNumber: { not: null }, weekStart: { not: null }, weekEnd: { not: null } },
+    distinct: ["weekStart", "weekNumber"],
+    select: { weekNumber: true, weekStart: true, weekEnd: true },
+    orderBy: { weekStart: "desc" }
+  });
+  const availableWeeks = availableWeekRows.flatMap((week) => week.weekNumber !== null && week.weekStart && week.weekEnd ? [{ weekNumber: week.weekNumber, weekStart: week.weekStart, weekEnd: week.weekEnd }] : []);
+  const selectedWeek = period === "week" ? selectRdvWeek(availableWeeks, selectedDate) : null;
+  const calendarRange = getKpiMonthRange(selectedDate);
+  const start = selectedWeek?.weekStart ?? calendarRange.start;
+  const end = selectedWeek?.weekEnd ?? calendarRange.end;
 
   const [rows, rules] = await Promise.all([
     prisma.kpi.findMany({
-      where: { storeId: session.storeId, ...(manager ? {} : { userId: session.userId }), date: { gte: start, lte: end } },
+      where: {
+        storeId: session.storeId,
+        ...userFilter,
+        ...(period === "week" && selectedWeek
+          ? { weekNumber: selectedWeek.weekNumber, weekStart: selectedWeek.weekStart }
+          : period === "week"
+            ? { id: "__missing_rdv_week__" }
+            : { date: { gte: start, lte: end } })
+      },
       include: { user: { select: { name: true, role: true, photoUrl: true } } },
       orderBy: [{ date: "asc" }, { userId: "asc" }]
     }),
@@ -34,12 +53,23 @@ export async function GET(request: NextRequest) {
   const team = reports.filter((item) => item.role === "ASESOR");
   const own = reports.find((item) => item.userId === session.userId) ?? null;
   const store = manager ? aggregateStore(team.length ? team : reports) : null;
+  console.log("Consulta KPI por periodo", {
+    period,
+    weekNumber: selectedWeek?.weekNumber ?? null,
+    weekStart: selectedWeek ? periodDateKey(selectedWeek.weekStart) : null,
+    weekEnd: selectedWeek ? periodDateKey(selectedWeek.weekEnd) : null,
+    fechasIncluidas: Array.from(new Set(rows.map((row) => periodDateKey(row.date)))),
+    ventaAcumulada: reports.reduce((total, item) => total + item.sales, 0),
+    metaAcumulada: reports.reduce((total, item) => total + item.goal, 0)
+  });
 
   return NextResponse.json({
     period,
     selectedDate: periodDateKey(selectedDate),
     startDate: periodDateKey(start),
     endDate: periodDateKey(end),
+    weekNumber: selectedWeek?.weekNumber ?? null,
+    availableWeeks: availableWeeks.map((week) => ({ weekNumber: week.weekNumber, weekStart: periodDateKey(week.weekStart), weekEnd: periodDateKey(week.weekEnd) })),
     currentUserId: session.userId,
     role: session.role,
     store,
@@ -52,4 +82,11 @@ export async function GET(request: NextRequest) {
       commissionPercent: Number(rule.commissionPercent), active: rule.active
     }))
   }, { headers: { "Cache-Control": "private, no-store" } });
+}
+
+function selectRdvWeek(weeks: Array<{ weekNumber: number; weekStart: Date; weekEnd: Date }>, selectedDate: Date) {
+  return weeks.find((week) => week.weekStart.getTime() === selectedDate.getTime())
+    ?? weeks.find((week) => selectedDate >= week.weekStart && selectedDate <= week.weekEnd)
+    ?? weeks[0]
+    ?? null;
 }

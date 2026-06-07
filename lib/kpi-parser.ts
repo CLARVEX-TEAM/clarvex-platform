@@ -5,6 +5,9 @@ export type ParsedKpiRecord = {
   employeeName: string;
   role: string;
   date: Date;
+  weekNumber: number;
+  weekStart: Date;
+  weekEnd: Date;
   dailyGoal: number;
   dailySales: number;
   transactions: number;
@@ -56,6 +59,7 @@ export function parseKpiWorkbook(workbook: XLSX.WorkBook): KpiParseResult {
 
   const dateColumn = detectDateColumn(rows[headerRow] ?? []);
   const records: ParsedKpiRecord[] = [];
+  let activeWeek: { weekNumber: number; dates: Date[]; records: ParsedKpiRecord[] } | null = null;
   let rowsRead = 0;
   let ignoredRows = 0;
 
@@ -64,6 +68,11 @@ export function parseKpiWorkbook(workbook: XLSX.WorkBook): KpiParseResult {
     const rowLabel = normalizeText(row.slice(0, Math.max(2, groups[0].start)).join(" "));
     if (!row.some((value) => cleanCell(value))) continue;
     rowsRead += 1;
+    const detectedWeekNumber = findWeekNumber(row);
+    if (detectedWeekNumber !== null) {
+      finalizeWeek(activeWeek);
+      activeWeek = { weekNumber: detectedWeekNumber, dates: [], records: [] };
+    }
     if (["TTLS", "BONOS", "INCIDENCIAS"].some((label) => rowLabel.includes(label))) {
       ignoredRows += 1;
       continue;
@@ -71,9 +80,14 @@ export function parseKpiWorkbook(workbook: XLSX.WorkBook): KpiParseResult {
 
     const date = findRowDate(row, dateColumn, groups[0].start);
     if (!date) {
+      if (detectedWeekNumber === null) ignoredRows += 1;
+      continue;
+    }
+    if (!activeWeek) {
       ignoredRows += 1;
       continue;
     }
+    activeWeek.dates.push(date);
 
     const recordsBeforeRow = records.length;
 
@@ -86,11 +100,14 @@ export function parseKpiWorkbook(workbook: XLSX.WorkBook): KpiParseResult {
       const hasData = [dailyGoal, dailySales, transactions, pieces, crmTransactions].some((value) => value !== 0);
       if (!hasData) continue;
 
-      records.push({
+      const record: ParsedKpiRecord = {
         employeeNumber: group.employeeNumber,
         employeeName: group.employeeName,
         role: group.role,
         date,
+        weekNumber: activeWeek.weekNumber,
+        weekStart: date,
+        weekEnd: date,
         dailyGoal,
         dailySales,
         transactions,
@@ -100,10 +117,13 @@ export function parseKpiWorkbook(workbook: XLSX.WorkBook): KpiParseResult {
         aur: ratio(dailySales, pieces),
         ept: ratio(dailySales, transactions),
         achievement: dailyGoal > 0 ? round((dailySales / dailyGoal) * 100) : 0
-      });
+      };
+      records.push(record);
+      activeWeek.records.push(record);
     }
     if (records.length === recordsBeforeRow) ignoredRows += 1;
   }
+  finalizeWeek(activeWeek);
 
   const uniqueRecords = deduplicate(records);
   return {
@@ -113,6 +133,23 @@ export function parseKpiWorkbook(workbook: XLSX.WorkBook): KpiParseResult {
     rowsRead,
     ignoredRows
   };
+}
+
+function findWeekNumber(row: unknown[]) {
+  const label = normalizeText(row.join(" "));
+  const match = label.match(/\bSEMANA\s*(?:NO\.?\s*)?(\d{1,2})\b/);
+  return match ? Number(match[1]) : null;
+}
+
+function finalizeWeek(week: { dates: Date[]; records: ParsedKpiRecord[] } | null) {
+  if (!week || week.dates.length === 0) return;
+  const weekStart = new Date(Math.min(...week.dates.map((date) => date.getTime())));
+  const weekEnd = new Date(weekStart);
+  weekEnd.setUTCDate(weekEnd.getUTCDate() + 6);
+  for (const record of week.records) {
+    record.weekStart = weekStart;
+    record.weekEnd = weekEnd;
+  }
 }
 
 function detectEmployeeGroups(rows: unknown[][], headerRow: number): EmployeeGroup[] {

@@ -110,6 +110,7 @@ export async function POST(_request: Request, { params }: { params: { id: string
 
 async function importKpis(workbook: Parameters<typeof parseKpiWorkbook>[0], storeId: string): Promise<KpiSyncMetrics> {
   const parsed = parseKpiWorkbook(workbook);
+  logParsedKpiWeeks(parsed.records);
   const users = parsed.employeeNumbers.length > 0
     ? await prisma.user.findMany({
         where: { storeId, employeeNumber: { in: parsed.employeeNumbers } },
@@ -162,6 +163,9 @@ async function importKpis(workbook: Parameters<typeof parseKpiWorkbook>[0], stor
         await prisma.kpi.upsert({
           where: { userId_date: { userId: record.userId, date: record.date } },
           update: {
+            weekNumber: record.weekNumber,
+            weekStart: record.weekStart,
+            weekEnd: record.weekEnd,
             dailySales: record.dailySales,
             monthlySales: record.monthlySales,
             dailyGoal: record.dailyGoal,
@@ -176,6 +180,9 @@ async function importKpis(workbook: Parameters<typeof parseKpiWorkbook>[0], stor
             userId: record.userId,
             storeId,
             date: record.date,
+            weekNumber: record.weekNumber,
+            weekStart: record.weekStart,
+            weekEnd: record.weekEnd,
             dailySales: record.dailySales,
             monthlySales: record.monthlySales,
             dailyGoal: record.dailyGoal,
@@ -203,6 +210,25 @@ async function importKpis(workbook: Parameters<typeof parseKpiWorkbook>[0], stor
   }
 
   return buildKpiMetrics(parsed, users.length, matchedRecords.length, recordsCreated, recordsUpdated, employeesNotFound, errors);
+}
+
+function logParsedKpiWeeks(records: ReturnType<typeof parseKpiWorkbook>["records"]) {
+  const weeks = new Map<string, typeof records>();
+  for (const record of records) {
+    const key = `${record.weekNumber}:${record.weekStart.toISOString()}`;
+    weeks.set(key, [...(weeks.get(key) ?? []), record]);
+  }
+  for (const weekRecords of Array.from(weeks.values())) {
+    const first = weekRecords[0];
+    console.log("Semana RDV detectada", {
+      weekNumber: first.weekNumber,
+      weekStart: first.weekStart.toISOString().slice(0, 10),
+      weekEnd: first.weekEnd.toISOString().slice(0, 10),
+      fechasIncluidas: Array.from(new Set(weekRecords.map((record) => record.date.toISOString().slice(0, 10)))),
+      ventaAcumulada: weekRecords.reduce((total, record) => total + record.dailySales, 0),
+      metaAcumulada: weekRecords.reduce((total, record) => total + record.dailyGoal, 0)
+    });
+  }
 }
 
 type MatchedKpiRecord = ReturnType<typeof parseKpiWorkbook>["records"][number] & {

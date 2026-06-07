@@ -159,6 +159,9 @@ model Kpi {
   storeId        String
   store          Store    @relation(fields: [storeId], references: [id])
   date           DateTime
+  weekNumber     Int?
+  weekStart      DateTime?
+  weekEnd        DateTime?
   dailySales     Decimal  @db.Decimal(12, 2)
   monthlySales   Decimal  @db.Decimal(12, 2)
   dailyGoal      Decimal  @db.Decimal(12, 2)
@@ -180,6 +183,7 @@ model Kpi {
 
   @@unique([userId, date])
   @@index([storeId, date])
+  @@index([storeId, weekStart, weekNumber])
 }
 
 model Schedule {
