@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { isApiError, requireSession } from "@/lib/api";
+import { aggregateDashboardKpis, dashboardDateKey, dashboardDateRange } from "@/lib/dashboard-kpi";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -13,10 +14,30 @@ export async function GET() {
   if (isApiError(session)) return session;
   const manager = session.role !== "ASESOR";
   const own = manager ? {} : { userId: session.userId };
+  const dashboardDate = dashboardDateKey();
+  const dashboardRange = dashboardDateRange(dashboardDate);
 
-  const [users, kpis, plans, pendings, logEntries, announcements, schedules, evidences, commissionRules] = await Promise.all([
+  const [users, kpis, dashboardKpis, plans, pendings, logEntries, announcements, schedules, evidences, commissionRules] = await Promise.all([
     prisma.user.findMany({ where: { storeId: session.storeId }, orderBy: [{ role: "asc" }, { name: "asc" }] }),
     prisma.kpi.findMany({ where: { storeId: session.storeId, ...own }, orderBy: [{ date: "desc" }, { ranking: "asc" }] }),
+    prisma.kpi.findMany({
+      where: {
+        storeId: session.storeId,
+        ...own,
+        date: { gte: dashboardRange.start, lt: dashboardRange.end }
+      },
+      select: {
+        id: true,
+        userId: true,
+        date: true,
+        dailyGoal: true,
+        dailySales: true,
+        transactions: true,
+        pieces: true,
+        traffic: true
+      },
+      orderBy: { userId: "asc" }
+    }),
     prisma.dayPlan.findMany({ where: { storeId: session.storeId, ...own }, include: { activities: true }, orderBy: { date: "desc" } }),
     prisma.pending.findMany({ where: { storeId: session.storeId, ...(manager ? {} : { ownerId: session.userId }) }, orderBy: [{ priority: "desc" }, { dueDate: "asc" }] }),
     prisma.storeLog.findMany({ where: { storeId: session.storeId, ...(manager ? {} : { authorId: session.userId }) }, orderBy: { createdAt: "asc" } }),
@@ -25,10 +46,31 @@ export async function GET() {
     prisma.evidence.findMany({ where: { storeId: session.storeId, ...(manager ? {} : { uploadedById: session.userId }) }, orderBy: { createdAt: "desc" } }),
     prisma.commissionRule.findMany({ where: { storeId: session.storeId, ...(manager ? {} : { OR: [{ role: session.role }, { role: null }] }) }, orderBy: [{ active: "desc" }, { role: "asc" }, { minAchievement: "asc" }] })
   ]);
+  const dashboardDaily = aggregateDashboardKpis(dashboardDate, dashboardKpis.map((kpi) => ({
+    dailyGoal: Number(kpi.dailyGoal),
+    dailySales: Number(kpi.dailySales),
+    transactions: kpi.transactions,
+    pieces: kpi.pieces,
+    traffic: kpi.traffic
+  })));
+
+  console.log("Dashboard KPI diario", {
+    dashboardDate,
+    registrosKpiUsados: dashboardKpis.map((kpi) => ({
+      id: kpi.id,
+      userId: kpi.userId,
+      date: kpi.date.toISOString(),
+      dailyGoal: Number(kpi.dailyGoal),
+      dailySales: Number(kpi.dailySales)
+    })),
+    totalGoal: dashboardDaily.dailyGoal,
+    totalSales: dashboardDaily.dailySales
+  });
 
   return NextResponse.json({
     users: users.map((user) => ({ id: user.id, name: user.name, employeeNumber: user.employeeNumber, role: user.role, avatar: user.name.slice(0, 2).toUpperCase(), photoUrl: user.photoUrl, biometricEnabled: user.biometricEnabled, lastLoginAt: user.lastLoginAt?.toISOString() ?? null })),
     kpis: kpis.map((kpi) => ({ userId: kpi.userId, dailySales: Number(kpi.dailySales), monthlySales: Number(kpi.monthlySales), dailyGoal: Number(kpi.dailyGoal), monthlyGoal: Number(kpi.monthlyGoal), avgTicket: Number(kpi.avgTicket), upt: Number(kpi.upt), conversion: kpi.conversion === null ? null : Number(kpi.conversion), traffic: kpi.traffic, pieces: kpi.pieces, transactions: kpi.transactions, ranking: kpi.ranking, grossSales: kpi.grossSales === null ? null : Number(kpi.grossSales), discountAmount: kpi.discountAmount === null ? null : Number(kpi.discountAmount), discountMargin: kpi.discountMargin === null ? null : Number(kpi.discountMargin), discountLimit: kpi.discountLimit === null ? null : Number(kpi.discountLimit), commissionAmount: Number(kpi.commissionAmount), commissionPercent: Number(kpi.commissionPercent) })),
+    dashboardDaily,
     plans: plans.map((plan) => ({ id: plan.id, userId: plan.userId, date: plan.date.toISOString().slice(0, 10), dailyGoal: Number(plan.dailyGoal), focus: plan.focus, message: plan.message, activities: plan.activities.map((activity) => ({ id: activity.id, title: activity.title, completed: activity.completed })) })),
     pendings: pendings.map((pending) => ({ id: pending.id, title: pending.title, description: pending.description, category: lower(pending.category), priority: lower(pending.priority), ownerId: pending.ownerId, status: lower(pending.status), dueDate: pending.dueDate.toISOString().slice(0, 10) })),
     logEntries: logEntries.map((entry) => ({ id: entry.id, date: entry.createdAt.toISOString(), authorId: entry.authorId, category: entry.category, description: entry.description, evidenceUrl: entry.evidenceUrl })),

@@ -34,7 +34,7 @@ export default function ManagerDashboard() {
   }
 
   const advisors = data.users.filter((user) => user.role === "ASESOR");
-  const store = data.kpis.find((item) => item.ranking === 0) ?? data.kpis[0];
+  const store = data.dashboardDaily;
   const critical = data.pendings.filter((pending) => pending.priority === "critica" || pending.priority === "alta");
   const doneActivities = data.plans.flatMap((plan) => plan.activities).filter((activity) => activity.completed).length;
   const allActivities = data.plans.flatMap((plan) => plan.activities).length;

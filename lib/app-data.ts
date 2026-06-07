@@ -1,8 +1,10 @@
+import type { DashboardDailyKpi } from "@/lib/dashboard-kpi";
 import type { Announcement, CommissionRule, DayPlan, Evidence, Kpi, LogEntry, Pending, ScheduleShift, User } from "@/lib/types";
 
 export type AppData = {
   users: User[];
   kpis: Kpi[];
+  dashboardDaily: DashboardDailyKpi;
   plans: DayPlan[];
   pendings: Pending[];
   logEntries: LogEntry[];
