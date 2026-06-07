@@ -11,11 +11,11 @@ async function main() {
   });
 
   const people = [
-    ["itzel", "Itzel", "itzel@clarvex.local", "81893", Role.GERENTE],
-    ["adrian", "Adrian", "adrian@clarvex.local", "102259", Role.SUBGERENTE],
-    ["waira", "Waira", "waira@clarvex.local", "95739", Role.ASESOR],
-    ["jazmin", "Jazmin", "jazmin@clarvex.local", "93383", Role.ASESOR],
-    ["alonso", "Alonso", "alonso@clarvex.local", "113642", Role.ASESOR]
+    ["itzel", "ITZEL SAIDY REYES BAUTISTA", "itzel@clarvex.local", "81893", Role.GERENTE],
+    ["adrian", "JESUS ADRIAN HERNANDEZ LUNA", "adrian@clarvex.local", "102259", Role.SUBGERENTE],
+    ["waira", "WAIRA ZITLALI POPOCA", "waira@clarvex.local", "95739", Role.ASESOR],
+    ["jazmin", "JAZMIN CASTRO ZUÑIGA", "jazmin@clarvex.local", "96383", Role.ASESOR],
+    ["alonso", "ALONSO TREVIÑO", "alonso@clarvex.local", "113642", Role.ASESOR]
   ] as const;
 
   const passwordHash = await bcrypt.hash("demo1234", 10);
@@ -47,8 +47,6 @@ async function main() {
       { userId: "adrian", storeId: store.id, date: today, dailySales: 49750, monthlySales: 694200, dailyGoal: 64000, monthlyGoal: 1080000, avgTicket: 1642, upt: 2.3, conversion: 30, pieces: 67, transactions: 30, ranking: 0, commissionAmount: 0, commissionPercent: 0 }
     ]
   });
-
-  await prisma.employeeNumberAlias.upsert({ where: { employeeNumber: "96383" }, update: { userId: "jazmin" }, create: { employeeNumber: "96383", userId: "jazmin" } });
 
   const commissionRules = [
       { storeId: store.id, role: Role.ASESOR, minAchievement: 0, maxAchievement: 99.99, commissionPercent: 1.53 },

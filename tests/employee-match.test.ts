@@ -3,8 +3,8 @@ import test from "node:test";
 import { buildUserByEmployeeNumber } from "../lib/employee-match";
 
 test("resuelve numeros actuales y alias del Excel", () => {
-  const users = [{ id: "jazmin", employeeNumber: "93383", employeeNumberAliases: [{ employeeNumber: "96383" }] }];
+  const users = [{ id: "user-1", employeeNumber: "10001", employeeNumberAliases: [{ employeeNumber: "90001" }] }];
   const lookup = buildUserByEmployeeNumber(users);
-  assert.equal(lookup.get("93383"), "jazmin");
-  assert.equal(lookup.get("96383"), "jazmin");
+  assert.equal(lookup.get("10001"), "user-1");
+  assert.equal(lookup.get("90001"), "user-1");
 });
