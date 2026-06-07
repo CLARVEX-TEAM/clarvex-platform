@@ -47,7 +47,12 @@ export async function GET(request: NextRequest) {
         ...(period === "week" && selectedWeek
           ? { OR: [
               { weekNumber: selectedWeek.weekNumber, weekStart: selectedWeek.weekStart },
-              { date: { gte: selectedWeek.weekStart, lte: selectedWeek.weekEnd } }
+              {
+                AND: [
+                  { OR: [{ weekNumber: null }, { weekStart: null }, { weekEnd: null }] },
+                  { date: { gte: selectedWeek.weekStart, lte: selectedWeek.weekEnd } }
+                ]
+              }
             ] }
           : period === "week"
             ? { id: "__missing_rdv_week__" }

@@ -27,6 +27,9 @@ export type ScheduleSyncMetrics = {
 };
 
 export type KpiSyncMetrics = {
+  sheetUsed: "Diario de ventas";
+  weeksDetected: number[];
+  collaboratorsDetected: number;
   employeesProcessed: number;
   rowsRead: number;
   recordsProcessed: number;
@@ -35,6 +38,8 @@ export type KpiSyncMetrics = {
   employeesNotFound: string[];
   errors: string[];
   crmTransactionsProcessed: number;
+  totalSalesImported: number;
+  totalGoalImported: number;
   ignoredRows: number;
 };
 

@@ -1,5 +1,6 @@
 import * as XLSX from "xlsx";
-import { reconstructRdvWeek } from "@/lib/rdv-week";
+
+export const RDV_SHEET_NAME = "Diario de ventas";
 
 export type ParsedKpiRecord = {
   employeeNumber: string;
@@ -21,9 +22,13 @@ export type ParsedKpiRecord = {
 };
 
 export type KpiParseResult = {
+  sheetUsed: typeof RDV_SHEET_NAME;
   records: ParsedKpiRecord[];
   employeeNumbers: string[];
+  weeksDetected: number[];
   crmTransactionsTotal: number;
+  totalSalesImported: number;
+  totalGoalImported: number;
   rowsRead: number;
   ignoredRows: number;
 };
@@ -40,7 +45,7 @@ type EmployeeGroup = {
 type MetricKey = "dailyGoal" | "dailySales" | "transactions" | "pieces" | "crmTransactions";
 
 export function parseKpiWorkbook(workbook: XLSX.WorkBook): KpiParseResult {
-  const sheetName = workbook.SheetNames.find((name) => normalizeText(name) === "DIARIO DE VENTAS");
+  const sheetName = workbook.SheetNames.find((name) => normalizeText(name) === normalizeText(RDV_SHEET_NAME));
   if (!sheetName) throw new Error('No se encontro la hoja "Diario de ventas".');
 
   const rows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], {
@@ -84,7 +89,10 @@ export function parseKpiWorkbook(workbook: XLSX.WorkBook): KpiParseResult {
       if (detectedWeekNumber === null) ignoredRows += 1;
       continue;
     }
-    const fallbackWeek = activeWeek ? null : reconstructRdvWeek(date);
+    if (!activeWeek) {
+      ignoredRows += 1;
+      continue;
+    }
     activeWeek?.dates.push(date);
 
     const recordsBeforeRow = records.length;
@@ -95,17 +103,16 @@ export function parseKpiWorkbook(workbook: XLSX.WorkBook): KpiParseResult {
       const transactions = integerCell(row[group.columns.transactions ?? -1]);
       const pieces = integerCell(row[group.columns.pieces ?? -1]);
       const crmTransactions = integerCell(row[group.columns.crmTransactions ?? -1]);
-      const hasData = [dailyGoal, dailySales, transactions, pieces, crmTransactions].some((value) => value !== 0);
-      if (!hasData) continue;
+      if (dailyGoal === 0 && dailySales === 0) continue;
 
       const record: ParsedKpiRecord = {
         employeeNumber: group.employeeNumber,
         employeeName: group.employeeName,
         role: group.role,
         date,
-        weekNumber: activeWeek?.weekNumber ?? fallbackWeek!.weekNumber,
-        weekStart: activeWeek ? date : fallbackWeek!.weekStart,
-        weekEnd: activeWeek ? date : fallbackWeek!.weekEnd,
+        weekNumber: activeWeek.weekNumber,
+        weekStart: date,
+        weekEnd: date,
         dailyGoal,
         dailySales,
         transactions,
@@ -125,9 +132,13 @@ export function parseKpiWorkbook(workbook: XLSX.WorkBook): KpiParseResult {
 
   const uniqueRecords = deduplicate(records);
   return {
+    sheetUsed: RDV_SHEET_NAME,
     records: uniqueRecords,
     employeeNumbers: Array.from(new Set(groups.map((group) => group.employeeNumber))),
+    weeksDetected: Array.from(new Set(uniqueRecords.map((record) => record.weekNumber))),
     crmTransactionsTotal: uniqueRecords.reduce((total, record) => total + record.crmTransactions, 0),
+    totalSalesImported: round(uniqueRecords.reduce((total, record) => total + record.dailySales, 0)),
+    totalGoalImported: round(uniqueRecords.reduce((total, record) => total + record.dailyGoal, 0)),
     rowsRead,
     ignoredRows
   };
@@ -142,8 +153,7 @@ function findWeekNumber(row: unknown[]) {
 function finalizeWeek(week: { dates: Date[]; records: ParsedKpiRecord[] } | null) {
   if (!week || week.dates.length === 0) return;
   const weekStart = new Date(Math.min(...week.dates.map((date) => date.getTime())));
-  const weekEnd = new Date(weekStart);
-  weekEnd.setUTCDate(weekEnd.getUTCDate() + 6);
+  const weekEnd = new Date(Math.max(...week.dates.map((date) => date.getTime())));
   for (const record of week.records) {
     record.weekStart = weekStart;
     record.weekEnd = weekEnd;

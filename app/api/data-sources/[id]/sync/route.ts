@@ -63,7 +63,11 @@ export async function POST(_request: Request, { params }: { params: { id: string
       where: { id: log.id },
       data: {
         status: "SUCCESS",
-        message: encodeSyncLogMessage(successMessage, workbook.sheets, syncMetrics),
+        message: encodeSyncLogMessage(
+          successMessage,
+          kpiMetrics ? workbook.sheets.filter((sheet) => sheet.name.trim().toLocaleUpperCase("es-MX") === kpiMetrics.sheetUsed.toLocaleUpperCase("es-MX")) : workbook.sheets,
+          syncMetrics
+        ),
         recordsProcessed
       }
     });
@@ -84,12 +88,17 @@ export async function POST(_request: Request, { params }: { params: { id: string
         empleadosNoEncontrados: scheduleMetrics.employeesNotFound,
         valoresDesconocidos: scheduleMetrics.unknownValues
       } : kpiMetrics ? {
+        hojaUsada: kpiMetrics.sheetUsed,
+        semanasDetectadas: kpiMetrics.weeksDetected,
+        colaboradoresDetectados: kpiMetrics.collaboratorsDetected,
         empleadosProcesados: kpiMetrics.employeesProcessed,
         filasLeidas: kpiMetrics.rowsRead,
         registrosSincronizados: kpiMetrics.recordsCreated + kpiMetrics.recordsUpdated,
         registrosCreados: kpiMetrics.recordsCreated,
         registrosActualizados: kpiMetrics.recordsUpdated,
         filasIgnoradas: kpiMetrics.ignoredRows,
+        totalVentaImportada: kpiMetrics.totalSalesImported,
+        totalMetaImportada: kpiMetrics.totalGoalImported,
         empleadosNoEncontrados: kpiMetrics.employeesNotFound,
         errores: kpiMetrics.errors,
         transaccionesCrmProcesadas: kpiMetrics.crmTransactionsProcessed
@@ -277,6 +286,9 @@ function buildKpiMetrics(
   errors: string[]
 ): KpiSyncMetrics {
   return {
+    sheetUsed: parsed.sheetUsed,
+    weeksDetected: parsed.weeksDetected,
+    collaboratorsDetected: parsed.employeeNumbers.length,
     employeesProcessed,
     rowsRead: parsed.rowsRead,
     recordsProcessed,
@@ -285,6 +297,8 @@ function buildKpiMetrics(
     employeesNotFound,
     errors,
     crmTransactionsProcessed: parsed.crmTransactionsTotal,
+    totalSalesImported: parsed.totalSalesImported,
+    totalGoalImported: parsed.totalGoalImported,
     ignoredRows: parsed.ignoredRows
   };
 }

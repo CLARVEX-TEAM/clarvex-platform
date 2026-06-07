@@ -39,6 +39,8 @@ test("parsea Diario de ventas por employeeNumber y calcula KPIs", () => {
   const result = parseKpiWorkbook(workbook);
 
   assert.deepEqual(result.employeeNumbers, ["95739", "102259"]);
+  assert.equal(result.sheetUsed, "Diario de ventas");
+  assert.deepEqual(result.weeksDetected, [22]);
   assert.equal(result.records.length, 2);
   assert.equal(result.rowsRead, 5);
   assert.equal(result.ignoredRows, 3);
@@ -49,7 +51,7 @@ test("parsea Diario de ventas por employeeNumber y calcula KPIs", () => {
     date: new Date("2026-06-01T00:00:00.000Z"),
     weekNumber: 22,
     weekStart: new Date("2026-06-01T00:00:00.000Z"),
-    weekEnd: new Date("2026-06-07T00:00:00.000Z"),
+    weekEnd: new Date("2026-06-01T00:00:00.000Z"),
     dailyGoal: 10000,
     dailySales: 12500,
     transactions: 5,
@@ -61,6 +63,8 @@ test("parsea Diario de ventas por employeeNumber y calcula KPIs", () => {
     achievement: 125
   });
   assert.equal(result.crmTransactionsTotal, 5);
+  assert.equal(result.totalSalesImported, 22500);
+  assert.equal(result.totalGoalImported, 30000);
 });
 
 test("respeta una semana RDV que inicia en domingo", () => {
@@ -72,6 +76,7 @@ test("respeta una semana RDV que inicia en domingo", () => {
   rows.push(["SEMANA 22"]);
   rows.push(["DOMINGO", "31/05/2026", 100, 200, 1, 2, 0]);
   rows.push(["LUNES", "01/06/2026", 100, 300, 1, 2, 0]);
+  rows.push(["SABADO", "06/06/2026", 0, 0, 0, 0, 0]);
 
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(rows), "Diario de ventas");
@@ -89,7 +94,7 @@ test("ignora filas vacias y exige la hoja Diario de ventas", () => {
   assert.throws(() => parseKpiWorkbook(workbook), /Diario de ventas/);
 });
 
-test("reconstruye semana por fecha cuando el RDV legacy no trae marcador", () => {
+test("ignora filas diarias sin etiqueta de semana RDV", () => {
   const rows: unknown[][] = Array.from({ length: 9 }, () => []);
   rows[5] = [null, null, "ASESOR"];
   rows[6] = [null, null, "95739"];
@@ -101,7 +106,36 @@ test("reconstruye semana por fecha cuando el RDV legacy no trae marcador", () =>
   XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(rows), "Diario de ventas");
   const result = parseKpiWorkbook(workbook);
 
-  assert.equal(result.records[0].weekNumber, 22);
+  assert.equal(result.records.length, 0);
+  assert.equal(result.ignoredRows, 1);
+});
+
+test("usa exclusivamente Diario de ventas y detecta semanas verticales", () => {
+  const rows: unknown[][] = Array.from({ length: 9 }, () => []);
+  rows[5] = [null, null, "ASESOR"];
+  rows[6] = [null, null, "95739"];
+  rows[7] = [null, null, "Asesor"];
+  rows[8] = ["DIA", "FECHA", ...metrics];
+  rows.push(["SEMANA 22"]);
+  rows.push(["DOMINGO", "31/05/2026", 100, 0, 0, 0, 0]);
+  rows.push(["SABADO", "06/06/2026", 100, 200, 1, 2, 0]);
+  rows.push(["SEMANA 23"]);
+  rows.push(["DOMINGO", "07/06/2026", 0, 0, 9, 9, 9]);
+  rows.push(["LUNES", "08/06/2026", 100, 300, 2, 3, 0]);
+
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([["META DIARIA", 999999]]), "Informe");
+  XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(rows), "Diario de ventas");
+  XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([["VTAS Ttls SIN IVA", 999999]]), "COMISIONES");
+
+  const result = parseKpiWorkbook(workbook);
+  assert.deepEqual(result.weeksDetected, [22, 23]);
+  assert.equal(result.records.length, 3);
+  assert.equal(result.records[0].dailySales, 0);
   assert.equal(result.records[0].weekStart.toISOString(), "2026-05-31T00:00:00.000Z");
   assert.equal(result.records[0].weekEnd.toISOString(), "2026-06-06T00:00:00.000Z");
+  assert.equal(result.records[2].weekStart.toISOString(), "2026-06-07T00:00:00.000Z");
+  assert.equal(result.records[2].weekEnd.toISOString(), "2026-06-08T00:00:00.000Z");
+  assert.equal(result.totalSalesImported, 500);
+  assert.equal(result.totalGoalImported, 300);
 });
