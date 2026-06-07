@@ -23,3 +23,14 @@ test("acumula ventas, metas y ranking por periodo", () => {
   assert.equal(reports[0].ranking, 1);
   assert.equal(aggregateStore(reports)?.sales, 450);
 });
+
+test("no suma dos veces el mismo usuario y dia calendario", () => {
+  const base = { conversion: 0, grossSales: null, discountAmount: null, discountLimit: null, commissionAmount: 0, commissionPercent: 0 };
+  const reports = aggregateKpis([
+    { ...base, id: "legacy", userId: "a", date: new Date("2026-06-05T12:00:00.000Z"), dailySales: 999, dailyGoal: 999, transactions: 9, pieces: 9, user: { name: "Ana", role: "ASESOR", photoUrl: null } },
+    { ...base, id: "rdv", userId: "a", date: new Date("2026-06-05T00:00:00.000Z"), dailySales: 100, dailyGoal: 200, transactions: 1, pieces: 2, user: { name: "Ana", role: "ASESOR", photoUrl: null } }
+  ]);
+
+  assert.equal(reports[0].sales, 100);
+  assert.equal(reports[0].goal, 200);
+});

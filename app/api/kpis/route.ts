@@ -35,6 +35,9 @@ export async function GET(request: NextRequest) {
   const persistedWeeks = availableWeekRows.flatMap((week) => week.weekNumber !== null && week.weekStart && week.weekEnd ? [{ weekNumber: week.weekNumber, weekStart: week.weekStart, weekEnd: week.weekEnd }] : []);
   const availableWeeks = mergeRdvWeeks(persistedWeeks, legacyWeekRows.map((row) => row.date));
   const selectedWeek = period === "week" ? selectRdvWeek(availableWeeks, selectedDate) : null;
+  const selectedPersistedWeek = selectedWeek
+    ? persistedWeeks.find((week) => week.weekNumber === selectedWeek.weekNumber && week.weekStart.getTime() === selectedWeek.weekStart.getTime() && week.weekEnd.getTime() === selectedWeek.weekEnd.getTime())
+    : null;
   const calendarRange = getKpiMonthRange(selectedDate);
   const start = selectedWeek?.weekStart ?? calendarRange.start;
   const end = selectedWeek?.weekEnd ?? calendarRange.end;
@@ -44,16 +47,19 @@ export async function GET(request: NextRequest) {
       where: {
         storeId: session.storeId,
         ...userFilter,
-        ...(period === "week" && selectedWeek
-          ? { OR: [
-              { weekNumber: selectedWeek.weekNumber, weekStart: selectedWeek.weekStart },
-              {
+        ...(period === "week" && selectedPersistedWeek
+          ? {
+              weekNumber: selectedPersistedWeek.weekNumber,
+              weekStart: selectedPersistedWeek.weekStart,
+              weekEnd: selectedPersistedWeek.weekEnd
+            }
+          : period === "week" && selectedWeek
+            ? {
                 AND: [
                   { OR: [{ weekNumber: null }, { weekStart: null }, { weekEnd: null }] },
                   { date: { gte: selectedWeek.weekStart, lte: selectedWeek.weekEnd } }
                 ]
               }
-            ] }
           : period === "week"
             ? { id: "__missing_rdv_week__" }
             : { date: { gte: start, lte: end } })
@@ -70,7 +76,17 @@ export async function GET(request: NextRequest) {
   const reports = aggregateKpis(rows);
   const team = reports.filter((item) => item.role === "ASESOR");
   const own = reports.find((item) => item.userId === session.userId) ?? null;
-  const store = manager ? aggregateStore(team.length ? team : reports) : null;
+  const store = manager ? aggregateStore(reports) : null;
+  console.log("Registros KPI incluidos", rows.map((row) => ({
+    id: row.id,
+    userId: row.userId,
+    date: row.date.toISOString(),
+    dailySales: Number(row.dailySales),
+    dailyGoal: Number(row.dailyGoal),
+    weekNumber: row.weekNumber,
+    weekStart: row.weekStart?.toISOString() ?? null,
+    weekEnd: row.weekEnd?.toISOString() ?? null
+  })));
   console.log("Consulta KPI por periodo", {
     period,
     weekNumber: selectedWeek?.weekNumber ?? null,

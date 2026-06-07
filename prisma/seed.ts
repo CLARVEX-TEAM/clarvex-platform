@@ -30,7 +30,6 @@ async function main() {
 
   await prisma.evidence.deleteMany({ where: { storeId: store.id } });
   await prisma.dataSource.deleteMany({ where: { storeId: store.id } });
-  await prisma.kpi.deleteMany({ where: { storeId: store.id } });
   await prisma.pending.deleteMany({ where: { storeId: store.id } });
   await prisma.schedule.deleteMany({ where: { storeId: store.id } });
   await prisma.dayPlan.deleteMany({ where: { storeId: store.id } });
@@ -38,16 +37,6 @@ async function main() {
   await prisma.announcement.deleteMany({ where: { storeId: store.id } });
 
   const today = new Date("2026-06-05T12:00:00.000Z");
-  await prisma.kpi.createMany({
-    data: [
-      { userId: "itzel", storeId: store.id, date: today, dailySales: 49750, monthlySales: 694200, dailyGoal: 64000, monthlyGoal: 1080000, avgTicket: 1642, upt: 2.3, conversion: 30, pieces: 67, transactions: 30, ranking: 0, commissionAmount: 0, commissionPercent: 0 },
-      { userId: "waira", storeId: store.id, date: today, dailySales: 18400, monthlySales: 256800, dailyGoal: 22000, monthlyGoal: 360000, avgTicket: 1840, upt: 2.7, conversion: 34, pieces: 27, transactions: 10, ranking: 1, commissionAmount: 552, commissionPercent: 3 },
-      { userId: "jazmin", storeId: store.id, date: today, dailySales: 16250, monthlySales: 231400, dailyGoal: 21000, monthlyGoal: 345000, avgTicket: 1477, upt: 2.2, conversion: 29, pieces: 24, transactions: 11, ranking: 2, commissionAmount: 406.25, commissionPercent: 2.5 },
-      { userId: "alonso", storeId: store.id, date: today, dailySales: 13100, monthlySales: 204900, dailyGoal: 20500, monthlyGoal: 330000, avgTicket: 1638, upt: 2.0, conversion: 25, pieces: 16, transactions: 8, ranking: 3, commissionAmount: 262, commissionPercent: 2 },
-      { userId: "adrian", storeId: store.id, date: today, dailySales: 49750, monthlySales: 694200, dailyGoal: 64000, monthlyGoal: 1080000, avgTicket: 1642, upt: 2.3, conversion: 30, pieces: 67, transactions: 30, ranking: 0, commissionAmount: 0, commissionPercent: 0 }
-    ]
-  });
-
   const commissionRules = [
       { storeId: store.id, role: Role.ASESOR, minAchievement: 0, maxAchievement: 99.99, commissionPercent: 1.53 },
       { storeId: store.id, role: Role.ASESOR, minAchievement: 100, maxAchievement: 114.99, commissionPercent: 1.91 },

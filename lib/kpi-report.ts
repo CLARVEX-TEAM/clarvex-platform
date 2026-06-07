@@ -23,7 +23,9 @@ export type KpiReportItem = {
 };
 
 type RawKpi = {
+  id?: string;
   userId: string;
+  date?: Date;
   dailySales: unknown;
   dailyGoal: unknown;
   transactions: number;
@@ -39,7 +41,14 @@ type RawKpi = {
 
 export function aggregateKpis(rows: RawKpi[]) {
   const groups = new Map<string, RawKpi[]>();
-  for (const row of rows) groups.set(row.userId, [...(groups.get(row.userId) ?? []), row]);
+  const uniqueRows = new Map<string, RawKpi>();
+  for (const row of rows) {
+    const dateKey = row.date instanceof Date ? row.date.toISOString().slice(0, 10) : row.id ?? String(uniqueRows.size);
+    const key = `${row.userId}:${dateKey}`;
+    const existing = uniqueRows.get(key);
+    if (!existing || isCanonicalRdvDate(row.date) || !isCanonicalRdvDate(existing.date)) uniqueRows.set(key, row);
+  }
+  for (const row of Array.from(uniqueRows.values())) groups.set(row.userId, [...(groups.get(row.userId) ?? []), row]);
 
   const reports = Array.from(groups.values()).map((items) => {
     const first = items[0];
@@ -122,3 +131,4 @@ function number(value: unknown) { const parsed = Number(value); return Number.is
 function ratio(numerator: number, denominator: number) { return denominator > 0 ? round(numerator / denominator) : 0; }
 function average(values: number[]) { return values.length ? round(values.reduce((total, value) => total + value, 0) / values.length) : 0; }
 function round(value: number) { return Math.round(value * 100) / 100; }
+function isCanonicalRdvDate(value: Date | undefined) { return value instanceof Date && value.getUTCHours() === 0 && value.getUTCMinutes() === 0; }
