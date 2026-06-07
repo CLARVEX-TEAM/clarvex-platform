@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { DATA_SOURCE_ROLES } from "@/lib/access-control";
 import { isApiError, requireSession } from "@/lib/api";
 import { serializeDataSource } from "@/lib/data-source";
 import { downloadWorkbookSummary } from "@/lib/excel-proxy";
@@ -8,7 +9,7 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 export async function POST(_request: Request, { params }: { params: { id: string } }) {
-  const session = await requireSession(["GERENTE", "SUBGERENTE"]);
+  const session = await requireSession(DATA_SOURCE_ROLES);
   if (isApiError(session)) return session;
 
   const source = await prisma.dataSource.findFirst({

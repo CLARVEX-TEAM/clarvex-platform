@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { DATA_SOURCE_ROLES } from "@/lib/access-control";
 import { isApiError, requireSession } from "@/lib/api";
 import { encodeSyncLogMessage, getNextSyncAt, serializeDataSource, type KpiSyncMetrics, type ScheduleSyncMetrics } from "@/lib/data-source";
 import { downloadExcelWorkbook, summarizeWorkbook } from "@/lib/excel-proxy";
@@ -15,7 +16,7 @@ const KPI_BATCH_SIZE = 25;
 const KPI_IMPORT_TIMEOUT_MS = 4 * 60 * 1000;
 
 export async function POST(_request: Request, { params }: { params: { id: string } }) {
-  const session = await requireSession(["GERENTE", "SUBGERENTE"]);
+  const session = await requireSession(DATA_SOURCE_ROLES);
   if (isApiError(session)) return session;
 
   const source = await prisma.dataSource.findFirst({

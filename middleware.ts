@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { canManageDataSources } from "@/lib/access-control";
 import { SESSION_COOKIE, verifySessionToken } from "@/lib/session-token";
 
 const managerRoutes = ["/manager", "/pendientes", "/bitacora", "/comunicados", "/datos"];
@@ -21,6 +22,9 @@ export async function middleware(request: NextRequest) {
 
   if (!session) return NextResponse.redirect(new URL("/login", request.url));
   const isManager = session.role === "GERENTE" || session.role === "SUBGERENTE";
+  if (startsWithRoute(pathname, ["/datos"]) && !canManageDataSources(session.role)) {
+    return NextResponse.redirect(new URL("/advisor", request.url));
+  }
   const allowed = startsWithRoute(pathname, sharedRoutes)
     || (isManager && startsWithRoute(pathname, managerRoutes))
     || (!isManager && startsWithRoute(pathname, advisorRoutes));

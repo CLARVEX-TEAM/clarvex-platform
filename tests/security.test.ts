@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { canManageDataSources } from "../lib/access-control";
 import { canAccessAppData, canModifyPending, hashPin, publicUser, verifyPin } from "../lib/security";
 import { encodeSyncLogMessage, serializeDataSource } from "../lib/data-source";
 import type { Session } from "../lib/session-token";
@@ -30,6 +31,15 @@ test("app-data requiere una sesion", () => {
 test("un asesor no puede modificar pendientes de otra tienda", () => {
   assert.equal(canModifyPending(advisorSession, "store-b"), false);
   assert.equal(canModifyPending(advisorSession, "store-a"), false);
+});
+
+test("un asesor no puede acceder al Centro de Datos ni ejecutar sync", () => {
+  assert.equal(canManageDataSources("ASESOR"), false);
+});
+
+test("gerente y subgerente pueden administrar y sincronizar fuentes", () => {
+  assert.equal(canManageDataSources("GERENTE"), true);
+  assert.equal(canManageDataSources("SUBGERENTE"), true);
 });
 
 test("el usuario publico no expone hashes", () => {

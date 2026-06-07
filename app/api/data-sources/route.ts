@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { DATA_SOURCE_ROLES } from "@/lib/access-control";
 import { isApiError, parseJson, requireSession } from "@/lib/api";
 import { dataSourceInput, getNextSyncAt, serializeDataSource } from "@/lib/data-source";
 import { prisma } from "@/lib/prisma";
@@ -10,7 +11,7 @@ const sourceInclude = {
 };
 
 export async function GET() {
-  const session = await requireSession(["GERENTE", "SUBGERENTE"]);
+  const session = await requireSession(DATA_SOURCE_ROLES);
   if (isApiError(session)) return session;
 
   const sources = await prisma.dataSource.findMany({
@@ -23,7 +24,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const session = await requireSession(["GERENTE", "SUBGERENTE"]);
+  const session = await requireSession(DATA_SOURCE_ROLES);
   if (isApiError(session)) return session;
   const parsed = await parseJson(request, dataSourceInput);
   if ("response" in parsed) return parsed.response;

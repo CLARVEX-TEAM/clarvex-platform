@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Activity, BookOpen, CalendarDays, CheckCircle2, CheckSquare, ClipboardList, Database, LogOut, Megaphone, Receipt, ShoppingBag, UsersRound } from "lucide-react";
+import { Activity, ArrowRight, BookOpen, CalendarDays, CheckCircle2, CheckSquare, ClipboardList, Database, LogOut, Megaphone, Receipt, ShoppingBag, UsersRound } from "lucide-react";
 import { getSession, logout } from "@/lib/auth";
 import { fetchAppData, type AppData } from "@/lib/app-data";
 import { completion, money } from "@/lib/format";
@@ -118,8 +118,26 @@ export default function ManagerDashboard() {
           <QuickLink href="/pendientes" icon={ClipboardList} label="Crear pendiente" />
           <QuickLink href="/bitacora" icon={BookOpen} label="Bitacora" />
           <QuickLink href="/horarios" icon={CalendarDays} label="Horarios" />
-          <QuickLink href="/datos" icon={Database} label="Centro de Datos" className="col-span-2" />
         </section>
+
+        <Card className="mt-3 p-3.5">
+          <div className="flex items-center gap-3">
+            <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-blue-50 text-volt">
+              <Database size={20} />
+            </span>
+            <div className="min-w-0 flex-1">
+              <h2 className="font-black tracking-[-0.02em] text-ink">Centro de Datos</h2>
+              <p className="mt-0.5 text-xs text-muted">Fuentes y sincronizaciones</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => router.push("/datos")}
+              className="inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-full bg-volt px-3.5 text-xs font-black text-white transition active:scale-95"
+            >
+              Abrir <ArrowRight size={14} />
+            </button>
+          </div>
+        </Card>
 
         <Card className="mt-3">
           <div className="mb-3 flex items-center gap-2">
