@@ -8,3 +8,18 @@ dev.err.log
 npm-debug.log*
 public/uploads/profiles/*
 !public/uploads/profiles/.gitkeep
+public/uploads/evidences/*
+!public/uploads/evidences/.gitkeep
+
+# IDE / editor artifacts
+.vs/
+.vscode/settings.json
+.idea/
+
+# Certificates and private keys
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+*.cer

@@ -1,5 +1,4 @@
 import { PrismaClient, Role, PendingCategory, PendingPriority, PendingStatus } from "@prisma/client";
-import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
 
@@ -18,13 +17,11 @@ async function main() {
     ["alonso", "ALONSO TREVIÑO", "alonso@clarvex.local", "113642", Role.ASESOR]
   ] as const;
 
-  const passwordHash = await bcrypt.hash("demo1234", 10);
-
   for (const [id, name, email, employeeNumber, role] of people) {
     await prisma.user.upsert({
       where: { email },
       update: { name, employeeNumber, role, storeId: store.id, biometricEnabled: false },
-      create: { id, name, email, employeeNumber, role, passwordHash, pinHash: null, photoUrl: null, biometricEnabled: false, storeId: store.id }
+      create: { id, name, email, employeeNumber, role, passwordHash: null, pinHash: null, photoUrl: null, biometricEnabled: false, storeId: store.id }
     });
   }
 

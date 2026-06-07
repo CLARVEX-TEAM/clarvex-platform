@@ -53,19 +53,6 @@ export async function GET() {
     traffic: dashboardKpi.traffic
   } : null);
 
-  console.log("Dashboard KPI diario por usuario", {
-    dashboardDate,
-    sessionUserId: session.userId,
-    registroKpiUsado: dashboardKpi ? {
-      id: dashboardKpi.id,
-      userId: dashboardKpi.userId,
-      date: dashboardKpi.date.toISOString(),
-      dailyGoal: Number(dashboardKpi.dailyGoal),
-      dailySales: Number(dashboardKpi.dailySales)
-    } : null,
-    dailyGoal: dashboardDaily.dailyGoal,
-    dailySales: dashboardDaily.dailySales
-  });
 
   return NextResponse.json({
     users: users.map((user) => ({ id: user.id, name: user.name, employeeNumber: user.employeeNumber, role: user.role, avatar: user.name.slice(0, 2).toUpperCase(), photoUrl: user.photoUrl, biometricEnabled: user.biometricEnabled, lastLoginAt: user.lastLoginAt?.toISOString() ?? null })),

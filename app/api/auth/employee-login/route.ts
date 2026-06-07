@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { parseJson } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
+import { rateLimitAuth, rateLimitInspect } from "@/lib/rate-limit";
 import { hashPin, publicUser, verifyPin } from "@/lib/security";
 import { createSessionToken, SESSION_COOKIE, sessionCookieOptions } from "@/lib/session";
 
@@ -13,15 +14,34 @@ const inputSchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("setup"), employeeNumber: z.string().trim().min(1).max(30), pin: z.string().regex(/^\d{4}$/, "El PIN debe tener 4 digitos.") })
 ]);
 
+function getClientIp(request: Request): string {
+  return request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+}
+
 export async function POST(request: Request) {
+  const ip = getClientIp(request);
   const parsed = await parseJson(request, inputSchema);
   if ("response" in parsed) return parsed.response;
 
-  const user = await prisma.user.findUnique({ where: { employeeNumber: parsed.data.employeeNumber } });
-  if (!user) return NextResponse.json({ error: "Numero de empleado no encontrado." }, { status: 404 });
+  const isInspect = parsed.data.action === "inspect";
+  const rateLimit = isInspect ? rateLimitInspect(ip) : rateLimitAuth(ip);
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      { error: "Demasiados intentos. Intenta de nuevo en un momento." },
+      { status: 429, headers: { "Retry-After": String(rateLimit.retryAfterSeconds) } }
+    );
+  }
 
-  if (parsed.data.action === "inspect") {
+  const user = await prisma.user.findUnique({ where: { employeeNumber: parsed.data.employeeNumber } });
+
+  if (isInspect) {
+    if (!user) return NextResponse.json({ error: "Numero de empleado no encontrado." }, { status: 404 });
     return NextResponse.json({ user: publicUser(user), requiresPinSetup: !user.pinHash });
+  }
+
+  // Unified error for "not found" and "wrong PIN" to prevent user enumeration via login
+  if (!user) {
+    return NextResponse.json({ error: "Credenciales invalidas." }, { status: 401 });
   }
 
   if (parsed.data.action === "setup") {
@@ -30,7 +50,7 @@ export async function POST(request: Request) {
   } else {
     if (!user.pinHash) return NextResponse.json({ error: "Debes crear tu PIN antes de iniciar sesion." }, { status: 409 });
     if (!(await verifyPin(parsed.data.pin, user.pinHash))) {
-      return NextResponse.json({ error: "PIN incorrecto." }, { status: 401 });
+      return NextResponse.json({ error: "Credenciales invalidas." }, { status: 401 });
     }
   }
 

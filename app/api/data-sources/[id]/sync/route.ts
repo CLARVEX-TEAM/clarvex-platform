@@ -156,10 +156,9 @@ async function importKpis(workbook: Parameters<typeof parseKpiWorkbook>[0], stor
 
   for (let batchStart = 0; batchStart < matchedRecords.length; batchStart += KPI_BATCH_SIZE) {
     const batch = matchedRecords.slice(batchStart, batchStart + KPI_BATCH_SIZE);
-    console.log("Procesando lote de KPIs", {
-      lote: Math.floor(batchStart / KPI_BATCH_SIZE) + 1,
-      registros: batch.length
-    });
+    if (process.env.NODE_ENV !== "production") {
+      console.log("Procesando lote de KPIs", { lote: Math.floor(batchStart / KPI_BATCH_SIZE) + 1, registros: batch.length });
+    }
 
     for (let index = 0; index < batch.length; index += 1) {
       const record = batch[index];
@@ -236,14 +235,16 @@ function logParsedKpiWeeks(parsed: ReturnType<typeof parseKpiWorkbook>) {
   }
   for (const week of parsed.weeksDetected) {
     const weekRecords = weeks.get(`${week.weekNumber}:${week.weekStart.toISOString()}`) ?? [];
-    console.log("Semana RDV detectada", {
-      weekNumber: week.weekNumber,
-      weekStart: week.weekStart.toISOString().slice(0, 10),
-      weekEnd: week.weekEnd.toISOString().slice(0, 10),
-      fechasIncluidas: Array.from(new Set(weekRecords.map((record) => record.date.toISOString().slice(0, 10)))),
-      ventaAcumulada: weekRecords.reduce((total, record) => total + record.dailySales, 0),
-      metaAcumulada: weekRecords.reduce((total, record) => total + record.dailyGoal, 0)
-    });
+    if (process.env.NODE_ENV !== "production") {
+      console.log("Semana RDV detectada", {
+        weekNumber: week.weekNumber,
+        weekStart: week.weekStart.toISOString().slice(0, 10),
+        weekEnd: week.weekEnd.toISOString().slice(0, 10),
+        fechasIncluidas: Array.from(new Set(weekRecords.map((record) => record.date.toISOString().slice(0, 10)))),
+        ventaAcumulada: weekRecords.reduce((total, record) => total + record.dailySales, 0),
+        metaAcumulada: weekRecords.reduce((total, record) => total + record.dailyGoal, 0)
+      });
+    }
   }
 }
 
@@ -351,10 +352,9 @@ async function importSchedules(workbook: Parameters<typeof parseScheduleWorkbook
 
   for (let batchStart = 0; batchStart < matchedRecords.length; batchStart += SCHEDULE_BATCH_SIZE) {
     const batch = matchedRecords.slice(batchStart, batchStart + SCHEDULE_BATCH_SIZE);
-    console.log("Procesando lote de horarios", {
-      lote: Math.floor(batchStart / SCHEDULE_BATCH_SIZE) + 1,
-      registros: batch.length
-    });
+    if (process.env.NODE_ENV !== "production") {
+      console.log("Procesando lote de horarios", { lote: Math.floor(batchStart / SCHEDULE_BATCH_SIZE) + 1, registros: batch.length });
+    }
 
     for (const record of batch) {
       if (Date.now() - importStartedAt >= SCHEDULE_IMPORT_TIMEOUT_MS) {
@@ -362,15 +362,9 @@ async function importSchedules(workbook: Parameters<typeof parseScheduleWorkbook
         errors.push(...pendingRecords.map((pending) => (
           `Empleado ${pending.employeeNumber}, fecha ${pending.date.toISOString().slice(0, 10)}: tiempo maximo de importacion excedido.`
         )));
-        console.error("Importacion de horarios detenida por timeout", {
-          timeoutMs: SCHEDULE_IMPORT_TIMEOUT_MS,
-          registrosPendientes: pendingRecords.length
-        });
         return buildScheduleMetrics(parsed, users.length, matchedRecords.length, recordsCreated, recordsUpdated, errors, employeesNotFound);
       }
 
-      console.log("Procesando empleado", record.employeeNumber);
-      console.log("Fecha", record.date.toISOString());
       const existingKey = `${record.userId}:${record.date.toISOString()}`;
       const data = {
         storeId,

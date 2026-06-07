@@ -8,6 +8,15 @@ const excelContentTypes = [
   "application/vnd.ms-excel"
 ];
 
+// XLSX files are ZIP archives — validate the magic bytes before parsing
+const ZIP_MAGIC = [0x50, 0x4b, 0x03, 0x04];
+
+function hasZipSignature(buffer: ArrayBuffer): boolean {
+  if (buffer.byteLength < 4) return false;
+  const view = new Uint8Array(buffer, 0, 4);
+  return ZIP_MAGIC.every((byte, i) => view[i] === byte);
+}
+
 export type WorkbookSummary = {
   sheets: SheetSummary[];
   recordsProcessed: number;
@@ -25,18 +34,14 @@ export async function downloadExcelWorkbook(sourceUrl: string | null) {
 
   const workerUrl = buildWorkerDownloadUrl(workerBaseUrl, sourceUrl);
 
-  console.log("Excel proxy URL:", workerUrl);
-
   const response = await fetch(workerUrl, {
     method: "GET",
     cache: "no-store",
     signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS)
   });
-  console.log("Worker status:", response.status);
 
   if (!response.ok) {
     const workerError = await response.text();
-    console.error("Worker response:", workerError);
     throw new Error(workerError || `El Worker respondio con HTTP ${response.status}.`);
   }
 
@@ -47,7 +52,6 @@ export async function downloadExcelWorkbook(sourceUrl: string | null) {
 
   if (!isExcel) {
     const workerText = await response.text();
-    console.error("Worker response:", workerText);
     throw new Error(workerText || `El Worker no devolvio un archivo Excel valido (content-type: ${contentType || "desconocido"}).`);
   }
 
@@ -62,6 +66,10 @@ export async function downloadExcelWorkbook(sourceUrl: string | null) {
   }
   if (buffer.byteLength > MAX_EXCEL_BYTES) {
     throw new Error("El archivo Excel supera el limite de 20 MB.");
+  }
+
+  if (!hasZipSignature(buffer)) {
+    throw new Error("El archivo recibido no tiene una firma XLSX valida.");
   }
 
   let workbook: XLSX.WorkBook;

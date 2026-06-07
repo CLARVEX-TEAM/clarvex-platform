@@ -101,25 +101,6 @@ export async function GET(request: NextRequest) {
   const workedDays = session.role === "ASESOR"
     ? Array.from(workingKeys).filter((key) => key.startsWith(`${session.userId}:`)).length
     : null;
-  console.log("Registros KPI incluidos", rows.map((row) => ({
-    id: row.id,
-    userId: row.userId,
-    date: row.date.toISOString(),
-    dailySales: Number(row.dailySales),
-    dailyGoal: Number(row.dailyGoal),
-    weekNumber: row.weekNumber,
-    weekStart: row.weekStart?.toISOString() ?? null,
-    weekEnd: row.weekEnd?.toISOString() ?? null
-  })));
-  console.log("Consulta KPI por periodo", {
-    period,
-    weekNumber: selectedWeek?.weekNumber ?? null,
-    weekStart: selectedWeek ? periodDateKey(selectedWeek.weekStart) : null,
-    weekEnd: selectedWeek ? periodDateKey(selectedWeek.weekEnd) : null,
-    fechasIncluidas: Array.from(new Set(rows.map((row) => periodDateKey(row.date)))),
-    ventaAcumulada: reports.reduce((total, item) => total + item.sales, 0),
-    metaAcumulada: reports.reduce((total, item) => total + item.goal, 0)
-  });
 
   return NextResponse.json({
     period,

@@ -8,16 +8,5 @@ export function findCommissionRule(rules: CommissionRule[], role: Role, achievem
     (item.maxAchievement === null || item.maxAchievement === undefined || achievement <= item.maxAchievement)
   ));
 
-  console.log("Regla de comision", {
-    role,
-    achievement,
-    rule: rule ? {
-      id: rule.id,
-      minAchievement: rule.minAchievement,
-      maxAchievement: rule.maxAchievement,
-      commissionPercent: rule.commissionPercent
-    } : null
-  });
-
   return rule;
 }

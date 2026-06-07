@@ -46,13 +46,6 @@ export async function GET(request: NextRequest) {
   const weekEnd = endOfWeek(weekStart);
   const weeklySchedule = buildWeeklySchedule(users, schedules, weekStart);
 
-  console.log("Consulta de horarios", {
-    weekStart: dateKey(weekStart),
-    weekEnd: dateKey(weekEnd),
-    schedulesEncontrados: schedules.length,
-    usuariosEncontrados: users.length,
-    statusPorUsuarioDia: weeklySchedule.map((item) => ({ userId: item.userId, date: item.date, status: item.status }))
-  });
 
   return NextResponse.json({
     weekStart: dateKey(weekStart),

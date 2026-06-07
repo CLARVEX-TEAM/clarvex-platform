@@ -144,7 +144,7 @@ model User {
   name                  String
   email                 String                 @unique
   employeeNumber        String                 @unique
-  passwordHash          String
+  passwordHash          String?
   pinHash               String?
   photoUrl              String?
   biometricEnabled      Boolean                @default(false)
