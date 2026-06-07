@@ -1,4 +1,5 @@
 import * as XLSX from "xlsx";
+import { reconstructRdvWeek } from "@/lib/rdv-week";
 
 export type ParsedKpiRecord = {
   employeeNumber: string;
@@ -83,11 +84,8 @@ export function parseKpiWorkbook(workbook: XLSX.WorkBook): KpiParseResult {
       if (detectedWeekNumber === null) ignoredRows += 1;
       continue;
     }
-    if (!activeWeek) {
-      ignoredRows += 1;
-      continue;
-    }
-    activeWeek.dates.push(date);
+    const fallbackWeek = activeWeek ? null : reconstructRdvWeek(date);
+    activeWeek?.dates.push(date);
 
     const recordsBeforeRow = records.length;
 
@@ -105,9 +103,9 @@ export function parseKpiWorkbook(workbook: XLSX.WorkBook): KpiParseResult {
         employeeName: group.employeeName,
         role: group.role,
         date,
-        weekNumber: activeWeek.weekNumber,
-        weekStart: date,
-        weekEnd: date,
+        weekNumber: activeWeek?.weekNumber ?? fallbackWeek!.weekNumber,
+        weekStart: activeWeek ? date : fallbackWeek!.weekStart,
+        weekEnd: activeWeek ? date : fallbackWeek!.weekEnd,
         dailyGoal,
         dailySales,
         transactions,
@@ -119,7 +117,7 @@ export function parseKpiWorkbook(workbook: XLSX.WorkBook): KpiParseResult {
         achievement: dailyGoal > 0 ? round((dailySales / dailyGoal) * 100) : 0
       };
       records.push(record);
-      activeWeek.records.push(record);
+      activeWeek?.records.push(record);
     }
     if (records.length === recordsBeforeRow) ignoredRows += 1;
   }

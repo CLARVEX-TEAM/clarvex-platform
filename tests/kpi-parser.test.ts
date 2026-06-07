@@ -88,3 +88,20 @@ test("ignora filas vacias y exige la hoja Diario de ventas", () => {
   XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([["sin datos"]]), "Resumen");
   assert.throws(() => parseKpiWorkbook(workbook), /Diario de ventas/);
 });
+
+test("reconstruye semana por fecha cuando el RDV legacy no trae marcador", () => {
+  const rows: unknown[][] = Array.from({ length: 9 }, () => []);
+  rows[5] = [null, null, "ASESOR"];
+  rows[6] = [null, null, "95739"];
+  rows[7] = [null, null, "Asesor"];
+  rows[8] = ["DIA", "FECHA", ...metrics];
+  rows.push(["MIERCOLES", "03/06/2026", 100, 200, 1, 2, 0]);
+
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(rows), "Diario de ventas");
+  const result = parseKpiWorkbook(workbook);
+
+  assert.equal(result.records[0].weekNumber, 22);
+  assert.equal(result.records[0].weekStart.toISOString(), "2026-05-31T00:00:00.000Z");
+  assert.equal(result.records[0].weekEnd.toISOString(), "2026-06-06T00:00:00.000Z");
+});

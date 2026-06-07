@@ -3,6 +3,7 @@ import { isApiError, requireSession } from "@/lib/api";
 import { aggregateKpis, aggregateStore } from "@/lib/kpi-report";
 import { getKpiMonthRange, parsePeriodDate, periodDateKey, type KpiPeriod } from "@/lib/kpi-period";
 import { prisma } from "@/lib/prisma";
+import { mergeRdvWeeks } from "@/lib/rdv-week";
 
 export const dynamic = "force-dynamic";
 
@@ -17,13 +18,22 @@ export async function GET(request: NextRequest) {
   if (!selectedDate) return NextResponse.json({ error: "date debe usar formato YYYY-MM-DD." }, { status: 400 });
   const manager = session.role === "GERENTE" || session.role === "SUBGERENTE";
   const userFilter = manager ? {} : { userId: session.userId };
-  const availableWeekRows = await prisma.kpi.findMany({
-    where: { storeId: session.storeId, ...userFilter, weekNumber: { not: null }, weekStart: { not: null }, weekEnd: { not: null } },
-    distinct: ["weekStart", "weekNumber"],
-    select: { weekNumber: true, weekStart: true, weekEnd: true },
-    orderBy: { weekStart: "desc" }
-  });
-  const availableWeeks = availableWeekRows.flatMap((week) => week.weekNumber !== null && week.weekStart && week.weekEnd ? [{ weekNumber: week.weekNumber, weekStart: week.weekStart, weekEnd: week.weekEnd }] : []);
+  const [availableWeekRows, legacyWeekRows] = await Promise.all([
+    prisma.kpi.findMany({
+      where: { storeId: session.storeId, ...userFilter, weekNumber: { not: null }, weekStart: { not: null }, weekEnd: { not: null } },
+      distinct: ["weekStart", "weekNumber"],
+      select: { weekNumber: true, weekStart: true, weekEnd: true },
+      orderBy: { weekStart: "desc" }
+    }),
+    prisma.kpi.findMany({
+      where: { storeId: session.storeId, ...userFilter, OR: [{ weekNumber: null }, { weekStart: null }, { weekEnd: null }] },
+      distinct: ["date"],
+      select: { date: true },
+      orderBy: { date: "desc" }
+    })
+  ]);
+  const persistedWeeks = availableWeekRows.flatMap((week) => week.weekNumber !== null && week.weekStart && week.weekEnd ? [{ weekNumber: week.weekNumber, weekStart: week.weekStart, weekEnd: week.weekEnd }] : []);
+  const availableWeeks = mergeRdvWeeks(persistedWeeks, legacyWeekRows.map((row) => row.date));
   const selectedWeek = period === "week" ? selectRdvWeek(availableWeeks, selectedDate) : null;
   const calendarRange = getKpiMonthRange(selectedDate);
   const start = selectedWeek?.weekStart ?? calendarRange.start;
@@ -35,7 +45,10 @@ export async function GET(request: NextRequest) {
         storeId: session.storeId,
         ...userFilter,
         ...(period === "week" && selectedWeek
-          ? { weekNumber: selectedWeek.weekNumber, weekStart: selectedWeek.weekStart }
+          ? { OR: [
+              { weekNumber: selectedWeek.weekNumber, weekStart: selectedWeek.weekStart },
+              { date: { gte: selectedWeek.weekStart, lte: selectedWeek.weekEnd } }
+            ] }
           : period === "week"
             ? { id: "__missing_rdv_week__" }
             : { date: { gte: start, lte: end } })
