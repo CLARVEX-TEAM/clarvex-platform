@@ -48,7 +48,6 @@ async function main() {
     ]
   });
 
-  await prisma.employeeNumberAlias.upsert({ where: { employeeNumber: "96739" }, update: { userId: "waira" }, create: { employeeNumber: "96739", userId: "waira" } });
   await prisma.employeeNumberAlias.upsert({ where: { employeeNumber: "96383" }, update: { userId: "jazmin" }, create: { employeeNumber: "96383", userId: "jazmin" } });
 
   const commissionRules = [
