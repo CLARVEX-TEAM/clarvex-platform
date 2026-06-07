@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isApiError, requireSession } from "@/lib/api";
+import { decodeSyncLogMessage, type KpiSyncMetrics } from "@/lib/data-source";
 import { aggregateKpis, aggregateStore, aggregateStoreTraffic } from "@/lib/kpi-report";
-import { getKpiMonthRange, parsePeriodDate, periodDateKey, type KpiPeriod } from "@/lib/kpi-period";
+import { buildRetailMonths, parsePeriodDate, periodDateKey, type KpiPeriod } from "@/lib/kpi-period";
 import { prisma } from "@/lib/prisma";
 import { mergeRdvWeeks } from "@/lib/rdv-week";
 
@@ -18,7 +19,7 @@ export async function GET(request: NextRequest) {
   if (!selectedDate) return NextResponse.json({ error: "date debe usar formato YYYY-MM-DD." }, { status: 400 });
   const manager = session.role === "GERENTE" || session.role === "SUBGERENTE";
   const userFilter = manager ? {} : { userId: session.userId };
-  const [availableWeekRows, legacyWeekRows] = await Promise.all([
+  const [availableWeekRows, legacyWeekRows, latestKpiSource] = await Promise.all([
     prisma.kpi.findMany({
       where: { storeId: session.storeId, ...userFilter, weekNumber: { not: null }, weekStart: { not: null }, weekEnd: { not: null } },
       distinct: ["weekStart", "weekNumber"],
@@ -30,17 +31,29 @@ export async function GET(request: NextRequest) {
       distinct: ["date"],
       select: { date: true },
       orderBy: { date: "desc" }
+    }),
+    prisma.dataSource.findFirst({
+      where: { storeId: session.storeId, type: "KPIS" },
+      include: { syncLogs: { where: { status: "SUCCESS" }, orderBy: { createdAt: "desc" }, take: 1 } }
     })
   ]);
   const persistedWeeks = availableWeekRows.flatMap((week) => week.weekNumber !== null && week.weekStart && week.weekEnd ? [{ weekNumber: week.weekNumber, weekStart: week.weekStart, weekEnd: week.weekEnd }] : []);
-  const availableWeeks = mergeRdvWeeks(persistedWeeks, legacyWeekRows.map((row) => row.date));
+  const latestDetails = latestKpiSource?.syncLogs[0] ? decodeSyncLogMessage(latestKpiSource.syncLogs[0].message).details : null;
+  const syncedWeeks = isKpiSyncMetrics(latestDetails) ? latestDetails.weeksDetected.map((week) => ({
+    weekNumber: week.weekNumber,
+    weekStart: new Date(`${week.weekStart}T00:00:00.000Z`),
+    weekEnd: new Date(`${week.weekEnd}T00:00:00.000Z`)
+  })) : [];
+  const availableWeeks = mergeRdvWeeks([...persistedWeeks, ...syncedWeeks], legacyWeekRows.map((row) => row.date))
+    .sort((left, right) => left.weekStart.getTime() - right.weekStart.getTime());
   const selectedWeek = period === "week" ? selectRdvWeek(availableWeeks, selectedDate) : null;
   const selectedPersistedWeek = selectedWeek
     ? persistedWeeks.find((week) => week.weekNumber === selectedWeek.weekNumber && week.weekStart.getTime() === selectedWeek.weekStart.getTime() && week.weekEnd.getTime() === selectedWeek.weekEnd.getTime())
     : null;
-  const calendarRange = getKpiMonthRange(selectedDate);
-  const start = selectedWeek?.weekStart ?? calendarRange.start;
-  const end = selectedWeek?.weekEnd ?? calendarRange.end;
+  const retailMonths = buildRetailMonths(availableWeeks);
+  const selectedRetailMonth = selectRetailMonth(retailMonths, selectedDate);
+  const start = selectedWeek?.weekStart ?? selectedRetailMonth?.start ?? selectedDate;
+  const end = selectedWeek?.weekEnd ?? selectedRetailMonth?.end ?? selectedDate;
 
   const [rows, rules] = await Promise.all([
     prisma.kpi.findMany({
@@ -73,10 +86,21 @@ export async function GET(request: NextRequest) {
     })
   ]);
 
-  const reports = aggregateKpis(rows);
+  const advisorUserIds = Array.from(new Set(rows.filter((row) => row.user.role === "ASESOR").map((row) => row.userId)));
+  const schedules = advisorUserIds.length ? await prisma.schedule.findMany({
+    where: { storeId: session.storeId, userId: { in: advisorUserIds }, date: { gte: start, lte: end } },
+    select: { userId: true, date: true, status: true, statusRaw: true }
+  }) : [];
+  const workingKeys = buildWorkingScheduleKeys(schedules);
+  const individualRows = rows.filter((row) => row.user.role !== "ASESOR" || workingKeys.has(`${row.userId}:${periodDateKey(row.date)}`));
+  const reports = aggregateKpis(individualRows);
+  const storeReports = aggregateKpis(rows);
   const team = reports.filter((item) => item.role === "ASESOR");
   const own = reports.find((item) => item.userId === session.userId) ?? null;
-  const store = manager ? aggregateStore(reports, aggregateStoreTraffic(rows)) : null;
+  const store = manager ? aggregateStore(storeReports, aggregateStoreTraffic(rows)) : null;
+  const workedDays = session.role === "ASESOR"
+    ? Array.from(workingKeys).filter((key) => key.startsWith(`${session.userId}:`)).length
+    : null;
   console.log("Registros KPI incluidos", rows.map((row) => ({
     id: row.id,
     userId: row.userId,
@@ -104,6 +128,9 @@ export async function GET(request: NextRequest) {
     endDate: periodDateKey(end),
     weekNumber: selectedWeek?.weekNumber ?? null,
     availableWeeks: availableWeeks.map((week) => ({ weekNumber: week.weekNumber, weekStart: periodDateKey(week.weekStart), weekEnd: periodDateKey(week.weekEnd) })),
+    availableRetailMonths: retailMonths.map((month) => ({ label: month.label, start: periodDateKey(month.start), end: periodDateKey(month.end) })),
+    retailMonthLabel: selectedRetailMonth?.label ?? null,
+    workedDays,
     currentUserId: session.userId,
     role: session.role,
     store,
@@ -116,6 +143,27 @@ export async function GET(request: NextRequest) {
       commissionPercent: Number(rule.commissionPercent), active: rule.active
     }))
   }, { headers: { "Cache-Control": "private, no-store" } });
+}
+
+function isKpiSyncMetrics(details: unknown): details is KpiSyncMetrics {
+  return typeof details === "object" && details !== null && "sheetUsed" in details && "weeksDetected" in details && Array.isArray((details as KpiSyncMetrics).weeksDetected);
+}
+
+function selectRetailMonth(months: Array<{ label: string; start: Date; end: Date }>, selectedDate: Date) {
+  return months.find((month) => selectedDate >= month.start && selectedDate <= month.end)
+    ?? months.find((month) => month.end.getUTCFullYear() === selectedDate.getUTCFullYear() && month.end.getUTCMonth() === selectedDate.getUTCMonth())
+    ?? months.at(-1)
+    ?? null;
+}
+
+function buildWorkingScheduleKeys(schedules: Array<{ userId: string; date: Date; status: string; statusRaw: string | null }>) {
+  const byUserDate = new Map<string, { status: string; quality: number }>();
+  for (const schedule of schedules) {
+    const key = `${schedule.userId}:${periodDateKey(schedule.date)}`;
+    const quality = (schedule.statusRaw ? 2 : 0) + (schedule.date.getUTCHours() === 0 ? 1 : 0);
+    if (!byUserDate.has(key) || quality > byUserDate.get(key)!.quality) byUserDate.set(key, { status: schedule.status, quality });
+  }
+  return new Set(Array.from(byUserDate.entries()).filter(([, schedule]) => schedule.status === "WORKING").map(([key]) => key));
 }
 
 function selectRdvWeek(weeks: Array<{ weekNumber: number; weekStart: Date; weekEnd: Date }>, selectedDate: Date) {

@@ -90,6 +90,9 @@ export async function POST(_request: Request, { params }: { params: { id: string
       } : kpiMetrics ? {
         hojaUsada: kpiMetrics.sheetUsed,
         semanasDetectadas: kpiMetrics.weeksDetected,
+        mesRetail: kpiMetrics.retailMonthLabel,
+        inicioMesRetail: kpiMetrics.retailMonthStart,
+        finMesRetail: kpiMetrics.retailMonthEnd,
         colaboradoresDetectados: kpiMetrics.collaboratorsDetected,
         empleadosProcesados: kpiMetrics.employeesProcessed,
         filasLeidas: kpiMetrics.rowsRead,
@@ -120,7 +123,7 @@ export async function POST(_request: Request, { params }: { params: { id: string
 
 async function importKpis(workbook: Parameters<typeof parseKpiWorkbook>[0], storeId: string): Promise<KpiSyncMetrics> {
   const parsed = parseKpiWorkbook(workbook);
-  logParsedKpiWeeks(parsed.records);
+  logParsedKpiWeeks(parsed);
   const users = parsed.employeeNumbers.length > 0
     ? await prisma.user.findMany({
         where: { storeId, OR: [{ employeeNumber: { in: parsed.employeeNumbers } }, { employeeNumberAliases: { some: { employeeNumber: { in: parsed.employeeNumbers } } } }] },
@@ -225,18 +228,18 @@ async function importKpis(workbook: Parameters<typeof parseKpiWorkbook>[0], stor
   return buildKpiMetrics(parsed, users.length, matchedRecords.length, recordsCreated, recordsUpdated, employeesNotFound, errors);
 }
 
-function logParsedKpiWeeks(records: ReturnType<typeof parseKpiWorkbook>["records"]) {
-  const weeks = new Map<string, typeof records>();
-  for (const record of records) {
+function logParsedKpiWeeks(parsed: ReturnType<typeof parseKpiWorkbook>) {
+  const weeks = new Map<string, typeof parsed.records>();
+  for (const record of parsed.records) {
     const key = `${record.weekNumber}:${record.weekStart.toISOString()}`;
     weeks.set(key, [...(weeks.get(key) ?? []), record]);
   }
-  for (const weekRecords of Array.from(weeks.values())) {
-    const first = weekRecords[0];
+  for (const week of parsed.weeksDetected) {
+    const weekRecords = weeks.get(`${week.weekNumber}:${week.weekStart.toISOString()}`) ?? [];
     console.log("Semana RDV detectada", {
-      weekNumber: first.weekNumber,
-      weekStart: first.weekStart.toISOString().slice(0, 10),
-      weekEnd: first.weekEnd.toISOString().slice(0, 10),
+      weekNumber: week.weekNumber,
+      weekStart: week.weekStart.toISOString().slice(0, 10),
+      weekEnd: week.weekEnd.toISOString().slice(0, 10),
       fechasIncluidas: Array.from(new Set(weekRecords.map((record) => record.date.toISOString().slice(0, 10)))),
       ventaAcumulada: weekRecords.reduce((total, record) => total + record.dailySales, 0),
       metaAcumulada: weekRecords.reduce((total, record) => total + record.dailyGoal, 0)
@@ -290,7 +293,14 @@ function buildKpiMetrics(
 ): KpiSyncMetrics {
   return {
     sheetUsed: parsed.sheetUsed,
-    weeksDetected: parsed.weeksDetected,
+    weeksDetected: parsed.weeksDetected.map((week) => ({
+      weekNumber: week.weekNumber,
+      weekStart: week.weekStart.toISOString().slice(0, 10),
+      weekEnd: week.weekEnd.toISOString().slice(0, 10)
+    })),
+    retailMonthLabel: parsed.retailMonthLabel,
+    retailMonthStart: parsed.retailMonthStart.toISOString().slice(0, 10),
+    retailMonthEnd: parsed.retailMonthEnd.toISOString().slice(0, 10),
     collaboratorsDetected: parsed.employeeNumbers.length,
     employeesProcessed,
     rowsRead: parsed.rowsRead,

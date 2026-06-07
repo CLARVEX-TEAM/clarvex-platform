@@ -2,6 +2,8 @@ import * as XLSX from "xlsx";
 
 export const RDV_SHEET_NAME = "Diario de ventas";
 
+export type RdvWeekRange = { weekNumber: number; weekStart: Date; weekEnd: Date };
+
 export type ParsedKpiRecord = {
   employeeNumber: string;
   employeeName: string;
@@ -27,7 +29,10 @@ export type KpiParseResult = {
   sheetUsed: typeof RDV_SHEET_NAME;
   records: ParsedKpiRecord[];
   employeeNumbers: string[];
-  weeksDetected: number[];
+  weeksDetected: RdvWeekRange[];
+  retailMonthLabel: string;
+  retailMonthStart: Date;
+  retailMonthEnd: Date;
   crmTransactionsTotal: number;
   totalSalesImported: number;
   totalGoalImported: number;
@@ -67,8 +72,10 @@ export function parseKpiWorkbook(workbook: XLSX.WorkBook): KpiParseResult {
 
   const dateColumn = detectDateColumn(rows[headerRow] ?? []);
   const trafficColumn = detectTrafficColumn(rows[headerRow] ?? []);
+  const retailMonth = detectRetailMonth(rows, headerRow, dateColumn, groups[0].start);
   const records: ParsedKpiRecord[] = [];
   let activeWeek: { weekNumber: number; dates: Date[]; records: ParsedKpiRecord[] } | null = null;
+  const weeksDetected: RdvWeekRange[] = [];
   let rowsRead = 0;
   let ignoredRows = 0;
 
@@ -79,7 +86,7 @@ export function parseKpiWorkbook(workbook: XLSX.WorkBook): KpiParseResult {
     rowsRead += 1;
     const detectedWeekNumber = findWeekNumber(row);
     if (detectedWeekNumber !== null) {
-      finalizeWeek(activeWeek);
+      finalizeWeek(activeWeek, retailMonth.end, weeksDetected);
       activeWeek = { weekNumber: detectedWeekNumber, dates: [], records: [] };
     }
     if (["TTLS", "BONOS", "INCIDENCIAS"].some((label) => rowLabel.includes(label))) {
@@ -135,14 +142,19 @@ export function parseKpiWorkbook(workbook: XLSX.WorkBook): KpiParseResult {
     }
     if (records.length === recordsBeforeRow) ignoredRows += 1;
   }
-  finalizeWeek(activeWeek);
+  finalizeWeek(activeWeek, retailMonth.end, weeksDetected);
+
+  const retailMonthStart = weeksDetected[0]?.weekStart ?? retailMonth.start;
 
   const uniqueRecords = deduplicate(records);
   return {
     sheetUsed: RDV_SHEET_NAME,
     records: uniqueRecords,
     employeeNumbers: Array.from(new Set(groups.map((group) => group.employeeNumber))),
-    weeksDetected: Array.from(new Set(uniqueRecords.map((record) => record.weekNumber))),
+    weeksDetected,
+    retailMonthLabel: retailMonth.label,
+    retailMonthStart,
+    retailMonthEnd: retailMonth.end,
     crmTransactionsTotal: uniqueRecords.reduce((total, record) => total + record.crmTransactions, 0),
     totalSalesImported: round(uniqueRecords.reduce((total, record) => total + record.dailySales, 0)),
     totalGoalImported: round(uniqueRecords.reduce((total, record) => total + record.dailyGoal, 0)),
@@ -157,15 +169,38 @@ function findWeekNumber(row: unknown[]) {
   return match ? Number(match[1]) : null;
 }
 
-function finalizeWeek(week: { dates: Date[]; records: ParsedKpiRecord[] } | null) {
+function finalizeWeek(week: { weekNumber: number; dates: Date[]; records: ParsedKpiRecord[] } | null, retailMonthEnd: Date, ranges: RdvWeekRange[]) {
   if (!week || week.dates.length === 0) return;
   const weekStart = new Date(Math.min(...week.dates.map((date) => date.getTime())));
-  const weekEnd = new Date(Math.max(...week.dates.map((date) => date.getTime())));
+  const weekEnd = new Date(Math.min(Math.max(...week.dates.map((date) => date.getTime())), retailMonthEnd.getTime()));
+  ranges.push({ weekNumber: week.weekNumber, weekStart, weekEnd });
   for (const record of week.records) {
     record.weekStart = weekStart;
     record.weekEnd = weekEnd;
   }
 }
+
+function detectRetailMonth(rows: unknown[][], headerRow: number, dateColumn: number, employeeStart: number) {
+  const monthNames = ["ENERO", "FEBRERO", "MARZO", "ABRIL", "MAYO", "JUNIO", "JULIO", "AGOSTO", "SEPTIEMBRE", "OCTUBRE", "NOVIEMBRE", "DICIEMBRE"];
+  let monthIndex = -1;
+  for (let rowIndex = 0; rowIndex < headerRow; rowIndex += 1) {
+    const row = rows[rowIndex] ?? [];
+    const monthCell = row.findIndex((value) => normalizeText(value) === "MES");
+    if (monthCell < 0) continue;
+    monthIndex = row.slice(monthCell + 1).map(normalizeText).map((value) => monthNames.indexOf(value)).find((index) => index >= 0) ?? -1;
+    if (monthIndex >= 0) break;
+  }
+  const firstDate = rows.slice(headerRow + 1).map((row) => findRowDate(row, dateColumn, employeeStart)).find((date): date is Date => Boolean(date));
+  if (monthIndex < 0 || !firstDate) throw new Error("No se pudo detectar el mes retail de Diario de ventas.");
+  const year = firstDate.getUTCMonth() > monthIndex ? firstDate.getUTCFullYear() + 1 : firstDate.getUTCFullYear();
+  return {
+    label: `${titleCase(monthNames[monthIndex])} ${year}`,
+    start: new Date(Date.UTC(year, monthIndex, 1)),
+    end: new Date(Date.UTC(year, monthIndex + 1, 0))
+  };
+}
+
+function titleCase(value: string) { return value.charAt(0) + value.slice(1).toLowerCase(); }
 
 function detectEmployeeGroups(rows: unknown[][], headerRow: number): EmployeeGroup[] {
   const roleRow = headerRow - 3;

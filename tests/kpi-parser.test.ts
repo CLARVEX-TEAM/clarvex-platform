@@ -19,6 +19,7 @@ const metrics = [
 
 test("parsea Diario de ventas por employeeNumber y calcula KPIs", () => {
   const rows: unknown[][] = Array.from({ length: 9 }, () => []);
+  rows[4] = ["MES", "JUNIO"];
   rows[5] = [null, null, "ASESOR", ...Array(10), "SUBGERENTE"];
   rows[6] = [null, null, "95739", ...Array(10), "102259"];
   rows[7] = [null, null, "Nombre no usado", ...Array(10), "Otro nombre"];
@@ -40,7 +41,10 @@ test("parsea Diario de ventas por employeeNumber y calcula KPIs", () => {
 
   assert.deepEqual(result.employeeNumbers, ["95739", "102259"]);
   assert.equal(result.sheetUsed, "Diario de ventas");
-  assert.deepEqual(result.weeksDetected, [22]);
+  assert.deepEqual(result.weeksDetected.map((week) => week.weekNumber), [22]);
+  assert.equal(result.retailMonthLabel, "Junio 2026");
+  assert.equal(result.retailMonthStart.toISOString(), "2026-06-01T00:00:00.000Z");
+  assert.equal(result.retailMonthEnd.toISOString(), "2026-06-30T00:00:00.000Z");
   assert.equal(result.records.length, 2);
   assert.equal(result.rowsRead, 5);
   assert.equal(result.ignoredRows, 3);
@@ -71,6 +75,7 @@ test("parsea Diario de ventas por employeeNumber y calcula KPIs", () => {
 
 test("respeta una semana RDV que inicia en domingo", () => {
   const rows: unknown[][] = Array.from({ length: 9 }, () => []);
+  rows[4] = ["MES", "JUNIO"];
   rows[5] = [null, null, "ASESOR"];
   rows[6] = [null, null, "95739"];
   rows[7] = [null, null, "Asesor"];
@@ -98,6 +103,7 @@ test("ignora filas vacias y exige la hoja Diario de ventas", () => {
 
 test("ignora filas diarias sin etiqueta de semana RDV", () => {
   const rows: unknown[][] = Array.from({ length: 9 }, () => []);
+  rows[4] = ["MES", "JUNIO"];
   rows[5] = [null, null, "ASESOR"];
   rows[6] = [null, null, "95739"];
   rows[7] = [null, null, "Asesor"];
@@ -114,6 +120,7 @@ test("ignora filas diarias sin etiqueta de semana RDV", () => {
 
 test("usa exclusivamente Diario de ventas y detecta semanas verticales", () => {
   const rows: unknown[][] = Array.from({ length: 9 }, () => []);
+  rows[4] = ["MES", "JUNIO"];
   rows[5] = [null, null, "ASESOR"];
   rows[6] = [null, null, "95739"];
   rows[7] = [null, null, "Asesor"];
@@ -131,7 +138,7 @@ test("usa exclusivamente Diario de ventas y detecta semanas verticales", () => {
   XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([["VTAS Ttls SIN IVA", 999999]]), "COMISIONES");
 
   const result = parseKpiWorkbook(workbook);
-  assert.deepEqual(result.weeksDetected, [22, 23]);
+  assert.deepEqual(result.weeksDetected.map((week) => week.weekNumber), [22, 23]);
   assert.equal(result.records.length, 3);
   assert.equal(result.records[0].dailySales, 0);
   assert.equal(result.records[0].weekStart.toISOString(), "2026-05-31T00:00:00.000Z");
@@ -144,6 +151,7 @@ test("usa exclusivamente Diario de ventas y detecta semanas verticales", () => {
 
 test("calcula conversion con TRAFICO X dia y no con TX cap CRM", () => {
   const rows: unknown[][] = Array.from({ length: 9 }, () => []);
+  rows[4] = ["MES", "JUNIO"];
   rows[5] = [null, null, "ASESOR"];
   rows[6] = [null, null, "95739"];
   rows[7] = [null, null, "Asesor"];

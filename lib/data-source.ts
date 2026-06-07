@@ -28,7 +28,10 @@ export type ScheduleSyncMetrics = {
 
 export type KpiSyncMetrics = {
   sheetUsed: "Diario de ventas";
-  weeksDetected: number[];
+  weeksDetected: Array<{ weekNumber: number; weekStart: string; weekEnd: string }>;
+  retailMonthLabel: string;
+  retailMonthStart: string;
+  retailMonthEnd: string;
   collaboratorsDetected: number;
   employeesProcessed: number;
   rowsRead: number;
@@ -122,7 +125,7 @@ export function encodeSyncLogMessage(message: string, sheets: SheetSummary[] = [
   return JSON.stringify({ message, sheets, details });
 }
 
-function decodeSyncLogMessage(value: string): { message: string; sheets: SheetSummary[]; details: DataSyncMetrics | null } {
+export function decodeSyncLogMessage(value: string): { message: string; sheets: SheetSummary[]; details: DataSyncMetrics | null } {
   try {
     const parsed = JSON.parse(value) as { message?: unknown; sheets?: unknown; details?: unknown };
     const sheets = Array.isArray(parsed.sheets)
