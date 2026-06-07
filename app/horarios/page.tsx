@@ -1,104 +1,200 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { CalendarDays, Clock, MapPin, UsersRound } from "lucide-react";
-import { fetchAppData, type AppData } from "@/lib/app-data";
+import { useEffect, useMemo, useState } from "react";
+import { CalendarDays, ChevronLeft, ChevronRight, Clock3 } from "lucide-react";
 import { getSession } from "@/lib/auth";
-import type { User } from "@/lib/types";
-import { AppFrame, AppHeader, Badge, BottomNav, Card, StatCard } from "@/components/ui";
+import { addWeeks, dateKey, startOfWeek } from "@/lib/schedule-week";
+import type { Role, User } from "@/lib/types";
+import { AppFrame, AppHeader, Badge, BottomNav, Button, Card } from "@/components/ui";
+
+type ScheduleStatus = "WORKING" | "OFF" | "VACATION" | "PAID_DAY" | "INVENTORY" | "TERMINATED";
+type ScheduleItem = {
+  id: string;
+  userId: string;
+  userName: string;
+  userRole: Role;
+  date: string;
+  day: string;
+  status: ScheduleStatus;
+  statusRaw: string | null;
+  startTime: string | null;
+  endTime: string | null;
+  zone: string | null;
+};
+type ScheduleResponse = {
+  weekStart: string;
+  weekEnd: string;
+  availableWeeks: string[];
+  schedules: ScheduleItem[];
+};
+
+const dayNames = ["Domingo", "Lunes", "Martes", "Miercoles", "Jueves", "Viernes", "Sabado"];
+const statusConfig: Record<ScheduleStatus, { label: string; tone: "success" | "default" | "warn" | "danger" | "info"; className: string }> = {
+  WORKING: { label: "Laborando", tone: "success", className: "bg-emerald-50 text-emerald-700" },
+  OFF: { label: "Descanso", tone: "default", className: "bg-slate-100 text-slate-600" },
+  VACATION: { label: "Vacaciones", tone: "info", className: "bg-sky-50 text-sky-700" },
+  PAID_DAY: { label: "Pago dia", tone: "warn", className: "bg-amber-50 text-amber-700" },
+  INVENTORY: { label: "Conteo", tone: "warn", className: "bg-violet-50 text-violet-700" },
+  TERMINATED: { label: "Baja", tone: "danger", className: "bg-rose-50 text-rose-700" }
+};
 
 export default function HorariosPage() {
-  const [data, setData] = useState<AppData | null>(null);
   const [session, setSession] = useState<User | null>(null);
+  const [weekStart, setWeekStart] = useState(() => dateKey(startOfWeek(new Date())));
+  const [view, setView] = useState<"mine" | "team">("mine");
+  const [payload, setPayload] = useState<ScheduleResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  const isManager = session?.role === "GERENTE" || session?.role === "SUBGERENTE";
 
   useEffect(() => {
     getSession().then(setSession);
-    fetchAppData().then(setData).catch(() => setData(null));
   }, []);
 
-  if (!data) {
-    return (
-      <>
-        <AppHeader title="Horarios" subtitle="Cargando semana desde PostgreSQL." backHref="/manager" />
-        <AppFrame><Card>Conectando...</Card></AppFrame>
-        <BottomNav />
-      </>
-    );
-  }
+  useEffect(() => {
+    if (!session) return;
+    const controller = new AbortController();
+    const params = new URLSearchParams({ weekStart });
+    if (session.role === "ASESOR" || view === "mine") params.set("userId", session.id);
+    setLoading(true);
+    setError("");
+    fetch(`/api/schedules?${params}`, { cache: "no-store", signal: controller.signal })
+      .then(async (response) => {
+        const data = await response.json() as ScheduleResponse & { error?: string };
+        if (!response.ok) throw new Error(data.error ?? "No se pudo cargar la semana.");
+        setPayload(data);
+      })
+      .catch((requestError: unknown) => {
+        if (requestError instanceof DOMException && requestError.name === "AbortError") return;
+        setError(requestError instanceof Error ? requestError.message : "No se pudo cargar la semana.");
+      })
+      .finally(() => setLoading(false));
+    return () => controller.abort();
+  }, [session, view, weekStart]);
 
-  const isAdvisor = session?.role === "ASESOR";
-  const advisors = data.users.filter((user) => user.role === "ASESOR");
-  const visibleAdvisors = isAdvisor && session ? advisors.filter((advisor) => advisor.id === session.id) : advisors;
-  const visibleShifts = data.schedules.filter((shift) => visibleAdvisors.some((advisor) => advisor.id === shift.userId));
-  const activeShifts = visibleShifts.filter((shift) => shift.end);
-  const restShifts = visibleShifts.length - activeShifts.length;
+  const days = useMemo(() => {
+    const firstDay = new Date(`${weekStart}T00:00:00Z`);
+    return dayNames.map((name, index) => {
+      const date = new Date(firstDay.getTime() + index * 86_400_000);
+      const key = dateKey(date);
+      return { name, key, date, schedules: payload?.schedules.filter((item) => item.date === key) ?? [] };
+    });
+  }, [payload, weekStart]);
+
+  const summary = useMemo(() => ({
+    working: payload?.schedules.filter((item) => item.status === "WORKING").length ?? 0,
+    off: payload?.schedules.filter((item) => item.status === "OFF").length ?? 0,
+    vacation: payload?.schedules.filter((item) => item.status === "VACATION").length ?? 0,
+    paid: payload?.schedules.filter((item) => item.status === "PAID_DAY").length ?? 0
+  }), [payload]);
+
+  const currentWeek = dateKey(startOfWeek(new Date()));
+  const previousWeek = dateKey(addWeeks(new Date(`${currentWeek}T00:00:00Z`), -1));
+  const nextWeek = dateKey(addWeeks(new Date(`${currentWeek}T00:00:00Z`), 1));
+  const today = localDateKey(new Date());
+  const rangeLabel = formatWeekRange(weekStart);
+
+  function moveWeek(amount: number) {
+    setWeekStart(dateKey(addWeeks(new Date(`${weekStart}T00:00:00Z`), amount)));
+  }
 
   return (
     <>
-      <AppHeader
-        title="Horarios"
-        subtitle={isAdvisor ? "Tu semana asignada." : "Semana demo, lista para futura importacion desde Excel."}
-        backHref={isAdvisor ? "/advisor" : "/manager"}
-      />
+      <AppHeader title="Horarios" subtitle={isManager && view === "team" ? "Agenda semanal del equipo." : "Tu agenda semanal."} backHref={isManager ? "/manager" : "/advisor"} />
       <AppFrame>
-        <Card className="mb-3 py-3">
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-ink/45">Semana retail</p>
-              <h2 className="mt-1 text-2xl font-black tracking-tight text-ink">{activeShifts.length} turnos</h2>
-              <p className="mt-1 text-sm text-ink/58">{visibleAdvisors.length} asesor{visibleAdvisors.length === 1 ? "" : "es"} en vista</p>
+        {isManager ? (
+          <div className="mb-3 flex rounded-full bg-slate-100 p-1" role="group" aria-label="Vista de horarios">
+            <button type="button" onClick={() => setView("mine")} className={`min-h-10 flex-1 rounded-full text-sm font-black transition ${view === "mine" ? "bg-white text-volt shadow-sm" : "text-muted"}`}>Mi horario</button>
+            <button type="button" onClick={() => setView("team")} className={`min-h-10 flex-1 rounded-full text-sm font-black transition ${view === "team" ? "bg-white text-volt shadow-sm" : "text-muted"}`}>Equipo</button>
+          </div>
+        ) : null}
+
+        <Card className="mb-3 p-3.5">
+          <div className="flex items-center justify-between gap-3">
+            <button type="button" onClick={() => moveWeek(-1)} className="grid size-11 shrink-0 place-items-center rounded-full bg-slate-100 text-ink transition active:scale-95" aria-label="Semana anterior"><ChevronLeft size={20} /></button>
+            <div className="min-w-0 text-center">
+              <p className="text-[11px] font-black uppercase tracking-[0.12em] text-volt">{isManager && view === "team" ? "Semana del equipo" : "Mi semana"}</p>
+              <h2 className="mt-0.5 text-lg font-black tracking-[-0.03em] text-ink">Semana {isoWeekNumber(new Date(`${weekStart}T00:00:00Z`))}</h2>
+              <p className="text-xs font-semibold text-muted">{rangeLabel}</p>
             </div>
-            <div className="grid size-12 place-items-center rounded-[1.1rem] border border-mint/25 bg-mint/10 text-mint">
-              <CalendarDays size={21} />
-            </div>
+            <button type="button" onClick={() => moveWeek(1)} className="grid size-11 shrink-0 place-items-center rounded-full bg-slate-100 text-ink transition active:scale-95" aria-label="Semana siguiente"><ChevronRight size={20} /></button>
+          </div>
+          <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
+            <Button variant={weekStart === currentWeek ? "primary" : "ghost"} className="min-h-9 shrink-0 px-3 text-xs" onClick={() => setWeekStart(currentWeek)}>Actual</Button>
+            <Button variant={weekStart === previousWeek ? "primary" : "ghost"} className="min-h-9 shrink-0 px-3 text-xs" onClick={() => setWeekStart(previousWeek)}>Anterior</Button>
+            <Button variant={weekStart === nextWeek ? "primary" : "ghost"} className="min-h-9 shrink-0 px-3 text-xs" onClick={() => setWeekStart(nextWeek)}>Siguiente</Button>
+            <select aria-label="Semanas disponibles" value={weekStart} onChange={(event) => setWeekStart(event.target.value)} className="min-h-9 shrink-0 rounded-full border-0 bg-slate-100 px-3 text-xs font-black text-ink outline-none focus:ring-4 focus:ring-volt/20">
+              {Array.from(new Set([weekStart, currentWeek, ...(payload?.availableWeeks ?? [])])).sort().reverse().map((week) => <option key={week} value={week}>{formatWeekRange(week)}</option>)}
+            </select>
           </div>
         </Card>
 
-        <div className="mb-3 grid grid-cols-2 gap-3">
-          <StatCard compact label="Equipo" value={String(visibleAdvisors.length)} detail="Personas" tone="mint" />
-          <StatCard compact label="Descansos" value={String(restShifts)} detail="Semana" tone="ember" />
+        <div className="mb-3 grid grid-cols-4 gap-2">
+          <Summary label="Laborando" value={summary.working} className="text-emerald-700" />
+          <Summary label="Descansos" value={summary.off} className="text-slate-700" />
+          <Summary label="Vacaciones" value={summary.vacation} className="text-sky-700" />
+          <Summary label="Pago dia" value={summary.paid} className="text-amber-700" />
         </div>
 
-        <div className="space-y-2.5">
-          {visibleAdvisors.map((advisor) => {
-            const shifts = data.schedules.filter((shift) => shift.userId === advisor.id);
-            const assigned = shifts.filter((shift) => shift.end).length;
-            return (
-              <Card key={advisor.id}>
-                <div className="mb-2 flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-3">
-                    <span className="grid size-9 place-items-center rounded-[14px] bg-volt/12 text-xs font-black text-volt">{advisor.avatar}</span>
-                    <div>
-                      <h2 className="text-base font-black">{advisor.name}</h2>
-                      <p className="text-xs text-ink/48">{assigned} turnos asignados</p>
+        {error ? <Card className="mb-3 border-rose-200 bg-rose-50 text-sm font-semibold text-rose-700">{error}</Card> : null}
+        {loading ? <Card className="text-sm font-semibold text-muted">Cargando semana...</Card> : (
+          <div className="space-y-2.5" aria-label="Agenda semanal">
+            {days.map((day) => {
+              const current = day.key === today;
+              return (
+                <Card key={day.key} className={`p-3 ${current ? "ring-2 ring-volt/30" : ""}`}>
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <span className={`grid size-10 place-items-center rounded-2xl text-sm font-black ${current ? "bg-volt text-white" : "bg-blue-50 text-volt"}`}>{day.date.getUTCDate()}</span>
+                      <div><h3 className="font-black text-ink">{day.name}</h3><p className="text-[11px] text-muted">{formatLongDate(day.date)}{current ? " · Hoy" : ""}</p></div>
                     </div>
+                    <CalendarDays size={18} className={current ? "text-volt" : "text-muted"} />
                   </div>
-                  <Badge>semanal</Badge>
-                </div>
-                <div className="divide-y divide-white/[0.07] border-t border-white/[0.07]">
-                  {shifts.map((shift) => (
-                    <div key={shift.id} className="grid min-h-12 grid-cols-[40px_1fr_auto] items-center gap-2 py-2">
-                      <p className="font-black text-volt">{shift.day}</p>
-                      <div>
-                        <p className="flex items-center gap-2 font-bold">
-                          <Clock size={15} className="text-ink/40" />
-                          {shift.start}{shift.end ? ` - ${shift.end}` : ""}
-                        </p>
-                        <p className="mt-0.5 flex items-center gap-2 text-xs text-ink/50">
-                          <MapPin size={14} />
-                          {shift.zone || "Sin asignacion"}
-                        </p>
-                      </div>
-                      <UsersRound size={17} className="text-ink/30" />
-                    </div>
-                  ))}
-                </div>
-              </Card>
-            );
-          })}
-        </div>
+                  <div className="mt-2.5 border-t border-line pt-2.5">
+                    {day.schedules.length === 0 ? <p className="py-1 text-sm font-semibold text-muted">Sin horario registrado</p> : day.schedules.map((item) => <ScheduleRow key={item.id} item={item} showUser={Boolean(isManager && view === "team")} />)}
+                  </div>
+                </Card>
+              );
+            })}
+          </div>
+        )}
       </AppFrame>
       <BottomNav />
     </>
   );
+}
+
+function ScheduleRow({ item, showUser }: { item: ScheduleItem; showUser: boolean }) {
+  const config = statusConfig[item.status];
+  return <div className="flex min-h-11 items-center justify-between gap-3 py-1.5"><div className="min-w-0"><p className="truncate text-sm font-black text-ink">{showUser ? item.userName : config.label}</p><p className="mt-0.5 flex items-center gap-1.5 text-[11px] text-muted">{item.startTime ? <><Clock3 size={12} />{item.startTime}{item.endTime ? ` - ${item.endTime}` : ""}</> : item.statusRaw ?? config.label}{showUser && item.zone ? ` · ${item.zone}` : ""}</p></div><Badge tone={config.tone}>{config.label}</Badge></div>;
+}
+
+function Summary({ label, value, className }: { label: string; value: number; className: string }) {
+  return <div className="rounded-2xl bg-white px-2 py-2.5 text-center shadow-sm"><p className={`text-xl font-black ${className}`}>{value}</p><p className="mt-0.5 truncate text-[9px] font-bold text-muted">{label}</p></div>;
+}
+
+function formatWeekRange(value: string) {
+  const start = new Date(`${value}T00:00:00Z`);
+  const end = addWeeks(start, 1);
+  end.setUTCDate(end.getUTCDate() - 1);
+  const startLabel = start.toLocaleDateString("es-MX", { day: "numeric", month: "short", timeZone: "UTC" }).replace(".", "");
+  const endLabel = end.toLocaleDateString("es-MX", { day: "numeric", month: "short", timeZone: "UTC" }).replace(".", "");
+  return `${startLabel} - ${endLabel}`;
+}
+
+function formatLongDate(date: Date) {
+  return date.toLocaleDateString("es-MX", { day: "numeric", month: "long", timeZone: "UTC" });
+}
+
+function isoWeekNumber(date: Date) {
+  const target = new Date(date.getTime());
+  const day = target.getUTCDay() || 7;
+  target.setUTCDate(target.getUTCDate() + 4 - day);
+  const yearStart = new Date(Date.UTC(target.getUTCFullYear(), 0, 1));
+  return Math.ceil((((target.getTime() - yearStart.getTime()) / 86_400_000) + 1) / 7);
+}
+
+function localDateKey(date: Date) {
+  return dateKey(new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate())));
 }

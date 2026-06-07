@@ -20,6 +20,7 @@ export type KpiParseResult = {
   records: ParsedKpiRecord[];
   employeeNumbers: string[];
   crmTransactionsTotal: number;
+  rowsRead: number;
   ignoredRows: number;
 };
 
@@ -55,19 +56,26 @@ export function parseKpiWorkbook(workbook: XLSX.WorkBook): KpiParseResult {
 
   const dateColumn = detectDateColumn(rows[headerRow] ?? []);
   const records: ParsedKpiRecord[] = [];
+  let rowsRead = 0;
   let ignoredRows = 0;
 
   for (let rowIndex = headerRow + 1; rowIndex < rows.length; rowIndex += 1) {
     const row = rows[rowIndex] ?? [];
     const rowLabel = normalizeText(row.slice(0, Math.max(2, groups[0].start)).join(" "));
     if (!row.some((value) => cleanCell(value))) continue;
+    rowsRead += 1;
     if (["TTLS", "BONOS", "INCIDENCIAS"].some((label) => rowLabel.includes(label))) {
       ignoredRows += 1;
       continue;
     }
 
     const date = findRowDate(row, dateColumn, groups[0].start);
-    if (!date) continue;
+    if (!date) {
+      ignoredRows += 1;
+      continue;
+    }
+
+    const recordsBeforeRow = records.length;
 
     for (const group of groups) {
       const dailyGoal = numericCell(row[group.columns.dailyGoal ?? -1]);
@@ -94,6 +102,7 @@ export function parseKpiWorkbook(workbook: XLSX.WorkBook): KpiParseResult {
         achievement: dailyGoal > 0 ? round((dailySales / dailyGoal) * 100) : 0
       });
     }
+    if (records.length === recordsBeforeRow) ignoredRows += 1;
   }
 
   const uniqueRecords = deduplicate(records);
@@ -101,6 +110,7 @@ export function parseKpiWorkbook(workbook: XLSX.WorkBook): KpiParseResult {
     records: uniqueRecords,
     employeeNumbers: Array.from(new Set(groups.map((group) => group.employeeNumber))),
     crmTransactionsTotal: uniqueRecords.reduce((total, record) => total + record.crmTransactions, 0),
+    rowsRead,
     ignoredRows
   };
 }

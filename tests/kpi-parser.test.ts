@@ -39,6 +39,7 @@ test("parsea Diario de ventas por employeeNumber y calcula KPIs", () => {
 
   assert.deepEqual(result.employeeNumbers, ["95739", "102259"]);
   assert.equal(result.records.length, 2);
+  assert.equal(result.rowsRead, 4);
   assert.equal(result.ignoredRows, 3);
   assert.deepEqual(result.records[0], {
     employeeNumber: "95739",

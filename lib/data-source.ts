@@ -28,6 +28,7 @@ export type ScheduleSyncMetrics = {
 
 export type KpiSyncMetrics = {
   employeesProcessed: number;
+  rowsRead: number;
   recordsProcessed: number;
   recordsCreated: number;
   recordsUpdated: number;
@@ -55,6 +56,7 @@ export type DataSourceRecord = {
     recordsProcessed: number;
     createdAt: string;
     sheets: SheetSummary[];
+    details: DataSyncMetrics | null;
   } | null;
 };
 
@@ -105,6 +107,7 @@ export function serializeDataSource(source: SerializableDataSource): DataSourceR
       ...latestLog,
       message: logDetails.message,
       sheets: logDetails.sheets,
+      details: logDetails.details,
       createdAt: latestLog.createdAt.toISOString()
     } : null
   };
@@ -114,9 +117,9 @@ export function encodeSyncLogMessage(message: string, sheets: SheetSummary[] = [
   return JSON.stringify({ message, sheets, details });
 }
 
-function decodeSyncLogMessage(value: string): { message: string; sheets: SheetSummary[] } {
+function decodeSyncLogMessage(value: string): { message: string; sheets: SheetSummary[]; details: DataSyncMetrics | null } {
   try {
-    const parsed = JSON.parse(value) as { message?: unknown; sheets?: unknown };
+    const parsed = JSON.parse(value) as { message?: unknown; sheets?: unknown; details?: unknown };
     const sheets = Array.isArray(parsed.sheets)
       ? parsed.sheets.filter((sheet): sheet is SheetSummary => (
           typeof sheet === "object" && sheet !== null &&
@@ -127,10 +130,11 @@ function decodeSyncLogMessage(value: string): { message: string; sheets: SheetSu
 
     return {
       message: typeof parsed.message === "string" ? parsed.message : value,
-      sheets
+      sheets,
+      details: typeof parsed.details === "object" && parsed.details !== null ? parsed.details as DataSyncMetrics : null
     };
   } catch {
-    return { message: value, sheets: [] };
+    return { message: value, sheets: [], details: null };
   }
 }
 

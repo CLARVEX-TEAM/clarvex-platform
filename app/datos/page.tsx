@@ -24,6 +24,7 @@ import { getSession } from "@/lib/auth";
 import {
   dataSourceTypes,
   type DataSourceFrequency,
+  type KpiSyncMetrics,
   type DataSourceProvider,
   type DataSourceRecord,
   type DataSourceStatus,
@@ -225,8 +226,11 @@ export default function DataCenterPage() {
             const status = source?.status ?? "DISCONNECTED";
             const sheets = source ? testedSheets[source.id] ?? source.latestLog?.sheets ?? [] : [];
             const recordsProcessed = source
-              ? testedRecords[source.id] ?? source.latestLog?.recordsProcessed
+              ? source.latestLog?.recordsProcessed ?? testedRecords[source.id]
               : undefined;
+            const kpiMetrics = source?.type === "KPIS" && isKpiSyncMetrics(source.latestLog?.details)
+              ? source.latestLog.details
+              : null;
             const canConnect = Boolean(source?.url && source.provider !== "MANUAL");
             const Icon = item.icon;
             return (
@@ -257,8 +261,19 @@ export default function DataCenterPage() {
                       <DataPoint label="Origen" value={providerLabel(source?.provider ?? "MANUAL")} />
                       <DataPoint label="Ultima sync" value={formatDate(source?.lastSyncAt)} />
                       <DataPoint label="Resultado" value={syncResult(source)} />
-                      <DataPoint label="Registros" value={recordsProcessed !== undefined ? recordsProcessed.toLocaleString("es-MX") : "Sin procesar"} />
+                      <DataPoint
+                        label="Registros"
+                        value={recordsProcessed !== undefined ? `${recordsProcessed.toLocaleString("es-MX")} sincronizados` : "Sin procesar"}
+                      />
                     </div>
+                    {kpiMetrics ? (
+                      <div className="mt-1 grid grid-cols-2 gap-px overflow-hidden rounded-2xl bg-line">
+                        <MetricDetail label="Filas leidas" value={kpiMetrics.rowsRead} />
+                        <MetricDetail label="Creados" value={kpiMetrics.recordsCreated} />
+                        <MetricDetail label="Actualizados" value={kpiMetrics.recordsUpdated} />
+                        <MetricDetail label="Ignoradas" value={kpiMetrics.ignoredRows} />
+                      </div>
+                    ) : null}
                     {sheets.length > 0 ? (
                       <div className="mt-2 rounded-2xl border border-line bg-slate-50 px-3 py-2">
                         <p className="text-[10px] font-black uppercase tracking-[0.1em] text-muted">Hojas detectadas</p>
@@ -412,6 +427,14 @@ function SourceStatus({ status }: { status: DataSourceStatus }) {
 
 function DataPoint({ label, value }: { label: string; value: string }) {
   return <div className="px-2 py-1"><p className="font-bold uppercase tracking-[0.08em] text-muted">{label}</p><p className="mt-0.5 truncate font-semibold text-ink/80">{value}</p></div>;
+}
+
+function MetricDetail({ label, value }: { label: string; value: number }) {
+  return <div className="bg-slate-50 px-3 py-2"><p className="text-[10px] font-bold text-muted">{label}</p><p className="mt-0.5 text-sm font-black text-ink">{value.toLocaleString("es-MX")}</p></div>;
+}
+
+function isKpiSyncMetrics(value: unknown): value is KpiSyncMetrics {
+  return typeof value === "object" && value !== null && "rowsRead" in value && "ignoredRows" in value;
 }
 
 function providerLabel(provider: DataSourceProvider) {

@@ -50,10 +50,12 @@ export async function POST(_request: Request, { params }: { params: { id: string
     const successMessage = scheduleMetrics
       ? `Horarios sincronizados: ${scheduleMetrics.recordsCreated} creados, ${scheduleMetrics.recordsUpdated} actualizados, ${scheduleMetrics.errors.length} errores.`
       : kpiMetrics
-        ? `KPIs sincronizados: ${kpiMetrics.recordsCreated} creados, ${kpiMetrics.recordsUpdated} actualizados, ${kpiMetrics.errors.length} errores.`
+        ? `${kpiMetrics.recordsCreated + kpiMetrics.recordsUpdated} registros sincronizados`
       : "Sincronizacion completada";
-    const recordsProcessed = syncMetrics
-      ? syncMetrics.recordsProcessed
+    const recordsProcessed = kpiMetrics
+      ? kpiMetrics.recordsCreated + kpiMetrics.recordsUpdated
+      : scheduleMetrics
+        ? scheduleMetrics.recordsProcessed
       : workbook.recordsProcessed;
     await prisma.syncLog.update({
       where: { id: log.id },
@@ -81,9 +83,11 @@ export async function POST(_request: Request, { params }: { params: { id: string
         valoresDesconocidos: scheduleMetrics.unknownValues
       } : kpiMetrics ? {
         empleadosProcesados: kpiMetrics.employeesProcessed,
-        registrosProcesados: kpiMetrics.recordsProcessed,
+        filasLeidas: kpiMetrics.rowsRead,
+        registrosSincronizados: kpiMetrics.recordsCreated + kpiMetrics.recordsUpdated,
         registrosCreados: kpiMetrics.recordsCreated,
         registrosActualizados: kpiMetrics.recordsUpdated,
+        filasIgnoradas: kpiMetrics.ignoredRows,
         empleadosNoEncontrados: kpiMetrics.employeesNotFound,
         errores: kpiMetrics.errors,
         transaccionesCrmProcesadas: kpiMetrics.crmTransactionsProcessed
@@ -246,6 +250,7 @@ function buildKpiMetrics(
 ): KpiSyncMetrics {
   return {
     employeesProcessed,
+    rowsRead: parsed.rowsRead,
     recordsProcessed,
     recordsCreated,
     recordsUpdated,
