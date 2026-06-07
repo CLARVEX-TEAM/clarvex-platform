@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { getKpiMonthRange, periodDateKey } from "../lib/kpi-period";
-import { aggregateKpis, aggregateStore } from "../lib/kpi-report";
+import { aggregateKpis, aggregateStore, aggregateStoreTraffic } from "../lib/kpi-report";
 
 test("limita el mes KPI al calendario seleccionado", () => {
   const range = getKpiMonthRange(new Date("2026-06-18T00:00:00.000Z"));
@@ -10,7 +10,7 @@ test("limita el mes KPI al calendario seleccionado", () => {
 });
 
 test("acumula ventas, metas y ranking por periodo", () => {
-  const base = { conversion: 30, grossSales: null, discountAmount: null, discountLimit: null, commissionAmount: 0, commissionPercent: 2 };
+  const base = { conversion: 30, traffic: 100, grossSales: null, discountAmount: null, discountLimit: null, commissionAmount: 0, commissionPercent: 2 };
   const reports = aggregateKpis([
     { ...base, userId: "a", dailySales: 100, dailyGoal: 100, transactions: 2, pieces: 4, user: { name: "Ana", role: "ASESOR", photoUrl: null } },
     { ...base, userId: "a", dailySales: 150, dailyGoal: 100, transactions: 3, pieces: 6, user: { name: "Ana", role: "ASESOR", photoUrl: null } },
@@ -25,7 +25,7 @@ test("acumula ventas, metas y ranking por periodo", () => {
 });
 
 test("no suma dos veces el mismo usuario y dia calendario", () => {
-  const base = { conversion: 0, grossSales: null, discountAmount: null, discountLimit: null, commissionAmount: 0, commissionPercent: 0 };
+  const base = { conversion: null, traffic: null, grossSales: null, discountAmount: null, discountLimit: null, commissionAmount: 0, commissionPercent: 0 };
   const reports = aggregateKpis([
     { ...base, id: "legacy", userId: "a", date: new Date("2026-06-05T12:00:00.000Z"), dailySales: 999, dailyGoal: 999, transactions: 9, pieces: 9, user: { name: "Ana", role: "ASESOR", photoUrl: null } },
     { ...base, id: "rdv", userId: "a", date: new Date("2026-06-05T00:00:00.000Z"), dailySales: 100, dailyGoal: 200, transactions: 1, pieces: 2, user: { name: "Ana", role: "ASESOR", photoUrl: null } }
@@ -33,4 +33,13 @@ test("no suma dos veces el mismo usuario y dia calendario", () => {
 
   assert.equal(reports[0].sales, 100);
   assert.equal(reports[0].goal, 200);
+});
+
+test("deduplica el trafico de tienda por fecha", () => {
+  const traffic = aggregateStoreTraffic([
+    { date: new Date("2026-06-01T00:00:00.000Z"), traffic: 100 },
+    { date: new Date("2026-06-01T00:00:00.000Z"), traffic: 100 },
+    { date: new Date("2026-06-02T00:00:00.000Z"), traffic: 120 }
+  ]);
+  assert.equal(traffic, 220);
 });

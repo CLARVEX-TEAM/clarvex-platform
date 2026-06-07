@@ -9,11 +9,11 @@ export const users: User[] = [
 ];
 
 export const kpis: Kpi[] = [
-  { userId: "waira", dailySales: 18400, monthlySales: 256800, dailyGoal: 22000, monthlyGoal: 360000, avgTicket: 1840, upt: 2.7, conversion: 34, pieces: 27, transactions: 10, ranking: 1, grossSales: null, discountAmount: null, discountMargin: null, discountLimit: null, commissionAmount: 552, commissionPercent: 3 },
-  { userId: "jazmin", dailySales: 16250, monthlySales: 231400, dailyGoal: 21000, monthlyGoal: 345000, avgTicket: 1477, upt: 2.2, conversion: 29, pieces: 24, transactions: 11, ranking: 2, grossSales: null, discountAmount: null, discountMargin: null, discountLimit: null, commissionAmount: 406.25, commissionPercent: 2.5 },
-  { userId: "alonso", dailySales: 13100, monthlySales: 204900, dailyGoal: 20500, monthlyGoal: 330000, avgTicket: 1638, upt: 2.0, conversion: 25, pieces: 16, transactions: 8, ranking: 3, grossSales: null, discountAmount: null, discountMargin: null, discountLimit: null, commissionAmount: 262, commissionPercent: 2 },
-  { userId: "itzel", dailySales: 49750, monthlySales: 694200, dailyGoal: 64000, monthlyGoal: 1080000, avgTicket: 1642, upt: 2.3, conversion: 30, pieces: 67, transactions: 30, ranking: 0, grossSales: null, discountAmount: null, discountMargin: null, discountLimit: null, commissionAmount: 0, commissionPercent: 0 },
-  { userId: "adrian", dailySales: 49750, monthlySales: 694200, dailyGoal: 64000, monthlyGoal: 1080000, avgTicket: 1642, upt: 2.3, conversion: 30, pieces: 67, transactions: 30, ranking: 0, grossSales: null, discountAmount: null, discountMargin: null, discountLimit: null, commissionAmount: 0, commissionPercent: 0 }
+  { userId: "waira", dailySales: 18400, monthlySales: 256800, dailyGoal: 22000, monthlyGoal: 360000, avgTicket: 1840, upt: 2.7, conversion: null, traffic: null, pieces: 27, transactions: 10, ranking: 1, grossSales: null, discountAmount: null, discountMargin: null, discountLimit: null, commissionAmount: 552, commissionPercent: 3 },
+  { userId: "jazmin", dailySales: 16250, monthlySales: 231400, dailyGoal: 21000, monthlyGoal: 345000, avgTicket: 1477, upt: 2.2, conversion: null, traffic: null, pieces: 24, transactions: 11, ranking: 2, grossSales: null, discountAmount: null, discountMargin: null, discountLimit: null, commissionAmount: 406.25, commissionPercent: 2.5 },
+  { userId: "alonso", dailySales: 13100, monthlySales: 204900, dailyGoal: 20500, monthlyGoal: 330000, avgTicket: 1638, upt: 2.0, conversion: null, traffic: null, pieces: 16, transactions: 8, ranking: 3, grossSales: null, discountAmount: null, discountMargin: null, discountLimit: null, commissionAmount: 262, commissionPercent: 2 },
+  { userId: "itzel", dailySales: 49750, monthlySales: 694200, dailyGoal: 64000, monthlyGoal: 1080000, avgTicket: 1642, upt: 2.3, conversion: null, traffic: null, pieces: 67, transactions: 30, ranking: 0, grossSales: null, discountAmount: null, discountMargin: null, discountLimit: null, commissionAmount: 0, commissionPercent: 0 },
+  { userId: "adrian", dailySales: 49750, monthlySales: 694200, dailyGoal: 64000, monthlyGoal: 1080000, avgTicket: 1642, upt: 2.3, conversion: null, traffic: null, pieces: 67, transactions: 30, ranking: 0, grossSales: null, discountAmount: null, discountMargin: null, discountLimit: null, commissionAmount: 0, commissionPercent: 0 }
 ];
 
 export const plans: DayPlan[] = [

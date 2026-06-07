@@ -15,9 +15,11 @@ export type ParsedKpiRecord = {
   transactions: number;
   pieces: number;
   crmTransactions: number;
+  traffic: number | null;
   upt: number;
   aur: number;
   ept: number;
+  conversion: number | null;
   achievement: number;
 };
 
@@ -64,6 +66,7 @@ export function parseKpiWorkbook(workbook: XLSX.WorkBook): KpiParseResult {
   if (groups.length === 0) throw new Error("No se detectaron colaboradores en la fila 7 de Diario de ventas.");
 
   const dateColumn = detectDateColumn(rows[headerRow] ?? []);
+  const trafficColumn = detectTrafficColumn(rows[headerRow] ?? []);
   const records: ParsedKpiRecord[] = [];
   let activeWeek: { weekNumber: number; dates: Date[]; records: ParsedKpiRecord[] } | null = null;
   let rowsRead = 0;
@@ -96,6 +99,8 @@ export function parseKpiWorkbook(workbook: XLSX.WorkBook): KpiParseResult {
     activeWeek?.dates.push(date);
 
     const recordsBeforeRow = records.length;
+    const trafficValue = trafficColumn === null ? 0 : integerCell(row[trafficColumn]);
+    const traffic = trafficValue > 0 ? trafficValue : null;
 
     for (const group of groups) {
       const dailyGoal = numericCell(row[group.columns.dailyGoal ?? -1]);
@@ -118,9 +123,11 @@ export function parseKpiWorkbook(workbook: XLSX.WorkBook): KpiParseResult {
         transactions,
         pieces,
         crmTransactions,
+        traffic,
         upt: ratio(pieces, transactions),
         aur: ratio(dailySales, pieces),
         ept: ratio(dailySales, transactions),
+        conversion: traffic ? ratio(transactions * 100, traffic) : null,
         achievement: dailyGoal > 0 ? round((dailySales / dailyGoal) * 100) : 0
       };
       records.push(record);
@@ -205,6 +212,11 @@ function metricFromHeader(value: unknown): MetricKey | null {
 function detectDateColumn(headers: unknown[]) {
   const column = headers.findIndex((header) => normalizeText(header).includes("FECHA"));
   return column >= 0 ? column : 1;
+}
+
+function detectTrafficColumn(headers: unknown[]) {
+  const column = headers.findIndex((header) => normalizeText(header).includes("TRAFICO"));
+  return column >= 0 ? column : null;
 }
 
 function findRowDate(row: unknown[], preferredColumn: number, employeeStart: number) {

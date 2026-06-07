@@ -179,7 +179,8 @@ model Kpi {
   monthlyGoal    Decimal  @db.Decimal(12, 2)
   avgTicket      Decimal  @db.Decimal(12, 2)
   upt            Decimal  @db.Decimal(5, 2)
-  conversion     Decimal  @db.Decimal(5, 2)
+  conversion     Decimal? @db.Decimal(5, 2)
+  traffic        Int?
   pieces         Int
   transactions   Int
   ranking        Int

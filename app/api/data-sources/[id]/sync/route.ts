@@ -182,6 +182,8 @@ async function importKpis(workbook: Parameters<typeof parseKpiWorkbook>[0], stor
             monthlyGoal: record.monthlyGoal,
             avgTicket: record.ept,
             upt: record.upt,
+            conversion: record.conversion,
+            traffic: record.traffic,
             pieces: record.pieces,
             transactions: record.transactions,
             ranking: record.ranking
@@ -199,7 +201,8 @@ async function importKpis(workbook: Parameters<typeof parseKpiWorkbook>[0], stor
             monthlyGoal: record.monthlyGoal,
             avgTicket: record.ept,
             upt: record.upt,
-            conversion: 0,
+            conversion: record.conversion,
+            traffic: record.traffic,
             pieces: record.pieces,
             transactions: record.transactions,
             ranking: record.ranking

@@ -98,7 +98,7 @@ export default function AdvisorDashboard() {
           <div className="grid grid-cols-2 gap-3 text-sm">
             <Metric label="Ticket promedio" value={money(kpi?.avgTicket ?? 0)} />
             <Metric label="UPT" value={String(kpi?.upt ?? 0)} />
-            <Metric label="Conversion" value={`${kpi?.conversion ?? 0}%`} />
+            <Metric label="Conversion" value={kpi?.conversion === null || kpi?.conversion === undefined ? "Sin trafico" : `${kpi.conversion}%`} />
             <Metric label="Ranking" value={`#${kpi?.ranking ?? 0}`} />
           </div>
         </Card>

@@ -21,7 +21,8 @@ export type Kpi = {
   monthlyGoal: number;
   avgTicket: number;
   upt: number;
-  conversion: number;
+  conversion: number | null;
+  traffic: number | null;
   pieces: number;
   transactions: number;
   ranking: number;

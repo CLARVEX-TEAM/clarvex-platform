@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isApiError, requireSession } from "@/lib/api";
-import { aggregateKpis, aggregateStore } from "@/lib/kpi-report";
+import { aggregateKpis, aggregateStore, aggregateStoreTraffic } from "@/lib/kpi-report";
 import { getKpiMonthRange, parsePeriodDate, periodDateKey, type KpiPeriod } from "@/lib/kpi-period";
 import { prisma } from "@/lib/prisma";
 import { mergeRdvWeeks } from "@/lib/rdv-week";
@@ -76,7 +76,7 @@ export async function GET(request: NextRequest) {
   const reports = aggregateKpis(rows);
   const team = reports.filter((item) => item.role === "ASESOR");
   const own = reports.find((item) => item.userId === session.userId) ?? null;
-  const store = manager ? aggregateStore(reports) : null;
+  const store = manager ? aggregateStore(reports, aggregateStoreTraffic(rows)) : null;
   console.log("Registros KPI incluidos", rows.map((row) => ({
     id: row.id,
     userId: row.userId,

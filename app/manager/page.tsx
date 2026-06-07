@@ -104,7 +104,7 @@ export default function ManagerDashboard() {
           <div className="grid grid-cols-2 gap-3">
             <div className="border-r border-white/[0.08] px-2 py-1">
               <p className="text-xs font-black uppercase tracking-[0.1em] text-muted">Conversion</p>
-              <p className="mt-1 text-xl font-black text-sky">{store?.conversion ?? 0}%</p>
+              <p className="mt-1 text-xl font-black text-sky">{store?.conversion === null || store?.conversion === undefined ? "Sin trafico" : `${store.conversion}%`}</p>
             </div>
             <div className="px-2 py-1">
               <p className="text-xs font-black uppercase tracking-[0.1em] text-muted">Plan diario</p>

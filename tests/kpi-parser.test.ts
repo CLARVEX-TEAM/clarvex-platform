@@ -57,9 +57,11 @@ test("parsea Diario de ventas por employeeNumber y calcula KPIs", () => {
     transactions: 5,
     pieces: 10,
     crmTransactions: 3,
+    traffic: null,
     upt: 2,
     aur: 1250,
     ept: 2500,
+    conversion: null,
     achievement: 125
   });
   assert.equal(result.crmTransactionsTotal, 5);
@@ -138,4 +140,22 @@ test("usa exclusivamente Diario de ventas y detecta semanas verticales", () => {
   assert.equal(result.records[2].weekEnd.toISOString(), "2026-06-08T00:00:00.000Z");
   assert.equal(result.totalSalesImported, 500);
   assert.equal(result.totalGoalImported, 300);
+});
+
+test("calcula conversion con TRAFICO X dia y no con TX cap CRM", () => {
+  const rows: unknown[][] = Array.from({ length: 9 }, () => []);
+  rows[5] = [null, null, "ASESOR"];
+  rows[6] = [null, null, "95739"];
+  rows[7] = [null, null, "Asesor"];
+  rows[8] = ["DIA", "FECHA", ...metrics, "TRAFICO X día"];
+  rows.push(["SEMANA 22"]);
+  rows.push(["DOMINGO", "31/05/2026", 100, 200, 5, 10, 99, 0, 0, 0, 0, 0, 0, 100]);
+
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(rows), "Diario de ventas");
+  const result = parseKpiWorkbook(workbook);
+
+  assert.equal(result.records[0].traffic, 100);
+  assert.equal(result.records[0].conversion, 5);
+  assert.equal(result.records[0].crmTransactions, 99);
 });

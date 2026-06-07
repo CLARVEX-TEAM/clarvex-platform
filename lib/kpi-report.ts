@@ -12,7 +12,8 @@ export type KpiReportItem = {
   upt: number;
   aur: number;
   ept: number;
-  conversion: number;
+  conversion: number | null;
+  traffic: number | null;
   ranking: number;
   grossSales: number | null;
   discountAmount: number | null;
@@ -31,6 +32,7 @@ type RawKpi = {
   transactions: number;
   pieces: number;
   conversion: unknown;
+  traffic: number | null;
   grossSales: unknown | null;
   discountAmount: unknown | null;
   discountLimit: unknown | null;
@@ -56,6 +58,7 @@ export function aggregateKpis(rows: RawKpi[]) {
     const goal = sum(items, "dailyGoal");
     const transactions = items.reduce((total, item) => total + item.transactions, 0);
     const pieces = items.reduce((total, item) => total + item.pieces, 0);
+    const traffic = nullableIntegerSum(items.map((item) => item.traffic));
     const grossSales = nullableSum(items, "grossSales");
     const discountAmount = nullableSum(items, "discountAmount");
     const discountMargin = grossSales && discountAmount !== null ? round((discountAmount / grossSales) * 100) : null;
@@ -73,7 +76,8 @@ export function aggregateKpis(rows: RawKpi[]) {
       upt: ratio(pieces, transactions),
       aur: ratio(sales, pieces),
       ept: ratio(sales, transactions),
-      conversion: average(items.map((item) => number(item.conversion))),
+      conversion: traffic ? ratio(transactions * 100, traffic) : null,
+      traffic,
       ranking: 0,
       grossSales,
       discountAmount,
@@ -89,12 +93,13 @@ export function aggregateKpis(rows: RawKpi[]) {
   return reports;
 }
 
-export function aggregateStore(items: KpiReportItem[]): KpiReportItem | null {
+export function aggregateStore(items: KpiReportItem[], trafficOverride?: number | null): KpiReportItem | null {
   if (items.length === 0) return null;
   const sales = items.reduce((total, item) => total + item.sales, 0);
   const goal = items.reduce((total, item) => total + item.goal, 0);
   const transactions = items.reduce((total, item) => total + item.transactions, 0);
   const pieces = items.reduce((total, item) => total + item.pieces, 0);
+  const traffic = trafficOverride === undefined ? maxNullable(items.map((item) => item.traffic)) : trafficOverride;
   const grossSales = nullableNumberSum(items.map((item) => item.grossSales));
   const discountAmount = nullableNumberSum(items.map((item) => item.discountAmount));
   return {
@@ -111,7 +116,8 @@ export function aggregateStore(items: KpiReportItem[]): KpiReportItem | null {
     upt: ratio(pieces, transactions),
     aur: ratio(sales, pieces),
     ept: ratio(sales, transactions),
-    conversion: average(items.map((item) => item.conversion)),
+    conversion: traffic ? ratio(transactions * 100, traffic) : null,
+    traffic,
     ranking: 0,
     grossSales,
     discountAmount,
@@ -122,13 +128,24 @@ export function aggregateStore(items: KpiReportItem[]): KpiReportItem | null {
   };
 }
 
+export function aggregateStoreTraffic(rows: Array<{ date: Date; traffic: number | null }>) {
+  const byDate = new Map<string, number>();
+  for (const row of rows) {
+    if (!row.traffic) continue;
+    const key = row.date.toISOString().slice(0, 10);
+    byDate.set(key, Math.max(byDate.get(key) ?? 0, row.traffic));
+  }
+  return byDate.size ? Array.from(byDate.values()).reduce((total, traffic) => total + traffic, 0) : null;
+}
+
 function sum<T extends RawKpi>(items: T[], key: keyof T) { return round(items.reduce((total, item) => total + number(item[key]), 0)); }
 function nullableSum<T extends RawKpi>(items: T[], key: keyof T) { return nullableNumberSum(items.map((item) => item[key] === null ? null : number(item[key]))); }
 function nullableNumberSum(values: Array<number | null>) { const present = values.filter((value): value is number => value !== null); return present.length ? round(present.reduce((total, value) => total + value, 0)) : null; }
+function nullableIntegerSum(values: Array<number | null>) { const present = values.filter((value): value is number => value !== null); return present.length ? present.reduce((total, value) => total + value, 0) : null; }
+function maxNullable(values: Array<number | null>) { const present = values.filter((value): value is number => value !== null); return present.length ? Math.max(...present) : null; }
 function latest<T extends RawKpi>(items: T[], key: keyof T) { return number(items.at(-1)?.[key]); }
 function latestNullable<T extends RawKpi>(items: T[], key: keyof T) { const value = items.map((item) => item[key]).findLast((item) => item !== null); return value === undefined ? null : number(value); }
 function number(value: unknown) { const parsed = Number(value); return Number.isFinite(parsed) ? parsed : 0; }
 function ratio(numerator: number, denominator: number) { return denominator > 0 ? round(numerator / denominator) : 0; }
-function average(values: number[]) { return values.length ? round(values.reduce((total, value) => total + value, 0) / values.length) : 0; }
 function round(value: number) { return Math.round(value * 100) / 100; }
 function isCanonicalRdvDate(value: Date | undefined) { return value instanceof Date && value.getUTCHours() === 0 && value.getUTCMinutes() === 0; }
