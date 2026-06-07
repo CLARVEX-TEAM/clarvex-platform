@@ -1,0 +1,124 @@
+export type KpiReportItem = {
+  userId: string;
+  userName: string;
+  role: "GERENTE" | "SUBGERENTE" | "ASESOR";
+  avatar: string;
+  photoUrl: string | null;
+  sales: number;
+  goal: number;
+  achievement: number;
+  transactions: number;
+  pieces: number;
+  upt: number;
+  aur: number;
+  ept: number;
+  conversion: number;
+  ranking: number;
+  grossSales: number | null;
+  discountAmount: number | null;
+  discountMargin: number | null;
+  discountLimit: number | null;
+  commissionAmount: number;
+  commissionPercent: number;
+};
+
+type RawKpi = {
+  userId: string;
+  dailySales: unknown;
+  dailyGoal: unknown;
+  transactions: number;
+  pieces: number;
+  conversion: unknown;
+  grossSales: unknown | null;
+  discountAmount: unknown | null;
+  discountLimit: unknown | null;
+  commissionAmount: unknown;
+  commissionPercent: unknown;
+  user: { name: string; role: KpiReportItem["role"]; photoUrl: string | null };
+};
+
+export function aggregateKpis(rows: RawKpi[]) {
+  const groups = new Map<string, RawKpi[]>();
+  for (const row of rows) groups.set(row.userId, [...(groups.get(row.userId) ?? []), row]);
+
+  const reports = Array.from(groups.values()).map((items) => {
+    const first = items[0];
+    const sales = sum(items, "dailySales");
+    const goal = sum(items, "dailyGoal");
+    const transactions = items.reduce((total, item) => total + item.transactions, 0);
+    const pieces = items.reduce((total, item) => total + item.pieces, 0);
+    const grossSales = nullableSum(items, "grossSales");
+    const discountAmount = nullableSum(items, "discountAmount");
+    const discountMargin = grossSales && discountAmount !== null ? round((discountAmount / grossSales) * 100) : null;
+    return {
+      userId: first.userId,
+      userName: first.user.name,
+      role: first.user.role,
+      avatar: first.user.name.slice(0, 2).toUpperCase(),
+      photoUrl: first.user.photoUrl,
+      sales,
+      goal,
+      achievement: ratio(sales * 100, goal),
+      transactions,
+      pieces,
+      upt: ratio(pieces, transactions),
+      aur: ratio(sales, pieces),
+      ept: ratio(sales, transactions),
+      conversion: average(items.map((item) => number(item.conversion))),
+      ranking: 0,
+      grossSales,
+      discountAmount,
+      discountMargin,
+      discountLimit: latestNullable(items, "discountLimit"),
+      commissionAmount: sum(items, "commissionAmount"),
+      commissionPercent: latest(items, "commissionPercent")
+    } satisfies KpiReportItem;
+  });
+
+  reports.sort((left, right) => right.achievement - left.achievement || right.sales - left.sales);
+  reports.forEach((item, index) => { item.ranking = index + 1; });
+  return reports;
+}
+
+export function aggregateStore(items: KpiReportItem[]): KpiReportItem | null {
+  if (items.length === 0) return null;
+  const sales = items.reduce((total, item) => total + item.sales, 0);
+  const goal = items.reduce((total, item) => total + item.goal, 0);
+  const transactions = items.reduce((total, item) => total + item.transactions, 0);
+  const pieces = items.reduce((total, item) => total + item.pieces, 0);
+  const grossSales = nullableNumberSum(items.map((item) => item.grossSales));
+  const discountAmount = nullableNumberSum(items.map((item) => item.discountAmount));
+  return {
+    userId: "store",
+    userName: "Tienda",
+    role: "GERENTE",
+    avatar: "TI",
+    photoUrl: null,
+    sales,
+    goal,
+    achievement: ratio(sales * 100, goal),
+    transactions,
+    pieces,
+    upt: ratio(pieces, transactions),
+    aur: ratio(sales, pieces),
+    ept: ratio(sales, transactions),
+    conversion: average(items.map((item) => item.conversion)),
+    ranking: 0,
+    grossSales,
+    discountAmount,
+    discountMargin: grossSales && discountAmount !== null ? round((discountAmount / grossSales) * 100) : null,
+    discountLimit: null,
+    commissionAmount: items.reduce((total, item) => total + item.commissionAmount, 0),
+    commissionPercent: 0
+  };
+}
+
+function sum<T extends RawKpi>(items: T[], key: keyof T) { return round(items.reduce((total, item) => total + number(item[key]), 0)); }
+function nullableSum<T extends RawKpi>(items: T[], key: keyof T) { return nullableNumberSum(items.map((item) => item[key] === null ? null : number(item[key]))); }
+function nullableNumberSum(values: Array<number | null>) { const present = values.filter((value): value is number => value !== null); return present.length ? round(present.reduce((total, value) => total + value, 0)) : null; }
+function latest<T extends RawKpi>(items: T[], key: keyof T) { return number(items.at(-1)?.[key]); }
+function latestNullable<T extends RawKpi>(items: T[], key: keyof T) { const value = items.map((item) => item[key]).findLast((item) => item !== null); return value === undefined ? null : number(value); }
+function number(value: unknown) { const parsed = Number(value); return Number.isFinite(parsed) ? parsed : 0; }
+function ratio(numerator: number, denominator: number) { return denominator > 0 ? round(numerator / denominator) : 0; }
+function average(values: number[]) { return values.length ? round(values.reduce((total, value) => total + value, 0) / values.length) : 0; }
+function round(value: number) { return Math.round(value * 100) / 100; }
