@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isApiError, requireSession } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
+import { buildWeeklySchedule } from "@/lib/schedule-report";
 import { dateKey, endOfWeek, parseWeekStart } from "@/lib/schedule-week";
 
 export const dynamic = "force-dynamic";
@@ -21,15 +22,19 @@ export async function GET(request: NextRequest) {
     if (!user) return NextResponse.json({ error: "Usuario no disponible en esta tienda." }, { status: 404 });
   }
 
-  const [schedules, availableWeeks] = await Promise.all([
+  const [users, schedules, availableWeeks] = await Promise.all([
+    prisma.user.findMany({
+      where: { storeId: session.storeId, ...(userId ? { id: userId } : {}) },
+      select: { id: true, name: true, role: true },
+      orderBy: [{ role: "asc" }, { name: "asc" }]
+    }),
     prisma.schedule.findMany({
       where: {
         storeId: session.storeId,
         ...(userId ? { userId } : {}),
         date: { gte: weekStart, lte: endOfWeek(weekStart) }
       },
-      include: { user: { select: { id: true, name: true, role: true } } },
-      orderBy: [{ date: "asc" }, { user: { name: "asc" } }]
+      orderBy: [{ date: "asc" }, { userId: "asc" }]
     }),
     prisma.schedule.findMany({
       where: { storeId: session.storeId, ...(userId ? { userId } : {}) },
@@ -38,23 +43,21 @@ export async function GET(request: NextRequest) {
       orderBy: { weekStart: "desc" }
     })
   ]);
+  const weekEnd = endOfWeek(weekStart);
+  const weeklySchedule = buildWeeklySchedule(users, schedules, weekStart);
+
+  console.log("Consulta de horarios", {
+    weekStart: dateKey(weekStart),
+    weekEnd: dateKey(weekEnd),
+    schedulesEncontrados: schedules.length,
+    usuariosEncontrados: users.length,
+    statusPorUsuarioDia: weeklySchedule.map((item) => ({ userId: item.userId, date: item.date, status: item.status }))
+  });
 
   return NextResponse.json({
     weekStart: dateKey(weekStart),
-    weekEnd: dateKey(endOfWeek(weekStart)),
+    weekEnd: dateKey(weekEnd),
     availableWeeks: availableWeeks.map((item) => dateKey(item.weekStart)),
-    schedules: schedules.map((schedule) => ({
-      id: schedule.id,
-      userId: schedule.userId,
-      userName: schedule.user.name,
-      userRole: schedule.user.role,
-      date: dateKey(schedule.date),
-      day: schedule.day,
-      status: schedule.status,
-      statusRaw: schedule.statusRaw,
-      startTime: schedule.startTime,
-      endTime: schedule.endTime,
-      zone: schedule.zone
-    }))
+    schedules: weeklySchedule
   }, { headers: { "Cache-Control": "private, no-store" } });
 }

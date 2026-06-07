@@ -1,0 +1,48 @@
+import { dateKey } from "@/lib/schedule-week";
+
+export type ScheduleViewStatus = "WORKING" | "OFF" | "VACATION" | "PAID_DAY" | "INVENTORY" | "TERMINATED" | "UNKNOWN";
+
+type ScheduleUser = {
+  id: string;
+  name: string;
+  role: "GERENTE" | "SUBGERENTE" | "ASESOR";
+};
+
+type ScheduleRecord = {
+  id: string;
+  userId: string;
+  date: Date;
+  day: string;
+  status: Exclude<ScheduleViewStatus, "UNKNOWN">;
+  statusRaw: string | null;
+  startTime: string | null;
+  endTime: string | null;
+  zone: string | null;
+};
+
+export function buildWeeklySchedule(users: ScheduleUser[], schedules: ScheduleRecord[], weekStart: Date) {
+  const scheduleByUserDate = new Map(schedules.map((schedule) => [`${schedule.userId}:${dateKey(schedule.date)}`, schedule]));
+  const days = Array.from({ length: 7 }, (_, index) => new Date(weekStart.getTime() + index * 86_400_000));
+
+  return users.flatMap((user) => days.map((date) => {
+    const key = dateKey(date);
+    const schedule = scheduleByUserDate.get(`${user.id}:${key}`);
+    return {
+      id: schedule?.id ?? `unknown:${user.id}:${key}`,
+      userId: user.id,
+      userName: user.name,
+      userRole: user.role,
+      date: key,
+      day: schedule?.day ?? dayName(date),
+      status: (schedule?.status ?? "UNKNOWN") as ScheduleViewStatus,
+      statusRaw: schedule?.statusRaw ?? null,
+      startTime: schedule?.startTime ?? null,
+      endTime: schedule?.endTime ?? null,
+      zone: schedule?.zone ?? null
+    };
+  }));
+}
+
+function dayName(date: Date) {
+  return ["Dom", "Lun", "Mar", "Mie", "Jue", "Vie", "Sab"][date.getUTCDay()];
+}

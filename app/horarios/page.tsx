@@ -7,7 +7,7 @@ import { addWeeks, dateKey, startOfWeek } from "@/lib/schedule-week";
 import type { Role, User } from "@/lib/types";
 import { AppFrame, AppHeader, Badge, BottomNav, Button, Card } from "@/components/ui";
 
-type ScheduleStatus = "WORKING" | "OFF" | "VACATION" | "PAID_DAY" | "INVENTORY" | "TERMINATED";
+type ScheduleStatus = "WORKING" | "OFF" | "VACATION" | "PAID_DAY" | "INVENTORY" | "TERMINATED" | "UNKNOWN";
 type ScheduleItem = {
   id: string;
   userId: string;
@@ -35,7 +35,8 @@ const statusConfig: Record<ScheduleStatus, { label: string; tone: "success" | "d
   VACATION: { label: "Vacaciones", tone: "info", className: "bg-sky-50 text-sky-700" },
   PAID_DAY: { label: "Pago dia", tone: "warn", className: "bg-amber-50 text-amber-700" },
   INVENTORY: { label: "Conteo", tone: "warn", className: "bg-violet-50 text-violet-700" },
-  TERMINATED: { label: "Baja", tone: "danger", className: "bg-rose-50 text-rose-700" }
+  TERMINATED: { label: "Baja", tone: "danger", className: "bg-rose-50 text-rose-700" },
+  UNKNOWN: { label: "Sin horario", tone: "default", className: "bg-slate-100 text-slate-500" }
 };
 
 export default function HorariosPage() {
@@ -152,7 +153,7 @@ export default function HorariosPage() {
                     <CalendarDays size={18} className={current ? "text-volt" : "text-muted"} />
                   </div>
                   <div className="mt-2.5 border-t border-line pt-2.5">
-                    {day.schedules.length === 0 ? <p className="py-1 text-sm font-semibold text-muted">Sin horario registrado</p> : day.schedules.map((item) => <ScheduleRow key={item.id} item={item} showUser={Boolean(isManager && view === "team")} />)}
+                    {day.schedules.map((item) => <ScheduleRow key={item.id} item={item} showUser={Boolean(isManager && view === "team")} />)}
                   </div>
                 </Card>
               );
