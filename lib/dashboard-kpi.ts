@@ -29,34 +29,22 @@ export function dashboardDateRange(dateKey: string) {
   return { start, end: new Date(start.getTime() + 24 * 60 * 60 * 1000) };
 }
 
-export function aggregateDashboardKpis(date: string, rows: DashboardKpiRow[]): DashboardDailyKpi {
-  const totals = rows.reduce<DashboardKpiTotals>((result, row) => ({
-    dailyGoal: result.dailyGoal + row.dailyGoal,
-    dailySales: result.dailySales + row.dailySales,
-    transactions: result.transactions + row.transactions,
-    pieces: result.pieces + row.pieces,
-    traffic: result.traffic + (row.traffic ?? 0),
-    hasTraffic: result.hasTraffic || row.traffic !== null
-  }), { dailyGoal: 0, dailySales: 0, transactions: 0, pieces: 0, traffic: 0, hasTraffic: false });
+export function buildUserDashboardKpi(date: string, row: DashboardKpiRow | null): DashboardDailyKpi {
+  const dailyGoal = row?.dailyGoal ?? 0;
+  const dailySales = row?.dailySales ?? 0;
+  const transactions = row?.transactions ?? 0;
+  const pieces = row?.pieces ?? 0;
+  const traffic = row?.traffic ?? null;
 
   return {
     date,
-    dailyGoal: totals.dailyGoal,
-    dailySales: totals.dailySales,
-    transactions: totals.transactions,
-    pieces: totals.pieces,
-    traffic: totals.hasTraffic ? totals.traffic : null,
-    conversion: totals.hasTraffic && totals.traffic > 0
-      ? Math.round((totals.transactions / totals.traffic) * 10000) / 100
+    dailyGoal,
+    dailySales,
+    transactions,
+    pieces,
+    traffic,
+    conversion: traffic !== null && traffic > 0
+      ? Math.round((transactions / traffic) * 10000) / 100
       : null
   };
 }
-
-type DashboardKpiTotals = {
-  dailyGoal: number;
-  dailySales: number;
-  transactions: number;
-  pieces: number;
-  traffic: number;
-  hasTraffic: boolean;
-};

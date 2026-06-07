@@ -74,7 +74,7 @@ export default function ManagerDashboard() {
         <section className="manager-sales-hero mb-3 rounded-[28px] border border-volt/25 px-4 py-3.5">
           <div className="flex items-center justify-between gap-4">
             <div className="min-w-0">
-              <p className="text-[11px] font-black uppercase tracking-[0.13em] text-volt/90">Venta tienda</p>
+              <p className="text-[11px] font-black uppercase tracking-[0.13em] text-volt/90">Venta diaria</p>
               <h2 className="mt-1 text-[2.25rem] font-black leading-none tracking-[-0.045em] text-ink">{money(store?.dailySales ?? 0)}</h2>
               <div className="mt-2 flex items-baseline gap-2">
                 <span className="text-xs font-bold text-muted">Meta diaria</span>
@@ -90,7 +90,7 @@ export default function ManagerDashboard() {
         </section>
 
         <div className="grid grid-cols-2 gap-3">
-          <StatCard compact label="Ventas" value={money(store?.dailySales ?? 0)} detail="Hoy" progress={storeProgress} delta="+12%" icon={<ShoppingBag size={15} />} />
+          <StatCard compact label="Ventas" value={money(store?.dailySales ?? 0)} detail="Tu venta hoy" progress={storeProgress} delta="+12%" icon={<ShoppingBag size={15} />} />
           <StatCard compact label="Tickets" value={String(store?.transactions ?? 0)} detail="Transacciones" tone="sky" icon={<Receipt size={15} />} />
           <StatCard compact label="Equipo" value={String(advisors.length)} detail="Asesores activos" tone="purple" icon={<UsersRound size={15} />} />
           <StatCard compact label="Criticos" value={String(critical.length)} detail="Alta y critica" tone="orchid" progress={Math.min(critical.length * 25, 100)} />

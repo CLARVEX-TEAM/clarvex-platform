@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { isApiError, requireSession } from "@/lib/api";
-import { aggregateDashboardKpis, dashboardDateKey, dashboardDateRange } from "@/lib/dashboard-kpi";
+import { buildUserDashboardKpi, dashboardDateKey, dashboardDateRange } from "@/lib/dashboard-kpi";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -17,13 +17,13 @@ export async function GET() {
   const dashboardDate = dashboardDateKey();
   const dashboardRange = dashboardDateRange(dashboardDate);
 
-  const [users, kpis, dashboardKpis, plans, pendings, logEntries, announcements, schedules, evidences, commissionRules] = await Promise.all([
+  const [users, kpis, dashboardKpi, plans, pendings, logEntries, announcements, schedules, evidences, commissionRules] = await Promise.all([
     prisma.user.findMany({ where: { storeId: session.storeId }, orderBy: [{ role: "asc" }, { name: "asc" }] }),
     prisma.kpi.findMany({ where: { storeId: session.storeId, ...own }, orderBy: [{ date: "desc" }, { ranking: "asc" }] }),
-    prisma.kpi.findMany({
+    prisma.kpi.findFirst({
       where: {
         storeId: session.storeId,
-        ...own,
+        userId: session.userId,
         date: { gte: dashboardRange.start, lt: dashboardRange.end }
       },
       select: {
@@ -35,8 +35,7 @@ export async function GET() {
         transactions: true,
         pieces: true,
         traffic: true
-      },
-      orderBy: { userId: "asc" }
+      }
     }),
     prisma.dayPlan.findMany({ where: { storeId: session.storeId, ...own }, include: { activities: true }, orderBy: { date: "desc" } }),
     prisma.pending.findMany({ where: { storeId: session.storeId, ...(manager ? {} : { ownerId: session.userId }) }, orderBy: [{ priority: "desc" }, { dueDate: "asc" }] }),
@@ -46,25 +45,26 @@ export async function GET() {
     prisma.evidence.findMany({ where: { storeId: session.storeId, ...(manager ? {} : { uploadedById: session.userId }) }, orderBy: { createdAt: "desc" } }),
     prisma.commissionRule.findMany({ where: { storeId: session.storeId, ...(manager ? {} : { OR: [{ role: session.role }, { role: null }] }) }, orderBy: [{ active: "desc" }, { role: "asc" }, { minAchievement: "asc" }] })
   ]);
-  const dashboardDaily = aggregateDashboardKpis(dashboardDate, dashboardKpis.map((kpi) => ({
-    dailyGoal: Number(kpi.dailyGoal),
-    dailySales: Number(kpi.dailySales),
-    transactions: kpi.transactions,
-    pieces: kpi.pieces,
-    traffic: kpi.traffic
-  })));
+  const dashboardDaily = buildUserDashboardKpi(dashboardDate, dashboardKpi ? {
+    dailyGoal: Number(dashboardKpi.dailyGoal),
+    dailySales: Number(dashboardKpi.dailySales),
+    transactions: dashboardKpi.transactions,
+    pieces: dashboardKpi.pieces,
+    traffic: dashboardKpi.traffic
+  } : null);
 
-  console.log("Dashboard KPI diario", {
+  console.log("Dashboard KPI diario por usuario", {
     dashboardDate,
-    registrosKpiUsados: dashboardKpis.map((kpi) => ({
-      id: kpi.id,
-      userId: kpi.userId,
-      date: kpi.date.toISOString(),
-      dailyGoal: Number(kpi.dailyGoal),
-      dailySales: Number(kpi.dailySales)
-    })),
-    totalGoal: dashboardDaily.dailyGoal,
-    totalSales: dashboardDaily.dailySales
+    sessionUserId: session.userId,
+    registroKpiUsado: dashboardKpi ? {
+      id: dashboardKpi.id,
+      userId: dashboardKpi.userId,
+      date: dashboardKpi.date.toISOString(),
+      dailyGoal: Number(dashboardKpi.dailyGoal),
+      dailySales: Number(dashboardKpi.dailySales)
+    } : null,
+    dailyGoal: dashboardDaily.dailyGoal,
+    dailySales: dashboardDaily.dailySales
   });
 
   return NextResponse.json({
