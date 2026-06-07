@@ -30,7 +30,6 @@ async function main() {
 
   await prisma.evidence.deleteMany({ where: { storeId: store.id } });
   await prisma.dataSource.deleteMany({ where: { storeId: store.id } });
-  await prisma.commissionRule.deleteMany({ where: { storeId: store.id } });
   await prisma.kpi.deleteMany({ where: { storeId: store.id } });
   await prisma.pending.deleteMany({ where: { storeId: store.id } });
   await prisma.schedule.deleteMany({ where: { storeId: store.id } });
@@ -49,8 +48,10 @@ async function main() {
     ]
   });
 
-  await prisma.commissionRule.createMany({
-    data: [
+  await prisma.employeeNumberAlias.upsert({ where: { employeeNumber: "96739" }, update: { userId: "waira" }, create: { employeeNumber: "96739", userId: "waira" } });
+  await prisma.employeeNumberAlias.upsert({ where: { employeeNumber: "96383" }, update: { userId: "jazmin" }, create: { employeeNumber: "96383", userId: "jazmin" } });
+
+  const commissionRules = [
       { storeId: store.id, role: Role.ASESOR, minAchievement: 0, maxAchievement: 99.99, commissionPercent: 1.53 },
       { storeId: store.id, role: Role.ASESOR, minAchievement: 100, maxAchievement: 114.99, commissionPercent: 1.91 },
       { storeId: store.id, role: Role.ASESOR, minAchievement: 115, commissionPercent: 2.29 },
@@ -60,8 +61,15 @@ async function main() {
       { storeId: store.id, role: Role.GERENTE, minAchievement: 0, maxAchievement: 99.99, commissionPercent: 1.25 },
       { storeId: store.id, role: Role.GERENTE, minAchievement: 100, maxAchievement: 114.99, commissionPercent: 1.56 },
       { storeId: store.id, role: Role.GERENTE, minAchievement: 115, commissionPercent: 1.87 }
-    ]
-  });
+  ];
+  for (const rule of commissionRules) {
+    const existing = await prisma.commissionRule.findFirst({
+      where: { storeId: rule.storeId, role: rule.role, minAchievement: rule.minAchievement, maxAchievement: rule.maxAchievement ?? null }
+    });
+    const data = { ...rule, minSales: 0, maxSales: null, active: true };
+    if (existing) await prisma.commissionRule.update({ where: { id: existing.id }, data });
+    else await prisma.commissionRule.create({ data });
+  }
 
   const plan = await prisma.dayPlan.create({
     data: {

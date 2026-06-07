@@ -148,8 +148,19 @@ model User {
   evidences             Evidence[]             @relation("EvidenceAuthor")
   authoredAnnouncements Announcement[]
   announcementReads     AnnouncementRead[]
+  employeeNumberAliases EmployeeNumberAlias[]
   createdAt             DateTime               @default(now())
   updatedAt             DateTime               @updatedAt
+}
+
+model EmployeeNumberAlias {
+  id             String @id @default(cuid())
+  employeeNumber String @unique
+  userId         String
+  user           User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt      DateTime @default(now())
+
+  @@index([userId])
 }
 
 model Kpi {

@@ -21,7 +21,12 @@ type ScheduleRecord = {
 };
 
 export function buildWeeklySchedule(users: ScheduleUser[], schedules: ScheduleRecord[], weekStart: Date) {
-  const scheduleByUserDate = new Map(schedules.map((schedule) => [`${schedule.userId}:${dateKey(schedule.date)}`, schedule]));
+  const scheduleByUserDate = new Map<string, ScheduleRecord>();
+  for (const schedule of schedules) {
+    const key = `${schedule.userId}:${dateKey(schedule.date)}`;
+    const current = scheduleByUserDate.get(key);
+    if (!current || recordQuality(schedule) > recordQuality(current)) scheduleByUserDate.set(key, schedule);
+  }
   const days = Array.from({ length: 7 }, (_, index) => new Date(weekStart.getTime() + index * 86_400_000));
 
   return users.flatMap((user) => days.map((date) => {
@@ -41,6 +46,10 @@ export function buildWeeklySchedule(users: ScheduleUser[], schedules: ScheduleRe
       zone: schedule?.zone ?? null
     };
   }));
+}
+
+function recordQuality(schedule: ScheduleRecord) {
+  return (schedule.statusRaw ? 2 : 0) + (schedule.date.getUTCHours() === 0 ? 1 : 0);
 }
 
 function dayName(date: Date) {

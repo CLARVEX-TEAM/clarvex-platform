@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Area, AreaChart, Bar, BarChart, ResponsiveContainer, Tooltip, XAxis } from "recharts";
 import { BarChart3, Calculator, CalendarDays, Percent, Receipt, ShoppingBag, Target, TrendingUp, Trophy, UsersRound } from "lucide-react";
 import { getSession } from "@/lib/auth";
+import { findCommissionRule } from "@/lib/commission";
 import { completion, money } from "@/lib/format";
 import { periodDateKey, type KpiPeriod } from "@/lib/kpi-period";
 import type { KpiReportItem } from "@/lib/kpi-report";
@@ -71,11 +72,12 @@ export default function KpisPage() {
   const activeKpi = isAdvisor ? report?.own : report?.store;
   const periodLabel = period === "week" ? "semanal" : "mensual";
   const progress = completion(activeKpi?.sales ?? 0, activeKpi?.goal ?? 0);
-  const initialSimulation = simulatedSales ? Number(simulatedSales) : activeKpi?.sales ?? 0;
-  const simulatedAchievement = getAchievement(initialSimulation, activeKpi?.goal ?? 0);
+  const commissionKpi = report?.own ?? activeKpi;
+  const initialSimulation = simulatedSales ? Number(simulatedSales) : commissionKpi?.sales ?? 0;
+  const simulatedAchievement = getAchievement(initialSimulation, commissionKpi?.goal ?? 0);
   const commissionRole = isAdvisor ? "ASESOR" : session?.role ?? "GERENTE";
-  const activeRule = findCommissionRule(report?.commissionRules ?? [], commissionRole, simulatedAchievement, initialSimulation);
-  const appliedPercent = activeRule?.commissionPercent ?? activeKpi?.commissionPercent ?? 0;
+  const activeRule = findCommissionRule(report?.commissionRules ?? [], commissionRole, simulatedAchievement);
+  const appliedPercent = activeRule?.commissionPercent ?? 0;
   const simulatedCommission = initialSimulation * (appliedPercent / 100);
   const chartData = report?.team.map((item) => ({ name: item.userName, venta: item.sales, meta: item.goal })) ?? [];
 
@@ -102,7 +104,7 @@ export default function KpisPage() {
             <motion.div key={`${activeTab}-${period}-${selectedDate}`} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.18 }}>
               {activeTab === "resumen" ? <ResumenView activeKpi={activeKpi} progress={progress} periodLabel={periodLabel} /> : null}
               {activeTab === "ventas" ? <VentasView activeKpi={activeKpi} chartData={chartData} progress={progress} periodLabel={periodLabel} /> : null}
-              {activeTab === "comision" ? <ComisionView activeKpi={activeKpi} rules={report?.commissionRules ?? []} simulatedSales={simulatedSales} setSimulatedSales={setSimulatedSales} activeRule={activeRule} appliedPercent={appliedPercent} simulatedCommission={simulatedCommission} simulatedAchievement={simulatedAchievement} commissionRole={commissionRole} periodLabel={periodLabel} /> : null}
+              {activeTab === "comision" ? <ComisionView activeKpi={commissionKpi ?? activeKpi} rules={report?.commissionRules ?? []} simulatedSales={simulatedSales} setSimulatedSales={setSimulatedSales} activeRule={activeRule} appliedPercent={appliedPercent} simulatedCommission={simulatedCommission} simulatedAchievement={simulatedAchievement} commissionRole={commissionRole} periodLabel={periodLabel} /> : null}
               {activeTab === "ranking" ? <RankingView ranking={report?.team ?? []} periodLabel={periodLabel} /> : null}
             </motion.div>
           </AnimatePresence>
@@ -138,7 +140,8 @@ function VentasView({ activeKpi, chartData, progress, periodLabel }: { activeKpi
 }
 
 function ComisionView({ activeKpi, rules, simulatedSales, setSimulatedSales, activeRule, appliedPercent, simulatedCommission, simulatedAchievement, commissionRole, periodLabel }: { activeKpi: KpiReportItem; rules: CommissionRule[]; simulatedSales: string; setSimulatedSales: (value: string) => void; activeRule?: CommissionRule; appliedPercent: number; simulatedCommission: number; simulatedAchievement: number; commissionRole: Role; periodLabel: string }) {
-  return <><Card className="premium-hero mb-3 p-3.5"><div className="flex items-start justify-between gap-4"><div><p className="text-[11px] font-black uppercase tracking-[0.13em] text-muted">Comision estimada {periodLabel}</p><h2 className="mt-1 text-[2.1rem] font-black leading-none text-ink">{money(simulatedCommission)}</h2><p className="mt-1 text-sm text-muted">{activeRule ? `${activeRule.commissionPercent}% por nivel actual` : "Sin regla aplicable"}</p></div><span className="grid size-12 place-items-center rounded-2xl bg-violet-50 text-purple"><Trophy size={25} /></span></div><div className="mt-2.5 grid grid-cols-2 gap-2"><Mini label="Porcentaje" value={`${appliedPercent}%`} /><Mini label="Cumplimiento" value={`${Math.round(simulatedAchievement)}%`} /></div></Card><Card className="mb-3 p-3.5"><div className="mb-2.5 flex items-center gap-2"><Calculator className="text-volt" size={18} /><h2 className="text-lg font-black">Simulador {periodLabel}</h2></div><input value={simulatedSales} onChange={(event) => setSimulatedSales(event.target.value.replace(/[^\d.]/g, ""))} inputMode="decimal" placeholder={String(activeKpi.sales)} aria-label={`Venta simulada ${periodLabel}`} className="min-h-14 w-full rounded-2xl border border-line bg-blue-50 px-4 text-xl font-black text-ink outline-none focus:border-volt focus:ring-4 focus:ring-volt/15" /></Card><Card className="p-3.5"><div className="mb-2.5 flex items-center justify-between"><h2 className="text-lg font-black">Escalera de niveles</h2><Badge>{commissionRole}</Badge></div>{rules.filter((rule) => rule.active && (!rule.role || rule.role === commissionRole)).map((rule) => <div key={rule.id} className="flex items-center justify-between border-t border-line py-2.5 first:border-0"><div><p className="font-black">{rule.minAchievement}% a {rule.maxAchievement ?? "mas"}%</p><p className="text-xs text-muted">Desde {money(rule.minSales)}</p></div><Badge tone={rule.id === activeRule?.id ? "success" : "default"}>{rule.commissionPercent}%</Badge></div>)}</Card></>;
+  const missingRuleMessage = `No existe regla para ${commissionRole} ${Math.round(simulatedAchievement)}%`;
+  return <><Card className="premium-hero mb-3 p-3.5"><div className="flex items-start justify-between gap-4"><div><p className="text-[11px] font-black uppercase tracking-[0.13em] text-muted">Comision estimada {periodLabel}</p><h2 className="mt-1 text-[2.1rem] font-black leading-none text-ink">{money(simulatedCommission)}</h2><p className={`mt-1 text-sm ${activeRule ? "text-muted" : "font-semibold text-rose-700"}`}>{activeRule ? `${activeRule.commissionPercent}% por nivel actual` : missingRuleMessage}</p></div><span className="grid size-12 place-items-center rounded-2xl bg-violet-50 text-purple"><Trophy size={25} /></span></div><div className="mt-2.5 grid grid-cols-2 gap-2"><Mini label="Porcentaje" value={`${appliedPercent}%`} /><Mini label="Cumplimiento" value={`${Math.round(simulatedAchievement)}%`} /></div></Card><Card className="mb-3 p-3.5"><div className="mb-2.5 flex items-center gap-2"><Calculator className="text-volt" size={18} /><h2 className="text-lg font-black">Simulador {periodLabel}</h2></div><input value={simulatedSales} onChange={(event) => setSimulatedSales(event.target.value.replace(/[^\d.]/g, ""))} inputMode="decimal" placeholder={String(activeKpi.sales)} aria-label={`Venta simulada ${periodLabel}`} className="min-h-14 w-full rounded-2xl border border-line bg-blue-50 px-4 text-xl font-black text-ink outline-none focus:border-volt focus:ring-4 focus:ring-volt/15" /></Card><Card className="p-3.5"><div className="mb-2.5 flex items-center justify-between"><h2 className="text-lg font-black">Escalera de niveles</h2><Badge>{commissionRole}</Badge></div>{rules.filter((rule) => rule.active && rule.role === commissionRole).map((rule) => <div key={rule.id} className="flex items-center justify-between border-t border-line py-2.5 first:border-0"><div><p className="font-black">{rule.minAchievement}% a {rule.maxAchievement ?? "mas"}%</p><p className="text-xs text-muted">Regla por cumplimiento</p></div><Badge tone={rule.id === activeRule?.id ? "success" : "default"}>{rule.commissionPercent}%</Badge></div>)}</Card></>;
 }
 
 function RankingView({ ranking, periodLabel }: { ranking: KpiReportItem[]; periodLabel: string }) {
@@ -148,7 +151,6 @@ function RankingView({ ranking, periodLabel }: { ranking: KpiReportItem[]; perio
 
 function Mini({ label, value }: { label: string; value: string }) { return <div className="px-2"><p className="text-[11px] font-black uppercase tracking-[0.1em] text-muted">{label}</p><p className="mt-1 font-black text-ink">{value}</p></div>; }
 
-function findCommissionRule(rules: CommissionRule[], role: Role, achievement: number, sales: number) { return rules.filter((rule) => rule.active && (!rule.role || rule.role === role)).find((rule) => achievement >= rule.minAchievement && (rule.maxAchievement == null || achievement <= rule.maxAchievement) && sales >= rule.minSales && (rule.maxSales == null || sales <= rule.maxSales)); }
 function getAchievement(sales: number, goal: number) { return goal > 0 ? (sales / goal) * 100 : 0; }
 function localDateKey(date: Date) { return periodDateKey(new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()))); }
 function formatPeriodLabel(period: KpiPeriod, startValue: string, endValue: string, weekNumber: number | null) { const start = new Date(`${startValue}T00:00:00Z`); if (period === "month") return start.toLocaleDateString("es-MX", { month: "long", year: "numeric", timeZone: "UTC" }).replace(/^./, (letter) => letter.toUpperCase()); const end = new Date(`${endValue}T00:00:00Z`); const startLabel = start.toLocaleDateString("es-MX", { day: "numeric", month: "short", timeZone: "UTC" }).replace(".", ""); const endLabel = end.toLocaleDateString("es-MX", { day: "numeric", month: "short", timeZone: "UTC" }).replace(".", ""); return `Semana ${weekNumber ?? "RDV"} · ${startLabel} - ${endLabel}`; }

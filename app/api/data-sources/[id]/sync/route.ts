@@ -3,6 +3,7 @@ import { DATA_SOURCE_ROLES } from "@/lib/access-control";
 import { isApiError, requireSession } from "@/lib/api";
 import { encodeSyncLogMessage, getNextSyncAt, serializeDataSource, type KpiSyncMetrics, type ScheduleSyncMetrics } from "@/lib/data-source";
 import { downloadExcelWorkbook, summarizeWorkbook } from "@/lib/excel-proxy";
+import { buildUserByEmployeeNumber } from "@/lib/employee-match";
 import { parseKpiWorkbook } from "@/lib/kpi-parser";
 import { prisma } from "@/lib/prisma";
 import { parseScheduleWorkbook } from "@/lib/schedule-parser";
@@ -113,11 +114,11 @@ async function importKpis(workbook: Parameters<typeof parseKpiWorkbook>[0], stor
   logParsedKpiWeeks(parsed.records);
   const users = parsed.employeeNumbers.length > 0
     ? await prisma.user.findMany({
-        where: { storeId, employeeNumber: { in: parsed.employeeNumbers } },
-        select: { id: true, employeeNumber: true }
+        where: { storeId, OR: [{ employeeNumber: { in: parsed.employeeNumbers } }, { employeeNumberAliases: { some: { employeeNumber: { in: parsed.employeeNumbers } } } }] },
+        select: { id: true, employeeNumber: true, employeeNumberAliases: { select: { employeeNumber: true } } }
       })
     : [];
-  const userByEmployee = new Map(users.map((user) => [user.employeeNumber, user.id]));
+  const userByEmployee = buildUserByEmployeeNumber(users);
   const employeesNotFound = parsed.employeeNumbers.filter((employeeNumber) => !userByEmployee.has(employeeNumber));
   const matchedRecords = parsed.records.flatMap((record) => {
     const userId = userByEmployee.get(record.employeeNumber);
@@ -296,11 +297,11 @@ async function importSchedules(workbook: Parameters<typeof parseScheduleWorkbook
   const employeeNumbers = parsed.employeeNumbers;
   const users = employeeNumbers.length > 0
     ? await prisma.user.findMany({
-        where: { storeId, employeeNumber: { in: employeeNumbers } },
-        select: { id: true, employeeNumber: true }
+        where: { storeId, OR: [{ employeeNumber: { in: employeeNumbers } }, { employeeNumberAliases: { some: { employeeNumber: { in: employeeNumbers } } } }] },
+        select: { id: true, employeeNumber: true, employeeNumberAliases: { select: { employeeNumber: true } } }
       })
     : [];
-  const userByEmployee = new Map(users.map((user) => [user.employeeNumber, user.id]));
+  const userByEmployee = buildUserByEmployeeNumber(users);
   const employeesNotFound = employeeNumbers.filter((employeeNumber) => !userByEmployee.has(employeeNumber));
   const matchedRecords = parsed.records.flatMap((record) => {
     const userId = userByEmployee.get(record.employeeNumber);
