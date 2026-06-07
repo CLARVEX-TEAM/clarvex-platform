@@ -6,6 +6,7 @@ type ScheduleUser = {
   id: string;
   name: string;
   role: "GERENTE" | "SUBGERENTE" | "ASESOR";
+  photoUrl: string | null;
 };
 
 type ScheduleRecord = {
@@ -37,6 +38,7 @@ export function buildWeeklySchedule(users: ScheduleUser[], schedules: ScheduleRe
       userId: user.id,
       userName: user.name,
       userRole: user.role,
+      photoUrl: user.photoUrl,
       date: key,
       day: schedule?.day ?? dayName(date),
       status: (schedule?.status ?? "UNKNOWN") as ScheduleViewStatus,

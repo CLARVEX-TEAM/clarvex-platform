@@ -6,3 +6,5 @@ dev.log
 dev.out.log
 dev.err.log
 npm-debug.log*
+public/uploads/profiles/*
+!public/uploads/profiles/.gitkeep

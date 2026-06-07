@@ -11,6 +11,7 @@ export type User = {
   photoUrl?: string | null;
   biometricEnabled?: boolean;
   lastLoginAt?: string | null;
+  storeName?: string;
 };
 
 export type Kpi = {

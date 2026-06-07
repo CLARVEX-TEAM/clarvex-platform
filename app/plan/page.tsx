@@ -6,7 +6,7 @@ import { fetchAppData, type AppData } from "@/lib/app-data";
 import { getSession } from "@/lib/auth";
 import { money } from "@/lib/format";
 import type { Activity, User } from "@/lib/types";
-import { AppFrame, AppHeader, Badge, BottomNav, Button, Card, ProgressBar, ProgressRing } from "@/components/ui";
+import { AppFrame, AppHeader, Badge, BottomNav, Button, Card, ProfileAvatar, ProgressBar, ProgressRing } from "@/components/ui";
 import { TaskList } from "@/components/TaskList";
 
 const days = ["Hoy", "Man", "Mie", "Jue", "Vie", "Sab", "Dom"];
@@ -48,6 +48,7 @@ export default function PlanPage() {
 
   const advisors = data.users.filter((user) => user.role === "ASESOR");
   const userName = (id: string) => data.users.find((user) => user.id === id)?.name ?? "Equipo";
+  const planUser = (id: string) => data.users.find((user) => user.id === id);
   const isAdvisor = session?.role === "ASESOR";
   const visiblePlans = isAdvisor && session ? data.plans.filter((plan) => plan.userId === session.id) : data.plans;
   const totalActivities = visiblePlans.flatMap((plan) => plan.activities);
@@ -119,9 +120,9 @@ export default function PlanPage() {
             return (
               <Card key={plan.id}>
                 <div className="mb-3 flex items-start justify-between gap-3">
-                  <div>
-                    <h2 className="text-xl font-black">{userName(plan.userId)}</h2>
-                    <p className="text-sm text-muted">{plan.date}</p>
+                  <div className="flex min-w-0 items-center gap-3">
+                    <ProfileAvatar name={userName(plan.userId)} photoUrl={planUser(plan.userId)?.photoUrl} size="sm" className="rounded-full shadow-none" />
+                    <div><h2 className="truncate text-xl font-black">{userName(plan.userId)}</h2><p className="text-sm text-muted">{plan.date}</p></div>
                   </div>
                   <Badge>{money(plan.dailyGoal)}</Badge>
                 </div>

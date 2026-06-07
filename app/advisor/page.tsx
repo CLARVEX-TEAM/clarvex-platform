@@ -2,12 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Bell, LogOut, Receipt, ShoppingBag, Sparkles, Target, Trophy } from "lucide-react";
+import { Bell, LogOut, Receipt, ShoppingBag, Sparkles, Target, Trophy, UserRound } from "lucide-react";
 import { getSession, logout } from "@/lib/auth";
 import { fetchAppData, type AppData } from "@/lib/app-data";
 import { completion, money } from "@/lib/format";
 import type { User } from "@/lib/types";
-import { AppFrame, AppHeader, Badge, BottomNav, Card, NotificationCard, ProgressBar, ProgressRing, StatCard } from "@/components/ui";
+import { AppFrame, AppHeader, Badge, BottomNav, Card, NotificationCard, ProgressBar, ProgressRing, QuickLink, StatCard } from "@/components/ui";
 import { TaskList } from "@/components/TaskList";
 
 export default function AdvisorDashboard() {
@@ -48,6 +48,8 @@ export default function AdvisorDashboard() {
         title={`Hola, ${user.name}`}
         subtitle="Tu foco, horario y avance del dia."
         avatar={user.avatar}
+        photoUrl={user.photoUrl}
+        profileName={user.name}
         action={
           <button
             onClick={async () => {
@@ -62,6 +64,7 @@ export default function AdvisorDashboard() {
         }
       />
       <AppFrame>
+        <QuickLink href="/perfil" icon={UserRound} label="Mi perfil" className="mb-3" />
         <Card className="premium-hero mb-3 rounded-[28px] px-4 py-3.5">
           <div className="flex items-center justify-between gap-3">
             <div>

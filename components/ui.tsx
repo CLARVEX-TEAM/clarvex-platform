@@ -281,20 +281,20 @@ export function NotificationCard({
   body,
   meta,
   unread,
-  action
+  action,
+  author
 }: {
   title: string;
   body: string;
   meta?: string;
   unread?: boolean;
   action?: React.ReactNode;
+  author?: { name: string; photoUrl?: string | null };
 }) {
   return (
     <GlassCard className={cn("p-3", unread && "border-volt/35 bg-volt/[0.055]")}>
       <div className="flex items-start gap-2.5">
-        <span className={cn("grid size-9 shrink-0 place-items-center rounded-[16px] border border-line", unread ? "bg-volt/10 text-volt" : "bg-slate-100 text-muted")}>
-          <Bell size={16} />
-        </span>
+        {author ? <ProfileAvatar name={author.name} photoUrl={author.photoUrl} size="sm" className="size-9 rounded-full shadow-none" /> : <span className={cn("grid size-9 shrink-0 place-items-center rounded-[16px] border border-line", unread ? "bg-volt/10 text-volt" : "bg-slate-100 text-muted")}><Bell size={16} /></span>}
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-3">
             <div>
@@ -316,13 +316,17 @@ export function AppHeader({
   subtitle,
   action,
   backHref,
-  avatar
+  avatar,
+  photoUrl,
+  profileName
 }: {
   title: string;
   subtitle: string;
   action?: React.ReactNode;
   backHref?: string;
   avatar?: string;
+  photoUrl?: string | null;
+  profileName?: string;
 }) {
   return (
     <header className="sticky top-0 z-20 border-b border-line/80 bg-white/80 px-4 py-1.5 shadow-[0_4px_16px_rgb(15_23_42_/_0.04)] backdrop-blur-xl">
@@ -332,8 +336,10 @@ export function AppHeader({
             <Link href={backHref} className="liquid-glass mt-0.5 grid size-9 shrink-0 place-items-center rounded-[18px] text-ink/70 transition active:scale-95" aria-label="Regresar al inicio">
               <ArrowLeft size={18} />
             </Link>
-          ) : avatar ? (
-            <span className="mt-0.5 grid size-9 shrink-0 place-items-center rounded-[18px] border border-volt/25 bg-volt/15 text-xs font-black text-volt shadow-[inset_0_1px_0_rgb(255_255_255_/_0.14)]">{avatar}</span>
+          ) : avatar || photoUrl ? (
+            <Link href="/perfil" aria-label="Abrir mi perfil" className="mt-0.5 shrink-0 transition active:scale-95">
+              <ProfileAvatar name={profileName ?? avatar ?? "Usuario"} photoUrl={photoUrl} size="sm" className="size-9 rounded-[18px] shadow-none" />
+            </Link>
           ) : null}
           <div className="min-w-0">
             <p className="text-[10px] font-black uppercase tracking-[0.16em] text-volt/90">CLARVEX Team</p>

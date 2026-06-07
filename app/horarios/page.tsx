@@ -5,7 +5,7 @@ import { CalendarDays, ChevronLeft, ChevronRight, Clock3 } from "lucide-react";
 import { getSession } from "@/lib/auth";
 import { addWeeks, dateKey, startOfWeek } from "@/lib/schedule-week";
 import type { Role, User } from "@/lib/types";
-import { AppFrame, AppHeader, Badge, BottomNav, Button, Card } from "@/components/ui";
+import { AppFrame, AppHeader, Badge, BottomNav, Button, Card, ProfileAvatar } from "@/components/ui";
 
 type ScheduleStatus = "WORKING" | "OFF" | "VACATION" | "PAID_DAY" | "INVENTORY" | "TERMINATED" | "UNKNOWN";
 type ScheduleItem = {
@@ -13,6 +13,7 @@ type ScheduleItem = {
   userId: string;
   userName: string;
   userRole: Role;
+  photoUrl: string | null;
   date: string;
   day: string;
   status: ScheduleStatus;
@@ -168,7 +169,7 @@ export default function HorariosPage() {
 
 function ScheduleRow({ item, showUser }: { item: ScheduleItem; showUser: boolean }) {
   const config = statusConfig[item.status];
-  return <div className="flex min-h-11 items-center justify-between gap-3 py-1.5"><div className="min-w-0"><p className="truncate text-sm font-black text-ink">{showUser ? item.userName : config.label}</p><p className="mt-0.5 flex items-center gap-1.5 text-[11px] text-muted">{item.startTime ? <><Clock3 size={12} />{item.startTime}{item.endTime ? ` - ${item.endTime}` : ""}</> : item.statusRaw ?? config.label}{showUser && item.zone ? ` · ${item.zone}` : ""}</p></div><Badge tone={config.tone}>{config.label}</Badge></div>;
+  return <div className="flex min-h-11 items-center justify-between gap-3 py-1.5"><div className="flex min-w-0 items-center gap-2.5">{showUser ? <ProfileAvatar name={item.userName} photoUrl={item.photoUrl} size="sm" className="size-9 rounded-full shadow-none" /> : null}<div className="min-w-0"><p className="truncate text-sm font-black text-ink">{showUser ? item.userName : config.label}</p><p className="mt-0.5 flex items-center gap-1.5 text-[11px] text-muted">{item.startTime ? <><Clock3 size={12} />{item.startTime}{item.endTime ? ` - ${item.endTime}` : ""}</> : item.statusRaw ?? config.label}{showUser && item.zone ? ` · ${item.zone}` : ""}</p></div></div><Badge tone={config.tone}>{config.label}</Badge></div>;
 }
 
 function Summary({ label, value, className }: { label: string; value: number; className: string }) {

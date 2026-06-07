@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
   const [users, schedules, availableWeeks] = await Promise.all([
     prisma.user.findMany({
       where: { storeId: session.storeId, ...(userId ? { id: userId } : {}) },
-      select: { id: true, name: true, role: true },
+      select: { id: true, name: true, role: true, photoUrl: true },
       orderBy: [{ role: "asc" }, { name: "asc" }]
     }),
     prisma.schedule.findMany({

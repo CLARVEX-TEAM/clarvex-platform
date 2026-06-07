@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Activity, ArrowRight, BookOpen, CalendarDays, CheckCircle2, CheckSquare, ClipboardList, Database, LogOut, Megaphone, Receipt, ShoppingBag, UsersRound } from "lucide-react";
+import { Activity, ArrowRight, BookOpen, CalendarDays, CheckCircle2, CheckSquare, ClipboardList, Database, LogOut, Megaphone, Receipt, ShoppingBag, UserRound, UsersRound } from "lucide-react";
 import { getSession, logout } from "@/lib/auth";
 import { fetchAppData, type AppData } from "@/lib/app-data";
 import { completion, money } from "@/lib/format";
@@ -54,6 +54,8 @@ export default function ManagerDashboard() {
         title={greeting}
         subtitle="Pulso de tienda, equipo y pendientes criticos."
         avatar={manager?.avatar}
+        photoUrl={manager?.photoUrl}
+        profileName={manager?.name}
         action={
           <button
             onClick={async () => {
@@ -68,6 +70,7 @@ export default function ManagerDashboard() {
         }
       />
       <AppFrame>
+        <QuickLink href="/perfil" icon={UserRound} label="Mi perfil" className="mb-3" />
         <section className="manager-sales-hero mb-3 rounded-[28px] border border-volt/25 px-4 py-3.5">
           <div className="flex items-center justify-between gap-4">
             <div className="min-w-0">

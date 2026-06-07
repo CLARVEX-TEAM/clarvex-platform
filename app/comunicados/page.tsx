@@ -145,7 +145,8 @@ export default function ComunicadosPage() {
         <div className="space-y-2.5">
           {visibleAnnouncements.map((item) => {
             const unread = session ? !item.readBy.includes(session.id) : false;
-            const author = data?.users.find((user) => user.id === item.authorId)?.name ?? "Equipo";
+            const authorUser = data?.users.find((user) => user.id === item.authorId);
+            const author = authorUser?.name ?? "Equipo";
             const readProgress = advisors.length ? Math.round((item.readBy.length / advisors.length) * 100) : 0;
             return (
               <NotificationCard
@@ -153,6 +154,7 @@ export default function ComunicadosPage() {
                 title={item.title}
                 body={item.body}
                 meta={`${item.date} por ${author}`}
+                author={{ name: author, photoUrl: authorUser?.photoUrl }}
                 unread={unread}
                 action={
                   <>
