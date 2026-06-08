@@ -8,7 +8,7 @@ import { createNotifications } from "@/lib/notifications";
 
 export const dynamic = "force-dynamic";
 
-const updateSchema = pendingInput.partial().extend({ status: z.nativeEnum(PendingStatus).optional() });
+const updateSchema = pendingInput.partial();
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
