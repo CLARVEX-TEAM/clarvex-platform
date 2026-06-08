@@ -75,7 +75,7 @@ export default function KpisPage() {
   const activeKpi = isAdvisor ? (report?.own ?? null) : (report?.store ?? null);
   const periodLabel = period === "week" ? "semanal" : "mensual";
   const progress = completion(activeKpi?.sales ?? 0, activeKpi?.goal ?? 0);
-  const commissionKpi = report?.own ?? report?.store ?? null;
+  const commissionKpi = isAdvisor ? (report?.own ?? null) : (report?.store ?? null);
   const initialSimulation = simulatedSales ? Number(simulatedSales) : commissionKpi?.sales ?? 0;
   const simulatedAchievement = getAchievement(initialSimulation, commissionKpi?.goal ?? 0);
   const commissionRole = isAdvisor ? "ASESOR" : session?.role ?? "GERENTE";
