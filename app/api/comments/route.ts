@@ -4,6 +4,7 @@ import { isApiError, parseJson, requireSession } from "@/lib/api";
 import { serializeComment } from "@/lib/discussion";
 import { authorizeResource, parseResourceTarget, targetWhere } from "@/lib/evidence";
 import { createNotifications } from "@/lib/notifications";
+import { dispatchPushToUsers } from "@/lib/push";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -56,5 +57,8 @@ export async function POST(request: Request) {
     }
     return created;
   });
+  if (resource.kind === "pending" && resource.recipientId !== session.userId) {
+    dispatchPushToUsers([resource.recipientId], { title: "Nuevo comentario en pendiente", body: resource.title }).catch(() => undefined);
+  }
   return NextResponse.json({ comment: serializeComment(comment) }, { status: 201 });
 }

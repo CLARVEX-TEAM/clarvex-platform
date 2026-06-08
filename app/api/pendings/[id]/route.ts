@@ -4,6 +4,7 @@ import { isApiError, parseJson, requireSession } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
 import { pendingInput, serializePending } from "@/lib/pending";
 import { createNotifications } from "@/lib/notifications";
+import { dispatchPushToUsers } from "@/lib/push";
 
 export const dynamic = "force-dynamic";
 
@@ -35,5 +36,8 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     }
     return updated;
   });
+  if (parsed.data.ownerId && parsed.data.ownerId !== current.ownerId) {
+    dispatchPushToUsers([parsed.data.ownerId], { title: "Pendiente reasignado", body: item.title }).catch(() => undefined);
+  }
   return NextResponse.json({ pending: serializePending(item) });
 }

@@ -3,6 +3,7 @@ import { isApiError, parseJson, requireSession } from "@/lib/api";
 import { pendingInput, serializePending } from "@/lib/pending";
 import { prisma } from "@/lib/prisma";
 import { createNotifications } from "@/lib/notifications";
+import { dispatchPushToUsers } from "@/lib/push";
 
 export const dynamic = "force-dynamic";
 
@@ -24,5 +25,6 @@ export async function POST(request: Request) {
     }]);
     return created;
   });
+  dispatchPushToUsers([owner.id], { title: "Nuevo pendiente asignado", body: item.title }).catch(() => undefined);
   return NextResponse.json({ pending: serializePending(item) }, { status: 201 });
 }

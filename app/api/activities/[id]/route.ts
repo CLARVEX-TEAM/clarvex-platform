@@ -4,6 +4,7 @@ import type { Prisma } from "@prisma/client";
 import { isApiError, parseJson, requireSession } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
 import { createNotifications } from "@/lib/notifications";
+import { dispatchPushToUsers } from "@/lib/push";
 
 export const dynamic = "force-dynamic";
 
@@ -33,6 +34,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     return NextResponse.json({ error: "Actividad no encontrada o sin permiso." }, { status: 404 });
   }
 
+  let pushRecipients: string[] = [];
   const updated = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     const result = await tx.dayPlanTask.update({
       where: { id: activity.id },
@@ -60,9 +62,10 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
         recipients.add(activity.plan.userId);
       }
 
+      pushRecipients = Array.from(recipients);
       await createNotifications(
         tx,
-        Array.from(recipients).map((userId: string) => ({
+        pushRecipients.map((userId: string) => ({
           storeId: session.storeId,
           userId,
           type: "TASK_COMPLETED" as const,
@@ -74,6 +77,9 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
     return result;
   });
+  if (pushRecipients.length > 0) {
+    dispatchPushToUsers(pushRecipients, { title: "Actividad completada con evidencia", body: activity.title }).catch(() => undefined);
+  }
 
   return NextResponse.json({
     id: updated.id,
