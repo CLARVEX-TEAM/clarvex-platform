@@ -379,6 +379,7 @@ model Announcement {
   author    User               @relation(fields: [authorId], references: [id])
   title     String
   body      String
+  imageUrl  String?
   reads     AnnouncementRead[]
   createdAt DateTime           @default(now())
   updatedAt DateTime           @updatedAt

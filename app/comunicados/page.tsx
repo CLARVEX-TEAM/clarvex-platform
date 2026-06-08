@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Megaphone, Send } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { ImagePlus, Megaphone, Send, X } from "lucide-react";
 import { fetchAppData, type AppData } from "@/lib/app-data";
 import { getSession } from "@/lib/auth";
 import type { Announcement, User } from "@/lib/types";
@@ -14,7 +14,10 @@ export default function ComunicadosPage() {
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [status, setStatus] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [session, setSession] = useState<User | null>(null);
   const [filter, setFilter] = useState<Filter>("todos");
 
@@ -51,33 +54,49 @@ export default function ComunicadosPage() {
     }
   }
 
+  function handleImageChange(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0] ?? null;
+    if (!file) return;
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+      setStatus("Solo se permiten imagenes JPG, PNG o WEBP.");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setStatus("La imagen debe pesar menos de 5 MB.");
+      return;
+    }
+    setImageFile(file);
+    setImagePreview(URL.createObjectURL(file));
+    setStatus("");
+  }
+
+  function removeImage() {
+    setImageFile(null);
+    if (imagePreview) URL.revokeObjectURL(imagePreview);
+    setImagePreview(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }
+
   async function publishAnnouncement(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!session) {
-      setStatus("Inicia sesion para publicar.");
-      return;
-    }
-
-    if (!title.trim() || !body.trim()) {
-      setStatus("Escribe titulo y mensaje.");
-      return;
-    }
+    if (!session) { setStatus("Inicia sesion para publicar."); return; }
+    if (!title.trim() || !body.trim()) { setStatus("Escribe titulo y mensaje."); return; }
 
     setStatus("Publicando...");
-
     try {
-      const response = await fetch("/api/announcements", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, body })
-      });
+      const form = new FormData();
+      form.append("title", title);
+      form.append("body", body);
+      if (imageFile) form.append("image", imageFile);
 
+      const response = await fetch("/api/announcements", { method: "POST", body: form });
       if (!response.ok) throw new Error("No se pudo publicar.");
       const payload = await response.json() as { announcement: Announcement };
 
       setAnnouncements((current) => [payload.announcement, ...current]);
       setTitle("");
       setBody("");
+      removeImage();
       setStatus("Comunicado publicado.");
     } catch {
       setStatus("No se pudo publicar el comunicado.");
@@ -134,6 +153,24 @@ export default function ComunicadosPage() {
                 className="min-h-20 rounded-2xl border border-line bg-panel px-3 py-2.5 outline-none focus:border-volt"
                 placeholder="Mensaje para el equipo"
               />
+              {imagePreview ? (
+                <div className="relative overflow-hidden rounded-2xl border border-line">
+                  <img src={imagePreview} alt="Vista previa" className="max-h-48 w-full object-cover" />
+                  <button type="button" onClick={removeImage} className="absolute right-2 top-2 grid size-7 place-items-center rounded-full bg-black/60 text-white">
+                    <X size={14} />
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="flex min-h-11 items-center gap-2 rounded-2xl border border-dashed border-line bg-panel px-3 text-sm font-semibold text-muted transition hover:border-volt hover:text-volt"
+                >
+                  <ImagePlus size={16} />
+                  Adjuntar imagen (opcional)
+                </button>
+              )}
+              <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleImageChange} />
               <Button type="submit" className="w-full" variant="primary" icon={<Send size={17} />}>
                 Mandar comunicado
               </Button>
@@ -153,6 +190,7 @@ export default function ComunicadosPage() {
                 key={item.id}
                 title={item.title}
                 body={item.body}
+                imageUrl={item.imageUrl}
                 meta={`${item.date} por ${author}`}
                 author={{ name: author, photoUrl: authorUser?.photoUrl }}
                 unread={unread}
