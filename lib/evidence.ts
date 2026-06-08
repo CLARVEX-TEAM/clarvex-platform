@@ -1,4 +1,5 @@
-import type { PrismaClient } from "@prisma/client";
+import type { prisma } from "@/lib/prisma";
+type PrismaClient = typeof prisma;
 import type { Session } from "@/lib/session-token";
 import { validateProfilePhoto } from "@/lib/profile-photo";
 
