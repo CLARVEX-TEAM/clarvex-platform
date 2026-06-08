@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import * as XLSX from "xlsx";
+import * as XLSX from "../lib/spreadsheet";
 import { parseKpiWorkbook } from "../lib/kpi-parser";
 
 const metrics = [

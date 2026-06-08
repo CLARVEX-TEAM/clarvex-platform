@@ -6,7 +6,7 @@ export { createSessionToken, SESSION_COOKIE, sessionCookieOptions, verifySession
 export type { Session } from "@/lib/session-token";
 
 export async function getServerSession() {
-  const token = cookies().get(SESSION_COOKIE)?.value;
+  const token = (await cookies()).get(SESSION_COOKIE)?.value;
   return token ? verifySessionToken(token) : null;
 }
 

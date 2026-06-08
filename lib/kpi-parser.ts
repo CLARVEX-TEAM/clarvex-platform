@@ -1,4 +1,4 @@
-import * as XLSX from "xlsx";
+import * as XLSX from "@/lib/spreadsheet";
 
 export const RDV_SHEET_NAME = "Diario de ventas";
 

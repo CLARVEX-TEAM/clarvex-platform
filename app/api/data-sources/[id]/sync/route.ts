@@ -16,12 +16,13 @@ const SCHEDULE_IMPORT_TIMEOUT_MS = 4 * 60 * 1000;
 const KPI_BATCH_SIZE = 25;
 const KPI_IMPORT_TIMEOUT_MS = 4 * 60 * 1000;
 
-export async function POST(_request: Request, { params }: { params: { id: string } }) {
+export async function POST(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const session = await requireSession(DATA_SOURCE_ROLES);
   if (isApiError(session)) return session;
 
   const source = await prisma.dataSource.findFirst({
-    where: { id: params.id, storeId: session.storeId }
+    where: { id, storeId: session.storeId }
   });
   if (!source) return NextResponse.json({ error: "Fuente de datos no encontrada." }, { status: 404 });
   if (source.provider === "MANUAL") {

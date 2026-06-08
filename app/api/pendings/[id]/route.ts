@@ -10,12 +10,13 @@ export const dynamic = "force-dynamic";
 
 const updateSchema = pendingInput.partial().extend({ status: z.nativeEnum(PendingStatus).optional() });
 
-export async function PATCH(request: Request, { params }: { params: { id: string } }) {
+export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const session = await requireSession(["GERENTE", "SUBGERENTE"]);
   if (isApiError(session)) return session;
   const parsed = await parseJson(request, updateSchema);
   if ("response" in parsed) return parsed.response;
-  const current = await prisma.pending.findFirst({ where: { id: params.id, storeId: session.storeId } });
+  const current = await prisma.pending.findFirst({ where: { id, storeId: session.storeId } });
   if (!current) return NextResponse.json({ error: "Pendiente no encontrado." }, { status: 404 });
   if (parsed.data.ownerId) {
     const owner = await prisma.user.findFirst({ where: { id: parsed.data.ownerId, storeId: session.storeId } });

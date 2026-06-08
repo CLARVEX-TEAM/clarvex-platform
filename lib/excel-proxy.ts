@@ -1,4 +1,4 @@
-import * as XLSX from "xlsx";
+import * as XLSX from "@/lib/spreadsheet";
 import type { SheetSummary } from "@/lib/data-source";
 
 const MAX_EXCEL_BYTES = 20 * 1024 * 1024;
@@ -74,7 +74,7 @@ export async function downloadExcelWorkbook(sourceUrl: string | null) {
 
   let workbook: XLSX.WorkBook;
   try {
-    workbook = XLSX.read(buffer, { type: "array", dense: true, cellDates: true });
+    workbook = await XLSX.read(buffer);
   } catch {
     throw new Error("No se pudo interpretar el archivo recibido como Excel.");
   }

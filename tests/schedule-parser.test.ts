@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import * as XLSX from "xlsx";
+import * as XLSX from "../lib/spreadsheet";
 import { parseScheduleWorkbook } from "../lib/schedule-parser";
 
 test("detecta bloques semanales repetidos y normaliza estados", () => {

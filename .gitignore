@@ -6,6 +6,7 @@ dev.log
 dev.out.log
 dev.err.log
 npm-debug.log*
+*.tsbuildinfo
 public/uploads/profiles/*
 !public/uploads/profiles/.gitkeep
 public/uploads/evidences/*
