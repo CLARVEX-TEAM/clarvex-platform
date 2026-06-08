@@ -1,9 +1,8 @@
-import { mkdir, unlink, writeFile } from "node:fs/promises";
-import path from "node:path";
 import { NextResponse } from "next/server";
 import { isApiError, requireSession } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
 import { validateProfilePhoto } from "@/lib/profile-photo";
+import { deleteFromR2, uploadToR2 } from "@/lib/r2";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -20,23 +19,24 @@ export async function POST(request: Request) {
   const validation = validateProfilePhoto(file, bytes);
   if (!validation.valid) return NextResponse.json({ error: validation.error }, { status: 400 });
 
-  const uploadDirectory = path.join(process.cwd(), "public", "uploads", "profiles");
-  await mkdir(uploadDirectory, { recursive: true });
-  const fileName = `${session.userId}-${Date.now()}.${validation.extension}`;
-  const destination = path.join(uploadDirectory, fileName);
-  await writeFile(destination, bytes, { flag: "wx" });
-  const photoUrl = `/uploads/profiles/${fileName}`;
+  const key = `profiles/${session.userId}-${Date.now()}.${validation.extension}`;
+  let photoUrl: string;
+  try {
+    photoUrl = await uploadToR2(key, bytes, file.type);
+  } catch (error) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : "No se pudo subir la foto." }, { status: 500 });
+  }
 
   const previous = await prisma.user.findFirst({ where: { id: session.userId, storeId: session.storeId }, select: { photoUrl: true } });
   if (!previous) {
-    await unlink(destination).catch(() => undefined);
+    await deleteFromR2(photoUrl);
     return NextResponse.json({ error: "Usuario no encontrado." }, { status: 404 });
   }
 
   await prisma.user.update({ where: { id: session.userId }, data: { photoUrl } });
-  if (previous.photoUrl?.startsWith("/uploads/profiles/")) {
-    const previousName = path.basename(previous.photoUrl);
-    if (previousName.startsWith(`${session.userId}-`)) await unlink(path.join(uploadDirectory, previousName)).catch(() => undefined);
+
+  if (previous.photoUrl) {
+    deleteFromR2(previous.photoUrl).catch(() => undefined);
   }
 
   return NextResponse.json({ photoUrl });

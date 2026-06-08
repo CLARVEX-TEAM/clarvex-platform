@@ -1,7 +1,13 @@
 /** @type {import('next').NextConfig} */
+
+// R2 public domain for CSP — allow images from the bucket
+const r2PublicUrl = process.env.R2_PUBLIC_URL ?? "";
+const r2Domain = r2PublicUrl ? (() => { try { return new URL(r2PublicUrl).hostname; } catch { return ""; } })() : "";
+
 const nextConfig = {
   reactStrictMode: true,
   async headers() {
+    const imgSrc = ["'self'", "data:", "blob:", r2Domain].filter(Boolean).join(" ");
     return [
       {
         source: "/(.*)",
@@ -17,7 +23,7 @@ const nextConfig = {
               "default-src 'self'",
               "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
               "style-src 'self' 'unsafe-inline'",
-              "img-src 'self' data: blob:",
+              `img-src ${imgSrc}`,
               "font-src 'self' data:",
               "connect-src 'self'",
               "manifest-src 'self'",

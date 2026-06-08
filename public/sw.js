@@ -1,4 +1,4 @@
-const CACHE_NAME = "clarvex-team-v3";
+const CACHE_NAME = "clarvex-team-v4";
 const CORE_ASSETS = ["/", "/login", "/manifest.webmanifest", "/icon.svg"];
 
 self.addEventListener("install", (event) => {
@@ -29,5 +29,33 @@ self.addEventListener("fetch", (event) => {
         return response;
       })
       .catch(() => caches.match(event.request).then((cached) => cached || caches.match("/")))
+  );
+});
+
+self.addEventListener("push", (event) => {
+  if (!event.data) return;
+  let data = { title: "CLARVEX Team", body: "Tienes una nueva notificacion.", icon: "/icon.svg" };
+  try { data = { ...data, ...event.data.json() }; } catch (_) {}
+
+  event.waitUntil(
+    self.registration.showNotification(data.title, {
+      body: data.body,
+      icon: data.icon,
+      badge: "/icon.svg",
+      tag: "clarvex-notification",
+      renotify: true,
+      vibrate: [200, 100, 200]
+    })
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  event.waitUntil(
+    clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
+      const existing = clientList.find((c) => c.url.includes(self.location.origin) && "focus" in c);
+      if (existing) return existing.focus();
+      return clients.openWindow("/notificaciones");
+    })
   );
 });

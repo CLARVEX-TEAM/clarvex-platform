@@ -1,11 +1,11 @@
-import { mkdir, unlink, writeFile } from "node:fs/promises";
-import path from "node:path";
 import { NextRequest, NextResponse } from "next/server";
 import { isApiError, requireSession } from "@/lib/api";
 import { serializeEvidence } from "@/lib/discussion";
 import { authorizeResource, parseResourceTarget, targetWhere, validateEvidenceImage } from "@/lib/evidence";
 import { createNotifications } from "@/lib/notifications";
+import { dispatchPushToUsers } from "@/lib/push";
 import { prisma } from "@/lib/prisma";
+import { deleteFromR2, uploadToR2 } from "@/lib/r2";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -44,15 +44,18 @@ export async function POST(request: Request) {
   if (!resource) return NextResponse.json({ error: "Recurso no encontrado o sin permiso." }, { status: 404 });
   const note = form?.get("note")?.toString().trim() ?? "";
   if (note.length > 500) return NextResponse.json({ error: "La nota no puede superar 500 caracteres." }, { status: 400 });
+
   const bytes = new Uint8Array(await file.arrayBuffer());
   const validation = validateEvidenceImage(file, bytes);
   if (!validation.valid) return NextResponse.json({ error: validation.error }, { status: 400 });
 
-  const directory = path.join(process.cwd(), "public", "uploads", "evidences");
-  await mkdir(directory, { recursive: true });
-  const fileName = `${session.userId}-${Date.now()}-${crypto.randomUUID()}.${validation.extension}`;
-  const destination = path.join(directory, fileName);
-  await writeFile(destination, bytes, { flag: "wx" });
+  const key = `evidences/${session.userId}-${Date.now()}-${crypto.randomUUID()}.${validation.extension}`;
+  let url: string;
+  try {
+    url = await uploadToR2(key, bytes, file.type);
+  } catch (error) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : "No se pudo subir la imagen." }, { status: 500 });
+  }
 
   try {
     const evidence = await prisma.$transaction(async (tx) => {
@@ -61,7 +64,7 @@ export async function POST(request: Request) {
           storeId: session.storeId,
           uploadedById: session.userId,
           ...targetWhere(target),
-          url: `/uploads/evidences/${fileName}`,
+          url,
           fileName: file.name.slice(0, 255),
           mimeType: file.type,
           note: note || null
@@ -72,21 +75,25 @@ export async function POST(request: Request) {
       if (resource.recipientId !== session.userId) recipients.add(resource.recipientId);
       if (resource.kind === "task") {
         const managers = await tx.user.findMany({ where: { storeId: session.storeId, role: { in: ["GERENTE", "SUBGERENTE"] }, id: { not: session.userId } }, select: { id: true } });
-        managers.forEach((manager) => recipients.add(manager.id));
+        managers.forEach((m) => recipients.add(m.id));
       }
-      await createNotifications(tx, Array.from(recipients).map((userId) => ({
+      const recipientList = Array.from(recipients);
+      await createNotifications(tx, recipientList.map((userId) => ({
         storeId: session.storeId,
         userId,
         type: "EVIDENCE_ADDED" as const,
         title: "Nueva evidencia",
         body: resource.title
       })));
-      return created;
+      return { created, recipientList };
     });
-    return NextResponse.json({ evidence: serializeEvidence(evidence) }, { status: 201 });
+
+    // Fire-and-forget push after transaction commits
+    dispatchPushToUsers(evidence.recipientList, { title: "Nueva evidencia", body: resource.title }).catch(() => undefined);
+
+    return NextResponse.json({ evidence: serializeEvidence(evidence.created) }, { status: 201 });
   } catch (error) {
-    await unlink(destination).catch(() => undefined);
-    console.error("Error al guardar evidencia", error);
+    await deleteFromR2(url);
     return NextResponse.json({ error: "No se pudo guardar la evidencia." }, { status: 500 });
   }
 }
