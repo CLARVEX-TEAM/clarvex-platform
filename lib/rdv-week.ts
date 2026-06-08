@@ -20,12 +20,20 @@ export function reconstructRdvWeek(date: Date): RdvWeek {
 
 export function mergeRdvWeeks(primary: RdvWeek[], legacyDates: Date[]) {
   const weeks = new Map<string, RdvWeek>();
-  for (const week of primary) weeks.set(weekKey(week), week);
+  for (const week of primary) {
+    const normalized = fullWeekSpan(week);
+    weeks.set(weekKey(normalized), normalized);
+  }
   for (const date of legacyDates) {
     const week = reconstructRdvWeek(date);
     if (!weeks.has(weekKey(week))) weeks.set(weekKey(week), week);
   }
   return Array.from(weeks.values()).sort((left, right) => right.weekStart.getTime() - left.weekStart.getTime());
+}
+
+function fullWeekSpan(week: RdvWeek): RdvWeek {
+  const sunday = new Date(week.weekStart.getTime() - week.weekStart.getUTCDay() * DAY_MS);
+  return { weekNumber: week.weekNumber, weekStart: sunday, weekEnd: new Date(sunday.getTime() + 6 * DAY_MS) };
 }
 
 function weekKey(week: RdvWeek) {
