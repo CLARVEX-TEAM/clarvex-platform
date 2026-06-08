@@ -47,12 +47,6 @@ export async function GET(request: NextRequest) {
   const availableWeeks = mergeRdvWeeks([...persistedWeeks, ...syncedWeeks], legacyWeekRows.map((row) => row.date))
     .sort((left, right) => left.weekStart.getTime() - right.weekStart.getTime());
   const selectedWeek = period === "week" ? selectRdvWeek(availableWeeks, selectedDate) : null;
-  const selectedPersistedWeek = selectedWeek
-    ? persistedWeeks.find((week) =>
-        week.weekNumber === selectedWeek.weekNumber &&
-        week.weekStart.toISOString().slice(0, 10) === selectedWeek.weekStart.toISOString().slice(0, 10)
-      )
-    : null;
   const retailMonths = buildRetailMonths(availableWeeks);
   const selectedRetailMonth = selectRetailMonth(retailMonths, selectedDate);
   const start = selectedWeek?.weekStart ?? selectedRetailMonth?.start ?? selectedDate;
@@ -63,24 +57,9 @@ export async function GET(request: NextRequest) {
       where: {
         storeId: session.storeId,
         ...userFilter,
-        ...(period === "week" && selectedPersistedWeek
-          ? {
-              weekNumber: selectedPersistedWeek.weekNumber,
-              date: {
-                gte: new Date(selectedPersistedWeek.weekStart.toISOString().slice(0, 10) + 'T00:00:00.000Z'),
-                lte: new Date(selectedPersistedWeek.weekEnd.toISOString().slice(0, 10) + 'T23:59:59.999Z')
-              }
-            }
-          : period === "week" && selectedWeek
-            ? {
-                AND: [
-                  { OR: [{ weekNumber: null }, { weekStart: null }, { weekEnd: null }] },
-                  { date: { gte: selectedWeek.weekStart, lte: selectedWeek.weekEnd } }
-                ]
-              }
-          : period === "week"
-            ? { id: "__missing_rdv_week__" }
-            : { date: { gte: start, lte: end } })
+        ...(period === "week" && !selectedWeek
+          ? { id: "__missing_rdv_week__" }
+          : { date: { gte: start, lte: end } })
       },
       include: { user: { select: { name: true, role: true, photoUrl: true } } },
       orderBy: [{ date: "asc" }, { userId: "asc" }]
