@@ -11,7 +11,8 @@
     "test": "tsx --test tests/*.test.ts",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
-    "prisma:seed": "tsx prisma/seed.ts"
+    "prisma:seed": "tsx prisma/seed.ts",
+    "generate-icons": "tsx scripts/generate-icons.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1063.0",
@@ -33,6 +34,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@resvg/resvg-js": "^2.6.2",
     "@types/bcryptjs": "^2.4.6",
     "@types/node": "^22.10.1",
     "@types/react": "^18.3.12",

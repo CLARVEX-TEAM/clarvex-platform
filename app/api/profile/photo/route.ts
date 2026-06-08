@@ -27,7 +27,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "No se pudo subir la foto." }, { status: 500 });
   }
 
-  const previous = await prisma.user.findFirst({ where: { id: session.userId, storeId: session.storeId }, select: { photoUrl: true } });
+  const previous = await prisma.user.findFirst({ where: { id: session.userId }, select: { photoUrl: true } });
   if (!previous) {
     await deleteFromR2(photoUrl);
     return NextResponse.json({ error: "Usuario no encontrado." }, { status: 404 });

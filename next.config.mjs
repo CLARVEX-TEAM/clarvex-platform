@@ -16,6 +16,7 @@ const nextConfig = {
 
   images: {
     remotePatterns: [
+      ...(r2Domain ? [{ protocol: /** @type {"https"} */ ("https"), hostname: r2Domain, pathname: "/**" }] : []),
       {
         protocol: "https",
         hostname: "pub-650b73e1731f47a3b905fb9c615cb596.r2.dev",

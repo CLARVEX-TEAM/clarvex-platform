@@ -1,5 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="112" fill="#F5F8FF"/>
-  <path d="M126 326 256 104l130 222h-78l-52-91-52 91h-78Z" fill="#2563EB"/>
-  <path d="M126 374h260v36H126z" fill="#0F172A" opacity=".82"/>
+  <rect width="512" height="512" rx="108" fill="#2563EB"/>
+  <!-- C: thick arc opening to the right, centered at (220,256) radius 110, ±45° opening -->
+  <path d="M 298 178 A 110 110 0 1 0 298 334"
+        fill="none" stroke="white" stroke-width="38" stroke-linecap="round"/>
+  <!-- T crossbar -->
+  <rect x="284" y="180" width="112" height="32" rx="8" fill="white"/>
+  <!-- T stem, centered on crossbar at x=340 -->
+  <rect x="324" y="208" width="32" height="124" rx="8" fill="white"/>
 </svg>
