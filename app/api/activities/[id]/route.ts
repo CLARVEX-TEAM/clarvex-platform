@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { Prisma } from "@prisma/client";
 import { isApiError, parseJson, requireSession } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
 import { createNotifications } from "@/lib/notifications";
@@ -33,7 +32,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     return NextResponse.json({ error: "Actividad no encontrada o sin permiso." }, { status: 404 });
   }
 
-  const updated = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+  const updated = await prisma.$transaction(async (tx: any) => {
     const result = await tx.dayPlanTask.update({
       where: { id: activity.id },
       data: {
@@ -52,7 +51,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
         select: { id: true },
       });
 
-      const recipients = new Set(managers.map((manager) => manager.id));
+      const recipients = new Set<string>(managers.map((manager: { id: string }) => manager.id));
 
       if (activity.plan.userId !== session.userId) {
         recipients.add(activity.plan.userId);
@@ -60,7 +59,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
       await createNotifications(
         tx,
-        Array.from(recipients).map((userId) => ({
+        Array.from(recipients).map((userId: string) => ({
           storeId: session.storeId,
           userId,
           type: "TASK_COMPLETED" as const,
