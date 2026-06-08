@@ -55,7 +55,7 @@ export function aggregateKpis(rows: RawKpi[]) {
   const reports = Array.from(groups.values()).map((items) => {
     const first = items[0];
     const sales = sum(items, "dailySales");
-    const goal = sum(items, "dailyGoal");
+    const goal = goalSum(items);
     const transactions = items.reduce((total, item) => total + item.transactions, 0);
     const pieces = items.reduce((total, item) => total + item.pieces, 0);
     const traffic = nullableIntegerSum(items.map((item) => item.traffic));
@@ -138,6 +138,17 @@ export function aggregateStoreTraffic(rows: Array<{ date: Date; traffic: number 
   return byDate.size ? Array.from(byDate.values()).reduce((total, traffic) => total + traffic, 0) : null;
 }
 
+function goalSum(items: RawKpi[]): number {
+  const values = items.map((item) => number(item.dailyGoal));
+  const nonZero = values.filter((v) => v > 0);
+  if (nonZero.length === 0) return 0;
+  // When all days have their own goal, sum them directly.
+  if (nonZero.length === values.length) return round(values.reduce((total, v) => total + v, 0));
+  // When the Excel only placed the daily goal in one row per week (other days = 0),
+  // use the average of non-zero values as the per-day rate and apply to all days.
+  const avgDailyGoal = nonZero.reduce((total, v) => total + v, 0) / nonZero.length;
+  return round(avgDailyGoal * values.length);
+}
 function sum<T extends RawKpi>(items: T[], key: keyof T) { return round(items.reduce((total, item) => total + number(item[key]), 0)); }
 function nullableSum<T extends RawKpi>(items: T[], key: keyof T) { return nullableNumberSum(items.map((item) => item[key] === null ? null : number(item[key]))); }
 function nullableNumberSum(values: Array<number | null>) { const present = values.filter((value): value is number => value !== null); return present.length ? round(present.reduce((total, value) => total + value, 0)) : null; }
