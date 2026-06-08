@@ -1,36 +1,3 @@
-import { NextResponse } from "next/server";
-import { z } from "zod";
-import { isApiError, parseJson, requireSession } from "@/lib/api";
-import { prisma } from "@/lib/prisma";
-import { createNotifications } from "@/lib/notifications";
-
-export const dynamic = "force-dynamic";
-
-export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
-  const session = await requireSession();
-  if (isApiError(session)) return session;
-
-  const parsed = await parseJson(request, z.object({ completed: z.boolean() }));
-  if ("response" in parsed) return parsed.response;
-
-  const activity = await prisma.dayPlanTask.findFirst({
-    where: {
-      id,
-      plan: {
-        storeId: session.storeId,
-        ...(session.role === "ASESOR" ? { userId: session.userId } : {}),
-      },
-    },
-    include: {
-      plan: { select: { userId: true } },
-      evidences: { select: { id: true }, take: 1 },
-    },
-  });
-
-  if (!activity) {
-    return NextResponse.json({ error: "Actividad no encontrada o sin permiso." }, { status: 404 });
-  }
 
   const updated = await prisma.$transaction(async (tx: any) => {
     const result = await tx.dayPlanTask.update({
