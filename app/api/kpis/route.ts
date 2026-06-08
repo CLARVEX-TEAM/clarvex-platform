@@ -48,7 +48,10 @@ export async function GET(request: NextRequest) {
     .sort((left, right) => left.weekStart.getTime() - right.weekStart.getTime());
   const selectedWeek = period === "week" ? selectRdvWeek(availableWeeks, selectedDate) : null;
   const selectedPersistedWeek = selectedWeek
-    ? persistedWeeks.find((week) => week.weekNumber === selectedWeek.weekNumber && week.weekStart.getTime() === selectedWeek.weekStart.getTime() && week.weekEnd.getTime() === selectedWeek.weekEnd.getTime())
+    ? persistedWeeks.find((week) =>
+        week.weekNumber === selectedWeek.weekNumber &&
+        week.weekStart.toISOString().slice(0, 10) === selectedWeek.weekStart.toISOString().slice(0, 10)
+      )
     : null;
   const retailMonths = buildRetailMonths(availableWeeks);
   const selectedRetailMonth = selectRetailMonth(retailMonths, selectedDate);
@@ -63,8 +66,10 @@ export async function GET(request: NextRequest) {
         ...(period === "week" && selectedPersistedWeek
           ? {
               weekNumber: selectedPersistedWeek.weekNumber,
-              weekStart: selectedPersistedWeek.weekStart,
-              weekEnd: selectedPersistedWeek.weekEnd
+              date: {
+                gte: new Date(selectedPersistedWeek.weekStart.toISOString().slice(0, 10) + 'T00:00:00.000Z'),
+                lte: new Date(selectedPersistedWeek.weekEnd.toISOString().slice(0, 10) + 'T23:59:59.999Z')
+              }
             }
           : period === "week" && selectedWeek
             ? {
