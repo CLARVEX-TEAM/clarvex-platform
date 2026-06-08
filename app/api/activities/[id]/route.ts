@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import type { Prisma } from "@prisma/client";
 import { isApiError, parseJson, requireSession } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
 import { createNotifications } from "@/lib/notifications";
@@ -32,7 +33,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     return NextResponse.json({ error: "Actividad no encontrada o sin permiso." }, { status: 404 });
   }
 
-  const updated = await prisma.$transaction(async (tx: any) => {
+  const updated = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     const result = await tx.dayPlanTask.update({
       where: { id: activity.id },
       data: {
@@ -52,7 +53,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       });
 
       const recipients = new Set<string>(
-        managers.map((manager: { id: string }) => manager.id),
+        managers.map((manager) => manager.id),
       );
 
       if (activity.plan.userId !== session.userId) {
