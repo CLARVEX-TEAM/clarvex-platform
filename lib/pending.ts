@@ -6,6 +6,7 @@ export const pendingInput = z.object({
   description: z.string().trim().min(3).max(2000),
   category: z.nativeEnum(PendingCategory),
   priority: z.nativeEnum(PendingPriority),
+  status: z.nativeEnum(PendingStatus).optional(),
   ownerId: z.string().min(1),
   dueDate: z.string().date("La fecha limite no es valida.")
 });

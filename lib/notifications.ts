@@ -1,9 +1,8 @@
+import { NotificationType } from "@prisma/client";
 import type { prisma } from "@/lib/prisma";
 import type { Session } from "@/lib/session-token";
 
 type PrismaClient = typeof prisma;
-
-type NotificationType = string;
 type NotificationClient = Pick<PrismaClient, "notification">;
 
 export type NotificationInput = {
@@ -16,7 +15,7 @@ export type NotificationInput = {
 
 export function createNotifications(client: NotificationClient, notifications: NotificationInput[]) {
   if (notifications.length === 0) return Promise.resolve({ count: 0 });
-  return client.notification.createMany({ data: notifications as any });
+  return client.notification.createMany({ data: notifications });
 }
 
 export function serializeNotification(notification: {
