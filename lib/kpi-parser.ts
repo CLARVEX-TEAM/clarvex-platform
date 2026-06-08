@@ -171,6 +171,23 @@ function findWeekNumber(row: unknown[]) {
 
 function finalizeWeek(week: { weekNumber: number; dates: Date[]; records: ParsedKpiRecord[] } | null, retailMonthEnd: Date, ranges: RdvWeekRange[]) {
   if (!week || week.dates.length === 0) return;
+
+  // RDV files often place META DIARIA only in the first row of each week.
+  // Propagate the first non-zero dailyGoal to all other records for the same employee so the
+  // weekly goal equals the sum of daily goals, not a single day's value.
+  const goalByEmployee = new Map<string, number>();
+  for (const record of week.records) {
+    if (record.dailyGoal > 0 && !goalByEmployee.has(record.employeeNumber)) {
+      goalByEmployee.set(record.employeeNumber, record.dailyGoal);
+    }
+  }
+  for (const record of week.records) {
+    if (record.dailyGoal === 0) {
+      const ref = goalByEmployee.get(record.employeeNumber);
+      if (ref) record.dailyGoal = ref;
+    }
+  }
+
   const weekStart = new Date(Math.min(...week.dates.map((date) => date.getTime())));
   const weekEnd = new Date(Math.min(Math.max(...week.dates.map((date) => date.getTime())), retailMonthEnd.getTime()));
   ranges.push({ weekNumber: week.weekNumber, weekStart, weekEnd });
