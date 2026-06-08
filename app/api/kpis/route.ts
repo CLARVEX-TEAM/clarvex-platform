@@ -76,7 +76,13 @@ export async function GET(request: NextRequest) {
     select: { userId: true, date: true, status: true, statusRaw: true }
   }) : [];
   const workingKeys = buildWorkingScheduleKeys(schedules);
-  const individualRows = rows.filter((row) => row.user.role !== "ASESOR" || workingKeys.has(`${row.userId}:${periodDateKey(row.date)}`));
+  const scheduledKeys = new Set(schedules.map((s) => `${s.userId}:${periodDateKey(s.date)}`));
+  const individualRows = rows.filter((row) => {
+    if (row.user.role !== "ASESOR") return true;
+    const key = `${row.userId}:${periodDateKey(row.date)}`;
+    if (period === "month") return !scheduledKeys.has(key) || workingKeys.has(key);
+    return workingKeys.has(key);
+  });
   const reports = aggregateKpis(individualRows);
   const storeReports = aggregateKpis(rows);
   const team = reports.filter((item) => item.role === "ASESOR");
