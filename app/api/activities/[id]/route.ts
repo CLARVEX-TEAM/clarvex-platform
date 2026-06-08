@@ -1,4 +1,3 @@
-
   const updated = await prisma.$transaction(async (tx: any) => {
     const result = await tx.dayPlanTask.update({
       where: { id: activity.id },
