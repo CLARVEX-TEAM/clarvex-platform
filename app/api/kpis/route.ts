@@ -79,7 +79,10 @@ export async function GET(request: NextRequest) {
   const individualRows = rows;
   const reports = aggregateKpis(individualRows);
   const storeReports = aggregateKpis(rows);
-  const team = reports.filter((item) => item.role === "ASESOR");
+  const team = reports
+    .filter((item) => item.role === "ASESOR")
+    .sort((a, b) => b.sales - a.sales || b.achievement - a.achievement);
+  team.forEach((item, index) => { item.ranking = index + 1; });
   const own = reports.find((item) => item.userId === session.userId) ?? null;
   const store = manager ? aggregateStore(storeReports, aggregateStoreTraffic(rows)) : null;
   const workedDays = session.role === "ASESOR"
