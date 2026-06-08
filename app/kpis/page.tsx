@@ -72,7 +72,7 @@ export default function KpisPage() {
   }, [period, selectedDate, session]);
 
   const isAdvisor = session?.role === "ASESOR";
-  const activeKpi = report?.own ?? report?.store ?? null;
+  const activeKpi = isAdvisor ? (report?.own ?? null) : (report?.store ?? null);
   const periodLabel = period === "week" ? "semanal" : "mensual";
   const progress = completion(activeKpi?.sales ?? 0, activeKpi?.goal ?? 0);
   const commissionKpi = report?.own ?? report?.store ?? null;

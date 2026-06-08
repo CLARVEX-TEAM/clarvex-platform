@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Bell, LogOut, Receipt, ShoppingBag, Sparkles, Target, Trophy, UserRound } from "lucide-react";
+import { Bell, CalendarDays, LogOut, Receipt, ShoppingBag, Sparkles, Target, Trophy, UserRound } from "lucide-react";
 import { getSession, logout } from "@/lib/auth";
 import { fetchAppData, type AppData } from "@/lib/app-data";
 import { completion, money } from "@/lib/format";
@@ -64,6 +64,7 @@ export default function AdvisorDashboard() {
         }
       />
       <AppFrame>
+        <QuickLink href="/horarios" icon={CalendarDays} label="Horarios" className="mb-3" />
         <QuickLink href="/perfil" icon={UserRound} label="Mi perfil" className="mb-3" />
         <Card className="premium-hero mb-3 rounded-[28px] px-4 py-3.5">
           <div className="flex items-center justify-between gap-3">
