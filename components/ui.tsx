@@ -282,7 +282,8 @@ export function NotificationCard({
   meta,
   unread,
   action,
-  author
+  author,
+  imageUrl
 }: {
   title: string;
   body: string;
@@ -290,6 +291,7 @@ export function NotificationCard({
   unread?: boolean;
   action?: React.ReactNode;
   author?: { name: string; photoUrl?: string | null };
+  imageUrl?: string | null;
 }) {
   return (
     <GlassCard className={cn("p-3", unread && "border-volt/35 bg-volt/[0.055]")}>
@@ -304,6 +306,11 @@ export function NotificationCard({
             <StatusBadge tone={unread ? "success" : "default"}>{unread ? "nuevo" : "leido"}</StatusBadge>
           </div>
           <p className="mt-2 text-[13px] leading-5 text-muted">{body}</p>
+          {imageUrl ? (
+            <a href={imageUrl} target="_blank" rel="noopener noreferrer" className="mt-2.5 block overflow-hidden rounded-2xl border border-line">
+              <img src={imageUrl} alt="Imagen del comunicado" className="w-full object-cover" loading="lazy" />
+            </a>
+          ) : null}
           {action ? <div className="mt-2.5">{action}</div> : null}
         </div>
       </div>

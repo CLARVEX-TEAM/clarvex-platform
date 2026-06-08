@@ -75,6 +75,7 @@ export type Announcement = {
   id: string;
   title: string;
   body: string;
+  imageUrl?: string | null;
   authorId: string;
   date: string;
   readBy: string[];
