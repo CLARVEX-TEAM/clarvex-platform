@@ -29,7 +29,9 @@ export function mergeRdvWeeks(primary: RdvWeek[], legacyDates: Date[]) {
 }
 
 function weekKey(week: RdvWeek) {
-  return `${week.weekNumber}:${week.weekStart.toISOString().slice(0, 10)}`;
+  const day = week.weekStart.getUTCDay();
+  const monday = new Date(week.weekStart.getTime() + (day === 0 ? 1 : 1 - day) * DAY_MS);
+  return monday.toISOString().slice(0, 10);
 }
 
 function isoWeekNumber(date: Date) {
