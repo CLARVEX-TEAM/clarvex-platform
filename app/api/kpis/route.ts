@@ -85,11 +85,11 @@ export async function GET(request: NextRequest) {
   team.forEach((item, index) => { item.ranking = index + 1; });
   const own = reports.find((item) => item.userId === session.userId) ?? null;
   const kpiTtls = isKpiSyncMetrics(latestDetails) && "ttlsMeta" in latestDetails ? latestDetails as KpiSyncMetrics : null;
-  const ttlsGoalOverride = kpiTtls?.ttlsMeta && kpiTtls.ttlsMeta > 0 ? kpiTtls.ttlsMeta : undefined;
-  const ttlsTxOverride = kpiTtls?.ttlsTransactions && kpiTtls.ttlsTransactions > 0 ? kpiTtls.ttlsTransactions : undefined;
-  const ttlsPiecesOverride = kpiTtls?.ttlsPieces && kpiTtls.ttlsPieces > 0 ? kpiTtls.ttlsPieces : undefined;
+  const ttlsGoalOverride = period === "month" && kpiTtls?.ttlsMeta && kpiTtls.ttlsMeta > 0 ? kpiTtls.ttlsMeta : undefined;
+  const ttlsTxOverride = period === "month" && kpiTtls?.ttlsTransactions && kpiTtls.ttlsTransactions > 0 ? kpiTtls.ttlsTransactions : undefined;
+  const ttlsPiecesOverride = period === "month" && kpiTtls?.ttlsPieces && kpiTtls.ttlsPieces > 0 ? kpiTtls.ttlsPieces : undefined;
   const computedTraffic = aggregateStoreTraffic(rows);
-  const trafficForStore = computedTraffic ?? (kpiTtls?.ttlsTraffic ?? null);
+  const trafficForStore = computedTraffic ?? (period === "month" ? (kpiTtls?.ttlsTraffic ?? null) : null);
   const store = manager ? aggregateStore(storeReports, trafficForStore, ttlsGoalOverride, ttlsTxOverride, ttlsPiecesOverride) : null;
   const workedDays = session.role === "ASESOR"
     ? Array.from(workingKeys).filter((key) => key.startsWith(`${session.userId}:`)).length
@@ -143,6 +143,5 @@ function buildWorkingScheduleKeys(schedules: Array<{ userId: string; date: Date;
 function selectRdvWeek(weeks: Array<{ weekNumber: number; weekStart: Date; weekEnd: Date }>, selectedDate: Date) {
   return weeks.find((week) => week.weekStart.getTime() === selectedDate.getTime())
     ?? weeks.find((week) => selectedDate >= week.weekStart && selectedDate <= week.weekEnd)
-    ?? weeks[0]
     ?? null;
 }
