@@ -1,3 +1,9 @@
+import type {
+  AuthenticationResponseJSON,
+  PublicKeyCredentialCreationOptionsJSON,
+  PublicKeyCredentialRequestOptionsJSON,
+  RegistrationResponseJSON
+} from "@simplewebauthn/server";
 import type { User } from "@/lib/types";
 
 type EmployeeLookup = {
@@ -44,4 +50,32 @@ export async function createPin(employeeNumber: string, pin: string) {
 
 export async function logout() {
   await fetch("/api/auth/session", { method: "DELETE" });
+}
+
+export async function getBiometricRegistrationOptions(): Promise<PublicKeyCredentialCreationOptionsJSON> {
+  return request<PublicKeyCredentialCreationOptionsJSON>("/api/auth/biometric/register-options");
+}
+
+export async function registerBiometric(response: RegistrationResponseJSON) {
+  return request<{ verified: boolean }>("/api/auth/biometric/register", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(response)
+  });
+}
+
+export async function getBiometricAuthOptions(employeeNumber: string): Promise<PublicKeyCredentialRequestOptionsJSON> {
+  return request<PublicKeyCredentialRequestOptionsJSON>("/api/auth/biometric/authenticate-options", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ employeeNumber })
+  });
+}
+
+export async function authenticateBiometric(employeeNumber: string, response: AuthenticationResponseJSON) {
+  return request<{ user: User }>("/api/auth/biometric/authenticate", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ employeeNumber, response })
+  });
 }

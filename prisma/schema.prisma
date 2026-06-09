@@ -163,6 +163,7 @@ model User {
   employeeNumberAliases EmployeeNumberAlias[]
   notifications         Notification[]
   pushSubscriptions     PushSubscription[]
+  webAuthnCredentials   WebAuthnCredential[]
   comments              Comment[]              @relation("CommentAuthor")
   createdAt             DateTime               @default(now())
   updatedAt             DateTime               @updatedAt
@@ -383,6 +384,28 @@ model Announcement {
   reads     AnnouncementRead[]
   createdAt DateTime           @default(now())
   updatedAt DateTime           @updatedAt
+}
+
+model WebAuthnCredential {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  credentialId String   @unique
+  publicKey    String
+  counter      BigInt   @default(0)
+  transports   String?
+  createdAt    DateTime @default(now())
+
+  @@index([userId])
+}
+
+model WebAuthnChallenge {
+  id        String   @id @default(cuid())
+  challenge String   @unique
+  userId    String?
+  expiresAt DateTime
+
+  @@index([expiresAt])
 }
 
 model PushSubscription {
