@@ -139,7 +139,7 @@ async function importKpis(workbook: Parameters<typeof parseKpiWorkbook>[0], stor
   });
 
   applyKpiRankings(matchedRecords);
-  applyMonthlyTotals(matchedRecords);
+  applyMonthlyTotals(matchedRecords, parsed.employeeTtlsGoals);
 
   const userIds = Array.from(new Set(matchedRecords.map((record) => record.userId)));
   const dates = Array.from(new Map(matchedRecords.map((record) => [record.date.toISOString(), record.date])).values());
@@ -268,7 +268,7 @@ function applyKpiRankings(records: MatchedKpiRecord[]) {
   }
 }
 
-function applyMonthlyTotals(records: MatchedKpiRecord[]) {
+function applyMonthlyTotals(records: MatchedKpiRecord[], employeeTtlsGoals: Record<string, number>) {
   const totals = new Map<string, { sales: number; goal: number }>();
   for (const record of records) {
     const key = `${record.userId}:${record.date.toISOString().slice(0, 7)}`;
@@ -280,7 +280,8 @@ function applyMonthlyTotals(records: MatchedKpiRecord[]) {
   for (const record of records) {
     const total = totals.get(`${record.userId}:${record.date.toISOString().slice(0, 7)}`);
     record.monthlySales = total?.sales ?? 0;
-    record.monthlyGoal = total?.goal ?? 0;
+    const ttlsGoal = employeeTtlsGoals[record.employeeNumber];
+    record.monthlyGoal = ttlsGoal && ttlsGoal > 0 ? ttlsGoal : (total?.goal ?? 0);
   }
 }
 
