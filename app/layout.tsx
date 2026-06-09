@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { PwaRegister } from "@/components/PwaRegister";
+import { SplashScreen } from "@/components/SplashScreen";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 
 export const metadata: Metadata = {
@@ -35,6 +36,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="es">
       <body>
         <AnimatedBackground />
+        <SplashScreen />
         <PwaRegister />
         {children}
       </body>
