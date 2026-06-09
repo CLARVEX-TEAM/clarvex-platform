@@ -86,9 +86,11 @@ export async function GET(request: NextRequest) {
   const own = reports.find((item) => item.userId === session.userId) ?? null;
   const kpiTtls = isKpiSyncMetrics(latestDetails) && "ttlsMeta" in latestDetails ? latestDetails as KpiSyncMetrics : null;
   const ttlsGoalOverride = kpiTtls?.ttlsMeta && kpiTtls.ttlsMeta > 0 ? kpiTtls.ttlsMeta : undefined;
+  const ttlsTxOverride = kpiTtls?.ttlsTransactions && kpiTtls.ttlsTransactions > 0 ? kpiTtls.ttlsTransactions : undefined;
+  const ttlsPiecesOverride = kpiTtls?.ttlsPieces && kpiTtls.ttlsPieces > 0 ? kpiTtls.ttlsPieces : undefined;
   const computedTraffic = aggregateStoreTraffic(rows);
   const trafficForStore = computedTraffic ?? (kpiTtls?.ttlsTraffic ?? null);
-  const store = manager ? aggregateStore(storeReports, trafficForStore, ttlsGoalOverride) : null;
+  const store = manager ? aggregateStore(storeReports, trafficForStore, ttlsGoalOverride, ttlsTxOverride, ttlsPiecesOverride) : null;
   const workedDays = session.role === "ASESOR"
     ? Array.from(workingKeys).filter((key) => key.startsWith(`${session.userId}:`)).length
     : null;
