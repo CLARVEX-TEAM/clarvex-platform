@@ -74,7 +74,6 @@ export function parseKpiWorkbook(workbook: XLSX.WorkBook): KpiParseResult {
 
   const groups = detectEmployeeGroups(rows, headerRow);
   if (groups.length === 0) throw new Error("No se detectaron colaboradores en la fila 7 de Diario de ventas.");
-  console.error("[KPI-DEBUG] headerRow:", headerRow, "grupos:", JSON.stringify(groups.map((g) => ({ emp: g.employeeNumber, start: g.start, end: g.end, cols: g.columns }))));
 
   const dateColumn = detectDateColumn(rows[headerRow] ?? []);
   // Traffic column = first column of TOTALES section (authoritative anchor for totalesStart)
@@ -254,10 +253,13 @@ function detectEmployeeGroups(rows: unknown[][], headerRow: number): EmployeeGro
   const employeeRowIndex = headerRow - 2;
   const nameRow = headerRow - 1;
   const employeeRow = rows[employeeRowIndex] ?? [];
-  const starts = employeeRow.flatMap((value, column) => {
+  const allStarts = employeeRow.flatMap((value, column) => {
     const employeeNumber = employeeNumberCell(value);
     return employeeNumber ? [{ employeeNumber, column }] : [];
   });
+  const starts = allStarts.filter((item, index) =>
+    index === 0 || item.employeeNumber !== allStarts[index - 1].employeeNumber
+  );
 
   return starts.map((item, index) => {
     const end = starts[index + 1]?.column ?? Math.max(employeeRow.length, rows[headerRow]?.length ?? 0);
