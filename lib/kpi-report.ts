@@ -9,9 +9,9 @@ export type KpiReportItem = {
   achievement: number;
   transactions: number;
   pieces: number;
-  upt: number;
-  aur: number;
-  ept: number;
+  upt: number | null;
+  aur: number | null;
+  ept: number | null;
   conversion: number | null;
   traffic: number | null;
   ranking: number;
@@ -73,9 +73,9 @@ export function aggregateKpis(rows: RawKpi[]) {
       achievement: ratio(sales * 100, goal),
       transactions,
       pieces,
-      upt: ratio(pieces, transactions),
-      aur: ratio(sales, pieces),
-      ept: ratio(sales, transactions),
+      upt: transactions > 0 ? ratio(pieces, transactions) : null,
+      aur: pieces > 0 ? ratio(sales, pieces) : null,
+      ept: transactions > 0 ? ratio(sales, transactions) : null,
       conversion: traffic ? ratio(transactions * 100, traffic) : null,
       traffic,
       ranking: 0,
@@ -113,9 +113,9 @@ export function aggregateStore(items: KpiReportItem[], trafficOverride?: number 
     achievement: ratio(sales * 100, goal),
     transactions,
     pieces,
-    upt: ratio(pieces, transactions),
-    aur: ratio(sales, pieces),
-    ept: ratio(sales, transactions),
+    upt: transactions > 0 ? ratio(pieces, transactions) : null,
+    aur: pieces > 0 ? ratio(sales, pieces) : null,
+    ept: transactions > 0 ? ratio(sales, transactions) : null,
     conversion: traffic ? ratio(transactions * 100, traffic) : null,
     traffic,
     ranking: 0,

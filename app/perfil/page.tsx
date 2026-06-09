@@ -1,8 +1,9 @@
 "use client";
 
 import { ChangeEvent, useEffect, useRef, useState } from "react";
-import { Camera, CheckCircle2, ImageUp, Store, UserRound } from "lucide-react";
-import { getSession } from "@/lib/auth";
+import { Camera, CheckCircle2, Fingerprint, ImageUp, Store, UserRound } from "lucide-react";
+import { startRegistration } from "@simplewebauthn/browser";
+import { getBiometricRegistrationOptions, getSession, registerBiometric } from "@/lib/auth";
 import type { User } from "@/lib/types";
 import { AppFrame, AppHeader, Badge, BottomNav, Button, Card, ProfileAvatar } from "@/components/ui";
 
@@ -19,6 +20,9 @@ export default function ProfilePage() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [biometricBusy, setBiometricBusy] = useState(false);
+  const [biometricMessage, setBiometricMessage] = useState("");
+  const [biometricError, setBiometricError] = useState("");
 
   useEffect(() => {
     getSession().then(setUser).finally(() => setLoading(false));
@@ -70,6 +74,23 @@ export default function ProfilePage() {
     }
   }
 
+  async function handleBiometricSetup() {
+    setBiometricBusy(true);
+    setBiometricMessage("");
+    setBiometricError("");
+    try {
+      const options = await getBiometricRegistrationOptions();
+      const registration = await startRegistration({ optionsJSON: options });
+      await registerBiometric(registration);
+      setUser((current) => (current ? { ...current, biometricEnabled: true } : current));
+      setBiometricMessage("Biometria activada correctamente.");
+    } catch (cause) {
+      setBiometricError(cause instanceof Error ? cause.message : "No se pudo activar la biometria.");
+    } finally {
+      setBiometricBusy(false);
+    }
+  }
+
   return (
     <>
       <AppHeader title="Mi perfil" subtitle="Tu identidad dentro de CLARVEX Team." backHref={user?.role === "ASESOR" ? "/advisor" : "/manager"} />
@@ -90,7 +111,7 @@ export default function ProfilePage() {
               <ProfileField icon={<Store size={17} />} label="Tienda" value={user.storeName ?? "CLARVEX Team"} />
             </Card>
 
-            <Card className="p-3.5">
+            <Card className="mb-3 p-3.5">
               <div className="flex items-center gap-3"><span className="grid size-10 place-items-center rounded-2xl bg-blue-50 text-volt"><ImageUp size={19} /></span><div><h2 className="font-black text-ink">Foto de perfil</h2><p className="text-xs text-muted">JPG, PNG o WEBP. Maximo 5 MB.</p></div></div>
               <input ref={inputRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={selectPhoto} className="sr-only" />
               <div className="mt-4 grid grid-cols-2 gap-2">
@@ -100,6 +121,28 @@ export default function ProfilePage() {
               {file ? <p className="mt-3 truncate text-xs font-semibold text-muted">Vista previa: {file.name}</p> : null}
               {message ? <p className="mt-3 flex items-center gap-2 text-sm font-semibold text-emerald-700"><CheckCircle2 size={16} />{message}</p> : null}
               {error ? <p className="mt-3 text-sm font-semibold text-rose-700">{error}</p> : null}
+            </Card>
+
+            <Card className="p-3.5">
+              <div className="flex items-center gap-3">
+                <span className="grid size-10 place-items-center rounded-2xl bg-violet-50 text-purple"><Fingerprint size={19} /></span>
+                <div><h2 className="font-black text-ink">Acceso biometrico</h2><p className="text-xs text-muted">Face ID o huella dactilar para entrar sin PIN.</p></div>
+              </div>
+              {user.biometricEnabled ? (
+                <div className="mt-4 flex items-center justify-between rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3">
+                  <span className="text-sm font-semibold text-emerald-700">Face ID / Huella activos</span>
+                  <Badge tone="done">activo</Badge>
+                </div>
+              ) : (
+                <div className="mt-4 grid gap-3">
+                  <p className="text-xs text-muted">Inicia sesion rapido con tu huella o Face ID sin escribir tu PIN.</p>
+                  <Button type="button" variant="primary" onClick={() => void handleBiometricSetup()} disabled={biometricBusy}>
+                    {biometricBusy ? "Activando..." : "Activar Face ID / Huella"}
+                  </Button>
+                  {biometricMessage ? <p className="flex items-center gap-2 text-sm font-semibold text-emerald-700"><CheckCircle2 size={16} />{biometricMessage}</p> : null}
+                  {biometricError ? <p className="text-sm font-semibold text-rose-700">{biometricError}</p> : null}
+                </div>
+              )}
             </Card>
           </>
         )}
