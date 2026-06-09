@@ -324,7 +324,8 @@ function buildKpiMetrics(
     ttlsMeta: parsed.ttlsMeta,
     ttlsSales: parsed.ttlsSales,
     ttlsTransactions: parsed.ttlsTransactions,
-    ttlsPieces: parsed.ttlsPieces
+    ttlsPieces: parsed.ttlsPieces,
+    ttlsCommissionMinimum: parsed.storeTtlsCommissionMinimum
   };
 }
 
