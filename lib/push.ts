@@ -9,7 +9,7 @@ webpush.setVapidDetails(
 
 export const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY ?? "";
 
-export type PushPayload = { title: string; body: string; icon?: string };
+export type PushPayload = { title: string; body: string; icon?: string; tag?: string };
 
 export async function dispatchPushToUsers(userIds: string[], payload: PushPayload) {
   if (userIds.length === 0) return;
@@ -25,14 +25,19 @@ export async function dispatchPushToUsers(userIds: string[], payload: PushPayloa
       try {
         await webpush.sendNotification(
           { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
-          JSON.stringify({ title: payload.title, body: payload.body, icon: payload.icon ?? "/icon.svg" })
+          JSON.stringify({
+            title: payload.title,
+            body: payload.body,
+            icon: payload.icon ?? "/icon.svg",
+            tag: payload.tag ?? "clarvex-notification"
+          })
         );
       } catch (error: unknown) {
         const status = (error as { statusCode?: number }).statusCode;
         if (status === 410 || status === 404) {
           expiredIds.push(sub.id);
         } else {
-          console.error("[push] Error enviando notificacion:", status, (error as Error).message);
+          console.error("[push] Error enviando notificacion — status:", status, (error as Error).message);
         }
       }
     })

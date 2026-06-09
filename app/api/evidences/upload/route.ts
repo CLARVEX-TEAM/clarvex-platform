@@ -89,7 +89,7 @@ export async function POST(request: Request) {
     });
 
     // Fire-and-forget push after transaction commits
-    dispatchPushToUsers(evidence.recipientList, { title: "Nueva evidencia", body: resource.title }).catch(() => undefined);
+    dispatchPushToUsers(evidence.recipientList, { title: "Nueva evidencia", body: resource.title, tag: "evidencia" }).catch(() => undefined);
 
     return NextResponse.json({ evidence: serializeEvidence(evidence.created) }, { status: 201 });
   } catch (error) {

@@ -68,7 +68,7 @@ export async function POST(request: Request) {
     throw error;
   });
 
-  dispatchPushToUsers(advisorIds, { title: "Nuevo comunicado", body: announcement.title }).catch(() => undefined);
+  dispatchPushToUsers(advisorIds, { title: "Nuevo comunicado", body: announcement.title, tag: "comunicado" }).catch(() => undefined);
   return NextResponse.json({
     announcement: {
       id: announcement.id,
