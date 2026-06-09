@@ -93,10 +93,10 @@ export function aggregateKpis(rows: RawKpi[]) {
   return reports;
 }
 
-export function aggregateStore(items: KpiReportItem[], trafficOverride?: number | null): KpiReportItem | null {
+export function aggregateStore(items: KpiReportItem[], trafficOverride?: number | null, goalOverride?: number): KpiReportItem | null {
   if (items.length === 0) return null;
   const sales = items.reduce((total, item) => total + item.sales, 0);
-  const goal = items.reduce((total, item) => total + item.goal, 0);
+  const goal = goalOverride ?? items.reduce((total, item) => total + item.goal, 0);
   const transactions = items.reduce((total, item) => total + item.transactions, 0);
   const pieces = items.reduce((total, item) => total + item.pieces, 0);
   const traffic = trafficOverride === undefined ? maxNullable(items.map((item) => item.traffic)) : trafficOverride;
