@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CalendarDays, Flame, Moon, SunMedium } from "lucide-react";
+import { CalendarDays, Flame, Moon, SunMedium, Trash2 } from "lucide-react";
 import { fetchAppData, type AppData } from "@/lib/app-data";
 import { getSession } from "@/lib/auth";
 import { money } from "@/lib/format";
@@ -53,6 +53,20 @@ export default function PlanPage() {
   const visiblePlans = isAdvisor && session ? data.plans.filter((plan) => plan.userId === session.id) : data.plans;
   const totalActivities = visiblePlans.flatMap((plan) => plan.activities);
   const dayProgress = totalActivities.length ? Math.round((totalActivities.filter((activity) => activity.completed).length / totalActivities.length) * 100) : 0;
+
+  async function deletePlan(id: string) {
+    if (!data) return;
+    if (!window.confirm("¿Eliminar este plan del dia? Esta accion no se puede deshacer.")) return;
+    const previous = data.plans;
+    setData({ ...data, plans: data.plans.filter((plan) => plan.id !== id) });
+    try {
+      const response = await fetch(`/api/plans/${id}`, { method: "DELETE" });
+      if (!response.ok) throw new Error("No se pudo eliminar.");
+    } catch {
+      setData({ ...data, plans: previous });
+      setFormStatus("No se pudo eliminar el plan.");
+    }
+  }
 
   async function createPlan(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -124,7 +138,14 @@ export default function PlanPage() {
                     <ProfileAvatar name={userName(plan.userId)} photoUrl={planUser(plan.userId)?.photoUrl} size="sm" className="rounded-full shadow-none" />
                     <div><h2 className="truncate text-xl font-black">{userName(plan.userId)}</h2><p className="text-sm text-muted">{plan.date}</p></div>
                   </div>
-                  <Badge>{money(plan.dailyGoal)}</Badge>
+                  <div className="flex shrink-0 items-center gap-2">
+                    <Badge>{money(plan.dailyGoal)}</Badge>
+                    {!isAdvisor ? (
+                      <button onClick={() => void deletePlan(plan.id)} className="grid size-9 place-items-center rounded-xl border border-rose-200/60 bg-rose-50/60 text-rose-600 transition active:scale-95" aria-label="Eliminar plan">
+                        <Trash2 size={15} />
+                      </button>
+                    ) : null}
+                  </div>
                 </div>
                 <p className="font-semibold text-volt">{plan.focus}</p>
                 <p className="mt-2 text-sm text-muted">{plan.message}</p>

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import NextImage from "next/image";
-import { ImagePlus, Megaphone, Send, X } from "lucide-react";
+import { ImagePlus, Megaphone, Send, Trash2, X } from "lucide-react";
 import { fetchAppData, type AppData } from "@/lib/app-data";
 import { getSession } from "@/lib/auth";
 import type { Announcement, User } from "@/lib/types";
@@ -76,6 +76,19 @@ export default function ComunicadosPage() {
     if (imagePreview) URL.revokeObjectURL(imagePreview);
     setImagePreview(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
+  }
+
+  async function deleteAnnouncement(id: string) {
+    if (!window.confirm("¿Eliminar este comunicado? Esta accion no se puede deshacer.")) return;
+    const previous = announcements;
+    setAnnouncements((prev) => prev.filter((item) => item.id !== id));
+    try {
+      const response = await fetch(`/api/announcements/${id}`, { method: "DELETE" });
+      if (!response.ok) throw new Error("No se pudo eliminar.");
+    } catch {
+      setAnnouncements(previous);
+      setStatus("No se pudo eliminar el comunicado.");
+    }
   }
 
   async function publishAnnouncement(event: React.FormEvent<HTMLFormElement>) {
@@ -228,6 +241,15 @@ export default function ComunicadosPage() {
                         );
                       }) : null}
                     </div>
+                    {session?.role !== "ASESOR" ? (
+                      <button
+                        onClick={() => void deleteAnnouncement(item.id)}
+                        className="mt-2 flex min-h-10 w-full items-center justify-center gap-2 rounded-xl border border-rose-200/60 bg-rose-50/60 text-sm font-black text-rose-600 transition active:scale-95"
+                      >
+                        <Trash2 size={15} />
+                        Eliminar comunicado
+                      </button>
+                    ) : null}
                   </>
                 }
               />

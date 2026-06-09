@@ -6,6 +6,22 @@ import { pendingInput, serializePending } from "@/lib/pending";
 import { createNotifications } from "@/lib/notifications";
 import { dispatchPushToUsers } from "@/lib/push";
 
+export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const session = await requireSession(["GERENTE", "SUBGERENTE"]);
+  if (isApiError(session)) return session;
+
+  const pending = await prisma.pending.findFirst({ where: { id, storeId: session.storeId } });
+  if (!pending) return NextResponse.json({ error: "Pendiente no encontrado." }, { status: 404 });
+
+  await prisma.$transaction([
+    prisma.notification.deleteMany({ where: { storeId: session.storeId, type: "PENDING_ASSIGNED", body: pending.title } }),
+    prisma.pending.delete({ where: { id: pending.id } })
+  ]);
+
+  return NextResponse.json({ ok: true });
+}
+
 export const dynamic = "force-dynamic";
 
 const updateSchema = pendingInput.partial();
