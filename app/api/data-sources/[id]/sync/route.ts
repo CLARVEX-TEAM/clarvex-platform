@@ -314,7 +314,12 @@ function buildKpiMetrics(
     crmTransactionsProcessed: parsed.crmTransactionsTotal,
     totalSalesImported: parsed.totalSalesImported,
     totalGoalImported: parsed.totalGoalImported,
-    ignoredRows: parsed.ignoredRows
+    ignoredRows: parsed.ignoredRows,
+    ttlsTraffic: parsed.ttlsTraffic,
+    ttlsMeta: parsed.ttlsMeta,
+    ttlsSales: parsed.ttlsSales,
+    ttlsTransactions: parsed.ttlsTransactions,
+    ttlsPieces: parsed.ttlsPieces
   };
 }
 

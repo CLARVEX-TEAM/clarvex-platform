@@ -84,7 +84,10 @@ export async function GET(request: NextRequest) {
     .sort((a, b) => b.sales - a.sales || b.achievement - a.achievement);
   team.forEach((item, index) => { item.ranking = index + 1; });
   const own = reports.find((item) => item.userId === session.userId) ?? null;
-  const store = manager ? aggregateStore(storeReports, aggregateStoreTraffic(rows)) : null;
+  const ttlsMeta = isKpiSyncMetrics(latestDetails) && "ttlsMeta" in latestDetails && (latestDetails as KpiSyncMetrics).ttlsMeta > 0
+    ? (latestDetails as KpiSyncMetrics).ttlsMeta
+    : undefined;
+  const store = manager ? aggregateStore(storeReports, aggregateStoreTraffic(rows), ttlsMeta) : null;
   const workedDays = session.role === "ASESOR"
     ? Array.from(workingKeys).filter((key) => key.startsWith(`${session.userId}:`)).length
     : null;

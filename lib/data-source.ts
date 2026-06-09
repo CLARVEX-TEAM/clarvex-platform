@@ -44,6 +44,11 @@ export type KpiSyncMetrics = {
   totalSalesImported: number;
   totalGoalImported: number;
   ignoredRows: number;
+  ttlsTraffic: number | null;
+  ttlsMeta: number;
+  ttlsSales: number;
+  ttlsTransactions: number;
+  ttlsPieces: number;
 };
 
 export type DataSyncMetrics = ScheduleSyncMetrics | KpiSyncMetrics;

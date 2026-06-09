@@ -38,6 +38,11 @@ export type KpiParseResult = {
   totalGoalImported: number;
   rowsRead: number;
   ignoredRows: number;
+  ttlsTraffic: number | null;
+  ttlsMeta: number;
+  ttlsSales: number;
+  ttlsTransactions: number;
+  ttlsPieces: number;
 };
 
 type EmployeeGroup = {
@@ -70,14 +75,21 @@ export function parseKpiWorkbook(workbook: XLSX.WorkBook): KpiParseResult {
   const groups = detectEmployeeGroups(rows, headerRow);
   if (groups.length === 0) throw new Error("No se detectaron colaboradores en la fila 7 de Diario de ventas.");
 
+  const totalesStart = groups[groups.length - 1].end;
   const dateColumn = detectDateColumn(rows[headerRow] ?? []);
-  const trafficColumn = detectTrafficColumn(rows[headerRow] ?? []);
+  const trafficColumn = detectTrafficColumn(rows[headerRow] ?? []) ?? totalesStart;
   const retailMonth = detectRetailMonth(rows, headerRow, dateColumn, groups[0].start);
   const records: ParsedKpiRecord[] = [];
   let activeWeek: { weekNumber: number; dates: Date[]; records: ParsedKpiRecord[] } | null = null;
   const weeksDetected: RdvWeekRange[] = [];
   let rowsRead = 0;
   let ignoredRows = 0;
+  let ttlsTraffic: number | null = null;
+  let ttlsMeta = 0;
+  let ttlsSales = 0;
+  let ttlsTransactions = 0;
+  let ttlsPieces = 0;
+  let ttlsParsed = false;
 
   for (let rowIndex = headerRow + 1; rowIndex < rows.length; rowIndex += 1) {
     const row = rows[rowIndex] ?? [];
@@ -90,6 +102,15 @@ export function parseKpiWorkbook(workbook: XLSX.WorkBook): KpiParseResult {
       activeWeek = { weekNumber: detectedWeekNumber, dates: [], records: [] };
     }
     if (["TTLS", "BONOS", "INCIDENCIAS"].some((label) => rowLabel.includes(label))) {
+      if (rowLabel.includes("TTLS") && !ttlsParsed) {
+        const traf = integerCell(row[totalesStart]);
+        ttlsTraffic = traf > 0 ? traf : null;
+        ttlsMeta = numericCell(row[totalesStart + 1]);
+        ttlsSales = numericCell(row[totalesStart + 2]);
+        ttlsTransactions = integerCell(row[totalesStart + 3]);
+        ttlsPieces = integerCell(row[totalesStart + 4]);
+        ttlsParsed = true;
+      }
       ignoredRows += 1;
       continue;
     }
@@ -106,7 +127,7 @@ export function parseKpiWorkbook(workbook: XLSX.WorkBook): KpiParseResult {
     activeWeek?.dates.push(date);
 
     const recordsBeforeRow = records.length;
-    const trafficValue = trafficColumn === null ? 0 : integerCell(row[trafficColumn]);
+    const trafficValue = integerCell(row[trafficColumn]);
     const traffic = trafficValue > 0 ? trafficValue : null;
 
     for (const group of groups) {
@@ -159,7 +180,12 @@ export function parseKpiWorkbook(workbook: XLSX.WorkBook): KpiParseResult {
     totalSalesImported: round(uniqueRecords.reduce((total, record) => total + record.dailySales, 0)),
     totalGoalImported: round(uniqueRecords.reduce((total, record) => total + record.dailyGoal, 0)),
     rowsRead,
-    ignoredRows
+    ignoredRows,
+    ttlsTraffic,
+    ttlsMeta,
+    ttlsSales,
+    ttlsTransactions,
+    ttlsPieces
   };
 }
 
@@ -236,6 +262,10 @@ function detectEmployeeGroups(rows: unknown[][], headerRow: number): EmployeeGro
     for (let column = item.column; column < end; column += 1) {
       const metric = metricFromHeader(headers[column]);
       if (metric && columns[metric] === undefined) columns[metric] = column;
+    }
+    if (columns.dailyGoal !== undefined) {
+      if (columns.transactions === undefined && columns.dailyGoal + 2 < end) columns.transactions = columns.dailyGoal + 2;
+      if (columns.pieces === undefined && columns.dailyGoal + 3 < end) columns.pieces = columns.dailyGoal + 3;
     }
 
     return {
