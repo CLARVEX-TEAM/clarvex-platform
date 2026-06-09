@@ -75,9 +75,11 @@ export function parseKpiWorkbook(workbook: XLSX.WorkBook): KpiParseResult {
   const groups = detectEmployeeGroups(rows, headerRow);
   if (groups.length === 0) throw new Error("No se detectaron colaboradores en la fila 7 de Diario de ventas.");
 
-  const totalesStart = groups[groups.length - 1].end;
   const dateColumn = detectDateColumn(rows[headerRow] ?? []);
-  const trafficColumn = detectTrafficColumn(rows[headerRow] ?? []) ?? totalesStart;
+  // Traffic column = first column of TOTALES section (authoritative anchor for totalesStart)
+  const trafficColumnFromHeader = detectTrafficColumn(rows[headerRow] ?? []);
+  const totalesStart = trafficColumnFromHeader ?? groups[groups.length - 1].end;
+  const trafficColumn = totalesStart;
   const retailMonth = detectRetailMonth(rows, headerRow, dateColumn, groups[0].start);
   const records: ParsedKpiRecord[] = [];
   let activeWeek: { weekNumber: number; dates: Date[]; records: ParsedKpiRecord[] } | null = null;
@@ -94,6 +96,7 @@ export function parseKpiWorkbook(workbook: XLSX.WorkBook): KpiParseResult {
   for (let rowIndex = headerRow + 1; rowIndex < rows.length; rowIndex += 1) {
     const row = rows[rowIndex] ?? [];
     const rowLabel = normalizeText(row.slice(0, Math.max(2, groups[0].start)).join(" "));
+    const isTtlsRow = !ttlsParsed && row.some((cell) => normalizeText(cell).includes("TTLS") && !normalizeText(cell).includes("VTAS"));
     if (!row.some((value) => cleanCell(value))) continue;
     rowsRead += 1;
     const detectedWeekNumber = findWeekNumber(row);
@@ -101,8 +104,8 @@ export function parseKpiWorkbook(workbook: XLSX.WorkBook): KpiParseResult {
       finalizeWeek(activeWeek, retailMonth.end, weeksDetected);
       activeWeek = { weekNumber: detectedWeekNumber, dates: [], records: [] };
     }
-    if (["TTLS", "BONOS", "INCIDENCIAS"].some((label) => rowLabel.includes(label))) {
-      if (rowLabel.includes("TTLS") && !ttlsParsed) {
+    if (isTtlsRow || ["BONOS", "INCIDENCIAS"].some((label) => rowLabel.includes(label))) {
+      if (isTtlsRow) {
         const traf = integerCell(row[totalesStart]);
         ttlsTraffic = traf > 0 ? traf : null;
         ttlsMeta = numericCell(row[totalesStart + 1]);
@@ -297,7 +300,10 @@ function detectDateColumn(headers: unknown[]) {
 }
 
 function detectTrafficColumn(headers: unknown[]) {
-  const column = headers.findIndex((header) => normalizeText(header).includes("TRAFICO"));
+  const column = headers.findIndex((header) => {
+    const val = normalizeText(header);
+    return val.includes("TRAFICO") || val === "AFLUENCIA" || val === "TRAF" || val === "FLUJO";
+  });
   return column >= 0 ? column : null;
 }
 
