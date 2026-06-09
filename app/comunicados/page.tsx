@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import NextImage from "next/image";
 import { ImagePlus, Megaphone, Send, X } from "lucide-react";
 import { fetchAppData, type AppData } from "@/lib/app-data";
 import { getSession } from "@/lib/auth";
@@ -155,7 +156,7 @@ export default function ComunicadosPage() {
               />
               {imagePreview ? (
                 <div className="relative overflow-hidden rounded-2xl border border-line">
-                  <img src={imagePreview} alt="Vista previa" className="max-h-48 w-full object-cover" />
+                  <NextImage src={imagePreview} alt="Vista previa" width={800} height={300} className="max-h-48 w-full object-cover" unoptimized />
                   <button type="button" onClick={removeImage} className="absolute right-2 top-2 grid size-7 place-items-center rounded-full bg-black/60 text-white">
                     <X size={14} />
                   </button>
