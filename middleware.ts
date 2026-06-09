@@ -4,7 +4,7 @@ import { SESSION_COOKIE, verifySessionToken } from "@/lib/session-token";
 
 const managerRoutes = ["/manager", "/pendientes", "/bitacora", "/comunicados", "/datos"];
 const advisorRoutes = ["/advisor", "/kpis", "/horarios", "/actividad"];
-const sharedRoutes = ["/plan", "/kpis", "/horarios", "/perfil", "/notificaciones"];
+const sharedRoutes = ["/plan", "/kpis", "/horarios", "/perfil", "/notificaciones", "/pendientes", "/comunicados"];
 
 function startsWithRoute(pathname: string, routes: string[]) {
   return routes.some((route) => pathname === route || pathname.startsWith(`${route}/`));
