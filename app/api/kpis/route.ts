@@ -76,9 +76,10 @@ export async function GET(request: NextRequest) {
     select: { userId: true, date: true, status: true, statusRaw: true }
   }) : [];
   const workingKeys = buildWorkingScheduleKeys(schedules);
-  const reports = aggregateKpis(rows);
-  const storeReports = aggregateKpis(rows);
-  const allReports = manager ? reports : aggregateKpis(allRows);
+  const useMonthlyGoal = period === "month";
+  const reports = aggregateKpis(rows, useMonthlyGoal);
+  const storeReports = aggregateKpis(rows, useMonthlyGoal);
+  const allReports = manager ? reports : aggregateKpis(allRows, useMonthlyGoal);
   const team = allReports
     .filter((item) => item.role === "ASESOR")
     .sort((a, b) => b.sales - a.sales || b.achievement - a.achievement);

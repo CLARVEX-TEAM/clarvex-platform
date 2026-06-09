@@ -43,6 +43,7 @@ export type KpiParseResult = {
   ttlsSales: number;
   ttlsTransactions: number;
   ttlsPieces: number;
+  employeeTtlsGoals: Record<string, number>;
 };
 
 type EmployeeGroup = {
@@ -92,6 +93,7 @@ export function parseKpiWorkbook(workbook: XLSX.WorkBook): KpiParseResult {
   let ttlsTransactions = 0;
   let ttlsPieces = 0;
   let ttlsParsed = false;
+  const employeeTtlsGoals: Record<string, number> = {};
 
   for (let rowIndex = headerRow + 1; rowIndex < rows.length; rowIndex += 1) {
     const row = rows[rowIndex] ?? [];
@@ -113,6 +115,10 @@ export function parseKpiWorkbook(workbook: XLSX.WorkBook): KpiParseResult {
         ttlsTransactions = integerCell(row[totalesStart + 3]);
         ttlsPieces = integerCell(row[totalesStart + 4]);
         ttlsParsed = true;
+        for (const group of groups) {
+          const ttlsGoal = numericCell(row[group.columns.dailyGoal ?? -1]);
+          if (ttlsGoal > 0) employeeTtlsGoals[group.employeeNumber] = ttlsGoal;
+        }
       }
       ignoredRows += 1;
       continue;
@@ -188,7 +194,8 @@ export function parseKpiWorkbook(workbook: XLSX.WorkBook): KpiParseResult {
     ttlsMeta,
     ttlsSales,
     ttlsTransactions,
-    ttlsPieces
+    ttlsPieces,
+    employeeTtlsGoals
   };
 }
 

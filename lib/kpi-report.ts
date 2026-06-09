@@ -29,6 +29,7 @@ type RawKpi = {
   date?: Date;
   dailySales: unknown;
   dailyGoal: unknown;
+  monthlyGoal?: unknown;
   transactions: number;
   pieces: number;
   conversion: unknown;
@@ -41,7 +42,7 @@ type RawKpi = {
   user: { name: string; role: KpiReportItem["role"]; photoUrl: string | null };
 };
 
-export function aggregateKpis(rows: RawKpi[]) {
+export function aggregateKpis(rows: RawKpi[], useMonthlyGoal = false) {
   const groups = new Map<string, RawKpi[]>();
   const uniqueRows = new Map<string, RawKpi>();
   for (const row of rows) {
@@ -55,7 +56,7 @@ export function aggregateKpis(rows: RawKpi[]) {
   const reports = Array.from(groups.values()).map((items) => {
     const first = items[0];
     const sales = sum(items, "dailySales");
-    const goal = goalSum(items);
+    const goal = goalSum(items, useMonthlyGoal);
     const transactions = items.reduce((total, item) => total + item.transactions, 0);
     const pieces = items.reduce((total, item) => total + item.pieces, 0);
     const traffic = nullableIntegerSum(items.map((item) => item.traffic));
@@ -144,7 +145,11 @@ export function aggregateStoreTraffic(rows: Array<{ date: Date; traffic: number 
   return byDate.size ? Array.from(byDate.values()).reduce((total, traffic) => total + traffic, 0) : null;
 }
 
-function goalSum(items: RawKpi[]): number {
+function goalSum(items: RawKpi[], useMonthlyGoal: boolean): number {
+  if (useMonthlyGoal) {
+    const monthly = items.map((item) => number(item.monthlyGoal)).find((v) => v > 0);
+    if (monthly) return monthly;
+  }
   const values = items.map((item) => number(item.dailyGoal));
   const nonZero = values.filter((v) => v > 0);
   if (nonZero.length === 0) return 0;
