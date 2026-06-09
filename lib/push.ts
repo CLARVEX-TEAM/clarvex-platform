@@ -2,7 +2,7 @@ import webpush from "web-push";
 import { prisma } from "@/lib/prisma";
 
 webpush.setVapidDetails(
-  "mailto:admin@clarvex.local",
+  process.env.VAPID_SUBJECT ?? "mailto:admin@adrianluna.mx",
   process.env.VAPID_PUBLIC_KEY!,
   process.env.VAPID_PRIVATE_KEY!
 );
@@ -31,6 +31,8 @@ export async function dispatchPushToUsers(userIds: string[], payload: PushPayloa
         const status = (error as { statusCode?: number }).statusCode;
         if (status === 410 || status === 404) {
           expiredIds.push(sub.id);
+        } else {
+          console.error("[push] Error enviando notificacion:", status, (error as Error).message);
         }
       }
     })
