@@ -52,11 +52,10 @@ export async function GET(request: NextRequest) {
   const start = selectedWeek?.weekStart ?? selectedRetailMonth?.start ?? selectedDate;
   const end = selectedWeek?.weekEnd ?? selectedRetailMonth?.end ?? selectedDate;
 
-  const [rows, rules] = await Promise.all([
+  const [allRows, rules] = await Promise.all([
     prisma.kpi.findMany({
       where: {
         storeId: session.storeId,
-        ...userFilter,
         ...(period === "week" && !selectedWeek
           ? { id: "__missing_rdv_week__" }
           : { date: { gte: start, lte: end } })
@@ -69,6 +68,7 @@ export async function GET(request: NextRequest) {
       orderBy: [{ active: "desc" }, { role: "asc" }, { minAchievement: "asc" }]
     })
   ]);
+  const rows = manager ? allRows : allRows.filter((row) => row.userId === session.userId);
 
   const advisorUserIds = Array.from(new Set(rows.filter((row) => row.user.role === "ASESOR").map((row) => row.userId)));
   const schedules = advisorUserIds.length ? await prisma.schedule.findMany({
@@ -76,14 +76,14 @@ export async function GET(request: NextRequest) {
     select: { userId: true, date: true, status: true, statusRaw: true }
   }) : [];
   const workingKeys = buildWorkingScheduleKeys(schedules);
-  const individualRows = rows;
-  const reports = aggregateKpis(individualRows);
+  const reports = aggregateKpis(rows);
   const storeReports = aggregateKpis(rows);
-  const team = reports
+  const allReports = manager ? reports : aggregateKpis(allRows);
+  const team = allReports
     .filter((item) => item.role === "ASESOR")
     .sort((a, b) => b.sales - a.sales || b.achievement - a.achievement);
   team.forEach((item, index) => { item.ranking = index + 1; });
-  const own = reports.find((item) => item.userId === session.userId) ?? null;
+  const own = allReports.find((item) => item.userId === session.userId) ?? null;
   const kpiTtls = isKpiSyncMetrics(latestDetails) && "ttlsMeta" in latestDetails ? latestDetails as KpiSyncMetrics : null;
   const ttlsGoalOverride = period === "month" && kpiTtls?.ttlsMeta && kpiTtls.ttlsMeta > 0 ? kpiTtls.ttlsMeta : undefined;
   const ttlsTxOverride = period === "month" && kpiTtls?.ttlsTransactions && kpiTtls.ttlsTransactions > 0 ? kpiTtls.ttlsTransactions : undefined;
@@ -109,7 +109,12 @@ export async function GET(request: NextRequest) {
     role: session.role,
     store,
     own,
-    team: manager ? team : own ? [own] : [],
+    team: manager
+      ? team
+      : team.map((item) => item.userId === session.userId
+        ? item
+        : { ...item, sales: 0, goal: 0, transactions: 0, pieces: 0, upt: null, aur: null, ept: null, grossSales: null, discountAmount: null, discountMargin: null, discountLimit: null, commissionAmount: 0, commissionPercent: 0 }
+      ),
     commissionRules: rules.map((rule) => ({
       id: rule.id, storeId: rule.storeId, role: rule.role,
       minSales: Number(rule.minSales), maxSales: rule.maxSales === null ? null : Number(rule.maxSales),
