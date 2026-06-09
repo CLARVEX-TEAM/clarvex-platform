@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { AlertTriangle, Plus, UserRound } from "lucide-react";
+import { AlertTriangle, Plus, Trash2, UserRound } from "lucide-react";
 import { fetchAppData, type AppData } from "@/lib/app-data";
 import { getSession } from "@/lib/auth";
 import type { Pending, User } from "@/lib/types";
@@ -75,6 +75,20 @@ export default function PendientesPage() {
     setData({ ...data, pendings: editId ? data.pendings.map((item) => item.id === editId ? payload.pending! : item) : [payload.pending, ...data.pendings] });
     setFormStatus(editId ? "Pendiente actualizado." : "Pendiente creado.");
     resetForm();
+  }
+
+  async function deletePending(id: string) {
+    if (!data) return;
+    if (!window.confirm("¿Eliminar este pendiente? Esta accion no se puede deshacer.")) return;
+    const previous = data.pendings;
+    setData({ ...data, pendings: data.pendings.filter((item) => item.id !== id) });
+    try {
+      const response = await fetch(`/api/pendings/${id}`, { method: "DELETE" });
+      if (!response.ok) throw new Error("No se pudo eliminar.");
+    } catch {
+      setData({ ...data, pendings: previous });
+      setFormStatus("No se pudo eliminar el pendiente.");
+    }
   }
 
   async function changeStatus(id: string, status: "PENDIENTE" | "EN_PROCESO" | "COMPLETADO") {
@@ -167,7 +181,13 @@ export default function PendientesPage() {
                 <Info label="Responsable" value={userName(pending.ownerId)} icon={<UserRound size={14} />} />
                 <Info label="Limite" value={pending.dueDate} />
               </div>
-              {!isAdvisor ? <div className="mt-2.5 grid grid-cols-2 gap-2"><button onClick={() => editPending(pending)} className="min-h-10 rounded-xl bg-slate-100 text-sm font-black">Editar</button><select value={pending.status === "en proceso" ? "EN_PROCESO" : pending.status.toUpperCase()} onChange={(event) => void changeStatus(pending.id, event.target.value as "PENDIENTE" | "EN_PROCESO" | "COMPLETADO")} className="min-h-10 rounded-xl border border-line bg-panel px-3 text-sm font-black"><option value="PENDIENTE">Pendiente</option><option value="EN_PROCESO">En proceso</option><option value="COMPLETADO">Cerrar</option></select></div> : null}
+              {!isAdvisor ? (
+                <div className="mt-2.5 grid grid-cols-3 gap-2">
+                  <button onClick={() => editPending(pending)} className="min-h-10 rounded-xl bg-slate-100 text-sm font-black">Editar</button>
+                  <select value={pending.status === "en proceso" ? "EN_PROCESO" : pending.status.toUpperCase()} onChange={(event) => void changeStatus(pending.id, event.target.value as "PENDIENTE" | "EN_PROCESO" | "COMPLETADO")} className="min-h-10 rounded-xl border border-line bg-panel px-3 text-sm font-black"><option value="PENDIENTE">Pendiente</option><option value="EN_PROCESO">En proceso</option><option value="COMPLETADO">Cerrar</option></select>
+                  <button onClick={() => void deletePending(pending.id)} className="flex min-h-10 items-center justify-center gap-1.5 rounded-xl border border-rose-200/60 bg-rose-50/60 text-sm font-black text-rose-600 transition active:scale-95"><Trash2 size={14} />Borrar</button>
+                </div>
+              ) : null}
               <ResourceDiscussion target={{ pendingId: pending.id }} />
             </Card>
           ))}
