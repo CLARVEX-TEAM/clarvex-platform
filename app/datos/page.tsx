@@ -267,12 +267,26 @@ export default function DataCenterPage() {
                       />
                     </div>
                     {kpiMetrics ? (
-                      <div className="mt-1 grid grid-cols-2 gap-px overflow-hidden rounded-2xl bg-line">
-                        <MetricDetail label="Filas leidas" value={kpiMetrics.rowsRead} />
-                        <MetricDetail label="Creados" value={kpiMetrics.recordsCreated} />
-                        <MetricDetail label="Actualizados" value={kpiMetrics.recordsUpdated} />
-                        <MetricDetail label="Ignoradas" value={kpiMetrics.ignoredRows} />
-                      </div>
+                      <>
+                        <div className="mt-1 grid grid-cols-2 gap-px overflow-hidden rounded-2xl bg-line">
+                          <MetricDetail label="Filas leidas" value={kpiMetrics.rowsRead} />
+                          <MetricDetail label="Creados" value={kpiMetrics.recordsCreated} />
+                          <MetricDetail label="Actualizados" value={kpiMetrics.recordsUpdated} />
+                          <MetricDetail label="Ignoradas" value={kpiMetrics.ignoredRows} />
+                        </div>
+                        {"ttlsMeta" in kpiMetrics ? (
+                          <div className="mt-1 rounded-2xl border border-line bg-slate-50 px-3 py-2">
+                            <p className="mb-1.5 text-[10px] font-black uppercase tracking-[0.1em] text-muted">Totales fila TTLS</p>
+                            <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-[11px]">
+                              <span className="text-muted">Tráfico</span><span className="font-bold text-ink">{(kpiMetrics as KpiSyncMetrics).ttlsTraffic?.toLocaleString("es-MX") ?? "—"}</span>
+                              <span className="text-muted">Meta</span><span className="font-bold text-ink">${(kpiMetrics as KpiSyncMetrics).ttlsMeta?.toLocaleString("es-MX") ?? "—"}</span>
+                              <span className="text-muted">Venta</span><span className="font-bold text-ink">${(kpiMetrics as KpiSyncMetrics).ttlsSales?.toLocaleString("es-MX") ?? "—"}</span>
+                              <span className="text-muted">TX</span><span className="font-bold text-ink">{(kpiMetrics as KpiSyncMetrics).ttlsTransactions?.toLocaleString("es-MX") ?? "—"}</span>
+                              <span className="text-muted">Piezas</span><span className="font-bold text-ink">{(kpiMetrics as KpiSyncMetrics).ttlsPieces?.toLocaleString("es-MX") ?? "—"}</span>
+                            </div>
+                          </div>
+                        ) : null}
+                      </>
                     ) : null}
                     {sheets.length > 0 ? (
                       <div className="mt-2 rounded-2xl border border-line bg-slate-50 px-3 py-2">
