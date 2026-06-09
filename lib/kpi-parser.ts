@@ -44,6 +44,7 @@ export type KpiParseResult = {
   ttlsTransactions: number;
   ttlsPieces: number;
   employeeTtlsGoals: Record<string, number>;
+  employeeCommissionMinimums: Record<string, number>;
 };
 
 type EmployeeGroup = {
@@ -177,6 +178,7 @@ export function parseKpiWorkbook(workbook: XLSX.WorkBook): KpiParseResult {
   const retailMonthStart = weeksDetected[0]?.weekStart ?? retailMonth.start;
 
   const uniqueRecords = deduplicate(records);
+  const employeeCommissionMinimums = parseCommissionMinimums(workbook);
   return {
     sheetUsed: RDV_SHEET_NAME,
     records: uniqueRecords,
@@ -195,8 +197,38 @@ export function parseKpiWorkbook(workbook: XLSX.WorkBook): KpiParseResult {
     ttlsSales,
     ttlsTransactions,
     ttlsPieces,
-    employeeTtlsGoals
+    employeeTtlsGoals,
+    employeeCommissionMinimums
   };
+}
+
+function parseCommissionMinimums(workbook: XLSX.WorkBook): Record<string, number> {
+  const sheetName = workbook.SheetNames.find((name) => normalizeText(name) === "COMISIONES");
+  if (!sheetName) return {};
+
+  const rows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], {
+    header: 1, blankrows: true, defval: null, raw: true
+  }) as unknown[][];
+
+  const headerRow = rows.findIndex((row) =>
+    row.some((cell) => normalizeText(cell) === "DE EMPLEADO" || normalizeText(cell).includes("DE EMPLEADO")) &&
+    row.some((cell) => normalizeText(cell) === "MINIMO")
+  );
+  if (headerRow < 0) return {};
+
+  const headers = rows[headerRow] ?? [];
+  const employeeCol = headers.findIndex((cell) => normalizeText(cell).includes("DE EMPLEADO"));
+  const minimoCol = headers.findIndex((cell) => normalizeText(cell) === "MINIMO");
+  if (employeeCol < 0 || minimoCol < 0) return {};
+
+  const result: Record<string, number> = {};
+  for (let i = headerRow + 1; i < rows.length; i += 1) {
+    const row = rows[i] ?? [];
+    const empNum = employeeNumberCell(row[employeeCol]);
+    const minimo = numericCell(row[minimoCol]);
+    if (empNum && minimo > 0) result[empNum] = minimo;
+  }
+  return result;
 }
 
 function findWeekNumber(row: unknown[]) {

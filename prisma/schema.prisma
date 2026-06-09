@@ -222,6 +222,7 @@ model Kpi {
   discountLimit  Decimal? @db.Decimal(5, 2)
   commissionAmount Decimal @default(0) @db.Decimal(12, 2)
   commissionPercent Decimal @default(0) @db.Decimal(5, 2)
+  commissionMinimum Decimal? @db.Decimal(12, 2)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 

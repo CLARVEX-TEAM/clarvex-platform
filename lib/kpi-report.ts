@@ -21,6 +21,7 @@ export type KpiReportItem = {
   discountLimit: number | null;
   commissionAmount: number;
   commissionPercent: number;
+  commissionMinimum: number | null;
 };
 
 type RawKpi = {
@@ -39,6 +40,7 @@ type RawKpi = {
   discountLimit: unknown | null;
   commissionAmount: unknown;
   commissionPercent: unknown;
+  commissionMinimum?: unknown;
   user: { name: string; role: KpiReportItem["role"]; photoUrl: string | null };
 };
 
@@ -85,7 +87,8 @@ export function aggregateKpis(rows: RawKpi[], useMonthlyGoal = false) {
       discountMargin,
       discountLimit: latestNullable(items, "discountLimit"),
       commissionAmount: sum(items, "commissionAmount"),
-      commissionPercent: latest(items, "commissionPercent")
+      commissionPercent: latest(items, "commissionPercent"),
+      commissionMinimum: latestNullable(items, "commissionMinimum")
     } satisfies KpiReportItem;
   });
 
@@ -131,7 +134,8 @@ export function aggregateStore(
     discountMargin: grossSales && discountAmount !== null ? round((discountAmount / grossSales) * 100) : null,
     discountLimit: null,
     commissionAmount: items.reduce((total, item) => total + item.commissionAmount, 0),
-    commissionPercent: 0
+    commissionPercent: 0,
+    commissionMinimum: null
   };
 }
 
