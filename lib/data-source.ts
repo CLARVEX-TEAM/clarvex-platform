@@ -49,6 +49,7 @@ export type KpiSyncMetrics = {
   ttlsSales: number;
   ttlsTransactions: number;
   ttlsPieces: number;
+  ttlsCommissionMinimum: number | null;
 };
 
 export type DataSyncMetrics = ScheduleSyncMetrics | KpiSyncMetrics;

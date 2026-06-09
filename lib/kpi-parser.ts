@@ -45,6 +45,7 @@ export type KpiParseResult = {
   ttlsPieces: number;
   employeeTtlsGoals: Record<string, number>;
   employeeCommissionMinimums: Record<string, number>;
+  storeTtlsCommissionMinimum: number | null;
 };
 
 type EmployeeGroup = {
@@ -178,7 +179,7 @@ export function parseKpiWorkbook(workbook: XLSX.WorkBook): KpiParseResult {
   const retailMonthStart = weeksDetected[0]?.weekStart ?? retailMonth.start;
 
   const uniqueRecords = deduplicate(records);
-  const employeeCommissionMinimums = parseCommissionMinimums(workbook);
+  const { employeeMinimums: employeeCommissionMinimums, storeMinimum: storeTtlsCommissionMinimum } = parseCommissionSheet(workbook);
   return {
     sheetUsed: RDV_SHEET_NAME,
     records: uniqueRecords,
@@ -198,37 +199,47 @@ export function parseKpiWorkbook(workbook: XLSX.WorkBook): KpiParseResult {
     ttlsTransactions,
     ttlsPieces,
     employeeTtlsGoals,
-    employeeCommissionMinimums
+    employeeCommissionMinimums,
+    storeTtlsCommissionMinimum
   };
 }
 
-function parseCommissionMinimums(workbook: XLSX.WorkBook): Record<string, number> {
+function parseCommissionSheet(workbook: XLSX.WorkBook): { employeeMinimums: Record<string, number>; storeMinimum: number | null } {
   const sheetName = workbook.SheetNames.find((name) => normalizeText(name) === "COMISIONES");
-  if (!sheetName) return {};
+  if (!sheetName) return { employeeMinimums: {}, storeMinimum: null };
 
   const rows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], {
     header: 1, blankrows: true, defval: null, raw: true
   }) as unknown[][];
 
   const headerRow = rows.findIndex((row) =>
-    row.some((cell) => normalizeText(cell) === "DE EMPLEADO" || normalizeText(cell).includes("DE EMPLEADO")) &&
+    row.some((cell) => normalizeText(cell).includes("DE EMPLEADO")) &&
     row.some((cell) => normalizeText(cell) === "MINIMO")
   );
-  if (headerRow < 0) return {};
+  if (headerRow < 0) return { employeeMinimums: {}, storeMinimum: null };
 
   const headers = rows[headerRow] ?? [];
   const employeeCol = headers.findIndex((cell) => normalizeText(cell).includes("DE EMPLEADO"));
   const minimoCol = headers.findIndex((cell) => normalizeText(cell) === "MINIMO");
-  if (employeeCol < 0 || minimoCol < 0) return {};
+  if (employeeCol < 0 || minimoCol < 0) return { employeeMinimums: {}, storeMinimum: null };
 
-  const result: Record<string, number> = {};
+  const employeeMinimums: Record<string, number> = {};
+  let storeMinimum: number | null = null;
+
   for (let i = headerRow + 1; i < rows.length; i += 1) {
     const row = rows[i] ?? [];
-    const empNum = employeeNumberCell(row[employeeCol]);
     const minimo = numericCell(row[minimoCol]);
-    if (empNum && minimo > 0) result[empNum] = minimo;
+    if (minimo <= 0) continue;
+    const isTotalesRow = row.slice(0, minimoCol).some((cell) => normalizeText(cell).includes("TOTAL"));
+    if (isTotalesRow) {
+      storeMinimum = minimo;
+      continue;
+    }
+    const empNum = employeeNumberCell(row[employeeCol]);
+    if (empNum) employeeMinimums[empNum] = minimo;
   }
-  return result;
+
+  return { employeeMinimums, storeMinimum };
 }
 
 function findWeekNumber(row: unknown[]) {

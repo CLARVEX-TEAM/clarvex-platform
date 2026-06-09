@@ -102,7 +102,8 @@ export function aggregateStore(
   trafficOverride?: number | null,
   goalOverride?: number,
   transactionsOverride?: number,
-  piecesOverride?: number
+  piecesOverride?: number,
+  commissionMinimumOverride?: number | null
 ): KpiReportItem | null {
   if (items.length === 0) return null;
   const sales = items.reduce((total, item) => total + item.sales, 0);
@@ -135,7 +136,7 @@ export function aggregateStore(
     discountLimit: null,
     commissionAmount: items.reduce((total, item) => total + item.commissionAmount, 0),
     commissionPercent: 0,
-    commissionMinimum: null
+    commissionMinimum: commissionMinimumOverride ?? null
   };
 }
 
