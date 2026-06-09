@@ -58,7 +58,7 @@ export async function POST(request: Request) {
     return created;
   });
   if (resource.kind === "pending" && resource.recipientId !== session.userId) {
-    dispatchPushToUsers([resource.recipientId], { title: "Nuevo comentario en pendiente", body: resource.title }).catch(() => undefined);
+    dispatchPushToUsers([resource.recipientId], { title: "Nuevo comentario en pendiente", body: resource.title, tag: "comentario" }).catch(() => undefined);
   }
   return NextResponse.json({ comment: serializeComment(comment) }, { status: 201 });
 }

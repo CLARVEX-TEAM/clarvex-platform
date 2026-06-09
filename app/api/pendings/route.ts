@@ -25,6 +25,6 @@ export async function POST(request: Request) {
     }]);
     return created;
   });
-  dispatchPushToUsers([owner.id], { title: "Nuevo pendiente asignado", body: item.title }).catch(() => undefined);
+  dispatchPushToUsers([owner.id], { title: "Nuevo pendiente asignado", body: item.title, tag: "pendiente-nuevo" }).catch(() => undefined);
   return NextResponse.json({ pending: serializePending(item) }, { status: 201 });
 }

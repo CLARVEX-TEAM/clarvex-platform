@@ -78,7 +78,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     return result;
   });
   if (pushRecipients.length > 0) {
-    dispatchPushToUsers(pushRecipients, { title: "Actividad completada con evidencia", body: activity.title }).catch(() => undefined);
+    dispatchPushToUsers(pushRecipients, { title: "Actividad completada con evidencia", body: activity.title, tag: "actividad-completada" }).catch(() => undefined);
   }
 
   return NextResponse.json({

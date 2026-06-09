@@ -34,7 +34,7 @@ self.addEventListener("fetch", (event) => {
 
 self.addEventListener("push", (event) => {
   if (!event.data) return;
-  let data = { title: "CLARVEX Team", body: "Tienes una nueva notificacion.", icon: "/icon.svg" };
+  let data = { title: "CLARVEX Team", body: "Tienes una nueva notificacion.", icon: "/icon.svg", tag: "clarvex-notification" };
   try { data = { ...data, ...event.data.json() }; } catch (_) {}
 
   event.waitUntil(
@@ -42,7 +42,7 @@ self.addEventListener("push", (event) => {
       body: data.body,
       icon: data.icon,
       badge: "/icon.svg",
-      tag: "clarvex-notification",
+      tag: data.tag,
       renotify: true,
       vibrate: [200, 100, 200]
     })
