@@ -1,9 +1,18 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { BadgeCheck, Camera, Fingerprint, LogIn, ShieldCheck, Sparkles } from "lucide-react";
-import { createPin, inspectEmployee, loginWithPin } from "@/lib/auth";
+import { BadgeCheck, Camera, Fingerprint, LogIn, ShieldCheck, Sparkles, X } from "lucide-react";
+import { startAuthentication, startRegistration } from "@simplewebauthn/browser";
+import {
+  authenticateBiometric,
+  createPin,
+  getBiometricAuthOptions,
+  getBiometricRegistrationOptions,
+  inspectEmployee,
+  loginWithPin,
+  registerBiometric
+} from "@/lib/auth";
 import type { User } from "@/lib/types";
 import { Badge, Button, Card, ProfileAvatar } from "@/components/ui";
 
@@ -11,6 +20,7 @@ type Step = "employee" | "pin" | "confirm" | "profile" | "ready";
 
 export default function LoginPage() {
   const router = useRouter();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [employeeNumber, setEmployeeNumber] = useState("");
   const [pin, setPin] = useState("");
   const [confirmPin, setConfirmPin] = useState("");
@@ -19,9 +29,12 @@ export default function LoginPage() {
   const [user, setUser] = useState<User | null>(null);
   const [requiresPinSetup, setRequiresPinSetup] = useState(false);
   const [busy, setBusy] = useState(false);
-  const steps = useMemo(() => requiresPinSetup
-    ? ["employee", "pin", "confirm", "profile", "ready"] as Step[]
-    : ["employee", "pin", "ready"] as Step[], [requiresPinSetup]);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [biometricStatus, setBiometricStatus] = useState<"idle" | "active" | "done">("idle");
+  const steps = useMemo(
+    () => (requiresPinSetup ? (["employee", "pin", "confirm", "profile", "ready"] as Step[]) : (["employee", "pin", "ready"] as Step[])),
+    [requiresPinSetup]
+  );
   const activeIndex = Math.max(0, steps.indexOf(step));
 
   async function nextFromEmployee(event: React.FormEvent<HTMLFormElement>) {
@@ -44,14 +57,12 @@ export default function LoginPage() {
     setBusy(true);
     setError("");
     try {
-      const result = requiresPinSetup
-        ? await createPin(employeeNumber, pinValue)
-        : await loginWithPin(employeeNumber, pinValue);
+      const result = await loginWithPin(employeeNumber, pinValue);
       router.replace(result.user.role === "ASESOR" ? "/advisor" : "/manager");
       router.refresh();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "No fue posible iniciar sesion.");
-      if (!requiresPinSetup) setStep("pin");
+      setStep("pin");
     } finally {
       setBusy(false);
     }
@@ -66,11 +77,91 @@ export default function LoginPage() {
     else void finishLogin(nextPin);
   }
 
-  function updateConfirmation(value: string) {
+  async function handleConfirmation(value: string) {
     const nextPin = value.replace(/\D/g, "").slice(0, 4);
     setConfirmPin(nextPin);
-    if (nextPin.length === 4 && nextPin === pin) setStep("profile");
+    if (nextPin.length !== 4 || nextPin !== pin) return;
+    setBusy(true);
+    setError("");
+    try {
+      const result = await createPin(employeeNumber, nextPin);
+      setUser(result.user);
+      setStep("profile");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "No fue posible crear el PIN.");
+    } finally {
+      setBusy(false);
+    }
   }
+
+  async function handlePhotoChange(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0] ?? null;
+    if (!file) return;
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+      setError("Solo se permiten imagenes JPG, PNG o WEBP.");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setError("La imagen debe pesar menos de 5 MB.");
+      return;
+    }
+    setError("");
+    setBusy(true);
+    try {
+      const form = new FormData();
+      form.append("photo", file);
+      const response = await fetch("/api/profile/photo", { method: "POST", body: form });
+      if (!response.ok) {
+        const payload = (await response.json()) as { error?: string };
+        throw new Error(payload.error ?? "No se pudo subir la foto.");
+      }
+      const payload = (await response.json()) as { photoUrl: string };
+      setUser((prev) => (prev ? { ...prev, photoUrl: payload.photoUrl } : prev));
+      setPhotoPreview(payload.photoUrl);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Error al subir la foto.");
+    } finally {
+      setBusy(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  }
+
+  async function handleBiometricSetup() {
+    setBusy(true);
+    setError("");
+    setBiometricStatus("active");
+    try {
+      const options = await getBiometricRegistrationOptions();
+      const registration = await startRegistration({ optionsJSON: options });
+      await registerBiometric(registration);
+      setUser((prev) => (prev ? { ...prev, biometricEnabled: true } : prev));
+      setBiometricStatus("done");
+    } catch (cause) {
+      setBiometricStatus("idle");
+      setError(cause instanceof Error ? cause.message : "No se pudo activar la biometria.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleBiometricLogin() {
+    if (!user) return;
+    setBusy(true);
+    setError("");
+    try {
+      const options = await getBiometricAuthOptions(employeeNumber);
+      const authentication = await startAuthentication({ optionsJSON: options });
+      const result = await authenticateBiometric(employeeNumber, authentication);
+      router.replace(result.user.role === "ASESOR" ? "/advisor" : "/manager");
+      router.refresh();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Autenticacion biometrica fallida.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const destination = user?.role === "ASESOR" ? "/advisor" : "/manager";
 
   return (
     <main className="min-h-screen px-4 py-6">
@@ -86,7 +177,9 @@ export default function LoginPage() {
         </div>
 
         <div className={`mb-4 grid gap-2 ${requiresPinSetup ? "grid-cols-5" : "grid-cols-3"}`}>
-          {steps.map((item, index) => <div key={item} className={`h-1.5 rounded-full transition ${index <= activeIndex ? "bg-volt" : "bg-slate-200"}`} />)}
+          {steps.map((item, index) => (
+            <div key={item} className={`h-1.5 rounded-full transition ${index <= activeIndex ? "bg-volt" : "bg-slate-200"}`} />
+          ))}
         </div>
 
         <Card className="space-y-4 overflow-hidden">
@@ -101,7 +194,17 @@ export default function LoginPage() {
           {step === "employee" ? (
             <form className="space-y-3" onSubmit={nextFromEmployee}>
               <label className="block text-sm font-bold text-ink/75" htmlFor="employeeNumber">Numero de empleado</label>
-              <input id="employeeNumber" type="tel" value={employeeNumber} onChange={(event) => { setEmployeeNumber(event.target.value.replace(/\D/g, "")); setError(""); }} inputMode="numeric" autoComplete="username" autoFocus className="min-h-14 w-full rounded-2xl border border-line/80 bg-panel/75 px-4 text-center text-xl font-black tracking-[0.18em] text-ink outline-none shadow-inner transition placeholder:text-muted/40 focus:border-volt focus:ring-4 focus:ring-volt/18" placeholder="81893" />
+              <input
+                id="employeeNumber"
+                type="tel"
+                value={employeeNumber}
+                onChange={(event) => { setEmployeeNumber(event.target.value.replace(/\D/g, "")); setError(""); }}
+                inputMode="numeric"
+                autoComplete="username"
+                autoFocus
+                className="min-h-14 w-full rounded-2xl border border-line/80 bg-panel/75 px-4 text-center text-xl font-black tracking-[0.18em] text-ink outline-none shadow-inner transition placeholder:text-muted/40 focus:border-volt focus:ring-4 focus:ring-volt/18"
+                placeholder="81893"
+              />
               {error ? <p className="text-sm font-semibold text-orchid">{error}</p> : null}
               <Button className="w-full" type="submit" variant="primary" disabled={busy || !employeeNumber}>Continuar</Button>
             </form>
@@ -109,7 +212,15 @@ export default function LoginPage() {
 
           {step === "pin" ? (
             <div className="space-y-4">
-              {user ? <div className="flex items-center gap-3 rounded-2xl border border-volt/25 bg-volt/10 p-3"><ProfileAvatar name={user.name} photoUrl={user.photoUrl} size="sm" /><div><p className="font-black">{user.name}</p><p className="text-xs text-muted">{requiresPinSetup ? "Crea tu PIN de primer ingreso" : "Ingresa tu PIN"}</p></div></div> : null}
+              {user ? (
+                <div className="flex items-center gap-3 rounded-2xl border border-volt/25 bg-volt/10 p-3">
+                  <ProfileAvatar name={user.name} photoUrl={user.photoUrl} size="sm" />
+                  <div>
+                    <p className="font-black">{user.name}</p>
+                    <p className="text-xs text-muted">{requiresPinSetup ? "Crea tu PIN de primer ingreso" : "Ingresa tu PIN"}</p>
+                  </div>
+                </div>
+              ) : null}
               <label className="grid gap-2 text-sm font-bold text-ink/75" htmlFor="pin">
                 PIN de 4 digitos
                 <input
@@ -129,7 +240,25 @@ export default function LoginPage() {
               </label>
               <p id="pin-help" className="text-center text-xs text-muted">El teclado numerico de tu dispositivo se abrira automaticamente.</p>
               {error ? <p className="text-sm font-semibold text-orchid">{error}</p> : null}
-              <Button className="w-full" variant="primary" disabled={busy || pin.length < 4} onClick={() => requiresPinSetup ? setStep("confirm") : void finishLogin()}>{requiresPinSetup ? "Guardar PIN" : "Entrar"}</Button>
+              {!requiresPinSetup && user?.biometricEnabled ? (
+                <button
+                  type="button"
+                  onClick={() => void handleBiometricLogin()}
+                  disabled={busy}
+                  className="liquid-glass flex min-h-14 w-full items-center justify-center gap-3 rounded-2xl font-bold"
+                >
+                  <Fingerprint size={20} className="text-volt" />
+                  Entrar con Face ID / Huella
+                </button>
+              ) : null}
+              <Button
+                className="w-full"
+                variant="primary"
+                disabled={busy || pin.length < 4}
+                onClick={() => requiresPinSetup ? setStep("confirm") : void finishLogin()}
+              >
+                {requiresPinSetup ? "Guardar PIN" : "Entrar"}
+              </Button>
             </div>
           ) : null}
 
@@ -148,22 +277,71 @@ export default function LoginPage() {
                   autoFocus
                   maxLength={4}
                   value={confirmPin}
-                  onChange={(event) => updateConfirmation(event.target.value)}
+                  onChange={(event) => void handleConfirmation(event.target.value)}
                   className="min-h-14 w-full rounded-2xl border border-line bg-panel px-4 text-center text-2xl font-black tracking-[0.65em] text-ink outline-none transition focus:border-volt focus:ring-4 focus:ring-volt/15"
                 />
               </label>
               {confirmPin.length === 4 && confirmPin !== pin ? <p className="text-sm font-semibold text-orchid">Los PIN no coinciden.</p> : null}
-              <Button className="w-full" variant="primary" disabled={confirmPin.length < 4 || confirmPin !== pin} onClick={() => setStep("profile")}>Confirmar PIN</Button>
+              {error ? <p className="text-sm font-semibold text-orchid">{error}</p> : null}
+              <Button
+                className="w-full"
+                variant="primary"
+                disabled={busy || confirmPin.length < 4 || confirmPin !== pin}
+                onClick={() => void handleConfirmation(confirmPin)}
+              >
+                {busy ? "Guardando..." : "Confirmar PIN"}
+              </Button>
             </div>
           ) : null}
 
           {step === "profile" ? (
             <div className="space-y-4">
-              <div className="flex items-center gap-4"><ProfileAvatar name={user?.name ?? "CL"} photoUrl={user?.photoUrl} size="lg" /><div><h2 className="text-xl font-black">{user?.name}</h2><p className="mt-1 text-sm text-muted">Tu perfil esta listo para operar.</p></div></div>
-              <div className="grid gap-3">
-                <button className="liquid-glass flex min-h-14 items-center justify-between rounded-2xl px-4 text-left"><span className="flex items-center gap-3 font-bold"><Camera className="text-sky" size={18} /> Agregar foto</span><Badge tone="info">pronto</Badge></button>
-                <button className="liquid-glass flex min-h-14 items-center justify-between rounded-2xl px-4 text-left"><span className="flex items-center gap-3 font-bold"><Fingerprint className="text-purple" size={18} /> Activar biometria</span><Badge>pronto</Badge></button>
+              <div className="flex items-center gap-4">
+                <ProfileAvatar name={user?.name ?? "CL"} photoUrl={photoPreview ?? user?.photoUrl} size="lg" />
+                <div>
+                  <h2 className="text-xl font-black">{user?.name}</h2>
+                  <p className="mt-1 text-sm text-muted">Personaliza tu perfil.</p>
+                </div>
               </div>
+              <div className="grid gap-3">
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={busy}
+                  className="liquid-glass flex min-h-14 items-center justify-between rounded-2xl px-4 text-left"
+                >
+                  <span className="flex items-center gap-3 font-bold"><Camera className="text-sky" size={18} /> Agregar foto de perfil</span>
+                  {photoPreview ? (
+                    <Badge tone="done">guardada</Badge>
+                  ) : (
+                    <Badge tone="info">opcional</Badge>
+                  )}
+                </button>
+                <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(e) => void handlePhotoChange(e)} />
+
+                {biometricStatus === "done" ? (
+                  <div className="liquid-glass flex min-h-14 items-center justify-between rounded-2xl px-4">
+                    <span className="flex items-center gap-3 font-bold"><Fingerprint className="text-volt" size={18} /> Biometria activada</span>
+                    <Badge tone="done">activa</Badge>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => void handleBiometricSetup()}
+                    disabled={busy}
+                    className="liquid-glass flex min-h-14 items-center justify-between rounded-2xl px-4 text-left"
+                  >
+                    <span className="flex items-center gap-3 font-bold">
+                      <Fingerprint className="text-purple" size={18} />
+                      {biometricStatus === "active" ? "Activando..." : "Activar Face ID / Huella"}
+                    </span>
+                    <Badge tone={biometricStatus === "active" ? "info" : undefined}>
+                      {biometricStatus === "active" ? "espera" : "opcional"}
+                    </Badge>
+                  </button>
+                )}
+              </div>
+              {error ? <p className="text-sm font-semibold text-orchid">{error}</p> : null}
               <Button className="w-full" variant="primary" onClick={() => setStep("ready")}>Continuar</Button>
             </div>
           ) : null}
@@ -171,12 +349,28 @@ export default function LoginPage() {
           {step === "ready" ? (
             <div className="space-y-4 text-center">
               <div className="mx-auto grid size-16 place-items-center rounded-[1.35rem] border border-volt/30 bg-volt/15 text-volt"><BadgeCheck size={28} /></div>
-              <div><h2 className="text-2xl font-black">Listo para operar</h2><p className="mt-2 text-sm text-muted">Tu PIN se guardara cifrado y abriremos una sesion segura.</p></div>
+              <div>
+                <h2 className="text-2xl font-black">Listo para operar</h2>
+                <p className="mt-2 text-sm text-muted">Tu PIN esta guardado y tu sesion esta activa.</p>
+              </div>
               {error ? <p className="text-sm font-semibold text-orchid">{error}</p> : null}
-              <Button className="w-full" variant="primary" icon={<LogIn size={17} />} disabled={busy} onClick={() => void finishLogin()}>Entrar a CLARVEX</Button>
+              <Button
+                className="w-full"
+                variant="primary"
+                icon={<LogIn size={17} />}
+                onClick={() => { router.replace(destination); router.refresh(); }}
+              >
+                Entrar a CLARVEX
+              </Button>
             </div>
           ) : null}
         </Card>
+
+        {step === "pin" && !requiresPinSetup && (
+          <p className="mt-4 text-center text-xs text-muted">
+            Olvidaste tu PIN? Contacta al administrador de tu tienda.
+          </p>
+        )}
       </section>
     </main>
   );
