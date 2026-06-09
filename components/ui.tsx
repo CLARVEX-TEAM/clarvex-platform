@@ -308,7 +308,7 @@ export function NotificationCard({
           <p className="mt-2 text-[13px] leading-5 text-muted">{body}</p>
           {imageUrl ? (
             <a href={imageUrl} target="_blank" rel="noopener noreferrer" className="mt-2.5 block overflow-hidden rounded-2xl border border-line">
-              <img src={imageUrl} alt="Imagen del comunicado" className="w-full object-cover" loading="lazy" />
+              <Image src={imageUrl} alt="Imagen del comunicado" width={800} height={400} className="w-full object-cover" />
             </a>
           ) : null}
           {action ? <div className="mt-2.5">{action}</div> : null}
