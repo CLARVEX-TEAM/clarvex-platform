@@ -135,7 +135,8 @@ async function importKpis(workbook: Parameters<typeof parseKpiWorkbook>[0], stor
   const employeesNotFound = parsed.employeeNumbers.filter((employeeNumber) => !userByEmployee.has(employeeNumber));
   const matchedRecords = parsed.records.flatMap((record) => {
     const userId = userByEmployee.get(record.employeeNumber);
-    return userId ? [{ ...record, userId, ranking: 0, monthlySales: 0, monthlyGoal: 0 }] : [];
+    const commissionMinimum = parsed.employeeCommissionMinimums[record.employeeNumber] ?? null;
+    return userId ? [{ ...record, userId, ranking: 0, monthlySales: 0, monthlyGoal: 0, commissionMinimum }] : [];
   });
 
   applyKpiRankings(matchedRecords);
@@ -189,7 +190,8 @@ async function importKpis(workbook: Parameters<typeof parseKpiWorkbook>[0], stor
             traffic: record.traffic,
             pieces: record.pieces,
             transactions: record.transactions,
-            ranking: record.ranking
+            ranking: record.ranking,
+            commissionMinimum: record.commissionMinimum
           },
           create: {
             userId: record.userId,
@@ -208,7 +210,8 @@ async function importKpis(workbook: Parameters<typeof parseKpiWorkbook>[0], stor
             traffic: record.traffic,
             pieces: record.pieces,
             transactions: record.transactions,
-            ranking: record.ranking
+            ranking: record.ranking,
+            commissionMinimum: record.commissionMinimum
           }
         });
         if (existingKeys.has(key)) recordsUpdated += 1;
@@ -254,6 +257,7 @@ type MatchedKpiRecord = ReturnType<typeof parseKpiWorkbook>["records"][number] &
   ranking: number;
   monthlySales: number;
   monthlyGoal: number;
+  commissionMinimum: number | null;
 };
 
 function applyKpiRankings(records: MatchedKpiRecord[]) {

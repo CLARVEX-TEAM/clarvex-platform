@@ -77,7 +77,8 @@ export default function KpisPage() {
   const progress = completion(activeKpi?.sales ?? 0, activeKpi?.goal ?? 0);
   const commissionKpi = isAdvisor ? (report?.own ?? null) : (report?.store ?? null);
   const initialSimulation = simulatedSales ? Number(simulatedSales) : commissionKpi?.sales ?? 0;
-  const simulatedAchievement = getAchievement(initialSimulation, commissionKpi?.goal ?? 0);
+  const commissionBase = commissionKpi?.commissionMinimum ?? commissionKpi?.goal ?? 0;
+  const simulatedAchievement = getAchievement(initialSimulation, commissionBase);
   const commissionRole = isAdvisor ? "ASESOR" : session?.role ?? "GERENTE";
   const activeRule = findCommissionRule(report?.commissionRules ?? [], commissionRole, simulatedAchievement);
   const appliedPercent = activeRule?.commissionPercent ?? 0;
