@@ -23,25 +23,14 @@ export type DiscountParseResult = {
   sheetsUsed: string[];
 };
 
-// Col layout (0-indexed):
-//   0: always empty
-//   1: "SEMANA XX" header, or empty
-//   2: employee number (int) | "TIENDA TOTAL" | empty
-//   3: employee name | empty
-//   4: venta bruta (number)
-//   5: descuento (number)
-//   6: formula string — NOT read; margin is calculated from cols 4 and 5
-// Data starts at row index 5 (row 6 in Excel).
-
-function normalizeText(value: unknown): string {
-  return String(value ?? "").trim().toUpperCase().replace(/\s+/g, " ");
-}
-
-function numericCell(value: unknown): number {
-  if (value === null || value === undefined) return 0;
-  const n = typeof value === "number" ? value : parseFloat(String(value).replace(/[^\d.()-]/g, ""));
-  return Number.isFinite(n) ? n : 0;
-}
+// Col layout (0-indexed, after spreadsheet.ts .slice(1)):
+//   row[1] — "SEMANA XX" header cell (Col B in Excel, row.values[2] in ExcelJS 1-based)
+//   row[2] — employee number (stored as JS number by ExcelJS) | "TIENDA TOTAL" | empty (Col C)
+//   row[3] — employee name (Col D)
+//   row[4] — venta bruta / Col E (row.values[5] in ExcelJS)
+//   row[5] — descuento / Col F (row.values[6] in ExcelJS)
+//   row[6] — margin formula string — NOT read; margin calculated from row[4]/row[5]
+// All rows are scanned (no header skip) because SEMANA blocks may appear at any row.
 
 export function parsePosDiscountWorkbook(workbook: XLSX.WorkBook): DiscountParseResult {
   const records: DiscountWeekRecord[] = [];
@@ -59,49 +48,64 @@ export function parsePosDiscountWorkbook(workbook: XLSX.WorkBook): DiscountParse
       raw: true
     }) as unknown[][];
 
-    // Rows 0-4 are title/header area; data starts at index 5
-    const dataRows = rows.slice(5);
-
-    const hasDiscountData = dataRows.some((row) => /SEMANA\s+\d+/i.test(String(row[1] ?? "")));
+    // Detect sheets that contain SEMANA XX blocks (col B = row[1])
+    const hasDiscountData = rows.some((row) => row[1] != null && String(row[1]).trim().toUpperCase().startsWith("SEMANA"));
     if (!hasDiscountData) continue;
 
     sheetsUsed.push(sheetName);
     let currentWeekNumber: number | null = null;
 
-    for (const row of dataRows) {
-      // Col 1: detect "SEMANA XX"
-      const semanaMatch = String(row[1] ?? "").trim().match(/SEMANA\s+(\d+)/i);
-      if (semanaMatch) {
-        currentWeekNumber = parseInt(semanaMatch[1], 10);
+    for (const row of rows) {
+      // Col B (row[1]): detect "SEMANA XX" — use startsWith to handle formats like "SEMANA25", "SEMANA 25", "Semana 25"
+      const col1Text = row[1] != null ? String(row[1]).trim() : "";
+      if (col1Text.toUpperCase().startsWith("SEMANA")) {
+        const numMatch = col1Text.match(/\d+/);
+        if (numMatch) currentWeekNumber = parseInt(numMatch[0], 10);
         continue;
       }
 
       if (currentWeekNumber === null) continue;
 
-      // Col 4: venta bruta — skip rows with no sales data (headers, blank lines, weeks with no data)
-      const gs = numericCell(row[4]);
-      if (gs === 0) continue;
+      // Col E (row[4]): venta bruta — ExcelJS reads numeric cells as JS numbers
+      const ventaBruta = Number(row[4]) || 0;
+      if (ventaBruta === 0) continue;
 
-      const da = numericCell(row[5]);
-      const dm = Math.round((da / gs) * 10_000) / 100;
-      const col2 = normalizeText(row[2]);
+      const descuento = Number(row[5]) || 0;
+      const margen = Math.round((descuento / ventaBruta) * 10_000) / 100;
+
+      // Col C (row[2]): employee number (JS number from ExcelJS) or "TIENDA TOTAL" string
+      const col2 = row[2];
 
       // TIENDA TOTAL row
-      if (col2.includes("TIENDA")) {
-        storeRecords.push({ weekNumber: currentWeekNumber, grossSales: gs, discountAmount: da, discountMargin: dm });
+      if (typeof col2 === "string" && col2.trim().toUpperCase() === "TIENDA TOTAL") {
+        storeRecords.push({ weekNumber: currentWeekNumber, grossSales: ventaBruta, discountAmount: descuento, discountMargin: margen });
         continue;
       }
 
-      // Employee row: col[2] is a numeric employee number (may be stored as number or string)
-      const empNum = Number(String(row[2] ?? "").trim());
-      if (!isNaN(empNum) && empNum > 0) {
+      // Employee row: ExcelJS stores numeric cells as JS numbers
+      if (typeof col2 === "number" && col2 > 0) {
         records.push({
-          employeeNumber: String(empNum),
+          employeeNumber: String(Math.trunc(col2)),
           weekNumber: currentWeekNumber,
-          grossSales: gs,
-          discountAmount: da,
-          discountMargin: dm
+          grossSales: ventaBruta,
+          discountAmount: descuento,
+          discountMargin: margen
         });
+        continue;
+      }
+
+      // Fallback: employee number stored as a numeric string
+      if (typeof col2 === "string") {
+        const numStr = col2.trim();
+        if (/^\d+$/.test(numStr) && Number(numStr) > 0) {
+          records.push({
+            employeeNumber: numStr,
+            weekNumber: currentWeekNumber,
+            grossSales: ventaBruta,
+            discountAmount: descuento,
+            discountMargin: margen
+          });
+        }
       }
     }
   }
