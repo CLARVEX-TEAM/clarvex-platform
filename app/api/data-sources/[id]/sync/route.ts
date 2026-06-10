@@ -453,7 +453,18 @@ function buildScheduleMetrics(
 }
 
 async function importDiscounts(workbook: Parameters<typeof parsePosDiscountWorkbook>[0], storeId: string): Promise<DiscountSyncMetrics> {
+  // DEBUG — remove after confirming sync works
+  console.log("[DISCOUNT-SYNC] Hojas en el workbook:", workbook.SheetNames);
+  for (const sheetName of workbook.SheetNames) {
+    const sheet = workbook.Sheets[sheetName];
+    if (!sheet) continue;
+    const rows = (sheet as unknown[][]).slice(0, 15);
+    console.log(`[DISCOUNT-SYNC] Primeras 15 filas de "${sheetName}":`);
+    rows.forEach((row, i) => console.log(`  fila[${i}]:`, JSON.stringify(row)));
+  }
+
   const parsed = parsePosDiscountWorkbook(workbook);
+  console.log("[DISCOUNT-SYNC] Parser result — records:", parsed.records.length, "storeRecords:", parsed.storeRecords.length, "sheets:", parsed.sheetsUsed, "weeks:", parsed.weekNumbers, "employees:", parsed.employeeNumbers);
   if (parsed.records.length === 0 && parsed.storeRecords.length === 0) {
     throw new Error("No se encontraron datos de descuentos en el archivo. Verifica que el archivo contenga bloques con 'SEMANA XX'.");
   }
