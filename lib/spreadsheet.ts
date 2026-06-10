@@ -48,7 +48,9 @@ function book_append_sheet(workbook: WorkBook, sheet: WorkSheet, name: string) {
 
 function sheet_to_json(sheet: WorkSheet, options?: { header?: number; blankrows?: boolean; defval?: unknown; raw?: boolean }): unknown[][] {
   const defval = options?.defval ?? null;
-  const rows = sheet.map((row) => row.map((value) => value === undefined ? defval : value));
+  // Array.from densifies sparse rows (converts holes to defval). row.map() would skip holes,
+  // leaving them as undefined — which breaks Array.findIndex() since it doesn't skip holes.
+  const rows = sheet.map((row) => Array.from(row, (value) => value === undefined ? defval : value));
   return options?.blankrows === false
     ? rows.filter((row) => row.some((value) => value !== null && value !== ""))
     : rows;
