@@ -1,11 +1,10 @@
 import { NextResponse } from "next/server";
 import { DATA_SOURCE_ROLES } from "@/lib/access-control";
 import { isApiError, requireSession } from "@/lib/api";
-import { encodeSyncLogMessage, getNextSyncAt, serializeDataSource, type DiscountSyncMetrics, type KpiSyncMetrics, type ScheduleSyncMetrics } from "@/lib/data-source";
+import { encodeSyncLogMessage, getNextSyncAt, serializeDataSource, type KpiSyncMetrics, type ScheduleSyncMetrics } from "@/lib/data-source";
 import { downloadExcelWorkbook, summarizeWorkbook } from "@/lib/excel-proxy";
 import { buildUserByEmployeeNumber } from "@/lib/employee-match";
 import { parseKpiWorkbook } from "@/lib/kpi-parser";
-import { parsePosDiscountWorkbook } from "@/lib/pos-discount-parser";
 import { prisma } from "@/lib/prisma";
 import { parseScheduleWorkbook } from "@/lib/schedule-parser";
 
@@ -48,25 +47,18 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
     const kpiMetrics = source.type === "KPIS"
       ? await importKpis(excelWorkbook, session.storeId)
       : undefined;
-    const discountMetrics = source.type === "DESCUENTOS_POS"
-      ? await importDiscounts(excelWorkbook, session.storeId)
-      : undefined;
-    const syncMetrics = scheduleMetrics ?? kpiMetrics ?? discountMetrics;
+    const syncMetrics = scheduleMetrics ?? kpiMetrics;
     const completedAt = new Date();
     const nextSyncAt = getNextSyncAt(source.frequency, completedAt);
     const successMessage = scheduleMetrics
       ? `Horarios sincronizados: ${scheduleMetrics.recordsCreated} creados, ${scheduleMetrics.recordsUpdated} actualizados, ${scheduleMetrics.errors.length} errores.`
       : kpiMetrics
         ? `${kpiMetrics.recordsCreated + kpiMetrics.recordsUpdated} registros sincronizados`
-      : discountMetrics
-        ? `Descuentos POS sincronizados: ${discountMetrics.recordsUpdated} registros actualizados, ${discountMetrics.weekNumbers.length} semanas.`
       : "Sincronizacion completada";
     const recordsProcessed = kpiMetrics
       ? kpiMetrics.recordsCreated + kpiMetrics.recordsUpdated
       : scheduleMetrics
         ? scheduleMetrics.recordsProcessed
-      : discountMetrics
-        ? discountMetrics.recordsUpdated
       : workbook.recordsProcessed;
     await prisma.syncLog.update({
       where: { id: log.id },
@@ -74,11 +66,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
         status: "SUCCESS",
         message: encodeSyncLogMessage(
           successMessage,
-          kpiMetrics
-            ? workbook.sheets.filter((sheet) => sheet.name.trim().toLocaleUpperCase("es-MX") === kpiMetrics.sheetUsed.toLocaleUpperCase("es-MX"))
-            : discountMetrics
-              ? workbook.sheets.filter((sheet) => discountMetrics.sheetsUsed.map((s) => s.toLocaleUpperCase("es-MX")).includes(sheet.name.trim().toLocaleUpperCase("es-MX")))
-              : workbook.sheets,
+          kpiMetrics ? workbook.sheets.filter((sheet) => sheet.name.trim().toLocaleUpperCase("es-MX") === kpiMetrics.sheetUsed.toLocaleUpperCase("es-MX")) : workbook.sheets,
           syncMetrics
         ),
         recordsProcessed
@@ -100,13 +88,6 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
         errores: scheduleMetrics.errors,
         empleadosNoEncontrados: scheduleMetrics.employeesNotFound,
         valoresDesconocidos: scheduleMetrics.unknownValues
-      } : discountMetrics ? {
-        hojaUsada: discountMetrics.sheetsUsed,
-        semanasDetectadas: discountMetrics.weekNumbers,
-        empleadosProcesados: discountMetrics.employeesFound,
-        registrosActualizados: discountMetrics.recordsUpdated,
-        empleadosNoEncontrados: discountMetrics.employeesNotFound,
-        errores: discountMetrics.errors
       } : kpiMetrics ? {
         hojaUsada: kpiMetrics.sheetUsed,
         semanasDetectadas: kpiMetrics.weeksDetected,
@@ -449,93 +430,5 @@ function buildScheduleMetrics(
     errors,
     employeesNotFound,
     unknownValues: parsed.unknownValues
-  };
-}
-
-async function importDiscounts(workbook: Parameters<typeof parsePosDiscountWorkbook>[0], storeId: string): Promise<DiscountSyncMetrics> {
-  const parsed = parsePosDiscountWorkbook(workbook);
-  if (parsed.records.length === 0 && parsed.storeRecords.length === 0) {
-    throw new Error("No se encontraron datos de descuentos en el archivo. Verifica que el archivo contenga bloques con 'SEMANA XX'.");
-  }
-
-  const users = parsed.employeeNumbers.length > 0
-    ? await prisma.user.findMany({
-        where: { storeId, OR: [{ employeeNumber: { in: parsed.employeeNumbers } }, { employeeNumberAliases: { some: { employeeNumber: { in: parsed.employeeNumbers } } } }] },
-        select: { id: true, employeeNumber: true, employeeNumberAliases: { select: { employeeNumber: true } } }
-      })
-    : [];
-  const userByEmployee = buildUserByEmployeeNumber(users);
-  const employeesNotFound = parsed.employeeNumbers.filter((n) => !userByEmployee.has(n));
-
-  const weekNumbers = parsed.weekNumbers;
-  const userIds = Array.from(new Set(
-    parsed.records.flatMap((r) => { const uid = userByEmployee.get(r.employeeNumber); return uid ? [uid] : []; })
-  ));
-
-  // Fetch all KPI records for these users and week numbers
-  const kpiRecords = userIds.length > 0 && weekNumbers.length > 0
-    ? await prisma.kpi.findMany({
-        where: { storeId, userId: { in: userIds }, weekNumber: { in: weekNumbers } },
-        select: { id: true, userId: true, weekNumber: true, date: true },
-        orderBy: { date: "asc" }
-      })
-    : [];
-
-  // Group by userId + weekNumber
-  const kpiByUserWeek = new Map<string, typeof kpiRecords>();
-  for (const record of kpiRecords) {
-    if (record.weekNumber === null) continue;
-    const key = `${record.userId}:${record.weekNumber}`;
-    kpiByUserWeek.set(key, [...(kpiByUserWeek.get(key) ?? []), record]);
-  }
-
-  const errors: string[] = [];
-  let recordsUpdated = 0;
-
-  for (const discountRecord of parsed.records) {
-    const userId = userByEmployee.get(discountRecord.employeeNumber);
-    if (!userId) continue;
-
-    const key = `${userId}:${discountRecord.weekNumber}`;
-    const weekKpis = kpiByUserWeek.get(key) ?? [];
-    if (weekKpis.length === 0) {
-      errors.push(`Empleado ${discountRecord.employeeNumber}, semana ${discountRecord.weekNumber}: sin registros KPI para esa semana.`);
-      continue;
-    }
-
-    const [anchor, ...rest] = weekKpis;
-    try {
-      await prisma.kpi.update({
-        where: { id: anchor.id },
-        data: {
-          grossSales: discountRecord.grossSales,
-          discountAmount: discountRecord.discountAmount,
-          discountMargin: discountRecord.discountMargin
-        }
-      });
-      recordsUpdated += 1;
-
-      // Null out any previous discount data on remaining records of the same week
-      const restWithData = rest.filter((r) => r.id !== anchor.id);
-      if (restWithData.length > 0) {
-        await prisma.kpi.updateMany({
-          where: { id: { in: restWithData.map((r) => r.id) } },
-          data: { grossSales: null, discountAmount: null, discountMargin: null }
-        });
-      }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Error desconocido";
-      errors.push(`Empleado ${discountRecord.employeeNumber}, semana ${discountRecord.weekNumber}: ${message}`);
-    }
-  }
-
-  return {
-    sheetsUsed: parsed.sheetsUsed,
-    weekNumbers: parsed.weekNumbers,
-    employeesFound: users.length,
-    recordsProcessed: parsed.records.length,
-    recordsUpdated,
-    employeesNotFound,
-    errors
   };
 }
