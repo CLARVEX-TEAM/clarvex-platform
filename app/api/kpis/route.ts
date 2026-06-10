@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
   if (!selectedDate) return NextResponse.json({ error: "date debe usar formato YYYY-MM-DD." }, { status: 400 });
   const manager = session.role === "GERENTE" || session.role === "SUBGERENTE";
   const userFilter = manager ? {} : { userId: session.userId };
-  const [availableWeekRows, legacyWeekRows, latestKpiSource] = await Promise.all([
+  const [availableWeekRows, legacyWeekRows, latestKpiSource, discountSource] = await Promise.all([
     prisma.kpi.findMany({
       where: { storeId: session.storeId, ...userFilter, weekNumber: { not: null }, weekStart: { not: null }, weekEnd: { not: null } },
       distinct: ["weekStart", "weekNumber"],
@@ -35,8 +35,10 @@ export async function GET(request: NextRequest) {
     prisma.dataSource.findFirst({
       where: { storeId: session.storeId, type: "KPIS" },
       include: { syncLogs: { where: { status: "SUCCESS" }, orderBy: { createdAt: "desc" }, take: 1 } }
-    })
+    }),
+    prisma.dataSource.findFirst({ where: { storeId: session.storeId, type: "DESCUENTOS_POS" } })
   ]);
+  const hasDiscountSource = discountSource !== null;
   const persistedWeeks = availableWeekRows.flatMap((week) => week.weekNumber !== null && week.weekStart && week.weekEnd ? [{ weekNumber: week.weekNumber, weekStart: week.weekStart, weekEnd: week.weekEnd }] : []);
   const latestDetails = latestKpiSource?.syncLogs[0] ? decodeSyncLogMessage(latestKpiSource.syncLogs[0].message).details : null;
   const syncedWeeks = isKpiSyncMetrics(latestDetails) ? latestDetails.weeksDetected.map((week) => ({
@@ -52,7 +54,7 @@ export async function GET(request: NextRequest) {
   const start = selectedWeek?.weekStart ?? selectedRetailMonth?.start ?? selectedDate;
   const end = selectedWeek?.weekEnd ?? selectedRetailMonth?.end ?? selectedDate;
 
-  const [allRows, rules] = await Promise.all([
+  const [allRows, rules, latestDiscountAnchor] = await Promise.all([
     prisma.kpi.findMany({
       where: {
         storeId: session.storeId,
@@ -66,6 +68,11 @@ export async function GET(request: NextRequest) {
     prisma.commissionRule.findMany({
       where: { storeId: session.storeId, ...(manager ? {} : { OR: [{ role: session.role }, { role: null }] }) },
       orderBy: [{ active: "desc" }, { role: "asc" }, { minAchievement: "asc" }]
+    }),
+    prisma.kpi.findFirst({
+      where: { storeId: session.storeId, ...(!manager ? { userId: session.userId } : {}), discountAmount: { not: null }, weekNumber: { not: null } },
+      orderBy: { date: "desc" },
+      select: { weekNumber: true }
     })
   ]);
   const rows = manager ? allRows : allRows.filter((row) => row.userId === session.userId);
@@ -97,6 +104,19 @@ export async function GET(request: NextRequest) {
     ? Array.from(workingKeys).filter((key) => key.startsWith(`${session.userId}:`)).length
     : null;
 
+  const currentDiscountMargin = manager ? store?.discountMargin : own?.discountMargin;
+  const latestDiscountWeekNum = latestDiscountAnchor?.weekNumber ?? null;
+  let latestDiscountWeek: { weekNumber: number; margin: number | null } | null = null;
+  if (latestDiscountWeekNum !== null && currentDiscountMargin === null) {
+    const weekRows = await prisma.kpi.findMany({
+      where: { storeId: session.storeId, ...(!manager ? { userId: session.userId } : {}), weekNumber: latestDiscountWeekNum, discountAmount: { not: null } },
+      select: { grossSales: true, discountAmount: true }
+    });
+    const totalGross = weekRows.reduce((t, r) => t + (r.grossSales ? Number(r.grossSales) : 0), 0);
+    const totalDiscount = weekRows.reduce((t, r) => t + (r.discountAmount ? Number(r.discountAmount) : 0), 0);
+    latestDiscountWeek = { weekNumber: latestDiscountWeekNum, margin: totalGross > 0 ? Math.round((totalDiscount / totalGross) * 10_000) / 100 : null };
+  }
+
   return NextResponse.json({
     period,
     selectedDate: periodDateKey(selectedDate),
@@ -117,6 +137,8 @@ export async function GET(request: NextRequest) {
         ? item
         : { ...item, sales: 0, goal: 0, transactions: 0, pieces: 0, upt: null, aur: null, ept: null, grossSales: null, discountAmount: null, discountMargin: null, discountLimit: null, commissionAmount: 0, commissionPercent: 0 }
       ),
+    hasDiscountSource,
+    latestDiscountWeek,
     commissionRules: rules.map((rule) => ({
       id: rule.id, storeId: rule.storeId, role: rule.role,
       minSales: Number(rule.minSales), maxSales: rule.maxSales === null ? null : Number(rule.maxSales),
