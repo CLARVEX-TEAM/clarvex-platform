@@ -34,14 +34,28 @@ export async function downloadExcelWorkbook(sourceUrl: string | null) {
 
   const workerUrl = buildWorkerDownloadUrl(workerBaseUrl, sourceUrl);
 
-  const response = await fetch(workerUrl, {
-    method: "GET",
-    cache: "no-store",
-    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS)
-  });
+  console.log("[EXCEL-PROXY] Llamando al Worker:", workerUrl);
+  console.log("[EXCEL-PROXY] Timeout configurado:", REQUEST_TIMEOUT_MS, "ms");
+
+  let response: Response;
+  try {
+    response = await fetch(workerUrl, {
+      method: "GET",
+      cache: "no-store",
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS)
+    });
+  } catch (fetchError) {
+    const reason = fetchError instanceof Error ? fetchError.message : String(fetchError);
+    console.log("[EXCEL-PROXY] fetch() lanzó excepción:", reason);
+    throw new Error(`No se pudo conectar con el Worker: ${reason}`);
+  }
+
+  console.log("[EXCEL-PROXY] Worker response status:", response.status);
+  console.log("[EXCEL-PROXY] Worker response headers:", Object.fromEntries(response.headers.entries()));
 
   if (!response.ok) {
     const workerError = await response.text();
+    console.log("[EXCEL-PROXY] Worker response body (error):", workerError);
     throw new Error(workerError || `El Worker respondio con HTTP ${response.status}.`);
   }
 
@@ -52,6 +66,7 @@ export async function downloadExcelWorkbook(sourceUrl: string | null) {
 
   if (!isExcel) {
     const workerText = await response.text();
+    console.log("[EXCEL-PROXY] Worker response body (content-type invalido):", workerText);
     throw new Error(workerText || `El Worker no devolvio un archivo Excel valido (content-type: ${contentType || "desconocido"}).`);
   }
 
