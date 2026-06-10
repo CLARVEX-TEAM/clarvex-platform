@@ -9,6 +9,28 @@
   --glass: rgb(255 255 255 / 0.82);
   --glass-border: #E2E8F0;
   --primary: #2563EB;
+  /* Design tokens — RGB channels para soportar opacidad con Tailwind */
+  --color-void: 245 248 255;
+  --color-panel: 248 250 252;
+  --color-card: 255 255 255;
+  --color-line: 226 232 240;
+  --color-ink: 15 23 42;
+  --color-muted: 100 116 139;
+}
+
+.dark {
+  color-scheme: dark;
+  --bg: #0f1729;
+  --surface: rgb(26 37 64 / 0.94);
+  --glass: rgb(26 37 64 / 0.82);
+  --glass-border: #2a3a5c;
+  --primary: #3B82F6;
+  --color-void: 15 23 41;
+  --color-panel: 26 37 64;
+  --color-card: 26 37 64;
+  --color-line: 42 58 92;
+  --color-ink: 240 244 255;
+  --color-muted: 136 153 187;
 }
 
 * {
@@ -25,7 +47,7 @@ body {
   margin: 0;
   overflow-x: hidden;
   background: var(--bg);
-  color: #0F172A;
+  color: rgb(var(--color-ink));
   font-family: Geist, Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   font-feature-settings: "tnum";
   text-rendering: geometricPrecision;
@@ -82,9 +104,15 @@ body > * {
 [class*="border-white/"] {
   border-color: #E2E8F0 !important;
 }
+.dark [class*="border-white/"] {
+  border-color: #2a3a5c !important;
+}
 
 [class*="divide-white/"] > :not([hidden]) ~ :not([hidden]) {
   border-color: #E2E8F0 !important;
+}
+.dark [class*="divide-white/"] > :not([hidden]) ~ :not([hidden]) {
+  border-color: #2a3a5c !important;
 }
 
 button,
@@ -156,6 +184,12 @@ select {
   transform: translateY(1px) scale(0.99);
 }
 
+.dark .liquid-glass::before {
+  background:
+    linear-gradient(180deg, rgb(255 255 255 / 0.05), transparent),
+    linear-gradient(90deg, transparent, rgb(59 130 246 / 0.07) 34%, transparent 72%);
+}
+
 .premium-hero {
   position: relative;
   overflow: hidden;
@@ -175,6 +209,20 @@ select {
   box-shadow: 0 10px 28px rgb(37 99 235 / 0.1);
 }
 
+.dark .premium-hero,
+.dark .manager-sales-hero {
+  background:
+    radial-gradient(circle at 84% 8%, rgb(59 130 246 / 0.12), transparent 44%),
+    linear-gradient(145deg, #1a2540 0%, #162035 55%, #0f1729 100%) !important;
+  border-color: #2a3a5c !important;
+  box-shadow: 0 10px 28px rgb(0 0 0 / 0.25) !important;
+}
+
+.dark .premium-hero h2,
+.dark .manager-sales-hero h2 {
+  color: rgb(var(--color-ink));
+}
+
 .tab-glass-shell {
   position: relative;
   border-radius: 999px;
@@ -187,11 +235,30 @@ select {
   -webkit-backdrop-filter: blur(18px);
 }
 
+.dark .tab-glass-shell {
+  background:
+    linear-gradient(180deg, rgb(26 37 64 / 0.96), rgb(15 23 41 / 0.9)),
+    #1a2540;
+  border-color: #2a3a5c;
+  box-shadow: 0 6px 16px rgb(0 0 0 / 0.2);
+}
+
 @supports not (backdrop-filter: blur(1px)) {
   .liquid-glass,
   .tab-glass-shell {
     background: #FFFFFF;
   }
+  .dark .liquid-glass,
+  .dark .tab-glass-shell {
+    background: #1a2540;
+  }
+}
+
+/* Ambient blobs — menos visibles en dark mode */
+.dark .ambient-blob-one,
+.dark .ambient-blob-two,
+.dark .ambient-blob-three {
+  opacity: 0.06;
 }
 
 @media (prefers-reduced-motion: reduce) {

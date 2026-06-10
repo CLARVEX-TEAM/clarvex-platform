@@ -4,6 +4,7 @@ import { PwaRegister } from "@/components/PwaRegister";
 import { SplashScreen } from "@/components/SplashScreen";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { PageTransition } from "@/components/PageTransition";
+import { ThemeProvider } from "@/components/ThemeProvider";
 
 export const metadata: Metadata = {
   title: "CLARVEX Team",
@@ -34,12 +35,14 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="es">
+    <html lang="es" suppressHydrationWarning>
       <body>
-        <AnimatedBackground />
-        <SplashScreen />
-        <PwaRegister />
-        <PageTransition>{children}</PageTransition>
+        <ThemeProvider>
+          <AnimatedBackground />
+          <SplashScreen />
+          <PwaRegister />
+          <PageTransition>{children}</PageTransition>
+        </ThemeProvider>
       </body>
     </html>
   );

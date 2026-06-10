@@ -9,6 +9,7 @@ import { fetchAppData, type AppData } from "@/lib/app-data";
 import { completion, money } from "@/lib/format";
 import type { User } from "@/lib/types";
 import { AppFrame, AppHeader, Badge, BottomNav, Card, ProfileAvatar, ProgressBar, ProgressRing, QuickLink, StatCard, priorityTone } from "@/components/ui";
+import { useTheme } from "@/components/ThemeProvider";
 
 const cardAnim = (delay: number) => ({
   initial: { opacity: 0, y: 16 },
@@ -18,6 +19,7 @@ const cardAnim = (delay: number) => ({
 
 export default function ManagerDashboard() {
   const router = useRouter();
+  const { isDark } = useTheme();
   const [data, setData] = useState<AppData | null>(null);
   const [manager, setManager] = useState<User | null>(null);
 
@@ -84,7 +86,7 @@ export default function ManagerDashboard() {
         <motion.section
           {...cardAnim(0.10)}
           className="manager-sales-hero mb-3 rounded-[28px] border border-volt/25 px-4 py-3.5"
-          style={{
+          style={isDark ? undefined : {
             background: "radial-gradient(circle at 88% 10%, rgb(14 165 233 / 0.22), transparent 44%), linear-gradient(145deg, #FFFFFF 0%, #EFF6FF 55%, #DBEAFE 82%, #BFDBFE 100%)",
             boxShadow: "0 12px 32px rgb(37 99 235 / 0.13)"
           }}
@@ -155,7 +157,7 @@ export default function ManagerDashboard() {
         <motion.div {...cardAnim(0.36)}>
           <Card className="mt-3 p-3.5">
             <div className="flex items-center gap-3">
-              <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-blue-50 text-volt">
+              <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-blue-50 dark:bg-[#1a2540] text-volt">
                 <Database size={20} />
               </span>
               <div className="min-w-0 flex-1">

@@ -1,17 +1,19 @@
 "use client";
 
 import { ChangeEvent, useEffect, useRef, useState } from "react";
-import { Camera, CheckCircle2, Fingerprint, ImageUp, Store, UserRound } from "lucide-react";
+import { Camera, CheckCircle2, Fingerprint, ImageUp, Moon, Store, Sun, UserRound } from "lucide-react";
 import { startRegistration } from "@simplewebauthn/browser";
 import { getBiometricRegistrationOptions, getSession, registerBiometric } from "@/lib/auth";
 import type { User } from "@/lib/types";
 import { AppFrame, AppHeader, Badge, BottomNav, Button, Card, ProfileAvatar } from "@/components/ui";
+import { useTheme, type Theme } from "@/components/ThemeProvider";
 
 const roleLabels = { GERENTE: "Gerente", SUBGERENTE: "Subgerente", ASESOR: "Asesor" } as const;
 const acceptedTypes = ["image/jpeg", "image/png", "image/webp"];
 const maxBytes = 5 * 1024 * 1024;
 
 export default function ProfilePage() {
+  const { theme, setTheme, isDark } = useTheme();
   const inputRef = useRef<HTMLInputElement>(null);
   const [user, setUser] = useState<User | null>(null);
   const [file, setFile] = useState<File | null>(null);
@@ -99,7 +101,7 @@ export default function ProfilePage() {
           <>
             <section className="mb-3 flex flex-col items-center px-4 py-5 text-center">
               <div className="relative">
-                <ProfileAvatar name={user.name} photoUrl={previewUrl ?? user.photoUrl} size="lg" className="size-28 rounded-full ring-4 ring-white" />
+                <ProfileAvatar name={user.name} photoUrl={previewUrl ?? user.photoUrl} size="lg" className="size-28 rounded-full ring-4 ring-white dark:ring-[#2a3a5c]" />
                 <span className="absolute bottom-0 right-0 grid size-9 place-items-center rounded-full bg-volt text-white ring-4 ring-white"><Camera size={16} /></span>
               </div>
               <h2 className="mt-3 text-xl font-black text-ink">{user.name}</h2>
@@ -112,7 +114,33 @@ export default function ProfilePage() {
             </Card>
 
             <Card className="mb-3 p-3.5">
-              <div className="flex items-center gap-3"><span className="grid size-10 place-items-center rounded-2xl bg-blue-50 text-volt"><ImageUp size={19} /></span><div><h2 className="font-black text-ink">Foto de perfil</h2><p className="text-xs text-muted">JPG, PNG o WEBP. Maximo 5 MB.</p></div></div>
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <span className="grid size-10 place-items-center rounded-2xl bg-slate-100 dark:bg-[#1a2540] text-muted">
+                    {isDark ? <Moon size={19} /> : <Sun size={19} />}
+                  </span>
+                  <div>
+                    <h2 className="font-black text-ink">Apariencia</h2>
+                    <p className="text-xs text-muted">Tema de la aplicación</p>
+                  </div>
+                </div>
+                <div className="flex gap-1.5">
+                  {(["light", "system", "dark"] as Theme[]).map((t) => (
+                    <button
+                      key={t}
+                      type="button"
+                      onClick={() => setTheme(t)}
+                      className={`rounded-xl px-3 py-1.5 text-[11px] font-black transition ${theme === t ? "bg-volt text-white shadow-sm" : "bg-slate-100 dark:bg-[#1a2540] text-muted"}`}
+                    >
+                      {t === "light" ? "Claro" : t === "dark" ? "Oscuro" : "Auto"}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </Card>
+
+            <Card className="mb-3 p-3.5">
+              <div className="flex items-center gap-3"><span className="grid size-10 place-items-center rounded-2xl bg-blue-50 dark:bg-[#1a2540] text-volt"><ImageUp size={19} /></span><div><h2 className="font-black text-ink">Foto de perfil</h2><p className="text-xs text-muted">JPG, PNG o WEBP. Maximo 5 MB.</p></div></div>
               <input ref={inputRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={selectPhoto} className="sr-only" />
               <div className="mt-4 grid grid-cols-2 gap-2">
                 <Button type="button" variant="ghost" onClick={() => inputRef.current?.click()} disabled={saving}>{user.photoUrl ? "Cambiar foto" : "Elegir foto"}</Button>
@@ -125,12 +153,12 @@ export default function ProfilePage() {
 
             <Card className="p-3.5">
               <div className="flex items-center gap-3">
-                <span className="grid size-10 place-items-center rounded-2xl bg-violet-50 text-purple"><Fingerprint size={19} /></span>
+                <span className="grid size-10 place-items-center rounded-2xl bg-violet-50 dark:bg-[#1a2540] text-purple"><Fingerprint size={19} /></span>
                 <div><h2 className="font-black text-ink">Acceso biometrico</h2><p className="text-xs text-muted">Face ID o huella dactilar para entrar sin PIN.</p></div>
               </div>
               {user.biometricEnabled ? (
-                <div className="mt-4 flex items-center justify-between rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3">
-                  <span className="text-sm font-semibold text-emerald-700">Face ID / Huella activos</span>
+                <div className="mt-4 flex items-center justify-between rounded-2xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/30 px-4 py-3">
+                  <span className="text-sm font-semibold text-emerald-700 dark:text-emerald-400">Face ID / Huella activos</span>
                   <Badge tone="done">activo</Badge>
                 </div>
               ) : (
@@ -139,7 +167,7 @@ export default function ProfilePage() {
                   <Button type="button" variant="primary" onClick={() => void handleBiometricSetup()} disabled={biometricBusy}>
                     {biometricBusy ? "Activando..." : "Activar Face ID / Huella"}
                   </Button>
-                  {biometricMessage ? <p className="flex items-center gap-2 text-sm font-semibold text-emerald-700"><CheckCircle2 size={16} />{biometricMessage}</p> : null}
+                  {biometricMessage ? <p className="flex items-center gap-2 text-sm font-semibold text-emerald-700 dark:text-emerald-400"><CheckCircle2 size={16} />{biometricMessage}</p> : null}
                   {biometricError ? <p className="text-sm font-semibold text-rose-700">{biometricError}</p> : null}
                 </div>
               )}
