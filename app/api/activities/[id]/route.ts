@@ -26,7 +26,6 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     },
     include: {
       plan: { select: { userId: true } },
-      evidences: { select: { id: true }, take: 1 },
     },
   });
 
@@ -44,7 +43,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       },
     });
 
-    if (parsed.data.completed && activity.evidences.length > 0) {
+    if (parsed.data.completed && session.role === "ASESOR") {
       const managers = await tx.user.findMany({
         where: {
           storeId: session.storeId,
@@ -69,8 +68,8 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
           storeId: session.storeId,
           userId,
           type: "TASK_COMPLETED" as const,
-          title: "Actividad completada con evidencia",
-          body: activity.title,
+          title: "Actividad completada",
+          body: `${session.name} completó "${activity.title}"`,
         })),
       );
     }
@@ -78,7 +77,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     return result;
   });
   if (pushRecipients.length > 0) {
-    dispatchPushToUsers(pushRecipients, { title: "Actividad completada con evidencia", body: activity.title, tag: "actividad-completada" }).catch(() => undefined);
+    dispatchPushToUsers(pushRecipients, { title: "✅ Actividad completada", body: `${session.name} completó "${activity.title}"`, tag: "actividad-completada" }).catch(() => undefined);
   }
 
   return NextResponse.json({

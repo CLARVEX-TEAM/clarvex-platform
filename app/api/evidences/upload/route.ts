@@ -73,7 +73,7 @@ export async function POST(request: Request) {
       });
       const recipients = new Set<string>();
       if (resource.recipientId !== session.userId) recipients.add(resource.recipientId);
-      if (resource.kind === "task") {
+      if (resource.kind === "task" || resource.kind === "pending") {
         const managers = await tx.user.findMany({ where: { storeId: session.storeId, role: { in: ["GERENTE", "SUBGERENTE"] }, id: { not: session.userId } }, select: { id: true } });
         managers.forEach((m) => recipients.add(m.id));
       }
@@ -89,7 +89,7 @@ export async function POST(request: Request) {
     });
 
     // Fire-and-forget push after transaction commits
-    dispatchPushToUsers(evidence.recipientList, { title: "Nueva evidencia", body: resource.title, tag: "evidencia" }).catch(() => undefined);
+    dispatchPushToUsers(evidence.recipientList, { title: "📎 Nueva evidencia", body: `${session.name} subió evidencia en "${resource.title}"`, tag: "evidencia" }).catch(() => undefined);
 
     return NextResponse.json({ evidence: serializeEvidence(evidence.created) }, { status: 201 });
   } catch (error) {
