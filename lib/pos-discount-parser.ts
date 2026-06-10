@@ -45,9 +45,17 @@ export function parsePosDiscountWorkbook(workbook: XLSX.WorkBook): ParsedDiscoun
     raw: true
   }) as unknown[][];
 
+  console.log(`[DISCOUNT-SYNC] Hoja: "${sheetName}" | Total filas: ${allRows.length}`);
+  const preview = allRows.slice(0, 20);
+  preview.forEach((row, i) => {
+    if (Array.isArray(row) && row.some((v) => v != null)) {
+      console.log(`[DISCOUNT-SYNC] fila[${i}]:`, JSON.stringify(row));
+    }
+  });
+
   const hasDiscountData = allRows.some((row) => {
-    const col1 = row[1];
-    return col1 != null && String(col1).trim().toUpperCase().startsWith("SEMANA");
+    if (!Array.isArray(row)) return false;
+    return row.some((col) => col != null && String(col).trim().toUpperCase().startsWith("SEMANA"));
   });
   if (!hasDiscountData) {
     throw new Error(`La hoja "${sheetName}" no contiene bloques SEMANA. Verifica el formato del archivo.`);
