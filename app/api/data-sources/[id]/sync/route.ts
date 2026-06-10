@@ -127,6 +127,10 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
     });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : "No se pudo completar la sincronizacion.";
+    console.error("[SYNC] Error durante sincronizacion de tipo", source.type, ":", errorMessage);
+    if (error instanceof Error && error.stack) {
+      console.error("[SYNC] Stack trace:", error.stack);
+    }
     await Promise.allSettled([
       prisma.syncLog.update({
         where: { id: log.id },
@@ -346,7 +350,19 @@ function buildKpiMetrics(
 }
 
 async function importSchedules(workbook: Parameters<typeof parseScheduleWorkbook>[0], storeId: string): Promise<ScheduleSyncMetrics> {
-  const parsed = parseScheduleWorkbook(workbook);
+  console.log("[SCHEDULE-SYNC] Hojas disponibles en el workbook:", workbook.SheetNames);
+  let parsed: ReturnType<typeof parseScheduleWorkbook>;
+  try {
+    parsed = parseScheduleWorkbook(workbook);
+  } catch (parseError) {
+    const msg = parseError instanceof Error ? parseError.message : String(parseError);
+    console.error("[SCHEDULE-SYNC] parseScheduleWorkbook lanzó excepción:", msg);
+    if (parseError instanceof Error && parseError.stack) {
+      console.error("[SCHEDULE-SYNC] Stack:", parseError.stack);
+    }
+    throw parseError;
+  }
+  console.log("[SCHEDULE-SYNC] Semanas detectadas:", parsed.weeks.length, "| Empleados:", parsed.employeeNumbers.length, "| Registros:", parsed.records.length);
   if (parsed.weeks.length === 0) {
     throw new Error("No se detectaron bloques semanales validos en el archivo de horarios.");
   }
