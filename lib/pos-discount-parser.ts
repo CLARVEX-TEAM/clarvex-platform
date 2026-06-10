@@ -62,48 +62,59 @@ export function parsePosDiscountWorkbook(workbook: XLSX.WorkBook): DiscountParse
 
     sheetsUsed.push(sheetName);
     let currentWeekNumber: number | null = null;
-    // After detecting SEMANA row (consumed via continue), skip the next 1 header row
-    // (the "VENTA BRUTA | DESCUENTO | MARGEN DESC %" row) before reading data.
-    let headerRowsRemaining = 0;
+    let grossSalesCol = 2;
+    let discountCol = 3;
+    let marginCol = 4;
 
     for (const row of rows) {
-      // New week block: row starts with "SEMANA XX" (also has # DE EMPLEADO, NOMBRE)
+      if (!row.some((cell) => cell !== null && cell !== "")) continue;
+
       const weekNum = findWeekNumber(row);
       if (weekNum !== null) {
         currentWeekNumber = weekNum;
-        headerRowsRemaining = 1;
+        grossSalesCol = 2;
+        discountCol = 3;
+        marginCol = 4;
         continue;
       }
 
       if (currentWeekNumber === null) continue;
 
-      // Skip empty rows without decrementing the header counter
-      if (!row.some((cell) => cell !== null && cell !== "")) continue;
+      const normalized = row.map(normalizeText);
 
-      // Skip the VENTA BRUTA / DESCUENTO / MARGEN DESC % header row
-      if (headerRowsRemaining > 0) {
-        headerRowsRemaining -= 1;
+      // Detect column positions from header row
+      const vbIdx = normalized.findIndex((t) => t === "VENTA BRUTA" || t.startsWith("VENTA BRUTA"));
+      if (vbIdx >= 0) {
+        grossSalesCol = vbIdx;
+        discountCol = vbIdx + 1;
+        marginCol = vbIdx + 2;
         continue;
       }
+
+      // Skip header-only rows (no numeric data in expected columns)
+      if (normalized.some((t) => t === "# DE EMPLEADO" || t === "NOMBRE" || t === "DESCUENTO" || t.includes("MARGEN DESC"))) continue;
 
       const firstCell = String(row[0] ?? "").trim();
       const firstNorm = normalizeText(firstCell);
 
-      // TIENDA TOTAL: col[0]="TIENDA TOTAL", col[1]=grossSales, col[2]=discount
+      // TIENDA TOTAL row
       if (firstNorm.includes("TIENDA")) {
-        const gs = numericCell(row[1]);
-        const da = numericCell(row[2]);
+        let gs = numericCell(row[grossSalesCol]);
+        let da = numericCell(row[discountCol]);
+        // If merged cell pushed data one column left
+        if (gs === 0 && da === 0) {
+          gs = numericCell(row[grossSalesCol - 1]);
+          da = numericCell(row[discountCol - 1]);
+        }
         const dm = gs > 0 ? Math.round((da / gs) * 10_000) / 100 : 0;
         storeRecords.push({ weekNumber: currentWeekNumber, grossSales: gs, discountAmount: da, discountMargin: dm });
         continue;
       }
 
-      // Employee row: col[0]=employeeNumber, col[2]=grossSales, col[3]=discount
-      // Use !isNaN to identify numeric employee numbers (may come as number or string)
-      const firstNum = Number(firstCell);
-      if (!isNaN(firstNum) && firstNum > 0) {
-        const gs = numericCell(row[2]);
-        const da = numericCell(row[3]);
+      // Employee row: first cell is a 4-6 digit employee number
+      if (/^\d{4,6}$/.test(firstCell)) {
+        const gs = numericCell(row[grossSalesCol]);
+        const da = numericCell(row[discountCol]);
         const dm = gs > 0 ? Math.round((da / gs) * 10_000) / 100 : 0;
         records.push({
           employeeNumber: firstCell,
