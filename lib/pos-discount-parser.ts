@@ -23,6 +23,16 @@ export type DiscountParseResult = {
   sheetsUsed: string[];
 };
 
+// Col layout (0-indexed):
+//   0: always empty
+//   1: "SEMANA XX" header, or empty
+//   2: employee number (int) | "TIENDA TOTAL" | empty
+//   3: employee name | empty
+//   4: venta bruta (number)
+//   5: descuento (number)
+//   6: formula string — NOT read; margin is calculated from cols 4 and 5
+// Data starts at row index 5 (row 6 in Excel).
+
 function normalizeText(value: unknown): string {
   return String(value ?? "").trim().toUpperCase().replace(/\s+/g, " ");
 }
@@ -31,14 +41,6 @@ function numericCell(value: unknown): number {
   if (value === null || value === undefined) return 0;
   const n = typeof value === "number" ? value : parseFloat(String(value).replace(/[^\d.()-]/g, ""));
   return Number.isFinite(n) ? n : 0;
-}
-
-function findWeekNumber(row: unknown[]): number | null {
-  for (const cell of row) {
-    const match = normalizeText(cell).match(/SEMANA\s+(\d+)/);
-    if (match) return parseInt(match[1], 10);
-  }
-  return null;
 }
 
 export function parsePosDiscountWorkbook(workbook: XLSX.WorkBook): DiscountParseResult {
@@ -57,56 +59,44 @@ export function parsePosDiscountWorkbook(workbook: XLSX.WorkBook): DiscountParse
       raw: true
     }) as unknown[][];
 
-    const hasDiscountData = rows.some((row) => findWeekNumber(row) !== null);
+    // Rows 0-4 are title/header area; data starts at index 5
+    const dataRows = rows.slice(5);
+
+    const hasDiscountData = dataRows.some((row) => /SEMANA\s+\d+/i.test(String(row[1] ?? "")));
     if (!hasDiscountData) continue;
 
     sheetsUsed.push(sheetName);
     let currentWeekNumber: number | null = null;
-    // After detecting SEMANA row (consumed via continue), skip the next 1 header row
-    // (the "VENTA BRUTA | DESCUENTO | MARGEN DESC %" row) before reading data.
-    let headerRowsRemaining = 0;
 
-    for (const row of rows) {
-      // New week block: row starts with "SEMANA XX" (also has # DE EMPLEADO, NOMBRE)
-      const weekNum = findWeekNumber(row);
-      if (weekNum !== null) {
-        currentWeekNumber = weekNum;
-        headerRowsRemaining = 1;
+    for (const row of dataRows) {
+      // Col 1: detect "SEMANA XX"
+      const semanaMatch = String(row[1] ?? "").trim().match(/SEMANA\s+(\d+)/i);
+      if (semanaMatch) {
+        currentWeekNumber = parseInt(semanaMatch[1], 10);
         continue;
       }
 
       if (currentWeekNumber === null) continue;
 
-      // Skip empty rows without decrementing the header counter
-      if (!row.some((cell) => cell !== null && cell !== "")) continue;
+      // Col 4: venta bruta — skip rows with no sales data (headers, blank lines, weeks with no data)
+      const gs = numericCell(row[4]);
+      if (gs === 0) continue;
 
-      // Skip the VENTA BRUTA / DESCUENTO / MARGEN DESC % header row
-      if (headerRowsRemaining > 0) {
-        headerRowsRemaining -= 1;
-        continue;
-      }
+      const da = numericCell(row[5]);
+      const dm = Math.round((da / gs) * 10_000) / 100;
+      const col2 = normalizeText(row[2]);
 
-      const firstCell = String(row[0] ?? "").trim();
-      const firstNorm = normalizeText(firstCell);
-
-      // TIENDA TOTAL: col[0]="TIENDA TOTAL", col[1]=grossSales, col[2]=discount
-      if (firstNorm.includes("TIENDA")) {
-        const gs = numericCell(row[1]);
-        const da = numericCell(row[2]);
-        const dm = gs > 0 ? Math.round((da / gs) * 10_000) / 100 : 0;
+      // TIENDA TOTAL row
+      if (col2.includes("TIENDA")) {
         storeRecords.push({ weekNumber: currentWeekNumber, grossSales: gs, discountAmount: da, discountMargin: dm });
         continue;
       }
 
-      // Employee row: col[0]=employeeNumber, col[2]=grossSales, col[3]=discount
-      // Use !isNaN to identify numeric employee numbers (may come as number or string)
-      const firstNum = Number(firstCell);
-      if (!isNaN(firstNum) && firstNum > 0) {
-        const gs = numericCell(row[2]);
-        const da = numericCell(row[3]);
-        const dm = gs > 0 ? Math.round((da / gs) * 10_000) / 100 : 0;
+      // Employee row: col[2] is a numeric employee number (may be stored as number or string)
+      const empNum = Number(String(row[2] ?? "").trim());
+      if (!isNaN(empNum) && empNum > 0) {
         records.push({
-          employeeNumber: firstCell,
+          employeeNumber: String(empNum),
           weekNumber: currentWeekNumber,
           grossSales: gs,
           discountAmount: da,
