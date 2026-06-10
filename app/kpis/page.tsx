@@ -29,6 +29,8 @@ type KpiResponse = {
   own: KpiReportItem | null;
   team: KpiReportItem[];
   commissionRules: CommissionRule[];
+  hasDiscountSource: boolean;
+  latestDiscountWeek: { weekNumber: number; margin: number | null } | null;
 };
 
 const tabs: { id: Tab; label: string }[] = [
@@ -108,7 +110,7 @@ export default function KpisPage() {
         {loading ? <Card className="text-sm font-semibold text-muted">Calculando acumulados...</Card> : activeKpi ? (
           <AnimatePresence mode="wait">
             <motion.div key={`${activeTab}-${period}-${selectedDate}`} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.18 }}>
-              {activeTab === "resumen" ? <ResumenView activeKpi={activeKpi} progress={progress} periodLabel={periodLabel} /> : null}
+              {activeTab === "resumen" ? <ResumenView activeKpi={activeKpi} progress={progress} periodLabel={periodLabel} hasDiscountSource={report?.hasDiscountSource ?? false} latestDiscountWeek={report?.latestDiscountWeek ?? null} /> : null}
               {activeTab === "ventas" ? <VentasView activeKpi={activeKpi} chartData={chartData} progress={progress} periodLabel={periodLabel} /> : null}
               {activeTab === "comision" ? <ComisionView activeKpi={commissionKpi ?? activeKpi} rules={report?.commissionRules ?? []} simulatedSales={simulatedSales} setSimulatedSales={setSimulatedSales} activeRule={activeRule} appliedPercent={appliedPercent} simulatedCommission={simulatedCommission} simulatedAchievement={simulatedAchievement} commissionRole={commissionRole} periodLabel={periodLabel} /> : null}
               {activeTab === "ranking" ? <RankingView ranking={report?.team ?? []} periodLabel={periodLabel} isAdvisor={isAdvisor} currentUserId={report?.currentUserId} /> : null}
@@ -136,8 +138,18 @@ function PeriodSelector({ period, setPeriod, selectedDate, setSelectedDate, rang
   );
 }
 
-function ResumenView({ activeKpi, progress, periodLabel }: { activeKpi: KpiReportItem; progress: number; periodLabel: string }) {
-  return <><Card className="premium-hero mb-3 px-4 py-3.5"><div className="flex items-center justify-between gap-4"><div><p className="text-[11px] font-black uppercase tracking-[0.13em] text-muted">Cumplimiento {periodLabel}</p><h2 className="mt-1 text-[2.25rem] font-black leading-none text-ink">{progress}%</h2><p className="mt-1 text-xs text-muted">{money(activeKpi.sales)} de {money(activeKpi.goal)}</p></div><ProgressRing value={progress} size={68} /></div><ProgressBar value={progress} /></Card><div className="grid grid-cols-2 gap-3"><StatCard compact label="UPT" value={activeKpi.upt === null ? "—" : String(activeKpi.upt)} detail="Unidades por ticket" icon={<ShoppingBag size={15} />} /><StatCard compact label="AUR" value={activeKpi.aur === null ? "—" : money(activeKpi.aur)} detail="Precio promedio pieza" tone="sky" icon={<Receipt size={15} />} /><StatCard compact label="EPT" value={activeKpi.ept === null ? "—" : money(activeKpi.ept)} detail="Venta por transaccion" tone="purple" icon={<BarChart3 size={15} />} /><StatCard compact label="Conversion" value={activeKpi.conversion === null ? "Sin trafico" : `${activeKpi.conversion}%`} detail={activeKpi.conversion === null ? "Trafico no disponible" : "Tickets / Trafico"} tone="ember" icon={<Target size={15} />} /><StatCard compact label="Margen DTO" value={activeKpi.discountMargin === null ? "Sin datos POS" : `${activeKpi.discountMargin}%`} detail={activeKpi.discountMargin === null ? "Vincula Descuentos POS" : "Descuento sobre venta bruta"} tone="orchid" icon={<Percent size={15} />} /><StatCard compact label="Meta" value={money(activeKpi.goal)} detail={`Objetivo ${periodLabel}`} tone="volt" icon={<Target size={15} />} /></div></>;
+function ResumenView({ activeKpi, progress, periodLabel, hasDiscountSource, latestDiscountWeek }: { activeKpi: KpiReportItem; progress: number; periodLabel: string; hasDiscountSource: boolean; latestDiscountWeek: { weekNumber: number; margin: number | null } | null }) {
+  const discountValue = activeKpi.discountMargin !== null
+    ? `${activeKpi.discountMargin}%`
+    : latestDiscountWeek?.margin !== null && latestDiscountWeek !== null
+      ? `${latestDiscountWeek.margin}%`
+      : hasDiscountSource ? "—" : "Sin datos POS";
+  const discountDetail = activeKpi.discountMargin !== null
+    ? "Descuento sobre venta bruta"
+    : latestDiscountWeek !== null
+      ? `Semana ${latestDiscountWeek.weekNumber}`
+      : hasDiscountSource ? "Sin datos este periodo" : "Vincula Descuentos POS";
+  return <><Card className="premium-hero mb-3 px-4 py-3.5"><div className="flex items-center justify-between gap-4"><div><p className="text-[11px] font-black uppercase tracking-[0.13em] text-muted">Cumplimiento {periodLabel}</p><h2 className="mt-1 text-[2.25rem] font-black leading-none text-ink">{progress}%</h2><p className="mt-1 text-xs text-muted">{money(activeKpi.sales)} de {money(activeKpi.goal)}</p></div><ProgressRing value={progress} size={68} /></div><ProgressBar value={progress} /></Card><div className="grid grid-cols-2 gap-3"><StatCard compact label="UPT" value={activeKpi.upt === null ? "—" : String(activeKpi.upt)} detail="Unidades por ticket" icon={<ShoppingBag size={15} />} /><StatCard compact label="AUR" value={activeKpi.aur === null ? "—" : money(activeKpi.aur)} detail="Precio promedio pieza" tone="sky" icon={<Receipt size={15} />} /><StatCard compact label="EPT" value={activeKpi.ept === null ? "—" : money(activeKpi.ept)} detail="Venta por transaccion" tone="purple" icon={<BarChart3 size={15} />} /><StatCard compact label="Conversion" value={activeKpi.conversion === null ? "Sin trafico" : `${activeKpi.conversion}%`} detail={activeKpi.conversion === null ? "Trafico no disponible" : "Tickets / Trafico"} tone="ember" icon={<Target size={15} />} /><StatCard compact label="Margen DTO" value={discountValue} detail={discountDetail} tone="orchid" icon={<Percent size={15} />} /><StatCard compact label="Meta" value={money(activeKpi.goal)} detail={`Objetivo ${periodLabel}`} tone="volt" icon={<Target size={15} />} /></div></>;
 }
 
 function VentasView({ activeKpi, chartData, progress, periodLabel }: { activeKpi: KpiReportItem; chartData: Array<{ name: string; venta: number; meta: number }>; progress: number; periodLabel: string }) {

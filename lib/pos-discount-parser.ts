@@ -45,14 +45,6 @@ export function parsePosDiscountWorkbook(workbook: XLSX.WorkBook): ParsedDiscoun
     raw: true
   }) as unknown[][];
 
-  console.log(`[DISCOUNT-SYNC] Hoja: "${sheetName}" | Total filas: ${allRows.length}`);
-  const preview = allRows.slice(0, 20);
-  preview.forEach((row, i) => {
-    if (Array.isArray(row) && row.some((v) => v != null)) {
-      console.log(`[DISCOUNT-SYNC] fila[${i}]:`, JSON.stringify(row));
-    }
-  });
-
   const hasDiscountData = allRows.some((row) => {
     if (!Array.isArray(row)) return false;
     return row.some((col) => col != null && String(col).trim().toUpperCase().startsWith("SEMANA"));
@@ -75,20 +67,23 @@ export function parsePosDiscountWorkbook(workbook: XLSX.WorkBook): ParsedDiscoun
     const col2 = row[2];
     const col1Text = col1 != null ? String(col1).trim() : "";
 
-    // Detect SEMANA XX header row
+    // col1 contains "SEMANA XX" on every row of the block — always extract week number
     if (col1Text.toUpperCase().startsWith("SEMANA")) {
       const numMatch = col1Text.match(/\d+/);
       if (numMatch) currentWeekNumber = parseInt(numMatch[0], 10);
-      continue;
     }
 
     if (currentWeekNumber === 0) continue;
 
+    // Skip header rows where col2 = "# DE EMPLEADO"
+    if (typeof col2 === "string" && col2.trim().toUpperCase().includes("DE EMPLEADO")) continue;
+
     const ventaBruta = Number(row[4]) || 0;
     const descuento = Number(row[5]) || 0;
+    // Skip rows without sales data (future weeks or zero-sales employees)
     if (ventaBruta === 0) continue;
 
-    const margen = Math.round((descuento / ventaBruta) * 10_000) / 100;
+    const margen = descuento / ventaBruta;
 
     // TIENDA TOTAL row
     if (typeof col2 === "string" && col2.trim().toUpperCase() === "TIENDA TOTAL") {
