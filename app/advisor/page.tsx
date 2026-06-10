@@ -11,6 +11,7 @@ import type { User } from "@/lib/types";
 import Link from "next/link";
 import { AppFrame, AppHeader, Badge, BottomNav, Card, NotificationCard, ProgressBar, ProgressRing, QuickLink, StatCard } from "@/components/ui";
 import { TaskList } from "@/components/TaskList";
+import { useTheme } from "@/components/ThemeProvider";
 
 const cardAnim = (delay: number) => ({
   initial: { opacity: 0, y: 16 },
@@ -20,6 +21,7 @@ const cardAnim = (delay: number) => ({
 
 export default function AdvisorDashboard() {
   const router = useRouter();
+  const { isDark } = useTheme();
   const [user, setUser] = useState<User | null>(null);
   const [data, setData] = useState<AppData | null>(null);
 
@@ -83,7 +85,7 @@ export default function AdvisorDashboard() {
         <motion.div {...cardAnim(0.13)}>
           <Card
             className="premium-hero mb-3 rounded-[28px] px-4 py-3.5"
-            style={{
+            style={isDark ? undefined : {
               background: "radial-gradient(circle at 84% 8%, rgb(14 165 233 / 0.22), transparent 44%), linear-gradient(145deg, #FFFFFF 0%, #EFF6FF 55%, #DBEAFE 82%, #BFDBFE 100%)",
               boxShadow: "0 12px 32px rgb(37 99 235 / 0.13)"
             }}

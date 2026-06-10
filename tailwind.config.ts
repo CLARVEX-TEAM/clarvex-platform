@@ -1,17 +1,17 @@
 import type { Config } from "tailwindcss";
 
 const config: Config = {
-  darkMode: "media",
+  darkMode: "class",
   content: ["./app/**/*.{ts,tsx}", "./components/**/*.{ts,tsx}", "./lib/**/*.{ts,tsx}"],
   theme: {
     extend: {
       colors: {
-        void: "#F5F8FF",
-        panel: "#F8FAFC",
-        card: "#FFFFFF",
-        line: "#E2E8F0",
-        ink: "#0F172A",
-        muted: "#64748B",
+        void: "rgb(var(--color-void) / <alpha-value>)",
+        panel: "rgb(var(--color-panel) / <alpha-value>)",
+        card: "rgb(var(--color-card) / <alpha-value>)",
+        line: "rgb(var(--color-line) / <alpha-value>)",
+        ink: "rgb(var(--color-ink) / <alpha-value>)",
+        muted: "rgb(var(--color-muted) / <alpha-value>)",
         volt: "#2563EB",
         mint: "#22C55E",
         ember: "#F59E0B",

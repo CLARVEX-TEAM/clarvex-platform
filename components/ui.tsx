@@ -131,7 +131,7 @@ export function statusTone(status: PendingStatus): Tone {
 export function ProgressBar({ value, tone = "volt" }: { value: number; tone?: Accent }) {
   const clamped = Math.max(0, Math.min(100, value));
   return (
-    <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-200">
+    <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-200 dark:bg-[#2a3a5c]">
       <motion.div
         className={cn("h-full rounded-full", accentBg[tone])}
         initial={{ width: 0 }}
@@ -148,9 +148,9 @@ export function ProgressRing({ value, tone = "volt", size = 76 }: { value: numbe
   const circumference = 2 * Math.PI * radius;
 
   return (
-    <div className="relative grid place-items-center rounded-full bg-blue-50" style={{ width: size, height: size }}>
+    <div className="relative grid place-items-center rounded-full bg-blue-50 dark:bg-[#1a2540]" style={{ width: size, height: size }}>
       <svg viewBox="0 0 72 72" className="size-full -rotate-90">
-        <circle cx="36" cy="36" r={radius} fill="none" stroke="currentColor" strokeWidth="7" className="text-slate-200" />
+        <circle cx="36" cy="36" r={radius} fill="none" stroke="currentColor" strokeWidth="7" className="text-slate-200 dark:text-[#2a3a5c]" />
         <motion.circle
           cx="36"
           cy="36"
@@ -194,7 +194,7 @@ export function KPIStatCard({
     <GlassCard className={cn(compact ? "min-h-[98px] p-3" : "min-h-[142px] p-4")}>
       <div className="flex items-start justify-between gap-2">
         <p className="text-[11px] font-black uppercase tracking-[0.12em] text-muted">{label}</p>
-        {icon ? <span className={cn("grid place-items-center border border-line bg-blue-50", compact ? "size-7 rounded-[14px]" : "size-9 rounded-[18px]", accentText[tone])}>{icon}</span> : null}
+        {icon ? <span className={cn("grid place-items-center border border-line bg-blue-50 dark:bg-[#1a2540]", compact ? "size-7 rounded-[14px]" : "size-9 rounded-[18px]", accentText[tone])}>{icon}</span> : null}
         {!icon && delta ? <StatusBadge tone="success">{delta}</StatusBadge> : null}
       </div>
       <p className={cn("font-black leading-none tracking-[-0.03em]", compact ? "mt-1.5 text-[1.4rem]" : "mt-3 text-[1.72rem]", accentText[tone])}>{value}</p>
@@ -205,7 +205,7 @@ export function KPIStatCard({
             initial={{ height: 4, opacity: 0.35 }}
             animate={{ height: `${height}%`, opacity: 1 }}
             transition={{ delay: index * 0.035, duration: 0.28 }}
-            className={cn("w-full rounded-full bg-slate-200", index >= 3 && accentBg[tone])}
+            className={cn("w-full rounded-full bg-slate-200 dark:bg-[#2a3a5c]", index >= 3 && accentBg[tone])}
           />
         ))}
       </div>
@@ -296,7 +296,7 @@ export function NotificationCard({
   return (
     <GlassCard className={cn("p-3", unread && "border-volt/35 bg-volt/[0.055]")}>
       <div className="flex items-start gap-2.5">
-        {author ? <ProfileAvatar name={author.name} photoUrl={author.photoUrl} size="sm" className="size-9 rounded-full shadow-none" /> : <span className={cn("grid size-9 shrink-0 place-items-center rounded-[16px] border border-line", unread ? "bg-volt/10 text-volt" : "bg-slate-100 text-muted")}><Bell size={16} /></span>}
+        {author ? <ProfileAvatar name={author.name} photoUrl={author.photoUrl} size="sm" className="size-9 rounded-full shadow-none" /> : <span className={cn("grid size-9 shrink-0 place-items-center rounded-[16px] border border-line", unread ? "bg-volt/10 text-volt" : "bg-slate-100 dark:bg-[#1a2540] text-muted")}><Bell size={16} /></span>}
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-3">
             <div>
@@ -336,7 +336,7 @@ export function AppHeader({
   profileName?: string;
 }) {
   return (
-    <header className="sticky top-0 z-20 border-b border-line/80 bg-white/80 px-4 py-1.5 shadow-[0_4px_16px_rgb(15_23_42_/_0.04)] backdrop-blur-xl">
+    <header className="sticky top-0 z-20 border-b border-line/80 bg-white/80 dark:bg-[#0f1729]/95 px-4 py-1.5 shadow-[0_4px_16px_rgb(15_23_42_/_0.04)] backdrop-blur-xl">
       <div className="mx-auto flex max-w-md items-center justify-between gap-3">
         <div className="flex min-w-0 items-start gap-3">
           {backHref ? (
@@ -403,7 +403,7 @@ export function LiquidBottomNav() {
 
   return (
     <nav className="pointer-events-none fixed inset-x-0 bottom-2 z-30 px-3">
-      <div className="liquid-glass pointer-events-auto mx-auto grid max-w-md grid-cols-5 gap-0.5 rounded-[28px] border-line/80 bg-white/88 p-1 shadow-[0_12px_30px_rgb(15_23_42_/_0.12)] backdrop-blur-xl">
+      <div className="liquid-glass pointer-events-auto mx-auto grid max-w-md grid-cols-5 gap-0.5 rounded-[28px] border-line/80 bg-white/88 dark:bg-[#1a2540]/95 p-1 shadow-[0_12px_30px_rgb(15_23_42_/_0.12)] backdrop-blur-xl">
         {navItems.map((item) => {
           const href = item.href === "/manager" ? homeHref : item.href;
           const active = pathname === href || (item.href === "/manager" && (pathname === "/manager" || pathname === "/advisor"));
@@ -416,7 +416,7 @@ export function LiquidBottomNav() {
               {active ? (
                 <motion.span
                   layoutId="bottom-nav-active"
-                  className="absolute inset-0 rounded-[22px] bg-blue-50 ring-1 ring-volt/20"
+                  className="absolute inset-0 rounded-[22px] bg-blue-50 dark:bg-[#1a2540] ring-1 ring-volt/20"
                   transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
                 />
               ) : null}

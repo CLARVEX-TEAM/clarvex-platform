@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import Image from "next/image";
@@ -19,8 +19,18 @@ import {
 } from "@/lib/auth";
 import type { User } from "@/lib/types";
 import { Badge, Button, ProfileAvatar } from "@/components/ui";
+import { money } from "@/lib/format";
+import { useTheme } from "@/components/ThemeProvider";
 
 type Step = "employee" | "greeting" | "pin" | "confirm" | "profile" | "ready";
+
+interface PreviewData {
+  name: string;
+  role: string;
+  photo: string | null;
+  store: string;
+  kpis: { ventaHoy: number; metaHoy: number; alcanceHoy: number; conversion: number };
+}
 
 function getGreeting() {
   const h = new Date().getHours();
@@ -93,15 +103,8 @@ export default function LoginPage() {
   const [busy, setBusy] = useState(false);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [biometricStatus, setBiometricStatus] = useState<"idle" | "active" | "done">("idle");
-  const [isDark, setIsDark] = useState(false);
-
-  useEffect(() => {
-    const mq = window.matchMedia("(prefers-color-scheme: dark)");
-    setIsDark(mq.matches);
-    const handler = (e: MediaQueryListEvent) => setIsDark(e.matches);
-    mq.addEventListener("change", handler);
-    return () => mq.removeEventListener("change", handler);
-  }, []);
+  const { isDark } = useTheme();
+  const [previewData, setPreviewData] = useState<PreviewData | null>(null);
 
   const steps = useMemo(
     () =>
@@ -119,8 +122,14 @@ export default function LoginPage() {
     setBusy(true);
     setError("");
     try {
-      const result = await inspectEmployee(employeeNumber);
+      const [result, preview] = await Promise.all([
+        inspectEmployee(employeeNumber),
+        fetch(`/api/employees/${employeeNumber}/preview`)
+          .then((r) => (r.ok ? (r.json() as Promise<PreviewData>) : null))
+          .catch(() => null),
+      ]);
       setUser(result.user);
+      setPreviewData(preview);
       setRequiresPinSetup(result.requiresPinSetup);
       setStep(result.requiresPinSetup ? "pin" : "greeting");
     } catch (cause) {
@@ -416,9 +425,9 @@ export default function LoginPage() {
                   className={`grid grid-cols-3 divide-x ${isDark ? "divide-slate-700" : "divide-slate-100"}`}
                 >
                   {[
-                    { label: "Venta actual", value: "—" },
-                    { label: "Conversión", value: "—" },
-                    { label: "Meta del día", value: "—" },
+                    { label: "Venta actual", value: previewData ? money(previewData.kpis.ventaHoy) : "—" },
+                    { label: "Alcance", value: previewData ? `${previewData.kpis.alcanceHoy}%` : "—" },
+                    { label: "Meta del día", value: previewData ? money(previewData.kpis.metaHoy) : "—" },
                   ].map(({ label, value }) => (
                     <div key={label} className="flex flex-col items-center px-2 text-center">
                       <span className={`text-2xl font-black ${isDark ? "text-white" : "text-slate-800"}`}>
