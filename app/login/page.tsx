@@ -4,7 +4,8 @@ import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import Image from "next/image";
-import { BadgeCheck, Camera, Fingerprint, LogIn, ShieldCheck, Sparkles } from "lucide-react";
+import { BadgeCheck, Camera, Fingerprint, LogIn, ShieldCheck } from "lucide-react";
+import { ClarvexIcon } from "@/components/ClarvexIcon";
 import { startAuthentication, startRegistration } from "@simplewebauthn/browser";
 import {
   authenticateBiometric,
@@ -212,7 +213,7 @@ export default function LoginPage() {
               className="flex flex-col items-center"
             >
               <div className="grid size-24 place-items-center rounded-[32px] border border-white/80 bg-white/60 shadow-[0_12px_40px_rgb(37_99_235_/_0.2)] backdrop-blur-sm">
-                <Sparkles size={36} className="text-blue-600" />
+                <ClarvexIcon size={52} />
               </div>
               <p className="mt-6 text-[10px] font-black uppercase tracking-[0.45em] text-blue-500/75">CLARVEX</p>
               <h1 className="mt-1 text-[2.75rem] font-black leading-none tracking-[-0.04em] text-slate-900">TEAM</h1>
