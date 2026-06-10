@@ -3,6 +3,7 @@ import "./globals.css";
 import { PwaRegister } from "@/components/PwaRegister";
 import { SplashScreen } from "@/components/SplashScreen";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
+import { PageTransition } from "@/components/PageTransition";
 
 export const metadata: Metadata = {
   title: "CLARVEX Team",
@@ -38,7 +39,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <AnimatedBackground />
         <SplashScreen />
         <PwaRegister />
-        {children}
+        <PageTransition>{children}</PageTransition>
       </body>
     </html>
   );

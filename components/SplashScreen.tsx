@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Sparkles } from "lucide-react";
+import { ClarvexIcon } from "@/components/ClarvexIcon";
 
 export function SplashScreen() {
   const [visible, setVisible] = useState(true);
@@ -30,7 +30,7 @@ export function SplashScreen() {
             className="flex flex-col items-center gap-5"
           >
             <div className="grid size-24 place-items-center rounded-[32px] border border-white/80 bg-white/65 shadow-[0_12px_40px_rgb(37_99_235_/_0.22)] backdrop-blur-sm">
-              <Sparkles size={38} className="text-blue-600" />
+              <ClarvexIcon size={52} />
             </div>
             <div className="text-center">
               <p className="text-[10px] font-black uppercase tracking-[0.45em] text-blue-500/80">CLARVEX</p>
