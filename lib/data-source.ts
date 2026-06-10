@@ -52,7 +52,17 @@ export type KpiSyncMetrics = {
   ttlsCommissionMinimum: number | null;
 };
 
-export type DataSyncMetrics = ScheduleSyncMetrics | KpiSyncMetrics;
+export type DiscountSyncMetrics = {
+  sheetsUsed: string[];
+  weekNumbers: number[];
+  employeesFound: number;
+  recordsProcessed: number;
+  recordsUpdated: number;
+  employeesNotFound: string[];
+  errors: string[];
+};
+
+export type DataSyncMetrics = ScheduleSyncMetrics | KpiSyncMetrics | DiscountSyncMetrics;
 
 export type DataSourceRecord = {
   id: string;
