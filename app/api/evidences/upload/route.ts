@@ -10,6 +10,8 @@ import { deleteFromR2, uploadToR2 } from "@/lib/r2";
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
+const MAX_FILES = 5;
+
 export async function GET(request: NextRequest) {
   const session = await requireSession();
   if (isApiError(session)) return session;
@@ -32,8 +34,12 @@ export async function POST(request: Request) {
   const session = await requireSession();
   if (isApiError(session)) return session;
   const form = await request.formData().catch(() => null);
-  const file = form?.get("file");
-  if (!(file instanceof File)) return NextResponse.json({ error: "Selecciona una imagen." }, { status: 400 });
+
+  const rawFiles = form?.getAll("files") ?? [];
+  const files = rawFiles.filter((f): f is File => f instanceof File);
+  if (files.length === 0) return NextResponse.json({ error: "Selecciona al menos una imagen." }, { status: 400 });
+  if (files.length > MAX_FILES) return NextResponse.json({ error: `Máximo ${MAX_FILES} fotos por evidencia.` }, { status: 400 });
+
   const target = parseResourceTarget({
     pendingId: form?.get("pendingId")?.toString(),
     taskId: form?.get("taskId")?.toString(),
@@ -45,32 +51,46 @@ export async function POST(request: Request) {
   const note = form?.get("note")?.toString().trim() ?? "";
   if (note.length > 500) return NextResponse.json({ error: "La nota no puede superar 500 caracteres." }, { status: 400 });
 
-  const bytes = new Uint8Array(await file.arrayBuffer());
-  const validation = validateEvidenceImage(file, bytes);
-  if (!validation.valid) return NextResponse.json({ error: validation.error }, { status: 400 });
+  // Validate all files before uploading anything
+  const validated: Array<{ file: File; bytes: Uint8Array; extension: string }> = [];
+  for (const file of files) {
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    const validation = validateEvidenceImage(file, bytes);
+    if (!validation.valid) return NextResponse.json({ error: `${file.name}: ${validation.error}` }, { status: 400 });
+    validated.push({ file, bytes, extension: validation.extension });
+  }
 
-  const key = `evidences/${session.userId}-${Date.now()}-${crypto.randomUUID()}.${validation.extension}`;
-  let url: string;
+  // Upload sequentially — track URLs so we can roll back on DB failure
+  const uploaded: Array<{ url: string; file: File }> = [];
   try {
-    url = await uploadToR2(key, bytes, file.type);
+    for (const { file, bytes, extension } of validated) {
+      const key = `evidences/${session.userId}-${Date.now()}-${crypto.randomUUID()}.${extension}`;
+      const url = await uploadToR2(key, bytes, file.type);
+      uploaded.push({ url, file });
+    }
   } catch (error) {
+    await Promise.allSettled(uploaded.map(({ url }) => deleteFromR2(url)));
     return NextResponse.json({ error: error instanceof Error ? error.message : "No se pudo subir la imagen." }, { status: 500 });
   }
 
   try {
-    const evidence = await prisma.$transaction(async (tx) => {
-      const created = await tx.evidence.create({
-        data: {
-          storeId: session.storeId,
-          uploadedById: session.userId,
-          ...targetWhere(target),
-          url,
-          fileName: file.name.slice(0, 255),
-          mimeType: file.type,
-          note: note || null
-        },
-        include: { uploadedBy: { select: { name: true, photoUrl: true } } }
-      });
+    const result = await prisma.$transaction(async (tx) => {
+      const created = await Promise.all(
+        uploaded.map(({ url, file }) =>
+          tx.evidence.create({
+            data: {
+              storeId: session.storeId,
+              uploadedById: session.userId,
+              ...targetWhere(target),
+              url,
+              fileName: file.name.slice(0, 255),
+              mimeType: file.type,
+              note: note || null
+            },
+            include: { uploadedBy: { select: { name: true, photoUrl: true } } }
+          })
+        )
+      );
       const recipients = new Set<string>();
       if (resource.recipientId !== session.userId) recipients.add(resource.recipientId);
       if (resource.kind === "task" || resource.kind === "pending") {
@@ -88,12 +108,11 @@ export async function POST(request: Request) {
       return { created, recipientList };
     });
 
-    // Fire-and-forget push after transaction commits
-    dispatchPushToUsers(evidence.recipientList, { title: "📎 Nueva evidencia", body: `${session.name} subió evidencia en "${resource.title}"`, tag: "evidencia" }).catch(() => undefined);
+    dispatchPushToUsers(result.recipientList, { title: "📎 Nueva evidencia", body: `${session.name} subió evidencia en "${resource.title}"`, tag: "evidencia" }).catch(() => undefined);
 
-    return NextResponse.json({ evidence: serializeEvidence(evidence.created) }, { status: 201 });
+    return NextResponse.json({ evidences: result.created.map(serializeEvidence) }, { status: 201 });
   } catch (error) {
-    await deleteFromR2(url);
+    await Promise.allSettled(uploaded.map(({ url }) => deleteFromR2(url)));
     return NextResponse.json({ error: "No se pudo guardar la evidencia." }, { status: 500 });
   }
 }

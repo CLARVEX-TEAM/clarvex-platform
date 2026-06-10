@@ -5,6 +5,8 @@ import { useEffect, useMemo, useState } from "react";
 import { ImagePlus, MessageCircle, Send, X } from "lucide-react";
 import { ProfileAvatar } from "@/components/ui";
 
+const MAX_FILES = 5;
+
 type Target = { pendingId: string } | { taskId: string } | { logEntryId: string };
 type EvidenceItem = { id: string; url: string; note: string | null; createdAt: string; uploadedBy: { name: string; photoUrl: string | null } };
 type CommentItem = { id: string; body: string; createdAt: string; author: { name: string; photoUrl: string | null } };
@@ -17,12 +19,16 @@ export function ResourceDiscussion({ target, className = "" }: { target: Target;
   const [comments, setComments] = useState<CommentItem[]>([]);
   const [comment, setComment] = useState("");
   const [note, setNote] = useState("");
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
+  const [previewUrls, setPreviewUrls] = useState<string[]>([]);
   const [status, setStatus] = useState("");
   const query = useMemo(() => new URLSearchParams(target).toString(), [target]);
-  const preview = useMemo(() => file ? URL.createObjectURL(file) : null, [file]);
 
-  useEffect(() => () => { if (preview) URL.revokeObjectURL(preview); }, [preview]);
+  useEffect(() => {
+    const urls = files.map((f) => URL.createObjectURL(f));
+    setPreviewUrls(urls);
+    return () => urls.forEach((u) => URL.revokeObjectURL(u));
+  }, [files]);
 
   async function load() {
     setLoading(true);
@@ -51,20 +57,32 @@ export function ResourceDiscussion({ target, className = "" }: { target: Target;
     if (next && !loaded) await load();
   }
 
+  function handleFileSelect(event: React.ChangeEvent<HTMLInputElement>) {
+    const selected = Array.from(event.target.files ?? []);
+    if (selected.length === 0) return;
+    setFiles((prev) => [...prev, ...selected].slice(0, MAX_FILES));
+    event.target.value = "";
+  }
+
+  function removeFile(index: number) {
+    setFiles((prev) => prev.filter((_, i) => i !== index));
+  }
+
   async function uploadEvidence() {
-    if (!file) return setStatus("Selecciona una imagen.");
-    setStatus("Subiendo evidencia...");
+    if (files.length === 0) return setStatus("Selecciona al menos una imagen.");
+    setStatus("Subiendo evidencias...");
     const form = new FormData();
-    form.set("file", file);
+    files.forEach((f) => form.append("files", f));
     form.set("note", note);
     Object.entries(target).forEach(([key, value]) => form.set(key, value));
     const response = await fetch("/api/evidences/upload", { method: "POST", body: form });
-    const payload = await response.json() as { evidence?: EvidenceItem; error?: string };
-    if (!response.ok || !payload.evidence) return setStatus(payload.error ?? "No se pudo subir la evidencia.");
-    setEvidences((items) => [payload.evidence!, ...items]);
-    setFile(null);
+    const payload = await response.json() as { evidences?: EvidenceItem[]; error?: string };
+    if (!response.ok || !payload.evidences) return setStatus(payload.error ?? "No se pudo subir la evidencia.");
+    setEvidences((items) => [...payload.evidences!, ...items]);
+    setFiles([]);
     setNote("");
-    setStatus("Evidencia guardada.");
+    const count = payload.evidences.length;
+    setStatus(count === 1 ? "Evidencia guardada." : `${count} evidencias guardadas.`);
     window.dispatchEvent(new Event("notifications-updated"));
   }
 
@@ -100,20 +118,55 @@ export function ResourceDiscussion({ target, className = "" }: { target: Target;
               ))}
             </div>
           ) : null}
+
           <div className="grid gap-2">
-            {preview ? (
-              <div className="relative h-32 overflow-hidden rounded-xl bg-white">
-                <Image src={preview} alt="Vista previa" fill sizes="320px" className="object-cover" unoptimized />
-                <button type="button" onClick={() => setFile(null)} className="absolute right-2 top-2 grid size-9 place-items-center rounded-full bg-white/90 text-ink" aria-label="Quitar imagen"><X size={16} /></button>
-              </div>
+            {previewUrls.length > 0 ? (
+              <>
+                <p className="text-xs font-semibold text-muted">
+                  {files.length} foto{files.length > 1 ? "s" : ""} seleccionada{files.length > 1 ? "s" : ""}
+                </p>
+                <div className="flex gap-2 overflow-x-auto pb-1">
+                  {previewUrls.map((url, i) => (
+                    <div key={i} className="relative h-24 w-24 shrink-0 overflow-hidden rounded-xl bg-white">
+                      <Image src={url} alt={`Vista previa ${i + 1}`} fill sizes="96px" className="object-cover" unoptimized />
+                      <button
+                        type="button"
+                        onClick={() => removeFile(i)}
+                        className="absolute right-1 top-1 grid size-7 place-items-center rounded-full bg-white/90 text-ink shadow-sm"
+                        aria-label="Quitar foto"
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </>
             ) : null}
-            <label className="flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-xl border border-line bg-white px-3 text-sm font-black text-ink">
-              <ImagePlus size={17} /> Agregar evidencia
-              <input type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={(event) => setFile(event.target.files?.[0] ?? null)} />
-            </label>
-            {file ? <input value={note} onChange={(event) => setNote(event.target.value)} maxLength={500} className="min-h-11 rounded-xl border border-line bg-white px-3 text-sm outline-none focus:border-volt" placeholder="Nota opcional" /> : null}
-            {file ? <button type="button" onClick={() => void uploadEvidence()} className="min-h-11 rounded-xl bg-volt px-3 text-sm font-black text-white">Subir evidencia</button> : null}
+
+            {files.length < MAX_FILES ? (
+              <label className="flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-xl border border-line bg-white px-3 text-sm font-black text-ink">
+                <ImagePlus size={17} />
+                {files.length > 0 ? `Agregar más fotos (${files.length}/${MAX_FILES})` : "Agregar evidencia"}
+                <input type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" multiple onChange={handleFileSelect} />
+              </label>
+            ) : null}
+
+            {files.length > 0 ? (
+              <input
+                value={note}
+                onChange={(event) => setNote(event.target.value)}
+                maxLength={500}
+                className="min-h-11 rounded-xl border border-line bg-white px-3 text-sm outline-none focus:border-volt"
+                placeholder="Nota opcional (para todas las fotos)"
+              />
+            ) : null}
+            {files.length > 0 ? (
+              <button type="button" onClick={() => void uploadEvidence()} className="min-h-11 rounded-xl bg-volt px-3 text-sm font-black text-white">
+                Subir {files.length > 1 ? `${files.length} evidencias` : "evidencia"}
+              </button>
+            ) : null}
           </div>
+
           <div className="space-y-2 border-t border-line pt-3">
             {comments.length === 0 ? <p className="text-sm text-muted">Aún no hay comentarios.</p> : comments.map((item) => (
               <div key={item.id} className="flex gap-2">
