@@ -11,7 +11,6 @@ let cleanupCounter = 0;
 
 function checkRateLimit(ip: string): boolean {
   const now = Date.now();
-  // Periodic cleanup to prevent unbounded map growth
   if (++cleanupCounter % 50 === 0) {
     Array.from(rateLimit.entries()).forEach(([key, entry]) => {
       if (entry.resetAt < now) rateLimit.delete(key);
@@ -57,7 +56,6 @@ export async function GET(
       ],
     },
     select: {
-      id: true,
       name: true,
       role: true,
       photoUrl: true,
@@ -69,31 +67,13 @@ export async function GET(
     return NextResponse.json({ error: "Empleado no encontrado." }, { status: 404 });
   }
 
-  // Buscar KPI del día actual
-  const today = new Date();
-  today.setUTCHours(0, 0, 0, 0);
-  const tomorrow = new Date(today.getTime() + 86_400_000);
-
-  const kpi = await prisma.kpi.findFirst({
-    where: { userId: user.id, date: { gte: today, lt: tomorrow } },
-    select: { dailySales: true, dailyGoal: true, conversion: true },
-  });
-
-  const ventaHoy = kpi ? Number(kpi.dailySales) : 0;
-  const metaHoy = kpi ? Number(kpi.dailyGoal) : 0;
-  const alcanceHoy =
-    metaHoy > 0 ? Math.round((ventaHoy / metaHoy) * 100) : 0;
-  const conversion = kpi?.conversion !== null && kpi?.conversion !== undefined
-    ? Number(kpi.conversion)
-    : 0;
-
+  // Solo nombre, rol, foto y tienda — sin KPIs antes de autenticar
   return NextResponse.json(
     {
       name: user.name,
       role: user.role,
       photo: user.photoUrl ?? null,
       store: user.store.name,
-      kpis: { ventaHoy, metaHoy, alcanceHoy, conversion },
     },
     { headers: { "Cache-Control": "private, no-store" } }
   );

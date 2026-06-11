@@ -269,12 +269,6 @@ pm2 restart clarvex-team --update-env
 - Error previo resuelto: `could not open file global/pg_filenode.map Permission denied` — no repetir cambios destructivos.
 - Se ejecutó `UPDATE "Kpi" SET conversion = 0 WHERE conversion IS NULL` — 22 registros corregidos.
 
-### ExcelJS — Arrays sparse
-
-`row.values` en ExcelJS es un array sparse. Nunca usar `.map()` directamente sobre él porque preserva los huecos. Siempre usar `Array.from(row.values)` para densificar el array antes de cualquier operación como `findIndex`, `includes`, `filter`, etc. De lo contrario los callbacks reciben `undefined` en los huecos y crashean.
-
-> Aplicado en `lib/spreadsheet.ts` → `sheet_to_json`: usa `Array.from(row, mapFn)` en lugar de `row.map(mapFn)`.
-
 ---
 
 ## Comandos obligatorios antes de cerrar cualquier sesión
@@ -308,3 +302,47 @@ git status   # debe quedar limpio
 - [x] Botón eliminar para gerente/subgerente
 - [x] PWA instalable en móvil
 - [x] Producción estable en app.adrianluna.mx
+
+---
+
+## Margen DTO (Descuentos POS)
+
+Fuente: archivo XLSX separado vinculado en Centro de Datos (SharePoint).
+
+### Estructura hoja "MARGEN DTO"
+
+- Datos empiezan en **fila 6**
+- Col 1: vacía
+- Col 2: header de semana (`SEMANA 22`, `SEMANA 23`...)
+- Col 3: número de empleado (int) o `TIENDA TOTAL`
+- Col 4: nombre del empleado
+- Col 5: venta bruta (número)
+- Col 6: descuento (número)
+- **NO hay columna de margen %** — se calcula: `margen = descuento / venta_bruta`
+
+### Reglas del parser
+
+- Detectar bloque: `row.values[2]` empieza con `"SEMANA"`
+- Fila empleado: `typeof row.values[3] === 'number'`
+- Fila tienda: `row.values[3] === 'TIENDA TOTAL'`
+- Solo guardar donde `venta_bruta > 0`
+- Si semana actual sin datos → mostrar semana más reciente con datos
+- Mostrar `—` si no hay datos — NUNCA "Sin datos POS" cuando el archivo está vinculado
+
+---
+
+## ⚠️ Bug conocido excelJS — Arrays Sparse
+
+`row.values` en excelJS es un **array sparse**. NUNCA usar `.map()` directo — preserva huecos y causa crashes.
+
+```typescript
+// ❌ MAL — undefined.includes() → crash
+const cols = row.values.map(v => v)
+cols.findIndex(v => v.includes('texto'))
+
+// ✅ BIEN — densificar primero
+const cols = Array.from(row.values, v => v ?? null)
+cols.findIndex(v => v && String(v).includes('texto'))
+```
+
+Aplicar `Array.from()` en TODOS los parsers que usen `row.values`.

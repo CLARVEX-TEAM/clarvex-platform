@@ -19,7 +19,6 @@ import {
 } from "@/lib/auth";
 import type { User } from "@/lib/types";
 import { Badge, Button, ProfileAvatar } from "@/components/ui";
-import { money } from "@/lib/format";
 import { useTheme } from "@/components/ThemeProvider";
 
 type Step = "employee" | "greeting" | "pin" | "confirm" | "profile" | "ready";
@@ -29,7 +28,6 @@ interface PreviewData {
   role: string;
   photo: string | null;
   store: string;
-  kpis: { ventaHoy: number; metaHoy: number; alcanceHoy: number; conversion: number };
 }
 
 function getGreeting() {
@@ -413,35 +411,6 @@ export default function LoginPage() {
                 {user.role === "ASESOR" ? "Vendedor" : user.role}
                 {user.storeName ? ` · ${user.storeName}` : ""}
               </p>
-
-              {/* Resumen de hoy */}
-              <div className={`mt-6 w-full max-w-sm rounded-3xl p-4 ${card}`}>
-                <p
-                  className={`mb-3 text-[10px] font-black uppercase tracking-widest ${isDark ? "text-slate-500" : "text-slate-400"}`}
-                >
-                  Resumen de hoy
-                </p>
-                <div
-                  className={`grid grid-cols-3 divide-x ${isDark ? "divide-slate-700" : "divide-slate-100"}`}
-                >
-                  {[
-                    { label: "Venta actual", value: previewData ? money(previewData.kpis.ventaHoy) : "—" },
-                    { label: "Alcance", value: previewData ? `${previewData.kpis.alcanceHoy}%` : "—" },
-                    { label: "Meta del día", value: previewData ? money(previewData.kpis.metaHoy) : "—" },
-                  ].map(({ label, value }) => (
-                    <div key={label} className="flex flex-col items-center px-2 text-center">
-                      <span className={`text-2xl font-black ${isDark ? "text-white" : "text-slate-800"}`}>
-                        {value}
-                      </span>
-                      <span
-                        className={`mt-1 text-[10px] font-medium leading-snug ${isDark ? "text-slate-500" : "text-slate-400"}`}
-                      >
-                        {label}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
 
               {/* Botón biometría (si tiene registrada) */}
               {user.biometricEnabled ? (

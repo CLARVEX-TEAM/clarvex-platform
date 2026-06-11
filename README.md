@@ -1,20 +1,21 @@
 # CLARVEX Team
 
-PWA mobile-first para operacion retail: KPIs, horarios, plan del dia, pendientes, bitacora, comunicados y ranking de asesores.
+PWA mobile-first para operación retail: KPIs, horarios, plan del día, pendientes, bitácora, comunicados y ranking de asesores.
 
 ## Stack
 
-- Next.js 14 (App Router)
+- Next.js 15.5.18 (App Router)
 - TypeScript (strict mode)
 - Tailwind CSS
 - PostgreSQL + Prisma ORM
 - JWT firmado con `jose` (HS256)
 - PWA instalable
 
-## Instalacion
+## Instalación
 
 ```bash
-npm install
+pnpm install
+pnpm exec prisma generate
 ```
 
 Crea `.env.local` (nunca subas este archivo al repositorio):
@@ -25,58 +26,38 @@ AUTH_SECRET="genera-un-secreto-aleatorio-minimo-32-caracteres"
 EXCEL_PROXY_WORKER_URL="https://tu-worker.workers.dev"
 ```
 
-> **AUTH_SECRET** debe ser una cadena aleatoria larga. Genera una con:
+> Genera `AUTH_SECRET` con:
 > ```bash
 > openssl rand -base64 32
 > ```
 
-Genera el cliente Prisma, aplica migraciones y carga datos demo:
-
-```bash
-npm run prisma:generate
-npm run prisma:migrate -- --name init
-npm run prisma:seed
-```
-
 Levanta el servidor de desarrollo:
 
 ```bash
-npm run dev
+pnpm run dev
 ```
 
 Abre `http://localhost:3000`.
 
-## Login demo
-
-El seed crea los siguientes usuarios. Para entrar, escribe el numero de empleado en la pantalla de login y configura tu PIN en el primer acceso.
-
-| Nombre  | Rol         | Numero de empleado |
-|---------|-------------|-------------------|
-| Itzel   | GERENTE     | 81893             |
-| Adrian  | SUBGERENTE  | 102259            |
-| Waira   | ASESOR      | 95739             |
-| Jazmin  | ASESOR      | 96383             |
-| Alonso  | ASESOR      | 113642            |
-
-> No hay contrasenas por defecto. La autenticacion es por numero de empleado + PIN de 4 digitos configurado en el primer acceso.
-
 ## Seguridad
 
-- Autenticacion via PIN (4 digitos) protegida con bcrypt
-- Rate limiting: 10 intentos de login por minuto por IP, 30 inspecciones por minuto
+- Autenticación vía PIN (4 dígitos) protegida con bcrypt
+- Autenticación biométrica (WebAuthn — Face ID / Huella)
+- Rate limiting: 10 intentos de login por minuto por IP
 - Headers HTTP de seguridad: CSP, X-Frame-Options, HSTS, X-Content-Type-Options
-- Cookie de sesion: `httpOnly`, `secure`, `sameSite=strict`
-- Tokens JWT con expiracion de 7 dias
+- Cookie de sesión: `httpOnly`, `secure`, `sameSite=strict`
+- Tokens JWT con expiración de 7 días
 
 ## Vistas incluidas
 
-- `/login` — acceso por numero de empleado y PIN
+- `/login` — acceso por número de empleado, PIN y biometría
 - `/manager` — dashboard gerente/subgerente
 - `/advisor` — dashboard asesor
-- `/plan` — plan del dia y checklist
+- `/plan` — plan del día y checklist
 - `/pendientes` — pendientes y handover
 - `/kpis` — KPIs por asesor y tienda
 - `/horarios` — horarios semanales
-- `/bitacora` — registros cronologicos
+- `/bitacora` — registros cronológicos
 - `/comunicados` — comunicados y lectura por asesor
-- `/datos` — centro de datos y sincronizacion Excel
+- `/datos` — centro de datos y sincronización Excel
+- `/perfil` — perfil, foto y configuración de biometría
