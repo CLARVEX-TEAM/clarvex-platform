@@ -2,11 +2,20 @@
 node_modules/
 .env
 .env.local
+.env*.local
+dist/
+build/
 dev.log
 dev.out.log
 dev.err.log
 npm-debug.log*
+*.log
 *.tsbuildinfo
+.DS_Store
+
+# Claude Code / agent tooling — no pertenecen al repo del proyecto
+.claude/
+.agents/
 public/uploads/profiles/*
 !public/uploads/profiles/.gitkeep
 public/uploads/evidences/*
