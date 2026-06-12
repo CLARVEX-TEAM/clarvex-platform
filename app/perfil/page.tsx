@@ -181,5 +181,5 @@ export default function ProfilePage() {
 }
 
 function ProfileField({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
-  return <div className="flex items-center gap-3 py-3 first:pt-0 last:pb-0"><span className="grid size-9 place-items-center rounded-2xl bg-slate-100 text-muted">{icon}</span><div><p className="text-xs font-semibold text-muted">{label}</p><p className="font-black text-ink">{value}</p></div></div>;
+  return <div className="flex items-center gap-3 py-3 first:pt-0 last:pb-0"><span className="grid size-9 place-items-center rounded-2xl bg-slate-100 dark:bg-slate-700 text-muted">{icon}</span><div><p className="text-xs font-semibold text-muted">{label}</p><p className="font-black text-ink">{value}</p></div></div>;
 }

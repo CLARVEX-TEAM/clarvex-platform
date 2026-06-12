@@ -183,7 +183,7 @@ export default function PendientesPage() {
               </div>
               {!isAdvisor ? (
                 <div className="mt-2.5 grid grid-cols-3 gap-2">
-                  <button onClick={() => editPending(pending)} className="min-h-10 rounded-xl bg-slate-100 text-sm font-black">Editar</button>
+                  <button onClick={() => editPending(pending)} className="min-h-10 rounded-xl bg-slate-100 dark:bg-slate-700 text-sm font-black text-ink">Editar</button>
                   <select value={pending.status === "en proceso" ? "EN_PROCESO" : pending.status.toUpperCase()} onChange={(event) => void changeStatus(pending.id, event.target.value as "PENDIENTE" | "EN_PROCESO" | "COMPLETADO")} className="min-h-10 rounded-xl border border-line bg-panel px-3 text-sm font-black"><option value="PENDIENTE">Pendiente</option><option value="EN_PROCESO">En proceso</option><option value="COMPLETADO">Cerrar</option></select>
                   <button onClick={() => void deletePending(pending.id)} className="flex min-h-10 items-center justify-center gap-1.5 rounded-xl border border-rose-200/60 bg-rose-50/60 text-sm font-black text-rose-600 transition active:scale-95"><Trash2 size={14} />Borrar</button>
                 </div>

@@ -47,7 +47,7 @@ const accentBg: Record<Accent, string> = {
 };
 
 const badgeTones: Record<Tone, string> = {
-  default: "border-line bg-slate-50 text-muted",
+  default: "border-line bg-slate-50 dark:bg-slate-800 text-muted",
   success: "border-success/25 bg-success/10 text-success",
   done: "border-success/25 bg-success/10 text-success",
   warn: "border-ember/35 bg-ember/12 text-ember",
@@ -95,7 +95,7 @@ export function PremiumButton({
         "inline-flex min-h-12 items-center justify-center gap-2 rounded-full px-4 text-sm font-black tracking-[-0.01em] transition focus:outline-none focus:ring-4 focus:ring-volt/20 disabled:cursor-not-allowed disabled:opacity-55",
         variant === "primary" && "bg-volt text-white shadow-[0_8px_20px_rgb(37_99_235_/_0.22)] hover:bg-[#1D4ED8]",
         variant === "glass" && "liquid-glass text-ink hover:text-volt",
-        variant === "ghost" && "bg-slate-100 text-ink hover:bg-blue-50",
+        variant === "ghost" && "bg-slate-100 dark:bg-slate-800 text-ink hover:bg-blue-50 dark:hover:bg-slate-700",
         className
       )}
       disabled={loading || disabled}

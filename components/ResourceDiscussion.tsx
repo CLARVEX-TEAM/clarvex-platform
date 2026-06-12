@@ -106,13 +106,13 @@ export function ResourceDiscussion({ target, className = "" }: { target: Target;
         <span className="text-xs text-muted">{evidences.length + comments.length || "Abrir"}</span>
       </button>
       {open ? (
-        <div className="mt-2 space-y-3 rounded-2xl bg-slate-50/80 p-3">
+        <div className="mt-2 space-y-3 rounded-2xl bg-slate-50/80 dark:bg-slate-800/80 p-3">
           {loading ? <p className="text-sm text-muted">Cargando actividad...</p> : null}
           {!loading && evidences.length === 0 ? <p className="text-sm text-muted">Aún no hay evidencias.</p> : null}
           {evidences.length > 0 ? (
             <div className="flex gap-2 overflow-x-auto pb-1">
               {evidences.map((item) => (
-                <a key={item.id} href={item.url} target="_blank" rel="noreferrer" className="relative h-24 w-24 shrink-0 overflow-hidden rounded-xl bg-white">
+                <a key={item.id} href={item.url} target="_blank" rel="noreferrer" className="relative h-24 w-24 shrink-0 overflow-hidden rounded-xl bg-white dark:bg-slate-700">
                   <Image src={item.url} alt={item.note || "Evidencia"} fill sizes="96px" className="object-cover" />
                 </a>
               ))}
@@ -127,12 +127,12 @@ export function ResourceDiscussion({ target, className = "" }: { target: Target;
                 </p>
                 <div className="flex gap-2 overflow-x-auto pb-1">
                   {previewUrls.map((url, i) => (
-                    <div key={i} className="relative h-24 w-24 shrink-0 overflow-hidden rounded-xl bg-white">
+                    <div key={i} className="relative h-24 w-24 shrink-0 overflow-hidden rounded-xl bg-white dark:bg-slate-700">
                       <Image src={url} alt={`Vista previa ${i + 1}`} fill sizes="96px" className="object-cover" unoptimized />
                       <button
                         type="button"
                         onClick={() => removeFile(i)}
-                        className="absolute right-1 top-1 grid size-7 place-items-center rounded-full bg-white/90 text-ink shadow-sm"
+                        className="absolute right-1 top-1 grid size-7 place-items-center rounded-full bg-white/90 dark:bg-slate-700/90 text-ink shadow-sm"
                         aria-label="Quitar foto"
                       >
                         <X size={14} />
@@ -144,7 +144,7 @@ export function ResourceDiscussion({ target, className = "" }: { target: Target;
             ) : null}
 
             {files.length < MAX_FILES ? (
-              <label className="flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-xl border border-line bg-white px-3 text-sm font-black text-ink">
+              <label className="flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-xl border border-line bg-white dark:bg-slate-800 px-3 text-sm font-black text-ink">
                 <ImagePlus size={17} />
                 {files.length > 0 ? `Agregar más fotos (${files.length}/${MAX_FILES})` : "Agregar evidencia"}
                 <input type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" multiple onChange={handleFileSelect} />
@@ -156,7 +156,7 @@ export function ResourceDiscussion({ target, className = "" }: { target: Target;
                 value={note}
                 onChange={(event) => setNote(event.target.value)}
                 maxLength={500}
-                className="min-h-11 rounded-xl border border-line bg-white px-3 text-sm outline-none focus:border-volt"
+                className="min-h-11 rounded-xl border border-line bg-white dark:bg-slate-800 px-3 text-sm text-ink outline-none focus:border-volt"
                 placeholder="Nota opcional (para todas las fotos)"
               />
             ) : null}
@@ -171,14 +171,14 @@ export function ResourceDiscussion({ target, className = "" }: { target: Target;
             {comments.length === 0 ? <p className="text-sm text-muted">Aún no hay comentarios.</p> : comments.map((item) => (
               <div key={item.id} className="flex gap-2">
                 <ProfileAvatar name={item.author.name} photoUrl={item.author.photoUrl} size="sm" className="size-8 rounded-full shadow-none" />
-                <div className="min-w-0 flex-1 rounded-xl bg-white px-3 py-2">
+                <div className="min-w-0 flex-1 rounded-xl bg-white dark:bg-slate-800 px-3 py-2">
                   <p className="text-xs font-black text-ink">{item.author.name}</p>
                   <p className="mt-0.5 text-sm leading-5 text-muted">{item.body}</p>
                 </div>
               </div>
             ))}
             <form onSubmit={sendComment} className="flex gap-2">
-              <input value={comment} onChange={(event) => setComment(event.target.value)} maxLength={1000} className="min-h-11 min-w-0 flex-1 rounded-xl border border-line bg-white px-3 text-sm outline-none focus:border-volt" placeholder="Escribe un comentario" />
+              <input value={comment} onChange={(event) => setComment(event.target.value)} maxLength={1000} className="min-h-11 min-w-0 flex-1 rounded-xl border border-line bg-white dark:bg-slate-800 px-3 text-sm text-ink outline-none focus:border-volt" placeholder="Escribe un comentario" />
               <button type="submit" disabled={!comment.trim()} className="grid size-11 shrink-0 place-items-center rounded-xl bg-volt text-white disabled:opacity-40" aria-label="Enviar comentario"><Send size={17} /></button>
             </form>
           </div>

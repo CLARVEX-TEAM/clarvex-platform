@@ -32,12 +32,12 @@ type ScheduleResponse = {
 const dayNames = ["Domingo", "Lunes", "Martes", "Miercoles", "Jueves", "Viernes", "Sabado"];
 const statusConfig: Record<ScheduleStatus, { label: string; tone: "success" | "default" | "warn" | "danger" | "info"; className: string }> = {
   WORKING: { label: "Laborando", tone: "success", className: "bg-emerald-50 text-emerald-700" },
-  OFF: { label: "Descanso", tone: "default", className: "bg-slate-100 text-slate-600" },
-  VACATION: { label: "Vacaciones", tone: "info", className: "bg-sky-50 text-sky-700" },
-  PAID_DAY: { label: "Pago dia", tone: "warn", className: "bg-amber-50 text-amber-700" },
-  INVENTORY: { label: "Conteo", tone: "warn", className: "bg-violet-50 text-violet-700" },
-  TERMINATED: { label: "Baja", tone: "danger", className: "bg-rose-50 text-rose-700" },
-  UNKNOWN: { label: "Sin horario", tone: "default", className: "bg-slate-100 text-slate-500" }
+  OFF: { label: "Descanso", tone: "default", className: "bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300" },
+  VACATION: { label: "Vacaciones", tone: "info", className: "bg-sky-50 dark:bg-sky-950/50 text-sky-700 dark:text-sky-400" },
+  PAID_DAY: { label: "Pago dia", tone: "warn", className: "bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-400" },
+  INVENTORY: { label: "Conteo", tone: "warn", className: "bg-violet-50 dark:bg-violet-950/50 text-violet-700 dark:text-violet-400" },
+  TERMINATED: { label: "Baja", tone: "danger", className: "bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-400" },
+  UNKNOWN: { label: "Sin horario", tone: "default", className: "bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400" }
 };
 
 export default function HorariosPage() {
@@ -106,15 +106,15 @@ export default function HorariosPage() {
       <AppHeader title="Horarios" subtitle={isManager && view === "team" ? "Agenda semanal del equipo." : "Tu agenda semanal."} backHref={isManager ? "/manager" : "/advisor"} />
       <AppFrame>
         {isManager ? (
-          <div className="mb-3 flex rounded-full bg-slate-100 p-1" role="group" aria-label="Vista de horarios">
-            <button type="button" onClick={() => setView("mine")} className={`min-h-10 flex-1 rounded-full text-sm font-black transition ${view === "mine" ? "bg-white text-volt shadow-sm" : "text-muted"}`}>Mi horario</button>
-            <button type="button" onClick={() => setView("team")} className={`min-h-10 flex-1 rounded-full text-sm font-black transition ${view === "team" ? "bg-white text-volt shadow-sm" : "text-muted"}`}>Equipo</button>
+          <div className="mb-3 flex rounded-full bg-slate-100 dark:bg-slate-800 p-1" role="group" aria-label="Vista de horarios">
+            <button type="button" onClick={() => setView("mine")} className={`min-h-10 flex-1 rounded-full text-sm font-black transition ${view === "mine" ? "bg-white dark:bg-slate-600 text-volt shadow-sm" : "text-muted"}`}>Mi horario</button>
+            <button type="button" onClick={() => setView("team")} className={`min-h-10 flex-1 rounded-full text-sm font-black transition ${view === "team" ? "bg-white dark:bg-slate-600 text-volt shadow-sm" : "text-muted"}`}>Equipo</button>
           </div>
         ) : null}
 
         <Card className="mb-3 p-3.5">
           <div className="flex items-center justify-between gap-3">
-            <button type="button" onClick={() => moveWeek(-1)} className="grid size-11 shrink-0 place-items-center rounded-full bg-slate-100 text-ink transition active:scale-95" aria-label="Semana anterior"><ChevronLeft size={20} /></button>
+            <button type="button" onClick={() => moveWeek(-1)} className="grid size-11 shrink-0 place-items-center rounded-full bg-slate-100 dark:bg-slate-800 text-ink transition active:scale-95" aria-label="Semana anterior"><ChevronLeft size={20} /></button>
             <div className="min-w-0 text-center">
               <p className="text-[11px] font-black uppercase tracking-[0.12em] text-volt">{isManager && view === "team" ? "Semana del equipo" : "Mi semana"}</p>
               <h2 className="mt-0.5 text-lg font-black tracking-[-0.03em] text-ink">Semana {isoWeekNumber(new Date(`${weekStart}T00:00:00Z`))}</h2>
@@ -126,7 +126,7 @@ export default function HorariosPage() {
             <Button variant={weekStart === currentWeek ? "primary" : "ghost"} className="min-h-9 shrink-0 px-3 text-xs" onClick={() => setWeekStart(currentWeek)}>Actual</Button>
             <Button variant={weekStart === previousWeek ? "primary" : "ghost"} className="min-h-9 shrink-0 px-3 text-xs" onClick={() => setWeekStart(previousWeek)}>Anterior</Button>
             <Button variant={weekStart === nextWeek ? "primary" : "ghost"} className="min-h-9 shrink-0 px-3 text-xs" onClick={() => setWeekStart(nextWeek)}>Siguiente</Button>
-            <select aria-label="Semanas disponibles" value={weekStart} onChange={(event) => setWeekStart(event.target.value)} className="min-h-9 shrink-0 rounded-full border-0 bg-slate-100 px-3 text-xs font-black text-ink outline-none focus:ring-4 focus:ring-volt/20">
+            <select aria-label="Semanas disponibles" value={weekStart} onChange={(event) => setWeekStart(event.target.value)} className="min-h-9 shrink-0 rounded-full border-0 bg-slate-100 dark:bg-slate-800 px-3 text-xs font-black text-ink outline-none focus:ring-4 focus:ring-volt/20">
               {Array.from(new Set([weekStart, currentWeek, ...(payload?.availableWeeks ?? [])])).sort().reverse().map((week) => <option key={week} value={week}>{formatWeekRange(week)}</option>)}
             </select>
           </div>
@@ -134,7 +134,7 @@ export default function HorariosPage() {
 
         <div className="mb-3 grid grid-cols-4 gap-2">
           <Summary label="Laborando" value={summary.working} className="text-emerald-700" />
-          <Summary label="Descansos" value={summary.off} className="text-slate-700" />
+          <Summary label="Descansos" value={summary.off} className="text-slate-700 dark:text-slate-300" />
           <Summary label="Vacaciones" value={summary.vacation} className="text-sky-700" />
           <Summary label="Pago dia" value={summary.paid} className="text-amber-700" />
         </div>
@@ -173,7 +173,7 @@ function ScheduleRow({ item, showUser }: { item: ScheduleItem; showUser: boolean
 }
 
 function Summary({ label, value, className }: { label: string; value: number; className: string }) {
-  return <div className="rounded-2xl bg-white px-2 py-2.5 text-center shadow-sm"><p className={`text-xl font-black ${className}`}>{value}</p><p className="mt-0.5 truncate text-[9px] font-bold text-muted">{label}</p></div>;
+  return <div className="rounded-2xl bg-white dark:bg-slate-800 px-2 py-2.5 text-center shadow-sm dark:shadow-none"><p className={`text-xl font-black ${className}`}>{value}</p><p className="mt-0.5 truncate text-[9px] font-bold text-muted">{label}</p></div>;
 }
 
 function formatWeekRange(value: string) {
