@@ -32,6 +32,12 @@ export default function ProfilePage() {
 
   useEffect(() => () => { if (previewUrl) URL.revokeObjectURL(previewUrl); }, [previewUrl]);
 
+  useEffect(() => {
+    if (!message) return;
+    const timer = setTimeout(() => setMessage(""), 5000);
+    return () => clearTimeout(timer);
+  }, [message]);
+
   function selectPhoto(event: ChangeEvent<HTMLInputElement>) {
     const selected = event.target.files?.[0] ?? null;
     setMessage("");
@@ -102,7 +108,7 @@ export default function ProfilePage() {
             <section className="mb-3 flex flex-col items-center px-4 py-5 text-center">
               <div className="relative">
                 <ProfileAvatar name={user.name} photoUrl={previewUrl ?? user.photoUrl} size="lg" className="size-28 rounded-full ring-4 ring-white dark:ring-[#2a3a5c]" />
-                <span className="absolute bottom-0 right-0 grid size-9 place-items-center rounded-full bg-volt text-white ring-4 ring-white"><Camera size={16} /></span>
+                <button type="button" onClick={() => inputRef.current?.click()} aria-label="Cambiar foto de perfil" className="absolute bottom-0 right-0 grid size-9 place-items-center rounded-full bg-volt text-white ring-4 ring-white dark:ring-[#2a3a5c] transition active:scale-95"><Camera size={16} /></button>
               </div>
               <h2 className="mt-3 text-xl font-black text-ink">{user.name}</h2>
               <Badge>{roleLabels[user.role]}</Badge>

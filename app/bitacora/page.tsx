@@ -15,6 +15,7 @@ export default function BitacoraPage() {
   const [evidence, setEvidence] = useState<File | null>(null);
   const [evidenceNote, setEvidenceNote] = useState("");
   const [formStatus, setFormStatus] = useState("");
+  const [formStatusType, setFormStatusType] = useState<"neutral" | "success" | "error">("neutral");
   const preview = useMemo(() => evidence ? URL.createObjectURL(evidence) : null, [evidence]);
 
   useEffect(() => {
@@ -40,13 +41,13 @@ export default function BitacoraPage() {
   async function createLog(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!data) return;
-    setFormStatus("Guardando...");
+    setFormStatus("Guardando..."); setFormStatusType("neutral");
     const response = await fetch("/api/logs", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ category, description }) });
     const payload = await response.json() as { logEntry?: AppData["logEntries"][number]; error?: string };
-    if (!response.ok || !payload.logEntry) { setFormStatus(payload.error ?? "No se pudo guardar el registro."); return; }
+    if (!response.ok || !payload.logEntry) { setFormStatusType("error"); setFormStatus(payload.error ?? "No se pudo guardar el registro."); return; }
     if (comment.trim()) {
       const commentResponse = await fetch("/api/comments", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ logEntryId: payload.logEntry.id, body: comment }) });
-      if (!commentResponse.ok) return setFormStatus("Registro guardado, pero el comentario no pudo guardarse.");
+      if (!commentResponse.ok) { setFormStatusType("error"); return setFormStatus("Registro guardado, pero el comentario no pudo guardarse."); }
     }
     if (evidence) {
       const form = new FormData();
@@ -54,10 +55,10 @@ export default function BitacoraPage() {
       form.set("note", evidenceNote);
       form.set("logEntryId", payload.logEntry.id);
       const evidenceResponse = await fetch("/api/evidences/upload", { method: "POST", body: form });
-      if (!evidenceResponse.ok) return setFormStatus("Registro guardado, pero la evidencia no pudo subirse.");
+      if (!evidenceResponse.ok) { setFormStatusType("error"); return setFormStatus("Registro guardado, pero la evidencia no pudo subirse."); }
     }
     setData({ ...data, logEntries: [...data.logEntries, payload.logEntry] });
-    setDescription(""); setComment(""); setEvidence(null); setEvidenceNote(""); setFormStatus("Registro guardado.");
+    setDescription(""); setComment(""); setEvidence(null); setEvidenceNote(""); setFormStatusType("success"); setFormStatus("Registro guardado.");
   }
 
   return (
@@ -106,10 +107,10 @@ export default function BitacoraPage() {
             ) : null}
             <label className="flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-2xl border border-line bg-panel text-sm font-black text-ink">
               <ImagePlus size={17} /> {evidence ? "Cambiar evidencia" : "Agregar evidencia"}
-              <input type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={(event) => setEvidence(event.target.files?.[0] ?? null)} />
+              <input type="file" accept="image/jpeg,image/png,image/webp" aria-label="Subir archivo de evidencia" className="sr-only" onChange={(event) => setEvidence(event.target.files?.[0] ?? null)} />
             </label>
             {evidence ? <input value={evidenceNote} onChange={(event) => setEvidenceNote(event.target.value)} maxLength={500} className="min-h-12 rounded-2xl border border-line bg-panel px-3 outline-none focus:border-volt" placeholder="Nota de evidencia (opcional)" /> : null}
-            {formStatus ? <p className="text-sm font-semibold text-muted">{formStatus}</p> : null}
+            {formStatus ? <p className={`text-sm font-semibold ${formStatusType === "success" ? "text-emerald-600 dark:text-emerald-400" : formStatusType === "error" ? "text-rose-600 dark:text-rose-400" : "text-muted"}`}>{formStatus}</p> : null}
             <Button type="submit" className="w-full" icon={<FileText size={17} />}>
               Guardar registro
             </Button>
