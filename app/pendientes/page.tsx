@@ -22,6 +22,8 @@ export default function PendientesPage() {
   const [dueDate, setDueDate] = useState(new Date().toISOString().slice(0, 10));
   const [editId, setEditId] = useState<string | null>(null);
   const [formStatus, setFormStatus] = useState("");
+  const [formStatusType, setFormStatusType] = useState<"neutral" | "success" | "error">("neutral");
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
 
   useEffect(() => {
     getSession().then(setSession);
@@ -64,22 +66,25 @@ export default function PendientesPage() {
   async function savePending(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!data) return;
-    setFormStatus("Guardando...");
+    setFormStatus("Guardando..."); setFormStatusType("neutral");
     const response = await fetch(editId ? `/api/pendings/${editId}` : "/api/pendings", {
       method: editId ? "PATCH" : "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ title, description, category, priority, ownerId, dueDate })
     });
     const payload = await response.json() as { pending?: Pending; error?: string };
-    if (!response.ok || !payload.pending) { setFormStatus(payload.error ?? "No se pudo guardar."); return; }
+    if (!response.ok || !payload.pending) { setFormStatusType("error"); setFormStatus(payload.error ?? "No se pudo guardar."); return; }
     setData({ ...data, pendings: editId ? data.pendings.map((item) => item.id === editId ? payload.pending! : item) : [payload.pending, ...data.pendings] });
-    setFormStatus(editId ? "Pendiente actualizado." : "Pendiente creado.");
+    setFormStatusType("success"); setFormStatus(editId ? "Pendiente actualizado." : "Pendiente creado.");
     resetForm();
   }
 
-  async function deletePending(id: string) {
-    if (!data) return;
-    if (!window.confirm("¿Eliminar este pendiente? Esta accion no se puede deshacer.")) return;
+  function requestDelete(id: string) { setDeleteTargetId(id); }
+
+  async function confirmDelete() {
+    if (!deleteTargetId || !data) return;
+    const id = deleteTargetId;
+    setDeleteTargetId(null);
     const previous = data.pendings;
     setData({ ...data, pendings: data.pendings.filter((item) => item.id !== id) });
     try {
@@ -87,7 +92,7 @@ export default function PendientesPage() {
       if (!response.ok) throw new Error("No se pudo eliminar.");
     } catch {
       setData({ ...data, pendings: previous });
-      setFormStatus("No se pudo eliminar el pendiente.");
+      setFormStatusType("error"); setFormStatus("No se pudo eliminar el pendiente.");
     }
   }
 
@@ -96,7 +101,7 @@ export default function PendientesPage() {
     const response = await fetch(`/api/pendings/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status }) });
     const payload = await response.json() as { pending?: Pending; error?: string };
     if (response.ok && payload.pending) setData({ ...data, pendings: data.pendings.map((item) => item.id === id ? payload.pending! : item) });
-    else setFormStatus(payload.error ?? "No se pudo cambiar el estado.");
+    else { setFormStatusType("error"); setFormStatus(payload.error ?? "No se pudo cambiar el estado."); }
   }
 
   return (
@@ -143,8 +148,8 @@ export default function PendientesPage() {
           <Card className="mb-3" id="crear-pendiente">
             <h2 className="text-lg font-black">{editId ? "Editar pendiente" : "Crear pendiente"}</h2>
             <form className="mt-3 grid gap-2.5" onSubmit={savePending}>
-              <input value={title} onChange={(event) => setTitle(event.target.value)} className="min-h-12 rounded-2xl border border-line bg-panel px-3 py-3 outline-none focus:border-volt" placeholder="Titulo" required />
-              <textarea value={description} onChange={(event) => setDescription(event.target.value)} className="min-h-16 rounded-2xl border border-line bg-panel px-3 py-2.5 outline-none focus:border-volt" placeholder="Descripcion" required />
+              <input value={title} onChange={(event) => setTitle(event.target.value)} className="min-h-12 rounded-2xl border border-line bg-panel px-3 py-3 outline-none focus:border-volt" placeholder="Título *" required />
+              <textarea value={description} onChange={(event) => setDescription(event.target.value)} className="min-h-16 rounded-2xl border border-line bg-panel px-3 py-2.5 outline-none focus:border-volt" placeholder="Descripción *" required />
               <div className="grid grid-cols-2 gap-3">
                 <select value={category} onChange={(event) => setCategory(event.target.value)} className="min-h-12 rounded-2xl border border-line bg-panel px-3 py-3 outline-none focus:border-volt">
                   <option value="OPERACION">operacion</option><option value="EQUIPO">equipo</option><option value="COMERCIAL">comercial</option><option value="CLIENTE">cliente</option><option value="INVENTARIO">inventario</option><option value="MANTENIMIENTO">mantenimiento</option>
@@ -159,7 +164,8 @@ export default function PendientesPage() {
                 </select>
                 <input type="date" value={dueDate} onChange={(event) => setDueDate(event.target.value)} className="min-h-12 rounded-2xl border border-line bg-panel px-3 py-3 outline-none focus:border-volt" required />
               </div>
-              {formStatus ? <p className="text-sm font-semibold text-muted">{formStatus}</p> : null}
+              {formStatus ? <p className={`text-sm font-semibold ${formStatusType === "success" ? "text-emerald-600 dark:text-emerald-400" : formStatusType === "error" ? "text-rose-600 dark:text-rose-400" : "text-muted"}`}>{formStatus}</p> : null}
+              <p className="text-[11px] text-muted">* Campos obligatorios</p>
               <PremiumButton type="submit" variant="primary" icon={<Plus size={17} />}>{editId ? "Guardar cambios" : "Crear pendiente"}</PremiumButton>
             </form>
           </Card>
@@ -184,8 +190,8 @@ export default function PendientesPage() {
               {!isAdvisor ? (
                 <div className="mt-2.5 grid grid-cols-3 gap-2">
                   <button onClick={() => editPending(pending)} className="min-h-10 rounded-xl bg-slate-100 dark:bg-slate-700 text-sm font-black text-ink">Editar</button>
-                  <select value={pending.status === "en proceso" ? "EN_PROCESO" : pending.status.toUpperCase()} onChange={(event) => void changeStatus(pending.id, event.target.value as "PENDIENTE" | "EN_PROCESO" | "COMPLETADO")} className="min-h-10 rounded-xl border border-line bg-panel px-3 text-sm font-black"><option value="PENDIENTE">Pendiente</option><option value="EN_PROCESO">En proceso</option><option value="COMPLETADO">Cerrar</option></select>
-                  <button onClick={() => void deletePending(pending.id)} className="flex min-h-10 items-center justify-center gap-1.5 rounded-xl border border-rose-200/60 bg-rose-50/60 text-sm font-black text-rose-600 transition active:scale-95"><Trash2 size={14} />Borrar</button>
+                  <select aria-label="Cambiar estado" value={pending.status === "en proceso" ? "EN_PROCESO" : pending.status.toUpperCase()} onChange={(event) => void changeStatus(pending.id, event.target.value as "PENDIENTE" | "EN_PROCESO" | "COMPLETADO")} className="min-h-10 rounded-xl border border-line bg-panel px-3 text-sm font-black"><option value="PENDIENTE">Pendiente</option><option value="EN_PROCESO">En proceso</option><option value="COMPLETADO">Cerrar</option></select>
+                  <button onClick={() => requestDelete(pending.id)} className="flex min-h-10 items-center justify-center gap-1.5 rounded-xl border border-rose-200/60 bg-rose-50/60 text-sm font-black text-rose-600 transition active:scale-95"><Trash2 size={14} />Borrar</button>
                 </div>
               ) : null}
               <ResourceDiscussion target={{ pendingId: pending.id }} />
@@ -201,7 +207,23 @@ export default function PendientesPage() {
       </AppFrame>
       {!isAdvisor ? <FloatingActionButton href="#crear-pendiente" label="Crear" icon={Plus} /> : null}
       <BottomNav />
+      {deleteTargetId ? <ConfirmModal onConfirm={() => void confirmDelete()} onCancel={() => setDeleteTargetId(null)} /> : null}
     </>
+  );
+}
+
+function ConfirmModal({ onConfirm, onCancel }: { onConfirm: () => void; onCancel: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-4 backdrop-blur-sm sm:items-center">
+      <div className="w-full max-w-sm rounded-3xl bg-white dark:bg-slate-900 p-6 shadow-2xl">
+        <h3 className="text-lg font-black text-ink">¿Eliminar pendiente?</h3>
+        <p className="mt-2 text-sm text-muted">Esta acción no se puede deshacer.</p>
+        <div className="mt-5 grid grid-cols-2 gap-3">
+          <button type="button" onClick={onCancel} className="min-h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 text-sm font-black text-ink transition active:scale-95">Cancelar</button>
+          <button type="button" onClick={onConfirm} className="min-h-12 rounded-2xl bg-rose-500 text-sm font-black text-white transition active:scale-95">Eliminar</button>
+        </div>
+      </div>
+    </div>
   );
 }
 

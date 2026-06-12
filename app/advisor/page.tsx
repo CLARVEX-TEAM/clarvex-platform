@@ -45,7 +45,16 @@ export default function AdvisorDashboard() {
       <>
         <div className="sticky top-0 z-20 h-[68px] border-b border-slate-200/60 bg-white/88 dark:border-slate-800/60 dark:bg-slate-950/95 backdrop-blur-xl" />
         <AppFrame>
-          <Card>Conectando con PostgreSQL...</Card>
+          <div className="animate-pulse space-y-3">
+            <div className="h-36 rounded-[28px] bg-slate-200 dark:bg-slate-800" />
+            <div className="grid grid-cols-2 gap-3">
+              {[0, 1, 2, 3].map((i) => <div key={i} className="h-24 rounded-[28px] bg-slate-200 dark:bg-slate-800" />)}
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              {[0, 1, 2, 3].map((i) => <div key={i} className="h-16 rounded-[28px] bg-slate-200 dark:bg-slate-800" />)}
+            </div>
+            <div className="h-28 rounded-[28px] bg-slate-200 dark:bg-slate-800" />
+          </div>
         </AppFrame>
       </>
     );
@@ -107,7 +116,11 @@ export default function AdvisorDashboard() {
           <QuickKpiGrid cards={kpiCards} delay={0.16} />
         </div>
 
-        <motion.div {...cardAnim(0.24)} className="mt-3">
+        <div className="mt-3">
+          <QuickActions variant="advisor" delay={0.24} />
+        </div>
+
+        <motion.div {...cardAnim(0.32)} className="mt-3">
           <Card>
             <div className="mb-3 flex items-center justify-between gap-2">
               <h2 className="text-lg font-black">Plan del día</h2>
@@ -125,7 +138,7 @@ export default function AdvisorDashboard() {
           </Card>
         </motion.div>
 
-        <motion.div {...cardAnim(0.32)} className="mt-3">
+        <motion.div {...cardAnim(0.40)} className="mt-3">
           <Card>
             <h2 className="mb-3 text-lg font-black">KPIs principales</h2>
             <div className="grid grid-cols-2 gap-3 text-sm">
@@ -140,7 +153,7 @@ export default function AdvisorDashboard() {
           </Card>
         </motion.div>
 
-        <motion.div {...cardAnim(0.40)} className="mt-3">
+        <motion.div {...cardAnim(0.48)} className="mt-3">
           <Card>
             <div className="mb-3 flex items-center justify-between gap-2">
               <h2 className="text-lg font-black">Actividad</h2>
@@ -160,10 +173,6 @@ export default function AdvisorDashboard() {
             </div>
           </Card>
         </motion.div>
-
-        <div className="mt-3">
-          <QuickActions variant="advisor" delay={0.48} />
-        </div>
       </AppFrame>
       <BottomNav />
     </>

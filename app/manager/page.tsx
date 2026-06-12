@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
@@ -53,7 +54,16 @@ export default function ManagerDashboard() {
       <>
         <div className="sticky top-0 z-20 h-[68px] border-b border-slate-200/60 bg-white/88 dark:border-slate-800/60 dark:bg-slate-950/95 backdrop-blur-xl" />
         <AppFrame>
-          <Card>Conectando con el panel...</Card>
+          <div className="animate-pulse space-y-3">
+            <div className="h-36 rounded-[28px] bg-slate-200 dark:bg-slate-800" />
+            <div className="grid grid-cols-2 gap-3">
+              {[0, 1, 2, 3].map((i) => <div key={i} className="h-24 rounded-[28px] bg-slate-200 dark:bg-slate-800" />)}
+            </div>
+            <div className="h-28 rounded-[28px] bg-slate-200 dark:bg-slate-800" />
+            <div className="grid grid-cols-2 gap-3">
+              {[0, 1, 2, 3].map((i) => <div key={i} className="h-16 rounded-[28px] bg-slate-200 dark:bg-slate-800" />)}
+            </div>
+          </div>
         </AppFrame>
       </>
     );
@@ -192,9 +202,12 @@ export default function ManagerDashboard() {
 
         <motion.div {...cardAnim(0.56)} className="mt-3">
           <Card>
-            <div className="mb-3 flex items-center gap-2">
-              <Megaphone className="text-volt" size={18} />
-              <h2 className="text-lg font-black">Comunicados recientes</h2>
+            <div className="mb-3 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Megaphone className="text-volt" size={18} />
+                <h2 className="text-lg font-black">Comunicados recientes</h2>
+              </div>
+              <Link href="/comunicados" className="text-xs font-black text-volt">Ver todos</Link>
             </div>
             {data.announcements.map((item) => (
               <div key={item.id} className="border-t border-line py-2.5 first:border-t-0 first:pt-0">
@@ -209,7 +222,10 @@ export default function ManagerDashboard() {
 
         <motion.div {...cardAnim(0.64)} className="mt-3">
           <Card>
-            <h2 className="mb-3 text-lg font-black">Pendientes de gerencia</h2>
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="text-lg font-black">Pendientes de gerencia</h2>
+              <Link href="/pendientes" className="text-xs font-black text-volt">Ver todos</Link>
+            </div>
             <div className="divide-y divide-white/[0.07]">
               {critical.map((pending) => (
                 <div key={pending.id} className="py-2.5">
@@ -234,13 +250,12 @@ export default function ManagerDashboard() {
                 <h2 className="font-black tracking-[-0.02em] text-ink">Centro de Datos</h2>
                 <p className="mt-0.5 text-xs text-muted">Fuentes y sincronizaciones</p>
               </div>
-              <button
-                type="button"
-                onClick={() => router.push("/datos")}
+              <Link
+                href="/datos"
                 className="inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-full bg-volt px-3.5 text-xs font-black text-white transition active:scale-95"
               >
                 Abrir <ArrowRight size={14} />
-              </button>
+              </Link>
             </div>
           </Card>
         </motion.div>
