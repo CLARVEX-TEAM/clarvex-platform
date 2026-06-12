@@ -275,7 +275,7 @@ export default function DataCenterPage() {
                           <MetricDetail label="Ignoradas" value={kpiMetrics.ignoredRows} />
                         </div>
                         {"ttlsMeta" in kpiMetrics ? (
-                          <div className="mt-1 rounded-2xl border border-line bg-slate-50 px-3 py-2">
+                          <div className="mt-1 rounded-2xl border border-line bg-slate-50 dark:bg-slate-800 px-3 py-2">
                             <p className="mb-1.5 text-[10px] font-black uppercase tracking-[0.1em] text-muted">Totales fila TTLS</p>
                             <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-[11px]">
                               <span className="text-muted">Tráfico</span><span className="font-bold text-ink">{(kpiMetrics as KpiSyncMetrics).ttlsTraffic?.toLocaleString("es-MX") ?? "—"}</span>
@@ -289,7 +289,7 @@ export default function DataCenterPage() {
                       </>
                     ) : null}
                     {sheets.length > 0 ? (
-                      <div className="mt-2 rounded-2xl border border-line bg-slate-50 px-3 py-2">
+                      <div className="mt-2 rounded-2xl border border-line bg-slate-50 dark:bg-slate-800 px-3 py-2">
                         <p className="text-[10px] font-black uppercase tracking-[0.1em] text-muted">Hojas detectadas</p>
                         <div className="mt-1.5 grid gap-1">
                           {sheets.map((sheet) => (
@@ -306,7 +306,7 @@ export default function DataCenterPage() {
                         type="button"
                         onClick={() => source && void testConnection(source)}
                         disabled={!canConnect || testingId === source?.id || syncingId === source?.id}
-                        className="col-span-2 flex min-h-10 items-center justify-center gap-2 rounded-xl border border-line bg-white text-xs font-black text-ink/75 transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
+                        className="col-span-2 flex min-h-10 items-center justify-center gap-2 rounded-xl border border-line bg-white dark:bg-slate-800 text-xs font-black text-ink/75 transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
                       >
                         <Wifi size={14} className={testingId === source?.id ? "animate-pulse" : "text-volt"} />
                         {testingId === source?.id ? "Probando conexion" : "Probar conexion"}
@@ -320,7 +320,7 @@ export default function DataCenterPage() {
                         <RefreshCw size={14} className={syncingId === source?.id ? "animate-spin" : ""} />
                         {syncingId === source?.id ? "Sincronizando" : "Sincronizar ahora"}
                       </button>
-                      <button type="button" onClick={() => openConfig(type)} className="flex min-h-10 items-center justify-center gap-2 rounded-xl bg-slate-100 text-xs font-black text-ink/80 transition active:scale-95">
+                      <button type="button" onClick={() => openConfig(type)} className="flex min-h-10 items-center justify-center gap-2 rounded-xl bg-slate-100 dark:bg-slate-700 text-xs font-black text-ink/80 transition active:scale-95">
                         <Settings2 size={14} /> Configurar
                       </button>
                     </div>
@@ -367,7 +367,7 @@ export default function DataCenterPage() {
                 <h2 id="source-config-title" className="mt-1 text-xl font-black tracking-[-0.03em]">{modules[config.type].label}</h2>
                 <p className="mt-1 text-xs text-muted">Los cambios se guardan para esta tienda.</p>
               </div>
-              <button type="button" onClick={() => setConfig(null)} disabled={saving} className="grid size-10 shrink-0 place-items-center rounded-[16px] bg-slate-100 text-muted transition hover:text-ink disabled:opacity-40" aria-label="Cerrar configuracion">
+              <button type="button" onClick={() => setConfig(null)} disabled={saving} className="grid size-10 shrink-0 place-items-center rounded-[16px] bg-slate-100 dark:bg-slate-700 text-muted transition hover:text-ink disabled:opacity-40" aria-label="Cerrar configuracion">
                 <X size={18} />
               </button>
             </div>
@@ -382,7 +382,7 @@ export default function DataCenterPage() {
                         key={provider.value}
                         type="button"
                         onClick={() => setConfig({ ...config, provider: provider.value })}
-                        className={`grid min-h-16 place-items-center rounded-2xl border text-[11px] font-black transition active:scale-[0.98] ${config.provider === provider.value ? "border-volt/40 bg-volt/12 text-volt" : "border-line bg-slate-50 text-muted"}`}
+                        className={`grid min-h-16 place-items-center rounded-2xl border text-[11px] font-black transition active:scale-[0.98] ${config.provider === provider.value ? "border-volt/40 bg-volt/12 text-volt" : "border-line bg-slate-50 dark:bg-slate-800 text-muted"}`}
                         aria-pressed={config.provider === provider.value}
                       >
                         <Icon size={18} />{provider.label}
@@ -410,7 +410,7 @@ export default function DataCenterPage() {
                       key={frequency.value}
                       type="button"
                       onClick={() => setConfig({ ...config, frequency: frequency.value })}
-                      className={`min-h-14 rounded-2xl border px-3 text-left transition active:scale-[0.98] ${config.frequency === frequency.value ? "border-volt/40 bg-volt/12" : "border-line bg-slate-50"}`}
+                      className={`min-h-14 rounded-2xl border px-3 text-left transition active:scale-[0.98] ${config.frequency === frequency.value ? "border-volt/40 bg-volt/12" : "border-line bg-slate-50 dark:bg-slate-800"}`}
                       aria-pressed={config.frequency === frequency.value}
                     >
                       <span className={`block text-xs font-black ${config.frequency === frequency.value ? "text-volt" : "text-ink"}`}>{frequency.label}</span>
@@ -444,7 +444,7 @@ function DataPoint({ label, value }: { label: string; value: string }) {
 }
 
 function MetricDetail({ label, value }: { label: string; value: number }) {
-  return <div className="bg-slate-50 px-3 py-2"><p className="text-[10px] font-bold text-muted">{label}</p><p className="mt-0.5 text-sm font-black text-ink">{value.toLocaleString("es-MX")}</p></div>;
+  return <div className="bg-slate-50 dark:bg-slate-800 px-3 py-2"><p className="text-[10px] font-bold text-muted">{label}</p><p className="mt-0.5 text-sm font-black text-ink">{value.toLocaleString("es-MX")}</p></div>;
 }
 
 function isKpiSyncMetrics(value: unknown): value is KpiSyncMetrics {
