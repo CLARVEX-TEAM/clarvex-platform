@@ -1,7 +1,8 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Bell, Check, CheckCheck, ClipboardCheck, ImagePlus, Megaphone, MessageCircle, Target, Trophy } from "lucide-react";
+import { Bell, Check, CheckCheck, ChevronRight, ClipboardCheck, ImagePlus, Megaphone, MessageCircle, Target, Trophy } from "lucide-react";
 import { getSession } from "@/lib/auth";
 import type { User } from "@/lib/types";
 import { AppFrame, AppHeader, Badge, BottomNav, Button, Card } from "@/components/ui";
@@ -17,6 +18,16 @@ const typeConfig = {
   KPI_GOAL_REACHED: { label: "Meta KPI", icon: Trophy, tone: "success" as const },
   COMMENT_ADDED: { label: "Comentario", icon: MessageCircle, tone: "default" as const },
   EVIDENCE_ADDED: { label: "Evidencia", icon: ImagePlus, tone: "success" as const }
+};
+
+const typeHref: Record<NotificationType, string> = {
+  PLAN_READY: "/plan",
+  NEW_ANNOUNCEMENT: "/comunicados",
+  PENDING_ASSIGNED: "/pendientes",
+  TASK_COMPLETED: "/plan",
+  KPI_GOAL_REACHED: "/kpis",
+  COMMENT_ADDED: "/bitacora",
+  EVIDENCE_ADDED: "/bitacora",
 };
 
 export default function NotificationsPage() {
@@ -76,9 +87,40 @@ export default function NotificationsPage() {
 }
 
 function NotificationRow({ item, onRead }: { item: NotificationItem; onRead: (id: string) => void }) {
+  const router = useRouter();
   const config = typeConfig[item.type];
   const Icon = config.icon;
-  return <Card className={item.readAt ? "p-3.5" : "bg-blue-50/70 dark:bg-blue-950/30 p-3.5 ring-1 ring-volt/15"}><div className="flex items-start gap-3"><span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-white dark:bg-slate-700 text-volt shadow-sm dark:shadow-none"><Icon size={18} /></span><div className="min-w-0 flex-1"><div className="flex items-start justify-between gap-2"><div><h2 className="text-sm font-black text-ink">{item.title}</h2><p className="mt-0.5 text-[11px] text-muted">{formatDate(item.createdAt)}</p></div><Badge tone={item.readAt ? "default" : config.tone}>{item.readAt ? "Leida" : config.label}</Badge></div><p className="mt-2 text-sm leading-5 text-muted">{item.body}</p>{!item.readAt ? <button type="button" onClick={() => onRead(item.id)} className="mt-2.5 text-sm font-black text-volt">Marcar como leida</button> : null}</div></div></Card>;
+
+  function handleClick() {
+    if (!item.readAt) onRead(item.id);
+    router.push(typeHref[item.type]);
+  }
+
+  return (
+    <Card
+      onClick={handleClick}
+      className={`cursor-pointer ${item.readAt ? "p-3.5" : "bg-blue-50/70 dark:bg-blue-950/30 p-3.5 ring-1 ring-volt/15"}`}
+    >
+      <div className="flex items-start gap-3">
+        <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-white dark:bg-slate-700 text-volt shadow-sm dark:shadow-none">
+          <Icon size={18} />
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <h2 className="text-sm font-black text-ink">{item.title}</h2>
+              <p className="mt-0.5 text-[11px] text-muted">{formatDate(item.createdAt)}</p>
+            </div>
+            <div className="flex shrink-0 items-center gap-1.5">
+              <Badge tone={item.readAt ? "default" : config.tone}>{item.readAt ? "Leida" : config.label}</Badge>
+              <ChevronRight size={14} className="text-muted" />
+            </div>
+          </div>
+          <p className="mt-2 text-sm leading-5 text-muted">{item.body}</p>
+        </div>
+      </div>
+    </Card>
+  );
 }
 
 function formatDate(value: string) {
