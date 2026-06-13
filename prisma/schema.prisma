@@ -453,10 +453,11 @@ model DailyNotificationLog {
   id         String   @id @default(cuid())
   employeeId String
   date       String   // formato "2026-06-13" (día retail en zona America/Monterrey)
+  type       String   // "MORNING" o "EVENING"
+  case       String?  // "A"-"G", "skipped", o null (gerencia / matutina)
   sent       Boolean  @default(true)
-  case       String   // "A"-"F" para asesores, "RESUMEN" para gerencia
   createdAt  DateTime @default(now())
 
-  @@unique([employeeId, date])
+  @@unique([employeeId, date, type])
   @@index([date])
 }

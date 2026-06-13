@@ -1,6 +1,14 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildAdvisorMessage, buildManagerSummary, firstName, resolveDailyCase } from "../lib/daily-summary";
+import {
+  buildAdvisorMessage,
+  buildManagerSummary,
+  buildMorningAdvisorMessage,
+  buildMorningManagerSummary,
+  firstName,
+  resolveDailyCase,
+  selectMorningMotivation
+} from "../lib/daily-summary";
 
 test("usa solo el primer nombre del asesor", () => {
   assert.equal(firstName("WAIRA ZITLALI POPOCA"), "WAIRA");
@@ -33,7 +41,7 @@ test("formatea venta y diferencia como pesos sin decimales y redondea alcance", 
   assert.match(message.body, /\$2,000/); // diferencia para llegar al 100%
 });
 
-test("resumen de gerencia calcula alcance de tienda y conteos", () => {
+test("resumen de cierre de gerencia calcula alcance de tienda y conteos", () => {
   const summary = buildManagerSummary({
     dateLabel: "13 de junio",
     storeSales: 90000,
@@ -47,4 +55,73 @@ test("resumen de gerencia calcula alcance de tienda y conteos", () => {
   assert.match(summary.body, /Sobre meta: 3 asesores/);
   assert.match(summary.body, /Cerca: 1 asesores/);
   assert.match(summary.body, /Abajo: 2 asesores/);
+});
+
+test("mensaje motivacional matutino prioriza lunes y viernes sobre el alcance", () => {
+  // Lunes (weekday 1) gana aunque el alcance sea bajo
+  assert.match(
+    selectMorningMotivation({ name: "Luis", weekday: 1, weeklyGoal: 50000, remaining: 50000, achievementPct: 10 }),
+    /¡Feliz lunes Luis!/
+  );
+  // Viernes (weekday 5)
+  assert.match(
+    selectMorningMotivation({ name: "Luis", weekday: 5, weeklyGoal: 50000, remaining: 12000, achievementPct: 60 }),
+    /¡Es viernes Luis!/
+  );
+  // Día normal con alcance alto
+  assert.match(
+    selectMorningMotivation({ name: "Luis", weekday: 3, weeklyGoal: 50000, remaining: 5000, achievementPct: 90 }),
+    /¡Vas excelente!/
+  );
+  // Día normal con alcance medio
+  assert.match(
+    selectMorningMotivation({ name: "Luis", weekday: 3, weeklyGoal: 50000, remaining: 25000, achievementPct: 60 }),
+    /hoy hay que acelerar/
+  );
+  // Día normal con alcance bajo
+  assert.match(
+    selectMorningMotivation({ name: "Luis", weekday: 3, weeklyGoal: 50000, remaining: 45000, achievementPct: 20 }),
+    /día clave para remontar/
+  );
+});
+
+test("mensaje matutino muestra meta del día, acumulado y faltante", () => {
+  const message = buildMorningAdvisorMessage({
+    name: "Marta Ruiz",
+    dailyGoal: 5000,
+    weeklySales: 30000,
+    weeklyGoal: 50000,
+    weekday: 3
+  });
+  assert.match(message.body, /¡Buenos días Marta!/);
+  assert.match(message.body, /Tu meta de hoy es \$5,000/);
+  assert.match(message.body, /Llevas acumulado esta semana \$30,000/);
+  assert.match(message.body, /Te faltan \$20,000 para cumplir tu meta semanal/);
+});
+
+test("mensaje matutino felicita cuando ya se cumplio la meta semanal", () => {
+  const message = buildMorningAdvisorMessage({
+    name: "Marta",
+    dailyGoal: 5000,
+    weeklySales: 60000,
+    weeklyGoal: 50000,
+    weekday: 3
+  });
+  assert.match(message.body, /¡Ya cumpliste tu meta semanal! 🎉/);
+});
+
+test("resumen matutino de gerencia calcula alcance semanal y faltante", () => {
+  const summary = buildMorningManagerSummary({
+    dateLabel: "13 de junio",
+    storeDailyGoal: 20000,
+    storeWeeklySales: 80000,
+    storeWeeklyGoal: 100000,
+    activeAdvisors: 4
+  });
+  assert.match(summary.body, /Arranque del día 13 de junio/);
+  assert.match(summary.body, /Meta de tienda hoy: \$20,000/);
+  assert.match(summary.body, /Venta acumulada esta semana: \$80,000/);
+  assert.match(summary.body, /Alcance semanal: 80%/);
+  assert.match(summary.body, /Faltante para meta semanal: \$20,000/);
+  assert.match(summary.body, /Equipo activo hoy: 4 asesores/);
 });
