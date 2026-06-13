@@ -27,7 +27,8 @@ export async function POST(request: Request) {
     stores: stores.length,
     advisorsNotified: 0,
     advisorsSkipped: 0,
-    managersNotified: 0
+    managersNotified: 0,
+    debug: [] as Array<{ storeId: string; weekStart: string; weekEnd: string; weekRows: number; weekSales: number; source: string }>
   };
 
   type PushJob = { userIds: string[]; payload: { title: string; body: string; tag: string } };
@@ -74,6 +75,16 @@ export async function POST(request: Request) {
     const storeDailyGoal = todayRows.reduce((total, row) => total + Number(row.dailyGoal), 0);
     const storeWeeklySales = weekRows.reduce((total, row) => total + Number(row.dailySales), 0);
     const storeWeeklyGoal = weekRows.reduce((total, row) => total + Number(row.dailyGoal), 0);
+
+    // TEMP: instrumentación para diagnosticar venta semanal en $0.
+    summary.debug.push({
+      storeId: store.id,
+      weekStart: weekStart.toISOString().slice(0, 10),
+      weekEnd: weekEnd.toISOString().slice(0, 10),
+      weekRows: weekRows.length,
+      weekSales: storeWeeklySales,
+      source: persistedWeek?.weekStart && persistedWeek.weekEnd ? "persisted" : "computed"
+    });
 
     const notifications: NotificationInput[] = [];
     const logsToCreate: Array<{ employeeId: string; date: string; type: string; case: string | null; sent: boolean }> = [];
