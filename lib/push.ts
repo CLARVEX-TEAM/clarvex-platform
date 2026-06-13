@@ -19,6 +19,9 @@ export async function dispatchPushToUsers(userIds: string[], payload: PushPayloa
   if (subscriptions.length === 0) return;
 
   const expiredIds: string[] = [];
+  const tag = payload.tag ?? "clarvex-notification";
+  // topic agrupa/reemplaza notificaciones del mismo tipo; debe ser URL-safe y <= 32 chars.
+  const topic = tag.replace(/[^A-Za-z0-9_-]/g, "").slice(0, 32);
 
   await Promise.allSettled(
     subscriptions.map(async (sub) => {
@@ -29,8 +32,13 @@ export async function dispatchPushToUsers(userIds: string[], payload: PushPayloa
             title: payload.title,
             body: payload.body,
             icon: payload.icon ?? "/icon.svg",
-            tag: payload.tag ?? "clarvex-notification"
-          })
+            tag
+          }),
+          {
+            urgency: "high",        // máxima prioridad: mejor oportunidad contra No Molestar en Android
+            TTL: 86400,             // 24 h de vida si el dispositivo está offline
+            ...(topic ? { topic } : {})
+          }
         );
       } catch (error: unknown) {
         const status = (error as { statusCode?: number }).statusCode;
