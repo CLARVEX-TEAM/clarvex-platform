@@ -35,14 +35,24 @@ export default function ManagerDashboard() {
   const router = useRouter();
   const [data, setData] = useState<AppData | null>(null);
   const [manager, setManager] = useState<User | null>(null);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
   useEffect(() => {
     getSession().then((session) => {
       if (!session) router.replace("/login");
       else setManager(session);
     });
-    fetchAppData().then(setData).catch(() => setData(null));
   }, [router]);
+
+  useEffect(() => {
+    const load = () =>
+      fetchAppData()
+        .then((d) => { setData(d); setLastUpdated(new Date()); })
+        .catch(() => {});
+    void load();
+    const id = setInterval(load, 5 * 60 * 1000);
+    return () => clearInterval(id);
+  }, []);
 
   const handleLogout = async () => {
     await logout();
@@ -122,6 +132,7 @@ export default function ManagerDashboard() {
         role={manager?.role ?? "GERENTE"}
         photoUrl={manager?.photoUrl}
         storeName={manager?.storeName}
+        lastUpdated={lastUpdated}
         onLogout={handleLogout}
       />
       <AppFrame>

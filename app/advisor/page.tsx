@@ -26,14 +26,24 @@ export default function AdvisorDashboard() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [data, setData] = useState<AppData | null>(null);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
   useEffect(() => {
     getSession().then((session) => {
       if (!session) router.replace("/login");
       else setUser(session);
     });
-    fetchAppData().then(setData).catch(() => setData(null));
   }, [router]);
+
+  useEffect(() => {
+    const load = () =>
+      fetchAppData()
+        .then((d) => { setData(d); setLastUpdated(new Date()); })
+        .catch(() => {});
+    void load();
+    const id = setInterval(load, 5 * 60 * 1000);
+    return () => clearInterval(id);
+  }, []);
 
   const handleLogout = async () => {
     await logout();
@@ -107,6 +117,7 @@ export default function AdvisorDashboard() {
         role={user.role}
         photoUrl={user.photoUrl}
         storeName={user.storeName}
+        lastUpdated={lastUpdated}
         onLogout={handleLogout}
       />
       <AppFrame>

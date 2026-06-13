@@ -18,10 +18,11 @@ interface HomeHeaderProps {
   role: Role;
   photoUrl?: string | null;
   storeName?: string;
+  lastUpdated?: Date | null;
   onLogout: () => void;
 }
 
-export function HomeHeader({ name, role, photoUrl, storeName, onLogout }: HomeHeaderProps) {
+export function HomeHeader({ name, role, photoUrl, storeName, lastUpdated, onLogout }: HomeHeaderProps) {
   const firstName = name.split(" ")[0];
   const pathname = usePathname();
   const [unreadCount, setUnreadCount] = useState(0);
@@ -61,6 +62,7 @@ export function HomeHeader({ name, role, photoUrl, storeName, onLogout }: HomeHe
             </h1>
             <p className="truncate text-[11.5px] font-medium text-slate-500 dark:text-slate-400">
               {roleLabel[role]}{storeName ? ` · ${storeName}` : ""}
+              {lastUpdated ? ` · ${lastUpdated.toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" })}` : ""}
             </p>
           </div>
         </div>
