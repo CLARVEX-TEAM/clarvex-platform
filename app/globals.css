@@ -62,12 +62,29 @@ body {
   pointer-events: none;
 }
 
+@keyframes morphBlobA {
+  0%   { border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%; }
+  50%  { border-radius: 30% 60% 70% 40% / 50% 60% 30% 60%; }
+  100% { border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%; }
+}
+
+@keyframes morphBlobB {
+  0%   { border-radius: 40% 60% 60% 40% / 70% 30% 60% 40%; }
+  50%  { border-radius: 60% 40% 30% 60% / 40% 60% 40% 60%; }
+  100% { border-radius: 40% 60% 60% 40% / 70% 30% 60% 40%; }
+}
+
+@keyframes morphBlobC {
+  0%   { border-radius: 50% 50% 40% 60% / 40% 60% 50% 50%; }
+  50%  { border-radius: 70% 30% 60% 40% / 60% 40% 30% 70%; }
+  100% { border-radius: 50% 50% 40% 60% / 40% 60% 50% 50%; }
+}
+
 .ambient-blob {
   position: absolute;
   display: block;
-  border-radius: 999px;
-  opacity: 0.12;
-  filter: blur(120px);
+  opacity: 0.32;
+  filter: blur(80px);
   transform: translate3d(0, 0, 0);
   will-change: transform;
 }
@@ -78,6 +95,7 @@ body {
   width: 28rem;
   height: 28rem;
   background: #2563EB;
+  animation: morphBlobA 8s ease-in-out infinite;
 }
 
 .ambient-blob-two {
@@ -85,7 +103,8 @@ body {
   right: -13rem;
   width: 30rem;
   height: 30rem;
-  background: #0EA5E9;
+  background: #0ea5e9;
+  animation: morphBlobB 12s ease-in-out infinite;
 }
 
 .ambient-blob-three {
@@ -93,7 +112,8 @@ body {
   left: 14%;
   width: 32rem;
   height: 32rem;
-  background: #1E3A8A;
+  background: #6366f1;
+  animation: morphBlobC 10s ease-in-out infinite;
 }
 
 body > * {
@@ -258,7 +278,7 @@ select {
 .dark .ambient-blob-one,
 .dark .ambient-blob-two,
 .dark .ambient-blob-three {
-  opacity: 0.06;
+  opacity: 0.18;
 }
 
 @media (prefers-reduced-motion: reduce) {

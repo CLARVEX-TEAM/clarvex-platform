@@ -62,6 +62,7 @@ export function GlassCard({ children, className = "", ...props }: Omit<HTMLMotio
       initial={{ opacity: 0, y: 10, scale: 0.99, filter: "blur(4px)" }}
       animate={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
       whileTap={{ scale: 0.99, y: 1 }}
+      whileHover={{ y: -2, boxShadow: "0 8px 30px rgba(37,99,235,0.15)" }}
       transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
       className={cn("liquid-glass rounded-[28px] p-3.5 shadow-glass", className)}
     >
@@ -89,8 +90,8 @@ export function PremiumButton({
   return (
     <motion.button
       {...props}
-      whileTap={{ scale: 0.965, y: 1 }}
-      whileHover={{ y: -1 }}
+      whileTap={{ scale: 0.97, y: 1 }}
+      whileHover={{ scale: 1.02, y: -1 }}
       className={cn(
         "inline-flex min-h-12 items-center justify-center gap-2 rounded-full px-4 text-sm font-black tracking-[-0.01em] transition focus:outline-none focus:ring-4 focus:ring-volt/20 disabled:cursor-not-allowed disabled:opacity-55",
         variant === "primary" && "bg-volt text-white shadow-[0_8px_20px_rgb(37_99_235_/_0.22)] hover:bg-[#1D4ED8]",
