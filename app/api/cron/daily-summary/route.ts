@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { NotificationType } from "@prisma/client";
+import { resolveMonterreyDate } from "@/lib/cron-time";
 import { buildAdvisorMessage, buildManagerSummary } from "@/lib/daily-summary";
 import { createNotifications, type NotificationInput } from "@/lib/notifications";
 import { dispatchPushToUsers } from "@/lib/push";
@@ -9,24 +10,7 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 const PUSH_TAG = "cierre-dia";
-
-/** Día retail "de hoy" en zona America/Monterrey + su fecha UTC medianoche (formato KPI). */
-function resolveMonterreyDate(now = new Date()) {
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/Monterrey",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit"
-  }).formatToParts(now);
-  const valueOf = (type: string) => Number(parts.find((part) => part.type === type)?.value);
-  const year = valueOf("year");
-  const month = valueOf("month");
-  const day = valueOf("day");
-  const dateKey = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-  const utcDate = new Date(Date.UTC(year, month - 1, day));
-  const dateLabel = new Intl.DateTimeFormat("es-MX", { timeZone: "UTC", day: "numeric", month: "long" }).format(utcDate);
-  return { dateKey, utcDate, dateLabel };
-}
+const LOG_TYPE = "EVENING";
 
 export async function POST(request: Request) {
   const secret = process.env.CRON_SECRET;
@@ -55,7 +39,7 @@ export async function POST(request: Request) {
       prisma.user.findMany({ where: { storeId: store.id, role: { in: ["GERENTE", "SUBGERENTE"] } }, select: { id: true } }),
       prisma.kpi.findMany({ where: { storeId: store.id, date: utcDate }, select: { userId: true, dailySales: true, dailyGoal: true } }),
       prisma.schedule.findMany({ where: { storeId: store.id, date: utcDate }, select: { userId: true, status: true } }),
-      prisma.dailyNotificationLog.findMany({ where: { date: dateKey }, select: { employeeId: true } })
+      prisma.dailyNotificationLog.findMany({ where: { date: dateKey, type: LOG_TYPE }, select: { employeeId: true } })
     ]);
 
     const kpiByUser = new Map(dayKpis.map((kpi) => [kpi.userId, kpi]));
@@ -67,7 +51,7 @@ export async function POST(request: Request) {
     const storeGoal = dayKpis.reduce((total, kpi) => total + Number(kpi.dailyGoal), 0);
 
     const notifications: NotificationInput[] = [];
-    const logsToCreate: Array<{ employeeId: string; date: string; case: string }> = [];
+    const logsToCreate: Array<{ employeeId: string; date: string; type: string; case: string | null; sent: boolean }> = [];
     const pushJobs: PushJob[] = [];
     let overGoal = 0;
     let near = 0;
@@ -78,9 +62,10 @@ export async function POST(request: Request) {
         summary.advisorsSkipped += 1;
         continue;
       }
-      // Caso G — día de descanso (no trabajó según horario): no enviar notificación.
+      // Caso G — día de descanso (no trabajó según horario): no enviar, registrar.
       const scheduleStatus = scheduleByUser.get(advisor.id);
       if (scheduleStatus && scheduleStatus !== "WORKING") {
+        logsToCreate.push({ employeeId: advisor.id, date: dateKey, type: LOG_TYPE, case: "G", sent: false });
         summary.advisorsSkipped += 1;
         continue;
       }
@@ -97,7 +82,7 @@ export async function POST(request: Request) {
         title: message.title,
         body: message.body
       });
-      logsToCreate.push({ employeeId: advisor.id, date: dateKey, case: message.case });
+      logsToCreate.push({ employeeId: advisor.id, date: dateKey, type: LOG_TYPE, case: message.case, sent: true });
       pushJobs.push({ userIds: [advisor.id], payload: { title: message.title, body: message.body, tag: PUSH_TAG } });
 
       if (message.case === "A" || message.case === "B") overGoal += 1;
@@ -120,7 +105,7 @@ export async function POST(request: Request) {
           title: managerMessage.title,
           body: managerMessage.body
         });
-        logsToCreate.push({ employeeId: id, date: dateKey, case: "RESUMEN" });
+        logsToCreate.push({ employeeId: id, date: dateKey, type: LOG_TYPE, case: null, sent: true });
       }
       pushJobs.push({ userIds: managerIds, payload: { title: managerMessage.title, body: managerMessage.body, tag: PUSH_TAG } });
       summary.managersNotified += managerIds.length;
