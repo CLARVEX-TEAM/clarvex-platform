@@ -126,13 +126,8 @@ export default function PlanPage() {
         </div>
 
         {/* ── Progress card ── */}
-        <div
-          className="mb-3 rounded-[28px] border border-blue-200/50 dark:border-blue-700/40 p-4"
-          style={{
-            background: "radial-gradient(circle at 80% 12%, rgba(14,165,233,0.14), transparent 48%), linear-gradient(145deg, #ffffff 0%, #eff6ff 60%, #dbeafe 100%)"
-          }}
-        >
-          <div className="flex items-center justify-between gap-4 dark:[background:none]">
+        <div className="premium-hero mb-3 rounded-[28px] p-4">
+          <div className="flex items-center justify-between gap-4">
             <div>
               <p className="text-[11px] font-black uppercase tracking-[0.16em] text-[#2563EB]">Progreso del dia</p>
               <h2 className="mt-1 text-[2.4rem] font-black leading-none tracking-[-0.05em] text-slate-900 dark:text-white">
