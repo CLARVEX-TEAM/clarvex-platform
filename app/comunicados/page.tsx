@@ -5,7 +5,8 @@ import NextImage from "next/image";
 import { ImagePlus, Megaphone, Send, Trash2, X } from "lucide-react";
 import { fetchAppData, type AppData } from "@/lib/app-data";
 import { getSession } from "@/lib/auth";
-import type { Announcement, User } from "@/lib/types";
+import { ANNOUNCEMENT_REACTIONS } from "@/lib/reactions";
+import type { Announcement, AnnouncementReaction, User } from "@/lib/types";
 import { AppFrame, AppHeader, Badge, BottomNav, Card, NotificationCard, ProgressBar } from "@/components/ui";
 import { AppButton, AppInput, AppTextarea } from "@/components/forms";
 
@@ -51,6 +52,36 @@ export default function ComunicadosPage() {
     try {
       const response = await fetch(`/api/announcements/${id}/read`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ read }) });
       if (!response.ok) throw new Error("No se pudo actualizar la lectura.");
+    } catch {
+      setAnnouncements(previous);
+    }
+  }
+
+  async function toggleReaction(announcementId: string, emoji: string) {
+    if (!session) return;
+    const userId = session.id;
+    const previous = announcements;
+
+    setAnnouncements((current) =>
+      current.map((item) => {
+        if (item.id !== announcementId) return item;
+        const has = item.reactions.some((reaction) => reaction.emoji === emoji && reaction.userId === userId);
+        const reactions = has
+          ? item.reactions.filter((reaction) => !(reaction.emoji === emoji && reaction.userId === userId))
+          : [...item.reactions, { emoji, userId }];
+        return { ...item, reactions };
+      })
+    );
+
+    try {
+      const response = await fetch(`/api/announcements/${announcementId}/reactions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ emoji })
+      });
+      if (!response.ok) throw new Error("No se pudo reaccionar.");
+      const payload = await response.json() as { reactions: AnnouncementReaction[] };
+      setAnnouncements((current) => current.map((item) => item.id === announcementId ? { ...item, reactions: payload.reactions } : item));
     } catch {
       setAnnouncements(previous);
     }
@@ -209,7 +240,14 @@ export default function ComunicadosPage() {
                 unread={unread}
                 action={
                   <>
-                    <div className="flex items-center justify-between gap-2">
+                    {session ? (
+                      <ReactionBar
+                        reactions={item.reactions}
+                        currentUserId={session.id}
+                        onToggle={(emoji) => void toggleReaction(item.id, emoji)}
+                      />
+                    ) : null}
+                    <div className="mt-3 flex items-center justify-between gap-2">
                       <Badge>{item.readBy.length}/{advisors.length}</Badge>
                       <span className="text-xs font-bold text-muted">lectura del equipo</span>
                     </div>
@@ -264,5 +302,35 @@ export default function ComunicadosPage() {
       </AppFrame>
       <BottomNav />
     </>
+  );
+}
+
+function ReactionBar({ reactions, currentUserId, onToggle }: { reactions: AnnouncementReaction[]; currentUserId: string; onToggle: (emoji: string) => void }) {
+  const counts = new Map<string, number>();
+  const mine = new Set<string>();
+  for (const reaction of reactions) {
+    counts.set(reaction.emoji, (counts.get(reaction.emoji) ?? 0) + 1);
+    if (reaction.userId === currentUserId) mine.add(reaction.emoji);
+  }
+
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {ANNOUNCEMENT_REACTIONS.map((emoji) => {
+        const count = counts.get(emoji) ?? 0;
+        const reacted = mine.has(emoji);
+        return (
+          <button
+            key={emoji}
+            type="button"
+            onClick={() => onToggle(emoji)}
+            aria-pressed={reacted}
+            className={`flex min-h-9 items-center gap-1 rounded-full px-2.5 text-sm transition active:scale-90 ${reacted ? "bg-volt/15 ring-1 ring-volt/40" : "bg-panel ring-1 ring-line hover:ring-volt/30"}`}
+          >
+            <span className="leading-none">{emoji}</span>
+            {count > 0 ? <span className={`text-xs font-black ${reacted ? "text-volt" : "text-muted"}`}>{count}</span> : null}
+          </button>
+        );
+      })}
+    </div>
   );
 }

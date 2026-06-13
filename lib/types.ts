@@ -71,6 +71,11 @@ export type LogEntry = {
   evidenceUrl?: string | null;
 };
 
+export type AnnouncementReaction = {
+  emoji: string;
+  userId: string;
+};
+
 export type Announcement = {
   id: string;
   title: string;
@@ -79,6 +84,7 @@ export type Announcement = {
   authorId: string;
   date: string;
   readBy: string[];
+  reactions: AnnouncementReaction[];
 };
 
 export type ScheduleShift = {
