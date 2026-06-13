@@ -27,8 +27,7 @@ export async function POST(request: Request) {
     stores: stores.length,
     advisorsNotified: 0,
     advisorsSkipped: 0,
-    managersNotified: 0,
-    debug: [] as Array<{ storeId: string; weekStart: string; weekEnd: string; weekRows: number; weekSales: number; source: string }>
+    managersNotified: 0
   };
 
   type PushJob = { userIds: string[]; payload: { title: string; body: string; tag: string } };
@@ -42,17 +41,11 @@ export async function POST(request: Request) {
       prisma.dailyNotificationLog.findMany({ where: { date: dateKey, type: LOG_TYPE }, select: { employeeId: true } })
     ]);
 
-    // Ventana de la semana retail que contiene hoy (domingo → sábado).
-    // Se prefiere el rango persistido en los KPIs (respeta cortes de mes retail);
-    // si no hay metadata de semana, se calcula el rango domingo-sábado del día.
-    const persistedWeek = await prisma.kpi.findFirst({
-      where: { storeId: store.id, weekStart: { not: null, lte: utcDate }, weekEnd: { not: null, gte: utcDate } },
-      orderBy: { weekStart: "desc" },
-      select: { weekStart: true, weekEnd: true }
-    });
-    const { weekStart, weekEnd } = persistedWeek?.weekStart && persistedWeek.weekEnd
-      ? { weekStart: persistedWeek.weekStart, weekEnd: persistedWeek.weekEnd }
-      : retailWeekRange(utcDate);
+    // Ventana de la semana retail (domingo → sábado) que contiene hoy.
+    // Se calcula desde la fecha (mismo rango que la vista semanal de KPIs) en
+    // lugar de leer la metadata persistida, que puede venir recortada por cortes
+    // de mes retail y colapsar la semana a un solo día.
+    const { weekStart, weekEnd } = retailWeekRange(utcDate);
 
     const weekRows = await prisma.kpi.findMany({
       where: { storeId: store.id, date: { gte: weekStart, lte: weekEnd } },
@@ -75,16 +68,6 @@ export async function POST(request: Request) {
     const storeDailyGoal = todayRows.reduce((total, row) => total + Number(row.dailyGoal), 0);
     const storeWeeklySales = weekRows.reduce((total, row) => total + Number(row.dailySales), 0);
     const storeWeeklyGoal = weekRows.reduce((total, row) => total + Number(row.dailyGoal), 0);
-
-    // TEMP: instrumentación para diagnosticar venta semanal en $0.
-    summary.debug.push({
-      storeId: store.id,
-      weekStart: weekStart.toISOString().slice(0, 10),
-      weekEnd: weekEnd.toISOString().slice(0, 10),
-      weekRows: weekRows.length,
-      weekSales: storeWeeklySales,
-      source: persistedWeek?.weekStart && persistedWeek.weekEnd ? "persisted" : "computed"
-    });
 
     const notifications: NotificationInput[] = [];
     const logsToCreate: Array<{ employeeId: string; date: string; type: string; case: string | null; sent: boolean }> = [];
