@@ -86,6 +86,7 @@ enum NotificationType {
   KPI_GOAL_REACHED
   COMMENT_ADDED
   EVIDENCE_ADDED
+  DAILY_SUMMARY
 }
 
 model Store {
@@ -446,4 +447,16 @@ model KpiTarget {
 
   @@unique([storeId, metric, period])
   @@index([storeId])
+}
+
+model DailyNotificationLog {
+  id         String   @id @default(cuid())
+  employeeId String
+  date       String   // formato "2026-06-13" (día retail en zona America/Monterrey)
+  sent       Boolean  @default(true)
+  case       String   // "A"-"F" para asesores, "RESUMEN" para gerencia
+  createdAt  DateTime @default(now())
+
+  @@unique([employeeId, date])
+  @@index([date])
 }
