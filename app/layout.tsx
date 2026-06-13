@@ -20,13 +20,16 @@ export const metadata: Metadata = {
   },
   appleWebApp: {
     capable: true,
-    statusBarStyle: "default",
+    statusBarStyle: "black-translucent",
     title: "CLARVEX Team"
   }
 };
 
 export const viewport: Viewport = {
-  themeColor: "#F5F8FF",
+  themeColor: [
+    { media: "(prefers-color-scheme: dark)", color: "#0f172a" },
+    { media: "(prefers-color-scheme: light)", color: "#eff6ff" },
+  ],
   width: "device-width",
   initialScale: 1,
   maximumScale: 1
