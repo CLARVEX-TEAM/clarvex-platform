@@ -9,6 +9,7 @@ import {
   resolveDailyCase,
   selectMorningMotivation
 } from "../lib/daily-summary";
+import { retailWeekRange } from "../lib/cron-time";
 
 test("usa solo el primer nombre del asesor", () => {
   assert.equal(firstName("WAIRA ZITLALI POPOCA"), "WAIRA");
@@ -108,6 +109,21 @@ test("mensaje matutino felicita cuando ya se cumplio la meta semanal", () => {
     weekday: 3
   });
   assert.match(message.body, /¡Ya cumpliste tu meta semanal! 🎉/);
+});
+
+test("retailWeekRange devuelve la semana retail domingo-sabado que contiene la fecha", () => {
+  // 2026-06-13 es sábado -> semana 2026-06-07 (domingo) a 2026-06-13 (sábado)
+  const saturday = retailWeekRange(new Date(Date.UTC(2026, 5, 13)));
+  assert.equal(saturday.weekStart.toISOString().slice(0, 10), "2026-06-07");
+  assert.equal(saturday.weekEnd.toISOString().slice(0, 10), "2026-06-13");
+  // Un domingo es el inicio de su propia semana
+  const sunday = retailWeekRange(new Date(Date.UTC(2026, 5, 7)));
+  assert.equal(sunday.weekStart.toISOString().slice(0, 10), "2026-06-07");
+  assert.equal(sunday.weekEnd.toISOString().slice(0, 10), "2026-06-13");
+  // Un miércoles cae en la misma semana
+  const wednesday = retailWeekRange(new Date(Date.UTC(2026, 5, 10)));
+  assert.equal(wednesday.weekStart.toISOString().slice(0, 10), "2026-06-07");
+  assert.equal(wednesday.weekEnd.toISOString().slice(0, 10), "2026-06-13");
 });
 
 test("resumen matutino de gerencia calcula alcance semanal y faltante", () => {

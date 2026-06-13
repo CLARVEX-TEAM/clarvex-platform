@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { NotificationType } from "@prisma/client";
-import { resolveMonterreyDate } from "@/lib/cron-time";
+import { resolveMonterreyDate, retailWeekRange } from "@/lib/cron-time";
 import { buildMorningAdvisorMessage, buildMorningManagerSummary } from "@/lib/daily-summary";
 import { createNotifications, type NotificationInput } from "@/lib/notifications";
 import { dispatchPushToUsers } from "@/lib/push";
@@ -36,24 +36,22 @@ export async function POST(request: Request) {
     const [advisors, managers, todayRows, workingSchedules, sentLogs] = await Promise.all([
       prisma.user.findMany({ where: { storeId: store.id, role: "ASESOR" }, select: { id: true, name: true } }),
       prisma.user.findMany({ where: { storeId: store.id, role: { in: ["GERENTE", "SUBGERENTE"] } }, select: { id: true } }),
-      prisma.kpi.findMany({ where: { storeId: store.id, date: utcDate }, select: { userId: true, dailyGoal: true, dailySales: true, weekStart: true, weekEnd: true } }),
+      prisma.kpi.findMany({ where: { storeId: store.id, date: utcDate }, select: { userId: true, dailyGoal: true, dailySales: true } }),
       prisma.schedule.findMany({ where: { storeId: store.id, date: utcDate, status: "WORKING" }, select: { userId: true } }),
       prisma.dailyNotificationLog.findMany({ where: { date: dateKey, type: LOG_TYPE }, select: { employeeId: true } })
     ]);
 
-    // Ventana de la semana retail que contiene hoy.
-    const anchorRow = todayRows.find((row) => row.weekStart && row.weekEnd);
-    let weekStart = anchorRow?.weekStart ?? null;
-    let weekEnd = anchorRow?.weekEnd ?? null;
-    if (!weekStart || !weekEnd) {
-      const anchor = await prisma.kpi.findFirst({
-        where: { storeId: store.id, weekStart: { lte: utcDate }, weekEnd: { gte: utcDate } },
-        orderBy: { weekStart: "desc" },
-        select: { weekStart: true, weekEnd: true }
-      });
-      weekStart = anchor?.weekStart ?? utcDate;
-      weekEnd = anchor?.weekEnd ?? utcDate;
-    }
+    // Ventana de la semana retail que contiene hoy (domingo → sábado).
+    // Se prefiere el rango persistido en los KPIs (respeta cortes de mes retail);
+    // si no hay metadata de semana, se calcula el rango domingo-sábado del día.
+    const persistedWeek = await prisma.kpi.findFirst({
+      where: { storeId: store.id, weekStart: { not: null, lte: utcDate }, weekEnd: { not: null, gte: utcDate } },
+      orderBy: { weekStart: "desc" },
+      select: { weekStart: true, weekEnd: true }
+    });
+    const { weekStart, weekEnd } = persistedWeek?.weekStart && persistedWeek.weekEnd
+      ? { weekStart: persistedWeek.weekStart, weekEnd: persistedWeek.weekEnd }
+      : retailWeekRange(utcDate);
 
     const weekRows = await prisma.kpi.findMany({
       where: { storeId: store.id, date: { gte: weekStart, lte: weekEnd } },

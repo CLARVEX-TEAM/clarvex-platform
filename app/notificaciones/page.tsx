@@ -2,23 +2,29 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Bell, Check, CheckCheck, ChevronRight, ClipboardCheck, ImagePlus, Megaphone, MessageCircle, Target, Trophy } from "lucide-react";
+import { Bell, Check, CheckCheck, ChevronRight, ClipboardCheck, ImagePlus, Megaphone, MessageCircle, Sparkles, Target, Trophy } from "lucide-react";
 import { getSession } from "@/lib/auth";
 import type { User } from "@/lib/types";
 import { AppFrame, AppHeader, Badge, BottomNav, Button, Card } from "@/components/ui";
 
-type NotificationType = "PLAN_READY" | "NEW_ANNOUNCEMENT" | "PENDING_ASSIGNED" | "TASK_COMPLETED" | "KPI_GOAL_REACHED" | "COMMENT_ADDED" | "EVIDENCE_ADDED";
+type NotificationType = "PLAN_READY" | "NEW_ANNOUNCEMENT" | "PENDING_ASSIGNED" | "TASK_COMPLETED" | "KPI_GOAL_REACHED" | "COMMENT_ADDED" | "EVIDENCE_ADDED" | "DAILY_SUMMARY";
 type NotificationItem = { id: string; type: NotificationType; title: string; body: string; readAt: string | null; createdAt: string };
 
-const typeConfig = {
-  PLAN_READY: { label: "Plan", icon: ClipboardCheck, tone: "default" as const },
-  NEW_ANNOUNCEMENT: { label: "Comunicado", icon: Megaphone, tone: "warn" as const },
-  PENDING_ASSIGNED: { label: "Pendiente", icon: Bell, tone: "danger" as const },
-  TASK_COMPLETED: { label: "Tarea", icon: Check, tone: "success" as const },
-  KPI_GOAL_REACHED: { label: "Meta KPI", icon: Trophy, tone: "success" as const },
-  COMMENT_ADDED: { label: "Comentario", icon: MessageCircle, tone: "default" as const },
-  EVIDENCE_ADDED: { label: "Evidencia", icon: ImagePlus, tone: "success" as const }
+type TypeConfig = { label: string; icon: typeof Bell; tone: "default" | "warn" | "danger" | "success" };
+
+const typeConfig: Record<NotificationType, TypeConfig> = {
+  PLAN_READY: { label: "Plan", icon: ClipboardCheck, tone: "default" },
+  NEW_ANNOUNCEMENT: { label: "Comunicado", icon: Megaphone, tone: "warn" },
+  PENDING_ASSIGNED: { label: "Pendiente", icon: Bell, tone: "danger" },
+  TASK_COMPLETED: { label: "Tarea", icon: Check, tone: "success" },
+  KPI_GOAL_REACHED: { label: "Meta KPI", icon: Trophy, tone: "success" },
+  COMMENT_ADDED: { label: "Comentario", icon: MessageCircle, tone: "default" },
+  EVIDENCE_ADDED: { label: "Evidencia", icon: ImagePlus, tone: "success" },
+  DAILY_SUMMARY: { label: "Resumen", icon: Sparkles, tone: "success" }
 };
+
+// Fallback para cualquier tipo desconocido (evita crashes si se agregan tipos nuevos en el backend).
+const fallbackConfig: TypeConfig = { label: "Aviso", icon: Bell, tone: "default" };
 
 const typeHref: Record<NotificationType, string> = {
   PLAN_READY: "/plan",
@@ -28,6 +34,7 @@ const typeHref: Record<NotificationType, string> = {
   KPI_GOAL_REACHED: "/kpis",
   COMMENT_ADDED: "/bitacora",
   EVIDENCE_ADDED: "/bitacora",
+  DAILY_SUMMARY: "/kpis",
 };
 
 export default function NotificationsPage() {
@@ -88,12 +95,12 @@ export default function NotificationsPage() {
 
 function NotificationRow({ item, onRead }: { item: NotificationItem; onRead: (id: string) => void }) {
   const router = useRouter();
-  const config = typeConfig[item.type];
+  const config = typeConfig[item.type] ?? fallbackConfig;
   const Icon = config.icon;
 
   function handleClick() {
     if (!item.readAt) onRead(item.id);
-    router.push(typeHref[item.type]);
+    router.push(typeHref[item.type] ?? "/notificaciones");
   }
 
   return (

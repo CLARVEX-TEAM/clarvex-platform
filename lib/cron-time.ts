@@ -9,6 +9,19 @@ export type MonterreyDate = {
   weekday: number;
 };
 
+/**
+ * Rango de la semana retail (domingo → sábado) que contiene la fecha dada.
+ * Mismo criterio que la vista semanal de KPIs. Trabaja en UTC medianoche.
+ */
+export function retailWeekRange(utcDate: Date): { weekStart: Date; weekEnd: Date } {
+  const weekday = utcDate.getUTCDay(); // 0=domingo ... 6=sábado
+  const weekStart = new Date(utcDate);
+  weekStart.setUTCDate(weekStart.getUTCDate() - weekday);
+  const weekEnd = new Date(weekStart);
+  weekEnd.setUTCDate(weekEnd.getUTCDate() + 6);
+  return { weekStart, weekEnd };
+}
+
 export function resolveMonterreyDate(now = new Date()): MonterreyDate {
   const parts = new Intl.DateTimeFormat("en-CA", {
     timeZone: "America/Monterrey",
