@@ -2,8 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Area, AreaChart, Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis } from "recharts";
-import { BarChart3, Calculator, CalendarDays, Percent, Receipt, ShoppingBag, Target, TrendingUp, Trophy, UsersRound } from "lucide-react";
+import { Area, AreaChart, Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis } from "recharts";
+import { BarChart3, Calculator, CalendarDays, Percent, Receipt, Settings2, ShoppingBag, Target, TrendingUp, Trophy, UsersRound, X } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { getSession } from "@/lib/auth";
 import { findCommissionRule } from "@/lib/commission";
 import { completion, money } from "@/lib/format";
@@ -12,8 +13,10 @@ import type { KpiReportItem } from "@/lib/kpi-report";
 import type { CommissionRule, Role, User } from "@/lib/types";
 import { AppFrame, AppHeader, Badge, BottomNav, Card, ProfileAvatar, ProgressBar, ProgressRing, StatCard } from "@/components/ui";
 import { useTheme } from "@/components/ThemeProvider";
+import { cn } from "@/lib/utils";
 
 type Tab = "resumen" | "ventas" | "comision" | "ranking";
+type KpiTarget = { id: string; metric: string; value: number; period: string };
 type KpiResponse = {
   period: KpiPeriod;
   selectedDate: string;
@@ -34,6 +37,23 @@ type KpiResponse = {
   latestDiscountWeek: { weekNumber: number; margin: number | null } | null;
 };
 
+interface MetricConfig {
+  label: string;
+  gradient: string;
+  glow: string;
+  Icon: LucideIcon;
+  targetLabel: string;
+}
+
+const METRIC_CONFIG: Record<string, MetricConfig> = {
+  upt:         { label: "UPT",          gradient: "from-blue-500 to-blue-700",     glow: "rgba(59,130,246,0.32)",  Icon: ShoppingBag, targetLabel: "Meta UPT"           },
+  aur:         { label: "AUR",          gradient: "from-sky-400 to-cyan-600",      glow: "rgba(14,165,233,0.32)",  Icon: Receipt,     targetLabel: "Meta AUR ($)"       },
+  ept:         { label: "EPT",          gradient: "from-violet-500 to-purple-700", glow: "rgba(139,92,246,0.32)",  Icon: BarChart3,   targetLabel: "Meta EPT ($)"       },
+  conversion:  { label: "Conversión",   gradient: "from-orange-400 to-amber-600",  glow: "rgba(251,146,60,0.32)",  Icon: Target,      targetLabel: "Meta Conversión (%)" },
+  margen:      { label: "Margen DTO",   gradient: "from-rose-500 to-pink-700",     glow: "rgba(244,63,94,0.32)",   Icon: Percent,     targetLabel: "Límite DTO (%)"     },
+  achievement: { label: "Cumplimiento", gradient: "from-emerald-500 to-teal-700",  glow: "rgba(16,185,129,0.32)",  Icon: TrendingUp,  targetLabel: "Meta cumplimiento (%)" },
+};
+
 const tabs: { id: Tab; label: string }[] = [
   { id: "resumen", label: "Resumen" },
   { id: "ventas", label: "Ventas" },
@@ -44,12 +64,14 @@ const tabs: { id: Tab; label: string }[] = [
 export default function KpisPage() {
   const [session, setSession] = useState<User | null>(null);
   const [report, setReport] = useState<KpiResponse | null>(null);
+  const [targets, setTargets] = useState<KpiTarget[]>([]);
   const [period, setPeriod] = useState<KpiPeriod>("week");
   const [selectedDate, setSelectedDate] = useState(localDateKey(new Date()));
   const [activeTab, setActiveTab] = useState<Tab>("resumen");
   const [simulatedSales, setSimulatedSales] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [showTargetSheet, setShowTargetSheet] = useState(false);
 
   useEffect(() => { getSession().then(setSession); }, []);
 
@@ -74,7 +96,16 @@ export default function KpisPage() {
     return () => controller.abort();
   }, [period, selectedDate, session]);
 
+  useEffect(() => {
+    if (!session) return;
+    fetch("/api/kpi-targets")
+      .then((r) => r.json() as Promise<{ targets?: KpiTarget[] }>)
+      .then((payload) => { if (payload.targets) setTargets(payload.targets); })
+      .catch(() => undefined);
+  }, [session]);
+
   const isAdvisor = session?.role === "ASESOR";
+  const isManager = !isAdvisor;
   const activeKpi = isAdvisor ? (report?.own ?? null) : (report?.store ?? null);
   const periodLabel = period === "week" ? "semanal" : "mensual";
   const progress = completion(activeKpi?.sales ?? 0, activeKpi?.goal ?? 0);
@@ -87,8 +118,9 @@ export default function KpisPage() {
   const appliedPercent = activeRule?.commissionPercent ?? 0;
   const simulatedCommission = initialSimulation * (appliedPercent / 100);
   const chartData = report?.team.map((item) => ({ name: item.userName, venta: item.sales, meta: item.goal })) ?? [];
-
   const rangeLabel = report ? formatPeriodLabel(report.period, report.startDate, report.endDate, report.weekNumber, report.retailMonthLabel) : "Cargando periodo";
+  const periodKey = period === "week" ? "SEMANA" : "MES";
+  const periodTargets = useMemo(() => targets.filter((t) => t.period === periodKey), [targets, periodKey]);
 
   return (
     <>
@@ -111,7 +143,7 @@ export default function KpisPage() {
         {loading ? <Card className="text-sm font-semibold text-muted">Calculando acumulados...</Card> : activeKpi ? (
           <AnimatePresence mode="wait">
             <motion.div key={`${activeTab}-${period}-${selectedDate}`} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.18 }}>
-              {activeTab === "resumen" ? <ResumenView activeKpi={activeKpi} progress={progress} periodLabel={periodLabel} hasDiscountSource={report?.hasDiscountSource ?? false} latestDiscountWeek={report?.latestDiscountWeek ?? null} /> : null}
+              {activeTab === "resumen" ? <ResumenView activeKpi={activeKpi} team={report?.team ?? []} progress={progress} periodLabel={periodLabel} hasDiscountSource={report?.hasDiscountSource ?? false} latestDiscountWeek={report?.latestDiscountWeek ?? null} targets={periodTargets} isManager={isManager} onOpenTargets={() => setShowTargetSheet(true)} /> : null}
               {activeTab === "ventas" ? <VentasView activeKpi={activeKpi} chartData={chartData} progress={progress} periodLabel={periodLabel} /> : null}
               {activeTab === "comision" ? <ComisionView activeKpi={commissionKpi ?? activeKpi} rules={report?.commissionRules ?? []} simulatedSales={simulatedSales} setSimulatedSales={setSimulatedSales} activeRule={activeRule} appliedPercent={appliedPercent} simulatedCommission={simulatedCommission} simulatedAchievement={simulatedAchievement} commissionRole={commissionRole} periodLabel={periodLabel} /> : null}
               {activeTab === "ranking" ? <RankingView ranking={report?.team ?? []} periodLabel={periodLabel} isAdvisor={isAdvisor} currentUserId={report?.currentUserId} /> : null}
@@ -120,6 +152,22 @@ export default function KpisPage() {
         ) : <Card className="text-sm font-semibold text-muted">No hay KPIs dentro de {rangeLabel}.</Card>}
       </AppFrame>
       <BottomNav />
+      <AnimatePresence>
+        {showTargetSheet && isManager ? (
+          <TargetSheet
+            key="target-sheet"
+            targets={periodTargets}
+            period={periodKey}
+            onClose={() => setShowTargetSheet(false)}
+            onSave={(saved) => {
+              setTargets((prev) => {
+                const out = prev.filter((t) => !saved.some((s) => s.metric === t.metric && s.period === t.period));
+                return [...out, ...saved];
+              });
+            }}
+          />
+        ) : null}
+      </AnimatePresence>
     </>
   );
 }
@@ -139,7 +187,17 @@ function PeriodSelector({ period, setPeriod, selectedDate, setSelectedDate, rang
   );
 }
 
-function ResumenView({ activeKpi, progress, periodLabel, hasDiscountSource, latestDiscountWeek }: { activeKpi: KpiReportItem; progress: number; periodLabel: string; hasDiscountSource: boolean; latestDiscountWeek: { weekNumber: number; margin: number | null } | null }) {
+const cardItem = {
+  hidden: { opacity: 0, y: 16, scale: 0.95 },
+  show: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.38, ease: [0.25, 0.1, 0.25, 1] as [number, number, number, number] } }
+};
+
+const cardGrid = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.055, delayChildren: 0.05 } }
+};
+
+function ResumenView({ activeKpi, team, progress, periodLabel, hasDiscountSource, latestDiscountWeek, targets, isManager, onOpenTargets }: { activeKpi: KpiReportItem; team: KpiReportItem[]; progress: number; periodLabel: string; hasDiscountSource: boolean; latestDiscountWeek: { weekNumber: number; margin: number | null } | null; targets: KpiTarget[]; isManager: boolean; onOpenTargets: () => void }) {
   const discountValue = activeKpi.discountMargin !== null
     ? `${activeKpi.discountMargin}%`
     : latestDiscountWeek?.margin !== null && latestDiscountWeek !== null
@@ -150,7 +208,191 @@ function ResumenView({ activeKpi, progress, periodLabel, hasDiscountSource, late
     : latestDiscountWeek !== null
       ? `Semana ${latestDiscountWeek.weekNumber}`
       : hasDiscountSource ? "Sin datos este periodo" : "Vincula Descuentos POS";
-  return <><Card className="premium-hero mb-3 px-4 py-3.5"><div className="flex items-center justify-between gap-4"><div><p className="text-[11px] font-black uppercase tracking-[0.13em] text-muted">Cumplimiento {periodLabel}</p><h2 className="mt-1 text-[2.25rem] font-black leading-none text-ink">{progress}%</h2><p className="mt-1 text-xs text-muted">{money(activeKpi.sales)} de {money(activeKpi.goal)}</p></div><ProgressRing value={progress} size={68} /></div><ProgressBar value={progress} /></Card><div className="grid grid-cols-2 gap-3"><StatCard compact label="UPT" value={activeKpi.upt === null ? "—" : String(activeKpi.upt)} detail="Unidades por ticket" icon={<ShoppingBag size={15} />} /><StatCard compact label="AUR" value={activeKpi.aur === null ? "—" : money(activeKpi.aur)} detail="Precio promedio pieza" tone="sky" icon={<Receipt size={15} />} /><StatCard compact label="EPT" value={activeKpi.ept === null ? "—" : money(activeKpi.ept)} detail="Venta por transaccion" tone="purple" icon={<BarChart3 size={15} />} /><StatCard compact label="Conversion" value={activeKpi.conversion === null ? "Sin trafico" : `${activeKpi.conversion}%`} detail={activeKpi.conversion === null ? "Trafico no disponible" : "Tickets / Trafico"} tone="ember" icon={<Target size={15} />} /><StatCard compact label="Margen DTO" value={discountValue} detail={discountDetail} tone="orchid" icon={<Percent size={15} />} /><StatCard compact label="Meta" value={money(activeKpi.goal)} detail={`Objetivo ${periodLabel}`} tone="volt" icon={<Target size={15} />} /></div></>;
+
+  const getTarget = (metric: string) => targets.find((t) => t.metric === metric)?.value ?? null;
+
+  function semaphore(value: number | null, metric: string): "green" | "yellow" | "red" | "none" {
+    const target = getTarget(metric);
+    if (value === null || target === null) return "none";
+    if (value >= target) return "green";
+    if (value >= target * 0.85) return "yellow";
+    return "red";
+  }
+
+  const spark = (extractor: (m: KpiReportItem) => number | null) =>
+    team.map((m, i) => ({ i, v: extractor(m) ?? 0 }));
+
+  return (
+    <>
+      <Card className="premium-hero mb-3 px-4 py-3.5">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <p className="text-[11px] font-black uppercase tracking-[0.13em] text-muted">Cumplimiento {periodLabel}</p>
+            <h2 className="mt-1 text-[2.25rem] font-black leading-none text-ink">{progress}%</h2>
+            <p className="mt-1 text-xs text-muted">{money(activeKpi.sales)} de {money(activeKpi.goal)}</p>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            {isManager ? (
+              <motion.button
+                onClick={onOpenTargets}
+                whileTap={{ scale: 0.9 }}
+                whileHover={{ scale: 1.08 }}
+                className="grid size-10 place-items-center rounded-2xl bg-blue-100/70 dark:bg-[#1a2540] text-volt"
+                aria-label="Configurar metas KPI"
+              >
+                <Settings2 size={18} />
+              </motion.button>
+            ) : null}
+            <ProgressRing value={progress} size={68} />
+          </div>
+        </div>
+        <ProgressBar value={progress} />
+      </Card>
+
+      <motion.div variants={cardGrid} initial="hidden" animate="show" className="grid grid-cols-2 gap-3">
+        <MetricCard metric="upt"         value={activeKpi.upt === null ? "—" : String(activeKpi.upt)}                                   detail="Unidades por ticket"               sparkData={spark((m) => m.upt)}            trafficLight={semaphore(activeKpi.upt, "upt")} />
+        <MetricCard metric="aur"         value={activeKpi.aur === null ? "—" : money(activeKpi.aur)}                                    detail="Precio promedio pieza"             sparkData={spark((m) => m.aur)}            trafficLight={semaphore(activeKpi.aur, "aur")} />
+        <MetricCard metric="ept"         value={activeKpi.ept === null ? "—" : money(activeKpi.ept)}                                    detail="Venta por transacción"             sparkData={spark((m) => m.ept)}            trafficLight={semaphore(activeKpi.ept, "ept")} />
+        <MetricCard metric="conversion"  value={activeKpi.conversion === null ? "—" : `${activeKpi.conversion}%`}                       detail={activeKpi.conversion === null ? "Sin tráfico" : "Tickets / Tráfico"}  sparkData={spark((m) => m.conversion)}     trafficLight={semaphore(activeKpi.conversion, "conversion")} />
+        <MetricCard metric="margen"      value={discountValue}                                                                          detail={discountDetail}                    sparkData={spark((m) => m.discountMargin)} trafficLight={semaphore(activeKpi.discountMargin, "margen")} />
+        <MetricCard metric="achievement" value={`${progress}%`}                                                                        detail={`Objetivo ${periodLabel}`}         sparkData={team.map((m, i) => ({ i, v: m.achievement }))} trafficLight={semaphore(progress, "achievement")} />
+      </motion.div>
+    </>
+  );
+}
+
+function MetricCard({ metric, value, detail, sparkData, trafficLight }: { metric: string; value: string; detail: string; sparkData: Array<{ i: number; v: number }>; trafficLight: "green" | "yellow" | "red" | "none" }) {
+  const config = METRIC_CONFIG[metric];
+  if (!config) return null;
+  const { label, gradient, glow, Icon } = config;
+
+  const dotClass = {
+    green: "bg-green-300 shadow-[0_0_6px_rgba(134,239,172,0.8)]",
+    yellow: "bg-amber-300 shadow-[0_0_6px_rgba(252,211,77,0.8)]",
+    red: "bg-rose-300 shadow-[0_0_6px_rgba(252,165,165,0.8)]",
+    none: "bg-white/25",
+  }[trafficLight];
+
+  return (
+    <motion.div
+      variants={cardItem}
+      whileHover={{ scale: 1.03, y: -2 }}
+      whileTap={{ scale: 0.97 }}
+      className={cn("relative min-h-[118px] overflow-hidden rounded-[28px] p-3.5", `bg-gradient-to-br ${gradient}`)}
+      style={{ boxShadow: `0 8px 24px ${glow}` }}
+    >
+      <span className={cn("absolute right-3 top-3 size-2.5 rounded-full", dotClass)} />
+
+      <span className="inline-grid size-8 place-items-center rounded-[14px] bg-white/20">
+        <Icon size={15} className="text-white" />
+      </span>
+
+      <p className="mt-1.5 text-[10px] font-black uppercase tracking-[0.12em] text-white/70">{label}</p>
+      <p className="mt-0.5 text-[1.36rem] font-black leading-none tracking-[-0.03em] text-white">{value}</p>
+      <p className="mt-0.5 text-[11px] leading-4 text-white/55">{detail}</p>
+
+      {sparkData.length > 2 ? (
+        <div className="pointer-events-none absolute bottom-0 right-0 h-10 w-20 opacity-45">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={sparkData} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
+              <Line type="monotone" dataKey="v" stroke="white" strokeWidth={1.5} dot={false} animationDuration={600} />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      ) : null}
+    </motion.div>
+  );
+}
+
+function TargetSheet({ targets, period, onClose, onSave }: { targets: KpiTarget[]; period: "SEMANA" | "MES"; onClose: () => void; onSave: (saved: KpiTarget[]) => void }) {
+  const getInitial = (metric: string) => targets.find((t) => t.metric === metric)?.value.toString() ?? "";
+  const [form, setForm] = useState<Record<string, string>>({
+    upt: getInitial("upt"),
+    aur: getInitial("aur"),
+    ept: getInitial("ept"),
+    conversion: getInitial("conversion"),
+    achievement: getInitial("achievement"),
+  });
+  const [saving, setSaving] = useState(false);
+  const [status, setStatus] = useState("");
+
+  async function handleSave() {
+    setSaving(true);
+    setStatus("Guardando...");
+    const entries = Object.entries(form).filter(([, v]) => v !== "" && !isNaN(Number(v)));
+    const saved: KpiTarget[] = [];
+    try {
+      for (const [metric, value] of entries) {
+        const response = await fetch("/api/kpi-targets", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ metric, value: Number(value), period }),
+        });
+        const payload = await response.json() as { target?: KpiTarget };
+        if (payload.target) saved.push(payload.target);
+      }
+      onSave(saved);
+      setStatus("Metas guardadas.");
+      setTimeout(onClose, 700);
+    } catch {
+      setStatus("No se pudo guardar.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const editableMetrics = ["upt", "aur", "ept", "conversion", "achievement"] as const;
+
+  return (
+    <div className="fixed inset-0 z-40 flex items-end justify-center bg-black/50 p-4 backdrop-blur-sm">
+      <motion.div
+        initial={{ y: "100%", opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        exit={{ y: "100%", opacity: 0 }}
+        transition={{ type: "spring", damping: 30, stiffness: 380 }}
+        className="w-full max-w-lg rounded-t-3xl bg-white dark:bg-slate-900 p-6 shadow-2xl"
+      >
+        <div className="mb-5 flex items-center justify-between">
+          <h2 className="text-lg font-black text-ink">Metas KPI — {period === "SEMANA" ? "Semana" : "Mes"}</h2>
+          <button onClick={onClose} className="grid size-9 place-items-center rounded-full bg-slate-100 dark:bg-slate-800 text-ink">
+            <X size={16} />
+          </button>
+        </div>
+        <div className="grid gap-3">
+          {editableMetrics.map((metric) => {
+            const config = METRIC_CONFIG[metric];
+            return (
+              <div key={metric}>
+                <label className="text-[11px] font-black uppercase tracking-[0.1em] text-muted">{config?.targetLabel}</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={form[metric]}
+                  onChange={(e) => setForm((prev) => ({ ...prev, [metric]: e.target.value }))}
+                  placeholder={metric === "upt" ? "Ej: 1.5" : metric === "conversion" ? "Ej: 25" : "Ej: 50000"}
+                  className="mt-1 min-h-11 w-full rounded-2xl border border-line bg-slate-50 dark:bg-slate-800/50 px-4 text-sm font-bold text-ink outline-none focus:border-volt focus:ring-4 focus:ring-volt/15"
+                />
+              </div>
+            );
+          })}
+        </div>
+        {status ? (
+          <p className={cn("mt-3 text-sm font-semibold", status.includes("guardadas") ? "text-emerald-600 dark:text-emerald-400" : "text-muted")}>
+            {status}
+          </p>
+        ) : null}
+        <button
+          type="button"
+          onClick={() => void handleSave()}
+          disabled={saving}
+          className="mt-4 min-h-12 w-full rounded-2xl bg-gradient-to-r from-blue-600 to-blue-500 text-sm font-black text-white shadow-[0_8px_30px_rgba(37,99,235,0.35)] transition active:scale-95 disabled:opacity-60"
+        >
+          {saving ? "Guardando..." : "Guardar metas"}
+        </button>
+      </motion.div>
+    </div>
+  );
 }
 
 function VentasView({ activeKpi, chartData, progress, periodLabel }: { activeKpi: KpiReportItem; chartData: Array<{ name: string; venta: number; meta: number }>; progress: number; periodLabel: string }) {
