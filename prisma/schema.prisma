@@ -103,6 +103,7 @@ model Store {
   dataSources     DataSource[]
   notifications   Notification[]
   comments        Comment[]
+  kpiTargets      KpiTarget[]
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
 }
@@ -430,4 +431,19 @@ model AnnouncementRead {
   readAt         DateTime     @default(now())
 
   @@unique([announcementId, userId])
+}
+
+model KpiTarget {
+  id        String   @id @default(cuid())
+  storeId   String
+  store     Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  metric    String
+  value     Decimal  @db.Decimal(12, 2)
+  period    String
+  createdBy String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([storeId, metric, period])
+  @@index([storeId])
 }
