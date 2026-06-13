@@ -1,13 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CalendarDays, Flame, Moon, SunMedium, Trash2 } from "lucide-react";
+import { motion } from "framer-motion";
+import { Flame, Moon, SunMedium, Trash2 } from "lucide-react";
 import { fetchAppData, type AppData } from "@/lib/app-data";
 import { getSession } from "@/lib/auth";
 import { money } from "@/lib/format";
 import type { Activity, User } from "@/lib/types";
-import { AppFrame, AppHeader, Badge, BottomNav, Button, Card, ProfileAvatar, ProgressBar, ProgressRing } from "@/components/ui";
+import { AppFrame, AppHeader, Badge, BottomNav, Card, ProfileAvatar, ProgressBar, ProgressRing } from "@/components/ui";
 import { TaskList } from "@/components/TaskList";
+import { AppButton, AppChipInput, AppDatePicker, AppInput, AppSelect, AppTextarea, type SelectOption } from "@/components/forms";
+import { cn } from "@/lib/utils";
 
 const days = ["Hoy", "Man", "Mie", "Jue", "Vie", "Sab", "Dom"];
 
@@ -28,7 +31,7 @@ export default function PlanPage() {
   const [dailyGoal, setDailyGoal] = useState("");
   const [focus, setFocus] = useState("");
   const [message, setMessage] = useState("");
-  const [activities, setActivities] = useState("");
+  const [activityChips, setActivityChips] = useState<string[]>([]);
   const [formStatus, setFormStatus] = useState("");
 
   useEffect(() => {
@@ -47,12 +50,19 @@ export default function PlanPage() {
   }
 
   const advisors = data.users.filter((user) => user.role === "ASESOR");
+  const advisorOptions: SelectOption[] = advisors.map((a) => ({
+    value: a.id,
+    label: a.name,
+    description: "Asesor",
+    photoUrl: a.photoUrl ?? null,
+  }));
   const userName = (id: string) => data.users.find((user) => user.id === id)?.name ?? "Equipo";
   const planUser = (id: string) => data.users.find((user) => user.id === id);
   const isAdvisor = session?.role === "ASESOR";
   const visiblePlans = isAdvisor && session ? data.plans.filter((plan) => plan.userId === session.id) : data.plans;
   const totalActivities = visiblePlans.flatMap((plan) => plan.activities);
-  const dayProgress = totalActivities.length ? Math.round((totalActivities.filter((activity) => activity.completed).length / totalActivities.length) * 100) : 0;
+  const completed = totalActivities.filter((a) => a.completed).length;
+  const dayProgress = totalActivities.length ? Math.round((completed / totalActivities.length) * 100) : 0;
 
   async function deletePlan(id: string) {
     if (!data) return;
@@ -71,77 +81,155 @@ export default function PlanPage() {
   async function createPlan(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!data) return;
+    if (activityChips.length === 0) { setFormStatus("Agrega al menos una actividad."); return; }
     setFormStatus("Guardando...");
-    const response = await fetch("/api/plans", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId, date, dailyGoal: Number(dailyGoal), focus, message, activities: activities.split("\n").map((item) => item.trim()).filter(Boolean) }) });
+    const response = await fetch("/api/plans", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId, date, dailyGoal: Number(dailyGoal), focus, message, activities: activityChips })
+    });
     const payload = await response.json() as { plan?: AppData["plans"][number]; error?: string };
     if (!response.ok || !payload.plan) { setFormStatus(payload.error ?? "No se pudo crear el plan."); return; }
     setData({ ...data, plans: [payload.plan, ...data.plans] });
-    setDailyGoal(""); setFocus(""); setMessage(""); setActivities(""); setFormStatus("Plan creado.");
+    setDailyGoal(""); setFocus(""); setMessage(""); setActivityChips([]); setUserId(""); setFormStatus("Plan creado.");
   }
 
   return (
     <>
-      <AppHeader title="Plan del dia" subtitle={isAdvisor ? "Tu meta, enfoque y checklist." : "Metas, enfoque y checklist por asesor."} backHref={isAdvisor ? "/advisor" : "/manager"} />
+      <AppHeader
+        title="Plan del dia"
+        subtitle={isAdvisor ? "Tu meta, enfoque y checklist." : "Metas, enfoque y checklist por asesor."}
+        backHref={isAdvisor ? "/advisor" : "/manager"}
+      />
       <AppFrame>
+        {/* ── Day tabs ── */}
         <div className="no-scrollbar tab-glass-shell -mx-1 mb-3 flex gap-1 overflow-x-auto overflow-y-hidden p-1 scroll-px-4">
           {days.map((day) => (
-            <button
+            <motion.button
               key={day}
               onClick={() => setSelectedDay(day)}
-              className={`min-h-10 shrink-0 rounded-full px-3 text-[13px] font-black tracking-[-0.01em] transition active:scale-95 ${selectedDay === day ? "bg-volt text-white shadow-[0_8px_18px_rgb(37_99_235_/_0.2)]" : "text-muted hover:text-ink"}`}
+              whileTap={{ scale: 0.93 }}
+              className="relative min-h-10 shrink-0 rounded-full px-3.5 text-[13px] font-black tracking-[-0.01em] transition"
             >
-              {day}
-            </button>
+              {selectedDay === day ? (
+                <motion.span
+                  layoutId="plan-day-active"
+                  className="absolute inset-0 rounded-full bg-[#2563EB] shadow-[0_6px_16px_rgba(37,99,235,0.28)]"
+                  transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
+                />
+              ) : null}
+              <span className={cn("relative", selectedDay === day ? "text-white" : "text-muted hover:text-ink")}>
+                {day}
+              </span>
+            </motion.button>
           ))}
         </div>
 
-        <Card className="mb-3 border-volt/25 bg-volt/[0.045] py-3">
-          <div className="flex items-center justify-between gap-4">
+        {/* ── Progress card ── */}
+        <div
+          className="mb-3 rounded-[28px] border border-blue-200/50 dark:border-blue-700/40 p-4"
+          style={{
+            background: "radial-gradient(circle at 80% 12%, rgba(14,165,233,0.14), transparent 48%), linear-gradient(145deg, #ffffff 0%, #eff6ff 60%, #dbeafe 100%)"
+          }}
+        >
+          <div className="flex items-center justify-between gap-4 dark:[background:none]">
             <div>
-              <p className="text-[11px] font-black uppercase tracking-[0.16em] text-muted">Progreso del dia</p>
-              <h2 className="mt-1 text-3xl font-black text-ink">{dayProgress}%</h2>
-              <p className="mt-1 text-xs text-muted">{totalActivities.filter((activity) => activity.completed).length} de {totalActivities.length} actividades</p>
+              <p className="text-[11px] font-black uppercase tracking-[0.16em] text-[#2563EB]">Progreso del dia</p>
+              <h2 className="mt-1 text-[2.4rem] font-black leading-none tracking-[-0.05em] text-slate-900 dark:text-white">
+                {dayProgress}%
+              </h2>
+              <p className="mt-1 text-xs font-semibold text-slate-500 dark:text-slate-400">
+                {completed} de {totalActivities.length} actividades completadas
+              </p>
             </div>
-            <ProgressRing value={dayProgress} size={64} />
+            <ProgressRing value={dayProgress} size={72} />
           </div>
-          <ProgressBar value={dayProgress} />
-        </Card>
+          <div className="mt-3 h-2 overflow-hidden rounded-full bg-blue-100 dark:bg-[#2a3a5c]">
+            <motion.div
+              className="h-full rounded-full bg-gradient-to-r from-blue-600 to-cyan-400"
+              initial={{ width: 0 }}
+              animate={{ width: `${dayProgress}%` }}
+              transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+            />
+          </div>
+        </div>
 
+        {/* ── Crear plan ── */}
         {!isAdvisor ? (
           <Card className="mb-3">
-            <div className="flex items-center gap-2">
-              <CalendarDays className="text-volt" size={18} />
-              <h2 className="text-lg font-black">Crear plan</h2>
-            </div>
-            <form className="mt-3 grid gap-2.5" onSubmit={createPlan}>
-              <input type="date" className="min-h-12 rounded-2xl border border-line bg-panel px-3 py-3 text-ink outline-none focus:border-volt" value={date} onChange={(event) => setDate(event.target.value)} aria-label="Fecha" required />
-              <select value={userId} onChange={(event) => setUserId(event.target.value)} className="min-h-12 rounded-2xl border border-line bg-panel px-3 py-3 text-ink outline-none focus:border-volt" aria-label="Asesor" required>
-                <option value="">Selecciona asesor</option>{advisors.map((advisor) => <option key={advisor.id} value={advisor.id}>{advisor.name}</option>)}
-              </select>
-              <input type="number" min="0" value={dailyGoal} onChange={(event) => setDailyGoal(event.target.value)} className="min-h-12 rounded-2xl border border-line bg-panel px-3 py-3 text-ink outline-none focus:border-volt" placeholder="Meta del dia" required />
-              <input value={focus} onChange={(event) => setFocus(event.target.value)} className="min-h-12 rounded-2xl border border-line bg-panel px-3 py-3 text-ink outline-none focus:border-volt" placeholder="Enfoque del dia" required />
-              <textarea value={message} onChange={(event) => setMessage(event.target.value)} className="min-h-20 rounded-2xl border border-line bg-panel px-3 py-3 text-ink outline-none focus:border-volt" placeholder="Mensaje personalizado" required />
-              <textarea value={activities} onChange={(event) => setActivities(event.target.value)} className="min-h-24 rounded-2xl border border-line bg-panel px-3 py-3 text-ink outline-none focus:border-volt" placeholder={"Actividades, una por linea"} required />
-              {formStatus ? <p className="text-sm font-semibold text-muted">{formStatus}</p> : null}
-              <Button type="submit" className="w-full">Crear plan</Button>
+            <h2 className="mb-4 text-lg font-black">Crear plan</h2>
+            <form className="grid gap-3" onSubmit={createPlan}>
+              <div className="grid grid-cols-2 gap-3">
+                <AppDatePicker label="Fecha" value={date} onChange={setDate} required />
+                <AppInput
+                  label="Meta del dia"
+                  type="number"
+                  min="0"
+                  value={dailyGoal}
+                  onChange={(e) => setDailyGoal(e.target.value)}
+                  required
+                />
+              </div>
+              <AppSelect
+                label="Asesor"
+                value={userId}
+                onChange={setUserId}
+                options={advisorOptions}
+                placeholder="Selecciona asesor"
+              />
+              <AppInput
+                label="Enfoque del dia"
+                value={focus}
+                onChange={(e) => setFocus(e.target.value)}
+                required
+              />
+              <AppTextarea
+                label="Mensaje personalizado"
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                required
+              />
+              <AppChipInput
+                label="Actividades"
+                chips={activityChips}
+                onChipsChange={setActivityChips}
+              />
+              {formStatus ? (
+                <p className={`text-sm font-semibold ${formStatus === "Plan creado." ? "text-emerald-600 dark:text-emerald-400" : "text-muted"}`}>
+                  {formStatus}
+                </p>
+              ) : null}
+              <AppButton type="submit" variant="primary" className="w-full">
+                Crear plan
+              </AppButton>
             </form>
           </Card>
         ) : null}
 
+        {/* ── Plan cards ── */}
         <div className="space-y-2.5">
           {visiblePlans.map((plan) => {
-            const planProgress = plan.activities.length ? Math.round((plan.activities.filter((activity) => activity.completed).length / plan.activities.length) * 100) : 0;
+            const planProgress = plan.activities.length
+              ? Math.round((plan.activities.filter((a) => a.completed).length / plan.activities.length) * 100)
+              : 0;
             return (
               <Card key={plan.id}>
                 <div className="mb-3 flex items-start justify-between gap-3">
                   <div className="flex min-w-0 items-center gap-3">
                     <ProfileAvatar name={userName(plan.userId)} photoUrl={planUser(plan.userId)?.photoUrl} size="sm" className="rounded-full shadow-none" />
-                    <div><h2 className="truncate text-xl font-black">{userName(plan.userId)}</h2><p className="text-sm text-muted">{plan.date}</p></div>
+                    <div>
+                      <h2 className="truncate text-xl font-black">{userName(plan.userId)}</h2>
+                      <p className="text-sm text-muted">{plan.date}</p>
+                    </div>
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
                     <Badge>{money(plan.dailyGoal)}</Badge>
                     {!isAdvisor ? (
-                      <button onClick={() => void deletePlan(plan.id)} className="grid size-9 place-items-center rounded-xl border border-rose-200/60 bg-rose-50/60 text-rose-600 transition active:scale-95" aria-label="Eliminar plan">
+                      <button
+                        onClick={() => void deletePlan(plan.id)}
+                        className="grid size-9 place-items-center rounded-xl border border-rose-200/60 bg-rose-50/60 text-rose-600 transition active:scale-95"
+                        aria-label="Eliminar plan"
+                      >
                         <Trash2 size={15} />
                       </button>
                     ) : null}
@@ -176,3 +264,4 @@ export default function PlanPage() {
     </>
   );
 }
+

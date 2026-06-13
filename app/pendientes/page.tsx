@@ -5,8 +5,9 @@ import { AlertTriangle, Plus, Trash2, UserRound } from "lucide-react";
 import { fetchAppData, type AppData } from "@/lib/app-data";
 import { getSession } from "@/lib/auth";
 import type { Pending, User } from "@/lib/types";
-import { AppFrame, AppHeader, Badge, BottomNav, Card, FloatingActionButton, PremiumButton, priorityTone, statusTone } from "@/components/ui";
+import { AppFrame, AppHeader, Badge, BottomNav, Card, FloatingActionButton, priorityTone, statusTone } from "@/components/ui";
 import { ResourceDiscussion } from "@/components/ResourceDiscussion";
+import { AppButton, AppDatePicker, AppInput, AppSelect, AppTextarea, type SelectOption } from "@/components/forms";
 
 type Filter = "todos" | "urgentes" | "hoy";
 
@@ -39,6 +40,27 @@ export default function PendientesPage() {
       </>
     );
   }
+
+  const categoryOptions: SelectOption[] = [
+    { value: "OPERACION", label: "Operación" },
+    { value: "EQUIPO", label: "Equipo" },
+    { value: "COMERCIAL", label: "Comercial" },
+    { value: "CLIENTE", label: "Cliente" },
+    { value: "INVENTARIO", label: "Inventario" },
+    { value: "MANTENIMIENTO", label: "Mantenimiento" },
+  ];
+  const priorityOptions: SelectOption[] = [
+    { value: "MEDIA", label: "Media" },
+    { value: "ALTA", label: "Alta" },
+    { value: "CRITICA", label: "Crítica" },
+    { value: "BAJA", label: "Baja" },
+  ];
+  const userOptions: SelectOption[] = data.users.map((u) => ({
+    value: u.id,
+    label: u.name,
+    description: u.role === "ASESOR" ? "Asesor" : u.role === "GERENTE" ? "Gerente" : "Subgerente",
+    photoUrl: u.photoUrl ?? null,
+  }));
 
   const managers = data.users.filter((user) => user.role === "GERENTE" || user.role === "SUBGERENTE").map((user) => user.id);
   const management = data.pendings.filter((pending) => managers.includes(pending.ownerId) || pending.priority === "critica");
@@ -146,27 +168,40 @@ export default function PendientesPage() {
 
         {!isAdvisor ? (
           <Card className="mb-3" id="crear-pendiente">
-            <h2 className="text-lg font-black">{editId ? "Editar pendiente" : "Crear pendiente"}</h2>
-            <form className="mt-3 grid gap-2.5" onSubmit={savePending}>
-              <input value={title} onChange={(event) => setTitle(event.target.value)} className="min-h-12 rounded-2xl border border-line bg-panel px-3 py-3 outline-none focus:border-volt" placeholder="Título *" required />
-              <textarea value={description} onChange={(event) => setDescription(event.target.value)} className="min-h-16 rounded-2xl border border-line bg-panel px-3 py-2.5 outline-none focus:border-volt" placeholder="Descripción *" required />
+            <h2 className="mb-4 text-lg font-black">{editId ? "Editar pendiente" : "Crear pendiente"}</h2>
+            <form className="grid gap-3" onSubmit={savePending}>
+              <AppInput label="Título" value={title} onChange={(e) => setTitle(e.target.value)} required />
+              <AppTextarea label="Descripción" value={description} onChange={(e) => setDescription(e.target.value)} required />
               <div className="grid grid-cols-2 gap-3">
-                <select value={category} onChange={(event) => setCategory(event.target.value)} className="min-h-12 rounded-2xl border border-line bg-panel px-3 py-3 outline-none focus:border-volt">
-                  <option value="OPERACION">operacion</option><option value="EQUIPO">equipo</option><option value="COMERCIAL">comercial</option><option value="CLIENTE">cliente</option><option value="INVENTARIO">inventario</option><option value="MANTENIMIENTO">mantenimiento</option>
-                </select>
-                <select value={priority} onChange={(event) => setPriority(event.target.value)} className="min-h-12 rounded-2xl border border-line bg-panel px-3 py-3 outline-none focus:border-volt">
-                  <option value="MEDIA">media</option><option value="ALTA">alta</option><option value="CRITICA">critica</option><option value="BAJA">baja</option>
-                </select>
+                <AppSelect
+                  label="Categoría"
+                  value={category}
+                  onChange={setCategory}
+                  options={categoryOptions}
+                />
+                <AppSelect
+                  label="Prioridad"
+                  value={priority}
+                  onChange={setPriority}
+                  options={priorityOptions}
+                />
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <select value={ownerId} onChange={(event) => setOwnerId(event.target.value)} className="min-h-12 rounded-2xl border border-line bg-panel px-3 py-3 outline-none focus:border-volt" required>
-                  <option value="">Responsable</option>{data.users.map((user) => <option key={user.id} value={user.id}>{user.name}</option>)}
-                </select>
-                <input type="date" value={dueDate} onChange={(event) => setDueDate(event.target.value)} className="min-h-12 rounded-2xl border border-line bg-panel px-3 py-3 outline-none focus:border-volt" required />
-              </div>
-              {formStatus ? <p className={`text-sm font-semibold ${formStatusType === "success" ? "text-emerald-600 dark:text-emerald-400" : formStatusType === "error" ? "text-rose-600 dark:text-rose-400" : "text-muted"}`}>{formStatus}</p> : null}
-              <p className="text-[11px] text-muted">* Campos obligatorios</p>
-              <PremiumButton type="submit" variant="primary" icon={<Plus size={17} />}>{editId ? "Guardar cambios" : "Crear pendiente"}</PremiumButton>
+              <AppSelect
+                label="Responsable"
+                value={ownerId}
+                onChange={setOwnerId}
+                options={userOptions}
+                placeholder="Selecciona responsable"
+              />
+              <AppDatePicker label="Fecha límite" value={dueDate} onChange={setDueDate} required />
+              {formStatus ? (
+                <p className={`text-sm font-semibold ${formStatusType === "success" ? "text-emerald-600 dark:text-emerald-400" : formStatusType === "error" ? "text-rose-600 dark:text-rose-400" : "text-muted"}`}>
+                  {formStatus}
+                </p>
+              ) : null}
+              <AppButton type="submit" variant="primary" icon={<Plus size={17} />} className="w-full">
+                {editId ? "Guardar cambios" : "Crear pendiente"}
+              </AppButton>
             </form>
           </Card>
         ) : null}

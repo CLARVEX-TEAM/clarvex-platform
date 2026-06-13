@@ -6,7 +6,8 @@ import { ImagePlus, Megaphone, Send, Trash2, X } from "lucide-react";
 import { fetchAppData, type AppData } from "@/lib/app-data";
 import { getSession } from "@/lib/auth";
 import type { Announcement, User } from "@/lib/types";
-import { AppFrame, AppHeader, Badge, BottomNav, Button, Card, NotificationCard, ProgressBar } from "@/components/ui";
+import { AppFrame, AppHeader, Badge, BottomNav, Card, NotificationCard, ProgressBar } from "@/components/ui";
+import { AppButton, AppInput, AppTextarea } from "@/components/forms";
 
 type Filter = "todos" | "no-leidos" | "importantes";
 
@@ -154,18 +155,16 @@ export default function ComunicadosPage() {
               <Megaphone className="text-volt" size={18} />
               <h2 className="text-lg font-black">Publicar comunicado</h2>
             </div>
-            <form className="mt-3 grid gap-2.5" onSubmit={publishAnnouncement}>
-              <input
+            <form className="mt-3 grid gap-3" onSubmit={publishAnnouncement}>
+              <AppInput
+                label="Título"
                 value={title}
                 onChange={(event) => setTitle(event.target.value)}
-                className="min-h-12 rounded-2xl border border-line bg-panel px-3 py-3 outline-none focus:border-volt"
-                placeholder="Titulo"
               />
-              <textarea
+              <AppTextarea
+                label="Mensaje para el equipo"
                 value={body}
                 onChange={(event) => setBody(event.target.value)}
-                className="min-h-20 rounded-2xl border border-line bg-panel px-3 py-2.5 outline-none focus:border-volt"
-                placeholder="Mensaje para el equipo"
               />
               {imagePreview ? (
                 <div className="relative overflow-hidden rounded-2xl border border-line">
@@ -185,9 +184,9 @@ export default function ComunicadosPage() {
                 </button>
               )}
               <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleImageChange} />
-              <Button type="submit" className="w-full" variant="primary" icon={<Send size={17} />}>
+              <AppButton type="submit" variant="primary" icon={<Send size={17} />} className="w-full">
                 Mandar comunicado
-              </Button>
+              </AppButton>
               {status ? <p className="text-sm font-semibold text-muted">{status}</p> : null}
             </form>
           </Card>
