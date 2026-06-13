@@ -7,7 +7,7 @@ import { getSession } from "@/lib/auth";
 import type { User } from "@/lib/types";
 import { AppFrame, AppHeader, Badge, BottomNav, Button, Card } from "@/components/ui";
 
-type NotificationType = "PLAN_READY" | "NEW_ANNOUNCEMENT" | "PENDING_ASSIGNED" | "TASK_COMPLETED" | "KPI_GOAL_REACHED" | "COMMENT_ADDED" | "EVIDENCE_ADDED" | "DAILY_SUMMARY";
+type NotificationType = "PLAN_READY" | "NEW_ANNOUNCEMENT" | "PENDING_ASSIGNED" | "TASK_COMPLETED" | "KPI_GOAL_REACHED" | "COMMENT_ADDED" | "EVIDENCE_ADDED" | "DAILY_SUMMARY" | "ANNOUNCEMENT_REACTION";
 type NotificationItem = { id: string; type: NotificationType; title: string; body: string; readAt: string | null; createdAt: string };
 
 type TypeConfig = { label: string; icon: typeof Bell; tone: "default" | "warn" | "danger" | "success" };
@@ -20,7 +20,8 @@ const typeConfig: Record<NotificationType, TypeConfig> = {
   KPI_GOAL_REACHED: { label: "Meta KPI", icon: Trophy, tone: "success" },
   COMMENT_ADDED: { label: "Comentario", icon: MessageCircle, tone: "default" },
   EVIDENCE_ADDED: { label: "Evidencia", icon: ImagePlus, tone: "success" },
-  DAILY_SUMMARY: { label: "Resumen", icon: Sparkles, tone: "success" }
+  DAILY_SUMMARY: { label: "Resumen", icon: Sparkles, tone: "success" },
+  ANNOUNCEMENT_REACTION: { label: "Reacción", icon: Megaphone, tone: "warn" }
 };
 
 // Fallback para cualquier tipo desconocido (evita crashes si se agregan tipos nuevos en el backend).
@@ -35,6 +36,7 @@ const typeHref: Record<NotificationType, string> = {
   COMMENT_ADDED: "/bitacora",
   EVIDENCE_ADDED: "/bitacora",
   DAILY_SUMMARY: "/kpis",
+  ANNOUNCEMENT_REACTION: "/comunicados",
 };
 
 export default function NotificationsPage() {

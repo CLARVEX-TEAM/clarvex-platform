@@ -87,6 +87,7 @@ enum NotificationType {
   COMMENT_ADDED
   EVIDENCE_ADDED
   DAILY_SUMMARY
+  ANNOUNCEMENT_REACTION
 }
 
 model Store {
@@ -162,6 +163,7 @@ model User {
   evidences             Evidence[]             @relation("EvidenceAuthor")
   authoredAnnouncements Announcement[]
   announcementReads     AnnouncementRead[]
+  announcementReactions AnnouncementReaction[]
   employeeNumberAliases EmployeeNumberAlias[]
   notifications         Notification[]
   pushSubscriptions     PushSubscription[]
@@ -385,8 +387,22 @@ model Announcement {
   body      String
   imageUrl  String?
   reads     AnnouncementRead[]
+  reactions AnnouncementReaction[]
   createdAt DateTime           @default(now())
   updatedAt DateTime           @updatedAt
+}
+
+model AnnouncementReaction {
+  id             String       @id @default(cuid())
+  announcementId String
+  announcement   Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  emoji          String
+  createdAt      DateTime     @default(now())
+
+  @@unique([announcementId, userId, emoji])
+  @@index([announcementId])
 }
 
 model WebAuthnCredential {

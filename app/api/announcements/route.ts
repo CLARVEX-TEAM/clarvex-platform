@@ -77,7 +77,8 @@ export async function POST(request: Request) {
       imageUrl: announcement.imageUrl ?? null,
       authorId: announcement.authorId,
       date: announcement.createdAt.toISOString().slice(0, 10),
-      readBy: []
+      readBy: [],
+      reactions: []
     }
   }, { status: 201 });
 }

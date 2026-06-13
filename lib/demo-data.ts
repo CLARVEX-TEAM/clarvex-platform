@@ -72,8 +72,8 @@ export const logEntries: LogEntry[] = [
 ];
 
 export const announcements: Announcement[] = [
-  { id: "c1", title: "Prioridad de cierre", body: "Hoy se revisa orden visual de mesas y reposicion completa antes de entregar turno.", authorId: "itzel", date: "2026-06-05", readBy: ["waira", "jazmin"] },
-  { id: "c2", title: "Cambio operativo", body: "Registrar pendientes criticos en handover antes de las 20:30.", authorId: "adrian", date: "2026-06-05", readBy: ["waira"] }
+  { id: "c1", title: "Prioridad de cierre", body: "Hoy se revisa orden visual de mesas y reposicion completa antes de entregar turno.", authorId: "itzel", date: "2026-06-05", readBy: ["waira", "jazmin"], reactions: [] },
+  { id: "c2", title: "Cambio operativo", body: "Registrar pendientes criticos en handover antes de las 20:30.", authorId: "adrian", date: "2026-06-05", readBy: ["waira"], reactions: [] }
 ];
 
 export const schedules: ScheduleShift[] = [
