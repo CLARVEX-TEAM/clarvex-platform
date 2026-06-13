@@ -38,6 +38,21 @@ const colorMap: Record<KpiColor, { icon: string; value: string; bar: string }> =
   }
 };
 
+const containerVariants = {
+  hidden: {},
+  show: (delay: number) => ({ transition: { staggerChildren: 0.08, delayChildren: delay } })
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 16, scale: 0.96 },
+  show: {
+    opacity: 1,
+    y: 0,
+    scale: 1,
+    transition: { duration: 0.4, ease: [0.25, 0.1, 0.25, 1] as [number, number, number, number] }
+  }
+};
+
 interface QuickKpiGridProps {
   cards: KpiCardData[];
   delay?: number;
@@ -46,17 +61,20 @@ interface QuickKpiGridProps {
 export function QuickKpiGrid({ cards, delay = 0.16 }: QuickKpiGridProps) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.38, ease: [0.22, 1, 0.36, 1], delay }}
+      variants={containerVariants}
+      custom={delay}
+      initial="hidden"
+      animate="show"
       className="grid grid-cols-2 gap-3"
     >
-      {cards.map((card, i) => {
+      {cards.map((card) => {
         const colors = colorMap[card.color];
         return (
           <motion.div
             key={card.label}
+            variants={itemVariants}
             whileTap={{ scale: 0.97 }}
+            whileHover={{ scale: 1.02, y: -2, boxShadow: "0 8px 30px rgba(37,99,235,0.15)" }}
             className="min-h-[100px] rounded-[28px] border border-white/50 bg-white/75 p-3.5 backdrop-blur-2xl dark:border-slate-700/50 dark:bg-slate-800/60"
             style={{ boxShadow: "0 4px 20px rgba(15,23,42,0.06)" }}
           >
@@ -76,7 +94,7 @@ export function QuickKpiGrid({ cards, delay = 0.16 }: QuickKpiGridProps) {
                   className={cn("h-full rounded-full", colors.bar)}
                   initial={{ width: 0 }}
                   animate={{ width: `${Math.min(100, Math.max(0, card.progress))}%` }}
-                  transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1], delay: delay + 0.05 + i * 0.04 }}
+                  transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1], delay: 0.3 }}
                 />
               </div>
             )}
