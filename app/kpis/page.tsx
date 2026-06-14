@@ -18,6 +18,7 @@ import { cn } from "@/lib/utils";
 type Tab = "resumen" | "ventas" | "comision" | "ranking";
 type KpiTarget = { id: string; metric: string; value: number; period: string };
 type MonthProjection = { weeksElapsed: number; totalWeeks: number; projectedSales: number; projectedCommission: number; percent: number; achievement: number };
+type MonthSalesProjection = { weeksElapsed: number; totalWeeks: number; projectedSales: number; goal: number; achievement: number };
 type KpiResponse = {
   period: KpiPeriod;
   selectedDate: string;
@@ -123,15 +124,15 @@ export default function KpisPage() {
   const periodKey = period === "week" ? "SEMANA" : "MES";
   const periodTargets = useMemo(() => targets.filter((t) => t.period === periodKey), [targets, periodKey]);
 
-  // Proyección de cierre de mes por SEMANAS con datos (metas/mínimo/horarios se
-  // cargan semana por semana). Reutiliza projectMonthlyCommission. Solo mes en curso.
-  const monthProjection = useMemo<MonthProjection | null>(() => {
-    if (!report || report.period !== "month" || !commissionKpi || commissionKpi.sales <= 0) return null;
+  // Semanas con datos del mes retail en curso (base de todas las proyecciones).
+  // Metas/mínimo/horarios se cargan semana por semana → se proyecta por semanas.
+  const monthWeeks = useMemo<{ weeksElapsed: number; totalWeeks: number } | null>(() => {
+    if (!report || report.period !== "month") return null;
     const start = new Date(`${report.startDate}T00:00:00Z`);
     const end = new Date(`${report.endDate}T00:00:00Z`);
     const now = new Date();
     const todayUtc = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
-    if (todayUtc < start || todayUtc > end) return null; // solo proyecta el mes en curso
+    if (todayUtc < start || todayUtc > end) return null; // solo el mes en curso
     const dayMs = 86_400_000;
     const totalWeeks = Math.max(1, Math.round(((end.getTime() - start.getTime()) / dayMs + 1) / 7));
     const weeksWithData = report.availableWeeks.filter((week) => {
@@ -140,16 +141,31 @@ export default function KpisPage() {
     }).length;
     const calendarWeeksElapsed = Math.ceil(((todayUtc.getTime() - start.getTime()) / dayMs + 1) / 7);
     const weeksElapsed = Math.min(totalWeeks, Math.max(1, weeksWithData || calendarWeeksElapsed));
+    return { weeksElapsed, totalWeeks };
+  }, [report]);
+
+  // Proyección de COMISIÓN (pestaña Comisión). Reutiliza projectMonthlyCommission.
+  const monthProjection = useMemo<MonthProjection | null>(() => {
+    if (!monthWeeks || !report || !commissionKpi || commissionKpi.sales <= 0) return null;
     const result = projectMonthlyCommission({
       salesToDate: commissionKpi.sales,
       minimumToDate: commissionKpi.commissionMinimum ?? commissionKpi.goal ?? 0,
-      weeksElapsed,
-      totalWeeks,
+      weeksElapsed: monthWeeks.weeksElapsed,
+      totalWeeks: monthWeeks.totalWeeks,
       rules: report.commissionRules,
       role: commissionRole
     });
-    return result ? { weeksElapsed, totalWeeks, ...result } : null;
-  }, [report, commissionKpi, commissionRole]);
+    return result ? { ...monthWeeks, ...result } : null;
+  }, [monthWeeks, report, commissionKpi, commissionRole]);
+
+  // Proyección de VENTA de cierre de mes de TIENDA (pestaña Resumen, solo gerencia).
+  // La meta mensual de tienda viene completa (TOTALES), así que se compara directo.
+  const monthSalesProjection = useMemo<MonthSalesProjection | null>(() => {
+    if (!monthWeeks || !isManager || !activeKpi || activeKpi.sales <= 0 || activeKpi.goal <= 0) return null;
+    const projectedSales = (activeKpi.sales / monthWeeks.weeksElapsed) * monthWeeks.totalWeeks;
+    const achievement = Math.round((projectedSales / activeKpi.goal) * 100);
+    return { ...monthWeeks, projectedSales, goal: activeKpi.goal, achievement };
+  }, [monthWeeks, isManager, activeKpi]);
 
   return (
     <>
@@ -172,7 +188,7 @@ export default function KpisPage() {
         {loading ? <Card className="text-sm font-semibold text-muted">Calculando acumulados...</Card> : activeKpi ? (
           <AnimatePresence mode="wait">
             <motion.div key={`${activeTab}-${period}-${selectedDate}`} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.18 }}>
-              {activeTab === "resumen" ? <ResumenView activeKpi={activeKpi} team={report?.team ?? []} progress={progress} periodLabel={periodLabel} hasDiscountSource={report?.hasDiscountSource ?? false} latestDiscountWeek={report?.latestDiscountWeek ?? null} targets={periodTargets} isManager={isManager} onOpenTargets={() => setShowTargetSheet(true)} /> : null}
+              {activeTab === "resumen" ? <ResumenView activeKpi={activeKpi} team={report?.team ?? []} progress={progress} periodLabel={periodLabel} hasDiscountSource={report?.hasDiscountSource ?? false} latestDiscountWeek={report?.latestDiscountWeek ?? null} targets={periodTargets} isManager={isManager} onOpenTargets={() => setShowTargetSheet(true)} salesProjection={monthSalesProjection} /> : null}
               {activeTab === "ventas" ? <VentasView activeKpi={activeKpi} chartData={chartData} progress={progress} periodLabel={periodLabel} /> : null}
               {activeTab === "comision" ? <ComisionView activeKpi={commissionKpi ?? activeKpi} rules={report?.commissionRules ?? []} simulatedSales={simulatedSales} setSimulatedSales={setSimulatedSales} activeRule={activeRule} appliedPercent={appliedPercent} simulatedCommission={simulatedCommission} simulatedAchievement={simulatedAchievement} commissionRole={commissionRole} periodLabel={periodLabel} projection={monthProjection} /> : null}
               {activeTab === "ranking" ? <RankingView ranking={report?.team ?? []} periodLabel={periodLabel} isAdvisor={isAdvisor} currentUserId={report?.currentUserId} /> : null}
@@ -226,7 +242,7 @@ const cardGrid = {
   show: { transition: { staggerChildren: 0.055, delayChildren: 0.05 } }
 };
 
-function ResumenView({ activeKpi, team, progress, periodLabel, hasDiscountSource, latestDiscountWeek, targets, isManager, onOpenTargets }: { activeKpi: KpiReportItem; team: KpiReportItem[]; progress: number; periodLabel: string; hasDiscountSource: boolean; latestDiscountWeek: { weekNumber: number; margin: number | null } | null; targets: KpiTarget[]; isManager: boolean; onOpenTargets: () => void }) {
+function ResumenView({ activeKpi, team, progress, periodLabel, hasDiscountSource, latestDiscountWeek, targets, isManager, onOpenTargets, salesProjection }: { activeKpi: KpiReportItem; team: KpiReportItem[]; progress: number; periodLabel: string; hasDiscountSource: boolean; latestDiscountWeek: { weekNumber: number; margin: number | null } | null; targets: KpiTarget[]; isManager: boolean; onOpenTargets: () => void; salesProjection?: MonthSalesProjection | null }) {
   const discountValue = activeKpi.discountMargin !== null
     ? `${activeKpi.discountMargin}%`
     : latestDiscountWeek?.margin !== null && latestDiscountWeek !== null
@@ -277,6 +293,20 @@ function ResumenView({ activeKpi, team, progress, periodLabel, hasDiscountSource
         </div>
         <ProgressBar value={progress} />
       </Card>
+
+      {salesProjection ? (
+        <Card className="mb-3 border border-emerald-400/30 bg-gradient-to-br from-emerald-50 to-blue-50 p-3.5 dark:from-[#0f2a1e] dark:to-[#11203f]">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-[11px] font-black uppercase tracking-[0.13em] text-muted">Proyección de cierre de mes</p>
+              <h2 className="mt-1 text-[1.9rem] font-black leading-none text-ink">{money(salesProjection.projectedSales)}</h2>
+              <p className="mt-1.5 text-sm text-muted">{salesProjection.achievement}% de la meta {money(salesProjection.goal)} · al ritmo de las semanas con datos ({salesProjection.weeksElapsed}/{salesProjection.totalWeeks})</p>
+            </div>
+            <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-emerald-100 text-emerald-600 dark:bg-[#10301f]"><TrendingUp size={25} /></span>
+          </div>
+          <div className="mt-2.5"><ProgressBar value={Math.min(salesProjection.achievement, 100)} /></div>
+        </Card>
+      ) : null}
 
       <motion.div variants={cardGrid} initial="hidden" animate="show" className="grid grid-cols-2 gap-3">
         <MetricCard metric="upt"         value={activeKpi.upt === null ? "—" : String(activeKpi.upt)}                                   detail="Unidades por ticket"               sparkData={spark((m) => m.upt)}            trafficLight={semaphore(activeKpi.upt, "upt")} />
