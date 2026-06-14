@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { findCommissionRule, projectMonthlyCommission } from "../lib/commission";
+import { findCommissionRule, projectMonthlyCommission, resolveCommissionMinimum } from "../lib/commission";
 import type { CommissionRule } from "../lib/types";
 
 const rules: CommissionRule[] = [
@@ -21,6 +21,16 @@ test("SUBGERENTE con 80 por ciento usa 0.93 sin evaluar ventas", () => {
 
 test("maxAchievement null no tiene limite superior", () => {
   assert.equal(findCommissionRule(rules, "SUBGERENTE", 180)?.commissionPercent, 1.39);
+});
+
+test("minimo: usa el sincronizado si existe, si no lo deriva de meta/1.15", () => {
+  // Con minimo sincronizado, lo respeta tal cual.
+  assert.equal(resolveCommissionMinimum(90_000, 100_000), 90_000);
+  // Sin minimo, deriva de la meta: 115_000 / 1.15 = 100_000.
+  assert.equal(resolveCommissionMinimum(null, 115_000), 100_000);
+  assert.equal(resolveCommissionMinimum(0, 115_000), 100_000);
+  // Sin meta tampoco, devuelve 0.
+  assert.equal(resolveCommissionMinimum(null, 0), 0);
 });
 
 test("proyeccion: extrapola la venta por semanas con datos, no por dias", () => {
