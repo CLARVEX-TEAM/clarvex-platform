@@ -16,6 +16,7 @@ export type User = {
 
 export type Kpi = {
   userId: string;
+  date?: string;
   dailySales: number;
   monthlySales: number;
   dailyGoal: number;
