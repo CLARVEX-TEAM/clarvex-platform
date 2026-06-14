@@ -17,25 +17,17 @@ export async function GET() {
   const dashboardDate = dashboardDateKey();
   const dashboardRange = dashboardDateRange(dashboardDate);
 
-  const [users, kpis, dashboardKpi, plans, pendings, logEntries, announcements, schedules, evidences, commissionRules] = await Promise.all([
+  const [users, kpis, dashboardRows, plans, pendings, logEntries, announcements, schedules, evidences, commissionRules] = await Promise.all([
     prisma.user.findMany({ where: { storeId: session.storeId }, orderBy: [{ role: "asc" }, { name: "asc" }] }),
     prisma.kpi.findMany({ where: { storeId: session.storeId, ...own }, orderBy: [{ date: "desc" }, { ranking: "asc" }] }),
-    prisma.kpi.findFirst({
+    prisma.kpi.findMany({
+      // Gerencia: todas las filas del día (para el TOTAL de tienda). Asesor: solo la suya.
       where: {
         storeId: session.storeId,
-        userId: session.userId,
+        ...(manager ? {} : { userId: session.userId }),
         date: { gte: dashboardRange.start, lt: dashboardRange.end }
       },
-      select: {
-        id: true,
-        userId: true,
-        date: true,
-        dailyGoal: true,
-        dailySales: true,
-        transactions: true,
-        pieces: true,
-        traffic: true
-      }
+      select: { dailyGoal: true, dailySales: true, transactions: true, pieces: true, traffic: true }
     }),
     prisma.dayPlan.findMany({ where: { storeId: session.storeId, ...own }, include: { activities: true }, orderBy: { date: "desc" } }),
     prisma.pending.findMany({ where: { storeId: session.storeId, ...(manager ? {} : { ownerId: session.userId }) }, orderBy: [{ priority: "desc" }, { dueDate: "asc" }] }),
@@ -45,13 +37,16 @@ export async function GET() {
     prisma.evidence.findMany({ where: { storeId: session.storeId, ...(manager ? {} : { uploadedById: session.userId }) }, orderBy: { createdAt: "desc" } }),
     prisma.commissionRule.findMany({ where: { storeId: session.storeId, ...(manager ? {} : { OR: [{ role: session.role }, { role: null }] }) }, orderBy: [{ active: "desc" }, { role: "asc" }, { minAchievement: "asc" }] })
   ]);
-  const dashboardDaily = buildUserDashboardKpi(dashboardDate, dashboardKpi ? {
-    dailyGoal: Number(dashboardKpi.dailyGoal),
-    dailySales: Number(dashboardKpi.dailySales),
-    transactions: dashboardKpi.transactions,
-    pieces: dashboardKpi.pieces,
-    traffic: dashboardKpi.traffic
-  } : null);
+  // Gerencia: TOTAL de tienda del día (suma de colaboradores = TOTALES; meta de
+  // gerente/subgerente = meta de tienda). Asesor: su única fila del día.
+  const dashboardRow = dashboardRows.length === 0 ? null : {
+    dailyGoal: dashboardRows.reduce((total, row) => total + Number(row.dailyGoal), 0),
+    dailySales: dashboardRows.reduce((total, row) => total + Number(row.dailySales), 0),
+    transactions: dashboardRows.reduce((total, row) => total + row.transactions, 0),
+    pieces: dashboardRows.reduce((total, row) => total + row.pieces, 0),
+    traffic: dashboardRows.reduce<number | null>((max, row) => row.traffic !== null && (max === null || row.traffic > max) ? row.traffic : max, null)
+  };
+  const dashboardDaily = buildUserDashboardKpi(dashboardDate, dashboardRow);
 
 
   return NextResponse.json({
