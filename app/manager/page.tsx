@@ -18,6 +18,7 @@ import {
 import { getSession, logout } from "@/lib/auth";
 import { fetchAppData, type AppData } from "@/lib/app-data";
 import { completion, money } from "@/lib/format";
+import { computeDailyStreak } from "@/lib/streaks";
 import type { User } from "@/lib/types";
 import { AppFrame, Badge, BottomNav, Card, ProfileAvatar, ProgressBar, priorityTone } from "@/components/ui";
 import { HomeHeader } from "@/components/home/HomeHeader";
@@ -194,6 +195,10 @@ export default function ManagerDashboard() {
             <div className="divide-y divide-white/[0.07]">
               {ranking.map(({ advisor, kpi }, index) => {
                 const progress = completion(kpi?.dailySales ?? 0, kpi?.dailyGoal ?? 0);
+                const streak = computeDailyStreak(
+                  data.kpis.filter((k) => k.userId === advisor.id && k.date !== undefined).map((k) => ({ date: k.date as string, sales: k.dailySales, goal: k.dailyGoal })),
+                  todayKey
+                );
                 return (
                   <div key={advisor.id} className="flex items-center justify-between py-2.5">
                     <div className="flex items-center gap-3">
@@ -201,6 +206,7 @@ export default function ManagerDashboard() {
                       <div>
                         <p className="font-bold">
                           #{index + 1} {advisor.name}
+                          {streak.current >= 2 ? <span className="ml-1.5 text-xs font-black text-orange-500">🔥{streak.current}</span> : null}
                         </p>
                         <p className="text-sm text-ink/50">
                           {money(kpi?.dailySales ?? 0)} de {money(kpi?.dailyGoal ?? 0)}

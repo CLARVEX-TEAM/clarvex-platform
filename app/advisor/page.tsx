@@ -7,6 +7,7 @@ import { Receipt, ShoppingBag, Target, Trophy } from "lucide-react";
 import { getSession, logout } from "@/lib/auth";
 import { fetchAppData, type AppData } from "@/lib/app-data";
 import { completion, money } from "@/lib/format";
+import { computeDailyStreak } from "@/lib/streaks";
 import type { User } from "@/lib/types";
 import Link from "next/link";
 import { AppFrame, Badge, BottomNav, Card, NotificationCard } from "@/components/ui";
@@ -82,6 +83,15 @@ export default function AdvisorDashboard() {
   const planDone = plan?.activities.filter((a) => a.completed).length ?? 0;
   const planTotal = plan?.activities.length ?? 0;
 
+  const streak = computeDailyStreak(
+    data.kpis.filter((k) => k.date !== undefined).map((k) => ({ date: k.date as string, sales: k.dailySales, goal: k.dailyGoal })),
+    todayKey
+  );
+  const badges: string[] = [];
+  if (daily.dailyGoal > 0 && daily.dailySales >= daily.dailyGoal) badges.push("🎯 Meta de hoy");
+  if ((kpi?.monthlyGoal ?? 0) > 0 && (kpi?.monthlySales ?? 0) >= (kpi?.monthlyGoal ?? 0)) badges.push("💯 Mes cumplido");
+  if (streak.best >= 7) badges.push("⚡ Imparable");
+
   const kpiCards: KpiCardData[] = [
     {
       label: "VENTAS",
@@ -134,6 +144,23 @@ export default function AdvisorDashboard() {
         <div className="mt-3">
           <QuickActions variant="advisor" delay={0.24} />
         </div>
+
+        <motion.div {...cardAnim(0.28)} className="mt-3">
+          <Card>
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-[11px] font-black uppercase tracking-[0.13em] text-muted">Tu racha</p>
+                <h2 className="mt-1 text-[2rem] font-black leading-none text-ink">🔥 {streak.current} {streak.current === 1 ? "día" : "días"}</h2>
+                <p className="mt-1 text-xs text-muted">Mejor racha: {streak.best} {streak.best === 1 ? "día" : "días"} cumpliendo meta</p>
+              </div>
+            </div>
+            {badges.length ? (
+              <div className="mt-3 flex flex-wrap gap-1.5">
+                {badges.map((badge) => <Badge key={badge} tone="success">{badge}</Badge>)}
+              </div>
+            ) : null}
+          </Card>
+        </motion.div>
 
         <motion.div {...cardAnim(0.32)} className="mt-3">
           <Card>
