@@ -2,12 +2,12 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Bell, Check, CheckCheck, ChevronRight, ClipboardCheck, ImagePlus, Megaphone, MessageCircle, Sparkles, Target, Trophy } from "lucide-react";
+import { Bell, Cake, Check, CheckCheck, ChevronRight, ClipboardCheck, ImagePlus, Megaphone, MessageCircle, Sparkles, Target, Trophy } from "lucide-react";
 import { getSession } from "@/lib/auth";
 import type { User } from "@/lib/types";
 import { AppFrame, AppHeader, Badge, BottomNav, Button, Card } from "@/components/ui";
 
-type NotificationType = "PLAN_READY" | "NEW_ANNOUNCEMENT" | "PENDING_ASSIGNED" | "TASK_COMPLETED" | "KPI_GOAL_REACHED" | "COMMENT_ADDED" | "EVIDENCE_ADDED" | "DAILY_SUMMARY" | "ANNOUNCEMENT_REACTION";
+type NotificationType = "PLAN_READY" | "NEW_ANNOUNCEMENT" | "PENDING_ASSIGNED" | "TASK_COMPLETED" | "KPI_GOAL_REACHED" | "COMMENT_ADDED" | "EVIDENCE_ADDED" | "DAILY_SUMMARY" | "ANNOUNCEMENT_REACTION" | "CELEBRATION";
 type NotificationItem = { id: string; type: NotificationType; title: string; body: string; readAt: string | null; createdAt: string };
 
 type TypeConfig = { label: string; icon: typeof Bell; tone: "default" | "warn" | "danger" | "success" };
@@ -21,7 +21,8 @@ const typeConfig: Record<NotificationType, TypeConfig> = {
   COMMENT_ADDED: { label: "Comentario", icon: MessageCircle, tone: "default" },
   EVIDENCE_ADDED: { label: "Evidencia", icon: ImagePlus, tone: "success" },
   DAILY_SUMMARY: { label: "Resumen", icon: Sparkles, tone: "success" },
-  ANNOUNCEMENT_REACTION: { label: "Reacción", icon: Megaphone, tone: "warn" }
+  ANNOUNCEMENT_REACTION: { label: "Reacción", icon: Megaphone, tone: "warn" },
+  CELEBRATION: { label: "Festejo", icon: Cake, tone: "warn" }
 };
 
 // Fallback para cualquier tipo desconocido (evita crashes si se agregan tipos nuevos en el backend).
@@ -37,6 +38,7 @@ const typeHref: Record<NotificationType, string> = {
   EVIDENCE_ADDED: "/bitacora",
   DAILY_SUMMARY: "/kpis",
   ANNOUNCEMENT_REACTION: "/comunicados",
+  CELEBRATION: "/notificaciones",
 };
 
 export default function NotificationsPage() {
