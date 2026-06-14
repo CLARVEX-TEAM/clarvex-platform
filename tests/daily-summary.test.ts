@@ -136,13 +136,25 @@ test("comparativo semanal sube, baja o se mantiene segun la semana anterior", ()
   assert.equal(weeklyComparisonLine(100, 0), null); // sin base de comparación
 });
 
-test("mensaje semanal del asesor muestra venta, alcance, ranking y comparativo", () => {
+test("el #1 con venta recibe felicitacion de lider de la semana", () => {
   const message = buildWeeklyAdvisorMessage({ name: "Alonso Treviño", sales: 51970, goal: 50000, rank: 1, prevSales: 45000 });
-  assert.match(message.body, /Cierre de semana, Alonso/);
-  assert.match(message.body, /Vendiste \$51,970 de tu meta \$50,000 \(104%\)/);
-  assert.match(message.body, /lugar #1 del equipo/);
+  assert.match(message.title, /Líder de la semana/);
+  assert.match(message.body, /¡Eres el LÍDER de la semana, Alonso!/);
+  assert.match(message.body, /quedaste #1 del equipo/);
+});
+
+test("mensaje semanal de un asesor no-lider muestra venta, alcance, ranking y comparativo", () => {
+  const message = buildWeeklyAdvisorMessage({ name: "Waira Popoca", sales: 48000, goal: 50000, rank: 2, prevSales: 45000 });
+  assert.match(message.body, /Cierre de semana, Waira/);
+  assert.match(message.body, /Vendiste \$48,000 de tu meta \$50,000 \(96%\)/);
+  assert.match(message.body, /lugar #2 del equipo/);
   assert.match(message.body, /vs la semana pasada/);
-  assert.match(message.body, /¡Cumpliste tu meta semanal!/);
+});
+
+test("el #1 sin ventas no recibe mensaje de lider", () => {
+  const message = buildWeeklyAdvisorMessage({ name: "Ana", sales: 0, goal: 50000, rank: 1, prevSales: 0 });
+  assert.doesNotMatch(message.body, /LÍDER/);
+  assert.match(message.body, /Cierre de semana, Ana/);
 });
 
 test("resumen semanal de gerencia incluye Top del equipo y comparativo", () => {
@@ -155,6 +167,7 @@ test("resumen semanal de gerencia incluye Top del equipo y comparativo", () => {
   });
   assert.match(summary.body, /Resumen semanal — 7 jun - 13 jun/);
   assert.match(summary.body, /Venta de tienda: \$140,686 de \$280,000 \(50%\)/);
+  assert.match(summary.body, /🏆 Líder de la semana: Alonso — \$51,970/);
   assert.match(summary.body, /1\. Alonso — \$51,970/);
   assert.match(summary.body, /2\. Waira — \$48,575/);
 });
