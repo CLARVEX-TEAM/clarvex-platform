@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   buildAdvisorMessage,
+  buildGoalReachedMessage,
   buildManagerSummary,
   buildMiddayAdvisorMessage,
   buildMiddayManagerSummary,
@@ -129,6 +130,13 @@ test("retailWeekRange devuelve la semana retail domingo-sabado que contiene la f
   const wednesday = retailWeekRange(new Date(Date.UTC(2026, 5, 10)));
   assert.equal(wednesday.weekStart.toISOString().slice(0, 10), "2026-06-07");
   assert.equal(wednesday.weekEnd.toISOString().slice(0, 10), "2026-06-13");
+});
+
+test("celebracion instantanea felicita al cruzar la meta del dia", () => {
+  const message = buildGoalReachedMessage({ name: "Waira Popoca", sales: 22500, goal: 22000 });
+  assert.match(message.title, /Meta alcanzada/);
+  assert.match(message.body, /¡FELICIDADES Waira!/);
+  assert.match(message.body, /\$22,500 \(102%\)/);
 });
 
 test("empujon de media jornada muestra avance y faltante", () => {

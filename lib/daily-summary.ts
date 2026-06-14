@@ -190,6 +190,18 @@ export function buildMorningManagerSummary(input: MorningManagerInput): { title:
 }
 
 // ---------------------------------------------------------------------------
+// Celebración instantánea al alcanzar la meta (GOAL_REACHED)
+// ---------------------------------------------------------------------------
+
+/** Felicitación inmediata cuando un asesor cruza el 100% de su meta del día. */
+export function buildGoalReachedMessage(input: { name: string; sales: number; goal: number }): { title: string; body: string } {
+  const name = firstName(input.name);
+  const pct = input.goal > 0 ? Math.round((input.sales / input.goal) * 100) : 0;
+  const body = `🎉 ¡FELICIDADES ${name}! Acabas de alcanzar tu meta del día con ${formatMxn(input.sales)} (${pct}%). ¡Eres una máquina de ventas! Sigue sumando. 🔥`;
+  return { title: "🎉 ¡Meta alcanzada!", body };
+}
+
+// ---------------------------------------------------------------------------
 // Alerta de media jornada (MIDDAY)
 // ---------------------------------------------------------------------------
 
