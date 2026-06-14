@@ -70,7 +70,11 @@ export default function AdvisorDashboard() {
     );
   }
 
-  const kpi = data.kpis.find((item) => item.userId === user.id) ?? data.kpis[0];
+  // KPI más reciente HASTA HOY (no un día futuro que el RDV precarga con venta $0).
+  const todayKey = data.dashboardDaily.date;
+  const kpi = data.kpis.find((item) => item.userId === user.id && item.date !== undefined && item.date <= todayKey)
+    ?? data.kpis.find((item) => item.userId === user.id)
+    ?? data.kpis[0];
   const daily = data.dashboardDaily;
   const plan = data.plans.find((item) => item.userId === user.id) ?? data.plans[0];
   const unread = data.announcements.filter((item) => !item.readBy.includes(user.id));
