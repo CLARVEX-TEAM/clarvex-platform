@@ -106,6 +106,7 @@ model Store {
   notifications   Notification[]
   comments        Comment[]
   kpiTargets      KpiTarget[]
+  checklistEntries ChecklistEntry[]
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
 }
@@ -463,6 +464,25 @@ model KpiTarget {
 
   @@unique([storeId, metric, period])
   @@index([storeId])
+}
+
+model ChecklistEntry {
+  id          String    @id @default(cuid())
+  storeId     String
+  store       Store     @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  date        String    // "2026-06-14" (día retail en zona America/Monterrey)
+  section     String    // "APERTURA" | "CIERRE"
+  itemKey     String
+  completed   Boolean   @default(false)
+  note        String?
+  evidenceUrl String?
+  completedBy String?
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([storeId, date, itemKey])
+  @@index([storeId, date])
 }
 
 model DailyNotificationLog {

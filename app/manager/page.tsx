@@ -8,6 +8,7 @@ import {
   AlertTriangle,
   ArrowRight,
   CheckCircle2,
+  ClipboardCheck,
   Database,
   Megaphone,
   Receipt,
@@ -252,6 +253,26 @@ export default function ManagerDashboard() {
         </motion.div>
 
         <motion.div {...cardAnim(0.72)} className="mt-3">
+          <Card className="p-3.5">
+            <div className="flex items-center gap-3">
+              <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-emerald-50 dark:bg-[#10301f] text-emerald-600">
+                <ClipboardCheck size={20} />
+              </span>
+              <div className="min-w-0 flex-1">
+                <h2 className="font-black tracking-[-0.02em] text-ink">Checklist de tienda</h2>
+                <p className="mt-0.5 text-xs text-muted">Apertura y cierre con evidencia</p>
+              </div>
+              <Link
+                href="/checklist"
+                className="inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-full bg-volt px-3.5 text-xs font-black text-white transition active:scale-95"
+              >
+                Abrir <ArrowRight size={14} />
+              </Link>
+            </div>
+          </Card>
+        </motion.div>
+
+        <motion.div {...cardAnim(0.80)} className="mt-3">
           <Card className="p-3.5">
             <div className="flex items-center gap-3">
               <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-blue-50 dark:bg-[#1a2540] text-volt">
