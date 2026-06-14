@@ -6,7 +6,7 @@ import { Area, AreaChart, Bar, BarChart, CartesianGrid, Line, LineChart, Respons
 import { BarChart3, Calculator, CalendarDays, Download, Percent, Receipt, Settings2, ShoppingBag, Target, TrendingUp, Trophy, UsersRound, X } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { getSession } from "@/lib/auth";
-import { findCommissionRule, projectMonthlyCommission } from "@/lib/commission";
+import { findCommissionRule, projectMonthlyCommission, resolveCommissionMinimum } from "@/lib/commission";
 import { completion, money } from "@/lib/format";
 import { periodDateKey, type KpiPeriod } from "@/lib/kpi-period";
 import type { KpiReportItem } from "@/lib/kpi-report";
@@ -114,8 +114,8 @@ export default function KpisPage() {
   const commissionKpi = isAdvisor ? (report?.own ?? null) : (report?.store ?? null);
   const initialSimulation = simulatedSales ? Number(simulatedSales) : commissionKpi?.sales ?? 0;
   // El alcance para comisión SIEMPRE se mide contra el MÍNIMO (nunca contra la meta).
-  // Si no hay mínimo sincronizado, no se calcula comisión (se muestra —).
-  const commissionBase = commissionKpi?.commissionMinimum ?? 0;
+  // Si no hay mínimo sincronizado, se deriva de la meta (meta ÷ 1.15).
+  const commissionBase = resolveCommissionMinimum(commissionKpi?.commissionMinimum ?? null, commissionKpi?.goal ?? 0);
   const hasCommissionMinimum = commissionBase > 0;
   const simulatedAchievement = hasCommissionMinimum ? getAchievement(initialSimulation, commissionBase) : 0;
   const commissionRole = isAdvisor ? "ASESOR" : session?.role ?? "GERENTE";
@@ -152,7 +152,7 @@ export default function KpisPage() {
     if (!monthWeeks || !report || !commissionKpi || commissionKpi.sales <= 0) return null;
     const result = projectMonthlyCommission({
       salesToDate: commissionKpi.sales,
-      minimumToDate: commissionKpi.commissionMinimum ?? 0,
+      minimumToDate: resolveCommissionMinimum(commissionKpi.commissionMinimum ?? null, commissionKpi.goal),
       weeksElapsed: monthWeeks.weeksElapsed,
       totalWeeks: monthWeeks.totalWeeks,
       rules: report.commissionRules,

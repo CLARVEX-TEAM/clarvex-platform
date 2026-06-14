@@ -11,6 +11,16 @@ export function findCommissionRule(rules: CommissionRule[], role: Role, achievem
   return rule;
 }
 
+// El mínimo de comisión equivale a meta ÷ 1.15 (al 100% de la meta el alcance vs
+// mínimo da 115%). Se usa cuando el RDV no trae un mínimo sincronizado explícito.
+export const MINIMUM_TO_GOAL_FACTOR = 1.15;
+
+/** Mínimo de comisión: el sincronizado si existe (>0), si no se deriva de la meta. */
+export function resolveCommissionMinimum(commissionMinimum: number | null | undefined, goal: number): number {
+  if (commissionMinimum && commissionMinimum > 0) return commissionMinimum;
+  return goal > 0 ? Math.round((goal / MINIMUM_TO_GOAL_FACTOR) * 100) / 100 : 0;
+}
+
 export type MonthlyCommissionProjection = {
   projectedSales: number;
   projectedCommission: number;
