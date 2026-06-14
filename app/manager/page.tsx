@@ -7,6 +7,7 @@ import { motion } from "framer-motion";
 import {
   AlertTriangle,
   ArrowRight,
+  Cake,
   CheckCircle2,
   ClipboardCheck,
   Database,
@@ -28,6 +29,7 @@ import { StoreStatusCard } from "@/components/home/StoreStatusCard";
 import { QuickActions } from "@/components/home/QuickActions";
 import { SalesTrendCard } from "@/components/home/SalesTrendCard";
 import { buildSalesTrend } from "@/lib/trend";
+import { upcomingCelebrations } from "@/lib/celebrations";
 
 const cardAnim = (delay: number) => ({
   initial: { opacity: 0, y: 12 },
@@ -102,6 +104,10 @@ export default function ManagerDashboard() {
     );
   const userName = (id: string) => data.users.find((u) => u.id === id)?.name ?? "Equipo";
   const salesTrend = buildSalesTrend(data.kpis.map((k) => ({ date: k.date, dailySales: k.dailySales, dailyGoal: k.dailyGoal })), todayKey);
+  const celebrations = upcomingCelebrations(
+    data.users.map((u) => ({ id: u.id, name: u.name, birthDate: u.birthDate, hireDate: u.hireDate })),
+    todayKey
+  ).slice(0, 5);
 
   const kpiCards: KpiCardData[] = [
     {
@@ -230,6 +236,28 @@ export default function ManagerDashboard() {
             </div>
           </Card>
         </motion.div>
+
+        {celebrations.length > 0 ? (
+          <motion.div {...cardAnim(0.54)} className="mt-3">
+            <Card>
+              <div className="mb-3 flex items-center gap-2">
+                <Cake className="text-pink-500" size={18} />
+                <h2 className="text-lg font-black">Próximos festejos</h2>
+              </div>
+              <div className="divide-y divide-white/[0.07]">
+                {celebrations.map((celebration) => (
+                  <div key={`${celebration.id}-${celebration.type}`} className="flex items-center justify-between py-2.5">
+                    <div>
+                      <p className="font-bold">{celebration.type === "cumple" ? "🎂" : "🎉"} {celebration.name}</p>
+                      <p className="text-sm text-ink/55">{celebration.type === "cumple" ? "Cumpleaños" : `${celebration.years} ${celebration.years === 1 ? "año" : "años"} en el equipo`}</p>
+                    </div>
+                    <Badge tone={celebration.daysUntil === 0 ? "warn" : "default"}>{celebration.daysUntil === 0 ? "¡Hoy!" : `en ${celebration.daysUntil} ${celebration.daysUntil === 1 ? "día" : "días"}`}</Badge>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          </motion.div>
+        ) : null}
 
         <motion.div {...cardAnim(0.56)} className="mt-3">
           <Card>

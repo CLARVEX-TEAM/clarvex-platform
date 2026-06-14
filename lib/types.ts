@@ -12,6 +12,8 @@ export type User = {
   biometricEnabled?: boolean;
   lastLoginAt?: string | null;
   storeName?: string;
+  birthDate?: string | null;
+  hireDate?: string | null;
 };
 
 export type Kpi = {

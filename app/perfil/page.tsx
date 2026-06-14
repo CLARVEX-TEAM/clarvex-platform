@@ -1,7 +1,7 @@
 "use client";
 
 import { ChangeEvent, useEffect, useRef, useState } from "react";
-import { Camera, CheckCircle2, Fingerprint, ImageUp, Moon, Store, Sun, UserRound } from "lucide-react";
+import { Cake, Camera, CheckCircle2, Fingerprint, ImageUp, Moon, Store, Sun, UserRound } from "lucide-react";
 import { startRegistration } from "@simplewebauthn/browser";
 import { getBiometricRegistrationOptions, getSession, registerBiometric } from "@/lib/auth";
 import type { User } from "@/lib/types";
@@ -25,10 +25,39 @@ export default function ProfilePage() {
   const [biometricBusy, setBiometricBusy] = useState(false);
   const [biometricMessage, setBiometricMessage] = useState("");
   const [biometricError, setBiometricError] = useState("");
+  const [birthDate, setBirthDate] = useState("");
+  const [hireDate, setHireDate] = useState("");
+  const [savingDates, setSavingDates] = useState(false);
+  const [datesMessage, setDatesMessage] = useState("");
 
   useEffect(() => {
     getSession().then(setUser).finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    fetch("/api/profile")
+      .then((response) => response.json() as Promise<{ birthDate?: string | null; hireDate?: string | null }>)
+      .then((data) => { setBirthDate(data.birthDate ?? ""); setHireDate(data.hireDate ?? ""); })
+      .catch(() => undefined);
+  }, []);
+
+  async function saveDates() {
+    setSavingDates(true);
+    setDatesMessage("");
+    try {
+      const response = await fetch("/api/profile", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ birthDate: birthDate || null, hireDate: hireDate || null })
+      });
+      if (!response.ok) throw new Error();
+      setDatesMessage("Datos guardados. 🎉");
+    } catch {
+      setDatesMessage("No se pudieron guardar.");
+    } finally {
+      setSavingDates(false);
+    }
+  }
 
   useEffect(() => () => { if (previewUrl) URL.revokeObjectURL(previewUrl); }, [previewUrl]);
 
@@ -117,6 +146,25 @@ export default function ProfilePage() {
             <Card className="mb-3 divide-y divide-line p-3.5">
               <ProfileField icon={<UserRound size={17} />} label="Numero de empleado" value={user.employeeNumber} />
               <ProfileField icon={<Store size={17} />} label="Tienda" value={user.storeName ?? "CLARVEX Team"} />
+            </Card>
+
+            <Card className="mb-3 p-3.5">
+              <div className="flex items-center gap-3">
+                <span className="grid size-10 place-items-center rounded-2xl bg-pink-50 dark:bg-[#2a1a2a] text-pink-500"><Cake size={19} /></span>
+                <div><h2 className="font-black text-ink">Datos personales</h2><p className="text-xs text-muted">Para felicitarte en tu día 🎂</p></div>
+              </div>
+              <div className="mt-4 grid gap-3">
+                <label className="grid gap-1">
+                  <span className="text-xs font-bold text-muted">Cumpleaños</span>
+                  <input type="date" value={birthDate} onChange={(event) => setBirthDate(event.target.value)} className="min-h-11 rounded-2xl border border-line bg-panel px-3 text-sm font-bold text-ink outline-none focus:border-volt" />
+                </label>
+                <label className="grid gap-1">
+                  <span className="text-xs font-bold text-muted">Fecha de ingreso</span>
+                  <input type="date" value={hireDate} onChange={(event) => setHireDate(event.target.value)} className="min-h-11 rounded-2xl border border-line bg-panel px-3 text-sm font-bold text-ink outline-none focus:border-volt" />
+                </label>
+                <Button type="button" variant="primary" onClick={() => void saveDates()} disabled={savingDates}>{savingDates ? "Guardando..." : "Guardar datos"}</Button>
+                {datesMessage ? <p className="flex items-center gap-2 text-sm font-semibold text-emerald-700"><CheckCircle2 size={16} />{datesMessage}</p> : null}
+              </div>
             </Card>
 
             <Card className="mb-3 p-3.5">

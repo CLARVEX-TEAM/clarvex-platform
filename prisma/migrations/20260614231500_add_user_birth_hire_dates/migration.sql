@@ -1,0 +1,6 @@
+-- AlterTable
+ALTER TABLE "User" ADD COLUMN "birthDate" TIMESTAMP(3);
+ALTER TABLE "User" ADD COLUMN "hireDate" TIMESTAMP(3);
+
+-- AlterEnum
+ALTER TYPE "NotificationType" ADD VALUE IF NOT EXISTS 'CELEBRATION';
