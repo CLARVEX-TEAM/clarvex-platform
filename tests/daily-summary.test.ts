@@ -3,6 +3,8 @@ import test from "node:test";
 import {
   buildAdvisorMessage,
   buildManagerSummary,
+  buildMiddayAdvisorMessage,
+  buildMiddayManagerSummary,
   buildMorningAdvisorMessage,
   buildMorningManagerSummary,
   buildWeeklyAdvisorMessage,
@@ -127,6 +129,29 @@ test("retailWeekRange devuelve la semana retail domingo-sabado que contiene la f
   const wednesday = retailWeekRange(new Date(Date.UTC(2026, 5, 10)));
   assert.equal(wednesday.weekStart.toISOString().slice(0, 10), "2026-06-07");
   assert.equal(wednesday.weekEnd.toISOString().slice(0, 10), "2026-06-13");
+});
+
+test("empujon de media jornada muestra avance y faltante", () => {
+  const message = buildMiddayAdvisorMessage({ name: "Jazmin Castro", sales: 6000, goal: 20000 });
+  assert.match(message.body, /¡Vamos Jazmin!/);
+  assert.match(message.body, /llevas \$6,000 \(30% de tu meta de hoy\)/);
+  assert.match(message.body, /Te faltan \$14,000/);
+});
+
+test("resumen de media jornada lista atrasados o confirma ritmo", () => {
+  const conAtrasados = buildMiddayManagerSummary({
+    dateLabel: "13 de junio",
+    storeSales: 40000,
+    storeGoal: 100000,
+    thresholdPct: 50,
+    behind: [{ name: "Jazmin Castro", sales: 6000, goal: 20000 }]
+  });
+  assert.match(conAtrasados.body, /Media jornada — 13 de junio/);
+  assert.match(conAtrasados.body, /atrasados \(< 50%\)/);
+  assert.match(conAtrasados.body, /• Jazmin: \$6,000 \(30%\)/);
+
+  const sinAtrasados = buildMiddayManagerSummary({ dateLabel: "13 de junio", storeSales: 90000, storeGoal: 100000, thresholdPct: 50, behind: [] });
+  assert.match(sinAtrasados.body, /Todo el equipo va en ritmo \(≥ 50%\)/);
 });
 
 test("comparativo semanal sube, baja o se mantiene segun la semana anterior", () => {
