@@ -190,6 +190,45 @@ export function buildMorningManagerSummary(input: MorningManagerInput): { title:
 }
 
 // ---------------------------------------------------------------------------
+// Alerta de media jornada (MIDDAY)
+// ---------------------------------------------------------------------------
+
+/** Empujón para un asesor que va atrasado a media jornada. */
+export function buildMiddayAdvisorMessage(input: { name: string; sales: number; goal: number }): { title: string; body: string } {
+  const name = firstName(input.name);
+  const pct = input.goal > 0 ? Math.round((input.sales / input.goal) * 100) : 0;
+  const remaining = formatMxn(Math.max(input.goal - input.sales, 0));
+  const body = `⏰ ¡Vamos ${name}! A media jornada llevas ${formatMxn(input.sales)} (${pct}% de tu meta de hoy). Te faltan ${remaining} — aún hay tiempo de sobra. Enfócate en cada cliente y cierra fuerte. 💪`;
+  return { title: "Media jornada ⏰", body };
+}
+
+/** Resumen de media jornada para gerencia: quién va atrasado. */
+export function buildMiddayManagerSummary(input: {
+  dateLabel: string;
+  storeSales: number;
+  storeGoal: number;
+  thresholdPct: number;
+  behind: Array<{ name: string; sales: number; goal: number }>;
+}): { title: string; body: string } {
+  const pct = input.storeGoal > 0 ? Math.round((input.storeSales / input.storeGoal) * 100) : 0;
+  const lines = [
+    `⏰ Media jornada — ${input.dateLabel}`,
+    `Venta de tienda: ${formatMxn(input.storeSales)} (${pct}% de la meta del día)`,
+    ``
+  ];
+  if (input.behind.length === 0) {
+    lines.push(`✅ Todo el equipo va en ritmo (≥ ${input.thresholdPct}%).`);
+  } else {
+    lines.push(`⚠️ Asesores atrasados (< ${input.thresholdPct}%):`);
+    for (const advisor of input.behind) {
+      const advisorPct = advisor.goal > 0 ? Math.round((advisor.sales / advisor.goal) * 100) : 0;
+      lines.push(`• ${firstName(advisor.name)}: ${formatMxn(advisor.sales)} (${advisorPct}%)`);
+    }
+  }
+  return { title: "Media jornada", body: lines.join("\n") };
+}
+
+// ---------------------------------------------------------------------------
 // Cierre de semana (WEEKLY)
 // ---------------------------------------------------------------------------
 
