@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis } from "recharts";
-import { BarChart3, Calculator, CalendarDays, Percent, Receipt, Settings2, ShoppingBag, Target, TrendingUp, Trophy, UsersRound, X } from "lucide-react";
+import { BarChart3, Calculator, CalendarDays, Download, Percent, Receipt, Settings2, ShoppingBag, Target, TrendingUp, Trophy, UsersRound, X } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { getSession } from "@/lib/auth";
 import { findCommissionRule, projectMonthlyCommission } from "@/lib/commission";
@@ -174,6 +174,15 @@ export default function KpisPage() {
         <PeriodSelector period={period} setPeriod={setPeriod} selectedDate={selectedDate} setSelectedDate={setSelectedDate} rangeLabel={rangeLabel} availableWeeks={report?.availableWeeks ?? []} availableRetailMonths={report?.availableRetailMonths ?? []} />
 
         {isAdvisor && report ? <Card className="mb-3 p-3"><p className="text-sm font-black text-ink">{report.workedDays ? "Calculado sobre tus dias laborados" : "Sin dias laborados en este periodo"}</p><p className="mt-1 text-xs font-semibold text-muted">Dias laborados: {report.workedDays ?? 0}</p></Card> : null}
+
+        {isManager && report ? (
+          <a
+            href={`/api/reports/kpis?start=${report.startDate}&end=${report.endDate}&period=${period}&label=${encodeURIComponent(rangeLabel)}`}
+            className="mb-3 flex min-h-11 items-center justify-center gap-2 rounded-2xl border border-line bg-panel text-sm font-black text-volt transition hover:border-volt active:scale-95"
+          >
+            <Download size={16} /> Exportar reporte (Excel)
+          </a>
+        ) : null}
 
         <div className="no-scrollbar tab-glass-shell -mx-1 mb-3 flex gap-1 overflow-x-auto overflow-y-hidden p-1">
           {tabs.map((tab) => (
