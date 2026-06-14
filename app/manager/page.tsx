@@ -26,6 +26,8 @@ import { DailySalesCard } from "@/components/home/DailySalesCard";
 import { QuickKpiGrid, type KpiCardData } from "@/components/home/QuickKpiGrid";
 import { StoreStatusCard } from "@/components/home/StoreStatusCard";
 import { QuickActions } from "@/components/home/QuickActions";
+import { SalesTrendCard } from "@/components/home/SalesTrendCard";
+import { buildSalesTrend } from "@/lib/trend";
 
 const cardAnim = (delay: number) => ({
   initial: { opacity: 0, y: 12 },
@@ -99,6 +101,7 @@ export default function ManagerDashboard() {
       || (b.kpi?.dailySales ?? 0) - (a.kpi?.dailySales ?? 0)
     );
   const userName = (id: string) => data.users.find((u) => u.id === id)?.name ?? "Equipo";
+  const salesTrend = buildSalesTrend(data.kpis.map((k) => ({ date: k.date, dailySales: k.dailySales, dailyGoal: k.dailyGoal })), todayKey);
 
   const kpiCards: KpiCardData[] = [
     {
@@ -163,6 +166,10 @@ export default function ManagerDashboard() {
             delay={0.24}
           />
         </div>
+
+        <motion.div {...cardAnim(0.28)} className="mt-3">
+          <SalesTrendCard points={salesTrend} title="Tendencia de tienda" />
+        </motion.div>
 
         <div className="mt-3">
           <QuickActions variant="manager" delay={0.32} />
