@@ -210,11 +210,25 @@ export type WeeklyAdvisorInput = {
   prevSales: number;
 };
 
-/** Construye el mensaje de cierre de semana del asesor. */
+/** Construye el mensaje de cierre de semana del asesor. El #1 recibe felicitación de líder. */
 export function buildWeeklyAdvisorMessage(input: WeeklyAdvisorInput): { title: string; body: string } {
   const name = firstName(input.name);
   const achievement = input.goal > 0 ? Math.round((input.sales / input.goal) * 100) : 0;
   const comparison = weeklyComparisonLine(input.sales, input.prevSales);
+
+  // Líder de la semana: #1 con venta real.
+  if (input.rank === 1 && input.sales > 0) {
+    const body = [
+      `🏆 ¡Eres el LÍDER de la semana, ${name}! 👑`,
+      ``,
+      `Cerraste con ${formatMxn(input.sales)} (${achievement}% de tu meta) y quedaste #1 del equipo.`,
+      ...(comparison ? [comparison] : []),
+      ``,
+      `El equipo te sigue. ¡Sostén la corona la próxima semana!`
+    ].join("\n");
+    return { title: "🏆 Líder de la semana", body };
+  }
+
   const motivation = achievement >= 100
     ? "🏆 ¡Cumpliste tu meta semanal! Excelente trabajo."
     : achievement >= 80
@@ -244,13 +258,15 @@ export type WeeklyManagerInput = {
 export function buildWeeklyManagerSummary(input: WeeklyManagerInput): { title: string; body: string } {
   const achievement = input.storeGoal > 0 ? Math.round((input.storeSales / input.storeGoal) * 100) : 0;
   const comparison = weeklyComparisonLine(input.storeSales, input.prevStoreSales);
+  const leader = input.top[0];
   const topLines = input.top.map((member, index) => `${index + 1}. ${firstName(member.name)} — ${formatMxn(member.sales)}`);
   const body = [
     `📊 Resumen semanal — ${input.rangeLabel}`,
     `Venta de tienda: ${formatMxn(input.storeSales)} de ${formatMxn(input.storeGoal)} (${achievement}%)`,
     ...(comparison ? [comparison] : []),
+    ...(leader ? [``, `🏆 Líder de la semana: ${firstName(leader.name)} — ${formatMxn(leader.sales)}`] : []),
     ``,
-    `🏆 Top del equipo:`,
+    `Top del equipo:`,
     ...(topLines.length ? topLines : ["Sin ventas registradas esta semana."])
   ].join("\n");
   return { title: "Resumen semanal", body };
