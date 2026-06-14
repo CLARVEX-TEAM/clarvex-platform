@@ -188,3 +188,70 @@ export function buildMorningManagerSummary(input: MorningManagerInput): { title:
     `Equipo activo hoy: ${input.activeAdvisors} asesores`;
   return { title: "Arranque del día", body };
 }
+
+// ---------------------------------------------------------------------------
+// Cierre de semana (WEEKLY)
+// ---------------------------------------------------------------------------
+
+/** Línea de comparativo vs la semana anterior. Null si no hay base de comparación. */
+export function weeklyComparisonLine(sales: number, prevSales: number): string | null {
+  if (prevSales <= 0) return null;
+  const deltaPct = Math.round(((sales - prevSales) / prevSales) * 100);
+  if (deltaPct > 0) return `📈 +${deltaPct}% vs la semana pasada. ¡Vas en ascenso!`;
+  if (deltaPct < 0) return `📉 ${deltaPct}% vs la semana pasada. ¡A recuperar el ritmo!`;
+  return `➡️ Mismo nivel que la semana pasada.`;
+}
+
+export type WeeklyAdvisorInput = {
+  name: string;
+  sales: number;
+  goal: number;
+  rank: number;
+  prevSales: number;
+};
+
+/** Construye el mensaje de cierre de semana del asesor. */
+export function buildWeeklyAdvisorMessage(input: WeeklyAdvisorInput): { title: string; body: string } {
+  const name = firstName(input.name);
+  const achievement = input.goal > 0 ? Math.round((input.sales / input.goal) * 100) : 0;
+  const comparison = weeklyComparisonLine(input.sales, input.prevSales);
+  const motivation = achievement >= 100
+    ? "🏆 ¡Cumpliste tu meta semanal! Excelente trabajo."
+    : achievement >= 80
+      ? "💪 Muy cerca. La próxima la cierras."
+      : "🚀 Nueva semana, nueva oportunidad para brillar.";
+  const body = [
+    `🏁 Cierre de semana, ${name}`,
+    ``,
+    `Vendiste ${formatMxn(input.sales)} de tu meta ${formatMxn(input.goal)} (${achievement}%).`,
+    `Quedaste en el lugar #${input.rank} del equipo.`,
+    ...(comparison ? [comparison] : []),
+    ``,
+    motivation
+  ].join("\n");
+  return { title: "Cierre de semana 🏁", body };
+}
+
+export type WeeklyManagerInput = {
+  rangeLabel: string;
+  storeSales: number;
+  storeGoal: number;
+  prevStoreSales: number;
+  top: Array<{ name: string; sales: number }>;
+};
+
+/** Construye el resumen semanal para gerente/subgerente con Top del equipo. */
+export function buildWeeklyManagerSummary(input: WeeklyManagerInput): { title: string; body: string } {
+  const achievement = input.storeGoal > 0 ? Math.round((input.storeSales / input.storeGoal) * 100) : 0;
+  const comparison = weeklyComparisonLine(input.storeSales, input.prevStoreSales);
+  const topLines = input.top.map((member, index) => `${index + 1}. ${firstName(member.name)} — ${formatMxn(member.sales)}`);
+  const body = [
+    `📊 Resumen semanal — ${input.rangeLabel}`,
+    `Venta de tienda: ${formatMxn(input.storeSales)} de ${formatMxn(input.storeGoal)} (${achievement}%)`,
+    ...(comparison ? [comparison] : []),
+    ``,
+    `🏆 Top del equipo:`,
+    ...(topLines.length ? topLines : ["Sin ventas registradas esta semana."])
+  ].join("\n");
+  return { title: "Resumen semanal", body };
+}

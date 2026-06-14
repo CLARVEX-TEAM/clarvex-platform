@@ -5,9 +5,12 @@ import {
   buildManagerSummary,
   buildMorningAdvisorMessage,
   buildMorningManagerSummary,
+  buildWeeklyAdvisorMessage,
+  buildWeeklyManagerSummary,
   firstName,
   resolveDailyCase,
-  selectMorningMotivation
+  selectMorningMotivation,
+  weeklyComparisonLine
 } from "../lib/daily-summary";
 import { retailWeekRange } from "../lib/cron-time";
 
@@ -124,6 +127,36 @@ test("retailWeekRange devuelve la semana retail domingo-sabado que contiene la f
   const wednesday = retailWeekRange(new Date(Date.UTC(2026, 5, 10)));
   assert.equal(wednesday.weekStart.toISOString().slice(0, 10), "2026-06-07");
   assert.equal(wednesday.weekEnd.toISOString().slice(0, 10), "2026-06-13");
+});
+
+test("comparativo semanal sube, baja o se mantiene segun la semana anterior", () => {
+  assert.match(weeklyComparisonLine(120, 100) ?? "", /\+20% vs la semana pasada/);
+  assert.match(weeklyComparisonLine(80, 100) ?? "", /-20% vs la semana pasada/);
+  assert.match(weeklyComparisonLine(100, 100) ?? "", /Mismo nivel/);
+  assert.equal(weeklyComparisonLine(100, 0), null); // sin base de comparación
+});
+
+test("mensaje semanal del asesor muestra venta, alcance, ranking y comparativo", () => {
+  const message = buildWeeklyAdvisorMessage({ name: "Alonso Treviño", sales: 51970, goal: 50000, rank: 1, prevSales: 45000 });
+  assert.match(message.body, /Cierre de semana, Alonso/);
+  assert.match(message.body, /Vendiste \$51,970 de tu meta \$50,000 \(104%\)/);
+  assert.match(message.body, /lugar #1 del equipo/);
+  assert.match(message.body, /vs la semana pasada/);
+  assert.match(message.body, /¡Cumpliste tu meta semanal!/);
+});
+
+test("resumen semanal de gerencia incluye Top del equipo y comparativo", () => {
+  const summary = buildWeeklyManagerSummary({
+    rangeLabel: "7 jun - 13 jun",
+    storeSales: 140686,
+    storeGoal: 280000,
+    prevStoreSales: 120000,
+    top: [{ name: "Alonso Treviño", sales: 51970 }, { name: "Waira Popoca", sales: 48575 }]
+  });
+  assert.match(summary.body, /Resumen semanal — 7 jun - 13 jun/);
+  assert.match(summary.body, /Venta de tienda: \$140,686 de \$280,000 \(50%\)/);
+  assert.match(summary.body, /1\. Alonso — \$51,970/);
+  assert.match(summary.body, /2\. Waira — \$48,575/);
 });
 
 test("resumen matutino de gerencia calcula alcance semanal y faltante", () => {
