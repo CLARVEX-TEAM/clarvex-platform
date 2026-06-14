@@ -35,7 +35,8 @@ export function projectMonthlyCommission(input: {
   rules: CommissionRule[];
   role: Role;
 }): MonthlyCommissionProjection | null {
-  if (input.salesToDate <= 0 || input.weeksElapsed < 1 || input.totalWeeks < 1) return null;
+  // El alcance de comisión se mide contra el mínimo: sin mínimo no hay proyección.
+  if (input.salesToDate <= 0 || input.weeksElapsed < 1 || input.totalWeeks < 1 || input.minimumToDate <= 0) return null;
   const weeksElapsed = Math.min(input.totalWeeks, input.weeksElapsed);
   const projectedSales = (input.salesToDate / weeksElapsed) * input.totalWeeks;
   const achievement = input.minimumToDate > 0 ? (input.salesToDate / input.minimumToDate) * 100 : 0;

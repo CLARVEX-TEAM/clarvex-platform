@@ -38,9 +38,11 @@ test("proyeccion: el nivel sale del cumplimiento REAL (venta/minimo cargados), n
   assert.equal(result!.projectedCommission, 200_000 * 0.0191);
 });
 
-test("proyeccion: sin venta o sin semanas devuelve null", () => {
+test("proyeccion: sin venta, sin semanas o sin minimo devuelve null", () => {
   assert.equal(projectMonthlyCommission({ salesToDate: 0, minimumToDate: 90_000, weeksElapsed: 2, totalWeeks: 4, rules: advisorRules, role: "ASESOR" }), null);
   assert.equal(projectMonthlyCommission({ salesToDate: 100_000, minimumToDate: 90_000, weeksElapsed: 0, totalWeeks: 4, rules: advisorRules, role: "ASESOR" }), null);
+  // El alcance de comision se mide contra el minimo: sin minimo, no hay proyeccion (no cae a meta).
+  assert.equal(projectMonthlyCommission({ salesToDate: 100_000, minimumToDate: 0, weeksElapsed: 2, totalWeeks: 4, rules: advisorRules, role: "ASESOR" }), null);
 });
 
 test("proyeccion: no extrapola si ya estan todas las semanas cargadas", () => {

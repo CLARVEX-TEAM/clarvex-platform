@@ -96,7 +96,9 @@ export async function GET(request: NextRequest) {
   const ttlsGoalOverride = period === "month" && kpiTtls?.ttlsMeta && kpiTtls.ttlsMeta > 0 ? kpiTtls.ttlsMeta : undefined;
   const ttlsTxOverride = period === "month" && kpiTtls?.ttlsTransactions && kpiTtls.ttlsTransactions > 0 ? kpiTtls.ttlsTransactions : undefined;
   const ttlsPiecesOverride = period === "month" && kpiTtls?.ttlsPieces && kpiTtls.ttlsPieces > 0 ? kpiTtls.ttlsPieces : undefined;
-  const ttlsCommissionMinimum = period === "month" && kpiTtls?.ttlsCommissionMinimum && kpiTtls.ttlsCommissionMinimum > 0 ? kpiTtls.ttlsCommissionMinimum : null;
+  // El mínimo de tienda (TOTALES de COMISIONES) es mensual; debe estar disponible en
+  // todos los períodos para que el alcance de comisión se mida SIEMPRE contra mínimo.
+  const ttlsCommissionMinimum = kpiTtls?.ttlsCommissionMinimum && kpiTtls.ttlsCommissionMinimum > 0 ? kpiTtls.ttlsCommissionMinimum : null;
   const computedTraffic = aggregateStoreTraffic(rows);
   const trafficForStore = computedTraffic ?? (period === "month" ? (kpiTtls?.ttlsTraffic ?? null) : null);
   const store = manager ? aggregateStore(storeReports, trafficForStore, ttlsGoalOverride, ttlsTxOverride, ttlsPiecesOverride, ttlsCommissionMinimum) : null;
