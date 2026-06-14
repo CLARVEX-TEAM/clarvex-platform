@@ -87,10 +87,16 @@ export default function ManagerDashboard() {
   const allActivities = data.plans.flatMap((p) => p.activities).length;
   const storeProgress = completion(store?.dailySales ?? 0, store?.dailyGoal ?? 0);
   const activityProgress = allActivities ? Math.round((doneActivities / allActivities) * 100) : 0;
+  // KPI más reciente HASTA HOY por asesor (data.kpis viene ordenado por fecha desc).
+  // Evita tomar metas de días futuros que el RDV precarga con venta en $0.
+  const todayKey = data.dashboardDaily.date;
   const ranking = advisors
-    .map((a) => ({ advisor: a, kpi: data.kpis.find((k) => k.userId === a.id) }))
+    .map((a) => ({ advisor: a, kpi: data.kpis.find((k) => k.userId === a.id && k.date !== undefined && k.date <= todayKey) }))
     .filter((item) => item.kpi)
-    .sort((a, b) => (a.kpi?.ranking ?? 99) - (b.kpi?.ranking ?? 99));
+    .sort((a, b) =>
+      completion(b.kpi?.dailySales ?? 0, b.kpi?.dailyGoal ?? 0) - completion(a.kpi?.dailySales ?? 0, a.kpi?.dailyGoal ?? 0)
+      || (b.kpi?.dailySales ?? 0) - (a.kpi?.dailySales ?? 0)
+    );
   const userName = (id: string) => data.users.find((u) => u.id === id)?.name ?? "Equipo";
 
   const kpiCards: KpiCardData[] = [
@@ -186,7 +192,7 @@ export default function ManagerDashboard() {
               ))}
             </div>
             <div className="divide-y divide-white/[0.07]">
-              {ranking.map(({ advisor, kpi }) => {
+              {ranking.map(({ advisor, kpi }, index) => {
                 const progress = completion(kpi?.dailySales ?? 0, kpi?.dailyGoal ?? 0);
                 return (
                   <div key={advisor.id} className="flex items-center justify-between py-2.5">
@@ -194,7 +200,7 @@ export default function ManagerDashboard() {
                       <ProfileAvatar name={advisor.name} photoUrl={advisor.photoUrl} size="sm" />
                       <div>
                         <p className="font-bold">
-                          #{kpi?.ranking} {advisor.name}
+                          #{index + 1} {advisor.name}
                         </p>
                         <p className="text-sm text-ink/50">
                           {money(kpi?.dailySales ?? 0)} de {money(kpi?.dailyGoal ?? 0)}
