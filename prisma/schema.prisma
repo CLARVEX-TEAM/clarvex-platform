@@ -115,6 +115,7 @@ model Store {
   shiftRequests   ShiftRequest[]
   inventoryReports InventoryReport[]
   trainingResources TrainingResource[]
+  choreAssignments ChoreAssignment[]
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
 }
@@ -190,6 +191,7 @@ model User {
   inventoryResolved     InventoryReport[]      @relation("InventoryResolver")
   authoredTraining      TrainingResource[]     @relation("TrainingAuthor")
   trainingViews         TrainingResourceView[] @relation("TrainingViewer")
+  choreAssignments      ChoreAssignment[]
   createdAt             DateTime               @default(now())
   updatedAt             DateTime               @updatedAt
 }
@@ -387,12 +389,28 @@ model DayPlanTask {
   title       String
   completed   Boolean  @default(false)
   completedAt DateTime?
+  autoKey     String?  // null = manual; con valor = actividad operativa generada (CICLICO, BARRER_MOPEAR, ...)
   evidences   Evidence[]
   comments    Comment[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   @@map("Activity")
+}
+
+model ChoreAssignment {
+  id        String   @id @default(cuid())
+  storeId   String
+  store     Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  date      DateTime
+  choreKey  String   // CICLICO | BARRER_MOPEAR | TRAPEAR | VIDRIOS
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([storeId, date, choreKey])
+  @@index([storeId, choreKey])
 }
 
 model Pending {
