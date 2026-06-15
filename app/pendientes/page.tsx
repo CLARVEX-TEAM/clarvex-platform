@@ -24,6 +24,8 @@ export default function PendientesPage() {
   const [editId, setEditId] = useState<string | null>(null);
   const [formStatus, setFormStatus] = useState("");
   const [formStatusType, setFormStatusType] = useState<"neutral" | "success" | "error">("neutral");
+  const [submitting, setSubmitting] = useState(false);
+  const [saved, setSaved] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -87,18 +89,28 @@ export default function PendientesPage() {
 
   async function savePending(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!data) return;
+    if (!data || submitting) return;
+    const wasEdit = editId;
+    setSubmitting(true);
     setFormStatus("Guardando..."); setFormStatusType("neutral");
-    const response = await fetch(editId ? `/api/pendings/${editId}` : "/api/pendings", {
-      method: editId ? "PATCH" : "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title, description, category, priority, ownerId, dueDate })
-    });
-    const payload = await response.json() as { pending?: Pending; error?: string };
-    if (!response.ok || !payload.pending) { setFormStatusType("error"); setFormStatus(payload.error ?? "No se pudo guardar."); return; }
-    setData({ ...data, pendings: editId ? data.pendings.map((item) => item.id === editId ? payload.pending! : item) : [payload.pending, ...data.pendings] });
-    setFormStatusType("success"); setFormStatus(editId ? "Pendiente actualizado." : "Pendiente creado.");
-    resetForm();
+    try {
+      const response = await fetch(wasEdit ? `/api/pendings/${wasEdit}` : "/api/pendings", {
+        method: wasEdit ? "PATCH" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title, description, category, priority, ownerId, dueDate })
+      });
+      const payload = await response.json() as { pending?: Pending; error?: string };
+      if (!response.ok || !payload.pending) { setFormStatusType("error"); setFormStatus(payload.error ?? "No se pudo guardar."); return; }
+      setData({ ...data, pendings: wasEdit ? data.pendings.map((item) => item.id === wasEdit ? payload.pending! : item) : [payload.pending, ...data.pendings] });
+      setFormStatusType("success"); setFormStatus(wasEdit ? "Pendiente actualizado." : "Pendiente creado.");
+      resetForm();
+      setSaved(true);
+      setTimeout(() => setSaved(false), 1600);
+    } catch {
+      setFormStatusType("error"); setFormStatus("No se pudo guardar.");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   function requestDelete(id: string) { setDeleteTargetId(id); }
@@ -199,7 +211,7 @@ export default function PendientesPage() {
                   {formStatus}
                 </p>
               ) : null}
-              <AppButton type="submit" variant="primary" icon={<Plus size={17} />} className="w-full">
+              <AppButton type="submit" variant="primary" loading={submitting} success={saved} icon={<Plus size={17} />} className="w-full">
                 {editId ? "Guardar cambios" : "Crear pendiente"}
               </AppButton>
             </form>

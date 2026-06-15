@@ -16,6 +16,8 @@ export default function BitacoraPage() {
   const [evidenceNote, setEvidenceNote] = useState("");
   const [formStatus, setFormStatus] = useState("");
   const [formStatusType, setFormStatusType] = useState<"neutral" | "success" | "error">("neutral");
+  const [submitting, setSubmitting] = useState(false);
+  const [saved, setSaved] = useState(false);
   const preview = useMemo(() => evidence ? URL.createObjectURL(evidence) : null, [evidence]);
 
   useEffect(() => {
@@ -40,25 +42,34 @@ export default function BitacoraPage() {
 
   async function createLog(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!data) return;
+    if (!data || submitting) return;
+    setSubmitting(true);
     setFormStatus("Guardando..."); setFormStatusType("neutral");
-    const response = await fetch("/api/logs", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ category, description }) });
-    const payload = await response.json() as { logEntry?: AppData["logEntries"][number]; error?: string };
-    if (!response.ok || !payload.logEntry) { setFormStatusType("error"); setFormStatus(payload.error ?? "No se pudo guardar el registro."); return; }
-    if (comment.trim()) {
-      const commentResponse = await fetch("/api/comments", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ logEntryId: payload.logEntry.id, body: comment }) });
-      if (!commentResponse.ok) { setFormStatusType("error"); return setFormStatus("Registro guardado, pero el comentario no pudo guardarse."); }
+    try {
+      const response = await fetch("/api/logs", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ category, description }) });
+      const payload = await response.json() as { logEntry?: AppData["logEntries"][number]; error?: string };
+      if (!response.ok || !payload.logEntry) { setFormStatusType("error"); setFormStatus(payload.error ?? "No se pudo guardar el registro."); return; }
+      if (comment.trim()) {
+        const commentResponse = await fetch("/api/comments", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ logEntryId: payload.logEntry.id, body: comment }) });
+        if (!commentResponse.ok) { setFormStatusType("error"); setFormStatus("Registro guardado, pero el comentario no pudo guardarse."); return; }
+      }
+      if (evidence) {
+        const form = new FormData();
+        form.set("file", evidence);
+        form.set("note", evidenceNote);
+        form.set("logEntryId", payload.logEntry.id);
+        const evidenceResponse = await fetch("/api/evidences/upload", { method: "POST", body: form });
+        if (!evidenceResponse.ok) { setFormStatusType("error"); setFormStatus("Registro guardado, pero la evidencia no pudo subirse."); return; }
+      }
+      setData({ ...data, logEntries: [...data.logEntries, payload.logEntry] });
+      setDescription(""); setComment(""); setEvidence(null); setEvidenceNote(""); setFormStatusType("success"); setFormStatus("Registro guardado.");
+      setSaved(true);
+      setTimeout(() => setSaved(false), 1600);
+    } catch {
+      setFormStatusType("error"); setFormStatus("No se pudo guardar el registro.");
+    } finally {
+      setSubmitting(false);
     }
-    if (evidence) {
-      const form = new FormData();
-      form.set("file", evidence);
-      form.set("note", evidenceNote);
-      form.set("logEntryId", payload.logEntry.id);
-      const evidenceResponse = await fetch("/api/evidences/upload", { method: "POST", body: form });
-      if (!evidenceResponse.ok) { setFormStatusType("error"); return setFormStatus("Registro guardado, pero la evidencia no pudo subirse."); }
-    }
-    setData({ ...data, logEntries: [...data.logEntries, payload.logEntry] });
-    setDescription(""); setComment(""); setEvidence(null); setEvidenceNote(""); setFormStatusType("success"); setFormStatus("Registro guardado.");
   }
 
   return (
@@ -111,7 +122,7 @@ export default function BitacoraPage() {
             </label>
             {evidence ? <input value={evidenceNote} onChange={(event) => setEvidenceNote(event.target.value)} maxLength={500} className="min-h-12 rounded-2xl border border-line bg-panel px-3 outline-none focus:border-volt" placeholder="Nota de evidencia (opcional)" /> : null}
             {formStatus ? <p className={`text-sm font-semibold ${formStatusType === "success" ? "text-emerald-600 dark:text-emerald-400" : formStatusType === "error" ? "text-rose-600 dark:text-rose-400" : "text-muted"}`}>{formStatus}</p> : null}
-            <Button type="submit" className="w-full" icon={<FileText size={17} />}>
+            <Button type="submit" className="w-full" loading={submitting} success={saved} icon={<FileText size={17} />}>
               Guardar registro
             </Button>
           </form>
