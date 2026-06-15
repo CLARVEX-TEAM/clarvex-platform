@@ -15,7 +15,7 @@ import { AppFrame, AppHeader, Badge, BottomNav, Card, ProfileAvatar, ProgressBar
 import { useTheme } from "@/components/ThemeProvider";
 import { cn } from "@/lib/utils";
 
-type Tab = "resumen" | "ventas" | "comision" | "ranking";
+type Tab = "resumen" | "ventas" | "comision" | "ranking" | "recibo";
 type KpiTarget = { id: string; metric: string; value: number; period: string };
 type MonthProjection = { weeksElapsed: number; totalWeeks: number; projectedSales: number; projectedCommission: number; percent: number; achievement: number };
 type MonthSalesProjection = { weeksElapsed: number; totalWeeks: number; projectedSales: number; goal: number; achievement: number };
@@ -60,8 +60,32 @@ const tabs: { id: Tab; label: string }[] = [
   { id: "resumen", label: "Resumen" },
   { id: "ventas", label: "Ventas" },
   { id: "comision", label: "Comision" },
-  { id: "ranking", label: "Ranking" }
+  { id: "ranking", label: "Ranking" },
+  { id: "recibo", label: "Recibo" }
 ];
+
+type ReceiptLine = { name: string; photoUrl: string | null; sales: number; minimum: number; achievement: number; percent: number; commission: number; hasMinimum: boolean };
+type ReceiptMonth = { label: string; start: string; isCurrent: boolean; main: ReceiptLine; team: ReceiptLine[] };
+
+// Mismo cálculo que la pestaña Comisión: alcance = venta ÷ mínimo, nivel por bracket.
+// No modifica la lógica de comisión, sólo reutiliza los helpers existentes.
+function computeReceiptLine(scope: { userName?: string; photoUrl?: string | null; sales: number; goal: number; commissionMinimum: number | null }, role: Role, rules: CommissionRule[]): ReceiptLine {
+  const minimum = resolveCommissionMinimum(scope.commissionMinimum, scope.goal);
+  const hasMinimum = minimum > 0;
+  const achievement = hasMinimum ? (scope.sales / minimum) * 100 : 0;
+  const rule = hasMinimum ? findCommissionRule(rules, role, achievement) : undefined;
+  const percent = rule?.commissionPercent ?? 0;
+  return {
+    name: scope.userName ?? "",
+    photoUrl: scope.photoUrl ?? null,
+    sales: scope.sales,
+    minimum,
+    achievement,
+    percent,
+    commission: hasMinimum ? scope.sales * (percent / 100) : 0,
+    hasMinimum
+  };
+}
 
 export default function KpisPage() {
   const [session, setSession] = useState<User | null>(null);
@@ -74,6 +98,8 @@ export default function KpisPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [showTargetSheet, setShowTargetSheet] = useState(false);
+  const [receipts, setReceipts] = useState<ReceiptMonth[] | null>(null);
+  const [receiptsLoading, setReceiptsLoading] = useState(false);
 
   useEffect(() => { getSession().then(setSession); }, []);
 
@@ -105,6 +131,38 @@ export default function KpisPage() {
       .then((payload) => { if (payload.targets) setTargets(payload.targets); })
       .catch(() => undefined);
   }, [session]);
+
+  // Recibo histórico: un cierre de comisión por cada mes retail disponible. Reutiliza
+  // /api/kpis (mismo cálculo del período) y computa la comisión con los mismos helpers.
+  useEffect(() => {
+    if (activeTab !== "recibo" || !session || !report || receipts !== null) return;
+    const months = report.availableRetailMonths;
+    if (months.length === 0) { setReceipts([]); return; }
+    const manager = session.role !== "ASESOR";
+    const todayKey = localDateKey(new Date());
+    const controller = new AbortController();
+    setReceiptsLoading(true);
+    Promise.all(months.map((month) =>
+      fetch(`/api/kpis?period=month&date=${month.start}`, { cache: "no-store", signal: controller.signal })
+        .then((r) => r.json() as Promise<KpiResponse>)
+        .then((payload): ReceiptMonth | null => {
+          const scope = manager ? payload.store : payload.own;
+          if (!scope) return null;
+          const main = computeReceiptLine(scope, manager ? session.role : "ASESOR", payload.commissionRules);
+          const team = manager
+            ? payload.team.filter((item) => item.role === "ASESOR").map((item) => computeReceiptLine(item, "ASESOR", payload.commissionRules))
+            : [];
+          return { label: month.label, start: month.start, isCurrent: todayKey >= month.start && todayKey <= month.end, main, team };
+        })
+        .catch(() => null)
+    ))
+      .then((list) => {
+        if (controller.signal.aborted) return;
+        setReceipts(list.filter((month): month is ReceiptMonth => month !== null).sort((a, b) => b.start.localeCompare(a.start)));
+      })
+      .finally(() => { if (!controller.signal.aborted) setReceiptsLoading(false); });
+    return () => controller.abort();
+  }, [activeTab, session, report, receipts]);
 
   const isAdvisor = session?.role === "ASESOR";
   const isManager = !isAdvisor;
@@ -204,6 +262,7 @@ export default function KpisPage() {
               {activeTab === "ventas" ? <VentasView activeKpi={activeKpi} chartData={chartData} progress={progress} periodLabel={periodLabel} /> : null}
               {activeTab === "comision" ? <ComisionView activeKpi={commissionKpi ?? activeKpi} rules={report?.commissionRules ?? []} simulatedSales={simulatedSales} setSimulatedSales={setSimulatedSales} activeRule={activeRule} appliedPercent={appliedPercent} simulatedCommission={simulatedCommission} simulatedAchievement={simulatedAchievement} commissionRole={commissionRole} periodLabel={periodLabel} projection={monthProjection} hasMinimum={hasCommissionMinimum} /> : null}
               {activeTab === "ranking" ? <RankingView ranking={report?.team ?? []} periodLabel={periodLabel} isAdvisor={isAdvisor} currentUserId={report?.currentUserId} /> : null}
+              {activeTab === "recibo" ? <ReciboView receipts={receipts} loading={receiptsLoading} isManager={isManager} /> : null}
             </motion.div>
           </AnimatePresence>
         ) : <Card className="text-sm font-semibold text-muted">No hay KPIs dentro de {rangeLabel}.</Card>}
@@ -487,6 +546,74 @@ function RankingView({ ranking, periodLabel, isAdvisor, currentUserId }: { ranki
     : { background: "#FFFFFF", border: "1px solid #E2E8F0", borderRadius: 12, color: "#0F172A", boxShadow: "0 6px 14px rgb(15 23 42 / 0.08)" };
   const data = ranking.map((item) => ({ name: item.userName, venta: isAdvisor ? item.achievement : item.sales }));
   return <><Card className="mb-3 p-3.5"><div className="mb-2.5 flex items-center justify-between"><div className="flex items-center gap-2"><UsersRound className="text-volt" size={18} /><h2 className="text-lg font-black">Ranking {periodLabel}</h2></div><Badge>equipo</Badge></div><div className="h-28 rounded-xl overflow-hidden" style={{ background: "#0f172a" }}><ResponsiveContainer width="100%" height="100%"><BarChart data={data}><XAxis dataKey="name" tick={{ fill: "#94A3B8", fontSize: 10 }} axisLine={false} tickLine={false} /><CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" vertical={false} /><Tooltip contentStyle={tooltipStyle} formatter={(value) => isAdvisor ? [`${value}%`, "Cumplimiento"] : [money(Number(value)), "Venta"]} /><Bar dataKey="venta" fill="#3B82F6" radius={[8, 8, 8, 8]} animationDuration={800} animationEasing="ease-out" animationBegin={0} /></BarChart></ResponsiveContainer></div></Card><Card className="divide-y divide-line p-3.5">{ranking.length ? ranking.map((item) => <div key={item.userId} className="py-3 first:pt-0 last:pb-0"><div className="flex items-center justify-between gap-3"><div className="flex items-center gap-3"><ProfileAvatar name={item.userName} photoUrl={item.photoUrl} size="md" /><div><h3 className="font-black">{item.ranking === 1 ? "👑 " : ""}{item.userName}</h3><p className="text-sm text-muted">#{item.ranking}{!isAdvisor || item.userId === currentUserId ? ` · ${money(item.sales)}` : ""}</p></div></div>{item.ranking === 1 ? <Badge tone="warn">Líder</Badge> : <Badge>{Math.round(item.achievement)}%</Badge>}</div><ProgressBar value={item.achievement} /></div>) : <p className="text-sm font-semibold text-muted">No hay asesores con datos en este periodo.</p>}</Card></>;
+}
+
+function ReciboView({ receipts, loading, isManager }: { receipts: ReceiptMonth[] | null; loading: boolean; isManager: boolean }) {
+  if (loading || receipts === null) return <Card className="text-sm font-semibold text-muted">Cargando recibos...</Card>;
+  if (receipts.length === 0) return <Card><p className="font-black">Sin recibos</p><p className="mt-2 text-sm text-muted">Aquí aparecerá un recibo de comisión por cada mes con datos.</p></Card>;
+  return (
+    <div className="space-y-3">
+      {receipts.map((month) => (
+        <Card key={month.start} className="p-3.5">
+          <div className="mb-3 flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <Receipt className="text-volt" size={18} />
+              <h2 className="text-lg font-black capitalize">{month.label}</h2>
+            </div>
+            <Badge tone={month.isCurrent ? "warn" : "default"}>{month.isCurrent ? "En curso" : "Cerrado"}</Badge>
+          </div>
+          <ReceiptBody line={month.main} highlight />
+          {isManager && month.team.length > 0 ? (
+            <div className="mt-3 border-t border-line pt-3">
+              <p className="mb-2 text-xs font-black uppercase tracking-[0.1em] text-muted">Por asesor</p>
+              <div className="space-y-2.5">
+                {month.team.map((line) => (
+                  <div key={line.name} className="rounded-2xl bg-panel p-3">
+                    <div className="mb-1.5 flex items-center gap-2.5">
+                      <ProfileAvatar name={line.name} photoUrl={line.photoUrl} size="sm" />
+                      <p className="min-w-0 truncate font-black text-ink">{line.name}</p>
+                    </div>
+                    <ReceiptBody line={line} />
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
+        </Card>
+      ))}
+    </div>
+  );
+}
+
+function ReceiptBody({ line, highlight }: { line: ReceiptLine; highlight?: boolean }) {
+  if (!line.hasMinimum) {
+    return (
+      <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-sm">
+        <ReceiptRow label="Venta" value={money(line.sales)} />
+        <ReceiptRow label="Mínimo" value="—" />
+        <ReceiptRow label="Alcance" value="—" />
+        <ReceiptRow label="Comisión" value="—" strong />
+      </div>
+    );
+  }
+  return (
+    <>
+      <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-sm">
+        <ReceiptRow label="Venta" value={money(line.sales)} />
+        <ReceiptRow label="Mínimo" value={money(line.minimum)} />
+        <ReceiptRow label="Alcance" value={`${line.achievement.toFixed(1)}%`} />
+        <ReceiptRow label="Nivel" value={line.percent > 0 ? `${line.percent}%` : "—"} />
+      </div>
+      <div className={cn("mt-2.5 flex items-center justify-between rounded-2xl px-3 py-2.5", highlight ? "bg-volt/10 ring-1 ring-volt/30" : "bg-white/[0.04]")}>
+        <span className="text-sm font-black text-muted">Comisión</span>
+        <span className="text-lg font-black text-ink">{money(line.commission)}</span>
+      </div>
+    </>
+  );
+}
+
+function ReceiptRow({ label, value, strong }: { label: string; value: string; strong?: boolean }) {
+  return <div className="flex items-center justify-between"><span className="text-muted">{label}</span><span className={cn("font-black", strong ? "text-ink" : "text-ink")}>{value}</span></div>;
 }
 
 function Mini({ label, value }: { label: string; value: string }) { return <div className="px-2"><p className="text-[11px] font-black uppercase tracking-[0.1em] text-muted">{label}</p><p className="mt-1 font-black text-ink">{value}</p></div>; }
