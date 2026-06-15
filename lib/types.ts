@@ -45,6 +45,7 @@ export type Activity = {
   id: string;
   title: string;
   completed: boolean;
+  autoKey?: string | null;
 };
 
 export type DayPlan = {

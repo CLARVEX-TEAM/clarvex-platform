@@ -2,11 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Flame, Moon, SunMedium, Trash2 } from "lucide-react";
+import { Flame, Moon, Sparkles, SunMedium, Trash2 } from "lucide-react";
 import { fetchAppData, type AppData } from "@/lib/app-data";
 import { getSession } from "@/lib/auth";
 import { money } from "@/lib/format";
 import type { Activity, User } from "@/lib/types";
+import { CHORE_LABELS, ROTATING_ORDER } from "@/lib/chore-rules";
 import { AppFrame, AppHeader, Badge, BottomNav, Card, ProfileAvatar, ProgressBar, ProgressRing } from "@/components/ui";
 import { TaskList } from "@/components/TaskList";
 import { AppButton, AppChipInput, AppDatePicker, AppInput, AppSelect, AppTextarea, type SelectOption } from "@/components/forms";
@@ -35,6 +36,10 @@ export default function PlanPage() {
   const [formStatus, setFormStatus] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [genDate, setGenDate] = useState(new Date().toISOString().slice(0, 10));
+  const [generating, setGenerating] = useState(false);
+  const [genSaved, setGenSaved] = useState(false);
+  const [genStatus, setGenStatus] = useState("");
 
   useEffect(() => {
     getSession().then(setSession);
@@ -105,6 +110,45 @@ export default function PlanPage() {
     }
   }
 
+  async function generateDay() {
+    if (!data || generating) return;
+    setGenerating(true); setGenStatus("");
+    try {
+      const res = await fetch("/api/plans/generate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ date: genDate }) });
+      const payload = await res.json() as { ok?: boolean; generated?: number; error?: string };
+      if (!res.ok || !payload.ok) { setGenStatus(payload.error ?? "No se pudieron generar las actividades."); return; }
+      setData(await fetchAppData());
+      setGenStatus(payload.generated ? `Actividades generadas para ${payload.generated} asesor(es).` : "No hay asesores trabajando ese día.");
+      setGenSaved(true); setTimeout(() => setGenSaved(false), 1600);
+    } catch {
+      setGenStatus("No se pudieron generar las actividades.");
+    } finally {
+      setGenerating(false);
+    }
+  }
+
+  async function reassignChore(choreKey: string, toUserId: string) {
+    if (!data || !toUserId) return;
+    try {
+      const res = await fetch("/api/plans/chores", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ date: genDate, choreKey, toUserId }) });
+      const payload = await res.json() as { ok?: boolean; error?: string };
+      if (!res.ok || !payload.ok) { setGenStatus(payload.error ?? "No se pudo reasignar la tarea."); return; }
+      setData(await fetchAppData());
+    } catch {
+      setGenStatus("No se pudo reasignar la tarea.");
+    }
+  }
+
+  // Tareas operativas rotativas ya generadas para el día seleccionado (autoKey → asesor asignado).
+  const genPlans = data.plans.filter((plan) => plan.date === genDate);
+  const choreAssignedTo: Record<string, string> = {};
+  for (const plan of genPlans) {
+    for (const activity of plan.activities) {
+      if (activity.autoKey && activity.autoKey !== "VISUAL") choreAssignedTo[activity.autoKey] = plan.userId;
+    }
+  }
+  const generatedChores = ROTATING_ORDER.filter((key) => choreAssignedTo[key]);
+
   return (
     <>
       <AppHeader
@@ -159,6 +203,41 @@ export default function PlanPage() {
             />
           </div>
         </div>
+
+        {/* ── Actividades automáticas ── */}
+        {!isAdvisor ? (
+          <Card className="mb-3">
+            <div className="mb-3 flex items-center gap-2">
+              <Sparkles className="text-volt" size={18} />
+              <h2 className="text-lg font-black">Actividades automáticas</h2>
+            </div>
+            <p className="mb-3 text-sm text-muted">
+              Asigna cíclico, limpieza y visual según las reglas de la tienda, rotando de forma justa entre los asesores que trabajan ese día.
+            </p>
+            <div className="grid gap-3">
+              <AppDatePicker label="Día" value={genDate} onChange={setGenDate} />
+              <AppButton type="button" variant="primary" onClick={() => void generateDay()} loading={generating} success={genSaved} icon={<Sparkles size={17} />} className="w-full">
+                Generar actividades del día
+              </AppButton>
+              {genStatus ? <p className="text-sm font-semibold text-muted">{genStatus}</p> : null}
+              {generatedChores.length > 0 ? (
+                <div className="grid gap-2 border-t border-line pt-3">
+                  <p className="text-xs font-black uppercase tracking-[0.1em] text-muted">Reasignar tareas operativas</p>
+                  {generatedChores.map((key) => (
+                    <AppSelect
+                      key={key}
+                      label={CHORE_LABELS[key]}
+                      value={choreAssignedTo[key]}
+                      onChange={(value) => void reassignChore(key, value)}
+                      options={advisorOptions}
+                      placeholder="Asignar a…"
+                    />
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          </Card>
+        ) : null}
 
         {/* ── Crear plan ── */}
         {!isAdvisor ? (
