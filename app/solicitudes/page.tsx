@@ -28,7 +28,7 @@ export default function SolicitudesPage() {
   const [requests, setRequests] = useState<ShiftRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [date, setDate] = useState("");
-  const [type, setType] = useState("DIA_LIBRE");
+  const [type, setType] = useState("VACACIONES");
   const [reason, setReason] = useState("");
   const [sending, setSending] = useState(false);
   const [status, setStatus] = useState("");
@@ -117,8 +117,9 @@ export default function SolicitudesPage() {
               <label className="grid gap-1">
                 <span className="text-xs font-bold text-muted">Tipo</span>
                 <select value={type} onChange={(event) => setType(event.target.value)} className="min-h-11 rounded-2xl border border-line bg-panel px-3 text-sm font-bold text-ink outline-none focus:border-volt">
-                  <option value="DIA_LIBRE">Día libre</option>
-                  <option value="CAMBIO_TURNO">Cambio de turno</option>
+                  <option value="VACACIONES">Vacaciones</option>
+                  <option value="DESCANSO">Descanso</option>
+                  <option value="PAGO_DIA">Pago de día</option>
                 </select>
               </label>
             </div>
