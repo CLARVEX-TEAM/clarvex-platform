@@ -4,7 +4,7 @@ import { isApiError, parseJson, requireSession } from "@/lib/api";
 import { createNotifications } from "@/lib/notifications";
 import { dispatchPushToUsers } from "@/lib/push";
 import { prisma } from "@/lib/prisma";
-import { SHIFT_TYPE_LABELS, formatRequestDate } from "@/lib/shift-requests";
+import { SHIFT_TYPE_LABELS, formatRequestDate, isHourType } from "@/lib/shift-requests";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -26,9 +26,16 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   const existing = await prisma.shiftRequest.findFirst({ where: { id, storeId: session.storeId } });
   if (!existing) return NextResponse.json({ error: "Solicitud no encontrada." }, { status: 404 });
 
-  await prisma.shiftRequest.update({
-    where: { id },
-    data: { status, managerNote: managerNote || null, resolvedById: session.userId, resolvedAt: new Date() }
+  const deductHours = status === "APROBADO" && existing.status !== "APROBADO" && isHourType(existing.type) && existing.hours ? existing.hours : 0;
+
+  await prisma.$transaction(async (tx) => {
+    await tx.shiftRequest.update({
+      where: { id },
+      data: { status, managerNote: managerNote || null, resolvedById: session.userId, resolvedAt: new Date() }
+    });
+    if (deductHours > 0) {
+      await tx.user.update({ where: { id: existing.requesterId }, data: { hoursOwed: { decrement: deductHours } } });
+    }
   });
 
   const title = status === "APROBADO" ? "✅ Solicitud aprobada" : "❌ Solicitud rechazada";

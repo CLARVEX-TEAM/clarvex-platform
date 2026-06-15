@@ -10,7 +10,8 @@ const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const schema = z.object({
   userId: z.string().optional(), // gerencia puede configurar a otro integrante
   birthDate: z.string().regex(DATE_RE).nullable().optional(),
-  hireDate: z.string().regex(DATE_RE).nullable().optional()
+  hireDate: z.string().regex(DATE_RE).nullable().optional(),
+  hoursOwed: z.number().min(-1000).max(1000).optional() // solo gerencia
 });
 
 function toDate(value: string | null | undefined): Date | null | undefined {
@@ -18,18 +19,19 @@ function toDate(value: string | null | undefined): Date | null | undefined {
   return value === null ? null : new Date(`${value}T00:00:00.000Z`);
 }
 
-function serialize(user: { birthDate: Date | null; hireDate: Date | null }) {
+function serialize(user: { birthDate: Date | null; hireDate: Date | null; hoursOwed: number }) {
   return {
     birthDate: user.birthDate ? user.birthDate.toISOString().slice(0, 10) : null,
-    hireDate: user.hireDate ? user.hireDate.toISOString().slice(0, 10) : null
+    hireDate: user.hireDate ? user.hireDate.toISOString().slice(0, 10) : null,
+    hoursOwed: user.hoursOwed
   };
 }
 
 export async function GET() {
   const session = await requireSession();
   if (isApiError(session)) return session;
-  const user = await prisma.user.findUnique({ where: { id: session.userId }, select: { birthDate: true, hireDate: true } });
-  return NextResponse.json(serialize(user ?? { birthDate: null, hireDate: null }));
+  const user = await prisma.user.findUnique({ where: { id: session.userId }, select: { birthDate: true, hireDate: true, hoursOwed: true } });
+  return NextResponse.json(serialize(user ?? { birthDate: null, hireDate: null, hoursOwed: 0 }));
 }
 
 export async function PUT(request: Request) {
@@ -47,12 +49,14 @@ export async function PUT(request: Request) {
     targetUserId = target.id;
   }
 
-  const data: { birthDate?: Date | null; hireDate?: Date | null } = {};
+  const data: { birthDate?: Date | null; hireDate?: Date | null; hoursOwed?: number } = {};
   const birth = toDate(parsed.data.birthDate);
   const hire = toDate(parsed.data.hireDate);
   if (birth !== undefined) data.birthDate = birth;
   if (hire !== undefined) data.hireDate = hire;
+  // Solo gerencia puede ajustar el saldo de horas.
+  if (parsed.data.hoursOwed !== undefined && session.role !== "ASESOR") data.hoursOwed = parsed.data.hoursOwed;
 
-  const user = await prisma.user.update({ where: { id: targetUserId }, data, select: { birthDate: true, hireDate: true } });
+  const user = await prisma.user.update({ where: { id: targetUserId }, data, select: { birthDate: true, hireDate: true, hoursOwed: true } });
   return NextResponse.json(serialize(user));
 }

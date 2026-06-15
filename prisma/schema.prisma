@@ -160,6 +160,7 @@ model User {
   lastLoginAt           DateTime?
   birthDate             DateTime?
   hireDate              DateTime?
+  hoursOwed             Float                  @default(0)
   role                  Role
   storeId               String
   store                 Store                  @relation(fields: [storeId], references: [id])
@@ -191,7 +192,8 @@ model ShiftRequest {
   requesterId  String
   requester    User      @relation("ShiftRequester", fields: [requesterId], references: [id], onDelete: Cascade)
   date         String    // "YYYY-MM-DD"
-  type         String    // "DIA_LIBRE" | "CAMBIO_TURNO"
+  type         String    // VACACIONES | DESCANSO | PAGO_DIA | SALIR_TEMPRANO | ENTRAR_TARDE
+  hours        Float?    // para SALIR_TEMPRANO / ENTRAR_TARDE
   reason       String?
   status       String    @default("PENDIENTE") // PENDIENTE | APROBADO | RECHAZADO
   resolvedById String?
