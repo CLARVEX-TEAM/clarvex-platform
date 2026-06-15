@@ -148,6 +148,58 @@ select {
   background: rgb(37 99 235 / 0.2);
 }
 
+/* ─── Iconos estilo Apple (refinamiento global de lucide) ───────────────────
+   Trazo más fino y terminaciones redondeadas tipo SF Symbols. CSS gana sobre
+   el atributo stroke-width del SVG, así que unifica todos los iconos a la vez. */
+svg.lucide {
+  stroke-width: 1.75;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Icono activo: trazo más grueso para dar la sensación "rellena" de SF Symbols.
+   Mayor especificidad que la regla base, así que gana sin !important. */
+.icon-bold svg.lucide {
+  stroke-width: 2.4;
+}
+
+/* Tappable: feedback táctil consistente para botones de icono / acciones.
+   Curva ease-out-quint, sin rebote, al estilo iOS. */
+.tappable {
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 220ms cubic-bezier(0.22, 1, 0.36, 1),
+    background-color 180ms ease, color 180ms ease;
+}
+.tappable:active {
+  transform: scale(0.94);
+}
+
+/* Brillo sutil que recorre el botón primario al presionar (confirma la acción). */
+@keyframes btnSheen {
+  0% { transform: translateX(-130%) skewX(-18deg); opacity: 0; }
+  40% { opacity: 0.55; }
+  100% { transform: translateX(230%) skewX(-18deg); opacity: 0; }
+}
+.btn-sheen::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 42%;
+  background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.45), transparent);
+  transform: translateX(-130%) skewX(-18deg);
+  pointer-events: none;
+}
+.btn-sheen:active::after {
+  animation: btnSheen 620ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tappable:active { transform: none; }
+  .btn-sheen:active::after { animation: none; }
+}
+
 .no-scrollbar {
   -ms-overflow-style: none;
   overscroll-behavior-x: contain;

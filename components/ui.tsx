@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import type { HTMLMotionProps } from "framer-motion";
 import type { LucideIcon } from "lucide-react";
 import {
@@ -73,10 +73,14 @@ export function GlassCard({ children, className = "", ...props }: Omit<HTMLMotio
 
 export const Card = GlassCard;
 
+// Curva de muelle estilo iOS: responde rápido y asienta sin rebote.
+const tactileSpring = { type: "spring", stiffness: 520, damping: 30, mass: 0.6 } as const;
+
 export function PremiumButton({
   children,
   className = "",
   loading = false,
+  success = false,
   icon,
   disabled,
   variant = "glass",
@@ -84,24 +88,56 @@ export function PremiumButton({
 }: Omit<HTMLMotionProps<"button">, "children"> & {
   children?: React.ReactNode;
   loading?: boolean;
+  /** Muestra un ✓ y bloquea el botón: úsalo tras una accion async exitosa. */
+  success?: boolean;
   icon?: React.ReactNode;
-  variant?: "primary" | "glass" | "ghost";
+  variant?: "primary" | "glass" | "ghost" | "success" | "danger";
 }) {
+  const solid = variant === "primary" || variant === "success" || variant === "danger";
   return (
     <motion.button
       {...props}
-      whileTap={{ scale: 0.97, y: 1 }}
+      whileTap={{ scale: 0.95 }}
       whileHover={{ scale: 1.02, y: -1 }}
+      transition={tactileSpring}
       className={cn(
-        "inline-flex min-h-12 items-center justify-center gap-2 rounded-full px-4 text-sm font-black tracking-[-0.01em] transition focus:outline-none focus:ring-4 focus:ring-volt/20 disabled:cursor-not-allowed disabled:opacity-55",
+        "tappable relative inline-flex min-h-12 items-center justify-center gap-2 overflow-hidden rounded-full px-4 text-sm font-black tracking-[-0.01em] focus:outline-none focus:ring-4 focus:ring-volt/20 disabled:cursor-not-allowed disabled:opacity-55",
+        solid && "btn-sheen",
         variant === "primary" && "bg-volt text-white shadow-[0_8px_20px_rgb(37_99_235_/_0.22)] hover:bg-[#1D4ED8]",
+        variant === "success" && "bg-success text-white shadow-[0_8px_20px_rgb(34_197_94_/_0.24)]",
+        variant === "danger" && "bg-orchid text-white shadow-[0_8px_20px_rgb(239_68_68_/_0.22)] hover:bg-[#DC2626]",
         variant === "glass" && "liquid-glass text-ink hover:text-volt",
         variant === "ghost" && "bg-slate-100 dark:bg-slate-800 text-ink hover:bg-blue-50 dark:hover:bg-slate-700",
         className
       )}
-      disabled={loading || disabled}
+      disabled={loading || success || disabled}
     >
-      {loading ? <span className="size-2.5 animate-pulse rounded-full bg-current" /> : icon}
+      <AnimatePresence mode="popLayout" initial={false}>
+        {loading ? (
+          <motion.span
+            key="loading"
+            initial={{ scale: 0, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0, opacity: 0 }}
+            transition={tactileSpring}
+            className="size-4 animate-spin rounded-full border-2 border-current border-t-transparent"
+          />
+        ) : success ? (
+          <motion.span
+            key="success"
+            initial={{ scale: 0, rotate: -35, opacity: 0 }}
+            animate={{ scale: 1, rotate: 0, opacity: 1 }}
+            exit={{ scale: 0, opacity: 0 }}
+            transition={{ type: "spring", stiffness: 480, damping: 20 }}
+          >
+            <Check size={18} />
+          </motion.span>
+        ) : icon ? (
+          <motion.span key="icon" initial={{ scale: 0.6, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.6, opacity: 0 }} transition={tactileSpring}>
+            {icon}
+          </motion.span>
+        ) : null}
+      </AnimatePresence>
       {children}
     </motion.button>
   );
@@ -341,7 +377,7 @@ export function AppHeader({
       <div className="mx-auto flex max-w-md items-center justify-between gap-3">
         <div className="flex min-w-0 items-start gap-3">
           {backHref ? (
-            <Link href={backHref} className="liquid-glass mt-0.5 grid size-9 shrink-0 place-items-center rounded-[18px] text-ink/70 transition active:scale-95" aria-label="Regresar al inicio">
+            <Link href={backHref} className="tappable liquid-glass mt-0.5 grid size-9 shrink-0 place-items-center rounded-[18px] text-ink/70" aria-label="Regresar al inicio">
               <ArrowLeft size={18} />
             </Link>
           ) : avatar || photoUrl ? (
@@ -379,7 +415,7 @@ function NotificationBell() {
   }, [pathname]);
 
   return (
-    <Link href="/notificaciones" aria-label={unreadCount ? `${unreadCount} notificaciones no leidas` : "Abrir notificaciones"} className="liquid-glass relative grid size-11 place-items-center rounded-[22px] text-ink/62 transition active:scale-95">
+    <Link href="/notificaciones" aria-label={unreadCount ? `${unreadCount} notificaciones no leidas` : "Abrir notificaciones"} className="tappable liquid-glass relative grid size-11 place-items-center rounded-[22px] text-ink/62">
       <Bell size={18} />
       {unreadCount > 0 ? <span className="absolute right-1.5 top-1.5 grid min-w-4 place-items-center rounded-full bg-rose-500 px-1 text-[9px] font-black leading-4 text-white">{unreadCount > 99 ? "99+" : unreadCount}</span> : null}
     </Link>
@@ -404,7 +440,7 @@ export function LiquidBottomNav() {
 
   return (
     <nav className="pointer-events-none fixed inset-x-0 bottom-2 z-30 px-3">
-      <div className="liquid-glass pointer-events-auto mx-auto grid max-w-md grid-cols-5 gap-0.5 rounded-[28px] border-line/80 bg-white/88 dark:bg-[#1a2540]/95 p-1 shadow-[0_12px_30px_rgb(15_23_42_/_0.12)] backdrop-blur-xl">
+      <div className="liquid-glass pointer-events-auto mx-auto grid max-w-md grid-cols-5 gap-0.5 rounded-[30px] border-line/80 bg-white/90 dark:bg-[#1a2540]/95 p-1.5 shadow-[0_14px_34px_rgb(15_23_42_/_0.14)] backdrop-blur-xl">
         {navItems.map((item) => {
           const href = item.href === "/manager" ? homeHref : item.href;
           const active = pathname === href || (item.href === "/manager" && (pathname === "/manager" || pathname === "/advisor"));
@@ -412,19 +448,28 @@ export function LiquidBottomNav() {
             <Link
               key={item.href}
               href={href}
-              className="relative flex min-h-11 flex-col items-center justify-center rounded-[22px] text-[9px] font-bold text-muted transition hover:text-volt active:scale-95"
+              aria-current={active ? "page" : undefined}
+              className="tappable relative flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-[22px]"
             >
-              {active ? (
+              <span className="relative grid size-9 place-items-center">
+                {active ? (
+                  <motion.span
+                    layoutId="bottom-nav-active"
+                    className="absolute inset-0 rounded-[16px] bg-volt/14 ring-1 ring-volt/25 shadow-[inset_0_1px_0_rgb(255_255_255_/_0.18)]"
+                    transition={{ type: "spring", stiffness: 480, damping: 34 }}
+                  />
+                ) : null}
                 <motion.span
-                  layoutId="bottom-nav-active"
-                  className="absolute inset-0 rounded-[22px] bg-blue-50 dark:bg-[#1a2540] ring-1 ring-volt/20"
-                  transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
-                />
-              ) : null}
-              <span className={cn("relative grid size-5 place-items-center", active && "text-volt")}>
-                <item.icon size={17} />
+                  animate={{ scale: active ? 1.08 : 1, y: active ? -0.5 : 0 }}
+                  transition={{ type: "spring", stiffness: 520, damping: 26 }}
+                  className={cn("relative grid place-items-center transition-colors", active ? "icon-bold text-volt" : "text-muted")}
+                >
+                  <item.icon size={19} />
+                </motion.span>
               </span>
-              <span className={cn("relative mt-0.5", active && "text-volt")}>{item.label}</span>
+              <span className={cn("relative text-[9px] tracking-[-0.01em] transition-colors", active ? "font-black text-volt" : "font-bold text-muted")}>
+                {item.label}
+              </span>
             </Link>
           );
         })}
@@ -450,8 +495,8 @@ export function AppFrame({ children }: { children: React.ReactNode }) {
 
 export function QuickLink({ href, icon: Icon, label, className = "" }: { href: string; icon: LucideIcon; label: string; className?: string }) {
   return (
-    <Link href={href} className={cn("liquid-glass group flex min-h-12 items-center gap-2.5 rounded-[22px] px-3 text-[13px] font-black tracking-[-0.01em] text-ink/90 transition active:scale-[0.98]", className)}>
-      <span className="grid size-8 place-items-center rounded-[16px] border border-volt/20 bg-volt/12 text-volt shadow-[inset_0_1px_0_rgb(255_255_255_/_0.12)]">
+    <Link href={href} className={cn("tappable liquid-glass group flex min-h-12 items-center gap-2.5 rounded-[22px] px-3 text-[13px] font-black tracking-[-0.01em] text-ink/90", className)}>
+      <span className="grid size-8 place-items-center rounded-[16px] border border-volt/20 bg-volt/12 text-volt shadow-[inset_0_1px_0_rgb(255_255_255_/_0.12)] transition-transform duration-200 group-hover:scale-105 group-active:scale-95">
         <Icon size={17} />
       </span>
       {label}
@@ -461,7 +506,7 @@ export function QuickLink({ href, icon: Icon, label, className = "" }: { href: s
 
 export function FloatingActionButton({ href, icon: Icon = Plus, label }: { href: string; icon?: LucideIcon; label: string }) {
   return (
-    <Link href={href} className="fixed bottom-20 right-4 z-20 flex min-h-12 items-center gap-2 rounded-full bg-volt px-4 text-sm font-black text-white shadow-[0_8px_20px_rgb(37_99_235_/_0.24)] transition active:scale-95">
+    <Link href={href} className="tappable btn-sheen fixed bottom-20 right-4 z-20 flex min-h-12 items-center gap-2 overflow-hidden rounded-full bg-volt px-4 text-sm font-black text-white shadow-[0_10px_24px_rgb(37_99_235_/_0.32)] hover:bg-[#1D4ED8]">
       <Icon size={18} />
       {label}
     </Link>
