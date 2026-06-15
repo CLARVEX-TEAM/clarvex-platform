@@ -2,8 +2,6 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { isApiError, parseJson, requireSession } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
-import { createNotifications } from "@/lib/notifications";
-import { dispatchPushToUsers } from "@/lib/push";
 import { assignChores, choreTitle, weekdayOf, type ChoreKey, type Counts } from "@/lib/chore-rules";
 
 export const dynamic = "force-dynamic";
@@ -38,7 +36,7 @@ export async function POST(request: Request) {
       const workingSet = new Set(schedules.filter((s) => s.status === "WORKING").map((s) => s.userId));
       workingIds = advisors.filter((a) => workingSet.has(a.id)).map((a) => a.id);
     }
-    if (workingIds.length === 0) return { count: 0, notify: [] as string[] };
+    if (workingIds.length === 0) return { count: 0 };
 
     // 2. Conteo histórico de rotaciones, excluyendo la fecha objetivo (regeneración estable).
     const history = await tx.choreAssignment.findMany({ where: { storeId }, select: { date: true, choreKey: true, userId: true } });
@@ -82,8 +80,9 @@ export async function POST(request: Request) {
       let planId = planByUser.get(id);
       if (!planId) {
         const kpi = await tx.kpi.findFirst({ where: { userId: id, storeId, date: { gte: dayStart, lt: dayEnd } }, select: { dailyGoal: true } });
+        // Se crea como BORRADOR (publishedAt: null): el asesor no lo ve hasta que el gerente lo envía.
         const created = await tx.dayPlan.create({
-          data: { userId: id, storeId, date: planDate, dailyGoal: kpi?.dailyGoal ?? 0, focus: DEFAULT_FOCUS, message: DEFAULT_MESSAGE }
+          data: { userId: id, storeId, date: planDate, dailyGoal: kpi?.dailyGoal ?? 0, focus: DEFAULT_FOCUS, message: DEFAULT_MESSAGE, publishedAt: null }
         });
         planId = created.id;
       }
@@ -92,20 +91,8 @@ export async function POST(request: Request) {
       }
     }
 
-    await createNotifications(tx, workingIds.map((id) => ({
-      storeId,
-      userId: id,
-      type: "PLAN_READY" as const,
-      title: "Tu plan del día está listo",
-      body: "Revisa tus actividades operativas de hoy."
-    })));
-
-    return { count: workingIds.length, notify: workingIds };
+    return { count: workingIds.length };
   });
-
-  if (generated.notify.length > 0) {
-    dispatchPushToUsers(generated.notify, { title: "Tu plan del día está listo", body: "Revisa tus actividades operativas de hoy.", tag: "plan-listo" }).catch(() => undefined);
-  }
 
   return NextResponse.json({ ok: true, generated: generated.count });
 }

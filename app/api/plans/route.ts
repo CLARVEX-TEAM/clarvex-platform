@@ -25,7 +25,7 @@ export async function POST(request: Request) {
   if (!user) return NextResponse.json({ error: "El asesor no pertenece a tu tienda." }, { status: 400 });
   const plan = await prisma.$transaction(async (tx) => {
     const created = await tx.dayPlan.create({
-      data: { userId: user.id, storeId: session.storeId, date: new Date(`${parsed.data.date}T12:00:00.000Z`), dailyGoal: parsed.data.dailyGoal, focus: parsed.data.focus, message: parsed.data.message, activities: { create: parsed.data.activities.map((title) => ({ title })) } },
+      data: { userId: user.id, storeId: session.storeId, date: new Date(`${parsed.data.date}T12:00:00.000Z`), dailyGoal: parsed.data.dailyGoal, focus: parsed.data.focus, message: parsed.data.message, publishedAt: new Date(), activities: { create: parsed.data.activities.map((title) => ({ title })) } },
       include: { activities: true }
     });
     await createNotifications(tx, [{

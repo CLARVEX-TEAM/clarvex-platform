@@ -55,6 +55,7 @@ export type DayPlan = {
   dailyGoal: number;
   focus: string;
   message: string;
+  published?: boolean;
   activities: Activity[];
 };
 

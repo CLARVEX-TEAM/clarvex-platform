@@ -377,6 +377,7 @@ model DayPlan {
   dailyGoal Decimal    @db.Decimal(12, 2)
   focus     String
   message   String
+  publishedAt DateTime? // null = borrador (solo visible para gerencia hasta enviarlo)
   activities DayPlanTask[]
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
