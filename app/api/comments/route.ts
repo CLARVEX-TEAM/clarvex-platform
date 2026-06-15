@@ -15,7 +15,8 @@ export async function GET(request: NextRequest) {
   const target = parseResourceTarget({
     pendingId: request.nextUrl.searchParams.get("pendingId") ?? undefined,
     taskId: request.nextUrl.searchParams.get("taskId") ?? undefined,
-    logEntryId: request.nextUrl.searchParams.get("logEntryId") ?? undefined
+    logEntryId: request.nextUrl.searchParams.get("logEntryId") ?? undefined,
+    announcementId: request.nextUrl.searchParams.get("announcementId") ?? undefined
   });
   if (!target) return NextResponse.json({ error: "Indica exactamente un recurso." }, { status: 400 });
   if (!await authorizeResource(prisma, session, target)) return NextResponse.json({ error: "Recurso no encontrado o sin permiso." }, { status: 404 });
@@ -34,6 +35,7 @@ export async function POST(request: Request) {
     pendingId: z.string().trim().optional(),
     taskId: z.string().trim().optional(),
     logEntryId: z.string().trim().optional(),
+    announcementId: z.string().trim().optional(),
     body: z.string().trim().min(1, "Escribe un comentario.").max(1000)
   }));
   if ("response" in parsed) return parsed.response;
@@ -41,24 +43,26 @@ export async function POST(request: Request) {
   if (!target) return NextResponse.json({ error: "Indica exactamente un recurso." }, { status: 400 });
   const resource = await authorizeResource(prisma, session, target);
   if (!resource) return NextResponse.json({ error: "Recurso no encontrado o sin permiso." }, { status: 404 });
+  const notifyTitle = resource.kind === "announcement" ? "Nuevo comentario en comunicado" : "Nuevo comentario en pendiente";
+  const shouldNotify = (resource.kind === "pending" || resource.kind === "announcement") && resource.recipientId !== session.userId;
   const comment = await prisma.$transaction(async (tx) => {
     const created = await tx.comment.create({
       data: { storeId: session.storeId, authorId: session.userId, ...targetWhere(target), body: parsed.data.body },
       include: { author: { select: { name: true, photoUrl: true } } }
     });
-    if (resource.kind === "pending" && resource.recipientId !== session.userId) {
+    if (shouldNotify) {
       await createNotifications(tx, [{
         storeId: session.storeId,
         userId: resource.recipientId,
         type: "COMMENT_ADDED",
-        title: "Nuevo comentario en pendiente",
+        title: notifyTitle,
         body: resource.title
       }]);
     }
     return created;
   });
-  if (resource.kind === "pending" && resource.recipientId !== session.userId) {
-    dispatchPushToUsers([resource.recipientId], { title: "Nuevo comentario en pendiente", body: resource.title, tag: "comentario" }).catch(() => undefined);
+  if (shouldNotify) {
+    dispatchPushToUsers([resource.recipientId], { title: notifyTitle, body: resource.title, tag: "comentario" }).catch(() => undefined);
   }
   return NextResponse.json({ comment: serializeComment(comment) }, { status: 201 });
 }
