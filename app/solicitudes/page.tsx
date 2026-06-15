@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CalendarOff, Check, Send, X } from "lucide-react";
 import { getSession } from "@/lib/auth";
-import { SHIFT_TYPE_LABELS, formatRequestDate, isHourType } from "@/lib/shift-requests";
+import { DAY_BALANCE_LABELS, SHIFT_TYPE_LABELS, dayBalanceField, formatRequestDate, isHourType } from "@/lib/shift-requests";
 import type { User } from "@/lib/types";
 import { AppFrame, AppHeader, Badge, BottomNav, Button, Card, ProfileAvatar } from "@/components/ui";
 
@@ -33,6 +33,8 @@ export default function SolicitudesPage() {
   const [session, setSession] = useState<User | null>(null);
   const [requests, setRequests] = useState<ShiftRequest[]>([]);
   const [balance, setBalance] = useState(0);
+  const [vacationDays, setVacationDays] = useState(0);
+  const [paidDays, setPaidDays] = useState(0);
   const [loading, setLoading] = useState(true);
   const [date, setDate] = useState("");
   const [type, setType] = useState("VACACIONES");
@@ -56,9 +58,11 @@ export default function SolicitudesPage() {
 
   async function load() {
     try {
-      const data = await fetch("/api/shift-requests", { cache: "no-store" }).then((response) => response.json() as Promise<{ requests?: ShiftRequest[]; balance?: number }>);
+      const data = await fetch("/api/shift-requests", { cache: "no-store" }).then((response) => response.json() as Promise<{ requests?: ShiftRequest[]; balance?: number; vacationDays?: number; paidDays?: number }>);
       setRequests(data.requests ?? []);
       setBalance(data.balance ?? 0);
+      setVacationDays(data.vacationDays ?? 0);
+      setPaidDays(data.paidDays ?? 0);
     } catch {
       setStatus("No se pudieron cargar las solicitudes.");
     } finally {
@@ -73,6 +77,11 @@ export default function SolicitudesPage() {
       if (!hoursValue || hoursValue <= 0) { setStatus("Indica cuántas horas."); return; }
       if (balance <= 0) { setStatus("No tienes saldo de horas disponible para solicitar."); return; }
       if (hoursValue > balance) { setStatus(`No puedes solicitar más horas de las disponibles (saldo: ${balance} h).`); return; }
+    }
+    const dayField = dayBalanceField(type);
+    if (dayField) {
+      const dayBalance = dayField === "vacationDays" ? vacationDays : paidDays;
+      if (dayBalance < 1) { setStatus(`No tienes saldo de ${DAY_BALANCE_LABELS[dayField]} disponible.`); return; }
     }
     setSending(true);
     setStatus("");
@@ -116,17 +125,24 @@ export default function SolicitudesPage() {
   const pending = requests.filter((request) => request.status === "PENDIENTE");
   const history = requests.filter((request) => request.status !== "PENDIENTE");
 
+  const dayField = dayBalanceField(type);
+  const dayBalance = dayField === "vacationDays" ? vacationDays : dayField === "paidDays" ? paidDays : 0;
+  const dayBlocked = dayField !== null && dayBalance < 1;
+  const hourBlocked = isHourType(type) && (balance <= 0 || (Number(hours) || 0) > balance);
+
   return (
     <>
       <AppHeader title="Solicitudes" subtitle="Cambio de turno y días libres" backHref={isManager ? "/manager" : "/advisor"} />
       <AppFrame>
         <Card className="mb-3 p-3.5">
-          <div className="mb-3 flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <CalendarOff className="text-volt" size={18} />
-              <h2 className="text-lg font-black">Solicitar</h2>
-            </div>
-            <Badge tone={balance > 0 ? "success" : "default"}>Saldo: {balance} h</Badge>
+          <div className="mb-3 flex items-center gap-2">
+            <CalendarOff className="text-volt" size={18} />
+            <h2 className="text-lg font-black">Solicitar</h2>
+          </div>
+          <div className="mb-3 flex flex-wrap gap-1.5">
+            <Badge tone={balance > 0 ? "success" : "default"}>Horas: {balance} h</Badge>
+            <Badge tone={vacationDays > 0 ? "success" : "default"}>Vacaciones: {vacationDays} d</Badge>
+            <Badge tone={paidDays > 0 ? "success" : "default"}>Pago de día: {paidDays} d</Badge>
           </div>
           <div className="grid gap-3">
             <div className="grid grid-cols-2 gap-2">
@@ -160,8 +176,11 @@ export default function SolicitudesPage() {
                 ) : null}
               </label>
             ) : null}
+            {dayBlocked ? (
+              <span className="text-xs font-semibold text-rose-600">No tienes saldo de {DAY_BALANCE_LABELS[dayField!]} disponible. No puedes solicitar este tipo.</span>
+            ) : null}
             <textarea value={reason} onChange={(event) => setReason(event.target.value)} maxLength={280} rows={2} placeholder="Motivo (opcional)…" className="rounded-2xl border border-line bg-panel px-3 py-2.5 text-sm font-semibold text-ink outline-none focus:border-volt" />
-            <Button type="button" variant="primary" icon={<Send size={16} />} onClick={() => void submit()} disabled={sending || (isHourType(type) && (balance <= 0 || (Number(hours) || 0) > balance))} className="w-full">{sending ? "Enviando…" : "Enviar solicitud"}</Button>
+            <Button type="button" variant="primary" icon={<Send size={16} />} onClick={() => void submit()} disabled={sending || hourBlocked || dayBlocked} className="w-full">{sending ? "Enviando…" : "Enviar solicitud"}</Button>
             {status ? <p className="text-sm font-semibold text-muted">{status}</p> : null}
           </div>
         </Card>
