@@ -164,6 +164,8 @@ model User {
   birthDate             DateTime?
   hireDate              DateTime?
   hoursOwed             Float                  @default(0)
+  vacationDays          Float                  @default(0)
+  paidDays              Float                  @default(0)
   role                  Role
   storeId               String
   store                 Store                  @relation(fields: [storeId], references: [id])

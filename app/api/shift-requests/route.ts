@@ -4,7 +4,7 @@ import { isApiError, parseJson, requireSession } from "@/lib/api";
 import { createNotifications } from "@/lib/notifications";
 import { dispatchPushToUsers } from "@/lib/push";
 import { firstName } from "@/lib/daily-summary";
-import { SHIFT_TYPE_LABELS, formatRequestDate, isHourType } from "@/lib/shift-requests";
+import { DAY_BALANCE_LABELS, SHIFT_TYPE_LABELS, dayBalanceField, formatRequestDate, isHourType } from "@/lib/shift-requests";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -23,11 +23,13 @@ export async function GET() {
       orderBy: { createdAt: "desc" },
       include: { requester: { select: { name: true, photoUrl: true } } }
     }),
-    prisma.user.findUnique({ where: { id: session.userId }, select: { hoursOwed: true } })
+    prisma.user.findUnique({ where: { id: session.userId }, select: { hoursOwed: true, vacationDays: true, paidDays: true } })
   ]);
 
   return NextResponse.json({
     balance: me?.hoursOwed ?? 0,
+    vacationDays: me?.vacationDays ?? 0,
+    paidDays: me?.paidDays ?? 0,
     requests: requests.map((request) => ({
       id: request.id,
       date: request.date,
@@ -65,6 +67,16 @@ export async function POST(request: Request) {
     const balance = me?.hoursOwed ?? 0;
     if (hours > balance) {
       return NextResponse.json({ error: `No tienes saldo suficiente. Disponible: ${balance} h.` }, { status: 400 });
+    }
+  }
+
+  // Vacaciones / pago de día consumen 1 día del saldo correspondiente.
+  const dayField = dayBalanceField(type);
+  if (dayField) {
+    const me = await prisma.user.findUnique({ where: { id: session.userId }, select: { vacationDays: true, paidDays: true } });
+    const balance = me?.[dayField] ?? 0;
+    if (balance < 1) {
+      return NextResponse.json({ error: `No tienes saldo de ${DAY_BALANCE_LABELS[dayField]} disponible (saldo: ${balance}).` }, { status: 400 });
     }
   }
 

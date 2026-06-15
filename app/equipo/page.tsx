@@ -7,7 +7,7 @@ import { getSession } from "@/lib/auth";
 import { fetchAppData } from "@/lib/app-data";
 import { AppFrame, AppHeader, BottomNav, Button, Card, ProfileAvatar } from "@/components/ui";
 
-type Row = { id: string; name: string; photoUrl?: string | null; birthDate: string; hireDate: string; hoursOwed: string };
+type Row = { id: string; name: string; photoUrl?: string | null; birthDate: string; hireDate: string; hoursOwed: string; vacationDays: string; paidDays: string };
 
 export default function TeamDatesPage() {
   const router = useRouter();
@@ -26,12 +26,12 @@ export default function TeamDatesPage() {
 
   useEffect(() => {
     fetchAppData()
-      .then((data) => setRows(data.users.map((u) => ({ id: u.id, name: u.name, photoUrl: u.photoUrl, birthDate: u.birthDate ?? "", hireDate: u.hireDate ?? "", hoursOwed: String(u.hoursOwed ?? 0) }))))
+      .then((data) => setRows(data.users.map((u) => ({ id: u.id, name: u.name, photoUrl: u.photoUrl, birthDate: u.birthDate ?? "", hireDate: u.hireDate ?? "", hoursOwed: String(u.hoursOwed ?? 0), vacationDays: String(u.vacationDays ?? 0), paidDays: String(u.paidDays ?? 0) }))))
       .catch(() => setError("No se pudo cargar el equipo."))
       .finally(() => setLoading(false));
   }, []);
 
-  function update(id: string, field: "birthDate" | "hireDate" | "hoursOwed", value: string) {
+  function update(id: string, field: "birthDate" | "hireDate" | "hoursOwed" | "vacationDays" | "paidDays", value: string) {
     setRows((current) => current.map((row) => row.id === id ? { ...row, [field]: value } : row));
     setSavedId(null);
   }
@@ -44,7 +44,7 @@ export default function TeamDatesPage() {
       const response = await fetch("/api/profile", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId: row.id, birthDate: row.birthDate || null, hireDate: row.hireDate || null, hoursOwed: Number(row.hoursOwed) || 0 })
+        body: JSON.stringify({ userId: row.id, birthDate: row.birthDate || null, hireDate: row.hireDate || null, hoursOwed: Number(row.hoursOwed) || 0, vacationDays: Number(row.vacationDays) || 0, paidDays: Number(row.paidDays) || 0 })
       });
       if (!response.ok) throw new Error();
       setSavedId(row.id);
@@ -84,6 +84,14 @@ export default function TeamDatesPage() {
                   <label className="col-span-2 grid gap-1">
                     <span className="text-xs font-bold text-muted">Horas que se le deben (saldo)</span>
                     <input type="number" step="0.5" inputMode="decimal" value={row.hoursOwed} onChange={(event) => update(row.id, "hoursOwed", event.target.value)} className={inputClass} />
+                  </label>
+                  <label className="grid gap-1">
+                    <span className="text-xs font-bold text-muted">Días de vacaciones</span>
+                    <input type="number" step="1" min="0" inputMode="numeric" value={row.vacationDays} onChange={(event) => update(row.id, "vacationDays", event.target.value)} className={inputClass} />
+                  </label>
+                  <label className="grid gap-1">
+                    <span className="text-xs font-bold text-muted">Días de pago de día</span>
+                    <input type="number" step="1" min="0" inputMode="numeric" value={row.paidDays} onChange={(event) => update(row.id, "paidDays", event.target.value)} className={inputClass} />
                   </label>
                 </div>
                 <div className="mt-3 flex items-center gap-3">

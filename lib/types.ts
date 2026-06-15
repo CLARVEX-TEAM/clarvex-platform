@@ -15,6 +15,8 @@ export type User = {
   birthDate?: string | null;
   hireDate?: string | null;
   hoursOwed?: number;
+  vacationDays?: number;
+  paidDays?: number;
 };
 
 export type Kpi = {
