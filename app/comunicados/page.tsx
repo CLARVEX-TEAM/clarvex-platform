@@ -20,6 +20,8 @@ export default function ComunicadosPage() {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [status, setStatus] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [saved, setSaved] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [session, setSession] = useState<User | null>(null);
   const [filter, setFilter] = useState<Filter>("todos");
@@ -127,7 +129,9 @@ export default function ComunicadosPage() {
     event.preventDefault();
     if (!session) { setStatus("Inicia sesion para publicar."); return; }
     if (!title.trim() || !body.trim()) { setStatus("Escribe titulo y mensaje."); return; }
+    if (submitting) return;
 
+    setSubmitting(true);
     setStatus("Publicando...");
     try {
       const form = new FormData();
@@ -144,8 +148,12 @@ export default function ComunicadosPage() {
       setBody("");
       removeImage();
       setStatus("Comunicado publicado.");
+      setSaved(true);
+      setTimeout(() => setSaved(false), 1600);
     } catch {
       setStatus("No se pudo publicar el comunicado.");
+    } finally {
+      setSubmitting(false);
     }
   }
 
@@ -215,7 +223,7 @@ export default function ComunicadosPage() {
                 </button>
               )}
               <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleImageChange} />
-              <AppButton type="submit" variant="primary" icon={<Send size={17} />} className="w-full">
+              <AppButton type="submit" variant="primary" loading={submitting} success={saved} icon={<Send size={17} />} className="w-full">
                 Mandar comunicado
               </AppButton>
               {status ? <p className="text-sm font-semibold text-muted">{status}</p> : null}

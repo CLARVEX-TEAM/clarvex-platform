@@ -33,6 +33,8 @@ export default function PlanPage() {
   const [message, setMessage] = useState("");
   const [activityChips, setActivityChips] = useState<string[]>([]);
   const [formStatus, setFormStatus] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [saved, setSaved] = useState(false);
 
   useEffect(() => {
     getSession().then(setSession);
@@ -80,18 +82,27 @@ export default function PlanPage() {
 
   async function createPlan(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!data) return;
+    if (!data || submitting) return;
     if (activityChips.length === 0) { setFormStatus("Agrega al menos una actividad."); return; }
+    setSubmitting(true);
     setFormStatus("Guardando...");
-    const response = await fetch("/api/plans", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId, date, dailyGoal: Number(dailyGoal), focus, message, activities: activityChips })
-    });
-    const payload = await response.json() as { plan?: AppData["plans"][number]; error?: string };
-    if (!response.ok || !payload.plan) { setFormStatus(payload.error ?? "No se pudo crear el plan."); return; }
-    setData({ ...data, plans: [payload.plan, ...data.plans] });
-    setDailyGoal(""); setFocus(""); setMessage(""); setActivityChips([]); setUserId(""); setFormStatus("Plan creado.");
+    try {
+      const response = await fetch("/api/plans", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, date, dailyGoal: Number(dailyGoal), focus, message, activities: activityChips })
+      });
+      const payload = await response.json() as { plan?: AppData["plans"][number]; error?: string };
+      if (!response.ok || !payload.plan) { setFormStatus(payload.error ?? "No se pudo crear el plan."); return; }
+      setData({ ...data, plans: [payload.plan, ...data.plans] });
+      setDailyGoal(""); setFocus(""); setMessage(""); setActivityChips([]); setUserId(""); setFormStatus("Plan creado.");
+      setSaved(true);
+      setTimeout(() => setSaved(false), 1600);
+    } catch {
+      setFormStatus("No se pudo crear el plan.");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -194,7 +205,7 @@ export default function PlanPage() {
                   {formStatus}
                 </p>
               ) : null}
-              <AppButton type="submit" variant="primary" className="w-full">
+              <AppButton type="submit" variant="primary" loading={submitting} success={saved} className="w-full">
                 Crear plan
               </AppButton>
             </form>
