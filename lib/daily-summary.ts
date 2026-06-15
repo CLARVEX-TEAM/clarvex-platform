@@ -241,6 +241,28 @@ export function buildMiddayManagerSummary(input: {
 }
 
 // ---------------------------------------------------------------------------
+// Bajo desempeño sostenido (LOW_PERF) — alerta a gerencia
+// ---------------------------------------------------------------------------
+
+/** Resumen para gerencia con los asesores bajo meta de forma sostenida. */
+export function buildLowPerformanceManagerSummary(input: {
+  windowDays: number;
+  thresholdPct: number;
+  flagged: Array<{ name: string; daysBelow: number; avgPct: number }>;
+}): { title: string; body: string } {
+  const lines = [
+    `🚨 Bajo desempeño sostenido — últimos ${input.windowDays} días`,
+    ``,
+    `Por debajo del ${input.thresholdPct}% de su meta diaria en todos sus días laborados:`
+  ];
+  for (const advisor of input.flagged) {
+    lines.push(`• ${firstName(advisor.name)}: ${advisor.avgPct}% promedio (${advisor.daysBelow} días)`);
+  }
+  lines.push(``, `Considera dar seguimiento o coaching al equipo.`);
+  return { title: "Bajo desempeño sostenido", body: lines.join("\n") };
+}
+
+// ---------------------------------------------------------------------------
 // Cierre de semana (WEEKLY)
 // ---------------------------------------------------------------------------
 
