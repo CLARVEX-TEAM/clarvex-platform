@@ -40,7 +40,7 @@ export async function GET() {
 
 const schema = z.object({
   date: z.string().regex(DATE_RE),
-  type: z.enum(["DIA_LIBRE", "CAMBIO_TURNO"]),
+  type: z.enum(["VACACIONES", "DESCANSO", "PAGO_DIA"]),
   reason: z.string().trim().max(280).optional()
 });
 

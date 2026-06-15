@@ -1,8 +1,9 @@
 // Helpers de solicitudes de cambio de turno / día libre.
 
 export const SHIFT_TYPE_LABELS: Record<string, string> = {
-  DIA_LIBRE: "día libre",
-  CAMBIO_TURNO: "cambio de turno"
+  VACACIONES: "vacaciones",
+  DESCANSO: "descanso",
+  PAGO_DIA: "pago de día"
 };
 
 export function formatRequestDate(dateKey: string): string {
