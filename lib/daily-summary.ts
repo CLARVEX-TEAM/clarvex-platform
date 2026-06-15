@@ -263,6 +263,35 @@ export function buildLowPerformanceManagerSummary(input: {
 }
 
 // ---------------------------------------------------------------------------
+// Recordatorio de pendientes por vencer (PENDING_DUE)
+// ---------------------------------------------------------------------------
+
+/** Digest por responsable con sus pendientes vencidos / por vencer. */
+export function buildPendingDueReminder(input: {
+  overdue: string[];
+  today: string[];
+  tomorrow: string[];
+}): { title: string; body: string } {
+  const lines: string[] = ["📋 Pendientes por vencer", ""];
+  if (input.overdue.length > 0) {
+    lines.push("⛔ Vencidos:");
+    for (const title of input.overdue) lines.push(`• ${title}`);
+  }
+  if (input.today.length > 0) {
+    if (input.overdue.length > 0) lines.push("");
+    lines.push("⏰ Vencen hoy:");
+    for (const title of input.today) lines.push(`• ${title}`);
+  }
+  if (input.tomorrow.length > 0) {
+    if (input.overdue.length > 0 || input.today.length > 0) lines.push("");
+    lines.push("📅 Vencen mañana:");
+    for (const title of input.tomorrow) lines.push(`• ${title}`);
+  }
+  const total = input.overdue.length + input.today.length + input.tomorrow.length;
+  return { title: total === 1 ? "Tienes 1 pendiente por vencer" : `Tienes ${total} pendientes por vencer`, body: lines.join("\n") };
+}
+
+// ---------------------------------------------------------------------------
 // Cierre de semana (WEEKLY)
 // ---------------------------------------------------------------------------
 
