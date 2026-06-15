@@ -3,7 +3,7 @@ import test from "node:test";
 import { parseResourceTarget, targetWhere, validateEvidenceImage } from "../lib/evidence";
 
 test("acepta exactamente un recurso por evidencia o comentario", () => {
-  assert.deepEqual(parseResourceTarget({ pendingId: "pending-1" }), { pendingId: "pending-1", taskId: undefined, logEntryId: undefined });
+  assert.deepEqual(parseResourceTarget({ pendingId: "pending-1" }), { pendingId: "pending-1", taskId: undefined, logEntryId: undefined, announcementId: undefined });
   assert.equal(parseResourceTarget({ pendingId: "pending-1", taskId: "task-1" }), null);
   assert.equal(parseResourceTarget({}), null);
 });
