@@ -402,6 +402,8 @@ model Comment {
   task       DayPlanTask? @relation(fields: [taskId], references: [id], onDelete: Cascade)
   logEntryId String?
   logEntry   StoreLog?    @relation(fields: [logEntryId], references: [id], onDelete: Cascade)
+  announcementId String?
+  announcement   Announcement? @relation(fields: [announcementId], references: [id], onDelete: Cascade)
   body       String
   createdAt  DateTime     @default(now())
   updatedAt  DateTime     @updatedAt
@@ -409,6 +411,7 @@ model Comment {
   @@index([storeId, pendingId, createdAt])
   @@index([storeId, taskId, createdAt])
   @@index([storeId, logEntryId, createdAt])
+  @@index([storeId, announcementId, createdAt])
 }
 
 model CommissionRule {
@@ -437,6 +440,7 @@ model Announcement {
   imageUrl  String?
   reads     AnnouncementRead[]
   reactions AnnouncementReaction[]
+  comments  Comment[]
   createdAt DateTime           @default(now())
   updatedAt DateTime           @updatedAt
 }

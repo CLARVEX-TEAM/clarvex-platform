@@ -2,12 +2,12 @@
 
 import { useEffect, useRef, useState } from "react";
 import NextImage from "next/image";
-import { ImagePlus, Megaphone, Send, Trash2, X } from "lucide-react";
+import { ImagePlus, Megaphone, MessageCircle, Send, Trash2, X } from "lucide-react";
 import { fetchAppData, type AppData } from "@/lib/app-data";
 import { getSession } from "@/lib/auth";
 import { ANNOUNCEMENT_REACTIONS } from "@/lib/reactions";
 import type { Announcement, AnnouncementReaction, User } from "@/lib/types";
-import { AppFrame, AppHeader, Badge, BottomNav, Card, NotificationCard, ProgressBar } from "@/components/ui";
+import { AppFrame, AppHeader, Badge, BottomNav, Card, NotificationCard, ProfileAvatar, ProgressBar } from "@/components/ui";
 import { AppButton, AppInput, AppTextarea } from "@/components/forms";
 
 type Filter = "todos" | "no-leidos" | "importantes";
@@ -278,6 +278,7 @@ export default function ComunicadosPage() {
                         );
                       }) : null}
                     </div>
+                    {session ? <CommentsThread announcementId={item.id} session={session} /> : null}
                     {session?.role !== "ASESOR" ? (
                       <button
                         onClick={() => void deleteAnnouncement(item.id)}
@@ -302,6 +303,99 @@ export default function ComunicadosPage() {
       </AppFrame>
       <BottomNav />
     </>
+  );
+}
+
+type CommentItem = { id: string; body: string; authorId: string; author: { name: string; photoUrl: string | null }; createdAt: string };
+
+function CommentsThread({ announcementId, session }: { announcementId: string; session: User }) {
+  const [open, setOpen] = useState(false);
+  const [comments, setComments] = useState<CommentItem[] | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [body, setBody] = useState("");
+  const [sending, setSending] = useState(false);
+
+  async function load() {
+    setLoading(true);
+    try {
+      const payload = await fetch(`/api/comments?announcementId=${announcementId}`, { cache: "no-store" }).then((response) => response.json() as Promise<{ comments?: CommentItem[] }>);
+      setComments(payload.comments ?? []);
+    } catch {
+      setComments([]);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function toggle() {
+    const next = !open;
+    setOpen(next);
+    if (next && comments === null) void load();
+  }
+
+  async function submit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const text = body.trim();
+    if (!text || sending) return;
+    setSending(true);
+    try {
+      const response = await fetch("/api/comments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ announcementId, body: text })
+      });
+      if (!response.ok) throw new Error();
+      const payload = await response.json() as { comment: CommentItem };
+      setComments((current) => [...(current ?? []), payload.comment]);
+      setBody("");
+    } catch {
+      // Silencioso: el campo conserva el texto para reintentar.
+    } finally {
+      setSending(false);
+    }
+  }
+
+  const count = comments?.length ?? 0;
+
+  return (
+    <div className="mt-2 border-t border-white/[0.07] pt-2">
+      <button onClick={toggle} className="flex min-h-10 w-full items-center justify-between py-1">
+        <span className="flex items-center gap-2 text-sm font-bold text-ink"><MessageCircle size={15} className="text-volt" />Comentarios{count > 0 ? ` (${count})` : ""}</span>
+        <span className="text-xs font-bold text-muted">{open ? "Ocultar" : "Ver"}</span>
+      </button>
+      {open ? (
+        <div className="mt-1 space-y-2.5">
+          {loading ? (
+            <p className="py-2 text-sm text-muted">Cargando…</p>
+          ) : count === 0 ? (
+            <p className="py-1 text-sm text-muted">Sé el primero en comentar.</p>
+          ) : (
+            comments!.map((comment) => (
+              <div key={comment.id} className="flex items-start gap-2.5">
+                <ProfileAvatar name={comment.author.name} photoUrl={comment.author.photoUrl} size="sm" />
+                <div className="min-w-0 flex-1 rounded-2xl bg-panel px-3 py-2">
+                  <p className="text-xs font-black text-ink">{comment.author.name}{comment.authorId === session.id ? " · tú" : ""}</p>
+                  <p className="mt-0.5 whitespace-pre-wrap break-words text-sm text-ink">{comment.body}</p>
+                </div>
+              </div>
+            ))
+          )}
+          <form onSubmit={submit} className="flex items-end gap-2">
+            <textarea
+              value={body}
+              onChange={(event) => setBody(event.target.value)}
+              maxLength={1000}
+              rows={1}
+              placeholder="Escribe un comentario…"
+              className="min-h-11 flex-1 resize-none rounded-2xl border border-line bg-panel px-3 py-2.5 text-sm font-semibold text-ink outline-none focus:border-volt"
+            />
+            <button type="submit" disabled={sending || !body.trim()} className="grid size-11 shrink-0 place-items-center rounded-2xl bg-volt text-white transition active:scale-90 disabled:opacity-40">
+              <Send size={16} />
+            </button>
+          </form>
+        </div>
+      ) : null}
+    </div>
   );
 }
 
