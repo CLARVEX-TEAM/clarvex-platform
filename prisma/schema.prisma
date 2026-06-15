@@ -114,6 +114,7 @@ model Store {
   kudos           Kudo[]
   shiftRequests   ShiftRequest[]
   inventoryReports InventoryReport[]
+  trainingResources TrainingResource[]
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
 }
@@ -185,8 +186,41 @@ model User {
   shiftRequests         ShiftRequest[]         @relation("ShiftRequester")
   inventoryReports      InventoryReport[]      @relation("InventoryReporter")
   inventoryResolved     InventoryReport[]      @relation("InventoryResolver")
+  authoredTraining      TrainingResource[]     @relation("TrainingAuthor")
+  trainingViews         TrainingResourceView[] @relation("TrainingViewer")
   createdAt             DateTime               @default(now())
   updatedAt             DateTime               @updatedAt
+}
+
+model TrainingResource {
+  id          String                 @id @default(cuid())
+  storeId     String
+  store       Store                  @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  authorId    String
+  author      User                   @relation("TrainingAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  category    String                 // VENTAS | PRODUCTO | ATENCION | POLITICAS | OTRO
+  linkUrl     String?
+  fileUrl     String?
+  fileName    String?
+  views       TrainingResourceView[]
+  createdAt   DateTime               @default(now())
+  updatedAt   DateTime               @updatedAt
+
+  @@index([storeId, createdAt])
+}
+
+model TrainingResourceView {
+  id         String           @id @default(cuid())
+  resourceId String
+  resource   TrainingResource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User             @relation("TrainingViewer", fields: [userId], references: [id], onDelete: Cascade)
+  viewedAt   DateTime         @default(now())
+
+  @@unique([resourceId, userId])
+  @@index([resourceId])
 }
 
 model InventoryReport {
