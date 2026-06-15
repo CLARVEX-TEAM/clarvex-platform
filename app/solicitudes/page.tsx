@@ -69,7 +69,11 @@ export default function SolicitudesPage() {
   async function submit() {
     if (!date) { setStatus("Elige una fecha."); return; }
     const hoursValue = Number(hours);
-    if (isHourType(type) && (!hoursValue || hoursValue <= 0)) { setStatus("Indica cuántas horas."); return; }
+    if (isHourType(type)) {
+      if (!hoursValue || hoursValue <= 0) { setStatus("Indica cuántas horas."); return; }
+      if (balance <= 0) { setStatus("No tienes saldo de horas disponible para solicitar."); return; }
+      if (hoursValue > balance) { setStatus(`No puedes solicitar más horas de las disponibles (saldo: ${balance} h).`); return; }
+    }
     setSending(true);
     setStatus("");
     try {
@@ -149,10 +153,15 @@ export default function SolicitudesPage() {
               <label className="grid gap-1">
                 <span className="text-xs font-bold text-muted">Horas (de tu saldo de {balance} h)</span>
                 <input type="number" step="0.5" min="0.5" inputMode="decimal" value={hours} onChange={(event) => setHours(event.target.value)} placeholder="Ej. 2" className="min-h-11 rounded-2xl border border-line bg-panel px-3 text-sm font-bold text-ink outline-none focus:border-volt" />
+                {balance <= 0 ? (
+                  <span className="text-xs font-semibold text-rose-600">No tienes saldo de horas. No puedes solicitar horas.</span>
+                ) : (Number(hours) || 0) > balance ? (
+                  <span className="text-xs font-semibold text-rose-600">Máximo {balance} h disponibles.</span>
+                ) : null}
               </label>
             ) : null}
             <textarea value={reason} onChange={(event) => setReason(event.target.value)} maxLength={280} rows={2} placeholder="Motivo (opcional)…" className="rounded-2xl border border-line bg-panel px-3 py-2.5 text-sm font-semibold text-ink outline-none focus:border-volt" />
-            <Button type="button" variant="primary" icon={<Send size={16} />} onClick={() => void submit()} disabled={sending} className="w-full">{sending ? "Enviando…" : "Enviar solicitud"}</Button>
+            <Button type="button" variant="primary" icon={<Send size={16} />} onClick={() => void submit()} disabled={sending || (isHourType(type) && (balance <= 0 || (Number(hours) || 0) > balance))} className="w-full">{sending ? "Enviando…" : "Enviar solicitud"}</Button>
             {status ? <p className="text-sm font-semibold text-muted">{status}</p> : null}
           </div>
         </Card>

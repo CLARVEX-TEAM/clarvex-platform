@@ -59,6 +59,15 @@ export async function POST(request: Request) {
   const { date, type, reason } = parsed.data;
   const hours = isHourType(type) ? parsed.data.hours ?? null : null;
 
+  // No se pueden solicitar más horas de las que se tienen de saldo.
+  if (hours) {
+    const me = await prisma.user.findUnique({ where: { id: session.userId }, select: { hoursOwed: true } });
+    const balance = me?.hoursOwed ?? 0;
+    if (hours > balance) {
+      return NextResponse.json({ error: `No tienes saldo suficiente. Disponible: ${balance} h.` }, { status: 400 });
+    }
+  }
+
   const created = await prisma.shiftRequest.create({
     data: { storeId: session.storeId, requesterId: session.userId, date, type, hours, reason: reason || null }
   });
