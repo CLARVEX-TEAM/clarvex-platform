@@ -379,6 +379,7 @@ export function AppButton({
   children,
   variant = "primary",
   loading = false,
+  success = false,
   icon,
   className = "",
   ...props
@@ -386,18 +387,23 @@ export function AppButton({
   children?: React.ReactNode;
   variant?: "primary" | "secondary" | "danger";
   loading?: boolean;
+  /** Muestra un ✓ y bloquea el botón: úsalo tras guardar / enviar con éxito. */
+  success?: boolean;
   icon?: React.ReactNode;
 }) {
   return (
     <motion.button
-      whileTap={{ scale: 0.97 }}
+      whileTap={{ scale: 0.95 }}
       whileHover={{ y: -1 }}
+      transition={{ type: "spring", stiffness: 520, damping: 30, mass: 0.6 }}
       {...props}
-      disabled={loading || props.disabled}
+      disabled={loading || success || props.disabled}
       className={cn(
-        "inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl px-5 text-sm font-black tracking-[-0.01em] transition focus:outline-none focus:ring-4 disabled:cursor-not-allowed disabled:opacity-55",
-        variant === "primary" &&
-          "bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-[0_8px_30px_rgba(37,99,235,0.35)] hover:shadow-[0_12px_36px_rgba(37,99,235,0.45)] focus:ring-blue-500/20",
+        "tappable relative inline-flex min-h-12 items-center justify-center gap-2 overflow-hidden rounded-2xl px-5 text-sm font-black tracking-[-0.01em] focus:outline-none focus:ring-4 disabled:cursor-not-allowed disabled:opacity-55",
+        variant === "primary" && !success &&
+          "btn-sheen bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-[0_8px_30px_rgba(37,99,235,0.35)] hover:shadow-[0_12px_36px_rgba(37,99,235,0.45)] focus:ring-blue-500/20",
+        variant === "primary" && success &&
+          "bg-gradient-to-r from-emerald-600 to-emerald-500 text-white shadow-[0_8px_30px_rgba(34,197,94,0.35)] focus:ring-emerald-500/20",
         variant === "secondary" &&
           "border-2 border-slate-200 dark:border-slate-700 bg-transparent text-ink hover:border-blue-300 dark:hover:border-blue-700 focus:ring-blue-500/10",
         variant === "danger" &&
@@ -405,7 +411,31 @@ export function AppButton({
         className
       )}
     >
-      {loading ? <span className="size-2.5 animate-pulse rounded-full bg-current" /> : icon}
+      <AnimatePresence mode="popLayout" initial={false}>
+        {loading ? (
+          <motion.span
+            key="loading"
+            initial={{ scale: 0, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0, opacity: 0 }}
+            className="size-4 animate-spin rounded-full border-2 border-current border-t-transparent"
+          />
+        ) : success ? (
+          <motion.span
+            key="success"
+            initial={{ scale: 0, rotate: -35, opacity: 0 }}
+            animate={{ scale: 1, rotate: 0, opacity: 1 }}
+            exit={{ scale: 0, opacity: 0 }}
+            transition={{ type: "spring", stiffness: 480, damping: 20 }}
+          >
+            <Check size={18} />
+          </motion.span>
+        ) : icon ? (
+          <motion.span key="icon" initial={{ scale: 0.6, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.6, opacity: 0 }}>
+            {icon}
+          </motion.span>
+        ) : null}
+      </AnimatePresence>
       {children}
     </motion.button>
   );
