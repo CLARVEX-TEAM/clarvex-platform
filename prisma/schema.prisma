@@ -90,6 +90,7 @@ enum NotificationType {
   ANNOUNCEMENT_REACTION
   CELEBRATION
   KUDO
+  SHIFT_REQUEST
 }
 
 model Store {
@@ -110,6 +111,7 @@ model Store {
   kpiTargets      KpiTarget[]
   checklistEntries ChecklistEntry[]
   kudos           Kudo[]
+  shiftRequests   ShiftRequest[]
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
 }
@@ -177,8 +179,29 @@ model User {
   comments              Comment[]              @relation("CommentAuthor")
   kudosSent             Kudo[]                 @relation("KudoFrom")
   kudosReceived         Kudo[]                 @relation("KudoTo")
+  shiftRequests         ShiftRequest[]         @relation("ShiftRequester")
   createdAt             DateTime               @default(now())
   updatedAt             DateTime               @updatedAt
+}
+
+model ShiftRequest {
+  id           String    @id @default(cuid())
+  storeId      String
+  store        Store     @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  requesterId  String
+  requester    User      @relation("ShiftRequester", fields: [requesterId], references: [id], onDelete: Cascade)
+  date         String    // "YYYY-MM-DD"
+  type         String    // "DIA_LIBRE" | "CAMBIO_TURNO"
+  reason       String?
+  status       String    @default("PENDIENTE") // PENDIENTE | APROBADO | RECHAZADO
+  resolvedById String?
+  resolvedAt   DateTime?
+  managerNote  String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([storeId, status, date])
+  @@index([requesterId, createdAt])
 }
 
 model Kudo {
