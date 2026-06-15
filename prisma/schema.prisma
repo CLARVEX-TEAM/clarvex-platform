@@ -91,6 +91,7 @@ enum NotificationType {
   CELEBRATION
   KUDO
   SHIFT_REQUEST
+  INVENTORY_REPORT
 }
 
 model Store {
@@ -112,6 +113,7 @@ model Store {
   checklistEntries ChecklistEntry[]
   kudos           Kudo[]
   shiftRequests   ShiftRequest[]
+  inventoryReports InventoryReport[]
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
 }
@@ -181,8 +183,30 @@ model User {
   kudosSent             Kudo[]                 @relation("KudoFrom")
   kudosReceived         Kudo[]                 @relation("KudoTo")
   shiftRequests         ShiftRequest[]         @relation("ShiftRequester")
+  inventoryReports      InventoryReport[]      @relation("InventoryReporter")
+  inventoryResolved     InventoryReport[]      @relation("InventoryResolver")
   createdAt             DateTime               @default(now())
   updatedAt             DateTime               @updatedAt
+}
+
+model InventoryReport {
+  id           String    @id @default(cuid())
+  storeId      String
+  store        Store     @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  reporterId   String
+  reporter     User      @relation("InventoryReporter", fields: [reporterId], references: [id], onDelete: Cascade)
+  productName  String
+  category     String    // AGOTADO | DANADO | FALTANTE | ETIQUETA | OTRO
+  note         String?
+  photoUrl     String?
+  status       String    @default("ABIERTO") // ABIERTO | RESUELTO
+  resolvedById String?
+  resolvedBy   User?     @relation("InventoryResolver", fields: [resolvedById], references: [id])
+  resolvedAt   DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([storeId, status, createdAt])
 }
 
 model ShiftRequest {
