@@ -4,34 +4,85 @@ import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import type { LucideIcon } from "lucide-react";
-import { BookOpen, BarChart3, Camera, BellRing, Sparkles, X } from "lucide-react";
+import {
+  BookOpen,
+  BarChart3,
+  TrendingUp,
+  ReceiptText,
+  Camera,
+  CalendarClock,
+  Award,
+  PartyPopper,
+  Flame,
+  MessageCircle,
+  BellRing,
+  Sparkles,
+  X
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // Subir esta version cada vez que se quiera volver a mostrar el anuncio con nuevas funciones.
 const RELEASE_KEY = "clarvex-whatsnew-2026-06-15";
 
-type Accent = "volt" | "purple" | "ember" | "sky" | "mint";
+type Accent = "volt" | "purple" | "ember" | "sky" | "mint" | "orchid";
 
 const accent: Record<Accent, { text: string; bg: string; ring: string }> = {
   volt: { text: "text-volt", bg: "bg-volt/12", ring: "ring-volt/25" },
   purple: { text: "text-purple", bg: "bg-purple/12", ring: "ring-purple/25" },
   ember: { text: "text-ember", bg: "bg-ember/12", ring: "ring-ember/25" },
   sky: { text: "text-sky", bg: "bg-sky/12", ring: "ring-sky/25" },
-  mint: { text: "text-success", bg: "bg-success/12", ring: "ring-success/25" }
+  mint: { text: "text-success", bg: "bg-success/12", ring: "ring-success/25" },
+  orchid: { text: "text-orchid", bg: "bg-orchid/12", ring: "ring-orchid/25" }
 };
 
 const features: { icon: LucideIcon; title: string; body: string; tone: Accent }[] = [
   {
-    icon: BookOpen,
-    title: "Biblioteca de recursos",
-    body: "Capacitacion del equipo con materiales, guias y discusion en un solo lugar.",
-    tone: "purple"
+    icon: CalendarClock,
+    title: "Solicitudes de turno",
+    body: "Pide cambio de turno, dia libre, vacaciones, descanso o pago de dia, y usa tu banco de horas.",
+    tone: "volt"
   },
   {
     icon: BarChart3,
     title: "Ranking de KPIs",
     body: "Compara al equipo por venta, conversion, UPT y ticket promedio.",
-    tone: "volt"
+    tone: "sky"
+  },
+  {
+    icon: TrendingUp,
+    title: "Tendencia de venta",
+    body: "Mira la evolucion de tu venta directo en el dashboard.",
+    tone: "mint"
+  },
+  {
+    icon: ReceiptText,
+    title: "Recibo de comisiones",
+    body: "Nueva pestana con tu estado de comisiones del mes y el historico.",
+    tone: "purple"
+  },
+  {
+    icon: Award,
+    title: "Kudos del equipo",
+    body: "Reconoce a tus companeros con un kudo entre pares.",
+    tone: "ember"
+  },
+  {
+    icon: Flame,
+    title: "Rachas y logros",
+    body: "Suma rachas y desbloquea logros por tu actividad diaria.",
+    tone: "orchid"
+  },
+  {
+    icon: PartyPopper,
+    title: "Celebraciones",
+    body: "Cumpleanos y aniversarios del equipo, ahora visibles en el inicio.",
+    tone: "sky"
+  },
+  {
+    icon: BookOpen,
+    title: "Biblioteca de recursos",
+    body: "Capacitacion del equipo con materiales, guias y discusion en un solo lugar.",
+    tone: "purple"
   },
   {
     icon: Camera,
@@ -40,10 +91,16 @@ const features: { icon: LucideIcon; title: string; body: string; tone: Accent }[
     tone: "ember"
   },
   {
+    icon: MessageCircle,
+    title: "Comentarios en comunicados",
+    body: "Responde un comunicado y se le notifica al autor.",
+    tone: "volt"
+  },
+  {
     icon: BellRing,
-    title: "Recordatorios automaticos",
-    body: "Te avisamos cuando un pendiente esta por vencer para que nada se pase.",
-    tone: "sky"
+    title: "Avisos automaticos",
+    body: "Te recordamos los pendientes por vencer y alertamos a gerencia el bajo desempeno.",
+    tone: "mint"
   }
 ];
 
@@ -124,7 +181,7 @@ export function WhatsNewModal() {
               </p>
             </div>
 
-            <ul className="relative mt-4 space-y-2">
+            <ul className="relative mt-4 max-h-[42vh] space-y-2 overflow-y-auto pr-1 [scrollbar-width:thin]">
               {features.map((feature, index) => {
                 const a = accent[feature.tone];
                 return (
@@ -132,7 +189,7 @@ export function WhatsNewModal() {
                     key={feature.title}
                     initial={{ opacity: 0, x: -12 }}
                     animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.14 + index * 0.07, duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+                    transition={{ delay: 0.12 + Math.min(index, 6) * 0.06, duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
                     className="flex items-start gap-3 rounded-[20px] border border-line/70 bg-slate-50/60 dark:bg-white/[0.03] p-3"
                   >
                     <span className={cn("grid size-10 shrink-0 place-items-center rounded-[15px] ring-1", a.bg, a.ring, a.text)}>
@@ -150,7 +207,7 @@ export function WhatsNewModal() {
             <motion.button
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.14 + features.length * 0.07, duration: 0.3 }}
+              transition={{ delay: 0.55, duration: 0.3 }}
               whileTap={{ scale: 0.98, y: 1 }}
               onClick={dismiss}
               className="relative mt-5 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-volt px-4 text-sm font-black tracking-[-0.01em] text-white shadow-[0_8px_20px_rgb(37_99_235_/_0.28)] transition hover:bg-[#1D4ED8]"
