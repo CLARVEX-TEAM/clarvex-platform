@@ -93,14 +93,19 @@ export default function ManagerDashboard() {
   const allActivities = data.plans.flatMap((p) => p.activities).length;
   const storeProgress = completion(store?.dailySales ?? 0, store?.dailyGoal ?? 0);
   const activityProgress = allActivities ? Math.round((doneActivities / allActivities) * 100) : 0;
-  // KPI más reciente HASTA HOY por asesor (data.kpis viene ordenado por fecha desc).
-  // Evita tomar metas de días futuros que el RDV precarga con venta en $0.
+  // Ranking del DÍA: solo el KPI de HOY (no caer al día anterior).
+  // Si el asesor no tiene fila de hoy o su meta diaria es 0 → está de descanso:
+  // se etiqueta "Descanso" y se manda al fondo en vez de mostrar la venta de ayer.
   const todayKey = data.dashboardDaily.date;
   const ranking = advisors
-    .map((a) => ({ advisor: a, kpi: data.kpis.find((k) => k.userId === a.id && k.date !== undefined && k.date <= todayKey) }))
-    .filter((item) => item.kpi)
+    .map((a) => {
+      const kpi = data.kpis.find((k) => k.userId === a.id && k.date === todayKey);
+      const resting = !kpi || (kpi.dailyGoal ?? 0) === 0;
+      return { advisor: a, kpi, resting };
+    })
     .sort((a, b) =>
-      completion(b.kpi?.dailySales ?? 0, b.kpi?.dailyGoal ?? 0) - completion(a.kpi?.dailySales ?? 0, a.kpi?.dailyGoal ?? 0)
+      Number(a.resting) - Number(b.resting)
+      || completion(b.kpi?.dailySales ?? 0, b.kpi?.dailyGoal ?? 0) - completion(a.kpi?.dailySales ?? 0, a.kpi?.dailyGoal ?? 0)
       || (b.kpi?.dailySales ?? 0) - (a.kpi?.dailySales ?? 0)
     );
   const userName = (id: string) => data.users.find((u) => u.id === id)?.name ?? "Equipo";
@@ -207,7 +212,7 @@ export default function ManagerDashboard() {
               ))}
             </div>
             <div className="divide-y divide-white/[0.07]">
-              {ranking.map(({ advisor, kpi }, index) => {
+              {ranking.map(({ advisor, kpi, resting }, index) => {
                 const progress = completion(kpi?.dailySales ?? 0, kpi?.dailyGoal ?? 0);
                 const streak = computeDailyStreak(
                   data.kpis.filter((k) => k.userId === advisor.id && k.date !== undefined).map((k) => ({ date: k.date as string, sales: k.dailySales, goal: k.dailyGoal })),
@@ -216,21 +221,31 @@ export default function ManagerDashboard() {
                 return (
                   <div key={advisor.id} className="flex items-center justify-between py-2.5">
                     <div className="flex items-center gap-3">
-                      <ProfileAvatar name={advisor.name} photoUrl={advisor.photoUrl} size="sm" />
+                      <ProfileAvatar name={advisor.name} photoUrl={advisor.photoUrl} size="sm" className={resting ? "opacity-60" : undefined} />
                       <div>
                         <p className="font-bold">
-                          #{index + 1} {advisor.name}
-                          {streak.current >= 2 ? <span className="ml-1.5 text-xs font-black text-orange-500">🔥{streak.current}</span> : null}
+                          {resting ? "" : `#${index + 1} `}{advisor.name}
+                          {!resting && streak.current >= 2 ? <span className="ml-1.5 text-xs font-black text-orange-500">🔥{streak.current}</span> : null}
                         </p>
-                        <p className="text-sm text-ink/50">
-                          {money(kpi?.dailySales ?? 0)} de {money(kpi?.dailyGoal ?? 0)}
-                        </p>
-                        <div className="max-w-40">
-                          <ProgressBar value={progress} />
-                        </div>
+                        {resting ? (
+                          <p className="text-sm font-semibold text-ink/45">😴 Descanso</p>
+                        ) : (
+                          <>
+                            <p className="text-sm text-ink/50">
+                              {money(kpi?.dailySales ?? 0)} de {money(kpi?.dailyGoal ?? 0)}
+                            </p>
+                            <div className="max-w-40">
+                              <ProgressBar value={progress} />
+                            </div>
+                          </>
+                        )}
                       </div>
                     </div>
-                    <p className="text-xl font-black text-volt">{progress}%</p>
+                    {resting ? (
+                      <Badge>Descanso</Badge>
+                    ) : (
+                      <p className="text-xl font-black text-volt">{progress}%</p>
+                    )}
                   </div>
                 );
               })}
