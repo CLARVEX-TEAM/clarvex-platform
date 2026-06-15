@@ -18,6 +18,7 @@ import { DailySalesCard } from "@/components/home/DailySalesCard";
 import { QuickKpiGrid, type KpiCardData } from "@/components/home/QuickKpiGrid";
 import { QuickActions } from "@/components/home/QuickActions";
 import { SalesTrendCard } from "@/components/home/SalesTrendCard";
+import { TeamCelebrationsCard } from "@/components/home/TeamCelebrationsCard";
 
 const cardAnim = (delay: number) => ({
   initial: { opacity: 0, y: 12 },
@@ -221,6 +222,10 @@ export default function AdvisorDashboard() {
               )}
             </div>
           </Card>
+        </motion.div>
+
+        <motion.div {...cardAnim(0.56)} className="mt-3">
+          <TeamCelebrationsCard members={data.users.map((u) => ({ id: u.id, name: u.name, photoUrl: u.photoUrl, birthDate: u.birthDate, hireDate: u.hireDate }))} />
         </motion.div>
       </AppFrame>
       <BottomNav />
