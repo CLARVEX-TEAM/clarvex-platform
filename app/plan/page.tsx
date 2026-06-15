@@ -40,6 +40,8 @@ export default function PlanPage() {
   const [generating, setGenerating] = useState(false);
   const [genSaved, setGenSaved] = useState(false);
   const [genStatus, setGenStatus] = useState("");
+  const [publishing, setPublishing] = useState(false);
+  const [published, setPublished] = useState(false);
 
   useEffect(() => {
     getSession().then(setSession);
@@ -139,6 +141,23 @@ export default function PlanPage() {
     }
   }
 
+  async function publishDay() {
+    if (!data || publishing) return;
+    setPublishing(true); setGenStatus("");
+    try {
+      const res = await fetch("/api/plans/publish", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ date: genDate }) });
+      const payload = await res.json() as { ok?: boolean; published?: number; error?: string };
+      if (!res.ok || !payload.ok) { setGenStatus(payload.error ?? "No se pudo enviar el plan."); return; }
+      setData(await fetchAppData());
+      setGenStatus(payload.published ? `Plan enviado a ${payload.published} asesor(es).` : "No había borradores por enviar.");
+      setPublished(true); setTimeout(() => setPublished(false), 1600);
+    } catch {
+      setGenStatus("No se pudo enviar el plan.");
+    } finally {
+      setPublishing(false);
+    }
+  }
+
   // Tareas operativas rotativas ya generadas para el día seleccionado (autoKey → asesor asignado).
   const genPlans = data.plans.filter((plan) => plan.date === genDate);
   const choreAssignedTo: Record<string, string> = {};
@@ -148,6 +167,7 @@ export default function PlanPage() {
     }
   }
   const generatedChores = ROTATING_ORDER.filter((key) => choreAssignedTo[key]);
+  const draftCount = genPlans.filter((plan) => plan.published === false).length;
 
   return (
     <>
@@ -216,10 +236,9 @@ export default function PlanPage() {
             </p>
             <div className="grid gap-3">
               <AppDatePicker label="Día" value={genDate} onChange={setGenDate} />
-              <AppButton type="button" variant="primary" onClick={() => void generateDay()} loading={generating} success={genSaved} icon={<Sparkles size={17} />} className="w-full">
+              <AppButton type="button" variant="secondary" onClick={() => void generateDay()} loading={generating} success={genSaved} icon={<Sparkles size={17} />} className="w-full">
                 Generar actividades del día
               </AppButton>
-              {genStatus ? <p className="text-sm font-semibold text-muted">{genStatus}</p> : null}
               {generatedChores.length > 0 ? (
                 <div className="grid gap-2 border-t border-line pt-3">
                   <p className="text-xs font-black uppercase tracking-[0.1em] text-muted">Reasignar tareas operativas</p>
@@ -235,6 +254,12 @@ export default function PlanPage() {
                   ))}
                 </div>
               ) : null}
+              {draftCount > 0 ? (
+                <AppButton type="button" variant="primary" onClick={() => void publishDay()} loading={publishing} success={published} className="w-full">
+                  Enviar al equipo ({draftCount} {draftCount === 1 ? "borrador" : "borradores"})
+                </AppButton>
+              ) : null}
+              {genStatus ? <p className="text-sm font-semibold text-muted">{genStatus}</p> : null}
             </div>
           </Card>
         ) : null}
@@ -308,6 +333,7 @@ export default function PlanPage() {
                     </div>
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
+                    {!isAdvisor && plan.published === false ? <Badge tone="warn">Borrador</Badge> : null}
                     <Badge>{money(plan.dailyGoal)}</Badge>
                     {!isAdvisor ? (
                       <button
