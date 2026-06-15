@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { CalendarDays, ChevronLeft, ChevronRight, Clock3 } from "lucide-react";
+import { CalendarClock, CalendarDays, ChevronLeft, ChevronRight, Clock3 } from "lucide-react";
 import { getSession } from "@/lib/auth";
 import { addWeeks, dateKey, startOfWeek } from "@/lib/schedule-week";
+import { SHIFT_TYPE_LABELS } from "@/lib/shift-requests";
 import type { Role, User } from "@/lib/types";
 import { AppFrame, AppHeader, Badge, BottomNav, Button, Card, ProfileAvatar } from "@/components/ui";
 
@@ -45,6 +46,7 @@ export default function HorariosPage() {
   const [weekStart, setWeekStart] = useState(() => dateKey(startOfWeek(new Date())));
   const [view, setView] = useState<"mine" | "team">("mine");
   const [payload, setPayload] = useState<ScheduleResponse | null>(null);
+  const [shiftRequests, setShiftRequests] = useState<Array<{ date: string; type: string; status: string; requester: { name: string } }>>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -53,6 +55,14 @@ export default function HorariosPage() {
   useEffect(() => {
     getSession().then(setSession);
   }, []);
+
+  useEffect(() => {
+    if (!session) return;
+    fetch("/api/shift-requests", { cache: "no-store" })
+      .then((response) => response.json() as Promise<{ requests?: Array<{ date: string; type: string; status: string; requester: { name: string } }> }>)
+      .then((data) => setShiftRequests((data.requests ?? []).filter((request) => request.status !== "RECHAZADO")))
+      .catch(() => undefined);
+  }, [session]);
 
   useEffect(() => {
     if (!session) return;
@@ -155,6 +165,14 @@ export default function HorariosPage() {
                   </div>
                   <div className="mt-2.5 border-t border-line pt-2.5">
                     {day.schedules.map((item) => <ScheduleRow key={item.id} item={item} showUser={Boolean(isManager && view === "team")} />)}
+                    {shiftRequests.filter((request) => request.date === day.key).map((request, index) => (
+                      <div key={index} className="mt-1 flex items-center gap-1.5 text-[11px] font-bold">
+                        <CalendarClock size={12} className={request.status === "APROBADO" ? "text-emerald-600" : "text-amber-600"} />
+                        <span className={request.status === "APROBADO" ? "text-emerald-700" : "text-amber-700"}>
+                          {SHIFT_TYPE_LABELS[request.type] ?? request.type} {request.status === "APROBADO" ? "aprobado" : "(pendiente)"}{isManager && view === "team" ? ` · ${request.requester.name}` : ""}
+                        </span>
+                      </div>
+                    ))}
                   </div>
                 </Card>
               );

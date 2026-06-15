@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { BarChart3, BookOpen, CalendarDays, CheckSquare, ClipboardList, HeartHandshake } from "lucide-react";
+import { BarChart3, BookOpen, CalendarClock, CalendarDays, CheckSquare, ClipboardList, HeartHandshake } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { LucideIcon } from "lucide-react";
 
@@ -20,7 +20,8 @@ const managerActions: Action[] = [
   { href: "/pendientes", icon: ClipboardList, label: "Crear pendiente", color: "green" },
   { href: "/bitacora", icon: BookOpen, label: "Bitácora", color: "purple" },
   { href: "/horarios", icon: CalendarDays, label: "Horarios", color: "orange" },
-  { href: "/kudos", icon: HeartHandshake, label: "Reconocer", color: "pink" }
+  { href: "/kudos", icon: HeartHandshake, label: "Reconocer", color: "pink" },
+  { href: "/solicitudes", icon: CalendarClock, label: "Solicitudes", color: "blue" }
 ];
 
 const advisorActions: Action[] = [
@@ -28,7 +29,8 @@ const advisorActions: Action[] = [
   { href: "/pendientes", icon: ClipboardList, label: "Pendientes", color: "blue" },
   { href: "/bitacora", icon: BookOpen, label: "Bitácora", color: "purple" },
   { href: "/kpis", icon: BarChart3, label: "Mis KPIs", color: "green" },
-  { href: "/kudos", icon: HeartHandshake, label: "Reconocer", color: "pink" }
+  { href: "/kudos", icon: HeartHandshake, label: "Reconocer", color: "pink" },
+  { href: "/solicitudes", icon: CalendarClock, label: "Solicitar día", color: "blue" }
 ];
 
 const colorMap: Record<ActionColor, string> = {
