@@ -14,6 +14,7 @@ export type User = {
   storeName?: string;
   birthDate?: string | null;
   hireDate?: string | null;
+  hoursOwed?: number;
 };
 
 export type Kpi = {
