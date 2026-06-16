@@ -127,6 +127,7 @@ model StoreFixture {
   storeId   String
   store     Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
   name      String
+  type      String   @default("TABLE") // WALL | TABLE | ROUND | RACK | COUNTER
   col       Int      @default(1)
   row       Int      @default(1)
   styles    String[]
