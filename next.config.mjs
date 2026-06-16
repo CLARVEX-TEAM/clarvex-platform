@@ -1,7 +1,5 @@
 /** @type {import('next').NextConfig} */
 
-import path from "node:path";
-
 const r2PublicUrl = process.env.R2_PUBLIC_URL ?? "";
 const r2Domain = r2PublicUrl
   ? (() => {
@@ -16,24 +14,10 @@ const r2Domain = r2PublicUrl
 const nextConfig = {
   reactStrictMode: true,
 
-  // Necesario para que three.js / react-three-fiber / drei se transpilen al target
-  // del navegador y no truenen en el build de producción (mapa 3D).
-  transpilePackages: ["three", "@react-three/fiber", "@react-three/drei"],
-
-  // Fuerza UNA sola copia de React. react-three-fiber trae su propio
-  // react-reconciler; si éste resuelve otra instancia de React, los internals
-  // (ReactCurrentBatchConfig) quedan undefined y la escena 3D truena.
-  webpack: (config, { isServer }) => {
-    // Solo en cliente: en servidor rompería las condiciones "react-server" (RSC).
-    if (!isServer) {
-      config.resolve.alias = {
-        ...(config.resolve.alias || {}),
-        react: path.resolve(process.cwd(), "node_modules/react"),
-        "react-dom": path.resolve(process.cwd(), "node_modules/react-dom"),
-      };
-    }
-    return config;
-  },
+  // Transpila las libs 3D y, clave, el react-reconciler/scheduler que trae fiber:
+  // así su `import "react"` resuelve la MISMA instancia de React que usa la app
+  // (evita los internals undefined / ReactCurrentBatchConfig en la escena 3D).
+  transpilePackages: ["three", "@react-three/fiber", "@react-three/drei", "react-reconciler", "scheduler", "its-fine"],
 
   images: {
     remotePatterns: [
