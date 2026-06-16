@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const FIXTURE_TYPES = ["WALL", "TABLE", "ROUND", "RACK", "COUNTER"] as const;
+export const FIXTURE_TYPES = ["WALL", "TABLE", "ROUND", "RACK", "CURVE", "COUNTER"] as const;
 export type FixtureType = (typeof FIXTURE_TYPES)[number];
 
 export const FIXTURE_TYPE_LABELS: Record<FixtureType, string> = {
@@ -8,6 +8,7 @@ export const FIXTURE_TYPE_LABELS: Record<FixtureType, string> = {
   TABLE: "Mesa",
   ROUND: "Mesa redonda",
   RACK: "Rack de ropa",
+  CURVE: "Rack en C (curvo)",
   COUNTER: "Mostrador / caja"
 };
 

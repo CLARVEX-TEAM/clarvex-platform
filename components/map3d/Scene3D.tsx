@@ -24,10 +24,11 @@ function buildFixture(id: string, type: string): { meshes: THREE.Mesh[]; labelY:
   const meshes: THREE.Mesh[] = [];
   const bodyMat = () => new THREE.MeshStandardMaterial({ color: COLOR_BASE, roughness: 0.5, metalness: 0.08, transparent: true });
   const grayMat = () => new THREE.MeshStandardMaterial({ color: COLOR_GRAY, roughness: 0.4, metalness: 0.35, transparent: true });
-  const add = (geo: THREE.BufferGeometry, mat: THREE.Material, py: number, body: boolean, dx = 0, dz = 0, rotZ = 0) => {
+  const add = (geo: THREE.BufferGeometry, mat: THREE.Material, py: number, body: boolean, dx = 0, dz = 0, rotZ = 0, rotX = 0) => {
     const m = new THREE.Mesh(geo, mat);
     m.position.set(dx, py, dz);
     if (rotZ) m.rotation.z = rotZ;
+    if (rotX) m.rotation.x = rotX;
     m.castShadow = true;
     m.userData.fixtureId = id;
     m.userData.body = body;
@@ -48,6 +49,15 @@ function buildFixture(id: string, type: string): { meshes: THREE.Mesh[]; labelY:
       add(new THREE.CylinderGeometry(0.04, 0.04, 1.7, 12), grayMat(), 0.85, false, 0.7);
       add(new THREE.CylinderGeometry(0.035, 0.035, 1.5, 12), grayMat(), 1.68, false, 0, 0, Math.PI / 2);
       return { meshes, labelY: 2.05 };
+    case "CURVE": {
+      // Rack en C: riel y ropa siguiendo un arco (para abrazar una mesa redonda).
+      const arc = Math.PI * 1.25;
+      const R = 0.95;
+      add(new THREE.TorusGeometry(R, 0.26, 12, 30, arc), bodyMat(), 1.15, true, 0, 0, 0, Math.PI / 2); // ropa curva
+      add(new THREE.TorusGeometry(R, 0.03, 8, 30, arc), grayMat(), 1.62, false, 0, 0, 0, Math.PI / 2); // riel
+      [0, arc].forEach((a) => add(new THREE.CylinderGeometry(0.04, 0.04, 1.62, 12), grayMat(), 0.81, false, Math.cos(a) * R, Math.sin(a) * R)); // postes
+      return { meshes, labelY: 2.0 };
+    }
     case "COUNTER":
       add(new THREE.BoxGeometry(1.6, 1.0, 0.7), bodyMat(), 0.5, true);
       return { meshes, labelY: 1.3 };
