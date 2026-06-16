@@ -30,7 +30,7 @@ import { StoreStatusCard } from "@/components/home/StoreStatusCard";
 import { QuickActions } from "@/components/home/QuickActions";
 import { SalesTrendCard } from "@/components/home/SalesTrendCard";
 import { TeamCelebrationsCard } from "@/components/home/TeamCelebrationsCard";
-import { buildSalesTrend } from "@/lib/trend";
+import { buildSalesTrend, buildDailySeries } from "@/lib/trend";
 import { upcomingCelebrations } from "@/lib/celebrations";
 
 const cardAnim = (delay: number) => ({
@@ -123,6 +123,8 @@ export default function ManagerDashboard() {
   ).filter((slot): slot is NonNullable<typeof slot> => slot !== null);
   const userName = (id: string) => data.users.find((u) => u.id === id)?.name ?? "Equipo";
   const salesTrend = buildSalesTrend(data.kpis.map((k) => ({ date: k.date, dailySales: k.dailySales, dailyGoal: k.dailyGoal })), todayKey);
+  const ventasSeries = buildDailySeries(data.kpis.map((k) => ({ date: k.date, value: k.dailySales })), todayKey, 7);
+  const ticketsSeries = buildDailySeries(data.kpis.map((k) => ({ date: k.date, value: k.transactions })), todayKey, 7);
   const celebrations = upcomingCelebrations(
     data.users.map((u) => ({ id: u.id, name: u.name, birthDate: u.birthDate, hireDate: u.hireDate })),
     todayKey
@@ -134,6 +136,7 @@ export default function ManagerDashboard() {
       value: money(store?.dailySales ?? 0),
       detail: "Venta hoy",
       progress: storeProgress,
+      trend: ventasSeries,
       icon: ShoppingBag,
       color: "blue"
     },
@@ -141,6 +144,7 @@ export default function ManagerDashboard() {
       label: "TICKETS",
       value: String(store?.transactions ?? 0),
       detail: "Transacciones",
+      trend: ticketsSeries,
       icon: Receipt,
       color: "green"
     },

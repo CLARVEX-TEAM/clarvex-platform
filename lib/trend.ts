@@ -25,3 +25,23 @@ export function buildSalesTrend(
     .slice(-days)
     .map(([date, value]) => ({ date, label: date.slice(8, 10), sales: Math.round(value.sales), goal: Math.round(value.goal) }));
 }
+
+/**
+ * Serie diaria de un solo valor (suma por día), ignora días futuros y devuelve
+ * los últimos `days` días con datos en orden cronológico. Para sparklines.
+ */
+export function buildDailySeries(
+  rows: Array<{ date?: string; value: number }>,
+  todayKey: string,
+  days = 7
+): number[] {
+  const byDate = new Map<string, number>();
+  for (const row of rows) {
+    if (!row.date || row.date > todayKey) continue;
+    byDate.set(row.date, (byDate.get(row.date) ?? 0) + row.value);
+  }
+  return Array.from(byDate.entries())
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .slice(-days)
+    .map(([, value]) => Math.round(value));
+}
