@@ -3,12 +3,13 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import NextImage from "next/image";
-import { Check, ImagePlus, PackageSearch, RotateCcw, Send, X } from "lucide-react";
+import { Check, ImagePlus, PackageSearch, RotateCcw, X } from "lucide-react";
 import { getSession } from "@/lib/auth";
 import { INVENTORY_CATEGORIES, INVENTORY_CATEGORY_LABELS } from "@/lib/inventory";
 import type { User } from "@/lib/types";
 import { AppFrame, AppHeader, Badge, BottomNav, Button, Card, ProfileAvatar } from "@/components/ui";
 import { DeleteButton } from "@/components/ActionButtons";
+import { SendButton } from "@/components/SendButton";
 
 type Report = {
   id: string;
@@ -38,6 +39,7 @@ export default function FaltantesPage() {
   const [photo, setPhoto] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
+  const [sent, setSent] = useState(false);
   const [status, setStatus] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -100,6 +102,8 @@ export default function FaltantesPage() {
       setNote("");
       clearPhoto();
       setStatus("Reporte enviado. ✅");
+      setSent(true);
+      window.setTimeout(() => setSent(false), 2000);
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "No se pudo enviar el reporte.");
     } finally {
@@ -172,7 +176,7 @@ export default function FaltantesPage() {
             )}
             <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={onPhotoChange} />
             <textarea value={note} onChange={(event) => setNote(event.target.value)} maxLength={500} rows={2} placeholder="Nota (opcional)…" className="rounded-2xl border border-line bg-panel px-3 py-2.5 text-sm font-semibold text-ink outline-none focus:border-volt" />
-            <Button type="button" variant="primary" icon={<Send size={16} />} onClick={() => void submit()} disabled={sending} className="w-full">{sending ? "Enviando…" : "Enviar reporte"}</Button>
+            <SendButton type="button" onClick={() => void submit()} loading={sending} success={sent} sentLabel="¡Enviado!" className="w-full">Enviar reporte</SendButton>
             {status ? <p className="text-sm font-semibold text-muted">{status}</p> : null}
           </div>
         </Card>

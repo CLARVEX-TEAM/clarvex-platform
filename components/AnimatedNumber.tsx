@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { animate, useReducedMotion } from "framer-motion";
 
 /**
@@ -10,6 +10,9 @@ import { animate, useReducedMotion } from "framer-motion";
  * Acepta el string ya formateado que usa la app: "$504,771", "82%", "1.85",
  * "2.4x"… Si no hay número (p. ej. "—"), lo muestra tal cual sin animar.
  * Respeta `prefers-reduced-motion`.
+ *
+ * Sólo re-anima cuando cambia `value`: el parseo vive DENTRO del efecto para
+ * no crear dependencias nuevas en cada render (eso causaba reinicios a 0).
  */
 export function AnimatedNumber({
   value,
@@ -21,15 +24,13 @@ export function AnimatedNumber({
   className?: string;
 }) {
   const reduce = useReducedMotion();
-  const ref = useRef<HTMLSpanElement>(null);
   const [display, setDisplay] = useState(value);
 
-  // Separa el primer bloque numérico: prefijo + número + sufijo.
-  const match = value.match(/-?[\d.,]+/);
-
   useEffect(() => {
-    const el = ref.current;
-    if (!el || !match) {
+    const match = value.match(/-?[\d.,]+/);
+
+    // Sin número (—, texto): mostrar tal cual.
+    if (!match) {
       setDisplay(value);
       return;
     }
@@ -38,7 +39,6 @@ export function AnimatedNumber({
     const prefix = value.slice(0, match.index ?? 0);
     const suffix = value.slice((match.index ?? 0) + numericText.length);
 
-    // Decimales: si hay un punto, lo último tras él son decimales.
     const dotIndex = numericText.lastIndexOf(".");
     const decimals = dotIndex >= 0 ? numericText.length - dotIndex - 1 : 0;
     const target = parseFloat(numericText.replace(/,/g, ""));
@@ -66,11 +66,7 @@ export function AnimatedNumber({
     });
 
     return () => controls.stop();
-  }, [value, duration, reduce, match]);
+  }, [value, duration, reduce]);
 
-  return (
-    <span ref={ref} className={className}>
-      {display}
-    </span>
-  );
+  return <span className={className}>{display}</span>;
 }
