@@ -3,21 +3,35 @@
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import { AnimatePresence, motion } from "framer-motion";
-import { Boxes, MapPin, Maximize2, Tag, X } from "lucide-react";
+import { Boxes, MapPin, Maximize2, Pencil, Plus, Tag, X } from "lucide-react";
 import type { Fixture } from "@/components/StoreMap";
 import { Button, Card, EmptyState } from "@/components/ui";
 import { MapErrorBoundary } from "@/components/map3d/MapErrorBoundary";
+import { FixtureEditor } from "@/components/map3d/FixtureEditor";
 
 const Scene3D = dynamic(() => import("@/components/map3d/Scene3D"), {
   ssr: false,
   loading: () => <div className="grid h-full place-items-center text-sm font-bold text-muted">Cargando vista 3D…</div>
 });
 
-export function StoreMap3D() {
+export function StoreMap3D({ canEdit = false }: { canEdit?: boolean }) {
   const [fixtures, setFixtures] = useState<Fixture[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [selected, setSelected] = useState<Fixture | null>(null);
+  const [editing, setEditing] = useState<Fixture | "new" | null>(null);
+
+  function handleSaved(fixture: Fixture) {
+    setFixtures((prev) => prev.some((f) => f.id === fixture.id) ? prev.map((f) => f.id === fixture.id ? fixture : f) : [...prev, fixture]);
+    setSelected(fixture);
+    setEditing(null);
+  }
+  function handleDeleted(id: string) {
+    setFixtures((prev) => prev.filter((f) => f.id !== id));
+    setSelected(null);
+    setEditing(null);
+  }
+  const nextRow = fixtures.reduce((m, f) => Math.max(m, f.row), 0) + 1;
 
   function load() {
     setLoading(true);
@@ -39,7 +53,14 @@ export function StoreMap3D() {
 
   if (loading) return <div className="grid h-[60vh] min-h-[420px] animate-pulse place-items-center rounded-3xl bg-slate-200 dark:bg-slate-800 text-sm font-bold text-muted">Cargando mapa…</div>;
   if (loadError) return <Card className="text-center"><p className="font-black text-ink">No se pudo cargar el mapa</p><Button className="mt-3" onClick={load}>Reintentar</Button></Card>;
-  if (fixtures.length === 0) return <Card><EmptyState icon={MapPin} title="Sin mapa aún" description="La gerencia aún no ha configurado los muebles. Usa la pestaña “Administrar” para agregarlos." /></Card>;
+  if (fixtures.length === 0) {
+    return (
+      <>
+        <Card><EmptyState icon={MapPin} title="Sin mapa aún" description={canEdit ? "Agrega tu primer mueble para empezar el mapa." : "La gerencia aún no ha configurado los muebles."} action={canEdit ? <Button onClick={() => setEditing("new")} icon={<Plus size={16} />}>Agregar mueble</Button> : undefined} /></Card>
+        {editing ? <FixtureEditor initial={editing === "new" ? { col: 1, row: 1 } : editing} onSaved={handleSaved} onDeleted={handleDeleted} onClose={() => setEditing(null)} /> : null}
+      </>
+    );
+  }
 
   return (
     <MapErrorBoundary fallback={<FixtureList fixtures={fixtures} />}>
@@ -51,12 +72,19 @@ export function StoreMap3D() {
         <Boxes size={13} className="text-volt" /> Arrastra para girar · toca un mueble
       </div>
 
-      {/* Botón vista general */}
-      {selected ? (
-        <button onClick={() => setSelected(null)} className="tappable absolute right-3 top-3 flex items-center gap-1.5 rounded-full bg-white/90 px-3 py-1.5 text-[11px] font-black text-volt shadow-sm backdrop-blur transition hover:bg-white">
-          <Maximize2 size={13} /> Vista general
-        </button>
-      ) : null}
+      {/* Acciones (arriba derecha) */}
+      <div className="absolute right-3 top-3 flex items-center gap-2">
+        {selected ? (
+          <button onClick={() => setSelected(null)} className="tappable flex items-center gap-1.5 rounded-full bg-white/90 px-3 py-1.5 text-[11px] font-black text-volt shadow-sm backdrop-blur transition hover:bg-white">
+            <Maximize2 size={13} /> Vista general
+          </button>
+        ) : null}
+        {canEdit ? (
+          <button onClick={() => setEditing("new")} className="tappable flex items-center gap-1.5 rounded-full bg-volt px-3 py-1.5 text-[11px] font-black text-white shadow-sm transition hover:bg-[#1D4ED8]">
+            <Plus size={13} /> Nuevo mueble
+          </button>
+        ) : null}
+      </div>
 
       {/* Panel del mueble seleccionado */}
       <AnimatePresence>
@@ -76,6 +104,11 @@ export function StoreMap3D() {
               </div>
               <div className="flex items-center gap-2">
                 <span className="rounded-full bg-volt/10 px-2.5 py-1 text-[11px] font-black text-volt">{selected.styles.length} estilo{selected.styles.length === 1 ? "" : "s"}</span>
+                {canEdit ? (
+                  <button onClick={() => setEditing(selected)} className="tappable flex items-center gap-1 rounded-full bg-volt px-2.5 py-1 text-[11px] font-black text-white transition hover:bg-[#1D4ED8]">
+                    <Pencil size={12} /> Editar
+                  </button>
+                ) : null}
                 <button onClick={() => setSelected(null)} aria-label="Cerrar" className="grid size-7 place-items-center rounded-full bg-slate-100 text-ink dark:bg-slate-800"><X size={14} /></button>
               </div>
             </div>
@@ -93,6 +126,16 @@ export function StoreMap3D() {
           </motion.div>
         ) : null}
       </AnimatePresence>
+
+      {/* Editor (gerencia) */}
+      {editing ? (
+        <FixtureEditor
+          initial={editing === "new" ? { col: 1, row: nextRow } : editing}
+          onSaved={handleSaved}
+          onDeleted={handleDeleted}
+          onClose={() => setEditing(null)}
+        />
+      ) : null}
     </div>
     </MapErrorBoundary>
   );
