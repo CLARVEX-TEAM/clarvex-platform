@@ -130,6 +130,7 @@ model StoreFixture {
   type      String   @default("TABLE") // WALL | TABLE | ROUND | RACK | COUNTER
   col       Int      @default(1)
   row       Int      @default(1)
+  rotation  Int      @default(0) // grados 0 | 90 | 180 | 270
   styles    String[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

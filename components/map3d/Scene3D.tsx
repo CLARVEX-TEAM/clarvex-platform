@@ -19,13 +19,14 @@ function escapeHtml(value: string) {
 
 /** Construye la geometría real de un mueble según su tipo. Devuelve sus mallas
  *  (cada una marcada con el id del mueble) y la altura para anclar la etiqueta. */
-function buildFixture(id: string, type: string, x: number, z: number): { meshes: THREE.Mesh[]; labelY: number } {
+function buildFixture(id: string, type: string): { meshes: THREE.Mesh[]; labelY: number } {
+  // Mallas en coordenadas LOCALES (centradas en 0). El grupo padre las coloca y gira.
   const meshes: THREE.Mesh[] = [];
   const bodyMat = () => new THREE.MeshStandardMaterial({ color: COLOR_BASE, roughness: 0.5, metalness: 0.08, transparent: true });
   const grayMat = () => new THREE.MeshStandardMaterial({ color: COLOR_GRAY, roughness: 0.4, metalness: 0.35, transparent: true });
   const add = (geo: THREE.BufferGeometry, mat: THREE.Material, py: number, body: boolean, dx = 0, dz = 0, rotZ = 0) => {
     const m = new THREE.Mesh(geo, mat);
-    m.position.set(x + dx, py, z + dz);
+    m.position.set(dx, py, dz);
     if (rotZ) m.rotation.z = rotZ;
     m.castShadow = true;
     m.userData.fixtureId = id;
@@ -132,8 +133,12 @@ export default function Scene3D({
     fixtures.forEach((f) => {
       const x = (f.col - 1) * GAP - offX;
       const z = (f.row - 1) * GAP - offZ;
-      const { meshes: fm, labelY } = buildFixture(f.id, f.type, x, z);
-      fm.forEach((m) => { scene.add(m); meshes.push(m); });
+      const { meshes: fm, labelY } = buildFixture(f.id, f.type);
+      const group = new THREE.Group();
+      group.position.set(x, 0, z);
+      group.rotation.y = -((f.rotation || 0) * Math.PI) / 180;
+      fm.forEach((m) => { group.add(m); meshes.push(m); });
+      scene.add(group);
       fixtureMeshes.set(f.id, fm);
       positions.set(f.id, new THREE.Vector3(x, labelY, z));
 
