@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import {
@@ -18,11 +18,12 @@ import {
 } from "lucide-react";
 import { getSession, logout } from "@/lib/auth";
 import { fetchAppData, type AppData } from "@/lib/app-data";
-import { completion, money } from "@/lib/format";
+import { completion, money, performanceTone, performanceTextClass } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { computeDailyStreak } from "@/lib/streaks";
 import type { User } from "@/lib/types";
 import { AppFrame, Badge, BottomNav, Card, ProfileAvatar, ProgressBar, priorityTone } from "@/components/ui";
+import { PullToRefresh } from "@/components/PullToRefresh";
 import { HomeHeader } from "@/components/home/HomeHeader";
 import { DailySalesCard } from "@/components/home/DailySalesCard";
 import { QuickKpiGrid, type KpiCardData } from "@/components/home/QuickKpiGrid";
@@ -52,15 +53,19 @@ export default function ManagerDashboard() {
     });
   }, [router]);
 
-  useEffect(() => {
-    const load = () =>
+  const load = useCallback(
+    () =>
       fetchAppData()
         .then((d) => { setData(d); setLastUpdated(new Date()); })
-        .catch(() => {});
+        .catch(() => {}),
+    []
+  );
+
+  useEffect(() => {
     void load();
     const id = setInterval(load, 5 * 60 * 1000);
     return () => clearInterval(id);
-  }, []);
+  }, [load]);
 
   const handleLogout = async () => {
     await logout();
@@ -175,6 +180,7 @@ export default function ManagerDashboard() {
         lastUpdated={lastUpdated}
         onLogout={handleLogout}
       />
+      <PullToRefresh onRefresh={load}>
       <AppFrame>
         <DailySalesCard
           sales={store?.dailySales ?? 0}
@@ -238,7 +244,7 @@ export default function ManagerDashboard() {
                         className={cn("mt-1 ring-2", ring)}
                       />
                       <p className="mt-1 w-full truncate text-center text-[11px] font-black text-ink">{entry.advisor.name.split(" ")[0]}</p>
-                      <p className={cn("text-sm font-black", rank === 1 ? "text-volt" : "text-ink/70")}>{progress}%</p>
+                      <p className={cn("text-sm font-black", performanceTextClass(progress))}>{progress}%</p>
                       <motion.div
                         initial={{ height: 0 }}
                         animate={{ height: "auto" }}
@@ -279,7 +285,7 @@ export default function ManagerDashboard() {
                                 {money(kpi?.dailySales ?? 0)} de {money(kpi?.dailyGoal ?? 0)}
                               </p>
                               <div className="max-w-40">
-                                <ProgressBar value={progress} />
+                                <ProgressBar value={progress} tone={performanceTone(progress)} />
                               </div>
                             </>
                           )}
@@ -288,7 +294,7 @@ export default function ManagerDashboard() {
                       {resting ? (
                         <Badge>Descanso</Badge>
                       ) : (
-                        <p className="text-xl font-black text-volt">{progress}%</p>
+                        <p className={cn("text-xl font-black", performanceTextClass(progress))}>{progress}%</p>
                       )}
                     </div>
                   );
@@ -407,6 +413,7 @@ export default function ManagerDashboard() {
           </Card>
         </motion.div>
       </AppFrame>
+      </PullToRefresh>
       <BottomNav />
     </>
   );
