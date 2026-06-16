@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { AlertTriangle, Plus, Trash2, UserRound } from "lucide-react";
+import { AlertTriangle, ClipboardCheck, Plus, Trash2, UserRound } from "lucide-react";
 import { fetchAppData, type AppData } from "@/lib/app-data";
 import { getSession } from "@/lib/auth";
 import type { Pending, User } from "@/lib/types";
-import { AppFrame, AppHeader, Badge, BottomNav, Card, FloatingActionButton, priorityTone, statusTone } from "@/components/ui";
+import { AppFrame, AppHeader, Badge, BottomNav, Card, EmptyState, FloatingActionButton, priorityTone, Skeleton, statusTone } from "@/components/ui";
 import { ResourceDiscussion } from "@/components/ResourceDiscussion";
 import { AppButton, AppDatePicker, AppInput, AppSelect, AppTextarea, type SelectOption } from "@/components/forms";
 
@@ -37,7 +37,14 @@ export default function PendientesPage() {
     return (
       <>
         <AppHeader title="Pendientes" subtitle="Cargando handover desde PostgreSQL." backHref="/manager" />
-        <AppFrame><Card>Conectando...</Card></AppFrame>
+        <AppFrame>
+          <div className="space-y-3">
+            <Skeleton className="h-12 rounded-full" />
+            <Skeleton className="h-40 rounded-[28px]" />
+            <Skeleton className="h-32 rounded-[28px]" />
+            <Skeleton className="h-32 rounded-[28px]" />
+          </div>
+        </AppFrame>
         <BottomNav />
       </>
     );
@@ -246,8 +253,11 @@ export default function PendientesPage() {
           ))}
           {visiblePendings.length === 0 ? (
             <Card>
-              <p className="font-black">Sin pendientes</p>
-              <p className="mt-2 text-sm text-muted">Cambia el filtro o espera nuevas asignaciones.</p>
+              <EmptyState
+                icon={ClipboardCheck}
+                title="Sin pendientes"
+                description="Cambia el filtro o espera nuevas asignaciones."
+              />
             </Card>
           ) : null}
         </div>

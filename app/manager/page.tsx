@@ -19,6 +19,7 @@ import {
 import { getSession, logout } from "@/lib/auth";
 import { fetchAppData, type AppData } from "@/lib/app-data";
 import { completion, money } from "@/lib/format";
+import { cn } from "@/lib/utils";
 import { computeDailyStreak } from "@/lib/streaks";
 import type { User } from "@/lib/types";
 import { AppFrame, Badge, BottomNav, Card, ProfileAvatar, ProgressBar, priorityTone } from "@/components/ui";
@@ -108,6 +109,18 @@ export default function ManagerDashboard() {
       || completion(b.kpi?.dailySales ?? 0, b.kpi?.dailyGoal ?? 0) - completion(a.kpi?.dailySales ?? 0, a.kpi?.dailyGoal ?? 0)
       || (b.kpi?.dailySales ?? 0) - (a.kpi?.dailySales ?? 0)
     );
+  // Podio: top-3 de los que trabajan; el resto (y quienes descansan) van en lista.
+  const workingRanking = ranking.filter((r) => !r.resting);
+  const top3 = workingRanking.slice(0, 3);
+  const restRanking = [...workingRanking.slice(3), ...ranking.filter((r) => r.resting)];
+  // Orden visual del podio: 2.º, 1.º, 3.º (el campeón al centro y más alto).
+  const podium = (
+    [
+      top3[1] ? { entry: top3[1], rank: 2, medal: "🥈", ring: "ring-slate-300", bar: "h-16", from: "from-slate-300/40" } : null,
+      top3[0] ? { entry: top3[0], rank: 1, medal: "🥇", ring: "ring-yellow-400", bar: "h-24", from: "from-yellow-400/45" } : null,
+      top3[2] ? { entry: top3[2], rank: 3, medal: "🥉", ring: "ring-amber-600", bar: "h-12", from: "from-amber-600/40" } : null
+    ] as const
+  ).filter((slot): slot is NonNullable<typeof slot> => slot !== null);
   const userName = (id: string) => data.users.find((u) => u.id === id)?.name ?? "Equipo";
   const salesTrend = buildSalesTrend(data.kpis.map((k) => ({ date: k.date, dailySales: k.dailySales, dailyGoal: k.dailyGoal })), todayKey);
   const celebrations = upcomingCelebrations(
@@ -206,50 +219,78 @@ export default function ManagerDashboard() {
               <h2 className="text-lg font-black">Ranking asesores</h2>
               <Badge>tienda</Badge>
             </div>
-            <div className="mb-2 flex -space-x-3">
-              {advisors.map((a) => (
-                <ProfileAvatar key={a.id} name={a.name} photoUrl={a.photoUrl} size="sm" className="ring-2 ring-card" />
-              ))}
-            </div>
-            <div className="divide-y divide-white/[0.07]">
-              {ranking.map(({ advisor, kpi, resting }, index) => {
-                const progress = completion(kpi?.dailySales ?? 0, kpi?.dailyGoal ?? 0);
-                const streak = computeDailyStreak(
-                  data.kpis.filter((k) => k.userId === advisor.id && k.date !== undefined).map((k) => ({ date: k.date as string, sales: k.dailySales, goal: k.dailyGoal })),
-                  todayKey
-                );
-                return (
-                  <div key={advisor.id} className="flex items-center justify-between py-2.5">
-                    <div className="flex items-center gap-3">
-                      <ProfileAvatar name={advisor.name} photoUrl={advisor.photoUrl} size="sm" className={resting ? "opacity-60" : undefined} />
-                      <div>
-                        <p className="font-bold">
-                          {resting ? "" : `#${index + 1} `}{advisor.name}
-                          {!resting && streak.current >= 2 ? <span className="ml-1.5 text-xs font-black text-orange-500">🔥{streak.current}</span> : null}
-                        </p>
-                        {resting ? (
-                          <p className="text-sm font-semibold text-ink/45">😴 Descanso</p>
-                        ) : (
-                          <>
-                            <p className="text-sm text-ink/50">
-                              {money(kpi?.dailySales ?? 0)} de {money(kpi?.dailyGoal ?? 0)}
-                            </p>
-                            <div className="max-w-40">
-                              <ProgressBar value={progress} />
-                            </div>
-                          </>
-                        )}
-                      </div>
+            {/* Podio top-3 */}
+            {podium.length > 0 ? (
+              <div className="mb-3 flex items-end justify-center gap-2">
+                {podium.map(({ entry, rank, medal, ring, bar, from }) => {
+                  const progress = completion(entry.kpi?.dailySales ?? 0, entry.kpi?.dailyGoal ?? 0);
+                  return (
+                    <div key={entry.advisor.id} className="flex flex-1 flex-col items-center">
+                      <span className="text-lg leading-none">{medal}</span>
+                      <ProfileAvatar
+                        name={entry.advisor.name}
+                        photoUrl={entry.advisor.photoUrl}
+                        size={rank === 1 ? "md" : "sm"}
+                        className={cn("mt-1 ring-2", ring)}
+                      />
+                      <p className="mt-1 w-full truncate text-center text-[11px] font-black text-ink">{entry.advisor.name.split(" ")[0]}</p>
+                      <p className={cn("text-sm font-black", rank === 1 ? "text-volt" : "text-ink/70")}>{progress}%</p>
+                      <motion.div
+                        initial={{ height: 0 }}
+                        animate={{ height: "auto" }}
+                        transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1], delay: 0.1 * rank }}
+                        className={cn("mt-1 grid w-full place-items-center rounded-t-2xl bg-gradient-to-b to-transparent text-xs font-black text-ink/55", bar, from)}
+                      >
+                        #{rank}
+                      </motion.div>
                     </div>
-                    {resting ? (
-                      <Badge>Descanso</Badge>
-                    ) : (
-                      <p className="text-xl font-black text-volt">{progress}%</p>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+            ) : null}
+
+            {/* Resto del equipo */}
+            {restRanking.length > 0 ? (
+              <div className="divide-y divide-white/[0.07] border-t border-line pt-1">
+                {restRanking.map(({ advisor, kpi, resting }, index) => {
+                  const progress = completion(kpi?.dailySales ?? 0, kpi?.dailyGoal ?? 0);
+                  const streak = computeDailyStreak(
+                    data.kpis.filter((k) => k.userId === advisor.id && k.date !== undefined).map((k) => ({ date: k.date as string, sales: k.dailySales, goal: k.dailyGoal })),
+                    todayKey
+                  );
+                  return (
+                    <div key={advisor.id} className="flex items-center justify-between py-2.5">
+                      <div className="flex items-center gap-3">
+                        <ProfileAvatar name={advisor.name} photoUrl={advisor.photoUrl} size="sm" className={resting ? "opacity-60" : undefined} />
+                        <div>
+                          <p className="font-bold">
+                            {resting ? "" : `#${podium.length + index + 1} `}{advisor.name}
+                            {!resting && streak.current >= 2 ? <span className="ml-1.5 text-xs font-black text-orange-500">🔥{streak.current}</span> : null}
+                          </p>
+                          {resting ? (
+                            <p className="text-sm font-semibold text-ink/45">😴 Descanso</p>
+                          ) : (
+                            <>
+                              <p className="text-sm text-ink/50">
+                                {money(kpi?.dailySales ?? 0)} de {money(kpi?.dailyGoal ?? 0)}
+                              </p>
+                              <div className="max-w-40">
+                                <ProgressBar value={progress} />
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                      {resting ? (
+                        <Badge>Descanso</Badge>
+                      ) : (
+                        <p className="text-xl font-black text-volt">{progress}%</p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            ) : null}
           </Card>
         </motion.div>
 

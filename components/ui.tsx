@@ -179,6 +179,35 @@ export function ProgressBar({ value, tone = "volt" }: { value: number; tone?: Ac
   );
 }
 
+// Bloque de carga: imita la forma del contenido real para una sensación más rápida.
+export function Skeleton({ className = "" }: { className?: string }) {
+  return <div className={cn("animate-pulse rounded-2xl bg-slate-200 dark:bg-slate-800", className)} />;
+}
+
+// Estado vacío con ícono, mensaje y acción opcional.
+export function EmptyState({
+  icon: Icon,
+  title,
+  description,
+  action
+}: {
+  icon: LucideIcon;
+  title: string;
+  description?: string;
+  action?: React.ReactNode;
+}) {
+  return (
+    <div className="flex flex-col items-center justify-center px-6 py-10 text-center">
+      <span className="grid size-14 place-items-center rounded-[20px] border border-line bg-blue-50 text-volt dark:bg-[#1a2540]">
+        <Icon size={26} />
+      </span>
+      <p className="mt-3 text-base font-black text-ink">{title}</p>
+      {description ? <p className="mt-1 max-w-[16rem] text-sm text-muted">{description}</p> : null}
+      {action ? <div className="mt-4">{action}</div> : null}
+    </div>
+  );
+}
+
 export function ProgressRing({ value, tone = "volt", size = 76 }: { value: number; tone?: Accent; size?: number }) {
   const clamped = Math.max(0, Math.min(100, value));
   const radius = 28;

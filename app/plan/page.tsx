@@ -2,13 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Flame, Moon, Sparkles, SunMedium, Trash2 } from "lucide-react";
+import { ClipboardList, Flame, Moon, Sparkles, SunMedium, Trash2 } from "lucide-react";
 import { fetchAppData, type AppData } from "@/lib/app-data";
 import { getSession } from "@/lib/auth";
 import { money } from "@/lib/format";
 import type { Activity, User } from "@/lib/types";
 import { CHORE_LABELS, ROTATING_ORDER } from "@/lib/chore-rules";
-import { AppFrame, AppHeader, Badge, BottomNav, Card, ProfileAvatar, ProgressBar, ProgressRing } from "@/components/ui";
+import { AppFrame, AppHeader, Badge, BottomNav, Card, EmptyState, ProfileAvatar, ProgressBar, ProgressRing, Skeleton } from "@/components/ui";
 import { TaskList } from "@/components/TaskList";
 import { AppButton, AppChipInput, AppDatePicker, AppInput, AppSelect, AppTextarea, type SelectOption } from "@/components/forms";
 import { cn } from "@/lib/utils";
@@ -52,7 +52,14 @@ export default function PlanPage() {
     return (
       <>
         <AppHeader title="Plan del dia" subtitle="Cargando planes desde PostgreSQL." backHref="/manager" />
-        <AppFrame><Card>Conectando...</Card></AppFrame>
+        <AppFrame>
+          <div className="space-y-3">
+            <Skeleton className="h-28 rounded-[28px]" />
+            <Skeleton className="h-12 rounded-full" />
+            <Skeleton className="h-44 rounded-[28px]" />
+            <Skeleton className="h-44 rounded-[28px]" />
+          </div>
+        </AppFrame>
         <BottomNav />
       </>
     );
@@ -369,8 +376,11 @@ export default function PlanPage() {
           })}
           {visiblePlans.length === 0 ? (
             <Card>
-              <p className="font-black">Sin plan asignado</p>
-              <p className="mt-2 text-sm text-muted">Cuando gerencia cree tu plan del dia, aparecera aqui con checklist y meta.</p>
+              <EmptyState
+                icon={ClipboardList}
+                title="Sin plan asignado"
+                description={isAdvisor ? "Cuando gerencia publique tu plan del día, aparecerá aquí con tu checklist y meta." : "Genera las actividades del día o crea un plan manual para empezar."}
+              />
             </Card>
           ) : null}
         </div>

@@ -6,7 +6,7 @@ import { CalendarOff, Check, Send, X } from "lucide-react";
 import { getSession } from "@/lib/auth";
 import { DAY_BALANCE_LABELS, SHIFT_TYPE_LABELS, dayBalanceField, formatRequestDate, isHourType } from "@/lib/shift-requests";
 import type { User } from "@/lib/types";
-import { AppFrame, AppHeader, Badge, BottomNav, Button, Card, ProfileAvatar } from "@/components/ui";
+import { AppFrame, AppHeader, Badge, BottomNav, Button, Card, EmptyState, ProfileAvatar, Skeleton } from "@/components/ui";
 
 type ShiftRequest = {
   id: string;
@@ -212,9 +212,17 @@ export default function SolicitudesPage() {
         <Card className="p-3.5">
           <h2 className="mb-2.5 text-lg font-black">{isManager ? "Historial" : "Mis solicitudes"}</h2>
           {loading ? (
-            <p className="py-4 text-sm font-semibold text-muted">Cargando…</p>
+            <div className="space-y-2.5 py-2">
+              <Skeleton className="h-12" />
+              <Skeleton className="h-12" />
+              <Skeleton className="h-12" />
+            </div>
           ) : (isManager ? history : requests).length === 0 ? (
-            <p className="py-4 text-sm text-muted">Sin solicitudes todavía.</p>
+            <EmptyState
+              icon={CalendarOff}
+              title="Sin solicitudes todavía"
+              description={isManager ? "Cuando el equipo solicite días o permisos, aparecerán aquí." : "Usa el formulario de arriba para pedir vacaciones, descanso o permisos de horas."}
+            />
           ) : (
             <div className="divide-y divide-white/[0.07]">
               {(isManager ? history : requests).map((request) => (
