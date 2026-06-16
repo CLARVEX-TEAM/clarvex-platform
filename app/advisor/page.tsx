@@ -8,7 +8,7 @@ import { getSession, logout } from "@/lib/auth";
 import { fetchAppData, type AppData } from "@/lib/app-data";
 import { completion, money } from "@/lib/format";
 import { computeDailyStreak } from "@/lib/streaks";
-import { buildSalesTrend } from "@/lib/trend";
+import { buildSalesTrend, buildDailySeries } from "@/lib/trend";
 import type { User } from "@/lib/types";
 import Link from "next/link";
 import { AppFrame, Badge, BottomNav, Card, NotificationCard } from "@/components/ui";
@@ -95,6 +95,8 @@ export default function AdvisorDashboard() {
   if ((kpi?.monthlyGoal ?? 0) > 0 && (kpi?.monthlySales ?? 0) >= (kpi?.monthlyGoal ?? 0)) badges.push("💯 Mes cumplido");
   if (streak.best >= 7) badges.push("⚡ Imparable");
   const salesTrend = buildSalesTrend(data.kpis.map((k) => ({ date: k.date, dailySales: k.dailySales, dailyGoal: k.dailyGoal })), todayKey);
+  const ventasSeries = buildDailySeries(data.kpis.map((k) => ({ date: k.date, value: k.dailySales })), todayKey, 7);
+  const ticketsSeries = buildDailySeries(data.kpis.map((k) => ({ date: k.date, value: k.transactions })), todayKey, 7);
 
   const kpiCards: KpiCardData[] = [
     {
@@ -102,6 +104,7 @@ export default function AdvisorDashboard() {
       value: money(daily.dailySales),
       detail: "Tu venta hoy",
       progress: salesProgress,
+      trend: ventasSeries,
       icon: ShoppingBag,
       color: "blue"
     },
@@ -109,6 +112,7 @@ export default function AdvisorDashboard() {
       label: "TICKETS",
       value: String(daily.transactions),
       detail: "Transacciones",
+      trend: ticketsSeries,
       icon: Receipt,
       color: "green"
     },
