@@ -91,8 +91,7 @@ export default function Scene3D({
     const scene = new THREE.Scene();
     scene.background = new THREE.Color("#f1f5fb");
 
-    const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 200);
-    camera.position.set(0, 9, 12);
+    const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 400);
 
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
@@ -112,6 +111,10 @@ export default function Scene3D({
     const maxRow = Math.max(1, ...fixtures.map((f) => f.row));
     const offX = ((maxCol - 1) * GAP) / 2;
     const offZ = ((maxRow - 1) * GAP) / 2;
+    // Vista general que encuadra toda la tienda según su tamaño.
+    const span = Math.max(maxCol, maxRow) * GAP + 4;
+    const overview = new THREE.Vector3(0, span * 0.62, span * 0.92);
+    camera.position.copy(overview);
 
     const floor = new THREE.Mesh(
       new THREE.PlaneGeometry(maxCol * GAP + 4, maxRow * GAP + 4),
@@ -166,11 +169,11 @@ export default function Scene3D({
     renderer.domElement.addEventListener("pointerup", onUp);
 
     // Objetivo de cámara (vuelo suave por lerp en el loop).
-    const targetPos = new THREE.Vector3(0, 9, 12);
+    const targetPos = overview.clone();
     const targetLook = new THREE.Vector3(0, 0, 0);
     let flying = false;
     flyToRef.current = (id) => {
-      if (!id) { targetPos.set(0, 9, 12); targetLook.set(0, 0, 0); }
+      if (!id) { targetPos.copy(overview); targetLook.set(0, 0, 0); }
       else {
         const p = positions.get(id);
         if (!p) return;
