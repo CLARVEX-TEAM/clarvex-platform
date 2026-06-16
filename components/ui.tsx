@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import type { HTMLMotionProps } from "framer-motion";
 import type { LucideIcon } from "lucide-react";
 import {
@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { getSession } from "@/lib/auth";
 import { cn } from "@/lib/utils";
+import { AnimatedNumber } from "@/components/AnimatedNumber";
 import type { Activity, PendingStatus, Priority } from "@/lib/types";
 
 type Tone = "default" | "success" | "done" | "warn" | "danger" | "info";
@@ -179,9 +180,10 @@ export function ProgressBar({ value, tone = "volt" }: { value: number; tone?: Ac
   );
 }
 
-// Bloque de carga: imita la forma del contenido real para una sensación más rápida.
+// Bloque de carga con barrido de luz (shimmer): imita la forma del contenido
+// real para una sensación más rápida y premium.
 export function Skeleton({ className = "" }: { className?: string }) {
-  return <div className={cn("animate-pulse rounded-2xl bg-slate-200 dark:bg-slate-800", className)} />;
+  return <div className={cn("skeleton-shimmer relative overflow-hidden rounded-2xl bg-slate-200 dark:bg-slate-800", className)} />;
 }
 
 // Estado vacío con ícono, mensaje y acción opcional.
@@ -197,14 +199,24 @@ export function EmptyState({
   action?: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-col items-center justify-center px-6 py-10 text-center">
-      <span className="grid size-14 place-items-center rounded-[20px] border border-line bg-blue-50 text-volt dark:bg-[#1a2540]">
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
+      className="flex flex-col items-center justify-center px-6 py-10 text-center"
+    >
+      <motion.span
+        initial={{ scale: 0.4, rotate: -12, opacity: 0 }}
+        animate={{ scale: 1, rotate: 0, opacity: 1 }}
+        transition={{ type: "spring", stiffness: 380, damping: 17, delay: 0.08 }}
+        className="grid size-14 place-items-center rounded-[20px] border border-line bg-blue-50 text-volt dark:bg-[#1a2540]"
+      >
         <Icon size={26} />
-      </span>
+      </motion.span>
       <p className="mt-3 text-base font-black text-ink">{title}</p>
       {description ? <p className="mt-1 max-w-[16rem] text-sm text-muted">{description}</p> : null}
       {action ? <div className="mt-4">{action}</div> : null}
-    </div>
+    </motion.div>
   );
 }
 
@@ -263,7 +275,7 @@ export function KPIStatCard({
         {icon ? <span className={cn("grid place-items-center border border-line bg-blue-50 dark:bg-[#1a2540]", compact ? "size-7 rounded-[14px]" : "size-9 rounded-[18px]", accentText[tone])}>{icon}</span> : null}
         {!icon && delta ? <StatusBadge tone="success">{delta}</StatusBadge> : null}
       </div>
-      <p className={cn("font-black leading-none tracking-[-0.03em]", compact ? "mt-1.5 text-[1.4rem]" : "mt-3 text-[1.72rem]", accentText[tone])}>{value}</p>
+      <p className={cn("font-black leading-none tracking-[-0.03em]", compact ? "mt-1.5 text-[1.4rem]" : "mt-3 text-[1.72rem]", accentText[tone])}><AnimatedNumber value={value} /></p>
       <div className={cn("flex items-end", compact ? "mt-2 h-3 gap-1" : "mt-3 h-7 gap-1.5")}>
         {bars.map((height, index) => (
           <motion.span
@@ -317,25 +329,59 @@ export function ProfileAvatar({
 }
 
 export function TaskItem({ activity, onToggle }: { activity: Activity; onToggle?: (completed: boolean) => void }) {
+  const reduce = useReducedMotion();
+  const [burst, setBurst] = useState(false);
+
+  function handleClick() {
+    const next = !activity.completed;
+    if (next && !reduce) {
+      setBurst(true);
+      window.setTimeout(() => setBurst(false), 650);
+    }
+    onToggle?.(next);
+  }
+
   return (
     <motion.button
       whileTap={{ scale: 0.985, y: 1 }}
-      onClick={() => onToggle?.(!activity.completed)}
+      onClick={handleClick}
       className="flex min-h-11 w-full items-center gap-3 border-b border-white/[0.07] px-1 py-2 text-left transition last:border-b-0 hover:text-volt"
     >
-      <span
-        className={cn(
-          "grid size-7 shrink-0 place-items-center rounded-[10px] border transition",
-          activity.completed ? "border-volt bg-volt/20 text-volt" : "border-white/15 text-transparent"
-        )}
-      >
-        {activity.completed ? (
-          <motion.span initial={{ scale: 0.4, rotate: -20 }} animate={{ scale: 1, rotate: 0 }} transition={{ type: "spring", stiffness: 520, damping: 26 }}>
+      <span className="relative grid size-7 shrink-0 place-items-center">
+        {/* Ráfaga de chispas al completar */}
+        <AnimatePresence>
+          {burst
+            ? Array.from({ length: 6 }).map((_, i) => {
+                const angle = (i / 6) * Math.PI * 2;
+                return (
+                  <motion.span
+                    key={i}
+                    initial={{ x: 0, y: 0, scale: 0, opacity: 1 }}
+                    animate={{ x: Math.cos(angle) * 16, y: Math.sin(angle) * 16, scale: [0, 1, 0], opacity: [1, 1, 0] }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.55, ease: "easeOut" }}
+                    className="absolute size-1.5 rounded-full bg-volt"
+                  />
+                );
+              })
+            : null}
+        </AnimatePresence>
+        <motion.span
+          animate={burst ? { scale: [1, 1.35, 1] } : { scale: 1 }}
+          transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+          className={cn(
+            "grid size-7 place-items-center rounded-[10px] border transition",
+            activity.completed ? "border-volt bg-volt/20 text-volt" : "border-white/15 text-transparent"
+          )}
+        >
+          {activity.completed ? (
+            <motion.span initial={{ scale: 0.4, rotate: -20 }} animate={{ scale: 1, rotate: 0 }} transition={{ type: "spring", stiffness: 520, damping: 26 }}>
+              <Check size={17} />
+            </motion.span>
+          ) : (
             <Check size={17} />
-          </motion.span>
-        ) : (
-          <Check size={17} />
-        )}
+          )}
+        </motion.span>
       </span>
       <span className={cn("text-sm font-semibold", activity.completed ? "text-muted line-through" : "text-ink/90")}>{activity.title}</span>
     </motion.button>

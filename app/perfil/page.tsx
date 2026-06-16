@@ -6,6 +6,7 @@ import { startRegistration } from "@simplewebauthn/browser";
 import { getBiometricRegistrationOptions, getSession, registerBiometric } from "@/lib/auth";
 import type { User } from "@/lib/types";
 import { AppFrame, AppHeader, Badge, BottomNav, Button, Card, ProfileAvatar } from "@/components/ui";
+import { SaveButton } from "@/components/ActionButtons";
 import { useTheme, type Theme } from "@/components/ThemeProvider";
 
 const roleLabels = { GERENTE: "Gerente", SUBGERENTE: "Subgerente", ASESOR: "Asesor" } as const;
@@ -28,6 +29,8 @@ export default function ProfilePage() {
   const [birthDate, setBirthDate] = useState("");
   const [hireDate, setHireDate] = useState("");
   const [savingDates, setSavingDates] = useState(false);
+  const [savedDates, setSavedDates] = useState(false);
+  const [savedPhoto, setSavedPhoto] = useState(false);
   const [datesMessage, setDatesMessage] = useState("");
 
   useEffect(() => {
@@ -52,6 +55,8 @@ export default function ProfilePage() {
       });
       if (!response.ok) throw new Error();
       setDatesMessage("Datos guardados. 🎉");
+      setSavedDates(true);
+      window.setTimeout(() => setSavedDates(false), 2000);
     } catch {
       setDatesMessage("No se pudieron guardar.");
     } finally {
@@ -104,6 +109,8 @@ export default function ProfilePage() {
       setPreviewUrl(null);
       if (inputRef.current) inputRef.current.value = "";
       setMessage("Foto de perfil actualizada.");
+      setSavedPhoto(true);
+      window.setTimeout(() => setSavedPhoto(false), 2000);
     } catch (uploadError) {
       setError(uploadError instanceof Error ? uploadError.message : "No se pudo guardar la foto.");
     } finally {
@@ -162,7 +169,7 @@ export default function ProfilePage() {
                   <span className="text-xs font-bold text-muted">Fecha de ingreso</span>
                   <input type="date" value={hireDate} onChange={(event) => setHireDate(event.target.value)} className="min-h-11 rounded-2xl border border-line bg-panel px-3 text-sm font-bold text-ink outline-none focus:border-volt" />
                 </label>
-                <Button type="button" variant="primary" onClick={() => void saveDates()} disabled={savingDates}>{savingDates ? "Guardando..." : "Guardar datos"}</Button>
+                <SaveButton type="button" onClick={() => void saveDates()} loading={savingDates} success={savedDates} savedLabel="¡Guardado!">Guardar datos</SaveButton>
                 {datesMessage ? <p className="flex items-center gap-2 text-sm font-semibold text-emerald-700"><CheckCircle2 size={16} />{datesMessage}</p> : null}
               </div>
             </Card>
@@ -198,7 +205,7 @@ export default function ProfilePage() {
               <input ref={inputRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={selectPhoto} className="sr-only" />
               <div className="mt-4 grid grid-cols-2 gap-2">
                 <Button type="button" variant="ghost" onClick={() => inputRef.current?.click()} disabled={saving}>{user.photoUrl ? "Cambiar foto" : "Elegir foto"}</Button>
-                <Button type="button" variant="primary" onClick={savePhoto} disabled={!file || saving}>{saving ? "Guardando..." : "Guardar foto"}</Button>
+                <SaveButton type="button" onClick={savePhoto} disabled={!file} loading={saving} success={savedPhoto} savedLabel="¡Guardado!">Guardar foto</SaveButton>
               </div>
               {file ? <p className="mt-3 truncate text-xs font-semibold text-muted">Vista previa: {file.name}</p> : null}
               {message ? <p className="mt-3 flex items-center gap-2 text-sm font-semibold text-emerald-700"><CheckCircle2 size={16} />{message}</p> : null}

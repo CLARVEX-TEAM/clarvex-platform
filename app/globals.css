@@ -335,6 +335,34 @@ svg.lucide {
   opacity: 0.18;
 }
 
+/* ─── Skeleton shimmer — barrido de luz que recorre los bloques de carga.
+   Más premium que un pulse y se propaga a todos los <Skeleton /> de la app. */
+@keyframes skeletonShimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+.skeleton-shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgb(255 255 255 / 0.55) 50%,
+    transparent 100%
+  );
+  animation: skeletonShimmer 1.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+.dark .skeleton-shimmer::after {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgb(255 255 255 / 0.08) 50%,
+    transparent 100%
+  );
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
