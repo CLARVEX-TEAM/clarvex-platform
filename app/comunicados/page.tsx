@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import NextImage from "next/image";
-import { ImagePlus, Megaphone, MessageCircle, Trash2, X } from "lucide-react";
+import { ImagePlus, Megaphone, MessageCircle, X } from "lucide-react";
 import { fetchAppData, type AppData } from "@/lib/app-data";
 import { getSession } from "@/lib/auth";
 import { ANNOUNCEMENT_REACTIONS } from "@/lib/reactions";
@@ -10,6 +10,7 @@ import type { Announcement, AnnouncementReaction, User } from "@/lib/types";
 import { AppFrame, AppHeader, Badge, BottomNav, Card, NotificationCard, ProfileAvatar, ProgressBar } from "@/components/ui";
 import { AppInput, AppTextarea } from "@/components/forms";
 import { SendButton, SendIconButton } from "@/components/SendButton";
+import { DeleteButton } from "@/components/ActionButtons";
 
 type Filter = "todos" | "no-leidos" | "importantes";
 
@@ -289,13 +290,9 @@ export default function ComunicadosPage() {
                     </div>
                     {session ? <CommentsThread announcementId={item.id} session={session} /> : null}
                     {session?.role !== "ASESOR" ? (
-                      <button
-                        onClick={() => void deleteAnnouncement(item.id)}
-                        className="mt-2 flex min-h-10 w-full items-center justify-center gap-2 rounded-xl border border-rose-200/60 bg-rose-50/60 text-sm font-black text-rose-600 transition active:scale-95"
-                      >
-                        <Trash2 size={15} />
+                      <DeleteButton onClick={() => void deleteAnnouncement(item.id)} className="mt-2 w-full">
                         Eliminar comunicado
-                      </button>
+                      </DeleteButton>
                     ) : null}
                   </>
                 }

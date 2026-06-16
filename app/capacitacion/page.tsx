@@ -2,11 +2,12 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ExternalLink, FileText, GraduationCap, ImagePlus, Send, Trash2, X } from "lucide-react";
+import { ExternalLink, FileText, GraduationCap, ImagePlus, Send, X } from "lucide-react";
 import { getSession } from "@/lib/auth";
 import { TRAINING_CATEGORIES, TRAINING_CATEGORY_LABELS } from "@/lib/training";
 import type { User } from "@/lib/types";
 import { AppFrame, AppHeader, Badge, BottomNav, Button, Card } from "@/components/ui";
+import { DeleteButton } from "@/components/ActionButtons";
 
 type Resource = {
   id: string;
@@ -183,9 +184,7 @@ export default function CapacitacionPage() {
                     {resource.viewers && resource.viewers.length > 0 ? (
                       <p className="mt-1 text-xs text-muted">{resource.viewers.map((viewer) => viewer.name).join(", ")}</p>
                     ) : null}
-                    <button type="button" onClick={() => void remove(resource.id)} disabled={busyId === resource.id} className="mt-2 flex items-center gap-1.5 text-sm font-black text-rose-600">
-                      <Trash2 size={14} /> Eliminar
-                    </button>
+                    <DeleteButton type="button" variant="ghost" iconSize={14} loading={busyId === resource.id} onClick={() => void remove(resource.id)} className="mt-2 px-0">Eliminar</DeleteButton>
                   </div>
                 ) : null}
               </Card>

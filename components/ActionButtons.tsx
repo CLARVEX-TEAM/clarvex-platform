@@ -36,17 +36,22 @@ export function DeleteButton({
   children = "Eliminar",
   loading = false,
   variant = "soft",
+  iconOnly = false,
+  iconSize = 15,
   className = "",
   ...props
 }: Omit<HTMLMotionProps<"button">, "children"> & {
   children?: React.ReactNode;
   loading?: boolean;
-  variant?: "soft" | "solid";
+  variant?: "soft" | "solid" | "ghost";
+  /** Sólo el icono (cuadrado). Controla el tamaño con `className`. */
+  iconOnly?: boolean;
+  iconSize?: number;
 }) {
   const reduce = useReducedMotion();
   return (
     <motion.button
-      whileTap={{ scale: 0.95 }}
+      whileTap={{ scale: 0.94 }}
       transition={{ type: "spring", stiffness: 520, damping: 28 }}
       initial="rest"
       whileHover="hover"
@@ -54,9 +59,11 @@ export function DeleteButton({
       {...props}
       disabled={loading || props.disabled}
       className={cn(
-        "tappable group inline-flex min-h-10 items-center justify-center gap-1.5 rounded-xl px-3 text-sm font-black tracking-[-0.01em] focus:outline-none focus:ring-4 focus:ring-rose-500/20 disabled:cursor-not-allowed disabled:opacity-55",
+        "tappable group rounded-xl font-black tracking-[-0.01em] focus:outline-none focus:ring-4 focus:ring-rose-500/20 disabled:cursor-not-allowed disabled:opacity-55",
+        iconOnly ? "grid place-items-center" : "inline-flex min-h-10 items-center justify-center gap-1.5 px-3 text-sm",
         variant === "soft" && "border border-rose-200/60 bg-rose-50/60 text-rose-600 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-400",
         variant === "solid" && "bg-rose-500 text-white shadow-[0_8px_20px_rgb(244_63_94_/_0.28)] hover:bg-rose-600",
+        variant === "ghost" && "text-rose-600 dark:text-rose-400 hover:bg-rose-50/60 dark:hover:bg-rose-500/10",
         className
       )}
     >
@@ -72,9 +79,9 @@ export function DeleteButton({
               }
         }
       >
-        <Trash2 size={15} />
+        <Trash2 size={iconSize} />
       </motion.span>
-      {children}
+      {iconOnly ? null : children}
     </motion.button>
   );
 }

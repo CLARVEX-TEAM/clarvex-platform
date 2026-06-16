@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { ClipboardList, Flame, Moon, Sparkles, SunMedium, Trash2 } from "lucide-react";
+import { ClipboardList, Flame, Moon, Sparkles, SunMedium } from "lucide-react";
 import { fetchAppData, type AppData } from "@/lib/app-data";
 import { getSession } from "@/lib/auth";
 import { money } from "@/lib/format";
@@ -10,6 +10,7 @@ import type { Activity, User } from "@/lib/types";
 import { CHORE_LABELS, ROTATING_ORDER } from "@/lib/chore-rules";
 import { AppFrame, AppHeader, Badge, BottomNav, Card, EmptyState, ProfileAvatar, ProgressBar, ProgressRing, Skeleton } from "@/components/ui";
 import { TaskList } from "@/components/TaskList";
+import { DeleteButton } from "@/components/ActionButtons";
 import { AppButton, AppChipInput, AppDatePicker, AppInput, AppSelect, AppTextarea, type SelectOption } from "@/components/forms";
 import { cn } from "@/lib/utils";
 
@@ -343,13 +344,7 @@ export default function PlanPage() {
                     {!isAdvisor && plan.published === false ? <Badge tone="warn">Borrador</Badge> : null}
                     <Badge>{money(plan.dailyGoal)}</Badge>
                     {!isAdvisor ? (
-                      <button
-                        onClick={() => void deletePlan(plan.id)}
-                        className="grid size-9 place-items-center rounded-xl border border-rose-200/60 bg-rose-50/60 text-rose-600 transition active:scale-95"
-                        aria-label="Eliminar plan"
-                      >
-                        <Trash2 size={15} />
-                      </button>
+                      <DeleteButton iconOnly onClick={() => void deletePlan(plan.id)} className="size-9 border border-rose-200/60 bg-rose-50/60 dark:border-rose-500/30 dark:bg-rose-500/10" aria-label="Eliminar plan" />
                     ) : null}
                   </div>
                 </div>

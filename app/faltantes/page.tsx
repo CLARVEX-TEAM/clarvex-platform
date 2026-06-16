@@ -3,11 +3,12 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import NextImage from "next/image";
-import { Check, ImagePlus, PackageSearch, RotateCcw, Send, Trash2, X } from "lucide-react";
+import { Check, ImagePlus, PackageSearch, RotateCcw, Send, X } from "lucide-react";
 import { getSession } from "@/lib/auth";
 import { INVENTORY_CATEGORIES, INVENTORY_CATEGORY_LABELS } from "@/lib/inventory";
 import type { User } from "@/lib/types";
 import { AppFrame, AppHeader, Badge, BottomNav, Button, Card, ProfileAvatar } from "@/components/ui";
+import { DeleteButton } from "@/components/ActionButtons";
 
 type Report = {
   id: string;
@@ -238,7 +239,7 @@ function ReportRow({ report, isManager, busy, onResolve, onDelete, onReopen }: {
           ) : (
             <Button type="button" variant="primary" icon={<Check size={16} />} onClick={onResolve} disabled={busy} className="min-h-10">Resolver</Button>
           )}
-          <Button type="button" variant="ghost" icon={<Trash2 size={16} />} onClick={onDelete} disabled={busy} className="min-h-10 text-rose-600">Eliminar</Button>
+          <DeleteButton type="button" variant="ghost" iconSize={16} loading={busy} onClick={onDelete} className="min-h-10">Eliminar</DeleteButton>
         </div>
       ) : null}
     </div>
