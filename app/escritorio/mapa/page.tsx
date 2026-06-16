@@ -1,8 +1,8 @@
 "use client";
 
-import { StoreMap } from "@/components/StoreMap";
+import { StoreMapTabs } from "@/components/StoreMapTabs";
 
-// El escritorio es solo gerencia, así que siempre puede editar el mapa.
+// El escritorio es solo gerencia, así que siempre puede administrar el mapa.
 export default function EscritorioMapa() {
-  return <StoreMap canEdit />;
+  return <StoreMapTabs canEdit />;
 }
