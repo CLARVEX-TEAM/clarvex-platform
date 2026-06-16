@@ -33,6 +33,7 @@ import { SalesTrendCard } from "@/components/home/SalesTrendCard";
 import { TeamCelebrationsCard } from "@/components/home/TeamCelebrationsCard";
 import { buildSalesTrend, buildDailySeries } from "@/lib/trend";
 import { upcomingCelebrations } from "@/lib/celebrations";
+import { DesktopAutoRedirect } from "@/components/desktop/DesktopAutoRedirect";
 
 const cardAnim = (delay: number) => ({
   initial: { opacity: 0, y: 12 },
@@ -75,6 +76,7 @@ export default function ManagerDashboard() {
   if (!data) {
     return (
       <>
+        <DesktopAutoRedirect />
         <div className="sticky top-0 z-20 h-[68px] border-b border-slate-200/60 bg-white/88 dark:border-slate-800/60 dark:bg-slate-950/95 backdrop-blur-xl" />
         <AppFrame>
           <div className="animate-pulse space-y-3">
@@ -172,6 +174,7 @@ export default function ManagerDashboard() {
 
   return (
     <>
+      <DesktopAutoRedirect />
       <HomeHeader
         name={manager?.name ?? "Gerente"}
         role={manager?.role ?? "GERENTE"}
