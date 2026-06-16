@@ -42,18 +42,16 @@ export function SendButton({
       disabled={loading || success || props.disabled}
       className={cn(
         "tappable relative inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl px-5 text-sm font-black tracking-[-0.01em] focus:outline-none focus:ring-4 disabled:cursor-not-allowed",
-        // overflow visible para que el avión pueda "salir" del botón al despegar
+        // overflow visible para que el avión pueda "salir" del botón al despegar.
+        // (sin btn-sheen: su franja blanca asomaría por el borde al no recortarse)
         "overflow-visible",
         !success &&
-          "btn-sheen bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-[0_8px_30px_rgba(37,99,235,0.35)] hover:shadow-[0_12px_36px_rgba(37,99,235,0.45)] focus:ring-blue-500/20",
+          "bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-[0_8px_30px_rgba(37,99,235,0.35)] hover:shadow-[0_12px_36px_rgba(37,99,235,0.45)] focus:ring-blue-500/20",
         success &&
           "bg-gradient-to-r from-emerald-600 to-emerald-500 text-white shadow-[0_8px_30px_rgba(34,197,94,0.35)] focus:ring-emerald-500/20",
         className
       )}
     >
-      {/* máscara para recortar el sheen sin recortar el avión en vuelo */}
-      <span className="pointer-events-none absolute inset-0 overflow-hidden rounded-2xl" aria-hidden />
-
       <span className="relative grid size-5 place-items-center">
         <AnimatePresence mode="popLayout" initial={false}>
           {phase === "sent" ? (

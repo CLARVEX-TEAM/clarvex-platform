@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { AnimatePresence } from "framer-motion";
 import { AlertTriangle, ClipboardCheck, Plus, UserRound } from "lucide-react";
 import { fetchAppData, type AppData } from "@/lib/app-data";
 import { getSession } from "@/lib/auth";
@@ -232,8 +233,9 @@ export default function PendientesPage() {
         ) : null}
 
         <div className="space-y-2.5">
+          <AnimatePresence initial={false}>
           {visiblePendings.map((pending) => (
-            <Card key={pending.id}>
+            <Card key={pending.id} layout exit={{ opacity: 0, scale: 0.9, x: 60 }}>
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <h2 className="font-black">{pending.title}</h2>
@@ -257,6 +259,7 @@ export default function PendientesPage() {
               <ResourceDiscussion target={{ pendingId: pending.id }} />
             </Card>
           ))}
+          </AnimatePresence>
           {visiblePendings.length === 0 ? (
             <Card>
               <EmptyState

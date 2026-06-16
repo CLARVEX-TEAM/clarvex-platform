@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import NextImage from "next/image";
 import { ImagePlus, Megaphone, MessageCircle, X } from "lucide-react";
 import { fetchAppData, type AppData } from "@/lib/app-data";
@@ -242,14 +243,15 @@ export default function ComunicadosPage() {
         ) : null}
 
         <div className="space-y-2.5">
+          <AnimatePresence initial={false}>
           {visibleAnnouncements.map((item) => {
             const unread = session ? !item.readBy.includes(session.id) : false;
             const authorUser = data?.users.find((user) => user.id === item.authorId);
             const author = authorUser?.name ?? "Equipo";
             const readProgress = advisors.length ? Math.round((item.readBy.length / advisors.length) * 100) : 0;
             return (
+              <motion.div key={item.id} layout exit={{ opacity: 0, scale: 0.9, x: 60 }} transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}>
               <NotificationCard
-                key={item.id}
                 title={item.title}
                 body={item.body}
                 imageUrl={item.imageUrl}
@@ -305,8 +307,10 @@ export default function ComunicadosPage() {
                   </>
                 }
               />
+              </motion.div>
             );
           })}
+          </AnimatePresence>
           {visibleAnnouncements.length === 0 ? (
             <Card>
               <p className="font-black">Sin comunicados</p>
