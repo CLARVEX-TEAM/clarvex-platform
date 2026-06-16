@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { ProgressBar, ProgressRing } from "@/components/ui";
+import { achievementTone, ProgressBar, ProgressRing } from "@/components/ui";
 import { money } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { useTheme } from "@/components/ThemeProvider";
@@ -17,6 +17,7 @@ interface DailySalesCardProps {
 export function DailySalesCard({ sales, goal, label = "Venta diaria", delay = 0.08, className }: DailySalesCardProps) {
   const { isDark } = useTheme();
   const progress = goal > 0 ? Math.round((sales / goal) * 100) : 0;
+  const tone = achievementTone(progress);
 
   return (
     <motion.div
@@ -40,7 +41,7 @@ export function DailySalesCard({ sales, goal, label = "Venta diaria", delay = 0.
             }
       }
     >
-      <p className="text-[10.5px] font-black uppercase tracking-[0.14em] text-[#2563EB]">{label}</p>
+      <p className="text-[10.5px] font-bold uppercase tracking-[0.14em] text-[#2563EB]">{label}</p>
       <div className="mt-2 flex items-start justify-between gap-4">
         <div className="min-w-0">
           <p className="text-[2.5rem] font-black leading-none tracking-[-0.05em] text-slate-900 dark:text-white">
@@ -51,12 +52,12 @@ export function DailySalesCard({ sales, goal, label = "Venta diaria", delay = 0.
             <span className="text-sm font-black text-[#2563EB]">{money(goal)}</span>
           </div>
           <div className="mt-3">
-            <ProgressBar value={progress} />
+            <ProgressBar value={progress} tone={tone} />
           </div>
         </div>
         <div className="shrink-0 text-center">
-          <ProgressRing value={progress} tone={progress >= 80 ? "volt" : "ember"} size={72} />
-          <p className="mt-1.5 text-[9.5px] font-black uppercase tracking-[0.12em] text-slate-400 dark:text-slate-500">
+          <ProgressRing value={progress} tone={tone} size={72} />
+          <p className="mt-1.5 text-[9.5px] font-bold uppercase tracking-[0.12em] text-slate-400 dark:text-slate-500">
             ALCANCE
           </p>
         </div>

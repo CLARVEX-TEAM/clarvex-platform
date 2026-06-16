@@ -86,7 +86,7 @@ export default function KudosPage() {
             <div className="flex items-center gap-3">
               <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-amber-100 text-amber-600 dark:bg-[#3a2e10]"><Trophy size={22} /></span>
               <div className="min-w-0">
-                <p className="text-[11px] font-black uppercase tracking-[0.13em] text-muted">Reconocido de la semana</p>
+                <p className="text-[11px] font-bold uppercase tracking-[0.13em] text-muted">Reconocido de la semana</p>
                 <div className="mt-0.5 flex items-center gap-2">
                   <ProfileAvatar name={topWeek.name} photoUrl={topWeek.photoUrl} size="sm" />
                   <p className="truncate font-black text-ink">{topWeek.name}</p>

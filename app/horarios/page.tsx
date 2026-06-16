@@ -126,7 +126,7 @@ export default function HorariosPage() {
           <div className="flex items-center justify-between gap-3">
             <button type="button" onClick={() => moveWeek(-1)} className="grid size-11 shrink-0 place-items-center rounded-full bg-slate-100 dark:bg-slate-800 text-ink transition active:scale-95" aria-label="Semana anterior"><ChevronLeft size={20} /></button>
             <div className="min-w-0 text-center">
-              <p className="text-[11px] font-black uppercase tracking-[0.12em] text-volt">{isManager && view === "team" ? "Semana del equipo" : "Mi semana"}</p>
+              <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-volt">{isManager && view === "team" ? "Semana del equipo" : "Mi semana"}</p>
               <h2 className="mt-0.5 text-lg font-black tracking-[-0.03em] text-ink">Semana {isoWeekNumber(new Date(`${weekStart}T00:00:00Z`))}</h2>
               <p className="text-xs font-semibold text-muted">{rangeLabel}</p>
             </div>

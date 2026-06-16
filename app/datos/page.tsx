@@ -204,7 +204,7 @@ export default function DataCenterPage() {
         <section className="manager-sales-hero rounded-[28px] border border-volt/25 px-4 py-4">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <p className="text-[11px] font-black uppercase tracking-[0.14em] text-volt">Integraciones de tienda</p>
+              <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-volt">Integraciones de tienda</p>
               <h2 className="mt-1 text-2xl font-black tracking-[-0.035em]">{connectedCount} de {dataSourceTypes.length} vinculadas</h2>
               <p className="mt-1 max-w-[15rem] text-[13px] leading-5 text-muted">Prepara Excel y SharePoint sin alterar la operacion actual.</p>
             </div>
@@ -276,7 +276,7 @@ export default function DataCenterPage() {
                         </div>
                         {"ttlsMeta" in kpiMetrics ? (
                           <div className="mt-1 rounded-2xl border border-line bg-slate-50 dark:bg-slate-800 px-3 py-2">
-                            <p className="mb-1.5 text-[10px] font-black uppercase tracking-[0.1em] text-muted">Totales fila TTLS</p>
+                            <p className="mb-1.5 text-[10px] font-bold uppercase tracking-[0.1em] text-muted">Totales fila TTLS</p>
                             <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-[11px]">
                               <span className="text-muted">Tráfico</span><span className="font-bold text-ink">{(kpiMetrics as KpiSyncMetrics).ttlsTraffic?.toLocaleString("es-MX") ?? "—"}</span>
                               <span className="text-muted">Meta</span><span className="font-bold text-ink">${(kpiMetrics as KpiSyncMetrics).ttlsMeta?.toLocaleString("es-MX") ?? "—"}</span>
@@ -290,7 +290,7 @@ export default function DataCenterPage() {
                     ) : null}
                     {sheets.length > 0 ? (
                       <div className="mt-2 rounded-2xl border border-line bg-slate-50 dark:bg-slate-800 px-3 py-2">
-                        <p className="text-[10px] font-black uppercase tracking-[0.1em] text-muted">Hojas detectadas</p>
+                        <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-muted">Hojas detectadas</p>
                         <div className="mt-1.5 grid gap-1">
                           {sheets.map((sheet) => (
                             <div key={sheet.name} className="flex items-center justify-between gap-3 text-[11px]">
@@ -363,7 +363,7 @@ export default function DataCenterPage() {
           <section role="dialog" aria-modal="true" aria-labelledby="source-config-title" className="liquid-glass max-h-[calc(100dvh-5rem)] w-full max-w-md overflow-y-auto rounded-[30px] border-volt/25 p-4 shadow-[0_20px_60px_rgb(15_23_42_/_0.22)]">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-[11px] font-black uppercase tracking-[0.13em] text-volt">Configurar fuente</p>
+                <p className="text-[11px] font-bold uppercase tracking-[0.13em] text-volt">Configurar fuente</p>
                 <h2 id="source-config-title" className="mt-1 text-xl font-black tracking-[-0.03em]">{modules[config.type].label}</h2>
                 <p className="mt-1 text-xs text-muted">Los cambios se guardan para esta tienda.</p>
               </div>

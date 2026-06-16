@@ -54,18 +54,19 @@ const badgeTones: Record<Tone, string> = {
   done: "border-success/25 bg-success/10 text-success",
   warn: "border-ember/35 bg-ember/12 text-ember",
   danger: "border-orchid/35 bg-orchid/12 text-orchid",
-  info: "border-sky-400/25 bg-sky-400/10 text-sky-200"
+  info: "border-sky-400/30 bg-sky-400/10 text-sky-600 dark:text-sky-300"
 };
 
 export function GlassCard({ children, className = "", ...props }: Omit<HTMLMotionProps<"section">, "children"> & { children: React.ReactNode }) {
   return (
     <motion.section
       {...props}
-      initial={{ opacity: 0, y: 10, scale: 0.99, filter: "blur(4px)" }}
-      animate={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
+      initial={{ opacity: 0, y: 14, scale: 0.985, filter: "blur(4px)" }}
+      whileInView={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
+      viewport={{ once: true, margin: "0px 0px -12% 0px" }}
       whileTap={{ scale: 0.99, y: 1 }}
       whileHover={{ y: -2, boxShadow: "0 8px 30px rgba(37,99,235,0.15)" }}
-      transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+      transition={{ duration: 0.34, ease: [0.22, 1, 0.36, 1] }}
       className={cn("liquid-glass rounded-[28px] p-3.5 shadow-glass", className)}
     >
       {children}
@@ -167,6 +168,14 @@ export function statusTone(status: PendingStatus): Tone {
   return status === "completado" ? "success" : status === "en proceso" ? "warn" : "default";
 }
 
+// Color semántico por alcance (%): el avance se lee de un vistazo sin mirar la cifra.
+// ≥100% verde · 90–99% ámbar · <90% rojo.
+export function achievementTone(progress: number): Accent {
+  if (progress >= 100) return "mint";
+  if (progress >= 90) return "ember";
+  return "orchid";
+}
+
 export function ProgressBar({ value, tone = "volt" }: { value: number; tone?: Accent }) {
   const clamped = Math.max(0, Math.min(100, value));
   return (
@@ -257,7 +266,8 @@ export function KPIStatCard({
   progress,
   delta,
   icon,
-  compact = false
+  compact = false,
+  trend
 }: {
   label: string;
   value: string;
@@ -267,28 +277,40 @@ export function KPIStatCard({
   delta?: string;
   icon?: React.ReactNode;
   compact?: boolean;
+  /** Serie real (p. ej. últimos días). Sin ella, la tarjeta NO dibuja barras inventadas. */
+  trend?: number[];
 }) {
-  const bars = progress !== undefined ? [34, 52, 46, Math.max(18, Math.min(92, progress)), Math.max(24, Math.min(96, progress + 8))] : [28, 45, 36, 58, 48];
+  // Normaliza la serie real a alturas 18–100%. Sin serie con al menos 2 puntos → sin
+  // mini-gráfica: nunca fabricamos datos que parezcan una tendencia.
+  const bars = (() => {
+    if (!trend || trend.length < 2) return null;
+    const max = Math.max(...trend);
+    const min = Math.min(...trend);
+    const span = max - min || 1;
+    return trend.map((v) => 18 + ((v - min) / span) * 82);
+  })();
   return (
     <GlassCard className={cn(compact ? "min-h-[98px] p-3" : "min-h-[142px] p-4")}>
       <div className="flex items-start justify-between gap-2">
-        <p className="text-[11px] font-black uppercase tracking-[0.12em] text-muted">{label}</p>
+        <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-muted">{label}</p>
         {icon ? <span className={cn("grid place-items-center border border-line bg-blue-50 dark:bg-[#1a2540]", compact ? "size-7 rounded-[14px]" : "size-9 rounded-[18px]", accentText[tone])}>{icon}</span> : null}
         {!icon && delta ? <StatusBadge tone="success">{delta}</StatusBadge> : null}
       </div>
       <p className={cn("font-black leading-none tracking-[-0.03em]", compact ? "mt-1.5 text-[1.4rem]" : "mt-3 text-[1.72rem]", accentText[tone])}><AnimatedNumber value={value} /></p>
-      <div className={cn("flex items-end", compact ? "mt-2 h-3 gap-1" : "mt-3 h-7 gap-1.5")}>
-        {bars.map((height, index) => (
-          <motion.span
-            key={index}
-            initial={{ height: 4, opacity: 0.35 }}
-            animate={{ height: `${height}%`, opacity: 1 }}
-            transition={{ delay: index * 0.035, duration: 0.28 }}
-            className={cn("w-full rounded-full bg-slate-200 dark:bg-[#2a3a5c]", index >= 3 && accentBg[tone])}
-          />
-        ))}
-      </div>
-      {!compact && progress !== undefined ? <ProgressBar value={progress} tone={tone} /> : null}
+      {bars ? (
+        <div className={cn("flex items-end", compact ? "mt-2 h-3 gap-1" : "mt-3 h-7 gap-1.5")}>
+          {bars.map((height, index) => (
+            <motion.span
+              key={index}
+              initial={{ height: 4, opacity: 0.35 }}
+              animate={{ height: `${height}%`, opacity: 1 }}
+              transition={{ delay: index * 0.035, duration: 0.28 }}
+              className={cn("w-full rounded-full bg-slate-200 dark:bg-[#2a3a5c]", index === bars.length - 1 && accentBg[tone])}
+            />
+          ))}
+        </div>
+      ) : null}
+      {progress !== undefined && (!compact || !bars) ? <ProgressBar value={progress} tone={tone} /> : null}
       {detail ? <p className={cn("text-muted", compact ? "mt-1.5 text-[11px] leading-4" : "mt-2 text-[13px] leading-5")}>{detail}</p> : null}
     </GlassCard>
   );
@@ -316,7 +338,7 @@ export function ProfileAvatar({
 
   if (photoUrl) {
     return (
-      <span className={cn("relative block shrink-0 overflow-hidden ring-1 ring-white/15", sizes[size], className)}>
+      <span className={cn("relative block shrink-0 overflow-hidden ring-1 ring-black/5 dark:ring-white/10", sizes[size], className)}>
         <Image src={photoUrl} alt={name} fill sizes="80px" className="object-cover" />
       </span>
     );
@@ -478,7 +500,7 @@ export function AppHeader({
             </Link>
           ) : null}
           <div className="min-w-0">
-            <p className={cn("font-black uppercase tracking-[0.16em] text-volt/90 transition-all duration-300", scrolled ? "text-[9px] opacity-70" : "text-[10px] opacity-100")}>CLARVEX Team</p>
+            <p className={cn("font-bold uppercase tracking-[0.16em] text-volt/90 transition-all duration-300", scrolled ? "text-[9px] opacity-70" : "text-[10px] opacity-100")}>CLARVEX Team</p>
             <h1 className="text-[1.15rem] font-black leading-tight tracking-[-0.035em] text-ink">{title}</h1>
             <p className={cn("overflow-hidden text-[11px] leading-4 text-muted transition-all duration-300", scrolled ? "max-h-0 opacity-0" : "max-h-5 opacity-100")}>{subtitle}</p>
           </div>
@@ -560,7 +582,7 @@ export function LiquidBottomNav() {
                   <item.icon size={19} />
                 </motion.span>
               </span>
-              <span className={cn("relative text-[9px] tracking-[-0.01em] transition-colors", active ? "font-black text-volt" : "font-bold text-muted")}>
+              <span className={cn("relative text-[10px] tracking-[-0.01em] transition-colors", active ? "font-black text-volt" : "font-bold text-muted")}>
                 {item.label}
               </span>
             </Link>

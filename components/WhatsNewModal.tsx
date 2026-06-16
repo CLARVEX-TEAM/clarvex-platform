@@ -172,7 +172,7 @@ export function WhatsNewModal() {
               >
                 <Sparkles size={26} />
               </motion.span>
-              <p className="mt-3 text-[10px] font-black uppercase tracking-[0.18em] text-volt/90">Novedades de hoy</p>
+              <p className="mt-3 text-[10px] font-bold uppercase tracking-[0.18em] text-volt/90">Novedades de hoy</p>
               <h2 className="mt-1 text-[1.5rem] font-black leading-tight tracking-[-0.035em] text-ink">
                 Estrenamos cosas nuevas
               </h2>

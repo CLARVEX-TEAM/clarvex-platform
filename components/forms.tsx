@@ -35,7 +35,7 @@ export function AppInput({
         className={cn(
           "pointer-events-none absolute left-4 transition-all duration-150 ease-out",
           lifted
-            ? "top-2 text-[10px] font-black uppercase tracking-[0.1em] text-blue-500 dark:text-blue-400"
+            ? "top-2 text-[10px] font-bold uppercase tracking-[0.1em] text-blue-500 dark:text-blue-400"
             : "top-[18px] text-[14px] font-normal text-slate-400 dark:text-slate-500"
         )}
       >
@@ -85,7 +85,7 @@ export function AppTextarea({
         className={cn(
           "pointer-events-none absolute left-4 transition-all duration-150 ease-out",
           lifted
-            ? "top-2 text-[10px] font-black uppercase tracking-[0.1em] text-blue-500 dark:text-blue-400"
+            ? "top-2 text-[10px] font-bold uppercase tracking-[0.1em] text-blue-500 dark:text-blue-400"
             : "top-[18px] text-[14px] font-normal text-slate-400 dark:text-slate-500"
         )}
       >
@@ -148,7 +148,7 @@ export function AppSelect({
             <AvatarSmall name={selected.label} photoUrl={selected.photoUrl} size={32} />
           ) : null}
           <div className="min-w-0 flex-1">
-            <p className="text-[10px] font-black uppercase tracking-[0.1em] text-blue-500 dark:text-blue-400">{label}</p>
+            <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-blue-500 dark:text-blue-400">{label}</p>
             <p className={cn("truncate text-sm font-semibold", selected ? "text-ink" : "text-slate-400 dark:text-slate-500")}>
               {selected?.label ?? placeholder}
             </p>
@@ -181,7 +181,7 @@ export function AppSelect({
               <div className="flex justify-center pt-3 pb-1">
                 <div className="h-1 w-10 rounded-full bg-slate-200 dark:bg-slate-700" />
               </div>
-              <p className="px-5 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
+              <p className="px-5 py-3 text-[11px] font-bold uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
                 {label}
               </p>
               <div className="max-h-[55vh] overflow-y-auto px-3">
@@ -262,7 +262,7 @@ export function AppChipInput({
         wrapperClassName
       )}
     >
-      <p className="mb-2 text-[10px] font-black uppercase tracking-[0.1em] text-blue-500 dark:text-blue-400">{label}</p>
+      <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.1em] text-blue-500 dark:text-blue-400">{label}</p>
       {chips.length > 0 && (
         <div className="mb-2.5 flex flex-wrap gap-1.5">
           <AnimatePresence>
@@ -353,7 +353,7 @@ export function AppDatePicker({
           <CalendarDays size={17} />
         </span>
         <div className="flex-1">
-          <p className="text-[10px] font-black uppercase tracking-[0.1em] text-blue-500 dark:text-blue-400">{label}</p>
+          <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-blue-500 dark:text-blue-400">{label}</p>
           <p className={cn("text-sm font-semibold", formatted ? "text-ink" : "text-slate-400 dark:text-slate-500")}>
             {formatted || "Seleccionar fecha"}
           </p>
