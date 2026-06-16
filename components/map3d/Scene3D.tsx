@@ -8,15 +8,56 @@ import type { Fixture } from "@/components/StoreMap";
 // three.js "puro" (sin react-three-fiber): evita el choque de versiones de React
 // que dejaba los internals (ReactCurrentBatchConfig) undefined.
 
-const GAP = 2.4;
-const BOX_W = 1.7;
-const BOX_D = 1.7;
-const BOX_H = 1.3;
+const GAP = 2.6;
 const COLOR_BASE = 0x93c5fd;
 const COLOR_SEL = 0x2563eb;
+const COLOR_GRAY = 0xb8c2d0;
 
 function escapeHtml(value: string) {
   return value.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c] ?? c));
+}
+
+/** Construye la geometría real de un mueble según su tipo. Devuelve sus mallas
+ *  (cada una marcada con el id del mueble) y la altura para anclar la etiqueta. */
+function buildFixture(id: string, type: string, x: number, z: number): { meshes: THREE.Mesh[]; labelY: number } {
+  const meshes: THREE.Mesh[] = [];
+  const bodyMat = () => new THREE.MeshStandardMaterial({ color: COLOR_BASE, roughness: 0.5, metalness: 0.08, transparent: true });
+  const grayMat = () => new THREE.MeshStandardMaterial({ color: COLOR_GRAY, roughness: 0.4, metalness: 0.35, transparent: true });
+  const add = (geo: THREE.BufferGeometry, mat: THREE.Material, py: number, body: boolean, dx = 0, dz = 0, rotZ = 0) => {
+    const m = new THREE.Mesh(geo, mat);
+    m.position.set(x + dx, py, z + dz);
+    if (rotZ) m.rotation.z = rotZ;
+    m.castShadow = true;
+    m.userData.fixtureId = id;
+    m.userData.body = body;
+    meshes.push(m);
+  };
+
+  switch (type) {
+    case "WALL":
+      add(new THREE.BoxGeometry(2.0, 2.2, 0.22), bodyMat(), 1.1, true);
+      return { meshes, labelY: 2.5 };
+    case "ROUND":
+      add(new THREE.CylinderGeometry(0.85, 0.85, 0.14, 36), bodyMat(), 0.6, true);
+      add(new THREE.CylinderGeometry(0.06, 0.06, 0.6, 16), grayMat(), 0.3, false);
+      return { meshes, labelY: 1.05 };
+    case "RACK":
+      add(new THREE.BoxGeometry(1.4, 0.9, 0.5), bodyMat(), 1.15, true); // ropa colgada
+      add(new THREE.CylinderGeometry(0.04, 0.04, 1.7, 12), grayMat(), 0.85, false, -0.7);
+      add(new THREE.CylinderGeometry(0.04, 0.04, 1.7, 12), grayMat(), 0.85, false, 0.7);
+      add(new THREE.CylinderGeometry(0.035, 0.035, 1.5, 12), grayMat(), 1.68, false, 0, 0, Math.PI / 2);
+      return { meshes, labelY: 2.05 };
+    case "COUNTER":
+      add(new THREE.BoxGeometry(1.6, 1.0, 0.7), bodyMat(), 0.5, true);
+      return { meshes, labelY: 1.3 };
+    case "TABLE":
+    default: {
+      add(new THREE.BoxGeometry(1.8, 0.12, 1.0), bodyMat(), 0.55, true); // tablero
+      const legs: Array<[number, number]> = [[0.8, 0.4], [-0.8, 0.4], [0.8, -0.4], [-0.8, -0.4]];
+      legs.forEach(([dx, dz]) => add(new THREE.CylinderGeometry(0.04, 0.04, 0.55, 10), grayMat(), 0.275, false, dx, dz));
+      return { meshes, labelY: 0.95 };
+    }
+  }
 }
 
 export default function Scene3D({
@@ -81,22 +122,17 @@ export default function Scene3D({
     scene.add(floor);
 
     const meshes: THREE.Mesh[] = [];
+    const fixtureMeshes = new Map<string, THREE.Mesh[]>();
     const positions = new Map<string, THREE.Vector3>();
     const labels = new Map<string, HTMLDivElement>();
 
     fixtures.forEach((f) => {
       const x = (f.col - 1) * GAP - offX;
       const z = (f.row - 1) * GAP - offZ;
-      const mesh = new THREE.Mesh(
-        new THREE.BoxGeometry(BOX_W, BOX_H, BOX_D),
-        new THREE.MeshStandardMaterial({ color: COLOR_BASE, roughness: 0.55, metalness: 0.05, transparent: true })
-      );
-      mesh.position.set(x, BOX_H / 2, z);
-      mesh.castShadow = true;
-      mesh.userData.fixtureId = f.id;
-      scene.add(mesh);
-      meshes.push(mesh);
-      positions.set(f.id, new THREE.Vector3(x, BOX_H + 0.5, z));
+      const { meshes: fm, labelY } = buildFixture(f.id, f.type, x, z);
+      fm.forEach((m) => { scene.add(m); meshes.push(m); });
+      fixtureMeshes.set(f.id, fm);
+      positions.set(f.id, new THREE.Vector3(x, labelY, z));
 
       const el = document.createElement("div");
       el.style.position = "absolute";
@@ -138,17 +174,19 @@ export default function Scene3D({
       else {
         const p = positions.get(id);
         if (!p) return;
-        targetPos.set(p.x + 2.6, 3.1, p.z + 3.6);
-        targetLook.set(p.x, 0.7, p.z);
+        targetPos.set(p.x + 2.8, p.y + 2.2, p.z + 3.8);
+        targetLook.set(p.x, p.y * 0.45, p.z);
       }
       flying = true;
     };
     highlightRef.current = (id) => {
-      meshes.forEach((m) => {
-        const mat = m.material as THREE.MeshStandardMaterial;
-        const isSel = m.userData.fixtureId === id;
-        mat.color.setHex(isSel ? COLOR_SEL : COLOR_BASE);
-        mat.opacity = id && !isSel ? 0.5 : 1;
+      fixtureMeshes.forEach((fm, fid) => {
+        const isSel = fid === id;
+        fm.forEach((m) => {
+          const mat = m.material as THREE.MeshStandardMaterial;
+          if (m.userData.body) mat.color.setHex(isSel ? COLOR_SEL : COLOR_BASE);
+          mat.opacity = id && !isSel ? 0.45 : 1;
+        });
       });
     };
 

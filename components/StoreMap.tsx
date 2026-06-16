@@ -7,10 +7,11 @@ import { cn } from "@/lib/utils";
 import { Button, Card, EmptyState } from "@/components/ui";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { useToast } from "@/components/Toast";
+import { FIXTURE_TYPES, FIXTURE_TYPE_LABELS, type FixtureType } from "@/lib/fixtures";
 
-export type Fixture = { id: string; name: string; col: number; row: number; styles: string[] };
+export type Fixture = { id: string; name: string; type: FixtureType; col: number; row: number; styles: string[] };
 
-type Draft = { id: string | null; name: string; col: number; row: number; stylesText: string };
+type Draft = { id: string | null; name: string; type: FixtureType; col: number; row: number; stylesText: string };
 
 const MIN_COLS = 4;
 const MIN_ROWS = 3;
@@ -52,10 +53,10 @@ export function StoreMap({ canEdit }: { canEdit: boolean }) {
   const rows = Math.max(MIN_ROWS, maxRow + (editMode ? 1 : 0));
 
   function openNew(col: number, row: number) {
-    setDraft({ id: null, name: "", col, row, stylesText: "" });
+    setDraft({ id: null, name: "", type: "TABLE", col, row, stylesText: "" });
   }
   function openEdit(f: Fixture) {
-    setDraft({ id: f.id, name: f.name, col: f.col, row: f.row, stylesText: f.styles.join("\n") });
+    setDraft({ id: f.id, name: f.name, type: f.type, col: f.col, row: f.row, stylesText: f.styles.join("\n") });
   }
 
   async function saveDraft() {
@@ -65,7 +66,7 @@ export function StoreMap({ canEdit }: { canEdit: boolean }) {
     const styles = draft.stylesText.split("\n").map((s) => s.trim()).filter(Boolean);
     setSaving(true);
     try {
-      const body = JSON.stringify({ name, col: draft.col, row: draft.row, styles });
+      const body = JSON.stringify({ name, type: draft.type, col: draft.col, row: draft.row, styles });
       const response = draft.id
         ? await fetch(`/api/fixtures/${draft.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body })
         : await fetch("/api/fixtures", { method: "POST", headers: { "Content-Type": "application/json" }, body });
@@ -210,6 +211,12 @@ export function StoreMap({ canEdit }: { canEdit: boolean }) {
               <label className="grid gap-1.5">
                 <span className="text-[11px] font-bold uppercase tracking-[0.1em] text-muted">Nombre del mueble / rack</span>
                 <input value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} maxLength={60} placeholder="Ej. Rack 1, Mueble entrada" className="min-h-12 rounded-2xl border border-line bg-panel px-3.5 text-sm font-semibold text-ink outline-none focus:border-volt focus:ring-4 focus:ring-volt/10" />
+              </label>
+              <label className="grid gap-1.5">
+                <span className="text-[11px] font-bold uppercase tracking-[0.1em] text-muted">Tipo de mueble (forma en 3D)</span>
+                <select value={draft.type} onChange={(e) => setDraft({ ...draft, type: e.target.value as FixtureType })} className="min-h-12 rounded-2xl border border-line bg-panel px-3.5 text-sm font-bold text-ink outline-none focus:border-volt">
+                  {FIXTURE_TYPES.map((t) => <option key={t} value={t}>{FIXTURE_TYPE_LABELS[t]}</option>)}
+                </select>
               </label>
               <div className="grid grid-cols-2 gap-3">
                 <label className="grid gap-1.5">
