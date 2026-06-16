@@ -4,7 +4,7 @@ import { SESSION_COOKIE, verifySessionToken } from "@/lib/session-token";
 
 const managerRoutes = ["/manager", "/pendientes", "/bitacora", "/comunicados", "/datos", "/escritorio"];
 const advisorRoutes = ["/advisor", "/kpis", "/horarios", "/actividad"];
-const sharedRoutes = ["/plan", "/kpis", "/horarios", "/perfil", "/notificaciones", "/pendientes", "/comunicados"];
+const sharedRoutes = ["/plan", "/kpis", "/horarios", "/perfil", "/notificaciones", "/pendientes", "/comunicados", "/mapa"];
 
 function startsWithRoute(pathname: string, routes: string[]) {
   return routes.some((route) => pathname === route || pathname.startsWith(`${route}/`));
@@ -36,5 +36,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/login", "/manager/:path*", "/advisor/:path*", "/pendientes/:path*", "/bitacora/:path*", "/comunicados/:path*", "/datos/:path*", "/escritorio/:path*", "/plan/:path*", "/kpis/:path*", "/horarios/:path*", "/perfil/:path*", "/notificaciones/:path*", "/actividad/:path*"]
+  matcher: ["/login", "/manager/:path*", "/advisor/:path*", "/pendientes/:path*", "/bitacora/:path*", "/comunicados/:path*", "/datos/:path*", "/escritorio/:path*", "/plan/:path*", "/kpis/:path*", "/horarios/:path*", "/perfil/:path*", "/notificaciones/:path*", "/mapa/:path*", "/actividad/:path*"]
 };
