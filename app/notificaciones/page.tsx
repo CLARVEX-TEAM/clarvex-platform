@@ -2,12 +2,12 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Bell, Cake, CalendarClock, Check, CheckCheck, ChevronRight, ClipboardCheck, HeartHandshake, ImagePlus, Megaphone, MessageCircle, PackageSearch, Sparkles, Target, Trophy } from "lucide-react";
+import { Bell, Cake, CalendarClock, Check, CheckCheck, ChevronRight, ClipboardCheck, GraduationCap, HeartHandshake, ImagePlus, Megaphone, MessageCircle, PackageSearch, Sparkles, Target, Trophy } from "lucide-react";
 import { getSession } from "@/lib/auth";
 import type { User } from "@/lib/types";
 import { AppFrame, AppHeader, Badge, BottomNav, Button, Card } from "@/components/ui";
 
-type NotificationType = "PLAN_READY" | "NEW_ANNOUNCEMENT" | "PENDING_ASSIGNED" | "TASK_COMPLETED" | "KPI_GOAL_REACHED" | "COMMENT_ADDED" | "EVIDENCE_ADDED" | "DAILY_SUMMARY" | "ANNOUNCEMENT_REACTION" | "CELEBRATION" | "KUDO" | "SHIFT_REQUEST" | "INVENTORY_REPORT";
+type NotificationType = "PLAN_READY" | "NEW_ANNOUNCEMENT" | "PENDING_ASSIGNED" | "TASK_COMPLETED" | "KPI_GOAL_REACHED" | "COMMENT_ADDED" | "EVIDENCE_ADDED" | "DAILY_SUMMARY" | "ANNOUNCEMENT_REACTION" | "CELEBRATION" | "KUDO" | "SHIFT_REQUEST" | "INVENTORY_REPORT" | "NEW_TRAINING";
 type NotificationItem = { id: string; type: NotificationType; title: string; body: string; readAt: string | null; createdAt: string };
 
 type TypeConfig = { label: string; icon: typeof Bell; tone: "default" | "warn" | "danger" | "success" };
@@ -25,7 +25,8 @@ const typeConfig: Record<NotificationType, TypeConfig> = {
   CELEBRATION: { label: "Festejo", icon: Cake, tone: "warn" },
   KUDO: { label: "Reconocimiento", icon: HeartHandshake, tone: "success" },
   SHIFT_REQUEST: { label: "Solicitud", icon: CalendarClock, tone: "warn" },
-  INVENTORY_REPORT: { label: "Inventario", icon: PackageSearch, tone: "danger" }
+  INVENTORY_REPORT: { label: "Inventario", icon: PackageSearch, tone: "danger" },
+  NEW_TRAINING: { label: "Capacitación", icon: GraduationCap, tone: "success" }
 };
 
 // Fallback para cualquier tipo desconocido (evita crashes si se agregan tipos nuevos en el backend).
@@ -45,6 +46,7 @@ const typeHref: Record<NotificationType, string> = {
   KUDO: "/kudos",
   SHIFT_REQUEST: "/solicitudes",
   INVENTORY_REPORT: "/faltantes",
+  NEW_TRAINING: "/capacitacion",
 };
 
 export default function NotificationsPage() {

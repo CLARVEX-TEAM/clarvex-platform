@@ -3,6 +3,8 @@ import { isApiError, requireSession } from "@/lib/api";
 import { isTrainingCategory } from "@/lib/training";
 import { validateEvidenceImage } from "@/lib/evidence";
 import { prisma } from "@/lib/prisma";
+import { createNotifications } from "@/lib/notifications";
+import { dispatchPushToUsers } from "@/lib/push";
 import { deleteFromR2, uploadToR2 } from "@/lib/r2";
 
 export const dynamic = "force-dynamic";
@@ -91,10 +93,24 @@ export async function POST(request: Request) {
   }
 
   try {
-    const resource = await prisma.trainingResource.create({
-      data: { storeId: session.storeId, authorId: session.userId, title, description: description || null, category, linkUrl: linkUrl || null, fileUrl, fileName },
-      include: { author: { select: { name: true } } }
+    const { resource, advisorIds } = await prisma.$transaction(async (tx) => {
+      const created = await tx.trainingResource.create({
+        data: { storeId: session.storeId, authorId: session.userId, title, description: description || null, category, linkUrl: linkUrl || null, fileUrl, fileName },
+        include: { author: { select: { name: true } } }
+      });
+      const advisors = await tx.user.findMany({ where: { storeId: session.storeId, role: "ASESOR" }, select: { id: true } });
+      await createNotifications(tx, advisors.map((advisor) => ({
+        storeId: session.storeId,
+        userId: advisor.id,
+        type: "NEW_TRAINING" as const,
+        title: "Nueva capacitación",
+        body: created.title
+      })));
+      return { resource: created, advisorIds: advisors.map((advisor) => advisor.id) };
     });
+
+    dispatchPushToUsers(advisorIds, { title: "Nueva capacitación", body: resource.title, tag: "capacitacion" }).catch(() => undefined);
+
     return NextResponse.json({
       resource: {
         id: resource.id, title: resource.title, description: resource.description, category: resource.category,

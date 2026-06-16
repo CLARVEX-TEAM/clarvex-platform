@@ -92,6 +92,7 @@ enum NotificationType {
   KUDO
   SHIFT_REQUEST
   INVENTORY_REPORT
+  NEW_TRAINING
 }
 
 model Store {
