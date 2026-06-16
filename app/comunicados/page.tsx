@@ -11,6 +11,7 @@ import { AppFrame, AppHeader, Badge, BottomNav, Card, NotificationCard, ProfileA
 import { AppInput, AppTextarea } from "@/components/forms";
 import { SendButton, SendIconButton } from "@/components/SendButton";
 import { DeleteButton } from "@/components/ActionButtons";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 
 type Filter = "todos" | "no-leidos" | "importantes";
 
@@ -24,6 +25,8 @@ export default function ComunicadosPage() {
   const [status, setStatus] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [session, setSession] = useState<User | null>(null);
   const [filter, setFilter] = useState<Filter>("todos");
@@ -114,8 +117,10 @@ export default function ComunicadosPage() {
     if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
-  async function deleteAnnouncement(id: string) {
-    if (!window.confirm("¿Eliminar este comunicado? Esta accion no se puede deshacer.")) return;
+  async function confirmDelete() {
+    const id = pendingDeleteId;
+    if (!id) return;
+    setDeleting(true);
     const previous = announcements;
     setAnnouncements((prev) => prev.filter((item) => item.id !== id));
     try {
@@ -124,6 +129,9 @@ export default function ComunicadosPage() {
     } catch {
       setAnnouncements(previous);
       setStatus("No se pudo eliminar el comunicado.");
+    } finally {
+      setDeleting(false);
+      setPendingDeleteId(null);
     }
   }
 
@@ -290,7 +298,7 @@ export default function ComunicadosPage() {
                     </div>
                     {session ? <CommentsThread announcementId={item.id} session={session} /> : null}
                     {session?.role !== "ASESOR" ? (
-                      <DeleteButton onClick={() => void deleteAnnouncement(item.id)} className="mt-2 w-full">
+                      <DeleteButton onClick={() => setPendingDeleteId(item.id)} className="mt-2 w-full">
                         Eliminar comunicado
                       </DeleteButton>
                     ) : null}
@@ -308,6 +316,14 @@ export default function ComunicadosPage() {
         </div>
       </AppFrame>
       <BottomNav />
+      <ConfirmDialog
+        open={pendingDeleteId !== null}
+        title="¿Eliminar comunicado?"
+        confirmLabel="Eliminar"
+        loading={deleting}
+        onConfirm={() => void confirmDelete()}
+        onCancel={() => setPendingDeleteId(null)}
+      />
     </>
   );
 }

@@ -9,6 +9,7 @@ import type { User } from "@/lib/types";
 import { AppFrame, AppHeader, Badge, BottomNav, Card } from "@/components/ui";
 import { DeleteButton } from "@/components/ActionButtons";
 import { SendButton } from "@/components/SendButton";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 
 type Resource = {
   id: string;
@@ -40,6 +41,7 @@ export default function CapacitacionPage() {
   const [sent, setSent] = useState(false);
   const [status, setStatus] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const isManager = Boolean(session && session.role !== "ASESOR");
@@ -97,8 +99,9 @@ export default function CapacitacionPage() {
     }
   }
 
-  async function remove(id: string) {
-    if (!window.confirm("¿Eliminar este recurso?")) return;
+  async function confirmDelete() {
+    const id = pendingDeleteId;
+    if (!id) return;
     setBusyId(id);
     const previous = resources;
     setResources((current) => current.filter((resource) => resource.id !== id));
@@ -110,6 +113,7 @@ export default function CapacitacionPage() {
       setStatus("No se pudo eliminar.");
     } finally {
       setBusyId(null);
+      setPendingDeleteId(null);
     }
   }
 
@@ -188,7 +192,7 @@ export default function CapacitacionPage() {
                     {resource.viewers && resource.viewers.length > 0 ? (
                       <p className="mt-1 text-xs text-muted">{resource.viewers.map((viewer) => viewer.name).join(", ")}</p>
                     ) : null}
-                    <DeleteButton type="button" variant="ghost" iconSize={14} loading={busyId === resource.id} onClick={() => void remove(resource.id)} className="mt-2 px-0">Eliminar</DeleteButton>
+                    <DeleteButton type="button" variant="ghost" iconSize={14} loading={busyId === resource.id} onClick={() => setPendingDeleteId(resource.id)} className="mt-2 px-0">Eliminar</DeleteButton>
                   </div>
                 ) : null}
               </Card>
@@ -197,6 +201,14 @@ export default function CapacitacionPage() {
         )}
       </AppFrame>
       <BottomNav />
+      <ConfirmDialog
+        open={pendingDeleteId !== null}
+        title="¿Eliminar este recurso?"
+        confirmLabel="Eliminar"
+        loading={busyId !== null}
+        onConfirm={() => void confirmDelete()}
+        onCancel={() => setPendingDeleteId(null)}
+      />
     </>
   );
 }

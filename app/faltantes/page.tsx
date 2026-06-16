@@ -10,6 +10,7 @@ import type { User } from "@/lib/types";
 import { AppFrame, AppHeader, Badge, BottomNav, Button, Card, ProfileAvatar } from "@/components/ui";
 import { DeleteButton } from "@/components/ActionButtons";
 import { SendButton } from "@/components/SendButton";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 
 type Report = {
   id: string;
@@ -42,6 +43,7 @@ export default function FaltantesPage() {
   const [sent, setSent] = useState(false);
   const [status, setStatus] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const isManager = Boolean(session && session.role !== "ASESOR");
@@ -124,8 +126,9 @@ export default function FaltantesPage() {
     }
   }
 
-  async function remove(id: string) {
-    if (!window.confirm("¿Eliminar este reporte?")) return;
+  async function confirmDelete() {
+    const id = pendingDeleteId;
+    if (!id) return;
     setBusyId(id);
     const previous = reports;
     setReports((current) => current.filter((report) => report.id !== id));
@@ -137,6 +140,7 @@ export default function FaltantesPage() {
       setStatus("No se pudo eliminar el reporte.");
     } finally {
       setBusyId(null);
+      setPendingDeleteId(null);
     }
   }
 
@@ -193,7 +197,7 @@ export default function FaltantesPage() {
           ) : (
             <div className="space-y-2.5">
               {open.map((report) => (
-                <ReportRow key={report.id} report={report} isManager={isManager} busy={busyId === report.id} onResolve={() => void setReportStatus(report.id, "RESUELTO")} onDelete={() => void remove(report.id)} onReopen={() => void setReportStatus(report.id, "ABIERTO")} />
+                <ReportRow key={report.id} report={report} isManager={isManager} busy={busyId === report.id} onResolve={() => void setReportStatus(report.id, "RESUELTO")} onDelete={() => setPendingDeleteId(report.id)} onReopen={() => void setReportStatus(report.id, "ABIERTO")} />
               ))}
             </div>
           )}
@@ -204,13 +208,21 @@ export default function FaltantesPage() {
             <h2 className="mb-2.5 text-lg font-black text-muted">Resueltos</h2>
             <div className="space-y-2.5">
               {resolved.map((report) => (
-                <ReportRow key={report.id} report={report} isManager={isManager} busy={busyId === report.id} onResolve={() => void setReportStatus(report.id, "RESUELTO")} onDelete={() => void remove(report.id)} onReopen={() => void setReportStatus(report.id, "ABIERTO")} />
+                <ReportRow key={report.id} report={report} isManager={isManager} busy={busyId === report.id} onResolve={() => void setReportStatus(report.id, "RESUELTO")} onDelete={() => setPendingDeleteId(report.id)} onReopen={() => void setReportStatus(report.id, "ABIERTO")} />
               ))}
             </div>
           </Card>
         ) : null}
       </AppFrame>
       <BottomNav />
+      <ConfirmDialog
+        open={pendingDeleteId !== null}
+        title="¿Eliminar este reporte?"
+        confirmLabel="Eliminar"
+        loading={busyId !== null}
+        onConfirm={() => void confirmDelete()}
+        onCancel={() => setPendingDeleteId(null)}
+      />
     </>
   );
 }

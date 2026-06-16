@@ -8,6 +8,7 @@ import type { Pending, User } from "@/lib/types";
 import { AppFrame, AppHeader, Badge, BottomNav, Card, EmptyState, FloatingActionButton, priorityTone, Skeleton, statusTone } from "@/components/ui";
 import { ResourceDiscussion } from "@/components/ResourceDiscussion";
 import { DeleteButton, SaveButton } from "@/components/ActionButtons";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { AppDatePicker, AppInput, AppSelect, AppTextarea, type SelectOption } from "@/components/forms";
 
 type Filter = "todos" | "urgentes" | "hoy";
@@ -28,6 +29,7 @@ export default function PendientesPage() {
   const [submitting, setSubmitting] = useState(false);
   const [saved, setSaved] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  const [deletingPending, setDeletingPending] = useState(false);
 
   useEffect(() => {
     getSession().then(setSession);
@@ -126,7 +128,7 @@ export default function PendientesPage() {
   async function confirmDelete() {
     if (!deleteTargetId || !data) return;
     const id = deleteTargetId;
-    setDeleteTargetId(null);
+    setDeletingPending(true);
     const previous = data.pendings;
     setData({ ...data, pendings: data.pendings.filter((item) => item.id !== id) });
     try {
@@ -135,6 +137,9 @@ export default function PendientesPage() {
     } catch {
       setData({ ...data, pendings: previous });
       setFormStatusType("error"); setFormStatus("No se pudo eliminar el pendiente.");
+    } finally {
+      setDeletingPending(false);
+      setDeleteTargetId(null);
     }
   }
 
@@ -265,23 +270,15 @@ export default function PendientesPage() {
       </AppFrame>
       {!isAdvisor ? <FloatingActionButton href="#crear-pendiente" label="Crear" icon={Plus} /> : null}
       <BottomNav />
-      {deleteTargetId ? <ConfirmModal onConfirm={() => void confirmDelete()} onCancel={() => setDeleteTargetId(null)} /> : null}
+      <ConfirmDialog
+        open={deleteTargetId !== null}
+        title="¿Eliminar pendiente?"
+        confirmLabel="Eliminar"
+        loading={deletingPending}
+        onConfirm={() => void confirmDelete()}
+        onCancel={() => setDeleteTargetId(null)}
+      />
     </>
-  );
-}
-
-function ConfirmModal({ onConfirm, onCancel }: { onConfirm: () => void; onCancel: () => void }) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-4 backdrop-blur-sm sm:items-center">
-      <div className="w-full max-w-sm rounded-3xl bg-white dark:bg-slate-900 p-6 shadow-2xl">
-        <h3 className="text-lg font-black text-ink">¿Eliminar pendiente?</h3>
-        <p className="mt-2 text-sm text-muted">Esta acción no se puede deshacer.</p>
-        <div className="mt-5 grid grid-cols-2 gap-3">
-          <button type="button" onClick={onCancel} className="min-h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 text-sm font-black text-ink transition active:scale-95">Cancelar</button>
-          <DeleteButton type="button" variant="solid" onClick={onConfirm} className="min-h-12 w-full">Eliminar</DeleteButton>
-        </div>
-      </div>
-    </div>
   );
 }
 
