@@ -10,6 +10,7 @@ import { AppFrame, AppHeader, Badge, BottomNav, Card } from "@/components/ui";
 import { DeleteButton } from "@/components/ActionButtons";
 import { SendButton } from "@/components/SendButton";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { useToast } from "@/components/Toast";
 
 type Resource = {
   id: string;
@@ -39,7 +40,7 @@ export default function CapacitacionPage() {
   const [file, setFile] = useState<File | null>(null);
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
-  const [status, setStatus] = useState("");
+  const toast = useToast();
   const [busyId, setBusyId] = useState<string | null>(null);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -62,17 +63,16 @@ export default function CapacitacionPage() {
       setResources(data.resources ?? []);
       setAdvisorCount(data.advisorCount ?? 0);
     } catch {
-      setStatus("No se pudieron cargar los recursos.");
+      toast("No se pudieron cargar los recursos.", "error");
     } finally {
       setLoading(false);
     }
   }
 
   async function submit() {
-    if (title.trim().length < 2) { setStatus("Indica un título."); return; }
-    if (!linkUrl.trim() && !file) { setStatus("Agrega un enlace o un archivo."); return; }
+    if (title.trim().length < 2) { toast("Indica un título.", "error"); return; }
+    if (!linkUrl.trim() && !file) { toast("Agrega un enlace o un archivo.", "error"); return; }
     setSending(true);
-    setStatus("");
     try {
       const form = new FormData();
       form.append("title", title.trim());
@@ -89,11 +89,11 @@ export default function CapacitacionPage() {
       setLinkUrl("");
       setFile(null);
       if (fileRef.current) fileRef.current.value = "";
-      setStatus("Recurso publicado. ✅");
+      toast("Recurso publicado.", "success");
       setSent(true);
       window.setTimeout(() => setSent(false), 2000);
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : "No se pudo publicar.");
+      toast(error instanceof Error ? error.message : "No se pudo publicar.", "error");
     } finally {
       setSending(false);
     }
@@ -110,7 +110,7 @@ export default function CapacitacionPage() {
       if (!response.ok) throw new Error();
     } catch {
       setResources(previous);
-      setStatus("No se pudo eliminar.");
+      toast("No se pudo eliminar.", "error");
     } finally {
       setBusyId(null);
       setPendingDeleteId(null);
@@ -161,7 +161,6 @@ export default function CapacitacionPage() {
               </button>
               <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,application/pdf" className="hidden" onChange={(event) => setFile(event.target.files?.[0] ?? null)} />
               <SendButton type="button" onClick={() => void submit()} loading={sending} success={sent} sentLabel="¡Publicado!" className="w-full">Publicar recurso</SendButton>
-              {status ? <p className="text-sm font-semibold text-muted">{status}</p> : null}
             </div>
           </Card>
         ) : null}

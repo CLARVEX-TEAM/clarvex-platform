@@ -1,12 +1,13 @@
 "use client";
 
 import { ChangeEvent, useEffect, useRef, useState } from "react";
-import { Cake, Camera, CheckCircle2, Fingerprint, ImageUp, Moon, Store, Sun, UserRound } from "lucide-react";
+import { Cake, Camera, Fingerprint, ImageUp, Moon, Store, Sun, UserRound } from "lucide-react";
 import { startRegistration } from "@simplewebauthn/browser";
 import { getBiometricRegistrationOptions, getSession, registerBiometric } from "@/lib/auth";
 import type { User } from "@/lib/types";
 import { AppFrame, AppHeader, Badge, BottomNav, Button, Card, ProfileAvatar } from "@/components/ui";
 import { SaveButton } from "@/components/ActionButtons";
+import { useToast } from "@/components/Toast";
 import { useTheme, type Theme } from "@/components/ThemeProvider";
 
 const roleLabels = { GERENTE: "Gerente", SUBGERENTE: "Subgerente", ASESOR: "Asesor" } as const;
@@ -21,17 +22,13 @@ export default function ProfilePage() {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState("");
-  const [error, setError] = useState("");
+  const toast = useToast();
   const [biometricBusy, setBiometricBusy] = useState(false);
-  const [biometricMessage, setBiometricMessage] = useState("");
-  const [biometricError, setBiometricError] = useState("");
   const [birthDate, setBirthDate] = useState("");
   const [hireDate, setHireDate] = useState("");
   const [savingDates, setSavingDates] = useState(false);
   const [savedDates, setSavedDates] = useState(false);
   const [savedPhoto, setSavedPhoto] = useState(false);
-  const [datesMessage, setDatesMessage] = useState("");
 
   useEffect(() => {
     getSession().then(setUser).finally(() => setLoading(false));
@@ -46,7 +43,6 @@ export default function ProfilePage() {
 
   async function saveDates() {
     setSavingDates(true);
-    setDatesMessage("");
     try {
       const response = await fetch("/api/profile", {
         method: "PUT",
@@ -54,11 +50,11 @@ export default function ProfilePage() {
         body: JSON.stringify({ birthDate: birthDate || null, hireDate: hireDate || null })
       });
       if (!response.ok) throw new Error();
-      setDatesMessage("Datos guardados. 🎉");
+      toast("Datos guardados.", "success");
       setSavedDates(true);
       window.setTimeout(() => setSavedDates(false), 2000);
     } catch {
-      setDatesMessage("No se pudieron guardar.");
+      toast("No se pudieron guardar.", "error");
     } finally {
       setSavingDates(false);
     }
@@ -66,24 +62,16 @@ export default function ProfilePage() {
 
   useEffect(() => () => { if (previewUrl) URL.revokeObjectURL(previewUrl); }, [previewUrl]);
 
-  useEffect(() => {
-    if (!message) return;
-    const timer = setTimeout(() => setMessage(""), 5000);
-    return () => clearTimeout(timer);
-  }, [message]);
-
   function selectPhoto(event: ChangeEvent<HTMLInputElement>) {
     const selected = event.target.files?.[0] ?? null;
-    setMessage("");
-    setError("");
     if (!selected) return;
     if (!acceptedTypes.includes(selected.type)) {
-      setError("Usa una imagen JPG, PNG o WEBP.");
+      toast("Usa una imagen JPG, PNG o WEBP.", "error");
       event.target.value = "";
       return;
     }
     if (selected.size > maxBytes) {
-      setError("La imagen debe pesar menos de 5 MB.");
+      toast("La imagen debe pesar menos de 5 MB.", "error");
       event.target.value = "";
       return;
     }
@@ -95,8 +83,6 @@ export default function ProfilePage() {
   async function savePhoto() {
     if (!file) return;
     setSaving(true);
-    setMessage("");
-    setError("");
     try {
       const form = new FormData();
       form.set("photo", file);
@@ -108,11 +94,11 @@ export default function ProfilePage() {
       if (previewUrl) URL.revokeObjectURL(previewUrl);
       setPreviewUrl(null);
       if (inputRef.current) inputRef.current.value = "";
-      setMessage("Foto de perfil actualizada.");
+      toast("Foto de perfil actualizada.", "success");
       setSavedPhoto(true);
       window.setTimeout(() => setSavedPhoto(false), 2000);
     } catch (uploadError) {
-      setError(uploadError instanceof Error ? uploadError.message : "No se pudo guardar la foto.");
+      toast(uploadError instanceof Error ? uploadError.message : "No se pudo guardar la foto.", "error");
     } finally {
       setSaving(false);
     }
@@ -120,16 +106,14 @@ export default function ProfilePage() {
 
   async function handleBiometricSetup() {
     setBiometricBusy(true);
-    setBiometricMessage("");
-    setBiometricError("");
     try {
       const options = await getBiometricRegistrationOptions();
       const registration = await startRegistration({ optionsJSON: options });
       await registerBiometric(registration);
       setUser((current) => (current ? { ...current, biometricEnabled: true } : current));
-      setBiometricMessage("Biometria activada correctamente.");
+      toast("Biometría activada correctamente.", "success");
     } catch (cause) {
-      setBiometricError(cause instanceof Error ? cause.message : "No se pudo activar la biometria.");
+      toast(cause instanceof Error ? cause.message : "No se pudo activar la biometría.", "error");
     } finally {
       setBiometricBusy(false);
     }
@@ -170,7 +154,6 @@ export default function ProfilePage() {
                   <input type="date" value={hireDate} onChange={(event) => setHireDate(event.target.value)} className="min-h-11 rounded-2xl border border-line bg-panel px-3 text-sm font-bold text-ink outline-none focus:border-volt" />
                 </label>
                 <SaveButton type="button" onClick={() => void saveDates()} loading={savingDates} success={savedDates} savedLabel="¡Guardado!">Guardar datos</SaveButton>
-                {datesMessage ? <p className="flex items-center gap-2 text-sm font-semibold text-emerald-700"><CheckCircle2 size={16} />{datesMessage}</p> : null}
               </div>
             </Card>
 
@@ -208,8 +191,6 @@ export default function ProfilePage() {
                 <SaveButton type="button" onClick={savePhoto} disabled={!file} loading={saving} success={savedPhoto} savedLabel="¡Guardado!">Guardar foto</SaveButton>
               </div>
               {file ? <p className="mt-3 truncate text-xs font-semibold text-muted">Vista previa: {file.name}</p> : null}
-              {message ? <p className="mt-3 flex items-center gap-2 text-sm font-semibold text-emerald-700"><CheckCircle2 size={16} />{message}</p> : null}
-              {error ? <p className="mt-3 text-sm font-semibold text-rose-700">{error}</p> : null}
             </Card>
 
             <Card className="p-3.5">
@@ -228,8 +209,6 @@ export default function ProfilePage() {
                   <Button type="button" variant="primary" onClick={() => void handleBiometricSetup()} disabled={biometricBusy}>
                     {biometricBusy ? "Activando..." : "Activar Face ID / Huella"}
                   </Button>
-                  {biometricMessage ? <p className="flex items-center gap-2 text-sm font-semibold text-emerald-700 dark:text-emerald-400"><CheckCircle2 size={16} />{biometricMessage}</p> : null}
-                  {biometricError ? <p className="text-sm font-semibold text-rose-700">{biometricError}</p> : null}
                 </div>
               )}
             </Card>

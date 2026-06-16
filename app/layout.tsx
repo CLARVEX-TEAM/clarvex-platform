@@ -4,6 +4,7 @@ import { PwaRegister } from "@/components/PwaRegister";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { PageTransition } from "@/components/PageTransition";
 import { ThemeProvider } from "@/components/ThemeProvider";
+import { ToastProvider } from "@/components/Toast";
 import { WhatsNewModal } from "@/components/WhatsNewModal";
 
 export const metadata: Metadata = {
@@ -41,10 +42,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="es" suppressHydrationWarning>
       <body>
         <ThemeProvider>
-          <AnimatedBackground />
-          <PwaRegister />
-          <PageTransition>{children}</PageTransition>
-          <WhatsNewModal />
+          <ToastProvider>
+            <AnimatedBackground />
+            <PwaRegister />
+            <PageTransition>{children}</PageTransition>
+            <WhatsNewModal />
+          </ToastProvider>
         </ThemeProvider>
       </body>
     </html>
