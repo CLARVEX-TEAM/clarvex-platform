@@ -14,10 +14,9 @@ const r2Domain = r2PublicUrl
 const nextConfig = {
   reactStrictMode: true,
 
-  // Transpila las libs 3D y, clave, el react-reconciler/scheduler que trae fiber:
-  // así su `import "react"` resuelve la MISMA instancia de React que usa la app
-  // (evita los internals undefined / ReactCurrentBatchConfig en la escena 3D).
-  transpilePackages: ["three", "@react-three/fiber", "@react-three/drei", "react-reconciler", "scheduler", "its-fine"],
+  // El mapa 3D usa three.js puro; transpilar three asegura que sus módulos ESM
+  // (examples/jsm) se compilen al target del navegador.
+  transpilePackages: ["three"],
 
   images: {
     remotePatterns: [
