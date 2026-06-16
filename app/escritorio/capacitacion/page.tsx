@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { ExternalLink, FileText, GraduationCap, Paperclip, Trash2, X } from "lucide-react";
 import { TRAINING_CATEGORIES, TRAINING_CATEGORY_LABELS } from "@/lib/training";
-import { Badge, Card } from "@/components/ui";
+import { Badge, Card, EmptyState } from "@/components/ui";
 import { SendButton } from "@/components/SendButton";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { useToast } from "@/components/Toast";
@@ -157,7 +157,7 @@ export default function EscritorioCapacitacion() {
         {loading ? (
           <Card className="p-10 text-center text-sm text-muted">Cargando recursos…</Card>
         ) : resources.length === 0 ? (
-          <Card className="p-10 text-center"><p className="font-black text-ink">Sin recursos</p><p className="mt-1 text-sm text-muted">Sube el primer material de capacitación. 🎓</p></Card>
+          <Card><EmptyState icon={GraduationCap} title="Sin recursos" description="Sube el primer material de capacitación desde el panel de la izquierda." /></Card>
         ) : (
           <AnimatePresence initial={false}>
             {resources.map((resource) => (

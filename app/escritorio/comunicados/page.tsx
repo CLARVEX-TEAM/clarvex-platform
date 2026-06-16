@@ -5,7 +5,7 @@ import NextImage from "next/image";
 import { AnimatePresence, motion } from "framer-motion";
 import { ImagePlus, Megaphone, Trash2, X } from "lucide-react";
 import type { Announcement } from "@/lib/types";
-import { Badge, Card, ProfileAvatar } from "@/components/ui";
+import { Badge, Card, EmptyState, ProfileAvatar } from "@/components/ui";
 import { AppInput, AppTextarea } from "@/components/forms";
 import { SendButton } from "@/components/SendButton";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
@@ -166,7 +166,7 @@ export default function EscritorioComunicados() {
           })}
         </AnimatePresence>
         {announcements.length === 0 && data ? (
-          <Card className="p-10 text-center text-sm text-muted">Aún no hay comunicados. Crea el primero. 📣</Card>
+          <Card><EmptyState icon={Megaphone} title="Sin comunicados" description="Crea el primero para tu equipo desde el panel de la izquierda." /></Card>
         ) : null}
       </div>
 
