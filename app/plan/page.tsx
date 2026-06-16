@@ -13,6 +13,7 @@ import { TaskList } from "@/components/TaskList";
 import { DeleteButton, SaveButton } from "@/components/ActionButtons";
 import { SendButton } from "@/components/SendButton";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { useToast } from "@/components/Toast";
 import { AppButton, AppChipInput, AppDatePicker, AppInput, AppSelect, AppTextarea, type SelectOption } from "@/components/forms";
 import { cn } from "@/lib/utils";
 
@@ -36,13 +37,12 @@ export default function PlanPage() {
   const [focus, setFocus] = useState("");
   const [message, setMessage] = useState("");
   const [activityChips, setActivityChips] = useState<string[]>([]);
-  const [formStatus, setFormStatus] = useState("");
+  const toast = useToast();
   const [submitting, setSubmitting] = useState(false);
   const [saved, setSaved] = useState(false);
   const [genDate, setGenDate] = useState(new Date().toISOString().slice(0, 10));
   const [generating, setGenerating] = useState(false);
   const [genSaved, setGenSaved] = useState(false);
-  const [genStatus, setGenStatus] = useState("");
   const [publishing, setPublishing] = useState(false);
   const [published, setPublished] = useState(false);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
@@ -96,7 +96,7 @@ export default function PlanPage() {
       if (!response.ok) throw new Error("No se pudo eliminar.");
     } catch {
       setData({ ...data, plans: previous });
-      setFormStatus("No se pudo eliminar el plan.");
+      toast("No se pudo eliminar el plan.", "error");
     } finally {
       setDeleting(false);
       setPendingDeleteId(null);
@@ -106,9 +106,8 @@ export default function PlanPage() {
   async function createPlan(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!data || submitting) return;
-    if (activityChips.length === 0) { setFormStatus("Agrega al menos una actividad."); return; }
+    if (activityChips.length === 0) { toast("Agrega al menos una actividad.", "error"); return; }
     setSubmitting(true);
-    setFormStatus("Guardando...");
     try {
       const response = await fetch("/api/plans", {
         method: "POST",
@@ -116,13 +115,14 @@ export default function PlanPage() {
         body: JSON.stringify({ userId, date, dailyGoal: Number(dailyGoal), focus, message, activities: activityChips })
       });
       const payload = await response.json() as { plan?: AppData["plans"][number]; error?: string };
-      if (!response.ok || !payload.plan) { setFormStatus(payload.error ?? "No se pudo crear el plan."); return; }
+      if (!response.ok || !payload.plan) { toast(payload.error ?? "No se pudo crear el plan.", "error"); return; }
       setData({ ...data, plans: [payload.plan, ...data.plans] });
-      setDailyGoal(""); setFocus(""); setMessage(""); setActivityChips([]); setUserId(""); setFormStatus("Plan creado.");
+      setDailyGoal(""); setFocus(""); setMessage(""); setActivityChips([]); setUserId("");
+      toast("Plan creado.", "success");
       setSaved(true);
       setTimeout(() => setSaved(false), 1600);
     } catch {
-      setFormStatus("No se pudo crear el plan.");
+      toast("No se pudo crear el plan.", "error");
     } finally {
       setSubmitting(false);
     }
@@ -130,16 +130,16 @@ export default function PlanPage() {
 
   async function generateDay() {
     if (!data || generating) return;
-    setGenerating(true); setGenStatus("");
+    setGenerating(true);
     try {
       const res = await fetch("/api/plans/generate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ date: genDate }) });
       const payload = await res.json() as { ok?: boolean; generated?: number; error?: string };
-      if (!res.ok || !payload.ok) { setGenStatus(payload.error ?? "No se pudieron generar las actividades."); return; }
+      if (!res.ok || !payload.ok) { toast(payload.error ?? "No se pudieron generar las actividades.", "error"); return; }
       setData(await fetchAppData());
-      setGenStatus(payload.generated ? `Actividades generadas para ${payload.generated} asesor(es).` : "No hay asesores trabajando ese día.");
+      toast(payload.generated ? `Actividades generadas para ${payload.generated} asesor(es).` : "No hay asesores trabajando ese día.", payload.generated ? "success" : "info");
       setGenSaved(true); setTimeout(() => setGenSaved(false), 1600);
     } catch {
-      setGenStatus("No se pudieron generar las actividades.");
+      toast("No se pudieron generar las actividades.", "error");
     } finally {
       setGenerating(false);
     }
@@ -150,25 +150,25 @@ export default function PlanPage() {
     try {
       const res = await fetch("/api/plans/chores", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ date: genDate, choreKey, toUserId }) });
       const payload = await res.json() as { ok?: boolean; error?: string };
-      if (!res.ok || !payload.ok) { setGenStatus(payload.error ?? "No se pudo reasignar la tarea."); return; }
+      if (!res.ok || !payload.ok) { toast(payload.error ?? "No se pudo reasignar la tarea.", "error"); return; }
       setData(await fetchAppData());
     } catch {
-      setGenStatus("No se pudo reasignar la tarea.");
+      toast("No se pudo reasignar la tarea.", "error");
     }
   }
 
   async function publishDay() {
     if (!data || publishing) return;
-    setPublishing(true); setGenStatus("");
+    setPublishing(true);
     try {
       const res = await fetch("/api/plans/publish", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ date: genDate }) });
       const payload = await res.json() as { ok?: boolean; published?: number; error?: string };
-      if (!res.ok || !payload.ok) { setGenStatus(payload.error ?? "No se pudo enviar el plan."); return; }
+      if (!res.ok || !payload.ok) { toast(payload.error ?? "No se pudo enviar el plan.", "error"); return; }
       setData(await fetchAppData());
-      setGenStatus(payload.published ? `Plan enviado a ${payload.published} asesor(es).` : "No había borradores por enviar.");
+      toast(payload.published ? `Plan enviado a ${payload.published} asesor(es).` : "No había borradores por enviar.", payload.published ? "success" : "info");
       setPublished(true); setTimeout(() => setPublished(false), 1600);
     } catch {
-      setGenStatus("No se pudo enviar el plan.");
+      toast("No se pudo enviar el plan.", "error");
     } finally {
       setPublishing(false);
     }
@@ -275,7 +275,6 @@ export default function PlanPage() {
                   Enviar al equipo ({draftCount} {draftCount === 1 ? "borrador" : "borradores"})
                 </SendButton>
               ) : null}
-              {genStatus ? <p className="text-sm font-semibold text-muted">{genStatus}</p> : null}
             </div>
           </Card>
         ) : null}
@@ -320,11 +319,6 @@ export default function PlanPage() {
                 chips={activityChips}
                 onChipsChange={setActivityChips}
               />
-              {formStatus ? (
-                <p className={`text-sm font-semibold ${formStatus === "Plan creado." ? "text-emerald-600 dark:text-emerald-400" : "text-muted"}`}>
-                  {formStatus}
-                </p>
-              ) : null}
               <SaveButton type="submit" loading={submitting} success={saved} savedLabel="¡Creado!" className="w-full">
                 Crear plan
               </SaveButton>

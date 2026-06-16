@@ -14,6 +14,7 @@ import { SendButton, SendIconButton } from "@/components/SendButton";
 import { DeleteButton } from "@/components/ActionButtons";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { haptic } from "@/lib/haptics";
+import { useToast } from "@/components/Toast";
 
 type Filter = "todos" | "no-leidos" | "importantes";
 
@@ -24,8 +25,8 @@ export default function ComunicadosPage() {
   const [body, setBody] = useState("");
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [status, setStatus] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const toast = useToast();
   const [saved, setSaved] = useState(false);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -100,16 +101,15 @@ export default function ComunicadosPage() {
     const file = event.target.files?.[0] ?? null;
     if (!file) return;
     if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
-      setStatus("Solo se permiten imagenes JPG, PNG o WEBP.");
+      toast("Solo se permiten imágenes JPG, PNG o WEBP.", "error");
       return;
     }
     if (file.size > 5 * 1024 * 1024) {
-      setStatus("La imagen debe pesar menos de 5 MB.");
+      toast("La imagen debe pesar menos de 5 MB.", "error");
       return;
     }
     setImageFile(file);
     setImagePreview(URL.createObjectURL(file));
-    setStatus("");
   }
 
   function removeImage() {
@@ -130,7 +130,7 @@ export default function ComunicadosPage() {
       if (!response.ok) throw new Error("No se pudo eliminar.");
     } catch {
       setAnnouncements(previous);
-      setStatus("No se pudo eliminar el comunicado.");
+      toast("No se pudo eliminar el comunicado.", "error");
     } finally {
       setDeleting(false);
       setPendingDeleteId(null);
@@ -139,12 +139,11 @@ export default function ComunicadosPage() {
 
   async function publishAnnouncement(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!session) { setStatus("Inicia sesion para publicar."); return; }
-    if (!title.trim() || !body.trim()) { setStatus("Escribe titulo y mensaje."); return; }
+    if (!session) { toast("Inicia sesión para publicar.", "error"); return; }
+    if (!title.trim() || !body.trim()) { toast("Escribe título y mensaje.", "error"); return; }
     if (submitting) return;
 
     setSubmitting(true);
-    setStatus("Publicando...");
     try {
       const form = new FormData();
       form.append("title", title);
@@ -159,11 +158,11 @@ export default function ComunicadosPage() {
       setTitle("");
       setBody("");
       removeImage();
-      setStatus("Comunicado publicado.");
+      toast("Comunicado publicado.", "success");
       setSaved(true);
       setTimeout(() => setSaved(false), 1600);
     } catch {
-      setStatus("No se pudo publicar el comunicado.");
+      toast("No se pudo publicar el comunicado.", "error");
     } finally {
       setSubmitting(false);
     }
@@ -238,7 +237,6 @@ export default function ComunicadosPage() {
               <SendButton type="submit" loading={submitting} success={saved} sentLabel="¡Enviado!" className="w-full">
                 Mandar comunicado
               </SendButton>
-              {status ? <p className="text-sm font-semibold text-muted">{status}</p> : null}
             </form>
           </Card>
         ) : null}

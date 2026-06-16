@@ -10,6 +10,7 @@ import { AppFrame, AppHeader, Badge, BottomNav, Card, EmptyState, FloatingAction
 import { ResourceDiscussion } from "@/components/ResourceDiscussion";
 import { DeleteButton, SaveButton } from "@/components/ActionButtons";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { useToast } from "@/components/Toast";
 import { AppDatePicker, AppInput, AppSelect, AppTextarea, type SelectOption } from "@/components/forms";
 
 type Filter = "todos" | "urgentes" | "hoy";
@@ -25,8 +26,7 @@ export default function PendientesPage() {
   const [ownerId, setOwnerId] = useState("");
   const [dueDate, setDueDate] = useState(new Date().toISOString().slice(0, 10));
   const [editId, setEditId] = useState<string | null>(null);
-  const [formStatus, setFormStatus] = useState("");
-  const [formStatusType, setFormStatusType] = useState<"neutral" | "success" | "error">("neutral");
+  const toast = useToast();
   const [submitting, setSubmitting] = useState(false);
   const [saved, setSaved] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
@@ -94,7 +94,7 @@ export default function PendientesPage() {
   function editPending(pending: Pending) {
     setEditId(pending.id); setTitle(pending.title); setDescription(pending.description);
     setCategory(pending.category.toUpperCase()); setPriority(pending.priority.toUpperCase());
-    setOwnerId(pending.ownerId); setDueDate(pending.dueDate); setFormStatus("");
+    setOwnerId(pending.ownerId); setDueDate(pending.dueDate);
     document.getElementById("crear-pendiente")?.scrollIntoView({ behavior: "smooth" });
   }
 
@@ -103,7 +103,6 @@ export default function PendientesPage() {
     if (!data || submitting) return;
     const wasEdit = editId;
     setSubmitting(true);
-    setFormStatus("Guardando..."); setFormStatusType("neutral");
     try {
       const response = await fetch(wasEdit ? `/api/pendings/${wasEdit}` : "/api/pendings", {
         method: wasEdit ? "PATCH" : "POST",
@@ -111,14 +110,14 @@ export default function PendientesPage() {
         body: JSON.stringify({ title, description, category, priority, ownerId, dueDate })
       });
       const payload = await response.json() as { pending?: Pending; error?: string };
-      if (!response.ok || !payload.pending) { setFormStatusType("error"); setFormStatus(payload.error ?? "No se pudo guardar."); return; }
+      if (!response.ok || !payload.pending) { toast(payload.error ?? "No se pudo guardar.", "error"); return; }
       setData({ ...data, pendings: wasEdit ? data.pendings.map((item) => item.id === wasEdit ? payload.pending! : item) : [payload.pending, ...data.pendings] });
-      setFormStatusType("success"); setFormStatus(wasEdit ? "Pendiente actualizado." : "Pendiente creado.");
+      toast(wasEdit ? "Pendiente actualizado." : "Pendiente creado.", "success");
       resetForm();
       setSaved(true);
       setTimeout(() => setSaved(false), 1600);
     } catch {
-      setFormStatusType("error"); setFormStatus("No se pudo guardar.");
+      toast("No se pudo guardar.", "error");
     } finally {
       setSubmitting(false);
     }
@@ -137,7 +136,7 @@ export default function PendientesPage() {
       if (!response.ok) throw new Error("No se pudo eliminar.");
     } catch {
       setData({ ...data, pendings: previous });
-      setFormStatusType("error"); setFormStatus("No se pudo eliminar el pendiente.");
+      toast("No se pudo eliminar el pendiente.", "error");
     } finally {
       setDeletingPending(false);
       setDeleteTargetId(null);
@@ -148,8 +147,12 @@ export default function PendientesPage() {
     if (!data) return;
     const response = await fetch(`/api/pendings/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status }) });
     const payload = await response.json() as { pending?: Pending; error?: string };
-    if (response.ok && payload.pending) setData({ ...data, pendings: data.pendings.map((item) => item.id === id ? payload.pending! : item) });
-    else { setFormStatusType("error"); setFormStatus(payload.error ?? "No se pudo cambiar el estado."); }
+    if (response.ok && payload.pending) {
+      setData({ ...data, pendings: data.pendings.map((item) => item.id === id ? payload.pending! : item) });
+      if (status === "COMPLETADO") toast("Pendiente cerrado.", "success");
+    } else {
+      toast(payload.error ?? "No se pudo cambiar el estado.", "error");
+    }
   }
 
   return (
@@ -220,11 +223,6 @@ export default function PendientesPage() {
                 placeholder="Selecciona responsable"
               />
               <AppDatePicker label="Fecha límite" value={dueDate} onChange={setDueDate} required />
-              {formStatus ? (
-                <p className={`text-sm font-semibold ${formStatusType === "success" ? "text-emerald-600 dark:text-emerald-400" : formStatusType === "error" ? "text-rose-600 dark:text-rose-400" : "text-muted"}`}>
-                  {formStatus}
-                </p>
-              ) : null}
               <SaveButton type="submit" loading={submitting} success={saved} savedLabel="¡Listo!" className="w-full">
                 {editId ? "Guardar cambios" : "Crear pendiente"}
               </SaveButton>

@@ -11,6 +11,7 @@ import { AppFrame, AppHeader, Badge, BottomNav, Button, Card, ProfileAvatar } fr
 import { DeleteButton } from "@/components/ActionButtons";
 import { SendButton } from "@/components/SendButton";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { useToast } from "@/components/Toast";
 
 type Report = {
   id: string;
@@ -41,7 +42,7 @@ export default function FaltantesPage() {
   const [preview, setPreview] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
-  const [status, setStatus] = useState("");
+  const toast = useToast();
   const [busyId, setBusyId] = useState<string | null>(null);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -63,7 +64,7 @@ export default function FaltantesPage() {
       const data = await fetch("/api/inventory", { cache: "no-store" }).then((response) => response.json() as Promise<{ reports?: Report[] }>);
       setReports(data.reports ?? []);
     } catch {
-      setStatus("No se pudieron cargar los reportes.");
+      toast("No se pudieron cargar los reportes.", "error");
     } finally {
       setLoading(false);
     }
@@ -72,11 +73,10 @@ export default function FaltantesPage() {
   function onPhotoChange(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0] ?? null;
     if (!file) return;
-    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) { setStatus("Solo JPG, PNG o WEBP."); return; }
-    if (file.size > 5 * 1024 * 1024) { setStatus("La foto debe pesar menos de 5 MB."); return; }
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) { toast("Solo JPG, PNG o WEBP.", "error"); return; }
+    if (file.size > 5 * 1024 * 1024) { toast("La foto debe pesar menos de 5 MB.", "error"); return; }
     setPhoto(file);
     setPreview(URL.createObjectURL(file));
-    setStatus("");
   }
 
   function clearPhoto() {
@@ -87,9 +87,8 @@ export default function FaltantesPage() {
   }
 
   async function submit() {
-    if (productName.trim().length < 2) { setStatus("Indica el producto."); return; }
+    if (productName.trim().length < 2) { toast("Indica el producto.", "error"); return; }
     setSending(true);
-    setStatus("");
     try {
       const form = new FormData();
       form.append("productName", productName.trim());
@@ -103,11 +102,11 @@ export default function FaltantesPage() {
       setProductName("");
       setNote("");
       clearPhoto();
-      setStatus("Reporte enviado. ✅");
+      toast("Reporte enviado.", "success");
       setSent(true);
       window.setTimeout(() => setSent(false), 2000);
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : "No se pudo enviar el reporte.");
+      toast(error instanceof Error ? error.message : "No se pudo enviar el reporte.", "error");
     } finally {
       setSending(false);
     }
@@ -120,7 +119,7 @@ export default function FaltantesPage() {
       if (!response.ok) throw new Error();
       await load();
     } catch {
-      setStatus("No se pudo actualizar el reporte.");
+      toast("No se pudo actualizar el reporte.", "error");
     } finally {
       setBusyId(null);
     }
@@ -137,7 +136,7 @@ export default function FaltantesPage() {
       if (!response.ok) throw new Error();
     } catch {
       setReports(previous);
-      setStatus("No se pudo eliminar el reporte.");
+      toast("No se pudo eliminar el reporte.", "error");
     } finally {
       setBusyId(null);
       setPendingDeleteId(null);
@@ -181,7 +180,6 @@ export default function FaltantesPage() {
             <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={onPhotoChange} />
             <textarea value={note} onChange={(event) => setNote(event.target.value)} maxLength={500} rows={2} placeholder="Nota (opcional)…" className="rounded-2xl border border-line bg-panel px-3 py-2.5 text-sm font-semibold text-ink outline-none focus:border-volt" />
             <SendButton type="button" onClick={() => void submit()} loading={sending} success={sent} sentLabel="¡Enviado!" className="w-full">Enviar reporte</SendButton>
-            {status ? <p className="text-sm font-semibold text-muted">{status}</p> : null}
           </div>
         </Card>
 
