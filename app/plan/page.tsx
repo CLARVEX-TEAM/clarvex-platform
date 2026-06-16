@@ -356,7 +356,11 @@ export default function PlanPage() {
                         <group.icon className="text-volt" size={17} />
                         {group.label}
                       </div>
-                      <TaskList activities={group.items} />
+                      <TaskList
+                        activities={group.items}
+                        canDelete={!isAdvisor}
+                        onDeleted={(activityId) => setData((current) => current ? { ...current, plans: current.plans.map((p) => p.id === plan.id ? { ...p, activities: p.activities.filter((a) => a.id !== activityId) } : p) } : current)}
+                      />
                     </section>
                   ))}
                 </div>

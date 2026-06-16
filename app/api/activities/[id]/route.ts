@@ -86,3 +86,20 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     completed: updated.completed,
   });
 }
+
+export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const session = await requireSession(["GERENTE", "SUBGERENTE"]);
+  if (isApiError(session)) return session;
+
+  const activity = await prisma.dayPlanTask.findFirst({
+    where: { id, plan: { storeId: session.storeId } },
+    select: { id: true },
+  });
+  if (!activity) {
+    return NextResponse.json({ error: "Actividad no encontrada o sin permiso." }, { status: 404 });
+  }
+
+  await prisma.dayPlanTask.delete({ where: { id: activity.id } });
+  return NextResponse.json({ ok: true });
+}
