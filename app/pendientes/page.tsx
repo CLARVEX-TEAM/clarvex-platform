@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { AlertTriangle, ClipboardCheck, Plus, Trash2, UserRound } from "lucide-react";
+import { AlertTriangle, ClipboardCheck, Plus, UserRound } from "lucide-react";
 import { fetchAppData, type AppData } from "@/lib/app-data";
 import { getSession } from "@/lib/auth";
 import type { Pending, User } from "@/lib/types";
 import { AppFrame, AppHeader, Badge, BottomNav, Card, EmptyState, FloatingActionButton, priorityTone, Skeleton, statusTone } from "@/components/ui";
 import { ResourceDiscussion } from "@/components/ResourceDiscussion";
+import { DeleteButton } from "@/components/ActionButtons";
 import { AppButton, AppDatePicker, AppInput, AppSelect, AppTextarea, type SelectOption } from "@/components/forms";
 
 type Filter = "todos" | "urgentes" | "hoy";
@@ -245,7 +246,7 @@ export default function PendientesPage() {
                 <div className="mt-2.5 grid grid-cols-3 gap-2">
                   <button onClick={() => editPending(pending)} className="min-h-10 rounded-xl bg-slate-100 dark:bg-slate-700 text-sm font-black text-ink">Editar</button>
                   <select aria-label="Cambiar estado" value={pending.status === "en proceso" ? "EN_PROCESO" : pending.status.toUpperCase()} onChange={(event) => void changeStatus(pending.id, event.target.value as "PENDIENTE" | "EN_PROCESO" | "COMPLETADO")} className="min-h-10 rounded-xl border border-line bg-panel px-3 text-sm font-black"><option value="PENDIENTE">Pendiente</option><option value="EN_PROCESO">En proceso</option><option value="COMPLETADO">Cerrar</option></select>
-                  <button onClick={() => requestDelete(pending.id)} className="flex min-h-10 items-center justify-center gap-1.5 rounded-xl border border-rose-200/60 bg-rose-50/60 text-sm font-black text-rose-600 transition active:scale-95"><Trash2 size={14} />Borrar</button>
+                  <DeleteButton onClick={() => requestDelete(pending.id)} className="w-full">Borrar</DeleteButton>
                 </div>
               ) : null}
               <ResourceDiscussion target={{ pendingId: pending.id }} />
@@ -277,7 +278,7 @@ function ConfirmModal({ onConfirm, onCancel }: { onConfirm: () => void; onCancel
         <p className="mt-2 text-sm text-muted">Esta acción no se puede deshacer.</p>
         <div className="mt-5 grid grid-cols-2 gap-3">
           <button type="button" onClick={onCancel} className="min-h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 text-sm font-black text-ink transition active:scale-95">Cancelar</button>
-          <button type="button" onClick={onConfirm} className="min-h-12 rounded-2xl bg-rose-500 text-sm font-black text-white transition active:scale-95">Eliminar</button>
+          <DeleteButton type="button" variant="solid" onClick={onConfirm} className="min-h-12 w-full">Eliminar</DeleteButton>
         </div>
       </div>
     </div>

@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import { Area, AreaChart, ResponsiveContainer } from "recharts";
 import { cn } from "@/lib/utils";
+import { AnimatedNumber } from "@/components/AnimatedNumber";
 import type { LucideIcon } from "lucide-react";
 
 export type KpiColor = "blue" | "green" | "purple" | "red";
@@ -112,7 +113,7 @@ export function QuickKpiGrid({ cards, delay = 0.16 }: QuickKpiGridProps) {
               {card.label}
             </p>
             <p className={cn("mt-0.5 text-[1.4rem] font-black leading-tight tracking-[-0.03em]", colors.value)}>
-              {card.value}
+              <AnimatedNumber value={card.value} />
             </p>
             <p className="mt-0.5 text-[11px] leading-4 text-slate-400 dark:text-slate-500">{card.detail}</p>
             {card.trend && card.trend.length >= 2 ? (

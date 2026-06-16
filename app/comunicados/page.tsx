@@ -2,13 +2,14 @@
 
 import { useEffect, useRef, useState } from "react";
 import NextImage from "next/image";
-import { ImagePlus, Megaphone, MessageCircle, Send, Trash2, X } from "lucide-react";
+import { ImagePlus, Megaphone, MessageCircle, Trash2, X } from "lucide-react";
 import { fetchAppData, type AppData } from "@/lib/app-data";
 import { getSession } from "@/lib/auth";
 import { ANNOUNCEMENT_REACTIONS } from "@/lib/reactions";
 import type { Announcement, AnnouncementReaction, User } from "@/lib/types";
 import { AppFrame, AppHeader, Badge, BottomNav, Card, NotificationCard, ProfileAvatar, ProgressBar } from "@/components/ui";
-import { AppButton, AppInput, AppTextarea } from "@/components/forms";
+import { AppInput, AppTextarea } from "@/components/forms";
+import { SendButton, SendIconButton } from "@/components/SendButton";
 
 type Filter = "todos" | "no-leidos" | "importantes";
 
@@ -223,9 +224,9 @@ export default function ComunicadosPage() {
                 </button>
               )}
               <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleImageChange} />
-              <AppButton type="submit" variant="primary" loading={submitting} success={saved} icon={<Send size={17} />} className="w-full">
+              <SendButton type="submit" loading={submitting} success={saved} sentLabel="¡Enviado!" className="w-full">
                 Mandar comunicado
-              </AppButton>
+              </SendButton>
               {status ? <p className="text-sm font-semibold text-muted">{status}</p> : null}
             </form>
           </Card>
@@ -397,9 +398,7 @@ function CommentsThread({ announcementId, session }: { announcementId: string; s
               placeholder="Escribe un comentario…"
               className="min-h-11 flex-1 resize-none rounded-2xl border border-line bg-panel px-3 py-2.5 text-sm font-semibold text-ink outline-none focus:border-volt"
             />
-            <button type="submit" disabled={sending || !body.trim()} className="grid size-11 shrink-0 place-items-center rounded-2xl bg-volt text-white transition active:scale-90 disabled:opacity-40">
-              <Send size={16} />
-            </button>
+            <SendIconButton type="submit" loading={sending} disabled={sending || !body.trim()} aria-label="Enviar comentario" />
           </form>
         </div>
       ) : null}
