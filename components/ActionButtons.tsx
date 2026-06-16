@@ -1,9 +1,11 @@
 "use client";
 
+import { useEffect } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import type { HTMLMotionProps } from "framer-motion";
 import { Save, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { haptic } from "@/lib/haptics";
 
 /**
  * AnimatedCheck — un ✓ que se "dibuja" solo (trazo SVG animado).
@@ -52,6 +54,7 @@ export function DeleteButton({
   return (
     <motion.button
       whileTap={{ scale: 0.94 }}
+      onTap={() => haptic("medium")}
       transition={{ type: "spring", stiffness: 520, damping: 28 }}
       initial="rest"
       whileHover="hover"
@@ -104,10 +107,16 @@ export function SaveButton({
   savedLabel?: React.ReactNode;
 }) {
   const phase = success ? "saved" : loading ? "saving" : "idle";
+
+  useEffect(() => {
+    if (success) haptic("success");
+  }, [success]);
+
   return (
     <motion.button
       whileTap={{ scale: 0.95 }}
       whileHover={{ y: -1 }}
+      onTap={() => haptic("light")}
       transition={{ type: "spring", stiffness: 520, damping: 30, mass: 0.6 }}
       {...props}
       disabled={loading || success || props.disabled}

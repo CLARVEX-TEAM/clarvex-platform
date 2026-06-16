@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { getSession } from "@/lib/auth";
 import { cn } from "@/lib/utils";
+import { haptic } from "@/lib/haptics";
 import { AnimatedNumber } from "@/components/AnimatedNumber";
 import type { Activity, PendingStatus, Priority } from "@/lib/types";
 
@@ -447,8 +448,24 @@ export function AppHeader({
   photoUrl?: string | null;
   profileName?: string;
 }) {
+  // Se eleva y se condensa al hacer scroll (sensación nativa).
+  const [scrolled, setScrolled] = useState(false);
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 6);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
   return (
-    <header className="sticky top-0 z-20 border-b border-line/80 bg-white/80 dark:bg-[#0f1729]/95 px-4 py-1.5 shadow-[0_4px_16px_rgb(15_23_42_/_0.04)] backdrop-blur-xl">
+    <header
+      className={cn(
+        "sticky top-0 z-20 border-b bg-white/80 dark:bg-[#0f1729]/95 px-4 backdrop-blur-xl transition-all duration-300",
+        scrolled
+          ? "border-line py-1 shadow-[0_8px_24px_rgb(15_23_42_/_0.1)]"
+          : "border-line/80 py-2 shadow-[0_4px_16px_rgb(15_23_42_/_0.04)]"
+      )}
+    >
       <div className="mx-auto flex max-w-md items-center justify-between gap-3">
         <div className="flex min-w-0 items-start gap-3">
           {backHref ? (
@@ -461,9 +478,9 @@ export function AppHeader({
             </Link>
           ) : null}
           <div className="min-w-0">
-            <p className="text-[10px] font-black uppercase tracking-[0.16em] text-volt/90">CLARVEX Team</p>
+            <p className={cn("font-black uppercase tracking-[0.16em] text-volt/90 transition-all duration-300", scrolled ? "text-[9px] opacity-70" : "text-[10px] opacity-100")}>CLARVEX Team</p>
             <h1 className="text-[1.15rem] font-black leading-tight tracking-[-0.035em] text-ink">{title}</h1>
-            <p className="text-[11px] leading-4 text-muted">{subtitle}</p>
+            <p className={cn("overflow-hidden text-[11px] leading-4 text-muted transition-all duration-300", scrolled ? "max-h-0 opacity-0" : "max-h-5 opacity-100")}>{subtitle}</p>
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-1.5">
@@ -523,6 +540,7 @@ export function LiquidBottomNav() {
             <Link
               key={item.href}
               href={href}
+              onClick={() => { if (!active) haptic("light"); }}
               aria-current={active ? "page" : undefined}
               className="tappable relative flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-[22px]"
             >

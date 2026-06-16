@@ -1,9 +1,11 @@
 "use client";
 
+import { useEffect } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import type { HTMLMotionProps } from "framer-motion";
 import { Check, Send } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { haptic } from "@/lib/haptics";
 
 /**
  * SendButton — botón de "enviar" con un avión de papel que DESPEGA.
@@ -33,10 +35,15 @@ export function SendButton({
   const reduce = useReducedMotion();
   const phase = success ? "sent" : loading ? "flying" : "idle";
 
+  useEffect(() => {
+    if (success) haptic("success");
+  }, [success]);
+
   return (
     <motion.button
       whileTap={{ scale: 0.95 }}
       whileHover={{ y: -1 }}
+      onTap={() => haptic("light")}
       transition={{ type: "spring", stiffness: 520, damping: 30, mass: 0.6 }}
       {...props}
       disabled={loading || success || props.disabled}
@@ -157,6 +164,7 @@ export function SendIconButton({
   return (
     <motion.button
       whileTap={{ scale: 0.9 }}
+      onTap={() => haptic("light")}
       transition={{ type: "spring", stiffness: 520, damping: 28 }}
       {...props}
       className={cn(

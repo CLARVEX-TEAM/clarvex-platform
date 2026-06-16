@@ -13,6 +13,7 @@ import { AppInput, AppTextarea } from "@/components/forms";
 import { SendButton, SendIconButton } from "@/components/SendButton";
 import { DeleteButton } from "@/components/ActionButtons";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { haptic } from "@/lib/haptics";
 
 type Filter = "todos" | "no-leidos" | "importantes";
 
@@ -437,16 +438,37 @@ function ReactionBar({ reactions, currentUserId, onToggle }: { reactions: Announ
         const count = counts.get(emoji) ?? 0;
         const reacted = mine.has(emoji);
         return (
-          <button
+          <motion.button
             key={emoji}
             type="button"
-            onClick={() => onToggle(emoji)}
+            whileTap={{ scale: 0.85 }}
+            transition={{ type: "spring", stiffness: 520, damping: 24 }}
+            onClick={() => { haptic("light"); onToggle(emoji); }}
             aria-pressed={reacted}
-            className={`flex min-h-9 items-center gap-1 rounded-full px-2.5 text-sm transition active:scale-90 ${reacted ? "bg-volt/15 ring-1 ring-volt/40" : "bg-panel ring-1 ring-line hover:ring-volt/30"}`}
+            className={`flex min-h-9 items-center gap-1 rounded-full px-2.5 text-sm ${reacted ? "bg-volt/15 ring-1 ring-volt/40" : "bg-panel ring-1 ring-line hover:ring-volt/30"}`}
           >
-            <span className="leading-none">{emoji}</span>
-            {count > 0 ? <span className={`text-xs font-black ${reacted ? "text-volt" : "text-muted"}`}>{count}</span> : null}
-          </button>
+            <motion.span
+              className="leading-none"
+              animate={reacted ? { scale: [1, 1.5, 1], rotate: [0, -14, 0] } : { scale: 1 }}
+              transition={{ duration: 0.42, ease: [0.22, 1, 0.36, 1] }}
+            >
+              {emoji}
+            </motion.span>
+            <AnimatePresence mode="popLayout">
+              {count > 0 ? (
+                <motion.span
+                  key={count}
+                  initial={{ y: 9, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  exit={{ y: -9, opacity: 0 }}
+                  transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+                  className={`text-xs font-black ${reacted ? "text-volt" : "text-muted"}`}
+                >
+                  {count}
+                </motion.span>
+              ) : null}
+            </AnimatePresence>
+          </motion.button>
         );
       })}
     </div>
