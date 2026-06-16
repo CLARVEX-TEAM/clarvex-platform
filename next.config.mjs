@@ -14,6 +14,10 @@ const r2Domain = r2PublicUrl
 const nextConfig = {
   reactStrictMode: true,
 
+  // Necesario para que three.js / react-three-fiber / drei se transpilen al target
+  // del navegador y no truenen en el build de producción (mapa 3D).
+  transpilePackages: ["three", "@react-three/fiber", "@react-three/drei"],
+
   images: {
     remotePatterns: [
       ...(r2Domain ? [{ protocol: /** @type {"https"} */ ("https"), hostname: r2Domain, pathname: "/**" }] : []),
