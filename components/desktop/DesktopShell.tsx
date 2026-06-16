@@ -7,6 +7,7 @@ import { motion } from "framer-motion";
 import {
   AlertTriangle,
   BarChart3,
+  BookOpen,
   GraduationCap,
   LayoutDashboard,
   LogOut,
@@ -34,6 +35,7 @@ const navItems: { href: string; label: string; icon: LucideIcon }[] = [
   { href: "/escritorio/pendientes", label: "Pendientes", icon: AlertTriangle },
   { href: "/escritorio/kpis", label: "KPIs", icon: BarChart3 },
   { href: "/escritorio/equipo", label: "Equipo", icon: UsersRound },
+  { href: "/escritorio/bitacora", label: "Bitácora", icon: BookOpen },
   { href: "/escritorio/capacitacion", label: "Capacitación", icon: GraduationCap }
 ];
 
@@ -43,7 +45,9 @@ const sectionTitles: Record<string, { title: string; subtitle: string }> = {
   "/escritorio/pendientes": { title: "Pendientes", subtitle: "Handover, responsables y fechas límite" },
   "/escritorio/kpis": { title: "KPIs", subtitle: "Venta, metas y desempeño del equipo" },
   "/escritorio/equipo": { title: "Equipo", subtitle: "Colaboradores y horarios" },
-  "/escritorio/capacitacion": { title: "Capacitación", subtitle: "Biblioteca de recursos y archivos del equipo" }
+  "/escritorio/bitacora": { title: "Bitácora", subtitle: "Registro cronológico de operación de tienda" },
+  "/escritorio/capacitacion": { title: "Capacitación", subtitle: "Biblioteca de recursos y archivos del equipo" },
+  "/escritorio/notificaciones": { title: "Notificaciones", subtitle: "Avisos del equipo" }
 };
 
 export function DesktopShell({ children }: { children: React.ReactNode }) {

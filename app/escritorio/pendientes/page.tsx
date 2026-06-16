@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { AlertTriangle, ClipboardCheck, Trash2 } from "lucide-react";
+import { AlertTriangle, ClipboardCheck, Search, Trash2 } from "lucide-react";
 import type { Pending } from "@/lib/types";
 import { Badge, Card, EmptyState, ProfileAvatar, priorityTone, statusTone } from "@/components/ui";
 import { AppDatePicker, AppInput, AppSelect, AppTextarea, type SelectOption } from "@/components/forms";
@@ -10,6 +10,8 @@ import { SendButton } from "@/components/SendButton";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { useToast } from "@/components/Toast";
 import { useDesktopData } from "@/components/desktop/useDesktopData";
+import { DesktopError } from "@/components/desktop/DesktopError";
+import { useUnsavedGuard } from "@/components/desktop/useUnsavedGuard";
 
 type Filter = "todos" | "urgentes" | "abiertos";
 
@@ -29,7 +31,7 @@ const priorityOptions: SelectOption[] = [
 ];
 
 export default function EscritorioPendientes() {
-  const { data, setData } = useDesktopData();
+  const { data, setData, error, reload } = useDesktopData();
   const toast = useToast();
   const [filter, setFilter] = useState<Filter>("todos");
   const [title, setTitle] = useState("");
@@ -43,9 +45,12 @@ export default function EscritorioPendientes() {
   const [saved, setSaved] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [query, setQuery] = useState("");
 
   useEffect(() => { if (data && !ownerId) setOwnerId(data.users[0]?.id ?? ""); }, [data, ownerId]);
+  useUnsavedGuard(Boolean(title.trim() || description.trim()));
 
+  if (error && !data) return <DesktopError onRetry={reload} />;
   if (!data) {
     return (
       <div className="grid animate-pulse grid-cols-5 gap-5">
@@ -68,6 +73,8 @@ export default function EscritorioPendientes() {
     if (filter === "abiertos") return p.status !== "completado";
     return true;
   });
+  const term = query.trim().toLowerCase();
+  const shown = term ? visible.filter((p) => `${p.title} ${p.description} ${userName(p.ownerId)}`.toLowerCase().includes(term)) : visible;
 
   function resetForm() {
     setTitle(""); setDescription(""); setCategory("OPERACION"); setPriority("MEDIA");
@@ -169,14 +176,20 @@ export default function EscritorioPendientes() {
 
       {/* Lista */}
       <div className="col-span-3 space-y-3">
-        <div className="flex gap-1.5">
-          {([["todos", "Todos"], ["urgentes", "Urgentes"], ["abiertos", "Abiertos"]] as const).map(([value, label]) => (
-            <button key={value} onClick={() => setFilter(value)} className={`tappable min-h-9 rounded-full px-4 text-[13px] font-bold transition ${filter === value ? "bg-volt text-white" : "bg-panel text-muted ring-1 ring-line hover:text-ink"}`}>{label}</button>
-          ))}
+        <div className="flex items-center gap-2">
+          <div className="flex gap-1.5">
+            {([["todos", "Todos"], ["urgentes", "Urgentes"], ["abiertos", "Abiertos"]] as const).map(([value, label]) => (
+              <button key={value} onClick={() => setFilter(value)} className={`tappable min-h-9 rounded-full px-4 text-[13px] font-bold transition ${filter === value ? "bg-volt text-white" : "bg-panel text-muted ring-1 ring-line hover:text-ink"}`}>{label}</button>
+            ))}
+          </div>
+          <div className="relative ml-auto w-56">
+            <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
+            <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar…" className="min-h-9 w-full rounded-full border border-line bg-panel pl-9 pr-3 text-[13px] font-semibold text-ink outline-none transition focus:border-volt focus:ring-4 focus:ring-volt/10" />
+          </div>
         </div>
 
         <AnimatePresence initial={false}>
-          {visible.map((p) => (
+          {shown.map((p) => (
             <motion.div key={p.id} layout exit={{ opacity: 0, scale: 0.96, x: 40 }}>
               <Card className="p-5">
                 <div className="flex items-start justify-between gap-3">
@@ -212,7 +225,7 @@ export default function EscritorioPendientes() {
             </motion.div>
           ))}
         </AnimatePresence>
-        {visible.length === 0 ? <Card><EmptyState icon={ClipboardCheck} title="Sin pendientes" description="Cambia el filtro o crea uno nuevo." /></Card> : null}
+        {shown.length === 0 ? <Card><EmptyState icon={ClipboardCheck} title={term ? "Sin resultados" : "Sin pendientes"} description={term ? `Nada coincide con “${query}”.` : "Cambia el filtro o crea uno nuevo."} /></Card> : null}
       </div>
 
       <ConfirmDialog

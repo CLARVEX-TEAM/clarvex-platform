@@ -1,14 +1,15 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { BookOpen, CalendarClock, FileText, ImagePlus, PenLine, X } from "lucide-react";
 import { fetchAppData, type AppData } from "@/lib/app-data";
-import { AppFrame, AppHeader, Badge, BottomNav, Button, Card, StatCard } from "@/components/ui";
+import { AppFrame, AppHeader, Badge, BottomNav, Button, Card, EmptyState, StatCard } from "@/components/ui";
 import { ResourceDiscussion } from "@/components/ResourceDiscussion";
 
 export default function BitacoraPage() {
   const [data, setData] = useState<AppData | null>(null);
+  const [loadError, setLoadError] = useState(false);
   const [category, setCategory] = useState("Apertura");
   const [description, setDescription] = useState("");
   const [comment, setComment] = useState("");
@@ -20,17 +21,28 @@ export default function BitacoraPage() {
   const [saved, setSaved] = useState(false);
   const preview = useMemo(() => evidence ? URL.createObjectURL(evidence) : null, [evidence]);
 
-  useEffect(() => {
-    fetchAppData().then(setData).catch(() => setData(null));
+  const load = useCallback(() => {
+    setLoadError(false);
+    fetchAppData().then(setData).catch(() => setLoadError(true));
   }, []);
+
+  useEffect(() => { void load(); }, [load]);
 
   useEffect(() => () => { if (preview) URL.revokeObjectURL(preview); }, [preview]);
 
   if (!data) {
     return (
       <>
-        <AppHeader title="Bitacora" subtitle="Cargando registros desde PostgreSQL." backHref="/manager" />
-        <AppFrame><Card>Conectando...</Card></AppFrame>
+        <AppHeader title="Bitacora" subtitle="Registro cronologico de operacion de tienda." backHref="/manager" />
+        <AppFrame>
+          {loadError ? (
+            <Card className="text-center">
+              <p className="font-black text-ink">No se pudo cargar la bitácora</p>
+              <p className="mt-1 text-sm text-muted">Revisa tu conexión e inténtalo de nuevo.</p>
+              <Button className="mt-4" onClick={() => void load()}>Reintentar</Button>
+            </Card>
+          ) : <Card>Conectando...</Card>}
+        </AppFrame>
         <BottomNav />
       </>
     );
@@ -129,6 +141,9 @@ export default function BitacoraPage() {
         </Card>
 
         <div className="space-y-3">
+          {entries.length === 0 ? (
+            <Card><EmptyState icon={BookOpen} title="Sin registros aún" description="Captura el primer evento de operación con el formulario de arriba." /></Card>
+          ) : null}
           {entries.map((entry, index) => (
             <Card key={entry.id} className="relative overflow-hidden">
               <div className="absolute bottom-0 left-5 top-11 w-px bg-line/70" />

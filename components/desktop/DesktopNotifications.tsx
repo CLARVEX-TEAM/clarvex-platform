@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import {
@@ -65,8 +66,12 @@ export function DesktopNotifications() {
     function onClick(event: MouseEvent) {
       if (open && ref.current && !ref.current.contains(event.target as Node)) setOpen(false);
     }
+    function onKey(event: KeyboardEvent) {
+      if (event.key === "Escape") setOpen(false);
+    }
     document.addEventListener("mousedown", onClick);
-    return () => document.removeEventListener("mousedown", onClick);
+    document.addEventListener("keydown", onKey);
+    return () => { document.removeEventListener("mousedown", onClick); document.removeEventListener("keydown", onKey); };
   }, [open]);
 
   async function markRead(id: string) {
@@ -148,6 +153,9 @@ export function DesktopNotifications() {
                 );
               })}
             </div>
+            <Link href="/escritorio/notificaciones" onClick={() => setOpen(false)} className="block border-t border-line px-4 py-3 text-center text-xs font-bold text-volt transition hover:bg-panel">
+              Ver todas las notificaciones
+            </Link>
           </motion.div>
         ) : null}
       </AnimatePresence>

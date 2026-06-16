@@ -7,6 +7,7 @@ import { dateKey, startOfWeek } from "@/lib/schedule-week";
 import type { Role } from "@/lib/types";
 import { achievementTone, Badge, Card, ProgressBar, ProfileAvatar } from "@/components/ui";
 import { useDesktopData } from "@/components/desktop/useDesktopData";
+import { DesktopError } from "@/components/desktop/DesktopError";
 
 type ScheduleStatus = "WORKING" | "OFF" | "VACATION" | "PAID_DAY" | "INVENTORY" | "TERMINATED" | "UNKNOWN";
 type ScheduleItem = {
@@ -40,7 +41,7 @@ const statusConfig: Record<ScheduleStatus, { label: string; tone: Parameters<typ
 const dayAbbr = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
 
 export default function EscritorioEquipo() {
-  const { data } = useDesktopData();
+  const { data, error, reload } = useDesktopData();
   const [schedules, setSchedules] = useState<ScheduleItem[]>([]);
   const weekStart = useMemo(() => dateKey(startOfWeek(new Date())), []);
   const todayKey = useMemo(() => {
@@ -55,6 +56,7 @@ export default function EscritorioEquipo() {
       .catch(() => setSchedules([]));
   }, [weekStart]);
 
+  if (error && !data) return <DesktopError onRetry={reload} />;
   if (!data) {
     return (
       <div className="grid animate-pulse grid-cols-5 gap-5">
