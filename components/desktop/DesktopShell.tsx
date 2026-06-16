@@ -11,7 +11,9 @@ import {
   LayoutDashboard,
   LogOut,
   Megaphone,
+  Moon,
   Smartphone,
+  Sun,
   UsersRound
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -19,6 +21,9 @@ import { getSession, logout } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 import type { User } from "@/lib/types";
 import { ProfileAvatar } from "@/components/ui";
+import { useTheme } from "@/components/ThemeProvider";
+import { DesktopChromeProvider, FreshnessPill } from "@/components/desktop/DesktopChrome";
+import { DesktopNotifications } from "@/components/desktop/DesktopNotifications";
 
 // Ancho mínimo para considerar "escritorio". Por debajo, gerencia usa la app móvil.
 export const DESKTOP_MIN_WIDTH = 1024;
@@ -44,6 +49,7 @@ const sectionTitles: Record<string, { title: string; subtitle: string }> = {
 export function DesktopShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
+  const { isDark, setTheme } = useTheme();
   const [user, setUser] = useState<User | null>(null);
   const [ready, setReady] = useState(false);
 
@@ -68,6 +74,7 @@ export function DesktopShell({ children }: { children: React.ReactNode }) {
 
   const section = sectionTitles[pathname] ?? { title: "Escritorio", subtitle: "" };
   const roleLabel = user?.role === "GERENTE" ? "Gerente" : user?.role === "SUBGERENTE" ? "Subgerente" : "";
+  const todayLabel = new Date().toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long" });
 
   if (!ready) {
     return <div className="grid min-h-screen place-items-center text-sm font-bold text-muted">Cargando escritorio…</div>;
@@ -134,13 +141,32 @@ export function DesktopShell({ children }: { children: React.ReactNode }) {
       </aside>
 
       {/* ─── Contenido ─────────────────────────────────────────────── */}
-      <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-20 border-b border-line bg-white/80 px-8 py-4 backdrop-blur-xl dark:bg-[#0f1729]/85">
-          <h1 className="text-[1.45rem] font-black leading-tight tracking-[-0.03em] text-ink">{section.title}</h1>
-          {section.subtitle ? <p className="text-sm text-muted">{section.subtitle}</p> : null}
-        </header>
-        <main className="mx-auto w-full max-w-6xl flex-1 px-8 py-6">{children}</main>
-      </div>
+      <DesktopChromeProvider>
+        <div className="flex min-w-0 flex-1 flex-col">
+          <header className="sticky top-0 z-20 flex items-center justify-between gap-4 border-b border-line bg-white/80 px-8 py-3.5 backdrop-blur-xl dark:bg-[#0f1729]/85">
+            <div className="min-w-0">
+              <h1 className="text-[1.4rem] font-black leading-tight tracking-[-0.03em] text-ink">{section.title}</h1>
+              {section.subtitle ? <p className="truncate text-sm text-muted">{section.subtitle}</p> : null}
+            </div>
+            <div className="flex shrink-0 items-center gap-3">
+              <div className="hidden text-right xl:block">
+                {user?.storeName ? <p className="text-sm font-black leading-tight text-ink">{user.storeName}</p> : null}
+                <p className="text-[11px] capitalize text-muted">{todayLabel}</p>
+              </div>
+              <FreshnessPill />
+              <button
+                onClick={() => setTheme(isDark ? "light" : "dark")}
+                aria-label={isDark ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
+                className="tappable grid size-10 place-items-center rounded-2xl border border-line bg-panel text-ink/70 transition hover:text-volt"
+              >
+                {isDark ? <Sun size={18} /> : <Moon size={18} />}
+              </button>
+              <DesktopNotifications />
+            </div>
+          </header>
+          <main className="mx-auto w-full max-w-6xl flex-1 px-8 py-6">{children}</main>
+        </div>
+      </DesktopChromeProvider>
     </div>
   );
 }

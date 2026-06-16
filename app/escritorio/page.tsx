@@ -122,7 +122,7 @@ export default function EscritorioDashboard() {
               </thead>
               <tbody>
                 {ranking.map((r, i) => (
-                  <tr key={r.advisor.id} className="border-t border-line">
+                  <tr key={r.advisor.id} className="border-t border-line transition-colors hover:bg-volt/[0.04] even:bg-slate-50/50 dark:even:bg-white/[0.02]">
                     <td className="px-4 py-2.5">
                       <div className="flex items-center gap-2.5">
                         <ProfileAvatar name={r.advisor.name} photoUrl={r.advisor.photoUrl} size="sm" className="size-8 rounded-xl shadow-none" />

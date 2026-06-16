@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { AlertTriangle, Trash2 } from "lucide-react";
+import { AlertTriangle, ClipboardCheck, Trash2 } from "lucide-react";
 import type { Pending } from "@/lib/types";
-import { Badge, Card, ProfileAvatar, priorityTone, statusTone } from "@/components/ui";
+import { Badge, Card, EmptyState, ProfileAvatar, priorityTone, statusTone } from "@/components/ui";
 import { AppDatePicker, AppInput, AppSelect, AppTextarea, type SelectOption } from "@/components/forms";
 import { SendButton } from "@/components/SendButton";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
@@ -212,7 +212,7 @@ export default function EscritorioPendientes() {
             </motion.div>
           ))}
         </AnimatePresence>
-        {visible.length === 0 ? <Card className="p-10 text-center text-sm text-muted">Sin pendientes en este filtro.</Card> : null}
+        {visible.length === 0 ? <Card><EmptyState icon={ClipboardCheck} title="Sin pendientes" description="Cambia el filtro o crea uno nuevo." /></Card> : null}
       </div>
 
       <ConfirmDialog

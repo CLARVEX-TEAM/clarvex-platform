@@ -94,7 +94,7 @@ export default function EscritorioEquipo() {
                 const progress = progressFor(u.id);
                 const status = todayStatus(u.id);
                 return (
-                  <tr key={u.id} className="border-t border-line">
+                  <tr key={u.id} className="border-t border-line transition-colors hover:bg-volt/[0.04] even:bg-slate-50/50 dark:even:bg-white/[0.02]">
                     <td className="px-4 py-2.5">
                       <div className="flex items-center gap-2.5">
                         <ProfileAvatar name={u.name} photoUrl={u.photoUrl} size="sm" className="size-9 rounded-xl shadow-none" />

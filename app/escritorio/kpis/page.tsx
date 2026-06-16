@@ -1,10 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { BarChart3, ExternalLink } from "lucide-react";
 import { completion, money } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { achievementTone, Badge, Card, ProgressBar, ProfileAvatar } from "@/components/ui";
+import { useTheme } from "@/components/ThemeProvider";
 import { useDesktopData } from "@/components/desktop/useDesktopData";
 
 function fmt(value: number | null | undefined, suffix = "") {
@@ -13,6 +15,7 @@ function fmt(value: number | null | undefined, suffix = "") {
 
 export default function EscritorioKpis() {
   const { data } = useDesktopData();
+  const { isDark } = useTheme();
 
   if (!data) {
     return (
@@ -38,6 +41,13 @@ export default function EscritorioKpis() {
     })
     .sort((a, b) => Number(a.resting) - Number(b.resting) || b.progress - a.progress);
 
+  const chartData = rows
+    .filter((r) => !r.resting)
+    .map((r) => ({ name: r.advisor.name.split(" ")[0], Venta: r.kpi?.dailySales ?? 0, Meta: r.kpi?.dailyGoal ?? 0 }));
+  const tooltipStyle = isDark
+    ? { background: "#1a2540", border: "1px solid #2a3a5c", borderRadius: 12, color: "#f0f4ff" }
+    : { background: "#FFFFFF", border: "1px solid #E2E8F0", borderRadius: 12, color: "#0F172A" };
+
   return (
     <div className="space-y-5">
       <div className="grid grid-cols-4 gap-4">
@@ -52,6 +62,25 @@ export default function EscritorioKpis() {
         <StoreCard label="UPT" value={fmt(storeUpt)} />
         <StoreCard label="Tráfico" value={fmt(store.traffic)} />
       </div>
+
+      {chartData.length > 0 ? (
+        <Card className="p-5">
+          <h2 className="mb-3 text-lg font-black text-ink">Venta vs meta por asesor — hoy</h2>
+          <div className="h-72">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={chartData} margin={{ top: 8, right: 8, left: 8, bottom: 0 }} barGap={4}>
+                <CartesianGrid strokeDasharray="3 3" stroke={isDark ? "rgba(255,255,255,0.06)" : "rgba(15,23,42,0.06)"} vertical={false} />
+                <XAxis dataKey="name" tick={{ fill: "#94A3B8", fontSize: 11 }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fill: "#94A3B8", fontSize: 10 }} axisLine={false} tickLine={false} width={64} tickFormatter={(v: number) => money(v)} />
+                <Tooltip contentStyle={tooltipStyle} cursor={{ fill: isDark ? "rgba(255,255,255,0.04)" : "rgba(37,99,235,0.05)" }} formatter={(value) => money(Number(value))} />
+                <Legend wrapperStyle={{ fontSize: 12, fontWeight: 700 }} />
+                <Bar dataKey="Meta" fill="#94A3B8" radius={[6, 6, 0, 0]} maxBarSize={34} />
+                <Bar dataKey="Venta" fill="#2563EB" radius={[6, 6, 0, 0]} maxBarSize={34} animationDuration={700} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </Card>
+      ) : null}
 
       <Card className="p-5">
         <div className="mb-3 flex items-center justify-between">
@@ -73,7 +102,7 @@ export default function EscritorioKpis() {
             </thead>
             <tbody>
               {rows.map((r) => (
-                <tr key={r.advisor.id} className="border-t border-line">
+                <tr key={r.advisor.id} className="border-t border-line transition-colors hover:bg-volt/[0.04] even:bg-slate-50/50 dark:even:bg-white/[0.02]">
                   <td className="px-4 py-2.5">
                     <div className="flex items-center gap-2.5">
                       <ProfileAvatar name={r.advisor.name} photoUrl={r.advisor.photoUrl} size="sm" className="size-8 rounded-xl shadow-none" />
