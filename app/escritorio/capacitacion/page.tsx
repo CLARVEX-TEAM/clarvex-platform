@@ -8,6 +8,7 @@ import { Badge, Card, EmptyState } from "@/components/ui";
 import { SendButton } from "@/components/SendButton";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { useToast } from "@/components/Toast";
+import { useUnsavedGuard } from "@/components/desktop/useUnsavedGuard";
 
 type Resource = {
   id: string;
@@ -39,6 +40,8 @@ export default function EscritorioCapacitacion() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  useUnsavedGuard(Boolean(title.trim() || description.trim() || linkUrl.trim() || file));
 
   useEffect(() => {
     void load();

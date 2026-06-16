@@ -29,7 +29,6 @@ const managerActions: Action[] = [
 const advisorActions: Action[] = [
   { href: "/horarios", icon: CalendarDays, label: "Mis horarios", color: "orange" },
   { href: "/pendientes", icon: ClipboardList, label: "Pendientes", color: "blue" },
-  { href: "/bitacora", icon: BookOpen, label: "Bitácora", color: "purple" },
   { href: "/kpis", icon: BarChart3, label: "Mis KPIs", color: "green" },
   { href: "/kudos", icon: HeartHandshake, label: "Reconocer", color: "pink" },
   { href: "/solicitudes", icon: CalendarClock, label: "Solicitar día", color: "blue" },

@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { AlertTriangle } from "lucide-react";
 import { DeleteButton } from "@/components/ActionButtons";
@@ -27,6 +28,13 @@ export function ConfirmDialog({
   onConfirm: () => void;
   onCancel: () => void;
 }) {
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (event: KeyboardEvent) => { if (event.key === "Escape" && !loading) onCancel(); };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [open, loading, onCancel]);
+
   return (
     <AnimatePresence>
       {open ? (

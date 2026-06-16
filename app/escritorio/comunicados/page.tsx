@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import NextImage from "next/image";
 import { AnimatePresence, motion } from "framer-motion";
-import { ImagePlus, Megaphone, Trash2, X } from "lucide-react";
+import { ImagePlus, Megaphone, Search, Trash2, X } from "lucide-react";
 import type { Announcement } from "@/lib/types";
 import { Badge, Card, EmptyState, ProfileAvatar } from "@/components/ui";
 import { AppInput, AppTextarea } from "@/components/forms";
@@ -11,9 +11,11 @@ import { SendButton } from "@/components/SendButton";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { useToast } from "@/components/Toast";
 import { useDesktopData } from "@/components/desktop/useDesktopData";
+import { DesktopError } from "@/components/desktop/DesktopError";
+import { useUnsavedGuard } from "@/components/desktop/useUnsavedGuard";
 
 export default function EscritorioComunicados() {
-  const { data } = useDesktopData();
+  const { data, error, reload } = useDesktopData();
   const toast = useToast();
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [title, setTitle] = useState("");
@@ -24,9 +26,15 @@ export default function EscritorioComunicados() {
   const [saved, setSaved] = useState(false);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [query, setQuery] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { if (data) setAnnouncements(data.announcements); }, [data]);
+
+  const term = query.trim().toLowerCase();
+  const filtered = term ? announcements.filter((a) => `${a.title} ${a.body}`.toLowerCase().includes(term)) : announcements;
+
+  useUnsavedGuard(Boolean(title.trim() || body.trim() || imageFile));
 
   const advisors = data?.users.filter((u) => u.role === "ASESOR") ?? [];
   const authorName = (id: string) => data?.users.find((u) => u.id === id)?.name ?? "Gerencia";
@@ -92,6 +100,8 @@ export default function EscritorioComunicados() {
     }
   }
 
+  if (error && !data) return <DesktopError onRetry={reload} />;
+
   return (
     <div className="grid grid-cols-5 gap-5">
       {/* Crear comunicado */}
@@ -130,8 +140,14 @@ export default function EscritorioComunicados() {
 
       {/* Lista de comunicados */}
       <div className="col-span-3 space-y-3">
+        {announcements.length > 0 ? (
+          <div className="relative">
+            <Search size={16} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-muted" />
+            <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar comunicado…" className="min-h-11 w-full rounded-2xl border border-line bg-panel pl-10 pr-3 text-sm font-semibold text-ink outline-none transition focus:border-volt focus:ring-4 focus:ring-volt/10" />
+          </div>
+        ) : null}
         <AnimatePresence initial={false}>
-          {announcements.map((item) => {
+          {filtered.map((item) => {
             const reads = item.readBy.length;
             const readPct = advisors.length ? Math.round((reads / advisors.length) * 100) : 0;
             const reactionCount = item.reactions.length;
@@ -167,6 +183,8 @@ export default function EscritorioComunicados() {
         </AnimatePresence>
         {announcements.length === 0 && data ? (
           <Card><EmptyState icon={Megaphone} title="Sin comunicados" description="Crea el primero para tu equipo desde el panel de la izquierda." /></Card>
+        ) : filtered.length === 0 ? (
+          <Card className="p-8 text-center text-sm text-muted">Sin resultados para “{query}”.</Card>
         ) : null}
       </div>
 

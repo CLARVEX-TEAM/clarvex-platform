@@ -2,21 +2,23 @@
 
 import Link from "next/link";
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { BarChart3, ExternalLink } from "lucide-react";
+import { BarChart3, Download, ExternalLink } from "lucide-react";
 import { completion, money } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { achievementTone, Badge, Card, ProgressBar, ProfileAvatar } from "@/components/ui";
 import { useTheme } from "@/components/ThemeProvider";
 import { useDesktopData } from "@/components/desktop/useDesktopData";
+import { DesktopError } from "@/components/desktop/DesktopError";
 
 function fmt(value: number | null | undefined, suffix = "") {
   return value === null || value === undefined ? "—" : `${value}${suffix}`;
 }
 
 export default function EscritorioKpis() {
-  const { data } = useDesktopData();
+  const { data, error, reload } = useDesktopData();
   const { isDark } = useTheme();
 
+  if (error && !data) return <DesktopError onRetry={reload} />;
   if (!data) {
     return (
       <div className="animate-pulse space-y-5">
@@ -85,7 +87,10 @@ export default function EscritorioKpis() {
       <Card className="p-5">
         <div className="mb-3 flex items-center justify-between">
           <div className="flex items-center gap-2"><BarChart3 className="text-volt" size={18} /><h2 className="text-lg font-black text-ink">Desempeño por asesor — hoy</h2></div>
-          <Link href="/kpis" className="flex items-center gap-1.5 text-xs font-bold text-volt hover:underline">Análisis por período <ExternalLink size={13} /></Link>
+          <div className="flex items-center gap-4">
+            <a href={`/api/reports/kpis?start=${todayKey}&end=${todayKey}&period=week&label=${encodeURIComponent(`Hoy ${todayKey}`)}`} className="flex items-center gap-1.5 text-xs font-bold text-volt hover:underline"><Download size={14} /> Exportar (Excel)</a>
+            <Link href="/kpis" className="flex items-center gap-1.5 text-xs font-bold text-volt hover:underline">Análisis por período <ExternalLink size={13} /></Link>
+          </div>
         </div>
         <div className="overflow-hidden rounded-2xl border border-line">
           <table className="w-full text-sm">

@@ -11,11 +11,13 @@ import { cn } from "@/lib/utils";
 import { achievementTone, Badge, Card, ProgressBar, ProgressRing, ProfileAvatar, priorityTone } from "@/components/ui";
 import { useTheme } from "@/components/ThemeProvider";
 import { useDesktopData } from "@/components/desktop/useDesktopData";
+import { DesktopError } from "@/components/desktop/DesktopError";
 
 export default function EscritorioDashboard() {
-  const { data } = useDesktopData();
+  const { data, error, reload } = useDesktopData();
   const { isDark } = useTheme();
 
+  if (error && !data) return <DesktopError onRetry={reload} />;
   if (!data) {
     return (
       <div className="animate-pulse space-y-5">
