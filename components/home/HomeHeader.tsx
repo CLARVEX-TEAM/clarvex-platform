@@ -58,7 +58,7 @@ export function HomeHeader({ name, role, photoUrl, storeName, lastUpdated, onLog
             </div>
           </Link>
           <div className="min-w-0">
-            <p className="text-[10px] font-black uppercase tracking-[0.14em] text-[#2563EB]">{timeGreeting()}</p>
+            <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#2563EB]">{timeGreeting()}</p>
             <h1 className="text-[1.1rem] font-black leading-tight tracking-[-0.03em] text-slate-900 dark:text-white">
               {firstName} 👋
             </h1>

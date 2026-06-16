@@ -286,7 +286,7 @@ export default function PendientesPage() {
 function Info({ label, value, tone, icon }: { label: string; value: string; tone?: Parameters<typeof Badge>[0]["tone"]; icon?: React.ReactNode }) {
   return (
     <div className="border-b border-r border-white/[0.07] px-2 py-2 odd:border-l-0 even:border-r-0">
-      <p className="text-[11px] font-black uppercase tracking-[0.12em] text-muted">{label}</p>
+      <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-muted">{label}</p>
       <div className="mt-1 flex items-center gap-1.5 text-[13px] font-bold text-ink">
         {icon}
         {tone ? <Badge tone={tone}>{value}</Badge> : value}

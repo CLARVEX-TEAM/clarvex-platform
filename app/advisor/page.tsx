@@ -183,7 +183,7 @@ export default function AdvisorDashboard() {
           <Card>
             <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="text-[11px] font-black uppercase tracking-[0.13em] text-muted">Tu racha</p>
+                <p className="text-[11px] font-bold uppercase tracking-[0.13em] text-muted">Tu racha</p>
                 <h2 className="mt-1 text-[2rem] font-black leading-none text-ink">🔥 {streak.current} {streak.current === 1 ? "día" : "días"}</h2>
                 <p className="mt-1 text-xs text-muted">Mejor racha: {streak.best} {streak.best === 1 ? "día" : "días"} cumpliendo meta</p>
               </div>

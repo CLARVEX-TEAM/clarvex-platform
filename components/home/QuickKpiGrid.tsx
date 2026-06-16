@@ -109,7 +109,7 @@ export function QuickKpiGrid({ cards, delay = 0.16 }: QuickKpiGridProps) {
             <span className={cn("inline-grid size-9 place-items-center rounded-[18px]", colors.icon)}>
               <card.icon size={17} />
             </span>
-            <p className="mt-2 text-[10px] font-black uppercase tracking-[0.12em] text-slate-400 dark:text-slate-500">
+            <p className="mt-2 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400 dark:text-slate-500">
               {card.label}
             </p>
             <p className={cn("mt-0.5 text-[1.4rem] font-black leading-tight tracking-[-0.03em]", colors.value)}>

@@ -220,7 +220,7 @@ export default function PlanPage() {
         <div className="premium-hero mb-3 rounded-[28px] p-4">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <p className="text-[11px] font-black uppercase tracking-[0.16em] text-[#2563EB]">Progreso del dia</p>
+              <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#2563EB]">Progreso del dia</p>
               <h2 className="mt-1 text-[2.4rem] font-black leading-none tracking-[-0.05em] text-slate-900 dark:text-white">
                 {dayProgress}%
               </h2>
@@ -257,7 +257,7 @@ export default function PlanPage() {
               </AppButton>
               {generatedChores.length > 0 ? (
                 <div className="grid gap-2 border-t border-line pt-3">
-                  <p className="text-xs font-black uppercase tracking-[0.1em] text-muted">Reasignar tareas operativas</p>
+                  <p className="text-xs font-bold uppercase tracking-[0.1em] text-muted">Reasignar tareas operativas</p>
                   {generatedChores.map((key) => (
                     <AppSelect
                       key={key}
