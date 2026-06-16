@@ -12,6 +12,7 @@ import { AppFrame, AppHeader, Badge, BottomNav, Card, EmptyState, ProfileAvatar,
 import { TaskList } from "@/components/TaskList";
 import { DeleteButton, SaveButton } from "@/components/ActionButtons";
 import { SendButton } from "@/components/SendButton";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { AppButton, AppChipInput, AppDatePicker, AppInput, AppSelect, AppTextarea, type SelectOption } from "@/components/forms";
 import { cn } from "@/lib/utils";
 
@@ -44,6 +45,8 @@ export default function PlanPage() {
   const [genStatus, setGenStatus] = useState("");
   const [publishing, setPublishing] = useState(false);
   const [published, setPublished] = useState(false);
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     getSession().then(setSession);
@@ -82,9 +85,10 @@ export default function PlanPage() {
   const completed = totalActivities.filter((a) => a.completed).length;
   const dayProgress = totalActivities.length ? Math.round((completed / totalActivities.length) * 100) : 0;
 
-  async function deletePlan(id: string) {
-    if (!data) return;
-    if (!window.confirm("¿Eliminar este plan del dia? Esta accion no se puede deshacer.")) return;
+  async function confirmDeletePlan() {
+    const id = pendingDeleteId;
+    if (!data || !id) return;
+    setDeleting(true);
     const previous = data.plans;
     setData({ ...data, plans: data.plans.filter((plan) => plan.id !== id) });
     try {
@@ -93,6 +97,9 @@ export default function PlanPage() {
     } catch {
       setData({ ...data, plans: previous });
       setFormStatus("No se pudo eliminar el plan.");
+    } finally {
+      setDeleting(false);
+      setPendingDeleteId(null);
     }
   }
 
@@ -345,7 +352,7 @@ export default function PlanPage() {
                     {!isAdvisor && plan.published === false ? <Badge tone="warn">Borrador</Badge> : null}
                     <Badge>{money(plan.dailyGoal)}</Badge>
                     {!isAdvisor ? (
-                      <DeleteButton iconOnly onClick={() => void deletePlan(plan.id)} className="size-9 border border-rose-200/60 bg-rose-50/60 dark:border-rose-500/30 dark:bg-rose-500/10" aria-label="Eliminar plan" />
+                      <DeleteButton iconOnly onClick={() => setPendingDeleteId(plan.id)} className="size-9 border border-rose-200/60 bg-rose-50/60 dark:border-rose-500/30 dark:bg-rose-500/10" aria-label="Eliminar plan" />
                     ) : null}
                   </div>
                 </div>
@@ -382,6 +389,14 @@ export default function PlanPage() {
         </div>
       </AppFrame>
       <BottomNav />
+      <ConfirmDialog
+        open={pendingDeleteId !== null}
+        title="¿Eliminar plan del día?"
+        confirmLabel="Eliminar"
+        loading={deleting}
+        onConfirm={() => void confirmDeletePlan()}
+        onCancel={() => setPendingDeleteId(null)}
+      />
     </>
   );
 }
