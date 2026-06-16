@@ -5,6 +5,7 @@ import { Trash2 } from "lucide-react";
 import { TaskItem } from "@/components/ui";
 import type { Activity } from "@/lib/types";
 import { ResourceDiscussion } from "@/components/ResourceDiscussion";
+import { haptic } from "@/lib/haptics";
 
 export function TaskList({
   activities,
@@ -44,6 +45,7 @@ export function TaskList({
               <TaskItem
                 activity={activity}
                 onToggle={async (completed) => {
+                if (completed) haptic();
                 const previous = items;
                 setItems((current) => current.map((item) => (item.id === activity.id ? { ...item, completed } : item)));
                 try {

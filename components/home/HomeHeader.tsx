@@ -6,6 +6,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Bell, LogOut } from "lucide-react";
 import type { Role } from "@/lib/types";
+import { timeGreeting } from "@/lib/greeting";
 
 const roleLabel: Record<Role, string> = {
   GERENTE: "Gerente",
@@ -57,12 +58,13 @@ export function HomeHeader({ name, role, photoUrl, storeName, lastUpdated, onLog
             </div>
           </Link>
           <div className="min-w-0">
-            <h1 className="text-[1.1rem] font-black leading-snug tracking-[-0.03em] text-slate-900 dark:text-white">
-              Hola, {firstName} 👋
+            <p className="text-[10px] font-black uppercase tracking-[0.14em] text-[#2563EB]">{timeGreeting()}</p>
+            <h1 className="text-[1.1rem] font-black leading-tight tracking-[-0.03em] text-slate-900 dark:text-white">
+              {firstName} 👋
             </h1>
             <p className="truncate text-[11.5px] font-medium text-slate-500 dark:text-slate-400">
               {roleLabel[role]}{storeName ? ` · ${storeName}` : ""}
-              {lastUpdated ? ` · ${lastUpdated.toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" })}` : ""}
+              {lastUpdated ? ` · Actualizado ${lastUpdated.toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" })}` : ""}
             </p>
           </div>
         </div>

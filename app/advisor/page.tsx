@@ -1,18 +1,21 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { Receipt, ShoppingBag, Target, Trophy } from "lucide-react";
 import { getSession, logout } from "@/lib/auth";
 import { fetchAppData, type AppData } from "@/lib/app-data";
 import { completion, money } from "@/lib/format";
+import { haptic } from "@/lib/haptics";
 import { computeDailyStreak } from "@/lib/streaks";
 import { buildSalesTrend, buildDailySeries } from "@/lib/trend";
 import type { User } from "@/lib/types";
 import Link from "next/link";
 import { AppFrame, Badge, BottomNav, Card, NotificationCard } from "@/components/ui";
 import { TaskList } from "@/components/TaskList";
+import { Confetti } from "@/components/Confetti";
+import { PullToRefresh } from "@/components/PullToRefresh";
 import { HomeHeader } from "@/components/home/HomeHeader";
 import { DailySalesCard } from "@/components/home/DailySalesCard";
 import { QuickKpiGrid, type KpiCardData } from "@/components/home/QuickKpiGrid";
@@ -31,6 +34,7 @@ export default function AdvisorDashboard() {
   const [user, setUser] = useState<User | null>(null);
   const [data, setData] = useState<AppData | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [celebrate, setCelebrate] = useState(false);
 
   useEffect(() => {
     getSession().then((session) => {
@@ -39,15 +43,35 @@ export default function AdvisorDashboard() {
     });
   }, [router]);
 
-  useEffect(() => {
-    const load = () =>
+  const load = useCallback(
+    () =>
       fetchAppData()
         .then((d) => { setData(d); setLastUpdated(new Date()); })
-        .catch(() => {});
+        .catch(() => {}),
+    []
+  );
+
+  useEffect(() => {
     void load();
     const id = setInterval(load, 5 * 60 * 1000);
     return () => clearInterval(id);
-  }, []);
+  }, [load]);
+
+  // Confetti al alcanzar la meta del día (una sola vez por día/sesión).
+  useEffect(() => {
+    if (!data || !user) return;
+    const goalReached = data.dashboardDaily.dailyGoal > 0 && data.dashboardDaily.dailySales >= data.dashboardDaily.dailyGoal;
+    if (!goalReached) return;
+    const key = `clarvex-celebrate-${user.id}-${data.dashboardDaily.date}`;
+    try {
+      if (sessionStorage.getItem(key)) return;
+      sessionStorage.setItem(key, "1");
+    } catch { /* sin sessionStorage */ }
+    setCelebrate(true);
+    haptic([20, 40, 20]);
+    const id = setTimeout(() => setCelebrate(false), 2600);
+    return () => clearTimeout(id);
+  }, [data, user]);
 
   const handleLogout = async () => {
     await logout();
@@ -142,6 +166,8 @@ export default function AdvisorDashboard() {
         lastUpdated={lastUpdated}
         onLogout={handleLogout}
       />
+      <Confetti show={celebrate} />
+      <PullToRefresh onRefresh={load}>
       <AppFrame>
         <DailySalesCard sales={daily.dailySales} goal={daily.dailyGoal} delay={0.08} />
 
@@ -232,6 +258,7 @@ export default function AdvisorDashboard() {
           <TeamCelebrationsCard members={data.users.map((u) => ({ id: u.id, name: u.name, photoUrl: u.photoUrl, birthDate: u.birthDate, hireDate: u.hireDate }))} />
         </motion.div>
       </AppFrame>
+      </PullToRefresh>
       <BottomNav />
     </>
   );
