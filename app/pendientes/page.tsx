@@ -7,8 +7,8 @@ import { getSession } from "@/lib/auth";
 import type { Pending, User } from "@/lib/types";
 import { AppFrame, AppHeader, Badge, BottomNav, Card, EmptyState, FloatingActionButton, priorityTone, Skeleton, statusTone } from "@/components/ui";
 import { ResourceDiscussion } from "@/components/ResourceDiscussion";
-import { DeleteButton } from "@/components/ActionButtons";
-import { AppButton, AppDatePicker, AppInput, AppSelect, AppTextarea, type SelectOption } from "@/components/forms";
+import { DeleteButton, SaveButton } from "@/components/ActionButtons";
+import { AppDatePicker, AppInput, AppSelect, AppTextarea, type SelectOption } from "@/components/forms";
 
 type Filter = "todos" | "urgentes" | "hoy";
 
@@ -219,9 +219,9 @@ export default function PendientesPage() {
                   {formStatus}
                 </p>
               ) : null}
-              <AppButton type="submit" variant="primary" loading={submitting} success={saved} icon={<Plus size={17} />} className="w-full">
+              <SaveButton type="submit" loading={submitting} success={saved} savedLabel="¡Listo!" className="w-full">
                 {editId ? "Guardar cambios" : "Crear pendiente"}
-              </AppButton>
+              </SaveButton>
             </form>
           </Card>
         ) : null}

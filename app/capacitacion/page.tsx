@@ -2,12 +2,13 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ExternalLink, FileText, GraduationCap, ImagePlus, Send, X } from "lucide-react";
+import { ExternalLink, FileText, GraduationCap, ImagePlus, X } from "lucide-react";
 import { getSession } from "@/lib/auth";
 import { TRAINING_CATEGORIES, TRAINING_CATEGORY_LABELS } from "@/lib/training";
 import type { User } from "@/lib/types";
-import { AppFrame, AppHeader, Badge, BottomNav, Button, Card } from "@/components/ui";
+import { AppFrame, AppHeader, Badge, BottomNav, Card } from "@/components/ui";
 import { DeleteButton } from "@/components/ActionButtons";
+import { SendButton } from "@/components/SendButton";
 
 type Resource = {
   id: string;
@@ -36,6 +37,7 @@ export default function CapacitacionPage() {
   const [linkUrl, setLinkUrl] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [sending, setSending] = useState(false);
+  const [sent, setSent] = useState(false);
   const [status, setStatus] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -86,6 +88,8 @@ export default function CapacitacionPage() {
       setFile(null);
       if (fileRef.current) fileRef.current.value = "";
       setStatus("Recurso publicado. ✅");
+      setSent(true);
+      window.setTimeout(() => setSent(false), 2000);
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "No se pudo publicar.");
     } finally {
@@ -152,7 +156,7 @@ export default function CapacitacionPage() {
                 {file ? <X size={15} className="ml-auto" onClick={(event) => { event.stopPropagation(); setFile(null); if (fileRef.current) fileRef.current.value = ""; }} /> : null}
               </button>
               <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,application/pdf" className="hidden" onChange={(event) => setFile(event.target.files?.[0] ?? null)} />
-              <Button type="button" variant="primary" icon={<Send size={16} />} onClick={() => void submit()} disabled={sending} className="w-full">{sending ? "Publicando…" : "Publicar recurso"}</Button>
+              <SendButton type="button" onClick={() => void submit()} loading={sending} success={sent} sentLabel="¡Publicado!" className="w-full">Publicar recurso</SendButton>
               {status ? <p className="text-sm font-semibold text-muted">{status}</p> : null}
             </div>
           </Card>

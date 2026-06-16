@@ -10,7 +10,8 @@ import type { Activity, User } from "@/lib/types";
 import { CHORE_LABELS, ROTATING_ORDER } from "@/lib/chore-rules";
 import { AppFrame, AppHeader, Badge, BottomNav, Card, EmptyState, ProfileAvatar, ProgressBar, ProgressRing, Skeleton } from "@/components/ui";
 import { TaskList } from "@/components/TaskList";
-import { DeleteButton } from "@/components/ActionButtons";
+import { DeleteButton, SaveButton } from "@/components/ActionButtons";
+import { SendButton } from "@/components/SendButton";
 import { AppButton, AppChipInput, AppDatePicker, AppInput, AppSelect, AppTextarea, type SelectOption } from "@/components/forms";
 import { cn } from "@/lib/utils";
 
@@ -263,9 +264,9 @@ export default function PlanPage() {
                 </div>
               ) : null}
               {draftCount > 0 ? (
-                <AppButton type="button" variant="primary" onClick={() => void publishDay()} loading={publishing} success={published} className="w-full">
+                <SendButton type="button" onClick={() => void publishDay()} loading={publishing} success={published} sentLabel="¡Enviado!" className="w-full">
                   Enviar al equipo ({draftCount} {draftCount === 1 ? "borrador" : "borradores"})
-                </AppButton>
+                </SendButton>
               ) : null}
               {genStatus ? <p className="text-sm font-semibold text-muted">{genStatus}</p> : null}
             </div>
@@ -317,9 +318,9 @@ export default function PlanPage() {
                   {formStatus}
                 </p>
               ) : null}
-              <AppButton type="submit" variant="primary" loading={submitting} success={saved} className="w-full">
+              <SaveButton type="submit" loading={submitting} success={saved} savedLabel="¡Creado!" className="w-full">
                 Crear plan
-              </AppButton>
+              </SaveButton>
             </form>
           </Card>
         ) : null}
