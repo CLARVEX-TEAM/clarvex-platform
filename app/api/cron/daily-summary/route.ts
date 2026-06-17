@@ -4,10 +4,13 @@ import { resolveMonterreyDate } from "@/lib/cron-time";
 import { buildAdvisorMessage, buildManagerSummary } from "@/lib/daily-summary";
 import { createNotifications, type NotificationInput } from "@/lib/notifications";
 import { dispatchPushToUsers } from "@/lib/push";
+import { syncAllSources } from "@/lib/data-source-sync";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
+// Sincroniza los datos antes del cierre: incluye la sync (varios min) + el envío.
+export const maxDuration = 300;
 
 const PUSH_TAG = "cierre-dia";
 const LOG_TYPE = "EVENING";
@@ -18,6 +21,9 @@ export async function POST(request: Request) {
   if (!secret || header !== `Bearer ${secret}`) {
     return NextResponse.json({ error: "No autorizado." }, { status: 401 });
   }
+
+  // Refrescar KPIs/horarios antes del cierre para no mandar datos viejos.
+  await syncAllSources().catch(() => undefined);
 
   const { dateKey, utcDate, dateLabel } = resolveMonterreyDate();
   const stores = await prisma.store.findMany({ select: { id: true } });
