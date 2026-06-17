@@ -112,7 +112,7 @@ export default function PlanPage() {
       const response = await fetch("/api/plans", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId, date, dailyGoal: Number(dailyGoal), focus, message, activities: activityChips })
+        body: JSON.stringify({ userId, date, dailyGoal: Number(dailyGoal) || 0, focus, message, activities: activityChips })
       });
       const payload = await response.json() as { plan?: AppData["plans"][number]; error?: string };
       if (!response.ok || !payload.plan) { toast(payload.error ?? "No se pudo crear el plan.", "error"); return; }
