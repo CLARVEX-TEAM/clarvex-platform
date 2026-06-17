@@ -3,12 +3,12 @@ type PrismaClient = typeof prisma;
 import type { Session } from "@/lib/session-token";
 import { validateProfilePhoto } from "@/lib/profile-photo";
 
-export const EVIDENCE_MAX_BYTES = 5 * 1024 * 1024;
+export const EVIDENCE_MAX_BYTES = 12 * 1024 * 1024;
 export type ResourceTarget = { pendingId?: string; taskId?: string; logEntryId?: string; announcementId?: string };
 type ResourceClient = Pick<PrismaClient, "pending" | "dayPlanTask" | "storeLog" | "announcement">;
 
 export function validateEvidenceImage(file: { type: string; size: number }, bytes: Uint8Array) {
-  return validateProfilePhoto(file, bytes);
+  return validateProfilePhoto(file, bytes, EVIDENCE_MAX_BYTES);
 }
 
 export function parseResourceTarget(values: ResourceTarget) {
