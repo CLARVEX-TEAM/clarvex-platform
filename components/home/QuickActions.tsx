@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { BarChart3, BookOpen, CalendarClock, CalendarDays, CheckSquare, ClipboardList, GraduationCap, HeartHandshake, MapPin, PackageSearch } from "lucide-react";
+import { BarChart3, BookOpen, CalendarClock, CalendarDays, CheckSquare, ClipboardList, GraduationCap, HeartHandshake, PackageSearch } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { LucideIcon } from "lucide-react";
 
@@ -19,7 +19,6 @@ const managerActions: Action[] = [
   { href: "/plan", icon: CheckSquare, label: "Crear plan del día", color: "blue" },
   { href: "/pendientes", icon: ClipboardList, label: "Crear pendiente", color: "green" },
   { href: "/bitacora", icon: BookOpen, label: "Bitácora", color: "purple" },
-  { href: "/mapa", icon: MapPin, label: "Mapa de tienda", color: "green" },
   { href: "/horarios", icon: CalendarDays, label: "Horarios", color: "orange" },
   { href: "/kudos", icon: HeartHandshake, label: "Reconocer", color: "pink" },
   { href: "/solicitudes", icon: CalendarClock, label: "Solicitudes", color: "blue" },
@@ -30,7 +29,6 @@ const managerActions: Action[] = [
 const advisorActions: Action[] = [
   { href: "/horarios", icon: CalendarDays, label: "Mis horarios", color: "orange" },
   { href: "/pendientes", icon: ClipboardList, label: "Pendientes", color: "blue" },
-  { href: "/mapa", icon: MapPin, label: "Mapa de tienda", color: "green" },
   { href: "/kpis", icon: BarChart3, label: "Mis KPIs", color: "green" },
   { href: "/kudos", icon: HeartHandshake, label: "Reconocer", color: "pink" },
   { href: "/solicitudes", icon: CalendarClock, label: "Solicitar día", color: "blue" },
