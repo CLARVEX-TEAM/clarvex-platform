@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { ClipboardList, Flame, Moon, Sparkles, SunMedium } from "lucide-react";
+import { ClipboardList, Flame, Moon, Plus, Sparkles, SunMedium } from "lucide-react";
 import { fetchAppData, type AppData } from "@/lib/app-data";
 import { getSession } from "@/lib/auth";
 import { money } from "@/lib/format";
@@ -361,12 +361,19 @@ export default function PlanPage() {
                         {group.label}
                       </div>
                       <TaskList
+                        key={group.items.map((a) => a.id).join("-")}
                         activities={group.items}
                         canDelete={!isAdvisor}
                         onDeleted={(activityId) => setData((current) => current ? { ...current, plans: current.plans.map((p) => p.id === plan.id ? { ...p, activities: p.activities.filter((a) => a.id !== activityId) } : p) } : current)}
                       />
                     </section>
                   ))}
+                  {!isAdvisor ? (
+                    <AddActivity
+                      planId={plan.id}
+                      onAdded={(activity) => setData((current) => current ? { ...current, plans: current.plans.map((p) => p.id === plan.id ? { ...p, activities: [...p.activities, activity] } : p) } : current)}
+                    />
+                  ) : null}
                 </div>
               </Card>
             );
@@ -392,6 +399,53 @@ export default function PlanPage() {
         onCancel={() => setPendingDeleteId(null)}
       />
     </>
+  );
+}
+
+function AddActivity({ planId, onAdded }: { planId: string; onAdded: (activity: Activity) => void }) {
+  const [title, setTitle] = useState("");
+  const [saving, setSaving] = useState(false);
+  const toast = useToast();
+
+  async function add() {
+    const value = title.trim();
+    if (value.length < 3) { toast("La actividad debe tener al menos 3 caracteres.", "error"); return; }
+    if (saving) return;
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/plans/${planId}/activities`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title: value }) });
+      const payload = await res.json() as { activity?: Activity; error?: string };
+      if (!res.ok || !payload.activity) { toast(payload.error ?? "No se pudo agregar la actividad.", "error"); return; }
+      onAdded(payload.activity);
+      setTitle("");
+      toast("Actividad agregada.", "success");
+    } catch {
+      toast("No se pudo agregar la actividad.", "error");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="flex gap-2 border-t border-line pt-2.5">
+      <input
+        value={title}
+        onChange={(event) => setTitle(event.target.value)}
+        onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); void add(); } }}
+        maxLength={300}
+        placeholder="Agregar actividad…"
+        className="min-h-10 min-w-0 flex-1 rounded-xl border border-line bg-panel px-3 text-sm font-semibold text-ink outline-none focus:border-volt"
+      />
+      <button
+        type="button"
+        onClick={() => void add()}
+        disabled={saving || title.trim().length < 3}
+        className="tappable grid size-10 shrink-0 place-items-center rounded-xl bg-volt text-white transition active:scale-95 disabled:opacity-40"
+        aria-label="Agregar actividad"
+      >
+        <Plus size={18} />
+      </button>
+    </div>
   );
 }
 
