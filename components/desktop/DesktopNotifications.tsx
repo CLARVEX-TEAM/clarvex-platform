@@ -103,7 +103,7 @@ export function DesktopNotifications() {
       >
         <Bell size={18} />
         {unread > 0 ? (
-          <span className="absolute -right-1 -top-1 grid min-w-[18px] place-items-center rounded-full bg-rose-500 px-1 text-[10px] font-black leading-[18px] text-white">
+          <span className="pointer-events-none absolute -right-1 -top-1 grid h-[18px] min-w-[18px] place-items-center rounded-full bg-rose-500 px-[5px] text-[10px] font-black leading-none text-white shadow-sm ring-2 ring-white dark:ring-[#0f1729]">
             {unread > 99 ? "99+" : unread}
           </span>
         ) : null}
