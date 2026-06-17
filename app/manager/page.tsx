@@ -65,8 +65,14 @@ export default function ManagerDashboard() {
   useEffect(() => {
     void load();
     const id = setInterval(load, 5 * 60 * 1000);
+    const onVisible = () => { if (document.visibilityState === "visible") void load(); };
     window.addEventListener("clarvex-online", load);
-    return () => { clearInterval(id); window.removeEventListener("clarvex-online", load); };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      clearInterval(id);
+      window.removeEventListener("clarvex-online", load);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
   }, [load]);
 
   const handleLogout = async () => {
