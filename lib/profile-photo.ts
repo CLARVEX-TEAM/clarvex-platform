@@ -6,10 +6,10 @@ const allowedImages = {
   "image/webp": { extension: "webp", signatures: [[0x52, 0x49, 0x46, 0x46]] }
 } as const;
 
-export function validateProfilePhoto(file: { type: string; size: number }, bytes: Uint8Array) {
+export function validateProfilePhoto(file: { type: string; size: number }, bytes: Uint8Array, maxBytes = PROFILE_PHOTO_MAX_BYTES) {
   const image = allowedImages[file.type as keyof typeof allowedImages];
   if (!image) return { valid: false as const, error: "Usa una imagen JPG, PNG o WEBP." };
-  if (file.size <= 0 || file.size > PROFILE_PHOTO_MAX_BYTES) return { valid: false as const, error: "La imagen debe pesar menos de 5 MB." };
+  if (file.size <= 0 || file.size > maxBytes) return { valid: false as const, error: `La imagen debe pesar menos de ${Math.round(maxBytes / (1024 * 1024))} MB.` };
   const matchesSignature = image.signatures.some((signature) => signature.every((byte, index) => bytes[index] === byte));
   const isWebp = file.type !== "image/webp" || (bytes[8] === 0x57 && bytes[9] === 0x45 && bytes[10] === 0x42 && bytes[11] === 0x50);
   if (!matchesSignature || !isWebp) return { valid: false as const, error: "El archivo no contiene una imagen valida." };

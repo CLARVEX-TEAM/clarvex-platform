@@ -4,7 +4,6 @@ import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ImagePlus, MessageCircle, Send, X } from "lucide-react";
 import { ProfileAvatar } from "@/components/ui";
-import { compressImage } from "@/lib/compress-image";
 
 const MAX_FILES = 5;
 
@@ -77,12 +76,10 @@ export function ResourceDiscussion({ target, className = "" }: { target: Target;
     if (uploadingRef.current) return; // guard síncrono: evita doble/triple envío por toques rápidos
     uploadingRef.current = true;
     setUploading(true);
-    setStatus("Optimizando imágenes...");
+    setStatus("Subiendo evidencias...");
     try {
-      const compressed = await Promise.all(files.map((f) => compressImage(f)));
-      setStatus("Subiendo evidencias...");
       const form = new FormData();
-      compressed.forEach((f) => form.append("files", f));
+      files.forEach((f) => form.append("files", f));
       form.set("note", note);
       Object.entries(target).forEach(([key, value]) => form.set(key, value));
       const response = await fetch("/api/evidences/upload", { method: "POST", body: form });
