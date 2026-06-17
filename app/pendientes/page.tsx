@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { AnimatePresence } from "framer-motion";
-import { AlertTriangle, ClipboardCheck, Plus, UserRound } from "lucide-react";
+import { AlertTriangle, CheckCircle2, ClipboardCheck, Plus, UserRound } from "lucide-react";
 import { fetchAppData, type AppData } from "@/lib/app-data";
 import { getSession } from "@/lib/auth";
 import type { Pending, User } from "@/lib/types";
@@ -12,6 +12,8 @@ import { DeleteButton, SaveButton } from "@/components/ActionButtons";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { useToast } from "@/components/Toast";
 import { AppDatePicker, AppInput, AppSelect, AppTextarea, type SelectOption } from "@/components/forms";
+import { PullToRefresh } from "@/components/PullToRefresh";
+import { SwipeToAction } from "@/components/SwipeToAction";
 
 type Filter = "todos" | "urgentes" | "hoy";
 
@@ -32,10 +34,12 @@ export default function PendientesPage() {
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
   const [deletingPending, setDeletingPending] = useState(false);
 
+  const load = useCallback(() => fetchAppData().then(setData).catch(() => setData(null)), []);
+
   useEffect(() => {
     getSession().then(setSession);
-    fetchAppData().then(setData).catch(() => setData(null));
-  }, []);
+    void load();
+  }, [load]);
 
   if (!data) {
     return (
@@ -158,6 +162,7 @@ export default function PendientesPage() {
   return (
     <>
       <AppHeader title="Pendientes" subtitle={isAdvisor ? "Tus pendientes asignados." : "Handover, responsables y fechas limite."} backHref={isAdvisor ? "/advisor" : "/manager"} />
+      <PullToRefresh onRefresh={load}>
       <AppFrame>
         <div className="no-scrollbar tab-glass-shell -mx-1 mb-3 flex gap-1 overflow-x-auto overflow-y-hidden p-1 scroll-px-4">
           {[
@@ -233,7 +238,8 @@ export default function PendientesPage() {
         <div className="space-y-2.5">
           <AnimatePresence initial={false}>
           {visiblePendings.map((pending) => (
-            <Card key={pending.id} layout exit={{ opacity: 0, scale: 0.9, x: 60 }}>
+            <SwipeToAction key={pending.id} onAction={() => void changeStatus(pending.id, "COMPLETADO")} icon={CheckCircle2} label="Completar" disabled={isAdvisor || pending.status === "completado"}>
+            <Card layout exit={{ opacity: 0, scale: 0.9, x: 60 }}>
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <h2 className="font-black">{pending.title}</h2>
@@ -256,6 +262,7 @@ export default function PendientesPage() {
               ) : null}
               <ResourceDiscussion target={{ pendingId: pending.id }} />
             </Card>
+            </SwipeToAction>
           ))}
           </AnimatePresence>
           {visiblePendings.length === 0 ? (
@@ -269,6 +276,7 @@ export default function PendientesPage() {
           ) : null}
         </div>
       </AppFrame>
+      </PullToRefresh>
       {!isAdvisor ? <FloatingActionButton href="#crear-pendiente" label="Crear" icon={Plus} /> : null}
       <BottomNav />
       <ConfirmDialog

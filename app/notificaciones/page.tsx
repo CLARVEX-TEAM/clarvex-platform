@@ -6,6 +6,7 @@ import { Bell, Cake, CalendarClock, Check, CheckCheck, ChevronRight, ClipboardCh
 import { getSession } from "@/lib/auth";
 import type { User } from "@/lib/types";
 import { AppFrame, AppHeader, Badge, BottomNav, Button, Card } from "@/components/ui";
+import { SwipeToAction } from "@/components/SwipeToAction";
 
 type NotificationType = "PLAN_READY" | "NEW_ANNOUNCEMENT" | "PENDING_ASSIGNED" | "TASK_COMPLETED" | "KPI_GOAL_REACHED" | "COMMENT_ADDED" | "EVIDENCE_ADDED" | "DAILY_SUMMARY" | "ANNOUNCEMENT_REACTION" | "CELEBRATION" | "KUDO" | "SHIFT_REQUEST" | "INVENTORY_REPORT" | "NEW_TRAINING";
 type NotificationItem = { id: string; type: NotificationType; title: string; body: string; readAt: string | null; createdAt: string };
@@ -116,6 +117,7 @@ function NotificationRow({ item, onRead }: { item: NotificationItem; onRead: (id
   }
 
   return (
+    <SwipeToAction onAction={() => onRead(item.id)} icon={CheckCheck} label="Leído" disabled={Boolean(item.readAt)}>
     <Card
       onClick={handleClick}
       className={`cursor-pointer ${item.readAt ? "p-3.5" : "bg-blue-50/70 dark:bg-blue-950/30 p-3.5 ring-1 ring-volt/15"}`}
@@ -139,6 +141,7 @@ function NotificationRow({ item, onRead }: { item: NotificationItem; onRead: (id
         </div>
       </div>
     </Card>
+    </SwipeToAction>
   );
 }
 

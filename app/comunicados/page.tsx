@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import NextImage from "next/image";
 import { ImagePlus, Megaphone, MessageCircle, X } from "lucide-react";
@@ -8,11 +8,12 @@ import { fetchAppData, type AppData } from "@/lib/app-data";
 import { getSession } from "@/lib/auth";
 import { ANNOUNCEMENT_REACTIONS } from "@/lib/reactions";
 import type { Announcement, AnnouncementReaction, User } from "@/lib/types";
-import { AppFrame, AppHeader, Badge, BottomNav, Card, NotificationCard, ProfileAvatar, ProgressBar } from "@/components/ui";
+import { AppFrame, AppHeader, Badge, BottomNav, Card, NotificationCard, ProfileAvatar, ProgressBar, Skeleton } from "@/components/ui";
 import { AppInput, AppTextarea } from "@/components/forms";
 import { SendButton, SendIconButton } from "@/components/SendButton";
 import { DeleteButton } from "@/components/ActionButtons";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { PullToRefresh } from "@/components/PullToRefresh";
 import { haptic } from "@/lib/haptics";
 import { useToast } from "@/components/Toast";
 
@@ -34,15 +35,17 @@ export default function ComunicadosPage() {
   const [session, setSession] = useState<User | null>(null);
   const [filter, setFilter] = useState<Filter>("todos");
 
+  const load = useCallback(
+    () => fetchAppData()
+      .then((payload) => { setData(payload); setAnnouncements(payload.announcements); })
+      .catch(() => setData(null)),
+    []
+  );
+
   useEffect(() => {
     getSession().then(setSession);
-    fetchAppData()
-      .then((payload) => {
-        setData(payload);
-        setAnnouncements(payload.announcements);
-      })
-      .catch(() => setData(null));
-  }, []);
+    void load();
+  }, [load]);
 
   async function toggleRead(id: string) {
     if (!session) return;
@@ -180,6 +183,7 @@ export default function ComunicadosPage() {
   return (
     <>
       <AppHeader title="Comunicados" subtitle={session?.role === "ASESOR" ? "Lee avisos y confirma tu lectura." : "Publicacion, lectura y seguimiento por asesor."} backHref={session?.role === "ASESOR" ? "/advisor" : "/manager"} />
+      <PullToRefresh onRefresh={load}>
       <AppFrame>
         <div className="no-scrollbar tab-glass-shell -mx-1 mb-3 flex gap-1 overflow-x-auto overflow-y-hidden p-1 scroll-px-4">
           {[
@@ -197,7 +201,7 @@ export default function ComunicadosPage() {
           ))}
         </div>
 
-        {!data ? <Card className="mb-3">Cargando comunicados desde PostgreSQL...</Card> : null}
+        {!data ? <div className="mb-3 space-y-2.5"><Skeleton className="h-28 rounded-[28px]" /><Skeleton className="h-40 rounded-[28px]" /></div> : null}
 
         {session?.role !== "ASESOR" ? (
           <Card className="mb-3">
@@ -318,6 +322,7 @@ export default function ComunicadosPage() {
           ) : null}
         </div>
       </AppFrame>
+      </PullToRefresh>
       <BottomNav />
       <ConfirmDialog
         open={pendingDeleteId !== null}

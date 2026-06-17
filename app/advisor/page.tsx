@@ -54,7 +54,8 @@ export default function AdvisorDashboard() {
   useEffect(() => {
     void load();
     const id = setInterval(load, 5 * 60 * 1000);
-    return () => clearInterval(id);
+    window.addEventListener("clarvex-online", load);
+    return () => { clearInterval(id); window.removeEventListener("clarvex-online", load); };
   }, [load]);
 
   // Confetti al alcanzar la meta del día (una sola vez por día/sesión).

@@ -11,7 +11,8 @@ import { completion, money } from "@/lib/format";
 import { periodDateKey, type KpiPeriod } from "@/lib/kpi-period";
 import type { KpiReportItem } from "@/lib/kpi-report";
 import type { CommissionRule, Role, User } from "@/lib/types";
-import { achievementTone, AppFrame, AppHeader, Badge, BottomNav, Card, ProfileAvatar, ProgressBar, ProgressRing, StatCard } from "@/components/ui";
+import { achievementTone, AppFrame, AppHeader, Badge, BottomNav, Card, ProfileAvatar, ProgressBar, ProgressRing, Skeleton, StatCard } from "@/components/ui";
+import { PullToRefresh } from "@/components/PullToRefresh";
 import { useTheme } from "@/components/ThemeProvider";
 import { cn } from "@/lib/utils";
 
@@ -100,6 +101,7 @@ export default function KpisPage() {
   const [simulatedSales, setSimulatedSales] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [refreshTick, setRefreshTick] = useState(0);
   const [showTargetSheet, setShowTargetSheet] = useState(false);
   const [receipts, setReceipts] = useState<ReceiptMonth[] | null>(null);
   const [receiptsLoading, setReceiptsLoading] = useState(false);
@@ -125,7 +127,7 @@ export default function KpisPage() {
       })
       .finally(() => setLoading(false));
     return () => controller.abort();
-  }, [period, selectedDate, session]);
+  }, [period, selectedDate, session, refreshTick]);
 
   useEffect(() => {
     if (!session) return;
@@ -234,6 +236,7 @@ export default function KpisPage() {
   return (
     <>
       <AppHeader title="KPIs" subtitle={isAdvisor ? "Tus indicadores por periodo." : "Venta, metas y ranking del equipo."} backHref={isAdvisor ? "/advisor" : "/manager"} />
+      <PullToRefresh onRefresh={() => { setRefreshTick((t) => t + 1); return new Promise((r) => setTimeout(r, 700)); }}>
       <AppFrame>
         <PeriodSelector period={period} setPeriod={(next) => { if (next !== period) { setSlideDir(next === "month" ? 1 : -1); setPeriod(next); } }} selectedDate={selectedDate} setSelectedDate={(date) => { setSlideDir(0); setSelectedDate(date); }} rangeLabel={rangeLabel} availableWeeks={report?.availableWeeks ?? []} availableRetailMonths={report?.availableRetailMonths ?? []} />
 
@@ -258,7 +261,7 @@ export default function KpisPage() {
         </div>
 
         {error ? <Card className="mb-3 bg-rose-50 text-sm font-semibold text-rose-700">{error}</Card> : null}
-        {loading ? <Card className="text-sm font-semibold text-muted">Calculando acumulados...</Card> : activeKpi ? (
+        {loading ? <div className="space-y-3"><Skeleton className="h-32 rounded-[28px]" /><div className="grid grid-cols-2 gap-3">{[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-28 rounded-[28px]" />)}</div></div> : activeKpi ? (
           <AnimatePresence mode="wait">
             <motion.div key={`${activeTab}-${period}-${selectedDate}`} initial={{ opacity: 0, x: slideDir * 30, y: slideDir === 0 ? 8 : 0 }} animate={{ opacity: 1, x: 0, y: 0 }} exit={{ opacity: 0, x: slideDir * -22 }} transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}>
               {activeTab === "resumen" ? <ResumenView activeKpi={activeKpi} team={report?.team ?? []} progress={progress} periodLabel={periodLabel} hasDiscountSource={report?.hasDiscountSource ?? false} latestDiscountWeek={report?.latestDiscountWeek ?? null} targets={periodTargets} isManager={isManager} onOpenTargets={() => setShowTargetSheet(true)} salesProjection={monthSalesProjection} /> : null}
@@ -270,6 +273,7 @@ export default function KpisPage() {
           </AnimatePresence>
         ) : <Card className="text-sm font-semibold text-muted">No hay KPIs dentro de {rangeLabel}.</Card>}
       </AppFrame>
+      </PullToRefresh>
       <BottomNav />
       <AnimatePresence>
         {showTargetSheet && isManager ? (
