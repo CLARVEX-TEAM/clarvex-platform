@@ -529,10 +529,16 @@ function NotificationBell() {
   }, [pathname]);
 
   return (
-    <Link href="/notificaciones" aria-label={unreadCount ? `${unreadCount} notificaciones no leidas` : "Abrir notificaciones"} className="tappable liquid-glass relative grid size-11 place-items-center rounded-[22px] text-ink/62">
-      <Bell size={18} />
-      {unreadCount > 0 ? <span className="absolute right-1.5 top-1.5 grid min-w-4 place-items-center rounded-full bg-rose-500 px-1 text-[9px] font-black leading-4 text-white">{unreadCount > 99 ? "99+" : unreadCount}</span> : null}
-    </Link>
+    <div className="relative shrink-0">
+      <Link href="/notificaciones" aria-label={unreadCount ? `${unreadCount} notificaciones no leidas` : "Abrir notificaciones"} className="tappable liquid-glass grid size-11 place-items-center rounded-[22px] text-ink/62">
+        <Bell size={18} />
+      </Link>
+      {unreadCount > 0 ? (
+        <span className="pointer-events-none absolute -right-1 -top-1 grid h-[18px] min-w-[18px] place-items-center rounded-full bg-rose-500 px-[5px] text-[10px] font-black leading-none text-white shadow-sm ring-2 ring-white dark:ring-[#0f1729]">
+          {unreadCount > 99 ? "99+" : unreadCount}
+        </span>
+      ) : null}
+    </div>
   );
 }
 
