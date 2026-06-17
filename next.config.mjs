@@ -14,10 +14,6 @@ const r2Domain = r2PublicUrl
 const nextConfig = {
   reactStrictMode: true,
 
-  // El mapa 3D usa three.js puro; transpilar three asegura que sus módulos ESM
-  // (examples/jsm) se compilen al target del navegador.
-  transpilePackages: ["three"],
-
   images: {
     remotePatterns: [
       ...(r2Domain ? [{ protocol: /** @type {"https"} */ ("https"), hostname: r2Domain, pathname: "/**" }] : []),

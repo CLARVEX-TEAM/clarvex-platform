@@ -11,7 +11,6 @@ import {
   GraduationCap,
   LayoutDashboard,
   LogOut,
-  Map,
   Megaphone,
   Moon,
   Smartphone,
@@ -36,7 +35,6 @@ const navItems: { href: string; label: string; icon: LucideIcon }[] = [
   { href: "/escritorio/pendientes", label: "Pendientes", icon: AlertTriangle },
   { href: "/escritorio/kpis", label: "KPIs", icon: BarChart3 },
   { href: "/escritorio/equipo", label: "Equipo", icon: UsersRound },
-  { href: "/escritorio/mapa", label: "Mapa", icon: Map },
   { href: "/escritorio/bitacora", label: "Bitácora", icon: BookOpen },
   { href: "/escritorio/capacitacion", label: "Capacitación", icon: GraduationCap }
 ];
@@ -47,7 +45,6 @@ const sectionTitles: Record<string, { title: string; subtitle: string }> = {
   "/escritorio/pendientes": { title: "Pendientes", subtitle: "Handover, responsables y fechas límite" },
   "/escritorio/kpis": { title: "KPIs", subtitle: "Venta, metas y desempeño del equipo" },
   "/escritorio/equipo": { title: "Equipo", subtitle: "Colaboradores y horarios" },
-  "/escritorio/mapa": { title: "Mapa de tienda", subtitle: "Estilos por rack y mueble — control de inventario" },
   "/escritorio/bitacora": { title: "Bitácora", subtitle: "Registro cronológico de operación de tienda" },
   "/escritorio/capacitacion": { title: "Capacitación", subtitle: "Biblioteca de recursos y archivos del equipo" },
   "/escritorio/notificaciones": { title: "Notificaciones", subtitle: "Avisos del equipo" }
