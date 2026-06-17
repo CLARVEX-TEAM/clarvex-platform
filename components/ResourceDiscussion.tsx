@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ImagePlus, MessageCircle, Send, X } from "lucide-react";
 import { ProfileAvatar } from "@/components/ui";
+import { compressImage } from "@/lib/compress-image";
 
 const MAX_FILES = 5;
 
@@ -23,6 +24,7 @@ export function ResourceDiscussion({ target, className = "" }: { target: Target;
   const [previewUrls, setPreviewUrls] = useState<string[]>([]);
   const [status, setStatus] = useState("");
   const [uploading, setUploading] = useState(false);
+  const uploadingRef = useRef(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const query = useMemo(() => new URLSearchParams(target).toString(), [target]);
 
@@ -72,12 +74,15 @@ export function ResourceDiscussion({ target, className = "" }: { target: Target;
 
   async function uploadEvidence() {
     if (files.length === 0) { setStatus("Selecciona al menos una imagen."); return; }
-    if (uploading) return;
+    if (uploadingRef.current) return; // guard síncrono: evita doble/triple envío por toques rápidos
+    uploadingRef.current = true;
     setUploading(true);
-    setStatus("Subiendo evidencias...");
+    setStatus("Optimizando imágenes...");
     try {
+      const compressed = await Promise.all(files.map((f) => compressImage(f)));
+      setStatus("Subiendo evidencias...");
       const form = new FormData();
-      files.forEach((f) => form.append("files", f));
+      compressed.forEach((f) => form.append("files", f));
       form.set("note", note);
       Object.entries(target).forEach(([key, value]) => form.set(key, value));
       const response = await fetch("/api/evidences/upload", { method: "POST", body: form });
@@ -97,6 +102,7 @@ export function ResourceDiscussion({ target, className = "" }: { target: Target;
     } catch {
       setStatus("No se pudo subir la evidencia. Revisa tu conexión e inténtalo de nuevo.");
     } finally {
+      uploadingRef.current = false;
       setUploading(false);
     }
   }
