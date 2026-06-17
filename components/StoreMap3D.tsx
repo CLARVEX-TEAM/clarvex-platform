@@ -1,13 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { AnimatePresence, motion } from "framer-motion";
-import { Boxes, MapPin, Maximize2, Pencil, Plus, Tag, X } from "lucide-react";
-import type { Fixture } from "@/components/StoreMap";
+import { Boxes, MapPin, Maximize2, Move, Pencil, Plus, Tag, X } from "lucide-react";
+import type { Fixture } from "@/lib/fixtures";
 import { Button, Card, EmptyState } from "@/components/ui";
 import { MapErrorBoundary } from "@/components/map3d/MapErrorBoundary";
 import { FixtureEditor } from "@/components/map3d/FixtureEditor";
+
+const MOVE_STEP = 0.5;
 
 const Scene3D = dynamic(() => import("@/components/map3d/Scene3D"), {
   ssr: false,
@@ -20,6 +22,11 @@ export function StoreMap3D({ canEdit = false }: { canEdit?: boolean }) {
   const [loadError, setLoadError] = useState(false);
   const [selected, setSelected] = useState<Fixture | null>(null);
   const [editing, setEditing] = useState<Fixture | "new" | null>(null);
+  const selectedRef = useRef<Fixture | null>(null);
+  selectedRef.current = selected;
+  const editingRef = useRef<typeof editing>(null);
+  editingRef.current = editing;
+  const moveTimer = useRef<number | undefined>(undefined);
 
   function handleSaved(fixture: Fixture) {
     setFixtures((prev) => prev.some((f) => f.id === fixture.id) ? prev.map((f) => f.id === fixture.id ? fixture : f) : [...prev, fixture]);
@@ -31,7 +38,44 @@ export function StoreMap3D({ canEdit = false }: { canEdit?: boolean }) {
     setSelected(null);
     setEditing(null);
   }
-  const nextRow = fixtures.reduce((m, f) => Math.max(m, f.row), 0) + 1;
+
+  // Posición por defecto de un mueble nuevo: el centro de los existentes.
+  function newPos() {
+    if (fixtures.length === 0) return { posX: 0, posZ: 0 };
+    const sx = fixtures.reduce((s, f) => s + f.posX, 0) / fixtures.length;
+    const sz = fixtures.reduce((s, f) => s + f.posZ, 0) / fixtures.length;
+    return { posX: Math.round(sx * 2) / 2, posZ: Math.round(sz * 2) / 2 };
+  }
+
+  // Mover el mueble seleccionado con las flechas del teclado (gerencia).
+  useEffect(() => {
+    if (!canEdit) return;
+    function onKey(e: KeyboardEvent) {
+      if (editingRef.current) return;
+      const tag = (e.target as HTMLElement | null)?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+      const sel = selectedRef.current;
+      if (!sel) return;
+      let dx = 0, dz = 0;
+      if (e.key === "ArrowUp") dz = -MOVE_STEP;
+      else if (e.key === "ArrowDown") dz = MOVE_STEP;
+      else if (e.key === "ArrowLeft") dx = -MOVE_STEP;
+      else if (e.key === "ArrowRight") dx = MOVE_STEP;
+      else return;
+      e.preventDefault();
+      const nx = sel.posX + dx, nz = sel.posZ + dz;
+      setFixtures((prev) => prev.map((f) => f.id === sel.id ? { ...f, posX: nx, posZ: nz } : f));
+      setSelected((s) => s && s.id === sel.id ? { ...s, posX: nx, posZ: nz } : s);
+      window.clearTimeout(moveTimer.current);
+      moveTimer.current = window.setTimeout(() => {
+        const cur = selectedRef.current;
+        if (!cur || cur.id !== sel.id) return;
+        void fetch(`/api/fixtures/${sel.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ posX: cur.posX, posZ: cur.posZ }) });
+      }, 450);
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [canEdit]);
 
   function load() {
     setLoading(true);
@@ -57,7 +101,7 @@ export function StoreMap3D({ canEdit = false }: { canEdit?: boolean }) {
     return (
       <>
         <Card><EmptyState icon={MapPin} title="Sin mapa aún" description={canEdit ? "Agrega tu primer mueble para empezar el mapa." : "La gerencia aún no ha configurado los muebles."} action={canEdit ? <Button onClick={() => setEditing("new")} icon={<Plus size={16} />}>Agregar mueble</Button> : undefined} /></Card>
-        {editing ? <FixtureEditor initial={editing === "new" ? { col: 1, row: 1 } : editing} onSaved={handleSaved} onDeleted={handleDeleted} onClose={() => setEditing(null)} /> : null}
+        {editing ? <FixtureEditor initial={editing === "new" ? newPos() : editing} onSaved={handleSaved} onDeleted={handleDeleted} onClose={() => setEditing(null)} /> : null}
       </>
     );
   }
@@ -112,6 +156,11 @@ export function StoreMap3D({ canEdit = false }: { canEdit?: boolean }) {
                 <button onClick={() => setSelected(null)} aria-label="Cerrar" className="grid size-7 place-items-center rounded-full bg-slate-100 text-ink dark:bg-slate-800"><X size={14} /></button>
               </div>
             </div>
+            {canEdit ? (
+              <p className="mb-2 flex items-center gap-1.5 text-[11px] font-bold text-muted">
+                <Move size={12} className="text-volt" /> Mueve con las flechas del teclado ← ↑ ↓ →
+              </p>
+            ) : null}
             {selected.styles.length === 0 ? (
               <p className="py-3 text-center text-sm text-muted">Este mueble aún no tiene estilos registrados.</p>
             ) : (
@@ -130,7 +179,7 @@ export function StoreMap3D({ canEdit = false }: { canEdit?: boolean }) {
       {/* Editor (gerencia) */}
       {editing ? (
         <FixtureEditor
-          initial={editing === "new" ? { col: 1, row: nextRow } : editing}
+          initial={editing === "new" ? newPos() : editing}
           onSaved={handleSaved}
           onDeleted={handleDeleted}
           onClose={() => setEditing(null)}

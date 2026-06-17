@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   const session = await requireSession();
   if (isApiError(session)) return session;
-  const fixtures = await prisma.storeFixture.findMany({ where: { storeId: session.storeId }, orderBy: [{ row: "asc" }, { col: "asc" }] });
+  const fixtures = await prisma.storeFixture.findMany({ where: { storeId: session.storeId }, orderBy: { createdAt: "asc" } });
   return NextResponse.json({ fixtures: fixtures.map(serializeFixture) }, { headers: { "Cache-Control": "private, no-store" } });
 }
 
