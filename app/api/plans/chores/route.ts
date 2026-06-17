@@ -35,13 +35,7 @@ export async function PATCH(request: Request) {
   const assignment = await prisma.choreAssignment.findUnique({ where: { storeId_date_choreKey: { storeId, date: planDate, choreKey } } });
   if (!assignment) return NextResponse.json({ error: "Genera primero las actividades del día." }, { status: 404 });
 
-  // Validar que el asesor trabaja ese día (si hay horarios cargados).
-  const schedules = await prisma.schedule.findMany({ where: { storeId, date: { gte: dayStart, lt: dayEnd } }, select: { userId: true, status: true } });
-  if (schedules.length > 0) {
-    const works = schedules.some((s) => s.userId === toUserId && s.status === "WORKING");
-    if (!works) return NextResponse.json({ error: "Ese asesor no trabaja ese día." }, { status: 400 });
-  }
-
+  // El gerente decide a quién reasignar (no se bloquea por horario).
   await prisma.$transaction(async (tx) => {
     // Quitar la actividad de esta tarea de cualquier plan del día (el del asesor anterior).
     const dayPlans = await tx.dayPlan.findMany({ where: { storeId, date: { gte: dayStart, lt: dayEnd } }, select: { id: true, userId: true } });
