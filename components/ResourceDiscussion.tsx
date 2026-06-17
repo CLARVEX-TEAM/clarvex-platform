@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ImagePlus, MessageCircle, Send, X } from "lucide-react";
 import { ProfileAvatar } from "@/components/ui";
 
@@ -22,6 +22,7 @@ export function ResourceDiscussion({ target, className = "" }: { target: Target;
   const [files, setFiles] = useState<File[]>([]);
   const [previewUrls, setPreviewUrls] = useState<string[]>([]);
   const [status, setStatus] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const query = useMemo(() => new URLSearchParams(target).toString(), [target]);
 
   useEffect(() => {
@@ -144,12 +145,16 @@ export function ResourceDiscussion({ target, className = "" }: { target: Target;
             ) : null}
 
             {files.length < MAX_FILES ? (
-              <label className="flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-xl border border-line bg-white dark:bg-slate-800 px-3 text-sm font-black text-ink">
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-xl border border-line bg-white dark:bg-slate-800 px-3 text-sm font-black text-ink transition active:scale-[0.99]"
+              >
                 <ImagePlus size={17} />
                 {files.length > 0 ? `Agregar más fotos (${files.length}/${MAX_FILES})` : "Agregar evidencia"}
-                <input type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" multiple onChange={handleFileSelect} />
-              </label>
+              </button>
             ) : null}
+            <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" multiple onChange={handleFileSelect} />
 
             {files.length > 0 ? (
               <input
