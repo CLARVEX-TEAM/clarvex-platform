@@ -7,12 +7,12 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { useToast } from "@/components/Toast";
-import { FIXTURE_TYPES, FIXTURE_TYPE_LABELS, type FixtureType } from "@/lib/fixtures";
-import type { Fixture } from "@/components/StoreMap";
+import { FIXTURE_TYPES, FIXTURE_TYPE_LABELS, type Fixture, type FixtureType } from "@/lib/fixtures";
 
-type Initial = { id?: string; name?: string; type?: FixtureType; col: number; row: number; rotation?: number; styles?: string[] };
+type Initial = { id?: string; name?: string; type?: FixtureType; posX: number; posZ: number; rotation?: number; styles?: string[] };
 
-/** Editor de un mueble (crear o editar). Maneja su propio guardado/borrado. */
+/** Editor de un mueble (crear o editar). Maneja su propio guardado/borrado.
+ *  La posición se mueve con las flechas sobre el mapa, no aquí. */
 export function FixtureEditor({ initial, onSaved, onDeleted, onClose }: {
   initial: Initial;
   onSaved: (fixture: Fixture) => void;
@@ -23,8 +23,6 @@ export function FixtureEditor({ initial, onSaved, onDeleted, onClose }: {
   const id = initial.id ?? null;
   const [name, setName] = useState(initial.name ?? "");
   const [type, setType] = useState<FixtureType>(initial.type ?? "TABLE");
-  const [col, setCol] = useState(initial.col);
-  const [row, setRow] = useState(initial.row);
   const [rotation, setRotation] = useState(initial.rotation ?? 0);
   const [stylesText, setStylesText] = useState((initial.styles ?? []).join("\n"));
   const [saving, setSaving] = useState(false);
@@ -39,7 +37,7 @@ export function FixtureEditor({ initial, onSaved, onDeleted, onClose }: {
     const styles = stylesText.split("\n").map((s) => s.trim()).filter(Boolean);
     setSaving(true);
     try {
-      const body = JSON.stringify({ name: n, type, col, row, rotation, styles });
+      const body = JSON.stringify({ name: n, type, posX: initial.posX, posZ: initial.posZ, rotation, styles });
       const res = id
         ? await fetch(`/api/fixtures/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body })
         : await fetch("/api/fixtures", { method: "POST", headers: { "Content-Type": "application/json" }, body });
@@ -95,16 +93,6 @@ export function FixtureEditor({ initial, onSaved, onDeleted, onClose }: {
               {FIXTURE_TYPES.map((t) => <option key={t} value={t}>{FIXTURE_TYPE_LABELS[t]}</option>)}
             </select>
           </label>
-          <div className="grid grid-cols-2 gap-3">
-            <label className="grid gap-1.5">
-              <span className="text-[11px] font-bold uppercase tracking-[0.1em] text-muted">Columna</span>
-              <input type="number" min={1} max={24} value={col} onChange={(e) => setCol(Math.max(1, Number(e.target.value) || 1))} className={cn(input, "font-bold")} />
-            </label>
-            <label className="grid gap-1.5">
-              <span className="text-[11px] font-bold uppercase tracking-[0.1em] text-muted">Fila</span>
-              <input type="number" min={1} max={40} value={row} onChange={(e) => setRow(Math.max(1, Number(e.target.value) || 1))} className={cn(input, "font-bold")} />
-            </label>
-          </div>
           <div className="grid gap-1.5">
             <span className="text-[11px] font-bold uppercase tracking-[0.1em] text-muted">Orientación (girar)</span>
             <div className="flex gap-2">
@@ -117,6 +105,7 @@ export function FixtureEditor({ initial, onSaved, onDeleted, onClose }: {
             <span className="text-[11px] font-bold uppercase tracking-[0.1em] text-muted">Estilos (uno por línea)</span>
             <textarea value={stylesText} onChange={(e) => setStylesText(e.target.value)} rows={5} placeholder={"Estilo A\nEstilo B"} className={cn(input, "resize-none py-2.5")} />
           </label>
+          <p className="text-center text-[11px] text-muted">💡 Para mover el mueble, selecciónalo en el mapa y usa las flechas del teclado.</p>
           <div className="flex gap-2">
             {id ? <Button variant="danger" className="min-h-12" onClick={() => setConfirmDel(true)} icon={<Trash2 size={16} />}>Eliminar</Button> : null}
             <Button variant="primary" className="min-h-12 flex-1" loading={saving} onClick={() => void save()}>{id ? "Guardar cambios" : "Agregar mueble"}</Button>
