@@ -108,25 +108,51 @@ export default function KpisPage() {
 
   useEffect(() => { getSession().then(setSession); }, []);
 
+  // iOS: al volver al frente, refrescar para no quedar pegado en el esqueleto.
+  useEffect(() => {
+    const onVisible = () => { if (document.visibilityState === "visible") setRefreshTick((tick) => tick + 1); };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, []);
+
   useEffect(() => {
     if (!session) return;
-    const controller = new AbortController();
+    // En iOS/PWA la petición a veces se cuelga o se aborta al cambiar de pantalla y
+    // KPIs quedaba pegado. Reintentos con timeout para que se recupere solo.
+    let cancelled = false;
+    let activeController: AbortController | null = null;
     setLoading(true);
     setError("");
     setSimulatedSales("");
-    fetch(`/api/kpis?period=${period}&date=${selectedDate}`, { cache: "no-store", signal: controller.signal })
-      .then(async (response) => {
-        const payload = await response.json() as KpiResponse & { error?: string };
-        if (!response.ok) throw new Error(payload.error ?? "No se pudieron cargar los KPIs.");
-        setReport(payload);
-        if (period === "week" && payload.startDate !== selectedDate) setSelectedDate(payload.startDate);
-      })
-      .catch((requestError: unknown) => {
-        if (requestError instanceof DOMException && requestError.name === "AbortError") return;
-        setError(requestError instanceof Error ? requestError.message : "No se pudieron cargar los KPIs.");
-      })
-      .finally(() => setLoading(false));
-    return () => controller.abort();
+    (async () => {
+      let lastError: unknown;
+      for (let attempt = 0; attempt < 3 && !cancelled; attempt += 1) {
+        const controller = new AbortController();
+        activeController = controller;
+        const timer = setTimeout(() => controller.abort(), 12000);
+        try {
+          const response = await fetch(`/api/kpis?period=${period}&date=${selectedDate}`, { cache: "no-store", signal: controller.signal });
+          clearTimeout(timer);
+          const payload = await response.json() as KpiResponse & { error?: string };
+          if (!response.ok) throw new Error(payload.error ?? "No se pudieron cargar los KPIs.");
+          if (cancelled) return;
+          setReport(payload);
+          if (period === "week" && payload.startDate !== selectedDate) setSelectedDate(payload.startDate);
+          setLoading(false);
+          return;
+        } catch (requestError) {
+          clearTimeout(timer);
+          if (cancelled) return; // se cambió de pantalla / dependencias
+          lastError = requestError;
+          await new Promise((resolve) => setTimeout(resolve, 500 * (attempt + 1)));
+        }
+      }
+      if (!cancelled) {
+        setError(lastError instanceof Error ? lastError.message : "No se pudieron cargar los KPIs.");
+        setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; activeController?.abort(); };
   }, [period, selectedDate, session, refreshTick]);
 
   useEffect(() => {
