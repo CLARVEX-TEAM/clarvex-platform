@@ -2,10 +2,11 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Bell, Cake, CalendarClock, Check, CheckCheck, ChevronRight, ClipboardCheck, GraduationCap, HeartHandshake, ImagePlus, Megaphone, MessageCircle, PackageSearch, Sparkles, Target, Trophy } from "lucide-react";
+import { Bell, Cake, CalendarClock, Check, CheckCheck, ClipboardCheck, GraduationCap, HeartHandshake, ImagePlus, Megaphone, MessageCircle, PackageSearch, Sparkles, Target, Trash2, Trophy, X } from "lucide-react";
 import { getSession } from "@/lib/auth";
 import type { User } from "@/lib/types";
 import { AppFrame, AppHeader, Badge, BottomNav, Button, Card } from "@/components/ui";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 
 type NotificationType = "PLAN_READY" | "NEW_ANNOUNCEMENT" | "PENDING_ASSIGNED" | "TASK_COMPLETED" | "KPI_GOAL_REACHED" | "COMMENT_ADDED" | "EVIDENCE_ADDED" | "DAILY_SUMMARY" | "ANNOUNCEMENT_REACTION" | "CELEBRATION" | "KUDO" | "SHIFT_REQUEST" | "INVENTORY_REPORT" | "NEW_TRAINING";
 type NotificationItem = { id: string; type: NotificationType; title: string; body: string; readAt: string | null; createdAt: string };
@@ -55,6 +56,8 @@ export default function NotificationsPage() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [confirmClear, setConfirmClear] = useState(false);
+  const [clearing, setClearing] = useState(false);
   const homeHref = session?.role === "ASESOR" ? "/advisor" : "/manager";
 
   useEffect(() => { getSession().then(setSession); }, []);
@@ -93,19 +96,70 @@ export default function NotificationsPage() {
     window.dispatchEvent(new Event("notifications-updated"));
   }
 
+  async function deleteOne(id: string) {
+    const previous = items;
+    const wasUnread = items.find((item) => item.id === id && !item.readAt);
+    setItems((current) => current.filter((item) => item.id !== id));
+    if (wasUnread) setUnreadCount((count) => Math.max(0, count - 1));
+    try {
+      const response = await fetch(`/api/notifications/${id}`, { method: "DELETE" });
+      if (!response.ok) throw new Error();
+      window.dispatchEvent(new Event("notifications-updated"));
+    } catch {
+      setItems(previous);
+    }
+  }
+
+  async function clearAll() {
+    setClearing(true);
+    const previous = items;
+    setItems([]);
+    setUnreadCount(0);
+    try {
+      const response = await fetch("/api/notifications", { method: "DELETE" });
+      if (!response.ok) throw new Error();
+      window.dispatchEvent(new Event("notifications-updated"));
+    } catch {
+      setItems(previous);
+    } finally {
+      setClearing(false);
+      setConfirmClear(false);
+    }
+  }
+
   return (
     <>
-      <AppHeader title="Notificaciones" subtitle={unreadCount ? `${unreadCount} pendientes por revisar.` : "Todo esta al dia."} backHref={homeHref} action={unreadCount ? <Button type="button" variant="ghost" onClick={markAllRead} className="min-h-11 px-3" aria-label="Marcar todas como leidas"><CheckCheck size={17} /></Button> : null} />
+      <AppHeader
+        title="Notificaciones"
+        subtitle={unreadCount ? `${unreadCount} pendientes por revisar.` : "Todo esta al dia."}
+        backHref={homeHref}
+        action={
+          unreadCount || items.length ? (
+            <div className="flex items-center gap-1.5">
+              {unreadCount ? <Button type="button" variant="ghost" onClick={markAllRead} className="min-h-11 px-3" aria-label="Marcar todas como leidas"><CheckCheck size={17} /></Button> : null}
+              {items.length ? <Button type="button" variant="ghost" onClick={() => setConfirmClear(true)} className="min-h-11 px-3 text-rose-500" aria-label="Borrar todas las notificaciones"><Trash2 size={17} /></Button> : null}
+            </div>
+          ) : null
+        }
+      />
       <AppFrame>
         {error ? <Card className="mb-3 text-sm font-semibold text-rose-700">{error}</Card> : null}
-        {loading ? <Card className="text-sm font-semibold text-muted">Cargando notificaciones...</Card> : items.length === 0 ? <Card className="py-8 text-center"><Target className="mx-auto text-volt" size={28} /><h2 className="mt-3 font-black text-ink">Sin notificaciones</h2><p className="mt-1 text-sm text-muted">Los planes, comunicados y pendientes apareceran aqui.</p></Card> : <div className="space-y-2.5">{items.map((item) => <NotificationRow key={item.id} item={item} onRead={markRead} />)}</div>}
+        {loading ? <Card className="text-sm font-semibold text-muted">Cargando notificaciones...</Card> : items.length === 0 ? <Card className="py-8 text-center"><Target className="mx-auto text-volt" size={28} /><h2 className="mt-3 font-black text-ink">Sin notificaciones</h2><p className="mt-1 text-sm text-muted">Los planes, comunicados y pendientes apareceran aqui.</p></Card> : <div className="space-y-2.5">{items.map((item) => <NotificationRow key={item.id} item={item} onRead={markRead} onDelete={deleteOne} />)}</div>}
       </AppFrame>
       <BottomNav />
+      <ConfirmDialog
+        open={confirmClear}
+        title="¿Borrar todas las notificaciones?"
+        confirmLabel="Borrar todas"
+        loading={clearing}
+        onConfirm={() => void clearAll()}
+        onCancel={() => setConfirmClear(false)}
+      />
     </>
   );
 }
 
-function NotificationRow({ item, onRead }: { item: NotificationItem; onRead: (id: string) => void }) {
+function NotificationRow({ item, onRead, onDelete }: { item: NotificationItem; onRead: (id: string) => void; onDelete: (id: string) => void }) {
   const router = useRouter();
   const config = typeConfig[item.type] ?? fallbackConfig;
   const Icon = config.icon;
@@ -130,9 +184,16 @@ function NotificationRow({ item, onRead }: { item: NotificationItem; onRead: (id
               <h2 className="text-sm font-black text-ink">{item.title}</h2>
               <p className="mt-0.5 text-[11px] text-muted">{formatDate(item.createdAt)}</p>
             </div>
-            <div className="flex shrink-0 items-center gap-1.5">
+            <div className="flex shrink-0 items-center gap-1">
               <Badge tone={item.readAt ? "default" : config.tone}>{item.readAt ? "Leida" : config.label}</Badge>
-              <ChevronRight size={14} className="text-muted" />
+              <button
+                type="button"
+                onClick={(event) => { event.stopPropagation(); onDelete(item.id); }}
+                aria-label="Borrar notificación"
+                className="grid size-7 place-items-center rounded-full text-muted transition hover:bg-rose-50 hover:text-rose-500 dark:hover:bg-rose-950/30"
+              >
+                <X size={15} />
+              </button>
             </div>
           </div>
           <p className="mt-2 text-sm leading-5 text-muted">{item.body}</p>
