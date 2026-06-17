@@ -520,3 +520,33 @@ async function importDiscounts(workbook: Parameters<typeof parsePosDiscountWorkb
     errors
   };
 }
+
+// Orden de sincronización: KPIs primero (los Descuentos POS se anclan a registros KPI existentes).
+const SYNC_TYPE_ORDER: Record<string, number> = { KPIS: 0, HORARIOS: 1, DESCUENTOS_POS: 2 };
+
+/**
+ * Sincroniza TODAS las fuentes auto-sincronizables (SharePoint/Excel; excluye MANUAL),
+ * con KPIs primero. Nunca lanza: cada fuente se sincroniza de forma independiente.
+ * Útil para refrescar datos justo antes de enviar notificaciones.
+ */
+export async function syncAllSources() {
+  const sources = await prisma.dataSource.findMany({ where: { provider: { not: "MANUAL" } } });
+  const ordered = [...sources].sort((a, b) => (SYNC_TYPE_ORDER[a.type] ?? 9) - (SYNC_TYPE_ORDER[b.type] ?? 9));
+
+  let synced = 0;
+  let failed = 0;
+  const sourceResults: Array<{ id: string; type: string; name: string; ok: boolean; message?: string; error?: string }> = [];
+
+  for (const source of ordered) {
+    const outcome = await syncDataSource(source);
+    if (outcome.ok) {
+      synced += 1;
+      sourceResults.push({ id: source.id, type: source.type, name: source.name, ok: true, message: outcome.message });
+    } else {
+      failed += 1;
+      sourceResults.push({ id: source.id, type: source.type, name: source.name, ok: false, error: outcome.error });
+    }
+  }
+
+  return { synced, failed, sources: sourceResults };
+}
