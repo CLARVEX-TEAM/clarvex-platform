@@ -6,7 +6,8 @@ import { getSession } from "@/lib/auth";
 import { addWeeks, dateKey, startOfWeek } from "@/lib/schedule-week";
 import { SHIFT_TYPE_LABELS } from "@/lib/shift-requests";
 import type { Role, User } from "@/lib/types";
-import { AppFrame, AppHeader, Badge, BottomNav, Button, Card, ProfileAvatar } from "@/components/ui";
+import { AppFrame, AppHeader, Badge, BottomNav, Button, Card, ProfileAvatar, Skeleton } from "@/components/ui";
+import { PullToRefresh } from "@/components/PullToRefresh";
 
 type ScheduleStatus = "WORKING" | "OFF" | "VACATION" | "PAID_DAY" | "INVENTORY" | "TERMINATED" | "UNKNOWN";
 type ScheduleItem = {
@@ -49,6 +50,7 @@ export default function HorariosPage() {
   const [shiftRequests, setShiftRequests] = useState<Array<{ date: string; type: string; status: string; requester: { name: string } }>>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [refreshTick, setRefreshTick] = useState(0);
 
   const isManager = session?.role === "GERENTE" || session?.role === "SUBGERENTE";
 
@@ -83,7 +85,7 @@ export default function HorariosPage() {
       })
       .finally(() => setLoading(false));
     return () => controller.abort();
-  }, [session, view, weekStart]);
+  }, [session, view, weekStart, refreshTick]);
 
   const days = useMemo(() => {
     const firstDay = new Date(`${weekStart}T00:00:00Z`);
@@ -114,6 +116,7 @@ export default function HorariosPage() {
   return (
     <>
       <AppHeader title="Horarios" subtitle={isManager && view === "team" ? "Agenda semanal del equipo." : "Tu agenda semanal."} backHref={isManager ? "/manager" : "/advisor"} />
+      <PullToRefresh onRefresh={() => { setRefreshTick((t) => t + 1); return new Promise((r) => setTimeout(r, 700)); }}>
       <AppFrame>
         {isManager ? (
           <div className="mb-3 flex rounded-full bg-slate-100 dark:bg-slate-800 p-1" role="group" aria-label="Vista de horarios">
@@ -150,7 +153,7 @@ export default function HorariosPage() {
         </div>
 
         {error ? <Card className="mb-3 border-rose-200 bg-rose-50 text-sm font-semibold text-rose-700">{error}</Card> : null}
-        {loading ? <Card className="text-sm font-semibold text-muted">Cargando semana...</Card> : (
+        {loading ? <div className="space-y-2.5">{[0, 1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-20 rounded-[28px]" />)}</div> : (
           <div className="space-y-2.5" aria-label="Agenda semanal">
             {days.map((day) => {
               const current = day.key === today;
@@ -180,6 +183,7 @@ export default function HorariosPage() {
           </div>
         )}
       </AppFrame>
+      </PullToRefresh>
       <BottomNav />
     </>
   );
