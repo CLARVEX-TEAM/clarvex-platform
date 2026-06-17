@@ -22,6 +22,7 @@ export function ResourceDiscussion({ target, className = "" }: { target: Target;
   const [files, setFiles] = useState<File[]>([]);
   const [previewUrls, setPreviewUrls] = useState<string[]>([]);
   const [status, setStatus] = useState("");
+  const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const query = useMemo(() => new URLSearchParams(target).toString(), [target]);
 
@@ -70,21 +71,34 @@ export function ResourceDiscussion({ target, className = "" }: { target: Target;
   }
 
   async function uploadEvidence() {
-    if (files.length === 0) return setStatus("Selecciona al menos una imagen.");
+    if (files.length === 0) { setStatus("Selecciona al menos una imagen."); return; }
+    if (uploading) return;
+    setUploading(true);
     setStatus("Subiendo evidencias...");
-    const form = new FormData();
-    files.forEach((f) => form.append("files", f));
-    form.set("note", note);
-    Object.entries(target).forEach(([key, value]) => form.set(key, value));
-    const response = await fetch("/api/evidences/upload", { method: "POST", body: form });
-    const payload = await response.json() as { evidences?: EvidenceItem[]; error?: string };
-    if (!response.ok || !payload.evidences) return setStatus(payload.error ?? "No se pudo subir la evidencia.");
-    setEvidences((items) => [...payload.evidences!, ...items]);
-    setFiles([]);
-    setNote("");
-    const count = payload.evidences.length;
-    setStatus(count === 1 ? "Evidencia guardada." : `${count} evidencias guardadas.`);
-    window.dispatchEvent(new Event("notifications-updated"));
+    try {
+      const form = new FormData();
+      files.forEach((f) => form.append("files", f));
+      form.set("note", note);
+      Object.entries(target).forEach(([key, value]) => form.set(key, value));
+      const response = await fetch("/api/evidences/upload", { method: "POST", body: form });
+      // El servidor/proxy puede responder algo que no es JSON (p. ej. 413). No reventar.
+      let payload: { evidences?: EvidenceItem[]; error?: string } = {};
+      try { payload = await response.json() as typeof payload; } catch { /* respuesta no-JSON */ }
+      if (!response.ok || !payload.evidences) {
+        setStatus(payload.error ?? (response.status === 413 ? "La imagen es muy pesada. Usa una foto más ligera." : `No se pudo subir la evidencia (${response.status}).`));
+        return;
+      }
+      setEvidences((items) => [...payload.evidences!, ...items]);
+      setFiles([]);
+      setNote("");
+      const count = payload.evidences.length;
+      setStatus(count === 1 ? "Evidencia guardada." : `${count} evidencias guardadas.`);
+      window.dispatchEvent(new Event("notifications-updated"));
+    } catch {
+      setStatus("No se pudo subir la evidencia. Revisa tu conexión e inténtalo de nuevo.");
+    } finally {
+      setUploading(false);
+    }
   }
 
   async function sendComment(event: React.FormEvent) {
@@ -166,8 +180,8 @@ export function ResourceDiscussion({ target, className = "" }: { target: Target;
               />
             ) : null}
             {files.length > 0 ? (
-              <button type="button" onClick={() => void uploadEvidence()} className="min-h-11 rounded-xl bg-volt px-3 text-sm font-black text-white">
-                Subir {files.length > 1 ? `${files.length} evidencias` : "evidencia"}
+              <button type="button" onClick={() => void uploadEvidence()} disabled={uploading} className="min-h-11 rounded-xl bg-volt px-3 text-sm font-black text-white transition active:scale-[0.99] disabled:opacity-60">
+                {uploading ? "Subiendo…" : `Subir ${files.length > 1 ? `${files.length} evidencias` : "evidencia"}`}
               </button>
             ) : null}
           </div>
