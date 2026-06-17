@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { AnimatePresence } from "framer-motion";
-import { AlertTriangle, CheckCircle2, ClipboardCheck, Plus, UserRound } from "lucide-react";
+import { AlertTriangle, ClipboardCheck, Plus, UserRound } from "lucide-react";
 import { fetchAppData, type AppData } from "@/lib/app-data";
 import { getSession } from "@/lib/auth";
 import type { Pending, User } from "@/lib/types";
@@ -13,7 +13,6 @@ import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { useToast } from "@/components/Toast";
 import { AppDatePicker, AppInput, AppSelect, AppTextarea, type SelectOption } from "@/components/forms";
 import { PullToRefresh } from "@/components/PullToRefresh";
-import { SwipeToAction } from "@/components/SwipeToAction";
 
 type Filter = "todos" | "urgentes" | "hoy";
 
@@ -238,8 +237,7 @@ export default function PendientesPage() {
         <div className="space-y-2.5">
           <AnimatePresence initial={false}>
           {visiblePendings.map((pending) => (
-            <SwipeToAction key={pending.id} onAction={() => void changeStatus(pending.id, "COMPLETADO")} icon={CheckCircle2} label="Completar" disabled={isAdvisor || pending.status === "completado"}>
-            <Card layout exit={{ opacity: 0, scale: 0.9, x: 60 }}>
+            <Card key={pending.id} layout exit={{ opacity: 0, scale: 0.9, x: 60 }}>
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <h2 className="font-black">{pending.title}</h2>
@@ -262,7 +260,6 @@ export default function PendientesPage() {
               ) : null}
               <ResourceDiscussion target={{ pendingId: pending.id }} />
             </Card>
-            </SwipeToAction>
           ))}
           </AnimatePresence>
           {visiblePendings.length === 0 ? (
