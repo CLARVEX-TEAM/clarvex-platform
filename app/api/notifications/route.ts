@@ -22,3 +22,13 @@ export async function GET(request: NextRequest) {
     unreadCount
   }, { headers: { "Cache-Control": "private, no-store" } });
 }
+
+// Borra notificaciones del usuario. ?onlyRead=true borra solo las leídas.
+export async function DELETE(request: NextRequest) {
+  const session = await requireSession();
+  if (isApiError(session)) return session;
+  const onlyRead = request.nextUrl.searchParams.get("onlyRead") === "true";
+  const where = { ...notificationScope(session), ...(onlyRead ? { readAt: { not: null } } : {}) };
+  const result = await prisma.notification.deleteMany({ where });
+  return NextResponse.json({ deleted: result.count });
+}
