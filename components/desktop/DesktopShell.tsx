@@ -25,6 +25,8 @@ import { ProfileAvatar } from "@/components/ui";
 import { useTheme } from "@/components/ThemeProvider";
 import { DesktopChromeProvider, FreshnessPill } from "@/components/desktop/DesktopChrome";
 import { DesktopNotifications } from "@/components/desktop/DesktopNotifications";
+import { DesktopLock } from "@/components/desktop/DesktopLock";
+import { consumeDesktopFreshLogin } from "@/lib/desktop-profiles";
 
 // Ancho mínimo para considerar "escritorio". Por debajo, gerencia usa la app móvil.
 export const DESKTOP_MIN_WIDTH = 1024;
@@ -55,21 +57,38 @@ export function DesktopShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { isDark, setTheme } = useTheme();
   const [user, setUser] = useState<User | null>(null);
-  const [ready, setReady] = useState(false);
+  const [checking, setChecking] = useState(true);
+  const [unlocked, setUnlocked] = useState(false);
 
-  // Guard de rol + tamaño: gerencia en pantalla grande. Si no, devolver a la app.
+  // Guard de tamaño + bloqueo diario. El escritorio se bloquea en cada apertura
+  // y pide PIN (login estilo Netflix). Solo se omite justo tras un login explícito
+  // en /login (token de un solo uso).
   useEffect(() => {
     if (typeof window !== "undefined" && window.innerWidth < DESKTOP_MIN_WIDTH) {
       router.replace("/manager");
       return;
     }
-    getSession().then((session) => {
-      if (!session) { router.replace("/login"); return; }
-      if (session.role === "ASESOR") { router.replace("/advisor"); return; }
-      setUser(session);
-      setReady(true);
-    });
+    if (consumeDesktopFreshLogin()) {
+      getSession().then((session) => {
+        if (session && session.role !== "ASESOR") {
+          setUser(session);
+          setUnlocked(true);
+        }
+        setChecking(false);
+      });
+    } else {
+      setChecking(false);
+    }
   }, [router]);
+
+  function handleUnlock(unlockedUser: User) {
+    if (unlockedUser.role === "ASESOR") {
+      router.replace("/advisor");
+      return;
+    }
+    setUser(unlockedUser);
+    setUnlocked(true);
+  }
 
   async function handleLogout() {
     await logout();
@@ -80,8 +99,12 @@ export function DesktopShell({ children }: { children: React.ReactNode }) {
   const roleLabel = user?.role === "GERENTE" ? "Gerente" : user?.role === "SUBGERENTE" ? "Subgerente" : "";
   const todayLabel = new Date().toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long" });
 
-  if (!ready) {
+  if (checking) {
     return <div className="grid min-h-screen place-items-center text-sm font-bold text-muted">Cargando escritorio…</div>;
+  }
+
+  if (!unlocked || !user) {
+    return <DesktopLock onUnlock={handleUnlock} />;
   }
 
   return (
@@ -138,6 +161,9 @@ export function DesktopShell({ children }: { children: React.ReactNode }) {
           <Link href="/manager" className="tappable flex min-h-10 items-center gap-2.5 rounded-2xl px-3 text-[13px] font-bold text-muted transition hover:bg-slate-100 hover:text-ink dark:hover:bg-slate-800/60">
             <Smartphone size={16} /> Ver versión móvil
           </Link>
+          <button onClick={() => setUnlocked(false)} className="tappable flex min-h-10 w-full items-center gap-2.5 rounded-2xl px-3 text-[13px] font-bold text-muted transition hover:bg-slate-100 hover:text-ink dark:hover:bg-slate-800/60">
+            <UsersRound size={16} /> Cambiar de usuario
+          </button>
           <button onClick={() => void handleLogout()} className="tappable flex min-h-10 w-full items-center gap-2.5 rounded-2xl px-3 text-[13px] font-bold text-rose-500 transition hover:bg-rose-50 dark:hover:bg-rose-950/30">
             <LogOut size={16} /> Cerrar sesión
           </button>
