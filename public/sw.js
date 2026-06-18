@@ -1,4 +1,4 @@
-const CACHE_NAME = "clarvex-team-v5";
+const CACHE_NAME = "clarvex-team-v6";
 const CORE_ASSETS = ["/", "/login", "/manifest.webmanifest", "/icon.svg"];
 
 self.addEventListener("install", (event) => {
@@ -34,14 +34,14 @@ self.addEventListener("fetch", (event) => {
 
 self.addEventListener("push", (event) => {
   if (!event.data) return;
-  let data = { title: "CLARVEX Team", body: "Tienes una nueva notificacion.", icon: "/icon.svg", tag: "clarvex-notification", url: "/notificaciones" };
+  let data = { title: "CLARVEX Team", body: "Tienes una nueva notificacion.", icon: "/icon-192.png", tag: "clarvex-notification", url: "/notificaciones" };
   try { data = { ...data, ...event.data.json() }; } catch (_) {}
 
   event.waitUntil(
     self.registration.showNotification(data.title, {
       body: data.body,
-      icon: data.icon,
-      badge: "/icon.svg",
+      icon: data.icon || "/icon-192.png",
+      badge: "/badge-72.png",
       tag: data.tag,
       data: { url: data.url || "/notificaciones" },
       renotify: true,
