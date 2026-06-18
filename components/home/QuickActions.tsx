@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { BarChart3, BookOpen, CalendarClock, CalendarDays, CheckSquare, ClipboardList, GraduationCap, HeartHandshake, PackageSearch } from "lucide-react";
+import { BarChart3, BookOpen, CalendarClock, CalendarDays, CheckSquare, ClipboardCheck, ClipboardList, GraduationCap, HeartHandshake, PackageSearch } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { LucideIcon } from "lucide-react";
 
@@ -23,7 +23,8 @@ const managerActions: Action[] = [
   { href: "/kudos", icon: HeartHandshake, label: "Reconocer", color: "pink" },
   { href: "/solicitudes", icon: CalendarClock, label: "Solicitudes", color: "blue" },
   { href: "/faltantes", icon: PackageSearch, label: "Faltantes", color: "orange" },
-  { href: "/capacitacion", icon: GraduationCap, label: "Capacitación", color: "purple" }
+  { href: "/capacitacion", icon: GraduationCap, label: "Capacitación", color: "purple" },
+  { href: "/encuestas", icon: ClipboardCheck, label: "Encuestas", color: "green" }
 ];
 
 const advisorActions: Action[] = [
@@ -33,7 +34,8 @@ const advisorActions: Action[] = [
   { href: "/kudos", icon: HeartHandshake, label: "Reconocer", color: "pink" },
   { href: "/solicitudes", icon: CalendarClock, label: "Solicitar día", color: "blue" },
   { href: "/faltantes", icon: PackageSearch, label: "Faltantes", color: "orange" },
-  { href: "/capacitacion", icon: GraduationCap, label: "Capacitación", color: "purple" }
+  { href: "/capacitacion", icon: GraduationCap, label: "Capacitación", color: "purple" },
+  { href: "/encuestas", icon: ClipboardCheck, label: "Encuestas", color: "green" }
 ];
 
 const colorMap: Record<ActionColor, string> = {

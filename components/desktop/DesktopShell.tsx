@@ -11,6 +11,7 @@ import {
   CalendarClock,
   CalendarDays,
   CheckSquare,
+  ClipboardCheck,
   Database,
   GraduationCap,
   HeartHandshake,
@@ -64,6 +65,7 @@ const navGroups: { label: string; items: { href: string; label: string; icon: Lu
       { href: "/escritorio/solicitudes", label: "Solicitudes", icon: CalendarClock },
       { href: "/escritorio/faltantes", label: "Faltantes", icon: PackageSearch },
       { href: "/escritorio/kudos", label: "Reconocimientos", icon: HeartHandshake },
+      { href: "/escritorio/encuestas", label: "Encuestas", icon: ClipboardCheck },
       { href: "/escritorio/capacitacion", label: "Capacitación", icon: GraduationCap },
       { href: "/escritorio/datos", label: "Centro de Datos", icon: Database }
     ]
@@ -82,6 +84,7 @@ const sectionTitles: Record<string, { title: string; subtitle: string }> = {
   "/escritorio/solicitudes": { title: "Solicitudes", subtitle: "Permisos, turnos y aprobaciones" },
   "/escritorio/faltantes": { title: "Faltantes", subtitle: "Inventario y reportes de producto" },
   "/escritorio/kudos": { title: "Reconocimientos", subtitle: "Reconoce el buen trabajo del equipo" },
+  "/escritorio/encuestas": { title: "Encuestas", subtitle: "Clima laboral y feedback del equipo" },
   "/escritorio/datos": { title: "Centro de Datos", subtitle: "Fuentes RDV y sincronización" },
   "/escritorio/bitacora": { title: "Bitácora", subtitle: "Registro cronológico de operación de tienda" },
   "/escritorio/capacitacion": { title: "Capacitación", subtitle: "Biblioteca de recursos y archivos del equipo" },
