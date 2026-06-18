@@ -9,6 +9,7 @@ import { fetchAppData, type AppData } from "@/lib/app-data";
 import { completion, money } from "@/lib/format";
 import { haptic } from "@/lib/haptics";
 import { computeDailyStreak } from "@/lib/streaks";
+import { computeAchievements } from "@/lib/achievements";
 import { buildSalesTrend, buildDailySeries } from "@/lib/trend";
 import type { User } from "@/lib/types";
 import Link from "next/link";
@@ -23,6 +24,7 @@ import { QuickActions } from "@/components/home/QuickActions";
 import { SalesTrendCard } from "@/components/home/SalesTrendCard";
 import { TeamCelebrationsCard } from "@/components/home/TeamCelebrationsCard";
 import { PaceCard } from "@/components/home/PaceCard";
+import { AchievementsCard } from "@/components/home/AchievementsCard";
 
 const cardAnim = (delay: number) => ({
   initial: { opacity: 0, y: 12 },
@@ -126,6 +128,11 @@ export default function AdvisorDashboard() {
   if (daily.dailyGoal > 0 && daily.dailySales >= daily.dailyGoal) badges.push("🎯 Meta de hoy");
   if ((kpi?.monthlyGoal ?? 0) > 0 && (kpi?.monthlySales ?? 0) >= (kpi?.monthlyGoal ?? 0)) badges.push("💯 Mes cumplido");
   if (streak.best >= 7) badges.push("⚡ Imparable");
+  const achievements = computeAchievements({
+    userKpis: data.kpis.filter((k) => k.userId === user.id),
+    todayKey,
+    streakBest: streak.best
+  });
   const salesTrend = buildSalesTrend(data.kpis.map((k) => ({ date: k.date, dailySales: k.dailySales, dailyGoal: k.dailyGoal })), todayKey);
   const ventasSeries = buildDailySeries(data.kpis.map((k) => ({ date: k.date, value: k.dailySales })), todayKey, 7);
   const ticketsSeries = buildDailySeries(data.kpis.map((k) => ({ date: k.date, value: k.transactions })), todayKey, 7);
@@ -206,6 +213,10 @@ export default function AdvisorDashboard() {
               </div>
             ) : null}
           </Card>
+        </motion.div>
+
+        <motion.div {...cardAnim(0.30)} className="mt-3">
+          <AchievementsCard achievements={achievements} />
         </motion.div>
 
         <motion.div {...cardAnim(0.32)} className="mt-3">
