@@ -9,9 +9,21 @@ import { completion, money } from "@/lib/format";
 import { buildSalesTrend } from "@/lib/trend";
 import { cn } from "@/lib/utils";
 import { achievementTone, Badge, Card, ProgressBar, ProgressRing, ProfileAvatar, priorityTone } from "@/components/ui";
+import { TeamCelebrationsCard } from "@/components/home/TeamCelebrationsCard";
 import { useTheme } from "@/components/ThemeProvider";
 import { useDesktopData } from "@/components/desktop/useDesktopData";
 import { DesktopError } from "@/components/desktop/DesktopError";
+
+// Días hasta el próximo cumpleaños (para ordenar por más cercano).
+function daysUntilBirthday(birthDate?: string | null): number {
+  if (!birthDate) return 9999;
+  const d = new Date(`${birthDate}T00:00:00Z`);
+  const now = new Date();
+  const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  let next = new Date(Date.UTC(today.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+  if (next < today) next = new Date(Date.UTC(today.getUTCFullYear() + 1, d.getUTCMonth(), d.getUTCDate()));
+  return Math.round((next.getTime() - today.getTime()) / 86_400_000);
+}
 
 export default function EscritorioDashboard() {
   const { data, error, reload } = useDesktopData();
@@ -44,6 +56,12 @@ export default function EscritorioDashboard() {
       return { advisor: a, sales: kpi?.dailySales ?? 0, goal: kpi?.dailyGoal ?? 0, progress, resting };
     })
     .sort((a, b) => Number(a.resting) - Number(b.resting) || b.progress - a.progress || b.sales - a.sales);
+
+  const celebrationMembers = [...data.users]
+    .filter((u) => u.birthDate || u.hireDate)
+    .sort((a, b) => daysUntilBirthday(a.birthDate) - daysUntilBirthday(b.birthDate))
+    .slice(0, 6)
+    .map((u) => ({ id: u.id, name: u.name, photoUrl: u.photoUrl, birthDate: u.birthDate, hireDate: u.hireDate }));
 
   const trend = buildSalesTrend(
     data.kpis.map((k) => ({ date: k.date, dailySales: k.dailySales, dailyGoal: k.dailyGoal })),
@@ -149,25 +167,31 @@ export default function EscritorioDashboard() {
           </div>
         </Card>
 
-        {/* Pendientes críticos */}
-        <Card className="p-5">
-          <div className="mb-3 flex items-center justify-between">
-            <div className="flex items-center gap-2"><AlertTriangle className="text-orchid" size={18} /><h2 className="text-lg font-black text-ink">Críticos</h2></div>
-            <Link href="/escritorio/pendientes" className="text-xs font-bold text-volt hover:underline">Ver todos</Link>
-          </div>
-          <div className="space-y-2.5">
-            {critical.map((p) => (
-              <div key={p.id} className="rounded-2xl border border-line p-3">
-                <div className="flex items-start justify-between gap-2">
-                  <p className="text-sm font-bold text-ink">{p.title}</p>
-                  <Badge tone={priorityTone(p.priority)}>{p.priority}</Badge>
+        {/* Críticos + celebraciones */}
+        <div className="space-y-4">
+          <Card className="p-5">
+            <div className="mb-3 flex items-center justify-between">
+              <div className="flex items-center gap-2"><AlertTriangle className="text-orchid" size={18} /><h2 className="text-lg font-black text-ink">Críticos</h2></div>
+              <Link href="/escritorio/pendientes" className="text-xs font-bold text-volt hover:underline">Ver todos</Link>
+            </div>
+            <div className="space-y-2.5">
+              {critical.map((p) => (
+                <div key={p.id} className="rounded-2xl border border-line p-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="text-sm font-bold text-ink">{p.title}</p>
+                    <Badge tone={priorityTone(p.priority)}>{p.priority}</Badge>
+                  </div>
+                  <p className="mt-1 text-xs text-muted">{userName(p.ownerId)} · vence {p.dueDate}</p>
                 </div>
-                <p className="mt-1 text-xs text-muted">{userName(p.ownerId)} · vence {p.dueDate}</p>
-              </div>
-            ))}
-            {critical.length === 0 ? <p className="py-6 text-center text-sm text-muted">Sin pendientes críticos. 🎉</p> : null}
-          </div>
-        </Card>
+              ))}
+              {critical.length === 0 ? <p className="py-6 text-center text-sm text-muted">Sin pendientes críticos. 🎉</p> : null}
+            </div>
+          </Card>
+
+          {celebrationMembers.length > 0 ? (
+            <TeamCelebrationsCard members={celebrationMembers} manageHref="/escritorio/equipo" />
+          ) : null}
+        </div>
       </div>
     </div>
   );
