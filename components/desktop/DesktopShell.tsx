@@ -89,18 +89,25 @@ const sectionTitles: Record<string, { title: string; subtitle: string }> = {
   "/escritorio/perfil": { title: "Mi perfil", subtitle: "Tus datos y preferencias" }
 };
 
+// Sesión desbloqueada cacheada a nivel de módulo. Sobrevive a la navegación
+// entre páginas del escritorio (mismo contexto JS, aunque el layout se remonte)
+// pero se reinicia al recargar o abrir de nuevo (contexto JS nuevo). Así el PIN
+// se pide al abrir/recargar, NO al cambiar de pestaña dentro del escritorio.
+let unlockedSession: User | null = null;
+
 export function DesktopShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const { isDark, setTheme } = useTheme();
-  const [user, setUser] = useState<User | null>(null);
-  const [checking, setChecking] = useState(true);
-  const [unlocked, setUnlocked] = useState(false);
+  const [user, setUser] = useState<User | null>(unlockedSession);
+  const [checking, setChecking] = useState(unlockedSession === null);
+  const [unlocked, setUnlocked] = useState(unlockedSession !== null);
 
   // Guard de tamaño + bloqueo diario. El escritorio se bloquea en cada apertura
   // y pide PIN (login estilo Netflix). Solo se omite justo tras un login explícito
-  // en /login (token de un solo uso).
+  // en /login (token de un solo uso) o si ya se desbloqueó en esta sesión de pestaña.
   useEffect(() => {
+    if (unlockedSession) return; // ya desbloqueado en esta sesión: no re-bloquear al navegar
     if (typeof window !== "undefined" && window.innerWidth < DESKTOP_MIN_WIDTH) {
       router.replace("/manager");
       return;
@@ -108,6 +115,7 @@ export function DesktopShell({ children }: { children: React.ReactNode }) {
     if (consumeDesktopFreshLogin()) {
       getSession().then((session) => {
         if (session && session.role !== "ASESOR") {
+          unlockedSession = session;
           setUser(session);
           setUnlocked(true);
         }
@@ -123,11 +131,19 @@ export function DesktopShell({ children }: { children: React.ReactNode }) {
       router.replace("/advisor");
       return;
     }
+    unlockedSession = unlockedUser;
     setUser(unlockedUser);
     setUnlocked(true);
   }
 
+  function relock() {
+    unlockedSession = null;
+    setUser(null);
+    setUnlocked(false);
+  }
+
   async function handleLogout() {
+    unlockedSession = null;
     await logout();
     router.push("/login");
   }
@@ -203,7 +219,7 @@ export function DesktopShell({ children }: { children: React.ReactNode }) {
           <Link href="/manager" className="tappable flex min-h-10 items-center gap-2.5 rounded-2xl px-3 text-[13px] font-bold text-muted transition hover:bg-slate-100 hover:text-ink dark:hover:bg-slate-800/60">
             <Smartphone size={16} /> Ver versión móvil
           </Link>
-          <button onClick={() => setUnlocked(false)} className="tappable flex min-h-10 w-full items-center gap-2.5 rounded-2xl px-3 text-[13px] font-bold text-muted transition hover:bg-slate-100 hover:text-ink dark:hover:bg-slate-800/60">
+          <button onClick={relock} className="tappable flex min-h-10 w-full items-center gap-2.5 rounded-2xl px-3 text-[13px] font-bold text-muted transition hover:bg-slate-100 hover:text-ink dark:hover:bg-slate-800/60">
             <UsersRound size={16} /> Cambiar de usuario
           </button>
           <button onClick={() => void handleLogout()} className="tappable flex min-h-10 w-full items-center gap-2.5 rounded-2xl px-3 text-[13px] font-bold text-rose-500 transition hover:bg-rose-50 dark:hover:bg-rose-950/30">
