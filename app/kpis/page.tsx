@@ -383,6 +383,11 @@ function ResumenView({ activeKpi, team, progress, periodLabel, hasDiscountSource
             <p className="text-[11px] font-bold uppercase tracking-[0.13em] text-muted">Cumplimiento {periodLabel}</p>
             <h2 className={cn("mt-1 text-[2.25rem] font-black leading-none", goalToneText)}>{progress}%</h2>
             <p className="mt-1 text-xs text-muted">{money(activeKpi.sales)} de {money(activeKpi.goal)}</p>
+            {activeKpi.goal > 0 ? (
+              <p className={cn("mt-0.5 text-xs font-black", activeKpi.sales >= activeKpi.goal ? "text-success" : "text-volt")}>
+                {activeKpi.sales >= activeKpi.goal ? `Meta superada por ${money(activeKpi.sales - activeKpi.goal)}` : `Faltan ${money(activeKpi.goal - activeKpi.sales)} para la meta ${periodLabel}`}
+              </p>
+            ) : null}
           </div>
           <div className="flex shrink-0 items-center gap-2">
             {isManager ? (

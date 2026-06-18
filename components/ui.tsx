@@ -231,7 +231,8 @@ export function EmptyState({
 }
 
 export function ProgressRing({ value, tone = "volt", size = 76 }: { value: number; tone?: Accent; size?: number }) {
-  const clamped = Math.max(0, Math.min(100, value));
+  const clamped = Math.max(0, Math.min(100, value)); // el aro llena máximo 100%
+  const display = Math.max(0, Math.round(value));      // el número muestra el real (puede pasar de 100%)
   const radius = 28;
   const circumference = 2 * Math.PI * radius;
 
@@ -253,7 +254,7 @@ export function ProgressRing({ value, tone = "volt", size = 76 }: { value: numbe
           transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
         />
       </svg>
-      <span className="absolute text-sm font-black text-ink">{clamped}%</span>
+      <span className={cn("absolute font-black text-ink", display >= 1000 ? "text-[11px]" : "text-sm")}>{display}%</span>
     </div>
   );
 }
