@@ -31,7 +31,7 @@ export async function dispatchPushToUsers(userIds: string[], payload: PushPayloa
           JSON.stringify({
             title: payload.title,
             body: payload.body,
-            icon: payload.icon ?? "/icon.svg",
+            icon: payload.icon ?? "/icon-192.png",
             tag,
             url: payload.url ?? "/notificaciones"
           }),
