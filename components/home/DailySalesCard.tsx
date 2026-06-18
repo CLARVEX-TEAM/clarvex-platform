@@ -51,6 +51,11 @@ export function DailySalesCard({ sales, goal, label = "Venta diaria", delay = 0.
             <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">Meta diaria</span>
             <span className="text-sm font-black text-[#2563EB]">{money(goal)}</span>
           </div>
+          {goal > 0 ? (
+            <p className={cn("mt-1 text-[12px] font-black", sales >= goal ? "text-green-600 dark:text-green-500" : "text-[#2563EB]")}>
+              {sales >= goal ? `¡Meta cumplida! +${money(sales - goal)}` : `Te faltan ${money(goal - sales)}`}
+            </p>
+          ) : null}
           <div className="mt-3">
             <ProgressBar value={progress} tone={tone} />
           </div>
