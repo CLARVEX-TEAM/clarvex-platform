@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import Image from "next/image";
@@ -20,6 +20,7 @@ import {
 import type { User } from "@/lib/types";
 import { Badge, Button, ProfileAvatar } from "@/components/ui";
 import { useTheme } from "@/components/ThemeProvider";
+import { markDesktopFreshLogin, saveProfile } from "@/lib/desktop-profiles";
 
 type Step = "employee" | "greeting" | "pin" | "confirm" | "profile" | "ready";
 
@@ -103,6 +104,38 @@ export default function LoginPage() {
   const [biometricStatus, setBiometricStatus] = useState<"idle" | "active" | "done">("idle");
   const { isDark } = useTheme();
   const [previewData, setPreviewData] = useState<PreviewData | null>(null);
+  // En escritorio (pantalla grande con mouse) no mostramos el teclado en
+  // pantalla: el PIN se escribe con el teclado físico de la computadora.
+  const [physicalKeyboard, setPhysicalKeyboard] = useState(false);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 1024px) and (pointer: fine)");
+    const update = () => setPhysicalKeyboard(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+
+  // Permite escribir el PIN con el teclado físico en cualquier dispositivo.
+  useEffect(() => {
+    if (step !== "pin" && step !== "confirm") return;
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.metaKey || event.ctrlKey || event.altKey) return;
+      if (event.key >= "0" && event.key <= "9") {
+        event.preventDefault();
+        if (step === "pin") handlePinKey(event.key);
+        else handleConfirmKey(event.key);
+      } else if (event.key === "Backspace") {
+        event.preventDefault();
+        if (step === "pin") handlePinKey("del");
+        else handleConfirmKey("del");
+      }
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+    // pin/confirmPin en deps para que el handler lea siempre el valor actual.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, pin, confirmPin, busy, requiresPinSetup]);
 
   const steps = useMemo(
     () =>
@@ -142,6 +175,8 @@ export default function LoginPage() {
     setError("");
     try {
       const result = await loginWithPin(employeeNumber, pinValue);
+      saveProfile(result.user);
+      markDesktopFreshLogin();
       router.replace(result.user.role === "ASESOR" ? "/advisor" : "/manager");
       router.refresh();
     } catch (cause) {
@@ -254,6 +289,8 @@ export default function LoginPage() {
       const options = await getBiometricAuthOptions(employeeNumber);
       const authentication = await startAuthentication({ optionsJSON: options });
       const result = await authenticateBiometric(employeeNumber, authentication);
+      saveProfile(result.user);
+      markDesktopFreshLogin();
       router.replace(result.user.role === "ASESOR" ? "/advisor" : "/manager");
       router.refresh();
     } catch (cause) {
@@ -506,9 +543,15 @@ export default function LoginPage() {
                 </div>
               </div>
 
-              {/* Teclado numérico custom */}
+              {/* Teclado: numérico en táctil; en escritorio se usa el teclado físico */}
               <div className="pb-10 pt-5">
-                <NumPad onKey={handlePinKey} />
+                {physicalKeyboard ? (
+                  <p className={`text-center text-sm font-semibold ${isDark ? "text-slate-400" : "text-slate-500"}`}>
+                    Escribe tu PIN con el teclado
+                  </p>
+                ) : (
+                  <NumPad onKey={handlePinKey} />
+                )}
               </div>
             </motion.div>
           ) : null}
@@ -552,7 +595,13 @@ export default function LoginPage() {
               </div>
 
               <div className="pb-10 pt-5">
-                <NumPad onKey={handleConfirmKey} />
+                {physicalKeyboard ? (
+                  <p className={`text-center text-sm font-semibold ${isDark ? "text-slate-400" : "text-slate-500"}`}>
+                    Escribe tu PIN con el teclado
+                  </p>
+                ) : (
+                  <NumPad onKey={handleConfirmKey} />
+                )}
               </div>
             </motion.div>
           ) : null}
@@ -669,6 +718,8 @@ export default function LoginPage() {
                   variant="primary"
                   icon={<LogIn size={17} />}
                   onClick={() => {
+                    if (user) saveProfile(user);
+                    markDesktopFreshLogin();
                     router.replace(destination);
                     router.refresh();
                   }}
