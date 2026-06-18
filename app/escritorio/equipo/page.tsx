@@ -1,13 +1,16 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { CalendarClock, Clock3, UsersRound } from "lucide-react";
+import { CalendarClock, CalendarHeart, CheckCircle2, Clock3, UsersRound } from "lucide-react";
 import { completion } from "@/lib/format";
 import { dateKey, startOfWeek } from "@/lib/schedule-week";
 import type { Role } from "@/lib/types";
-import { achievementTone, Badge, Card, ProgressBar, ProfileAvatar } from "@/components/ui";
+import { achievementTone, Badge, Button, Card, ProgressBar, ProfileAvatar } from "@/components/ui";
+import { useToast } from "@/components/Toast";
 import { useDesktopData } from "@/components/desktop/useDesktopData";
 import { DesktopError } from "@/components/desktop/DesktopError";
+
+type EditRow = { id: string; name: string; photoUrl?: string | null; birthDate: string; hireDate: string; hoursOwed: string; vacationDays: string; paidDays: string };
 
 type ScheduleStatus = "WORKING" | "OFF" | "VACATION" | "PAID_DAY" | "INVENTORY" | "TERMINATED" | "UNKNOWN";
 type ScheduleItem = {
@@ -42,7 +45,11 @@ const dayAbbr = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
 
 export default function EscritorioEquipo() {
   const { data, error, reload } = useDesktopData();
+  const toast = useToast();
   const [schedules, setSchedules] = useState<ScheduleItem[]>([]);
+  const [editRows, setEditRows] = useState<EditRow[]>([]);
+  const [savingId, setSavingId] = useState<string | null>(null);
+  const [savedId, setSavedId] = useState<string | null>(null);
   const weekStart = useMemo(() => dateKey(startOfWeek(new Date())), []);
   const todayKey = useMemo(() => {
     const now = new Date();
@@ -55,6 +62,40 @@ export default function EscritorioEquipo() {
       .then((payload) => setSchedules(payload.schedules ?? []))
       .catch(() => setSchedules([]));
   }, [weekStart]);
+
+  // Filas editables de fechas/saldos del equipo (paridad con la app móvil).
+  useEffect(() => {
+    if (!data) return;
+    setEditRows(data.users.map((u) => ({
+      id: u.id, name: u.name, photoUrl: u.photoUrl,
+      birthDate: u.birthDate ?? "", hireDate: u.hireDate ?? "",
+      hoursOwed: String(u.hoursOwed ?? 0), vacationDays: String(u.vacationDays ?? 0), paidDays: String(u.paidDays ?? 0)
+    })));
+  }, [data]);
+
+  function updateRow(id: string, field: "birthDate" | "hireDate" | "hoursOwed" | "vacationDays" | "paidDays", value: string) {
+    setEditRows((current) => current.map((row) => row.id === id ? { ...row, [field]: value } : row));
+    setSavedId(null);
+  }
+
+  async function saveRow(row: EditRow) {
+    setSavingId(row.id);
+    setSavedId(null);
+    try {
+      const response = await fetch("/api/profile", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: row.id, birthDate: row.birthDate || null, hireDate: row.hireDate || null, hoursOwed: Number(row.hoursOwed) || 0, vacationDays: Number(row.vacationDays) || 0, paidDays: Number(row.paidDays) || 0 })
+      });
+      if (!response.ok) throw new Error();
+      setSavedId(row.id);
+      window.setTimeout(() => setSavedId((current) => (current === row.id ? null : current)), 2500);
+    } catch {
+      toast(`No se pudo guardar ${row.name}.`, "error");
+    } finally {
+      setSavingId(null);
+    }
+  }
 
   if (error && !data) return <DesktopError onRetry={reload} />;
   if (!data) {
@@ -77,7 +118,10 @@ export default function EscritorioEquipo() {
   const todayStatus = (id: string) => schedules.find((s) => s.userId === id && s.date === todayKey)?.status ?? null;
   const weekFor = (id: string) => schedules.filter((s) => s.userId === id).sort((a, b) => a.date.localeCompare(b.date));
 
+  const inputClass = "min-h-10 w-full rounded-xl border border-line bg-panel px-2.5 text-sm font-bold text-ink outline-none focus:border-volt";
+
   return (
+    <div className="space-y-5">
     <div className="grid grid-cols-5 gap-5">
       {/* Equipo */}
       <Card className="col-span-3 h-fit p-5">
@@ -164,6 +208,53 @@ export default function EscritorioEquipo() {
             );
           })}
           {schedules.length === 0 ? <p className="py-6 text-center text-sm text-muted">Sin horarios para esta semana.</p> : null}
+        </div>
+      </Card>
+    </div>
+
+      {/* Fechas y saldos del equipo (editable) */}
+      <Card className="p-5">
+        <div className="mb-3 flex items-center gap-2"><CalendarHeart className="text-volt" size={18} /><h2 className="text-lg font-black text-ink">Fechas y saldos del equipo</h2></div>
+        <div className="overflow-x-auto rounded-2xl border border-line">
+          <table className="w-full min-w-[760px] text-sm">
+            <thead className="bg-panel text-left text-[11px] font-bold uppercase tracking-[0.1em] text-muted">
+              <tr>
+                <th className="px-4 py-2.5">Colaborador</th>
+                <th className="px-3 py-2.5">Cumpleaños</th>
+                <th className="px-3 py-2.5">Ingreso</th>
+                <th className="px-3 py-2.5">Horas saldo</th>
+                <th className="px-3 py-2.5">Vacaciones</th>
+                <th className="px-3 py-2.5">Pago día</th>
+                <th className="px-3 py-2.5"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {editRows.map((row) => (
+                <tr key={row.id} className="border-t border-line align-middle">
+                  <td className="px-4 py-2">
+                    <div className="flex items-center gap-2.5">
+                      <ProfileAvatar name={row.name} photoUrl={row.photoUrl} size="sm" className="size-8 rounded-xl shadow-none" />
+                      <span className="font-bold text-ink">{row.name}</span>
+                    </div>
+                  </td>
+                  <td className="px-3 py-2"><input type="date" value={row.birthDate} onChange={(e) => updateRow(row.id, "birthDate", e.target.value)} className={inputClass} /></td>
+                  <td className="px-3 py-2"><input type="date" value={row.hireDate} onChange={(e) => updateRow(row.id, "hireDate", e.target.value)} className={inputClass} /></td>
+                  <td className="px-3 py-2"><input type="number" step="0.5" inputMode="decimal" value={row.hoursOwed} onChange={(e) => updateRow(row.id, "hoursOwed", e.target.value)} className={`${inputClass} w-20`} /></td>
+                  <td className="px-3 py-2"><input type="number" step="1" min="0" inputMode="numeric" value={row.vacationDays} onChange={(e) => updateRow(row.id, "vacationDays", e.target.value)} className={`${inputClass} w-20`} /></td>
+                  <td className="px-3 py-2"><input type="number" step="1" min="0" inputMode="numeric" value={row.paidDays} onChange={(e) => updateRow(row.id, "paidDays", e.target.value)} className={`${inputClass} w-20`} /></td>
+                  <td className="px-3 py-2">
+                    {savedId === row.id ? (
+                      <span className="flex items-center gap-1 text-xs font-bold text-emerald-600"><CheckCircle2 size={15} />Guardado</span>
+                    ) : (
+                      <Button type="button" variant="ghost" onClick={() => void saveRow(row)} disabled={savingId === row.id} className="min-h-9 px-3 text-xs">
+                        {savingId === row.id ? "Guardando…" : "Guardar"}
+                      </Button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </Card>
     </div>
