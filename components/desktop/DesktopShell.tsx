@@ -8,11 +8,18 @@ import {
   AlertTriangle,
   BarChart3,
   BookOpen,
+  CalendarClock,
+  CalendarDays,
+  CheckSquare,
+  Database,
   GraduationCap,
+  HeartHandshake,
   LayoutDashboard,
+  ListChecks,
   LogOut,
   Megaphone,
   Moon,
+  PackageSearch,
   Smartphone,
   Sun,
   UsersRound
@@ -31,14 +38,36 @@ import { consumeDesktopFreshLogin } from "@/lib/desktop-profiles";
 // Ancho mínimo para considerar "escritorio". Por debajo, gerencia usa la app móvil.
 export const DESKTOP_MIN_WIDTH = 1024;
 
-const navItems: { href: string; label: string; icon: LucideIcon }[] = [
-  { href: "/escritorio", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/escritorio/comunicados", label: "Comunicados", icon: Megaphone },
-  { href: "/escritorio/pendientes", label: "Pendientes", icon: AlertTriangle },
-  { href: "/escritorio/kpis", label: "KPIs", icon: BarChart3 },
-  { href: "/escritorio/equipo", label: "Equipo", icon: UsersRound },
-  { href: "/escritorio/bitacora", label: "Bitácora", icon: BookOpen },
-  { href: "/escritorio/capacitacion", label: "Capacitación", icon: GraduationCap }
+const navGroups: { label: string; items: { href: string; label: string; icon: LucideIcon }[] }[] = [
+  {
+    label: "Operación",
+    items: [
+      { href: "/escritorio", label: "Dashboard", icon: LayoutDashboard },
+      { href: "/escritorio/kpis", label: "KPIs", icon: BarChart3 },
+      { href: "/escritorio/equipo", label: "Equipo", icon: UsersRound },
+      { href: "/escritorio/horarios", label: "Horarios", icon: CalendarDays }
+    ]
+  },
+  {
+    label: "Día a día",
+    items: [
+      { href: "/escritorio/plan", label: "Plan del día", icon: ListChecks },
+      { href: "/escritorio/pendientes", label: "Pendientes", icon: AlertTriangle },
+      { href: "/escritorio/checklist", label: "Checklist", icon: CheckSquare },
+      { href: "/escritorio/comunicados", label: "Comunicados", icon: Megaphone },
+      { href: "/escritorio/bitacora", label: "Bitácora", icon: BookOpen }
+    ]
+  },
+  {
+    label: "Gestión",
+    items: [
+      { href: "/escritorio/solicitudes", label: "Solicitudes", icon: CalendarClock },
+      { href: "/escritorio/faltantes", label: "Faltantes", icon: PackageSearch },
+      { href: "/escritorio/kudos", label: "Reconocimientos", icon: HeartHandshake },
+      { href: "/escritorio/capacitacion", label: "Capacitación", icon: GraduationCap },
+      { href: "/escritorio/datos", label: "Centro de Datos", icon: Database }
+    ]
+  }
 ];
 
 const sectionTitles: Record<string, { title: string; subtitle: string }> = {
@@ -47,9 +76,17 @@ const sectionTitles: Record<string, { title: string; subtitle: string }> = {
   "/escritorio/pendientes": { title: "Pendientes", subtitle: "Handover, responsables y fechas límite" },
   "/escritorio/kpis": { title: "KPIs", subtitle: "Venta, metas y desempeño del equipo" },
   "/escritorio/equipo": { title: "Equipo", subtitle: "Colaboradores y horarios" },
+  "/escritorio/horarios": { title: "Horarios", subtitle: "Agenda semanal del equipo" },
+  "/escritorio/plan": { title: "Plan del día", subtitle: "Actividades y enfoque del equipo" },
+  "/escritorio/checklist": { title: "Checklist de tienda", subtitle: "Apertura y cierre con evidencia" },
+  "/escritorio/solicitudes": { title: "Solicitudes", subtitle: "Permisos, turnos y aprobaciones" },
+  "/escritorio/faltantes": { title: "Faltantes", subtitle: "Inventario y reportes de producto" },
+  "/escritorio/kudos": { title: "Reconocimientos", subtitle: "Reconoce el buen trabajo del equipo" },
+  "/escritorio/datos": { title: "Centro de Datos", subtitle: "Fuentes RDV y sincronización" },
   "/escritorio/bitacora": { title: "Bitácora", subtitle: "Registro cronológico de operación de tienda" },
   "/escritorio/capacitacion": { title: "Capacitación", subtitle: "Biblioteca de recursos y archivos del equipo" },
-  "/escritorio/notificaciones": { title: "Notificaciones", subtitle: "Avisos del equipo" }
+  "/escritorio/notificaciones": { title: "Notificaciones", subtitle: "Avisos del equipo" },
+  "/escritorio/perfil": { title: "Mi perfil", subtitle: "Tus datos y preferencias" }
 };
 
 export function DesktopShell({ children }: { children: React.ReactNode }) {
@@ -121,37 +158,42 @@ export function DesktopShell({ children }: { children: React.ReactNode }) {
           </div>
         </Link>
 
-        <nav className="mt-7 flex flex-1 flex-col gap-1">
-          {navItems.map((item) => {
-            const active = pathname === item.href || (item.href !== "/escritorio" && pathname.startsWith(`${item.href}/`));
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                aria-current={active ? "page" : undefined}
-                className={cn(
-                  "tappable relative flex min-h-11 items-center gap-3 rounded-2xl px-3 text-sm font-bold tracking-[-0.01em] transition-colors",
-                  active ? "text-volt" : "text-muted hover:bg-slate-100 hover:text-ink dark:hover:bg-slate-800/60"
-                )}
-              >
-                {active ? (
-                  <motion.span
-                    layoutId="desktop-nav-active"
-                    className="absolute inset-0 rounded-2xl bg-volt/12 ring-1 ring-volt/25"
-                    transition={{ type: "spring", stiffness: 480, damping: 34 }}
-                  />
-                ) : null}
-                <span className={cn("relative grid place-items-center", active && "icon-bold")}>
-                  <item.icon size={19} />
-                </span>
-                <span className="relative">{item.label}</span>
-              </Link>
-            );
-          })}
+        <nav className="mt-6 flex flex-1 flex-col gap-4 overflow-y-auto pr-1">
+          {navGroups.map((group) => (
+            <div key={group.label} className="flex flex-col gap-0.5">
+              <p className="px-3 pb-1 text-[10px] font-black uppercase tracking-[0.14em] text-muted/70">{group.label}</p>
+              {group.items.map((item) => {
+                const active = pathname === item.href || (item.href !== "/escritorio" && pathname.startsWith(`${item.href}/`));
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    aria-current={active ? "page" : undefined}
+                    className={cn(
+                      "tappable relative flex min-h-10 items-center gap-3 rounded-2xl px-3 text-[13.5px] font-bold tracking-[-0.01em] transition-colors",
+                      active ? "text-volt" : "text-muted hover:bg-slate-100 hover:text-ink dark:hover:bg-slate-800/60"
+                    )}
+                  >
+                    {active ? (
+                      <motion.span
+                        layoutId="desktop-nav-active"
+                        className="absolute inset-0 rounded-2xl bg-volt/12 ring-1 ring-volt/25"
+                        transition={{ type: "spring", stiffness: 480, damping: 34 }}
+                      />
+                    ) : null}
+                    <span className={cn("relative grid place-items-center", active && "icon-bold")}>
+                      <item.icon size={18} />
+                    </span>
+                    <span className="relative">{item.label}</span>
+                  </Link>
+                );
+              })}
+            </div>
+          ))}
         </nav>
 
         <div className="mt-4 space-y-2 border-t border-line pt-4">
-          <Link href="/perfil" className="flex items-center gap-2.5 rounded-2xl px-1 py-1 transition hover:bg-slate-100 dark:hover:bg-slate-800/60">
+          <Link href="/escritorio/perfil" className="flex items-center gap-2.5 rounded-2xl px-1 py-1 transition hover:bg-slate-100 dark:hover:bg-slate-800/60">
             <ProfileAvatar name={user?.name ?? "Gerencia"} photoUrl={user?.photoUrl} size="sm" className="size-9 rounded-2xl shadow-none" />
             <div className="min-w-0 leading-tight">
               <p className="truncate text-sm font-black text-ink">{user?.name}</p>
