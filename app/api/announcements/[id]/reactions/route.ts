@@ -49,7 +49,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         title,
         body
       }]);
-      dispatchPushToUsers([announcement.authorId], { title, body, tag: "reaccion-comunicado" }).catch(() => undefined);
+      dispatchPushToUsers([announcement.authorId], { title, body, tag: "reaccion-comunicado", url: "/comunicados" }).catch(() => undefined);
     }
   }
 

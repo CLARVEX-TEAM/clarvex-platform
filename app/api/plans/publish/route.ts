@@ -39,7 +39,7 @@ export async function POST(request: Request) {
     })));
   });
 
-  dispatchPushToUsers(drafts.map((p) => p.userId), { title: "Tu plan del día está listo", body: "Revisa tus actividades de hoy.", tag: "plan-listo" }).catch(() => undefined);
+  dispatchPushToUsers(drafts.map((p) => p.userId), { title: "Tu plan del día está listo", body: "Revisa tus actividades de hoy.", tag: "plan-listo", url: "/plan" }).catch(() => undefined);
 
   return NextResponse.json({ ok: true, published: drafts.length });
 }

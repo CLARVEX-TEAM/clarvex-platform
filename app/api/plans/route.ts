@@ -37,6 +37,6 @@ export async function POST(request: Request) {
     }]);
     return created;
   });
-  dispatchPushToUsers([user.id], { title: "Tu plan del dia esta listo", body: parsed.data.focus, tag: "plan-listo" }).catch(() => undefined);
+  dispatchPushToUsers([user.id], { title: "Tu plan del dia esta listo", body: parsed.data.focus, tag: "plan-listo", url: "/plan" }).catch(() => undefined);
   return NextResponse.json({ plan: { id: plan.id, userId: plan.userId, date: plan.date.toISOString().slice(0, 10), dailyGoal: Number(plan.dailyGoal), focus: plan.focus, message: plan.message, activities: plan.activities.map((activity) => ({ id: activity.id, title: activity.title, completed: activity.completed })) } }, { status: 201 });
 }

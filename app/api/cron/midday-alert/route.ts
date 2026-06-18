@@ -39,7 +39,7 @@ export async function POST(request: Request) {
     managersNotified: 0
   };
 
-  type PushJob = { userIds: string[]; payload: { title: string; body: string; tag: string } };
+  type PushJob = { userIds: string[]; payload: { title: string; body: string; tag: string; url: string } };
 
   for (const store of stores) {
     const [advisors, managers, dayKpis, daySchedules, sentLogs] = await Promise.all([
@@ -91,7 +91,7 @@ export async function POST(request: Request) {
       const message = buildMiddayAdvisorMessage({ name: advisor.name, sales, goal });
       notifications.push({ storeId: store.id, userId: advisor.id, type: NotificationType.DAILY_SUMMARY, title: message.title, body: message.body });
       logsToCreate.push({ employeeId: advisor.id, date: dateKey, type: LOG_TYPE, case: null, sent: true });
-      pushJobs.push({ userIds: [advisor.id], payload: { title: message.title, body: message.body, tag: PUSH_TAG } });
+      pushJobs.push({ userIds: [advisor.id], payload: { title: message.title, body: message.body, tag: PUSH_TAG, url: "/kpis" } });
       summary.advisorsNudged += 1;
     }
 
@@ -103,7 +103,7 @@ export async function POST(request: Request) {
         notifications.push({ storeId: store.id, userId: id, type: NotificationType.DAILY_SUMMARY, title: managerMessage.title, body: managerMessage.body });
         logsToCreate.push({ employeeId: id, date: dateKey, type: LOG_TYPE, case: null, sent: true });
       }
-      pushJobs.push({ userIds: managerIds, payload: { title: managerMessage.title, body: managerMessage.body, tag: PUSH_TAG } });
+      pushJobs.push({ userIds: managerIds, payload: { title: managerMessage.title, body: managerMessage.body, tag: PUSH_TAG, url: "/kpis" } });
       summary.managersNotified += managerIds.length;
     }
 

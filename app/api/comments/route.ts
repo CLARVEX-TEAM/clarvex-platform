@@ -62,7 +62,7 @@ export async function POST(request: Request) {
     return created;
   });
   if (shouldNotify) {
-    dispatchPushToUsers([resource.recipientId], { title: notifyTitle, body: resource.title, tag: "comentario" }).catch(() => undefined);
+    dispatchPushToUsers([resource.recipientId], { title: notifyTitle, body: resource.title, tag: "comentario", url: resource.kind === "announcement" ? "/comunicados" : "/pendientes" }).catch(() => undefined);
   }
   return NextResponse.json({ comment: serializeComment(comment) }, { status: 201 });
 }

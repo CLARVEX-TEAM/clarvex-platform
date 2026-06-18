@@ -1,4 +1,4 @@
-const CACHE_NAME = "clarvex-team-v4";
+const CACHE_NAME = "clarvex-team-v5";
 const CORE_ASSETS = ["/", "/login", "/manifest.webmanifest", "/icon.svg"];
 
 self.addEventListener("install", (event) => {
@@ -34,7 +34,7 @@ self.addEventListener("fetch", (event) => {
 
 self.addEventListener("push", (event) => {
   if (!event.data) return;
-  let data = { title: "CLARVEX Team", body: "Tienes una nueva notificacion.", icon: "/icon.svg", tag: "clarvex-notification" };
+  let data = { title: "CLARVEX Team", body: "Tienes una nueva notificacion.", icon: "/icon.svg", tag: "clarvex-notification", url: "/notificaciones" };
   try { data = { ...data, ...event.data.json() }; } catch (_) {}
 
   event.waitUntil(
@@ -43,6 +43,7 @@ self.addEventListener("push", (event) => {
       icon: data.icon,
       badge: "/icon.svg",
       tag: data.tag,
+      data: { url: data.url || "/notificaciones" },
       renotify: true,
       vibrate: [200, 100, 200]
     })
@@ -51,11 +52,21 @@ self.addEventListener("push", (event) => {
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
+  const target = (event.notification.data && event.notification.data.url) || "/notificaciones";
+  const absolute = new URL(target, self.location.origin).href;
   event.waitUntil(
     clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
-      const existing = clientList.find((c) => c.url.includes(self.location.origin) && "focus" in c);
-      if (existing) return existing.focus();
-      return clients.openWindow("/notificaciones");
+      const existing = clientList.find((c) => c.url.startsWith(self.location.origin) && "focus" in c);
+      if (existing) {
+        return existing.focus().then((client) => {
+          const focused = client || existing;
+          if (focused && "navigate" in focused) {
+            return focused.navigate(absolute).catch(() => focused);
+          }
+          return focused;
+        });
+      }
+      return clients.openWindow(absolute);
     })
   );
 });

@@ -20,7 +20,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       const managers = await prisma.user.findMany({ where: { storeId: session.storeId, role: { in: ["GERENTE", "SUBGERENTE"] } }, select: { id: true } });
       const managerIds = managers.map((m) => m.id);
       if (managerIds.length > 0) {
-        dispatchPushToUsers(managerIds, { title: "👁 Comunicado leído", body: `${session.name} leyó "${announcement.title}"`, tag: "comunicado-leido" }).catch(() => undefined);
+        dispatchPushToUsers(managerIds, { title: "👁 Comunicado leído", body: `${session.name} leyó "${announcement.title}"`, tag: "comunicado-leido", url: "/comunicados" }).catch(() => undefined);
       }
     }
   } else {

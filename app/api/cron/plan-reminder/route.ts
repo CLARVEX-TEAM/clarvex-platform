@@ -65,7 +65,7 @@ export async function POST(request: Request) {
     });
 
     await Promise.allSettled(
-      pushJobs.map((job) => dispatchPushToUsers([job.userId], { title: job.title, body: job.body, tag: PUSH_TAG }).catch(() => undefined))
+      pushJobs.map((job) => dispatchPushToUsers([job.userId], { title: job.title, body: job.body, tag: PUSH_TAG, url: "/plan" }).catch(() => undefined))
     );
   }
 

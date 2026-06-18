@@ -108,7 +108,8 @@ export async function POST(request: Request) {
       return { created, recipientList };
     });
 
-    dispatchPushToUsers(result.recipientList, { title: "📎 Nueva evidencia", body: `${session.name} subió evidencia en "${resource.title}"`, tag: "evidencia" }).catch(() => undefined);
+    const evidenceUrl = resource.kind === "announcement" ? "/comunicados" : resource.kind === "task" ? "/plan" : resource.kind === "logEntry" ? "/bitacora" : "/pendientes";
+    dispatchPushToUsers(result.recipientList, { title: "📎 Nueva evidencia", body: `${session.name} subió evidencia en "${resource.title}"`, tag: "evidencia", url: evidenceUrl }).catch(() => undefined);
 
     return NextResponse.json({ evidences: result.created.map(serializeEvidence) }, { status: 201 });
   } catch (error) {

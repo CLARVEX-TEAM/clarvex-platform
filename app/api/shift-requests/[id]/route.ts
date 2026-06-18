@@ -48,7 +48,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   const verb = status === "APROBADO" ? "aprobada" : "rechazada";
   const body = `Tu solicitud de ${SHIFT_TYPE_LABELS[existing.type] ?? "turno"} para el ${formatRequestDate(existing.date)} fue ${verb}${managerNote ? `: ${managerNote}` : ""}`;
   await createNotifications(prisma, [{ storeId: session.storeId, userId: existing.requesterId, type: "SHIFT_REQUEST", title, body }]);
-  dispatchPushToUsers([existing.requesterId], { title, body, tag: "solicitud" }).catch(() => undefined);
+  dispatchPushToUsers([existing.requesterId], { title, body, tag: "solicitud", url: "/solicitudes" }).catch(() => undefined);
 
   return NextResponse.json({ id, status });
 }
