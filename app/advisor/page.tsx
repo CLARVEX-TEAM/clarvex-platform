@@ -22,6 +22,7 @@ import { QuickKpiGrid, type KpiCardData } from "@/components/home/QuickKpiGrid";
 import { QuickActions } from "@/components/home/QuickActions";
 import { SalesTrendCard } from "@/components/home/SalesTrendCard";
 import { TeamCelebrationsCard } from "@/components/home/TeamCelebrationsCard";
+import { PaceCard } from "@/components/home/PaceCard";
 
 const cardAnim = (delay: number) => ({
   initial: { opacity: 0, y: 12 },
@@ -177,6 +178,10 @@ export default function AdvisorDashboard() {
       <PullToRefresh onRefresh={load}>
       <AppFrame>
         <DailySalesCard sales={daily.dailySales} goal={daily.dailyGoal} delay={0.08} />
+
+        <motion.div {...cardAnim(0.12)} className="mt-3">
+          <PaceCard sales={daily.dailySales} goal={daily.dailyGoal} userId={user.id} />
+        </motion.div>
 
         <div className="mt-3">
           <QuickKpiGrid cards={kpiCards} delay={0.16} />
