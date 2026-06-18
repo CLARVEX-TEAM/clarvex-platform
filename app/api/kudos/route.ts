@@ -86,7 +86,8 @@ export async function POST(request: Request) {
   dispatchPushToUsers([toUserId], {
     title: `${emoji} ¡Reconocimiento!`,
     body: `${firstName(session.name)} te reconoció ${emoji}${message ? `: ${message}` : ""}`,
-    tag: "kudo"
+    tag: "kudo",
+    url: "/kudos"
   }).catch(() => undefined);
 
   return NextResponse.json({ id: kudo.id }, { status: 201 });

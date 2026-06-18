@@ -24,7 +24,7 @@ export async function POST(request: Request) {
 
   const summary = { date: dateKey, stores: stores.length, celebrated: 0 };
 
-  type PushJob = { userIds: string[]; payload: { title: string; body: string; tag: string } };
+  type PushJob = { userIds: string[]; payload: { title: string; body: string; tag: string; url: string } };
 
   for (const store of stores) {
     const [advisors, dayKpis, sentLogs] = await Promise.all([
@@ -51,7 +51,7 @@ export async function POST(request: Request) {
       const message = buildGoalReachedMessage({ name: advisor.name, sales, goal });
       notifications.push({ storeId: store.id, userId: advisor.id, type: NotificationType.KPI_GOAL_REACHED, title: message.title, body: message.body });
       logsToCreate.push({ employeeId: advisor.id, date: dateKey, type: LOG_TYPE, case: null, sent: true });
-      pushJobs.push({ userIds: [advisor.id], payload: { title: message.title, body: message.body, tag: PUSH_TAG } });
+      pushJobs.push({ userIds: [advisor.id], payload: { title: message.title, body: message.body, tag: PUSH_TAG, url: "/kpis" } });
       summary.celebrated += 1;
     }
 

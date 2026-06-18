@@ -109,7 +109,7 @@ export async function POST(request: Request) {
       return { resource: created, advisorIds: advisors.map((advisor) => advisor.id) };
     });
 
-    dispatchPushToUsers(advisorIds, { title: "Nueva capacitación", body: resource.title, tag: "capacitacion" }).catch(() => undefined);
+    dispatchPushToUsers(advisorIds, { title: "Nueva capacitación", body: resource.title, tag: "capacitacion", url: "/capacitacion" }).catch(() => undefined);
 
     return NextResponse.json({
       resource: {

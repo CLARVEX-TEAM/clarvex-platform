@@ -91,7 +91,7 @@ export async function POST(request: Request) {
     const detail = hours ? ` (${hours} h)` : "";
     const body = `${firstName(session.name)} solicita ${SHIFT_TYPE_LABELS[type]}${detail} para el ${formatRequestDate(date)}`;
     await createNotifications(prisma, managerIds.map((id) => ({ storeId: session.storeId, userId: id, type: "SHIFT_REQUEST" as const, title, body })));
-    dispatchPushToUsers(managerIds, { title, body, tag: "solicitud" }).catch(() => undefined);
+    dispatchPushToUsers(managerIds, { title, body, tag: "solicitud", url: "/solicitudes" }).catch(() => undefined);
   }
 
   return NextResponse.json({ id: created.id }, { status: 201 });

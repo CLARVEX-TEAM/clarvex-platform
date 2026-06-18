@@ -9,7 +9,7 @@ webpush.setVapidDetails(
 
 export const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY ?? "";
 
-export type PushPayload = { title: string; body: string; icon?: string; tag?: string };
+export type PushPayload = { title: string; body: string; icon?: string; tag?: string; url?: string };
 
 export async function dispatchPushToUsers(userIds: string[], payload: PushPayload) {
   if (userIds.length === 0) return;
@@ -32,7 +32,8 @@ export async function dispatchPushToUsers(userIds: string[], payload: PushPayloa
             title: payload.title,
             body: payload.body,
             icon: payload.icon ?? "/icon.svg",
-            tag
+            tag,
+            url: payload.url ?? "/notificaciones"
           }),
           {
             urgency: "high",        // máxima prioridad: mejor oportunidad contra No Molestar en Android

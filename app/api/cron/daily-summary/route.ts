@@ -37,7 +37,7 @@ export async function POST(request: Request) {
     byCase: {} as Record<string, number>
   };
 
-  type PushJob = { userIds: string[]; payload: { title: string; body: string; tag: string } };
+  type PushJob = { userIds: string[]; payload: { title: string; body: string; tag: string; url: string } };
 
   for (const store of stores) {
     const [advisors, managers, dayKpis, daySchedules, sentLogs] = await Promise.all([
@@ -89,7 +89,7 @@ export async function POST(request: Request) {
         body: message.body
       });
       logsToCreate.push({ employeeId: advisor.id, date: dateKey, type: LOG_TYPE, case: message.case, sent: true });
-      pushJobs.push({ userIds: [advisor.id], payload: { title: message.title, body: message.body, tag: PUSH_TAG } });
+      pushJobs.push({ userIds: [advisor.id], payload: { title: message.title, body: message.body, tag: PUSH_TAG, url: "/kpis" } });
 
       if (message.case === "A" || message.case === "B") overGoal += 1;
       else if (message.case === "C") near += 1;
@@ -113,7 +113,7 @@ export async function POST(request: Request) {
         });
         logsToCreate.push({ employeeId: id, date: dateKey, type: LOG_TYPE, case: null, sent: true });
       }
-      pushJobs.push({ userIds: managerIds, payload: { title: managerMessage.title, body: managerMessage.body, tag: PUSH_TAG } });
+      pushJobs.push({ userIds: managerIds, payload: { title: managerMessage.title, body: managerMessage.body, tag: PUSH_TAG, url: "/kpis" } });
       summary.managersNotified += managerIds.length;
     }
 

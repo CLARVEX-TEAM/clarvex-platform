@@ -53,7 +53,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     return updated;
   });
   if (parsed.data.ownerId && parsed.data.ownerId !== current.ownerId) {
-    dispatchPushToUsers([parsed.data.ownerId], { title: "Pendiente reasignado", body: item.title, tag: "pendiente-reasignado" }).catch(() => undefined);
+    dispatchPushToUsers([parsed.data.ownerId], { title: "Pendiente reasignado", body: item.title, tag: "pendiente-reasignado", url: "/pendientes" }).catch(() => undefined);
   }
   return NextResponse.json({ pending: serializePending(item) });
 }

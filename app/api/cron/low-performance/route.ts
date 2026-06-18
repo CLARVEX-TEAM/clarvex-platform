@@ -92,7 +92,7 @@ export async function POST(request: Request) {
       });
     });
 
-    await dispatchPushToUsers(managerIds, { title: message.title, body: message.body, tag: PUSH_TAG }).catch(() => undefined);
+    await dispatchPushToUsers(managerIds, { title: message.title, body: message.body, tag: PUSH_TAG, url: "/kpis" }).catch(() => undefined);
     summary.managersNotified += managerIds.length;
     summary.storesAlerted += 1;
   }

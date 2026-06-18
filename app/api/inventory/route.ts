@@ -90,7 +90,7 @@ export async function POST(request: Request) {
       const title = "Reporte de inventario";
       const body = `${firstName(session.name)} reportó ${INVENTORY_CATEGORY_LABELS[category] ?? category}: ${productName}`;
       await createNotifications(prisma, managerIds.map((id) => ({ storeId: session.storeId, userId: id, type: "INVENTORY_REPORT" as const, title, body })));
-      dispatchPushToUsers(managerIds, { title, body, tag: "inventario" }).catch(() => undefined);
+      dispatchPushToUsers(managerIds, { title, body, tag: "inventario", url: "/faltantes" }).catch(() => undefined);
     }
 
     return NextResponse.json({ report: serialize(report) }, { status: 201 });
