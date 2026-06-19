@@ -2,14 +2,15 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { dispatchPushToUsers } from "@/lib/push";
-import { isOnline, serializeChatMessage, touchPresence } from "@/lib/chat";
+import { isOnline, resolveReplyTo, serializeChatMessage, touchPresence } from "@/lib/chat";
 
 export const dynamic = "force-dynamic";
 
 const MESSAGE_INCLUDE = {
   sender: { select: { id: true, name: true, photoUrl: true } },
   readBy: { select: { userId: true } },
-  deliveredTo: { select: { userId: true } }
+  deliveredTo: { select: { userId: true } },
+  replyTo: { select: { id: true, body: true, deletedAt: true, sender: { select: { name: true } } } }
 } as const;
 
 async function loadRoom(id: string, selfId: string) {
@@ -103,16 +104,20 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   });
   if (!member) return NextResponse.json({ error: "No tienes acceso a este chat." }, { status: 403 });
 
-  const body = (await request.json()) as { body?: string };
+  const body = (await request.json()) as { body?: string; replyToId?: string };
   const text = body.body?.trim();
   if (!text) return NextResponse.json({ error: "El mensaje no puede estar vacío." }, { status: 400 });
   if (text.length > 1000) return NextResponse.json({ error: "Mensaje demasiado largo." }, { status: 400 });
+
+  // Validar que el mensaje citado exista y pertenezca a este room.
+  const replyToId = await resolveReplyTo(id, body.replyToId);
 
   const message = await prisma.chatMessage.create({
     data: {
       roomId: id,
       senderId: session.userId,
       body: text,
+      replyToId,
       // El emisor ya tiene su propio mensaje entregado y leído.
       readBy: { create: { userId: session.userId } },
       deliveredTo: { create: { userId: session.userId } }

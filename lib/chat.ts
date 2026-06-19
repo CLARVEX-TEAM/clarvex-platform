@@ -17,6 +17,32 @@ export async function touchPresence(userId: string): Promise<void> {
     .catch(() => undefined);
 }
 
+// Devuelve el replyToId solo si el mensaje citado pertenece al mismo room.
+export async function resolveReplyTo(roomId: string, replyToId: string | undefined): Promise<string | null> {
+  if (!replyToId) return null;
+  const target = await prisma.chatMessage.findFirst({
+    where: { id: replyToId, roomId },
+    select: { id: true }
+  });
+  return target ? target.id : null;
+}
+
+// Texto corto para citas y listas (sin depender de React, lado servidor).
+export function previewText(body: string, deleted: boolean): string {
+  if (deleted) return "🚫 Mensaje eliminado";
+  if (/^\[img:https?:\/\//.test(body)) return "📷 Foto";
+  if (/^\[gif:https?:\/\//.test(body)) return "🎞️ GIF";
+  if (/^\[sticker:[a-z_]+\]$/.test(body)) return "🎨 Sticker";
+  return body;
+}
+
+type RawReply = {
+  id: string;
+  body: string;
+  deletedAt: Date | null;
+  sender: { name: string };
+} | null;
+
 type RawChatMessage = {
   id: string;
   body: string;
@@ -26,6 +52,14 @@ type RawChatMessage = {
   sender: { name: string; photoUrl: string | null };
   readBy: { userId: string }[];
   deliveredTo: { userId: string }[];
+  replyTo?: RawReply;
+};
+
+export type SerializedReply = {
+  id: string;
+  senderName: string;
+  preview: string;
+  deleted: boolean;
 };
 
 export type SerializedChatMessage = {
@@ -38,9 +72,11 @@ export type SerializedChatMessage = {
   createdAt: string;
   readBy: string[];
   deliveredTo: string[];
+  replyTo: SerializedReply | null;
 };
 
 export function serializeChatMessage(m: RawChatMessage): SerializedChatMessage {
+  const reply = m.replyTo ?? null;
   return {
     id: m.id,
     // No exponer el contenido de un mensaje eliminado para todos.
@@ -51,6 +87,14 @@ export function serializeChatMessage(m: RawChatMessage): SerializedChatMessage {
     senderPhoto: m.sender.photoUrl,
     createdAt: m.createdAt.toISOString(),
     readBy: m.readBy.map((r) => r.userId),
-    deliveredTo: m.deliveredTo.map((d) => d.userId)
+    deliveredTo: m.deliveredTo.map((d) => d.userId),
+    replyTo: reply
+      ? {
+          id: reply.id,
+          senderName: reply.sender.name,
+          preview: previewText(reply.body, reply.deletedAt !== null),
+          deleted: reply.deletedAt !== null
+        }
+      : null
   };
 }
