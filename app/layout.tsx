@@ -7,6 +7,7 @@ import { ThemeProvider } from "@/components/ThemeProvider";
 import { ToastProvider } from "@/components/Toast";
 import { OfflineBanner } from "@/components/OfflineBanner";
 import { WhatsNewModal } from "@/components/WhatsNewModal";
+import { MatchBanner } from "@/components/MatchBanner";
 
 export const metadata: Metadata = {
   title: "CLARVEX Team",
@@ -49,6 +50,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <AnimatedBackground />
             <PwaRegister />
             <OfflineBanner />
+            <MatchBanner />
             <PageTransition>{children}</PageTransition>
             <WhatsNewModal />
           </ToastProvider>

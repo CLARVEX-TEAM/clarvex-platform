@@ -14,6 +14,7 @@ import {
   Megaphone,
   Receipt,
   ShoppingBag,
+  Trophy,
   UsersRound
 } from "lucide-react";
 import { getSession, logout } from "@/lib/auth";
@@ -416,6 +417,26 @@ export default function ManagerDashboard() {
               <Link
                 href="/datos"
                 className="inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-full bg-volt px-3.5 text-xs font-black text-white transition active:scale-95"
+              >
+                Abrir <ArrowRight size={14} />
+              </Link>
+            </div>
+          </Card>
+        </motion.div>
+
+        <motion.div {...cardAnim(0.84)} className="mt-3">
+          <Card className="p-3.5">
+            <div className="flex items-center gap-3">
+              <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-green-50 dark:bg-[#10301f] text-green-600">
+                <Trophy size={20} />
+              </span>
+              <div className="min-w-0 flex-1">
+                <h2 className="font-black tracking-[-0.02em] text-ink">Selección Mexicana 🇲🇽</h2>
+                <p className="mt-0.5 text-xs text-muted">Programa partidos y avisa los goles</p>
+              </div>
+              <Link
+                href="/partido"
+                className="inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-full bg-green-600 px-3.5 text-xs font-black text-white transition active:scale-95"
               >
                 Abrir <ArrowRight size={14} />
               </Link>

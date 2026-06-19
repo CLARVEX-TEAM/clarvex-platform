@@ -807,6 +807,22 @@ model ChatMessageHide {
   @@index([userId])
 }
 
+model MatchEvent {
+  id           String   @id @default(cuid())
+  opponent     String   // rival, p. ej. "Estados Unidos"
+  opponentFlag String?  // emoji de bandera del rival, p. ej. "🇺🇸"
+  competition  String?  // "Amistoso", "Copa Oro", "Eliminatorias"...
+  kickoff      DateTime // fecha y hora del partido
+  mxScore      Int      @default(0)
+  rivalScore   Int      @default(0)
+  status       String   @default("SCHEDULED") // SCHEDULED | LIVE | FINISHED
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([kickoff])
+  @@index([status])
+}
+
 model ChatMessageReaction {
   id        String      @id @default(cuid())
   messageId String
