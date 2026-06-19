@@ -18,6 +18,7 @@ import {
   CheckSquare,
   Home,
   ListChecks,
+  MessageSquare,
   Plus,
   UserRound
 } from "lucide-react";
@@ -547,6 +548,7 @@ const navItems: { href: string; label: string; icon: LucideIcon }[] = [
   { href: "/manager", label: "Inicio", icon: Home },
   { href: "/plan", label: "Plan", icon: CheckSquare },
   { href: "/pendientes", label: "Pend.", icon: AlertTriangle },
+  { href: "/chat", label: "Chat", icon: MessageSquare },
   { href: "/kpis", label: "KPIs", icon: BarChart3 },
   { href: "/comunicados", label: "Actividad", icon: ListChecks }
 ];
@@ -561,10 +563,10 @@ export function LiquidBottomNav() {
 
   return (
     <nav className="pointer-events-none fixed inset-x-0 bottom-2 z-30 px-3">
-      <div className="liquid-glass pointer-events-auto mx-auto grid max-w-md grid-cols-5 gap-0.5 rounded-[30px] border-line/80 bg-white/90 dark:bg-[#1a2540]/95 p-1.5 shadow-[0_14px_34px_rgb(15_23_42_/_0.14)] backdrop-blur-xl">
+      <div className="liquid-glass pointer-events-auto mx-auto grid max-w-md grid-cols-6 gap-0.5 rounded-[30px] border-line/80 bg-white/90 dark:bg-[#1a2540]/95 p-1.5 shadow-[0_14px_34px_rgb(15_23_42_/_0.14)] backdrop-blur-xl">
         {navItems.map((item) => {
           const href = item.href === "/manager" ? homeHref : item.href;
-          const active = pathname === href || (item.href === "/manager" && (pathname === "/manager" || pathname === "/advisor"));
+          const active = pathname === href || (item.href === "/manager" && (pathname === "/manager" || pathname === "/advisor")) || (item.href === "/chat" && pathname.startsWith("/chat"));
           return (
             <Link
               key={item.href}

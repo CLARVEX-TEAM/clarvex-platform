@@ -94,6 +94,12 @@ enum NotificationType {
   INVENTORY_REPORT
   NEW_TRAINING
   SURVEY
+  NEW_CHAT_MESSAGE
+}
+
+enum ChatRoomType {
+  DIRECT
+  GROUP
 }
 
 model Store {
@@ -120,6 +126,7 @@ model Store {
   choreAssignments ChoreAssignment[]
   fixtures        StoreFixture[]
   surveys         Survey[]
+  chatRooms       ChatRoom[]
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
 }
@@ -216,6 +223,9 @@ model User {
   choreAssignments      ChoreAssignment[]
   authoredSurveys       Survey[]               @relation("SurveyAuthor")
   surveyResponses       SurveyResponse[]       @relation("SurveyRespondent")
+  chatMemberships       ChatMember[]
+  chatMessages          ChatMessage[]
+  chatMessageReads      ChatMessageRead[]
   createdAt             DateTime               @default(now())
   updatedAt             DateTime               @updatedAt
 }
@@ -706,4 +716,55 @@ model SurveyAnswer {
 
   @@index([responseId])
   @@index([questionId])
+}
+
+model ChatRoom {
+  id        String        @id @default(cuid())
+  storeId   String
+  store     Store         @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  type      ChatRoomType  @default(DIRECT)
+  name      String?
+  members   ChatMember[]
+  messages  ChatMessage[]
+  createdAt DateTime      @default(now())
+
+  @@index([storeId])
+}
+
+model ChatMember {
+  id       String   @id @default(cuid())
+  roomId   String
+  room     ChatRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  userId   String
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  joinedAt DateTime @default(now())
+
+  @@unique([roomId, userId])
+  @@index([userId])
+}
+
+model ChatMessage {
+  id        String            @id @default(cuid())
+  roomId    String
+  room      ChatRoom          @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  senderId  String
+  sender    User              @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  body      String
+  readBy    ChatMessageRead[]
+  createdAt DateTime          @default(now())
+
+  @@index([roomId, createdAt])
+}
+
+model ChatMessageRead {
+  id        String      @id @default(cuid())
+  messageId String
+  message   ChatMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  readAt    DateTime    @default(now())
+
+  @@unique([messageId, userId])
+  @@index([messageId])
+  @@index([userId])
 }
