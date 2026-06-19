@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
-import { MessageSquare, Send, Smile, Users } from "lucide-react";
+import { MessageSquare, Send, Smile, Users, ImagePlus, Trash2, MoreVertical, X } from "lucide-react";
 import { getSession } from "@/lib/auth";
 import { fetchAppData } from "@/lib/app-data";
 import { cn } from "@/lib/utils";
@@ -9,8 +9,13 @@ import type { User } from "@/lib/types";
 import { ProfileAvatar } from "@/components/ui";
 import {
   ChatPicker,
+  MessageTicks,
+  computeMessageStatus,
+  formatLastSeen,
+  chatPreview,
   decodeStickerMsg,
   decodeGifMsg,
+  decodeImageMsg,
   isBigEmoji,
   encodeStickerMsg,
   encodeGifMsg
@@ -20,29 +25,77 @@ type RoomSummary = {
   id: string;
   type: "DIRECT" | "GROUP";
   name: string | null;
-  other: { id: string; name: string; photoUrl: string | null; role: string } | null;
-  lastMessage: { body: string; senderName: string; createdAt: string } | null;
+  other: { id: string; name: string; photoUrl: string | null; role: string; online: boolean; lastSeenAt: string | null } | null;
+  lastMessage: { body: string; deleted: boolean; senderName: string; createdAt: string } | null;
   unreadCount: number;
 };
 
 type Message = {
   id: string;
   body: string;
+  deleted: boolean;
   senderId: string;
   senderName: string;
   senderPhoto: string | null;
   createdAt: string;
   readBy: string[];
+  deliveredTo: string[];
 };
+
+type Member = { id: string; name: string; photoUrl: string | null; role: string; online: boolean; lastSeenAt: string | null };
 
 type RoomInfo = {
   id: string;
   type: "DIRECT" | "GROUP";
   name: string | null;
-  members: { id: string; name: string; photoUrl: string | null; role: string }[];
+  members: Member[];
 };
 
 type Teammate = { id: string; name: string; photoUrl: string | null };
+
+function MessageBody({ msg, isMe }: { msg: Message; isMe: boolean }) {
+  if (msg.deleted) {
+    return (
+      <div className={cn(
+        "flex items-center gap-1.5 rounded-2xl border border-dashed px-4 py-2.5 text-sm italic",
+        isMe ? "border-white/40 text-white/80" : "border-line text-muted"
+      )}>
+        <Trash2 size={13} /> Se eliminó este mensaje
+      </div>
+    );
+  }
+  const sticker = decodeStickerMsg(msg.body);
+  if (sticker) {
+    return (
+      <div className={cn("flex flex-col items-center gap-1 rounded-3xl bg-gradient-to-br p-4", sticker.bg)}>
+        <span className="text-5xl leading-none">{sticker.emoji}</span>
+        <span className="text-xs font-black text-ink">{sticker.label}</span>
+      </div>
+    );
+  }
+  const imgUrl = decodeImageMsg(msg.body);
+  if (imgUrl) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img src={imgUrl} alt="Imagen" className="max-h-72 max-w-[260px] rounded-2xl object-cover" loading="lazy" />
+    );
+  }
+  const gifUrl = decodeGifMsg(msg.body);
+  if (gifUrl) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img src={gifUrl} alt="GIF" className="max-w-[220px] rounded-2xl" loading="lazy" />
+    );
+  }
+  if (isBigEmoji(msg.body)) {
+    return <span className="text-5xl leading-none">{msg.body}</span>;
+  }
+  return (
+    <div className={cn("rounded-2xl px-4 py-2.5 text-sm leading-relaxed shadow-sm", isMe ? "rounded-br-sm bg-volt text-white" : "rounded-bl-sm bg-white/90 text-ink dark:bg-white/10")}>
+      {msg.body}
+    </div>
+  );
+}
 
 export default function EscritorioChat() {
   const [user, setUser] = useState<User | null>(null);
@@ -56,8 +109,10 @@ export default function EscritorioChat() {
   const [loadingRooms, setLoadingRooms] = useState(true);
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [menuMsg, setMenuMsg] = useState<Message | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   const loadRooms = useCallback(async () => {
     const res = await fetch("/api/chat", { cache: "no-store" }).then(
@@ -84,7 +139,6 @@ export default function EscritorioChat() {
     );
     setMessages(res.messages);
     if (res.room) setRoomInfo(res.room);
-    // Actualizar unread en sidebar
     setRooms((prev) => prev.map((r) => r.id === roomId ? { ...r, unreadCount: 0 } : r));
   }, []);
 
@@ -98,9 +152,9 @@ export default function EscritorioChat() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Polling cada 3 s cuando hay room activo
+  // Polling cada 3 s cuando hay room activo; la lista refresca presencia.
   useEffect(() => {
-    if (!activeRoomId) return;
+    if (!activeRoomId) { const t = setInterval(() => { void loadRooms(); }, 5000); return () => clearInterval(t); }
     const interval = setInterval(() => { void fetchMessages(activeRoomId); void loadRooms(); }, 3000);
     return () => clearInterval(interval);
   }, [activeRoomId, fetchMessages, loadRooms]);
@@ -138,6 +192,37 @@ export default function EscritorioChat() {
     }
   }
 
+  async function uploadImage(file: File) {
+    if (!activeRoomId || sending || !file.type.startsWith("image/")) return;
+    setSending(true);
+    setPickerOpen(false);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch(`/api/chat/${activeRoomId}/image`, { method: "POST", body: fd }).then(
+        (r) => r.json() as Promise<{ message?: Message; error?: string }>
+      );
+      if (res.message) { setMessages((prev) => [...prev, res.message!]); await loadRooms(); }
+      else if (res.error) alert(res.error);
+    } finally {
+      setSending(false);
+    }
+  }
+
+  async function deleteMessage(msg: Message, scope: "me" | "all") {
+    setMenuMsg(null);
+    if (!activeRoomId) return;
+    await fetch(`/api/chat/${activeRoomId}/${msg.id}?scope=${scope}`, { method: "DELETE" });
+    if (scope === "me") setMessages((prev) => prev.filter((m) => m.id !== msg.id));
+    else setMessages((prev) => prev.map((m) => (m.id === msg.id ? { ...m, deleted: true, body: "" } : m)));
+    await loadRooms();
+  }
+
+  function handlePaste(e: React.ClipboardEvent) {
+    const file = Array.from(e.clipboardData.files).find((f) => f.type.startsWith("image/"));
+    if (file) { e.preventDefault(); void uploadImage(file); }
+  }
+
   function handleSend() { const t = input.trim(); setInput(""); void doSend(t); }
 
   function handleKeyDown(e: React.KeyboardEvent) {
@@ -156,6 +241,10 @@ export default function EscritorioChat() {
     return d.toLocaleDateString("es-MX", { day: "numeric", month: "short" });
   }
 
+  function msgTime(iso: string) {
+    return new Date(iso).toLocaleTimeString("es-MX", { hour: "numeric", minute: "2-digit" });
+  }
+
   function dayLabel(iso: string) {
     const d = new Date(iso);
     const today = new Date();
@@ -168,15 +257,21 @@ export default function EscritorioChat() {
 
   function sameDay(a: string, b: string) { return a.slice(0, 10) === b.slice(0, 10); }
 
+  const isManager = user?.role === "GERENTE" || user?.role === "SUBGERENTE";
+  const otherMember = roomInfo?.members.find((m) => m.id !== user?.id) ?? null;
+  const otherIds = roomInfo ? roomInfo.members.filter((m) => m.id !== user?.id).map((m) => m.id) : [];
+
   const activeRoomTitle = roomInfo
     ? roomInfo.type === "GROUP"
       ? (roomInfo.name ?? "Todos")
-      : roomInfo.members.find((m) => m.id !== user?.id)?.name ?? "Chat"
+      : otherMember?.name ?? "Chat"
     : "";
 
   const activeRoomSubtitle = roomInfo?.type === "GROUP"
     ? `${roomInfo.members.length} integrantes`
-    : roomInfo?.members.find((m) => m.id !== user?.id)?.role?.toLowerCase() ?? "";
+    : otherMember
+      ? (formatLastSeen(otherMember.lastSeenAt, otherMember.online) || otherMember.role.toLowerCase())
+      : "";
 
   return (
     <div className="flex h-[calc(100vh-0px)] overflow-hidden rounded-2xl border border-line bg-white/60 dark:bg-[#0f1729]/60">
@@ -212,6 +307,9 @@ export default function EscritorioChat() {
                     ) : (
                       <ProfileAvatar name={room.other?.name ?? "?"} photoUrl={room.other?.photoUrl} size="sm" className="size-10 rounded-2xl" />
                     )}
+                    {room.type === "DIRECT" && room.other?.online && (
+                      <span className="absolute -bottom-0.5 -right-0.5 size-3 rounded-full border-2 border-white bg-green-500 dark:border-[#0f1729]" />
+                    )}
                     {room.unreadCount > 0 && (
                       <span className="absolute -right-1 -top-1 grid size-4 place-items-center rounded-full bg-volt text-[9px] font-black text-white">
                         {room.unreadCount > 9 ? "9+" : room.unreadCount}
@@ -229,7 +327,7 @@ export default function EscritorioChat() {
                     </div>
                     {room.lastMessage ? (
                       <p className={cn("truncate text-xs", room.unreadCount > 0 ? "font-semibold text-ink/70" : "text-muted")}>
-                        {room.type === "GROUP" ? `${room.lastMessage.senderName}: ` : ""}{room.lastMessage.body}
+                        {room.type === "GROUP" ? `${room.lastMessage.senderName}: ` : ""}{chatPreview(room.lastMessage.body, room.lastMessage.deleted)}
                       </p>
                     ) : (
                       <p className="text-xs text-muted">Sin mensajes</p>
@@ -276,21 +374,28 @@ export default function EscritorioChat() {
           <>
             {/* Header de conversación */}
             <div className="flex items-center gap-3 border-b border-line px-5 py-3.5">
-              {roomInfo?.type === "GROUP" ? (
-                <span className="grid size-9 place-items-center rounded-2xl bg-volt/12 text-volt">
-                  <Users size={17} />
-                </span>
-              ) : roomInfo ? (
-                <ProfileAvatar
-                  name={roomInfo.members.find((m) => m.id !== user?.id)?.name ?? "?"}
-                  photoUrl={roomInfo.members.find((m) => m.id !== user?.id)?.photoUrl}
-                  size="sm"
-                  className="size-9 rounded-2xl"
-                />
-              ) : null}
+              <div className="relative">
+                {roomInfo?.type === "GROUP" ? (
+                  <span className="grid size-9 place-items-center rounded-2xl bg-volt/12 text-volt">
+                    <Users size={17} />
+                  </span>
+                ) : roomInfo ? (
+                  <ProfileAvatar
+                    name={otherMember?.name ?? "?"}
+                    photoUrl={otherMember?.photoUrl}
+                    size="sm"
+                    className="size-9 rounded-2xl"
+                  />
+                ) : null}
+                {roomInfo?.type === "DIRECT" && otherMember?.online && (
+                  <span className="absolute -bottom-0.5 -right-0.5 size-2.5 rounded-full border-2 border-white bg-green-500 dark:border-[#0f1729]" />
+                )}
+              </div>
               <div>
                 <p className="text-sm font-black text-ink">{activeRoomTitle}</p>
-                {activeRoomSubtitle && <p className="text-xs text-muted">{activeRoomSubtitle}</p>}
+                {activeRoomSubtitle && (
+                  <p className={cn("text-xs", otherMember?.online ? "font-semibold text-green-500" : "text-muted")}>{activeRoomSubtitle}</p>
+                )}
               </div>
             </div>
 
@@ -305,6 +410,8 @@ export default function EscritorioChat() {
                   const isMe = msg.senderId === user?.id;
                   const showDay = i === 0 || !sameDay(messages[i - 1].createdAt, msg.createdAt);
                   const showAvatar = !isMe && (i === 0 || messages[i - 1].senderId !== msg.senderId || showDay);
+                  const status = computeMessageStatus(msg, otherIds);
+                  const canDeleteAll = !msg.deleted && (msg.senderId === user?.id || isManager);
 
                   return (
                     <div key={msg.id}>
@@ -317,40 +424,33 @@ export default function EscritorioChat() {
                           <div className="h-px flex-1 bg-line/50" />
                         </div>
                       )}
-                      <div className={cn("mb-1 flex items-end gap-2", isMe ? "flex-row-reverse" : "flex-row")}>
+                      <div className={cn("group mb-1 flex items-end gap-2", isMe ? "flex-row-reverse" : "flex-row")}>
                         <div className="w-8 shrink-0">
                           {showAvatar && !isMe && (
                             <ProfileAvatar name={msg.senderName} photoUrl={msg.senderPhoto} size="sm" className="size-8 rounded-xl text-xs" />
                           )}
                         </div>
-                        <div className={cn("max-w-[60%]", isMe ? "items-end" : "items-start", "flex flex-col")}>
+                        <div className={cn("flex max-w-[60%] flex-col", isMe ? "items-end" : "items-start")}>
                           {showAvatar && !isMe && roomInfo?.type === "GROUP" && (
                             <span className="mb-0.5 pl-1 text-[11px] font-bold text-muted">{msg.senderName}</span>
                           )}
-                          {(() => {
-                            const sticker = decodeStickerMsg(msg.body);
-                            const gifUrl = decodeGifMsg(msg.body);
-                            if (sticker) return (
-                              <div className={cn("flex flex-col items-center gap-1 rounded-3xl bg-gradient-to-br p-4", sticker.bg)}>
-                                <span className="text-5xl leading-none">{sticker.emoji}</span>
-                                <span className="text-xs font-black text-ink">{sticker.label}</span>
-                              </div>
-                            );
-                            if (gifUrl) return (
-                              // eslint-disable-next-line @next/next/no-img-element
-                              <img src={gifUrl} alt="GIF" className="max-w-[200px] rounded-2xl" loading="lazy" />
-                            );
-                            if (isBigEmoji(msg.body)) return <span className="text-5xl leading-none">{msg.body}</span>;
-                            return (
-                              <div className={cn("rounded-2xl px-4 py-2.5 text-sm leading-relaxed shadow-sm", isMe ? "rounded-br-sm bg-volt text-white" : "rounded-bl-sm bg-white/90 text-ink dark:bg-white/10")}>
-                                {msg.body}
-                              </div>
-                            );
-                          })()}
-                          <span className={cn("mt-0.5 text-[10px] text-muted", isMe ? "pr-1 text-right" : "pl-1")}>
-                            {formatTime(msg.createdAt)}
+                          <MessageBody msg={msg} isMe={isMe} />
+                          <span className={cn("mt-0.5 flex items-center gap-1 text-[10px] text-muted", isMe ? "flex-row-reverse pr-1" : "pl-1")}>
+                            {msgTime(msg.createdAt)}
+                            {isMe && !msg.deleted && otherIds.length > 0 && <MessageTicks status={status} />}
                           </span>
                         </div>
+                        {/* Acción eliminar (hover) */}
+                        {!msg.deleted && (
+                          <button
+                            type="button"
+                            onClick={() => setMenuMsg(msg)}
+                            className="grid size-7 shrink-0 place-items-center self-center rounded-full text-muted opacity-0 transition hover:bg-volt/10 hover:text-ink group-hover:opacity-100"
+                            title="Opciones"
+                          >
+                            <MoreVertical size={15} />
+                          </button>
+                        )}
                       </div>
                     </div>
                   );
@@ -368,6 +468,13 @@ export default function EscritorioChat() {
                 onSticker={(sid) => { void doSend(encodeStickerMsg(sid)); }}
                 onGif={(url) => { void doSend(encodeGifMsg(url)); }}
               />
+              <input
+                ref={fileRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) void uploadImage(f); e.target.value = ""; }}
+              />
               <div className="flex items-end gap-2">
                 <button
                   type="button"
@@ -376,11 +483,20 @@ export default function EscritorioChat() {
                 >
                   <Smile size={18} />
                 </button>
+                <button
+                  type="button"
+                  onClick={() => fileRef.current?.click()}
+                  disabled={sending}
+                  className="grid size-10 shrink-0 place-items-center rounded-2xl bg-panel text-muted transition hover:text-ink disabled:opacity-40"
+                >
+                  <ImagePlus size={18} />
+                </button>
                 <textarea
                   ref={inputRef}
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={handleKeyDown}
+                  onPaste={handlePaste}
                   onFocus={() => setPickerOpen(false)}
                   placeholder="Escribe un mensaje…"
                   rows={1}
@@ -401,6 +517,37 @@ export default function EscritorioChat() {
           </>
         )}
       </div>
+
+      {/* Menú de acciones del mensaje */}
+      {menuMsg && (
+        <div className="fixed inset-0 z-[60] grid place-items-center bg-black/40 p-4" onClick={() => setMenuMsg(null)}>
+          <div className="w-full max-w-xs rounded-3xl bg-white p-2 shadow-2xl dark:bg-[#0f1729]" onClick={(e) => e.stopPropagation()}>
+            {!menuMsg.deleted && (menuMsg.senderId === user?.id || isManager) && (
+              <button
+                type="button"
+                onClick={() => void deleteMessage(menuMsg, "all")}
+                className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-bold text-red-500 transition hover:bg-red-500/10"
+              >
+                <Trash2 size={18} /> Eliminar para todos
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => void deleteMessage(menuMsg, "me")}
+              className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-bold text-ink transition hover:bg-volt/8"
+            >
+              <Trash2 size={18} className="text-muted" /> Eliminar para mí
+            </button>
+            <button
+              type="button"
+              onClick={() => setMenuMsg(null)}
+              className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-semibold text-muted transition hover:bg-volt/8"
+            >
+              <X size={18} /> Cancelar
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
