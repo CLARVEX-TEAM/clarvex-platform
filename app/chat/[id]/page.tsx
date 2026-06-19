@@ -49,7 +49,7 @@ type RoomInfo = {
   members: Member[];
 };
 
-function MessageBody({ msg, isMe }: { msg: Message; isMe: boolean }) {
+function MessageBody({ msg, isMe, onImageClick }: { msg: Message; isMe: boolean; onImageClick?: (url: string) => void }) {
   if (msg.deleted) {
     return (
       <div className={cn(
@@ -75,7 +75,13 @@ function MessageBody({ msg, isMe }: { msg: Message; isMe: boolean }) {
   if (imgUrl) {
     return (
       // eslint-disable-next-line @next/next/no-img-element
-      <img src={imgUrl} alt="Imagen" className="max-h-64 max-w-[220px] rounded-2xl object-cover" loading="lazy" />
+      <img
+        src={imgUrl}
+        alt="Imagen"
+        className="max-h-64 max-w-[220px] cursor-pointer rounded-2xl object-cover"
+        loading="lazy"
+        onClick={() => onImageClick?.(imgUrl)}
+      />
     );
   }
 
@@ -117,6 +123,7 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
   const [pickerOpen, setPickerOpen] = useState(false);
   const [menuMsg, setMenuMsg] = useState<Message | null>(null);
   const [replyTo, setReplyTo] = useState<Message | null>(null);
+  const [lightbox, setLightbox] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -300,7 +307,7 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
   }
 
   return (
-    <div className="flex h-dvh flex-col bg-white dark:bg-[#0f1729]">
+    <div className="fixed inset-0 z-30 flex flex-col bg-white dark:bg-[#0f1729]">
       <AppHeader
         title={title}
         subtitle={subtitle}
@@ -372,7 +379,7 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
                       {msg.replyTo && (
                         <ReplyQuote reply={msg.replyTo} isMe={isMe} onClick={() => scrollToMessage(msg.replyTo!.id)} />
                       )}
-                      <MessageBody msg={msg} isMe={isMe} />
+                      <MessageBody msg={msg} isMe={isMe} onImageClick={setLightbox} />
                     </div>
                     <span className={cn("mt-0.5 flex items-center gap-1 text-[10px] text-muted", isMe ? "flex-row-reverse pr-1" : "pl-1")}>
                       {formatTime(msg.createdAt)}
@@ -391,7 +398,10 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
       </div>
 
       {/* Input */}
-      <div className="relative shrink-0 border-t border-line/60 bg-white/90 px-3 py-3 backdrop-blur-xl dark:bg-[#0f1729]/90">
+      <div
+        className="relative shrink-0 border-t border-line/60 bg-white/90 px-3 pt-3 backdrop-blur-xl dark:bg-[#0f1729]/90"
+        style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
+      >
         {/* Picker */}
         <ChatPicker
           open={pickerOpen}
@@ -506,6 +516,22 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
               <X size={18} /> Cancelar
             </button>
           </div>
+        </div>
+      )}
+
+      {/* Visor de imagen a pantalla completa */}
+      {lightbox && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/95 p-4" onClick={() => setLightbox(null)}>
+          <button
+            type="button"
+            onClick={() => setLightbox(null)}
+            className="absolute right-4 top-4 grid size-10 place-items-center rounded-full bg-white/15 text-white"
+            style={{ top: "max(1rem, env(safe-area-inset-top))" }}
+          >
+            <X size={22} />
+          </button>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={lightbox} alt="Imagen" className="max-h-full max-w-full rounded-lg object-contain" onClick={(e) => e.stopPropagation()} />
         </div>
       )}
     </div>
