@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
-import { deleteFromR2 } from "@/lib/r2";
+import { deleteFromR2, deleteFromR2ByKey } from "@/lib/r2";
 
 export const dynamic = "force-dynamic";
 
@@ -44,8 +44,13 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
   if (!message.deletedAt) {
     await prisma.chatMessage.update({ where: { id: messageId }, data: { deletedAt: new Date() } });
     // Liberar la imagen en R2 si el mensaje era una foto.
-    const imgMatch = /^\[img:(https?:\/\/[^\]]+)\]$/.exec(message.body);
-    if (imgMatch) void deleteFromR2(imgMatch[1]);
+    const proxyMatch = /^\[img:\/api\/chat\/file\?k=([^\]]+)\]$/.exec(message.body);
+    if (proxyMatch) {
+      void deleteFromR2ByKey(decodeURIComponent(proxyMatch[1]));
+    } else {
+      const urlMatch = /^\[img:(https?:\/\/[^\]]+)\]$/.exec(message.body);
+      if (urlMatch) void deleteFromR2(urlMatch[1]);
+    }
   }
 
   return NextResponse.json({ ok: true, scope });

@@ -30,7 +30,7 @@ export async function resolveReplyTo(roomId: string, replyToId: string | undefin
 // Texto corto para citas y listas (sin depender de React, lado servidor).
 export function previewText(body: string, deleted: boolean): string {
   if (deleted) return "🚫 Mensaje eliminado";
-  if (/^\[img:https?:\/\//.test(body)) return "📷 Foto";
+  if (/^\[img:(?:https?:\/\/|\/)/.test(body)) return "📷 Foto";
   if (/^\[gif:https?:\/\//.test(body)) return "🎞️ GIF";
   if (/^\[sticker:[a-z_]+\]$/.test(body)) return "🎨 Sticker";
   return body;

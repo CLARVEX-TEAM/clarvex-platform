@@ -96,7 +96,8 @@ export function encodeImageMsg(url: string) {
 }
 
 export function decodeImageMsg(body: string): string | null {
-  const m = /^\[img:(https?:\/\/[^\]]+)\]$/.exec(body);
+  // Acepta tanto URL absoluta (formato antiguo) como ruta del proxy "/api/chat/file?...".
+  const m = /^\[img:((?:https?:\/\/|\/)[^\]]+)\]$/.exec(body);
   return m ? m[1] : null;
 }
 
