@@ -3,26 +3,54 @@ import { getServerSession } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
 
-type TenorResult = {
-  id: string;
-  title: string;
-  media_formats: {
-    gif?: { url: string };
-    tinygif?: { url: string };
-    nanogif?: { url: string };
-  };
+// Klipy devuelve cada GIF con un objeto `file` que tiene tamaños (hd, md, sm, xs)
+// y dentro de cada uno los formatos (gif, mp4, webp, jpg). Tomamos un .gif para
+// el mensaje y un thumbnail ligero para la cuadrícula de búsqueda.
+type KlipyFormat = { url?: string };
+type KlipySize = { gif?: KlipyFormat; webp?: KlipyFormat; jpg?: KlipyFormat; mp4?: KlipyFormat };
+type KlipyFile = { hd?: KlipySize; md?: KlipySize; sm?: KlipySize; xs?: KlipySize };
+
+type KlipyItem = {
+  id?: string | number;
+  slug?: string;
+  title?: string;
+  file?: KlipyFile;
+  files?: KlipyFile;
 };
 
-type TenorResponse = { results: TenorResult[]; error?: string };
+type KlipyResponse = {
+  result?: boolean;
+  data?: { data?: KlipyItem[] };
+};
+
+function pickGif(file: KlipyFile): string {
+  return (
+    file.md?.gif?.url ??
+    file.hd?.gif?.url ??
+    file.sm?.gif?.url ??
+    file.xs?.gif?.url ??
+    ""
+  );
+}
+
+function pickPreview(file: KlipyFile): string {
+  return (
+    file.xs?.gif?.url ??
+    file.sm?.gif?.url ??
+    file.xs?.jpg?.url ??
+    file.sm?.jpg?.url ??
+    pickGif(file)
+  );
+}
 
 export async function GET(request: Request) {
   const session = await getServerSession();
   if (!session) return NextResponse.json({ error: "Sesión requerida." }, { status: 401 });
 
-  const key = process.env.TENOR_API_KEY;
+  const key = process.env.KLIPY_API_KEY;
   if (!key) {
     return NextResponse.json(
-      { error: "Agrega TENOR_API_KEY al .env para usar GIFs." },
+      { error: "Agrega KLIPY_API_KEY al .env para usar GIFs." },
       { status: 503 }
     );
   }
@@ -30,18 +58,32 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const q = searchParams.get("q") ?? "celebration";
 
-  const url = `https://tenor.googleapis.com/v2/search?q=${encodeURIComponent(q)}&key=${key}&limit=18&media_filter=tinygif,gif&contentfilter=medium`;
-  const res = await fetch(url, { next: { revalidate: 60 } });
-  if (!res.ok) return NextResponse.json({ error: "Error con Tenor API." }, { status: 502 });
+  // La API key va en la ruta; customer_id identifica al usuario final (recomendado por Klipy).
+  const url =
+    `https://api.klipy.com/api/v1/${key}/gifs/search` +
+    `?q=${encodeURIComponent(q)}&per_page=18&customer_id=${encodeURIComponent(session.userId)}`;
 
-  const data = await res.json() as TenorResponse;
+  let res: Response;
+  try {
+    res = await fetch(url, { next: { revalidate: 60 } });
+  } catch {
+    return NextResponse.json({ error: "No se pudo conectar con Klipy." }, { status: 502 });
+  }
+  if (!res.ok) return NextResponse.json({ error: "Error con Klipy API." }, { status: 502 });
 
-  const gifs = (data.results ?? []).map((r) => ({
-    id: r.id,
-    title: r.title,
-    url: r.media_formats.gif?.url ?? r.media_formats.tinygif?.url ?? "",
-    previewUrl: r.media_formats.tinygif?.url ?? r.media_formats.nanogif?.url ?? r.media_formats.gif?.url ?? ""
-  })).filter((g) => g.url);
+  const data = (await res.json()) as KlipyResponse;
+
+  const gifs = (data.data?.data ?? [])
+    .map((item) => {
+      const file = item.file ?? item.files ?? {};
+      return {
+        id: String(item.id ?? item.slug ?? ""),
+        title: item.title ?? "",
+        url: pickGif(file),
+        previewUrl: pickPreview(file)
+      };
+    })
+    .filter((g) => g.url && g.id);
 
   return NextResponse.json({ gifs });
 }
