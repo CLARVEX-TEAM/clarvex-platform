@@ -11,7 +11,10 @@ import {
   ChatPicker,
   MessageTicks,
   ReplyQuote,
+  ReactionBar,
+  ReactionChips,
   type ReplyInfo,
+  type MessageReaction,
   computeMessageStatus,
   formatLastSeen,
   chatPreview,
@@ -33,6 +36,7 @@ type Message = {
   createdAt: string;
   readBy: string[];
   deliveredTo: string[];
+  reactions: MessageReaction[];
   replyTo: ReplyInfo | null;
 };
 
@@ -182,6 +186,18 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
       else if (res.error) alert(res.error);
     } finally {
       setSending(false);
+    }
+  }
+
+  async function reactToMessage(msg: Message, emoji: string) {
+    setMenuMsg(null);
+    const res = await fetch(`/api/chat/${id}/${msg.id}/reaction`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ emoji })
+    }).then((r) => r.json() as Promise<{ reactions?: MessageReaction[] }>);
+    if (res.reactions) {
+      setMessages((prev) => prev.map((m) => (m.id === msg.id ? { ...m, reactions: res.reactions! } : m)));
     }
   }
 
@@ -362,6 +378,9 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
                       {formatTime(msg.createdAt)}
                       {isMe && !msg.deleted && otherIds.length > 0 && <MessageTicks status={status} />}
                     </span>
+                    {!msg.deleted && (
+                      <ReactionChips reactions={msg.reactions} myId={session?.id} onToggle={(e) => void reactToMessage(msg, e)} />
+                    )}
                   </div>
                 </div>
               </div>
@@ -451,6 +470,9 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mx-auto mb-2 mt-1 h-1 w-10 rounded-full bg-line" />
+            {!menuMsg.deleted && (
+              <ReactionBar onPick={(e) => void reactToMessage(menuMsg, e)} />
+            )}
             {!menuMsg.deleted && (
               <button
                 type="button"

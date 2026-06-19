@@ -13,6 +13,7 @@ const MESSAGE_INCLUDE = {
   sender: { select: { id: true, name: true, photoUrl: true } },
   readBy: { select: { userId: true } },
   deliveredTo: { select: { userId: true } },
+  reactions: { select: { userId: true, emoji: true } },
   replyTo: { select: { id: true, body: true, deletedAt: true, sender: { select: { name: true } } } }
 } as const;
 

@@ -52,6 +52,7 @@ type RawChatMessage = {
   sender: { name: string; photoUrl: string | null };
   readBy: { userId: string }[];
   deliveredTo: { userId: string }[];
+  reactions?: { userId: string; emoji: string }[];
   replyTo?: RawReply;
 };
 
@@ -61,6 +62,8 @@ export type SerializedReply = {
   preview: string;
   deleted: boolean;
 };
+
+export type MessageReaction = { userId: string; emoji: string };
 
 export type SerializedChatMessage = {
   id: string;
@@ -72,6 +75,7 @@ export type SerializedChatMessage = {
   createdAt: string;
   readBy: string[];
   deliveredTo: string[];
+  reactions: MessageReaction[];
   replyTo: SerializedReply | null;
 };
 
@@ -88,6 +92,7 @@ export function serializeChatMessage(m: RawChatMessage): SerializedChatMessage {
     createdAt: m.createdAt.toISOString(),
     readBy: m.readBy.map((r) => r.userId),
     deliveredTo: m.deliveredTo.map((d) => d.userId),
+    reactions: (m.reactions ?? []).map((r) => ({ userId: r.userId, emoji: r.emoji })),
     replyTo: reply
       ? {
           id: reply.id,
