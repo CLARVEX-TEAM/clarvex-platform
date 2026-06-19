@@ -229,6 +229,7 @@ model User {
   chatMessageReads      ChatMessageRead[]
   chatMessageDeliveries ChatMessageDelivery[]
   chatMessageHides      ChatMessageHide[]
+  chatMessageReactions  ChatMessageReaction[]
   createdAt             DateTime               @default(now())
   updatedAt             DateTime               @updatedAt
 }
@@ -759,6 +760,7 @@ model ChatMessage {
   readBy      ChatMessageRead[]
   deliveredTo ChatMessageDelivery[]
   hiddenFor   ChatMessageHide[]
+  reactions   ChatMessageReaction[]
   deletedAt   DateTime?             // eliminado para todos (soft delete)
   createdAt   DateTime              @default(now())
 
@@ -801,6 +803,20 @@ model ChatMessageHide {
   hiddenAt  DateTime    @default(now())
 
   @@unique([messageId, userId])
+  @@index([messageId])
+  @@index([userId])
+}
+
+model ChatMessageReaction {
+  id        String      @id @default(cuid())
+  messageId String
+  message   ChatMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  emoji     String
+  createdAt DateTime    @default(now())
+
+  @@unique([messageId, userId]) // una reacción por usuario y mensaje (estilo WhatsApp)
   @@index([messageId])
   @@index([userId])
 }

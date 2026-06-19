@@ -151,6 +151,68 @@ export function MessageTicks({ status, className }: { status: MsgStatus; classNa
   return <CheckCheck size={13} className={cn("text-sky-500", className)} />;
 }
 
+// ─── Reacciones ───────────────────────────────────────────────────────────────
+
+export const QUICK_REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "🙏"];
+
+export type MessageReaction = { userId: string; emoji: string };
+export type GroupedReaction = { emoji: string; count: number; mine: boolean };
+
+export function groupReactions(reactions: MessageReaction[], myId: string | undefined): GroupedReaction[] {
+  const map = new Map<string, GroupedReaction>();
+  for (const r of reactions) {
+    const cur = map.get(r.emoji) ?? { emoji: r.emoji, count: 0, mine: false };
+    cur.count += 1;
+    if (r.userId === myId) cur.mine = true;
+    map.set(r.emoji, cur);
+  }
+  return Array.from(map.values());
+}
+
+export function ReactionBar({ onPick }: { onPick: (emoji: string) => void }) {
+  return (
+    <div className="flex items-center justify-around gap-1 px-1 py-1.5">
+      {QUICK_REACTIONS.map((emoji) => (
+        <button
+          key={emoji}
+          type="button"
+          onClick={() => onPick(emoji)}
+          className="grid size-10 place-items-center rounded-full text-2xl transition hover:bg-volt/10 active:scale-90"
+        >
+          {emoji}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+export function ReactionChips({ reactions, myId, onToggle }: {
+  reactions: MessageReaction[];
+  myId: string | undefined;
+  onToggle: (emoji: string) => void;
+}) {
+  const grouped = groupReactions(reactions, myId);
+  if (grouped.length === 0) return null;
+  return (
+    <div className="mt-0.5 flex flex-wrap gap-1">
+      {grouped.map((g) => (
+        <button
+          key={g.emoji}
+          type="button"
+          onClick={() => onToggle(g.emoji)}
+          className={cn(
+            "flex items-center gap-0.5 rounded-full border px-1.5 py-0.5 text-[12px] leading-none transition",
+            g.mine ? "border-volt bg-volt/15" : "border-line bg-panel"
+          )}
+        >
+          <span>{g.emoji}</span>
+          {g.count > 1 && <span className="text-[10px] font-bold text-muted">{g.count}</span>}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 // ─── Cita de respuesta ────────────────────────────────────────────────────────
 
 export type ReplyInfo = { id: string; senderName: string; preview: string; deleted: boolean };

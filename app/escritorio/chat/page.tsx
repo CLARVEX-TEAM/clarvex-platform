@@ -11,7 +11,10 @@ import {
   ChatPicker,
   MessageTicks,
   ReplyQuote,
+  ReactionBar,
+  ReactionChips,
   type ReplyInfo,
+  type MessageReaction,
   computeMessageStatus,
   formatLastSeen,
   chatPreview,
@@ -42,6 +45,7 @@ type Message = {
   createdAt: string;
   readBy: string[];
   deliveredTo: string[];
+  reactions: MessageReaction[];
   replyTo: ReplyInfo | null;
 };
 
@@ -215,6 +219,19 @@ export default function EscritorioChat() {
       else if (res.error) alert(res.error);
     } finally {
       setSending(false);
+    }
+  }
+
+  async function reactToMessage(msg: Message, emoji: string) {
+    setMenuMsg(null);
+    if (!activeRoomId) return;
+    const res = await fetch(`/api/chat/${activeRoomId}/${msg.id}/reaction`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ emoji })
+    }).then((r) => r.json() as Promise<{ reactions?: MessageReaction[] }>);
+    if (res.reactions) {
+      setMessages((prev) => prev.map((m) => (m.id === msg.id ? { ...m, reactions: res.reactions! } : m)));
     }
   }
 
@@ -460,10 +477,21 @@ export default function EscritorioChat() {
                             {msgTime(msg.createdAt)}
                             {isMe && !msg.deleted && otherIds.length > 0 && <MessageTicks status={status} />}
                           </span>
+                          {!msg.deleted && (
+                            <ReactionChips reactions={msg.reactions} myId={user?.id} onToggle={(e) => void reactToMessage(msg, e)} />
+                          )}
                         </div>
                         {/* Acciones (hover) */}
                         {!msg.deleted && (
                           <div className="flex shrink-0 items-center gap-0.5 self-center opacity-0 transition group-hover:opacity-100">
+                            <button
+                              type="button"
+                              onClick={() => setMenuMsg(msg)}
+                              className="grid size-7 place-items-center rounded-full text-muted transition hover:bg-volt/10 hover:text-ink"
+                              title="Reaccionar"
+                            >
+                              <Smile size={15} />
+                            </button>
                             <button
                               type="button"
                               onClick={() => { setReplyTo(msg); inputRef.current?.focus(); }}
@@ -565,6 +593,9 @@ export default function EscritorioChat() {
       {menuMsg && (
         <div className="fixed inset-0 z-[60] grid place-items-center bg-black/40 p-4" onClick={() => setMenuMsg(null)}>
           <div className="w-full max-w-xs rounded-3xl bg-white p-2 shadow-2xl dark:bg-[#0f1729]" onClick={(e) => e.stopPropagation()}>
+            {!menuMsg.deleted && (
+              <ReactionBar onPick={(e) => void reactToMessage(menuMsg, e)} />
+            )}
             {!menuMsg.deleted && (
               <button
                 type="button"
