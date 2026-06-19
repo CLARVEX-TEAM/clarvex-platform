@@ -1,12 +1,20 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
-import { MessageSquare, Send, Users } from "lucide-react";
+import { MessageSquare, Send, Smile, Users } from "lucide-react";
 import { getSession } from "@/lib/auth";
 import { fetchAppData } from "@/lib/app-data";
 import { cn } from "@/lib/utils";
 import type { User } from "@/lib/types";
 import { ProfileAvatar } from "@/components/ui";
+import {
+  ChatPicker,
+  decodeStickerMsg,
+  decodeGifMsg,
+  isBigEmoji,
+  encodeStickerMsg,
+  encodeGifMsg
+} from "@/components/ChatPicker";
 
 type RoomSummary = {
   id: string;
@@ -47,6 +55,7 @@ export default function EscritorioChat() {
   const [sending, setSending] = useState(false);
   const [loadingRooms, setLoadingRooms] = useState(true);
   const [loadingMessages, setLoadingMessages] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -112,16 +121,14 @@ export default function EscritorioChat() {
     await openRoom(res.room.id);
   }
 
-  async function sendMessage() {
-    if (!activeRoomId || !input.trim() || sending) return;
+  async function doSend(body: string) {
+    if (!activeRoomId || !body.trim() || sending) return;
     setSending(true);
-    const text = input.trim();
-    setInput("");
     try {
       const res = await fetch(`/api/chat/${activeRoomId}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ body: text })
+        body: JSON.stringify({ body })
       }).then((r) => r.json() as Promise<{ message: Message }>);
       setMessages((prev) => [...prev, res.message]);
       await loadRooms();
@@ -131,10 +138,12 @@ export default function EscritorioChat() {
     }
   }
 
+  function handleSend() { const t = input.trim(); setInput(""); void doSend(t); }
+
   function handleKeyDown(e: React.KeyboardEvent) {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      void sendMessage();
+      handleSend();
     }
   }
 
@@ -318,16 +327,26 @@ export default function EscritorioChat() {
                           {showAvatar && !isMe && roomInfo?.type === "GROUP" && (
                             <span className="mb-0.5 pl-1 text-[11px] font-bold text-muted">{msg.senderName}</span>
                           )}
-                          <div
-                            className={cn(
-                              "rounded-2xl px-4 py-2.5 text-sm leading-relaxed shadow-sm",
-                              isMe
-                                ? "rounded-br-sm bg-volt text-white"
-                                : "rounded-bl-sm bg-white/90 text-ink dark:bg-white/10"
-                            )}
-                          >
-                            {msg.body}
-                          </div>
+                          {(() => {
+                            const sticker = decodeStickerMsg(msg.body);
+                            const gifUrl = decodeGifMsg(msg.body);
+                            if (sticker) return (
+                              <div className={cn("flex flex-col items-center gap-1 rounded-3xl bg-gradient-to-br p-4", sticker.bg)}>
+                                <span className="text-5xl leading-none">{sticker.emoji}</span>
+                                <span className="text-xs font-black text-ink">{sticker.label}</span>
+                              </div>
+                            );
+                            if (gifUrl) return (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img src={gifUrl} alt="GIF" className="max-w-[200px] rounded-2xl" loading="lazy" />
+                            );
+                            if (isBigEmoji(msg.body)) return <span className="text-5xl leading-none">{msg.body}</span>;
+                            return (
+                              <div className={cn("rounded-2xl px-4 py-2.5 text-sm leading-relaxed shadow-sm", isMe ? "rounded-br-sm bg-volt text-white" : "rounded-bl-sm bg-white/90 text-ink dark:bg-white/10")}>
+                                {msg.body}
+                              </div>
+                            );
+                          })()}
                           <span className={cn("mt-0.5 text-[10px] text-muted", isMe ? "pr-1 text-right" : "pl-1")}>
                             {formatTime(msg.createdAt)}
                           </span>
@@ -341,13 +360,28 @@ export default function EscritorioChat() {
             </div>
 
             {/* Input */}
-            <div className="shrink-0 border-t border-line px-5 py-3">
+            <div className="relative shrink-0 border-t border-line px-5 py-3">
+              <ChatPicker
+                open={pickerOpen}
+                onClose={() => setPickerOpen(false)}
+                onEmoji={(e) => { setInput((prev) => prev + e); inputRef.current?.focus(); }}
+                onSticker={(sid) => { void doSend(encodeStickerMsg(sid)); }}
+                onGif={(url) => { void doSend(encodeGifMsg(url)); }}
+              />
               <div className="flex items-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPickerOpen((v) => !v)}
+                  className={cn("grid size-10 shrink-0 place-items-center rounded-2xl transition", pickerOpen ? "bg-volt/15 text-volt" : "bg-panel text-muted hover:text-ink")}
+                >
+                  <Smile size={18} />
+                </button>
                 <textarea
                   ref={inputRef}
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={handleKeyDown}
+                  onFocus={() => setPickerOpen(false)}
                   placeholder="Escribe un mensaje…"
                   rows={1}
                   maxLength={1000}
@@ -356,7 +390,7 @@ export default function EscritorioChat() {
                 />
                 <button
                   type="button"
-                  onClick={() => void sendMessage()}
+                  onClick={handleSend}
                   disabled={!input.trim() || sending}
                   className="grid size-10 shrink-0 place-items-center rounded-2xl bg-volt text-white shadow-md transition hover:bg-volt/90 active:scale-95 disabled:opacity-40"
                 >
