@@ -37,7 +37,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
   let url: string;
   try {
-    const key = `chat/${id}/${session.userId}-${Date.now()}-${crypto.randomUUID()}.${validation.extension}`;
+    // Bajo "evidences/" porque ese prefijo ya está expuesto públicamente en R2
+    // (igual que perfiles y evidencias). Un prefijo "chat/" no es accesible.
+    const key = `evidences/chat/${id}/${session.userId}-${Date.now()}-${crypto.randomUUID()}.${validation.extension}`;
     url = await uploadToR2(key, bytes, raw.type);
   } catch (error) {
     return NextResponse.json(
