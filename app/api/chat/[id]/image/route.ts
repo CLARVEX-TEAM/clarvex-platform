@@ -36,12 +36,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const validation = validateEvidenceImage(raw, bytes);
   if (!validation.valid) return NextResponse.json({ error: validation.error }, { status: 400 });
 
-  let url: string;
+  const key = `evidences/chat/${id}/${session.userId}-${Date.now()}-${crypto.randomUUID()}.${validation.extension}`;
   try {
-    // Bajo "evidences/" porque ese prefijo ya está expuesto públicamente en R2
-    // (igual que perfiles y evidencias). Un prefijo "chat/" no es accesible.
-    const key = `evidences/chat/${id}/${session.userId}-${Date.now()}-${crypto.randomUUID()}.${validation.extension}`;
-    url = await uploadToR2(key, bytes, raw.type);
+    await uploadToR2(key, bytes, raw.type);
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "No se pudo subir la imagen." },
@@ -51,11 +48,13 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
   const replyToId = await resolveReplyTo(id, form?.get("replyToId")?.toString() || undefined);
 
+  // Se sirve por el proxy del backend (no por la URL pública de R2), así no
+  // depende del acceso público del bucket y queda restringida a los miembros.
   const message = await prisma.chatMessage.create({
     data: {
       roomId: id,
       senderId: session.userId,
-      body: `[img:${url}]`,
+      body: `[img:/api/chat/file?k=${encodeURIComponent(key)}]`,
       replyToId,
       readBy: { create: { userId: session.userId } },
       deliveredTo: { create: { userId: session.userId } }

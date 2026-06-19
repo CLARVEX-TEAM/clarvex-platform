@@ -1,4 +1,4 @@
-import { DeleteObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { DeleteObjectCommand, GetObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 
 function createClient() {
   const accountId = process.env.R2_ACCOUNT_ID;
@@ -32,7 +32,26 @@ export async function deleteFromR2(url: string): Promise<void> {
   if (!base || !url.startsWith(base)) return;
   const key = url.slice(base.length + 1);
   if (!key) return;
+  await deleteFromR2ByKey(key);
+}
+
+export async function deleteFromR2ByKey(key: string): Promise<void> {
+  if (!key) return;
   const bucket = process.env.R2_BUCKET_NAME;
   if (!bucket) return;
   await createClient().send(new DeleteObjectCommand({ Bucket: bucket, Key: key })).catch(() => undefined);
+}
+
+// Lee un objeto del bucket usando las credenciales (no requiere acceso público).
+export async function getFromR2(key: string): Promise<{ body: Uint8Array; contentType: string } | null> {
+  const bucket = process.env.R2_BUCKET_NAME;
+  if (!bucket) return null;
+  try {
+    const res = await createClient().send(new GetObjectCommand({ Bucket: bucket, Key: key }));
+    if (!res.Body) return null;
+    const body = await res.Body.transformToByteArray();
+    return { body, contentType: res.ContentType ?? "application/octet-stream" };
+  } catch {
+    return null;
+  }
 }
