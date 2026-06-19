@@ -1,0 +1,321 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import { cn } from "@/lib/utils";
+
+// ─── Catálogo de stickers ─────────────────────────────────────────────────────
+
+export type Sticker = {
+  id: string;
+  emoji: string;
+  label: string;
+  bg: string;
+};
+
+export const STICKERS: Sticker[] = [
+  { id: "fire",       emoji: "🔥",  label: "¡En racha!",         bg: "from-orange-500/20 to-red-500/20" },
+  { id: "muscle",     emoji: "💪",  label: "¡Así se hace!",      bg: "from-blue-500/20 to-indigo-500/20" },
+  { id: "target",     emoji: "🎯",  label: "¡Meta cumplida!",    bg: "from-green-500/20 to-emerald-500/20" },
+  { id: "clap",       emoji: "👏",  label: "¡Excelente!",        bg: "from-yellow-500/20 to-amber-500/20" },
+  { id: "rocket",     emoji: "🚀",  label: "¡A todo vapor!",     bg: "from-purple-500/20 to-violet-500/20" },
+  { id: "star",       emoji: "⭐",  label: "¡Brillaste!",        bg: "from-yellow-400/20 to-orange-400/20" },
+  { id: "trophy",     emoji: "🏆",  label: "¡Campeón!",          bg: "from-amber-500/20 to-yellow-500/20" },
+  { id: "hundred",    emoji: "💯",  label: "¡Al 100%!",          bg: "from-green-400/20 to-teal-400/20" },
+  { id: "sparkles",   emoji: "✨",  label: "¡Magia!",            bg: "from-pink-400/20 to-rose-400/20" },
+  { id: "handshake",  emoji: "🤝",  label: "¡Equipo!",           bg: "from-blue-400/20 to-cyan-400/20" },
+  { id: "tada",       emoji: "🎉",  label: "¡Lo logramos!",      bg: "from-pink-500/20 to-purple-500/20" },
+  { id: "lightning",  emoji: "⚡",  label: "¡Energía total!",    bg: "from-yellow-400/20 to-lime-400/20" },
+  { id: "chart",      emoji: "📈",  label: "¡Arriba!",           bg: "from-green-500/20 to-emerald-500/20" },
+  { id: "coffee",     emoji: "☕",  label: "Bien merecido",       bg: "from-amber-700/20 to-orange-700/20" },
+  { id: "eyes",       emoji: "👀",  label: "¡Ojo al tiro!",      bg: "from-slate-400/20 to-gray-400/20" },
+  { id: "sunglasses", emoji: "😎",  label: "¡Lo tienes!",        bg: "from-blue-400/20 to-sky-400/20" },
+  { id: "party",      emoji: "🥳",  label: "¡A celebrar!",       bg: "from-pink-400/20 to-fuchsia-400/20" },
+  { id: "gem",        emoji: "💎",  label: "¡De lujo!",          bg: "from-cyan-400/20 to-blue-400/20" },
+  { id: "check",      emoji: "✅",  label: "¡Listo!",            bg: "from-green-400/20 to-emerald-400/20" },
+  { id: "heart",      emoji: "❤️", label: "Con todo el corazón", bg: "from-red-400/20 to-rose-400/20" },
+];
+
+// ─── Emojis por categoría ─────────────────────────────────────────────────────
+
+const EMOJI_CATS: { label: string; icon: string; emojis: string[] }[] = [
+  {
+    label: "Recientes",
+    icon: "🕐",
+    emojis: [] // se rellena dinámicamente con localStorage
+  },
+  {
+    label: "Caras",
+    icon: "😊",
+    emojis: ["😀","😃","😄","😁","😆","😅","🤣","😂","🙂","🙃","😉","😊","😇","🥰","😍","🤩","😘","😗","😚","😙","🥲","😋","😛","😜","🤪","😝","🤑","🤗","🤭","🤫","🤔","🤐","🥺","😶","😏","😒","🙄","😬","🤥","😌","😔","😪","🤤","😴","😷","🤒","🤕","🤢","🤧","🥵","🥶","😵","🤯","🤠","🥸","😎","🤓","🧐","😕","🫤","😟","🙁","☹️","😮","😯","😲","😳","🥹","😦","😧","😨","😰","😥","😢","😭","😱","😖","😣","😞","😓","😩","😫","🥱","😤","😡","🤬","😈","👿","💀","☠️"]
+  },
+  {
+    label: "Gestos",
+    icon: "👍",
+    emojis: ["👋","🤚","🖐","✋","🖖","👌","🤌","🤏","✌️","🤞","🤟","🤘","🤙","👈","👉","👆","🖕","👇","☝️","👍","👎","✊","👊","🤛","🤜","👏","🙌","👐","🤲","🤝","🙏","✍️","💪","🦾","🦿","🦵","🦶","👂","🦻","👃","🧠","🫀","🫁","🦷","🦴","👁","👀","👅","👄","💋"]
+  },
+  {
+    label: "Personas",
+    icon: "🧑",
+    emojis: ["🧑","👶","🧒","👦","👧","🧑","👱","👩","🧓","👴","👵","🙍","🙎","🙅","🙆","💁","🙋","🧏","🙇","🤦","🤷","👮","🕵","💂","🧑‍⚕️","👩‍⚕️","🧑‍🌾","👩‍🌾","🧑‍🍳","👩‍🍳","🧑‍🏫","👩‍🏫","🧑‍🏭","👩‍🏭","💼","🧑‍💻","👩‍💻","🎤","🎧","🎨","✈️"]
+  },
+  {
+    label: "Naturaleza",
+    icon: "🌿",
+    emojis: ["🐶","🐱","🐭","🐹","🐰","🦊","🐻","🐼","🐻‍❄️","🐨","🐯","🦁","🐮","🐷","🐸","🐵","🙈","🙉","🙊","🐔","🐧","🐦","🦆","🦅","🦉","🦇","🐺","🦋","🐛","🐌","🐞","🦗","🦟","🌸","🌹","🌺","🌻","🌼","🌷","🌲","🌴","🌵","🌾","🍀","🍁","🍂","🍃","🌿","☘️","🎋","🎍","🌱","🌿","🍄","🐚","🌊","🌈","🔥","⭐","🌙","☀️","⛄","🌩","🌧","🌪"]
+  },
+  {
+    label: "Comida",
+    icon: "🍕",
+    emojis: ["🍎","🍊","🍋","🍇","🍓","🫐","🍈","🍒","🍑","🥭","🍍","🥥","🥝","🍅","🥑","🍆","🥦","🥬","🌽","🥕","🧅","🥔","🍠","🥜","🍞","🥐","🥨","🧀","🍳","🥚","🍗","🍖","🥩","🥓","🍔","🍟","🌮","🌯","🫔","🥙","🥗","🍝","🍜","🍲","🍛","🍣","🍱","🥟","🍤","🍙","🍚","🍘","🍥","🥮","🍡","🧁","🍰","🎂","🍮","🍭","🍬","🍫","🍿","🍩","🍪","☕","🧃","🥤","🧋","🍺","🍷","🥂","🍾"]
+  },
+  {
+    label: "Objetos",
+    icon: "🎁",
+    emojis: ["⚽","🏀","🏈","⚾","🎾","🏐","🏉","🎱","🏓","🏸","🥊","🥅","⛳","🎣","🏹","🎽","🛹","🛼","🛷","⛸","🥋","🤸","🎯","🎱","🎮","🕹️","🎲","♟️","🧩","🎭","🎨","🎬","🎤","🎧","🎼","🎵","🎶","🎷","🎸","🎹","🥁","🎺","🎻","🪕","📱","💻","⌨️","🖥️","🖨️","🖱️","🖲️","💾","💿","📸","📷","📹","📺","📻","🎙️","📞","☎️","📟","📠","🔋","🔌","💡","🔦","🕯️","💰","💳","🪙","💎","⚙️","🔧","🔨","⛏️","🛠️","🔩","🧲","🗝️","🔑","🚪","🪑","🛋️","🛏️","🚿","🛁","🪥","🧸","🎀","🎁","🎊","🎉","🧨","✨","🎈","🎇","🧧","🎐","🎑","🎃","🎄","🎋","🎍"]
+  },
+  {
+    label: "Símbolos",
+    icon: "❤️",
+    emojis: ["❤️","🧡","💛","💚","💙","💜","🖤","🤍","🤎","💔","❣️","💕","💞","💓","💗","💖","💘","💝","💟","☮️","✝️","☯️","🔴","🟠","🟡","🟢","🔵","🟣","⚫","⚪","🟤","🔺","🔻","🔷","🔶","🔸","🔹","🔲","🔳","▪️","▫️","◾","◽","◼️","◻️","🔉","🔊","📢","📣","🔔","🔕","🎵","🎶","💬","💭","🗯️","💤","🔱","⚜️","✅","❎","🆗","🆙","🆒","🆕","🆓","🔝","🅱️","🆎","🆑","🅰️","🆘","❌","⭕","🛑","⛔","📛","🚫","💯","💢","♨️","🌀","🔃","🔄","🔙","🔚","🔛","🔜","🔝","⚠️","🚸","🔰","🆚","🉐","㊙️","㊗️","🈴","🈵","🈹","🈲"]
+  }
+];
+
+// ─── Helpers para serializar/deserializar mensajes especiales ─────────────────
+
+export function encodeStickerMsg(id: string) {
+  return `[sticker:${id}]`;
+}
+
+export function encodeGifMsg(url: string) {
+  return `[gif:${url}]`;
+}
+
+export function decodeStickerMsg(body: string): Sticker | null {
+  const m = /^\[sticker:([a-z_]+)\]$/.exec(body);
+  if (!m) return null;
+  return STICKERS.find((s) => s.id === m[1]) ?? null;
+}
+
+export function decodeGifMsg(body: string): string | null {
+  const m = /^\[gif:(https?:\/\/[^\]]+)\]$/.exec(body);
+  return m ? m[1] : null;
+}
+
+export function isBigEmoji(body: string): boolean {
+  const stripped = body.replace(/\s/g, "");
+  // Mensaje que no contiene caracteres ASCII imprimibles → probablemente solo emojis
+  if (/[a-zA-Z0-9!"#$%&'()*+,\-./:;<=>?@[\\\]^_`{|}~]/.test(stripped)) return false;
+  const segments = Array.from(new Intl.Segmenter().segment(stripped));
+  return segments.length >= 1 && segments.length <= 3;
+}
+
+// ─── Componente principal ─────────────────────────────────────────────────────
+
+type Tab = "emoji" | "sticker" | "gif";
+
+type GifResult = { id: string; url: string; previewUrl: string; title: string };
+
+type Props = {
+  open: boolean;
+  onClose: () => void;
+  onEmoji: (emoji: string) => void;
+  onSticker: (stickerId: string) => void;
+  onGif: (url: string) => void;
+};
+
+export function ChatPicker({ open, onClose, onEmoji, onSticker, onGif }: Props) {
+  const [tab, setTab] = useState<Tab>("emoji");
+  const [emojiCat, setEmojiCat] = useState(1); // 0 = recientes
+  const [recentEmojis, setRecentEmojis] = useState<string[]>([]);
+  const [gifQuery, setGifQuery] = useState("");
+  const [gifs, setGifs] = useState<GifResult[]>([]);
+  const [gifLoading, setGifLoading] = useState(false);
+  const [gifError, setGifError] = useState("");
+  const searchRef = useRef<HTMLInputElement>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Cargar emojis recientes de localStorage
+  useEffect(() => {
+    try {
+      const stored = JSON.parse(localStorage.getItem("clarvex_recent_emojis") ?? "[]") as string[];
+      setRecentEmojis(stored);
+      EMOJI_CATS[0].emojis = stored;
+    } catch { /* nada */ }
+  }, [open]);
+
+  // Buscar GIFs con debounce
+  useEffect(() => {
+    if (tab !== "gif") return;
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (!gifQuery.trim()) {
+      void searchGifs("equipo trabajo");
+      return;
+    }
+    debounceRef.current = setTimeout(() => { void searchGifs(gifQuery); }, 500);
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gifQuery, tab]);
+
+  async function searchGifs(q: string) {
+    setGifLoading(true);
+    setGifError("");
+    try {
+      const res = await fetch(`/api/chat/gifs?q=${encodeURIComponent(q)}`, { cache: "no-store" });
+      if (!res.ok) {
+        const d = await res.json() as { error?: string };
+        setGifError(d.error ?? "Error buscando GIFs");
+        return;
+      }
+      const d = await res.json() as { gifs: GifResult[] };
+      setGifs(d.gifs ?? []);
+    } catch {
+      setGifError("No se pudo conectar.");
+    } finally {
+      setGifLoading(false);
+    }
+  }
+
+  function handleEmoji(emoji: string) {
+    // Guardar en recientes
+    const updated = [emoji, ...recentEmojis.filter((e) => e !== emoji)].slice(0, 24);
+    setRecentEmojis(updated);
+    EMOJI_CATS[0].emojis = updated;
+    localStorage.setItem("clarvex_recent_emojis", JSON.stringify(updated));
+    onEmoji(emoji);
+  }
+
+  if (!open) return null;
+
+  const currentCat = EMOJI_CATS[emojiCat];
+  const displayEmojis = emojiCat === 0 ? recentEmojis : currentCat.emojis;
+
+  return (
+    <>
+      {/* Overlay */}
+      <div className="fixed inset-0 z-40" onClick={onClose} />
+
+      {/* Panel */}
+      <div className="absolute bottom-full left-0 right-0 z-50 mb-2 flex flex-col overflow-hidden rounded-3xl border border-line bg-white/95 shadow-2xl backdrop-blur-xl dark:bg-[#0f1729]/97" style={{ height: "320px" }}>
+        {/* Tabs */}
+        <div className="flex shrink-0 border-b border-line">
+          {(["emoji", "sticker", "gif"] as Tab[]).map((t) => (
+            <button
+              key={t}
+              type="button"
+              onClick={() => { setTab(t); if (t === "gif" && searchRef.current) setTimeout(() => searchRef.current?.focus(), 50); }}
+              className={cn(
+                "flex-1 py-2.5 text-xs font-black uppercase tracking-[0.1em] transition-colors",
+                tab === t ? "border-b-2 border-volt text-volt" : "text-muted"
+              )}
+            >
+              {t === "emoji" ? "😊 Emoji" : t === "sticker" ? "🎨 Stickers" : "GIF"}
+            </button>
+          ))}
+        </div>
+
+        {/* ── Emoji tab ── */}
+        {tab === "emoji" && (
+          <div className="flex flex-1 overflow-hidden">
+            {/* Categorías */}
+            <div className="flex w-10 shrink-0 flex-col overflow-y-auto border-r border-line py-1">
+              {EMOJI_CATS.map((cat, i) => (
+                <button
+                  key={cat.label}
+                  type="button"
+                  onClick={() => setEmojiCat(i)}
+                  title={cat.label}
+                  className={cn(
+                    "grid h-9 place-items-center text-base transition-colors",
+                    emojiCat === i ? "bg-volt/12 text-volt" : "text-muted hover:text-ink"
+                  )}
+                >
+                  {cat.icon}
+                </button>
+              ))}
+            </div>
+            {/* Grid */}
+            <div className="flex-1 overflow-y-auto p-1.5">
+              {emojiCat === 0 && recentEmojis.length === 0 ? (
+                <p className="p-4 text-center text-xs text-muted">Todavía no hay emojis recientes.</p>
+              ) : (
+                <div className="grid grid-cols-8 gap-0.5">
+                  {displayEmojis.map((emoji, i) => (
+                    <button
+                      key={`${emoji}-${i}`}
+                      type="button"
+                      onClick={() => handleEmoji(emoji)}
+                      className="grid h-9 place-items-center rounded-xl text-xl transition-colors hover:bg-volt/10 active:scale-90"
+                    >
+                      {emoji}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ── Sticker tab ── */}
+        {tab === "sticker" && (
+          <div className="flex-1 overflow-y-auto p-2">
+            <div className="grid grid-cols-4 gap-2">
+              {STICKERS.map((s) => (
+                <button
+                  key={s.id}
+                  type="button"
+                  onClick={() => { onSticker(s.id); onClose(); }}
+                  className={cn(
+                    "flex flex-col items-center gap-1 rounded-2xl bg-gradient-to-br p-2.5 transition active:scale-95",
+                    s.bg
+                  )}
+                >
+                  <span className="text-3xl leading-none">{s.emoji}</span>
+                  <span className="line-clamp-2 text-center text-[10px] font-bold leading-tight text-ink">{s.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ── GIF tab ── */}
+        {tab === "gif" && (
+          <div className="flex flex-1 flex-col overflow-hidden">
+            <div className="shrink-0 border-b border-line px-3 py-2">
+              <input
+                ref={searchRef}
+                type="text"
+                value={gifQuery}
+                onChange={(e) => setGifQuery(e.target.value)}
+                placeholder="Buscar GIFs…"
+                className="w-full rounded-2xl border border-line bg-panel px-3 py-2 text-sm font-semibold text-ink outline-none focus:border-volt"
+              />
+            </div>
+            <div className="flex-1 overflow-y-auto p-2">
+              {gifLoading ? (
+                <p className="py-4 text-center text-xs text-muted">Buscando…</p>
+              ) : gifError ? (
+                <p className="py-4 text-center text-xs text-muted">{gifError}</p>
+              ) : gifs.length === 0 ? (
+                <p className="py-4 text-center text-xs text-muted">Sin resultados.</p>
+              ) : (
+                <div className="grid grid-cols-3 gap-1.5">
+                  {gifs.map((gif) => (
+                    <button
+                      key={gif.id}
+                      type="button"
+                      onClick={() => { onGif(gif.url); onClose(); }}
+                      className="overflow-hidden rounded-xl transition active:scale-95"
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={gif.previewUrl} alt={gif.title} className="h-20 w-full object-cover" loading="lazy" />
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    </>
+  );
+}
