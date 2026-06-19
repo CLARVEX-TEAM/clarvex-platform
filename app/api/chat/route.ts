@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
+import { isOnline, touchPresence } from "@/lib/chat";
 
 export const dynamic = "force-dynamic";
 
@@ -12,13 +13,16 @@ export async function GET() {
   // Asegurar que el usuario esté en el room "Todos" de la tienda
   await ensureGroupRoom(session.storeId, session.userId);
 
+  await touchPresence(session.userId);
+
   const memberships = await prisma.chatMember.findMany({
     where: { userId: session.userId },
     include: {
       room: {
         include: {
-          members: { include: { user: { select: { id: true, name: true, photoUrl: true, role: true } } } },
+          members: { include: { user: { select: { id: true, name: true, photoUrl: true, role: true, lastSeenAt: true } } } },
           messages: {
+            where: { hiddenFor: { none: { userId: session.userId } } },
             orderBy: { createdAt: "desc" },
             take: 1,
             include: { sender: { select: { name: true } } }
@@ -28,6 +32,25 @@ export async function GET() {
     }
   });
 
+  // Marcar como entregados todos los mensajes ajenos pendientes (estando en la lista).
+  const roomIds = memberships.map((m) => m.roomId);
+  if (roomIds.length > 0) {
+    const undelivered = await prisma.chatMessage.findMany({
+      where: {
+        roomId: { in: roomIds },
+        senderId: { not: session.userId },
+        deliveredTo: { none: { userId: session.userId } }
+      },
+      select: { id: true }
+    });
+    if (undelivered.length > 0) {
+      await prisma.chatMessageDelivery.createMany({
+        data: undelivered.map((m) => ({ messageId: m.id, userId: session.userId })),
+        skipDuplicates: true
+      });
+    }
+  }
+
   const rooms = await Promise.all(
     memberships.map(async (m) => {
       const room = m.room;
@@ -36,11 +59,22 @@ export async function GET() {
         where: {
           roomId: room.id,
           senderId: { not: session.userId },
-          readBy: { none: { userId: session.userId } }
+          readBy: { none: { userId: session.userId } },
+          hiddenFor: { none: { userId: session.userId } }
         }
       });
-      const other = room.type === "DIRECT"
+      const otherUser = room.type === "DIRECT"
         ? room.members.find((mem) => mem.userId !== session.userId)?.user ?? null
+        : null;
+      const other = otherUser
+        ? {
+            id: otherUser.id,
+            name: otherUser.name,
+            photoUrl: otherUser.photoUrl,
+            role: otherUser.role,
+            online: isOnline(otherUser.lastSeenAt),
+            lastSeenAt: otherUser.lastSeenAt ? otherUser.lastSeenAt.toISOString() : null
+          }
         : null;
 
       return {
@@ -49,7 +83,12 @@ export async function GET() {
         name: room.type === "GROUP" ? (room.name ?? "Todos") : null,
         other,
         lastMessage: lastMsg
-          ? { body: lastMsg.body, senderName: lastMsg.sender.name, createdAt: lastMsg.createdAt.toISOString() }
+          ? {
+              body: lastMsg.deletedAt ? "" : lastMsg.body,
+              deleted: lastMsg.deletedAt !== null,
+              senderName: lastMsg.sender.name,
+              createdAt: lastMsg.createdAt.toISOString()
+            }
           : null,
         unreadCount
       };

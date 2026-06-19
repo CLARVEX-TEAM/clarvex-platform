@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { Check, CheckCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // ─── Catálogo de stickers ─────────────────────────────────────────────────────
@@ -90,6 +91,15 @@ export function encodeGifMsg(url: string) {
   return `[gif:${url}]`;
 }
 
+export function encodeImageMsg(url: string) {
+  return `[img:${url}]`;
+}
+
+export function decodeImageMsg(body: string): string | null {
+  const m = /^\[img:(https?:\/\/[^\]]+)\]$/.exec(body);
+  return m ? m[1] : null;
+}
+
 export function decodeStickerMsg(body: string): Sticker | null {
   const m = /^\[sticker:([a-z_]+)\]$/.exec(body);
   if (!m) return null;
@@ -101,12 +111,59 @@ export function decodeGifMsg(body: string): string | null {
   return m ? m[1] : null;
 }
 
+// Texto corto para mostrar en la lista de chats (último mensaje).
+export function chatPreview(body: string, deleted: boolean): string {
+  if (deleted) return "🚫 Mensaje eliminado";
+  if (decodeImageMsg(body)) return "📷 Foto";
+  if (decodeGifMsg(body)) return "🎞️ GIF";
+  const sticker = decodeStickerMsg(body);
+  if (sticker) return `${sticker.emoji} Sticker`;
+  return body;
+}
+
 export function isBigEmoji(body: string): boolean {
   const stripped = body.replace(/\s/g, "");
   // Mensaje que no contiene caracteres ASCII imprimibles → probablemente solo emojis
   if (/[a-zA-Z0-9!"#$%&'()*+,\-./:;<=>?@[\\\]^_`{|}~]/.test(stripped)) return false;
   const segments = Array.from(new Intl.Segmenter().segment(stripped));
   return segments.length >= 1 && segments.length <= 3;
+}
+
+// ─── Estado de mensaje (enviado / entregado / visto) ──────────────────────────
+
+export type MsgStatus = "sent" | "delivered" | "read";
+
+// otherIds = ids de los demás miembros del room (todos menos yo).
+// En grupo se considera "visto" solo cuando todos los demás lo leyeron.
+export function computeMessageStatus(
+  msg: { readBy: string[]; deliveredTo: string[] },
+  otherIds: string[]
+): MsgStatus {
+  if (otherIds.length === 0) return "sent";
+  if (otherIds.every((id) => msg.readBy.includes(id))) return "read";
+  if (otherIds.every((id) => msg.deliveredTo.includes(id))) return "delivered";
+  return "sent";
+}
+
+export function MessageTicks({ status, className }: { status: MsgStatus; className?: string }) {
+  if (status === "sent") return <Check size={13} className={cn("text-muted", className)} />;
+  if (status === "delivered") return <CheckCheck size={13} className={cn("text-muted", className)} />;
+  return <CheckCheck size={13} className={cn("text-sky-500", className)} />;
+}
+
+// ─── Presencia (en línea / última vez) ────────────────────────────────────────
+
+export function formatLastSeen(lastSeenAt: string | null, online: boolean): string {
+  if (online) return "en línea";
+  if (!lastSeenAt) return "";
+  const d = new Date(lastSeenAt);
+  const now = new Date();
+  const time = d.toLocaleTimeString("es-MX", { hour: "numeric", minute: "2-digit" });
+  if (d.toDateString() === now.toDateString()) return `últ. vez hoy ${time}`;
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+  if (d.toDateString() === yesterday.toDateString()) return `últ. vez ayer ${time}`;
+  return `últ. vez ${d.toLocaleDateString("es-MX", { day: "numeric", month: "short" })}`;
 }
 
 // ─── Componente principal ─────────────────────────────────────────────────────

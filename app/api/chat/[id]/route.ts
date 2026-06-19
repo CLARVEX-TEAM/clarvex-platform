@@ -2,10 +2,42 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { dispatchPushToUsers } from "@/lib/push";
+import { isOnline, serializeChatMessage, touchPresence } from "@/lib/chat";
 
 export const dynamic = "force-dynamic";
 
-// GET — mensajes del room (últimos 60, más viejos primero) + marca como leídos
+const MESSAGE_INCLUDE = {
+  sender: { select: { id: true, name: true, photoUrl: true } },
+  readBy: { select: { userId: true } },
+  deliveredTo: { select: { userId: true } }
+} as const;
+
+async function loadRoom(id: string, selfId: string) {
+  const room = await prisma.chatRoom.findUnique({
+    where: { id },
+    include: {
+      members: {
+        include: { user: { select: { id: true, name: true, photoUrl: true, role: true, lastSeenAt: true } } }
+      }
+    }
+  });
+  if (!room) return null;
+  return {
+    id: room.id,
+    type: room.type,
+    name: room.name,
+    members: room.members.map((m) => ({
+      id: m.user.id,
+      name: m.user.name,
+      photoUrl: m.user.photoUrl,
+      role: m.user.role,
+      online: m.user.id === selfId ? true : isOnline(m.user.lastSeenAt),
+      lastSeenAt: m.user.lastSeenAt ? m.user.lastSeenAt.toISOString() : null
+    }))
+  };
+}
+
+// GET — mensajes del room + marca entregados/leídos + presencia
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const session = await getServerSession();
@@ -16,55 +48,51 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   });
   if (!member) return NextResponse.json({ error: "No tienes acceso a este chat." }, { status: 403 });
 
+  await touchPresence(session.userId);
+
   const messages = await prisma.chatMessage.findMany({
-    where: { roomId: id },
+    where: {
+      roomId: id,
+      // Ocultar los mensajes que el usuario eliminó solo para sí mismo.
+      hiddenFor: { none: { userId: session.userId } }
+    },
     orderBy: { createdAt: "asc" },
     take: 60,
-    include: {
-      sender: { select: { id: true, name: true, photoUrl: true } },
-      readBy: { select: { userId: true } }
-    }
+    include: MESSAGE_INCLUDE
   });
 
-  // Marcar como leídos los mensajes de otros
-  const unreadIds = messages
-    .filter((m) => m.senderId !== session.userId && !m.readBy.some((r) => r.userId === session.userId))
-    .map((m) => m.id);
+  // Al abrir la conversación: los mensajes ajenos quedan entregados y vistos.
+  const incoming = messages.filter((m) => m.senderId !== session.userId);
+  const toDeliver = incoming.filter((m) => !m.deliveredTo.some((d) => d.userId === session.userId)).map((m) => m.id);
+  const toRead = incoming.filter((m) => !m.readBy.some((r) => r.userId === session.userId)).map((m) => m.id);
 
-  if (unreadIds.length > 0) {
+  if (toDeliver.length > 0) {
+    await prisma.chatMessageDelivery.createMany({
+      data: toDeliver.map((messageId) => ({ messageId, userId: session.userId })),
+      skipDuplicates: true
+    });
+  }
+  if (toRead.length > 0) {
     await prisma.chatMessageRead.createMany({
-      data: unreadIds.map((messageId) => ({ messageId, userId: session.userId })),
+      data: toRead.map((messageId) => ({ messageId, userId: session.userId })),
       skipDuplicates: true
     });
   }
 
-  const room = await prisma.chatRoom.findUnique({
-    where: { id },
-    include: { members: { include: { user: { select: { id: true, name: true, photoUrl: true, role: true } } } } }
-  });
+  // Reflejar en la respuesta lo recién marcado (sin re-consultar).
+  const deliverSet = new Set(toDeliver);
+  const readSet = new Set(toRead);
+  for (const m of messages) {
+    if (deliverSet.has(m.id)) m.deliveredTo.push({ userId: session.userId });
+    if (readSet.has(m.id)) m.readBy.push({ userId: session.userId });
+  }
 
-  return NextResponse.json({
-    messages: messages.map((m) => ({
-      id: m.id,
-      body: m.body,
-      senderId: m.senderId,
-      senderName: m.sender.name,
-      senderPhoto: m.sender.photoUrl,
-      createdAt: m.createdAt.toISOString(),
-      readBy: m.readBy.map((r) => r.userId)
-    })),
-    room: room
-      ? {
-          id: room.id,
-          type: room.type,
-          name: room.name,
-          members: room.members.map((m) => ({ id: m.user.id, name: m.user.name, photoUrl: m.user.photoUrl, role: m.user.role }))
-        }
-      : null
-  });
+  const room = await loadRoom(id, session.userId);
+
+  return NextResponse.json({ messages: messages.map(serializeChatMessage), room });
 }
 
-// POST — enviar mensaje
+// POST — enviar mensaje de texto
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const session = await getServerSession();
@@ -75,18 +103,22 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   });
   if (!member) return NextResponse.json({ error: "No tienes acceso a este chat." }, { status: 403 });
 
-  const body = await request.json() as { body?: string };
+  const body = (await request.json()) as { body?: string };
   const text = body.body?.trim();
   if (!text) return NextResponse.json({ error: "El mensaje no puede estar vacío." }, { status: 400 });
   if (text.length > 1000) return NextResponse.json({ error: "Mensaje demasiado largo." }, { status: 400 });
 
   const message = await prisma.chatMessage.create({
-    data: { roomId: id, senderId: session.userId, body: text },
-    include: { sender: { select: { id: true, name: true, photoUrl: true } } }
+    data: {
+      roomId: id,
+      senderId: session.userId,
+      body: text,
+      // El emisor ya tiene su propio mensaje entregado y leído.
+      readBy: { create: { userId: session.userId } },
+      deliveredTo: { create: { userId: session.userId } }
+    },
+    include: MESSAGE_INCLUDE
   });
-
-  // Marcar como leído por el propio emisor
-  await prisma.chatMessageRead.create({ data: { messageId: message.id, userId: session.userId } });
 
   // Push a los otros miembros
   const otherMembers = await prisma.chatMember.findMany({
@@ -107,15 +139,5 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     });
   }
 
-  return NextResponse.json({
-    message: {
-      id: message.id,
-      body: message.body,
-      senderId: message.senderId,
-      senderName: message.sender.name,
-      senderPhoto: message.sender.photoUrl,
-      createdAt: message.createdAt.toISOString(),
-      readBy: [session.userId]
-    }
-  });
+  return NextResponse.json({ message: serializeChatMessage(message) });
 }

@@ -7,13 +7,14 @@ import { getSession } from "@/lib/auth";
 import { fetchAppData } from "@/lib/app-data";
 import type { User } from "@/lib/types";
 import { AppFrame, AppHeader, BottomNav, Card, ProfileAvatar } from "@/components/ui";
+import { chatPreview } from "@/components/ChatPicker";
 
 type RoomSummary = {
   id: string;
   type: "DIRECT" | "GROUP";
   name: string | null;
-  other: { id: string; name: string; photoUrl: string | null; role: string } | null;
-  lastMessage: { body: string; senderName: string; createdAt: string } | null;
+  other: { id: string; name: string; photoUrl: string | null; role: string; online: boolean; lastSeenAt: string | null } | null;
+  lastMessage: { body: string; deleted: boolean; senderName: string; createdAt: string } | null;
   unreadCount: number;
 };
 
@@ -33,16 +34,20 @@ export default function ChatPage() {
   useEffect(() => {
     if (!session) return;
     void load();
+    // Refrescar presencia / no leídos cada 5 s mientras la lista está abierta.
+    const interval = setInterval(() => { void refreshRooms(); }, 5000);
+    return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session]);
 
+  async function refreshRooms() {
+    const res = await fetch("/api/chat", { cache: "no-store" }).then((r) => r.json() as Promise<{ rooms: RoomSummary[] }>);
+    setRooms(res.rooms ?? []);
+  }
+
   async function load() {
     try {
-      const [roomsRes, appData] = await Promise.all([
-        fetch("/api/chat", { cache: "no-store" }).then((r) => r.json() as Promise<{ rooms: RoomSummary[] }>),
-        fetchAppData()
-      ]);
-      setRooms(roomsRes.rooms ?? []);
+      const [, appData] = await Promise.all([refreshRooms(), fetchAppData()]);
       setTeam(appData.users.filter((u) => u.id !== session?.id).map((u) => ({ id: u.id, name: u.name, photoUrl: u.photoUrl ?? null })));
     } finally {
       setLoading(false);
@@ -95,6 +100,9 @@ export default function ChatPage() {
                       ) : (
                         <ProfileAvatar name={room.other?.name ?? "?"} photoUrl={room.other?.photoUrl} size="md" />
                       )}
+                      {room.type === "DIRECT" && room.other?.online && (
+                        <span className="absolute -bottom-0.5 -right-0.5 size-3.5 rounded-full border-2 border-white bg-green-500 dark:border-[#0f1729]" />
+                      )}
                       {room.unreadCount > 0 && (
                         <span className="absolute -right-1 -top-1 grid size-5 place-items-center rounded-full bg-volt text-[10px] font-black text-white">
                           {room.unreadCount > 9 ? "9+" : room.unreadCount}
@@ -112,7 +120,7 @@ export default function ChatPage() {
                       </div>
                       {room.lastMessage ? (
                         <p className={`truncate text-xs ${room.unreadCount > 0 ? "font-semibold text-ink/70" : "text-muted"}`}>
-                          {room.type === "GROUP" ? `${room.lastMessage.senderName}: ` : ""}{room.lastMessage.body}
+                          {room.type === "GROUP" ? `${room.lastMessage.senderName}: ` : ""}{chatPreview(room.lastMessage.body, room.lastMessage.deleted)}
                         </p>
                       ) : (
                         <p className="text-xs text-muted">Sin mensajes</p>

@@ -191,6 +191,7 @@ model User {
   photoUrl              String?
   biometricEnabled      Boolean                @default(false)
   lastLoginAt           DateTime?
+  lastSeenAt            DateTime?
   birthDate             DateTime?
   hireDate              DateTime?
   hoursOwed             Float                  @default(0)
@@ -226,6 +227,8 @@ model User {
   chatMemberships       ChatMember[]
   chatMessages          ChatMessage[]
   chatMessageReads      ChatMessageRead[]
+  chatMessageDeliveries ChatMessageDelivery[]
+  chatMessageHides      ChatMessageHide[]
   createdAt             DateTime               @default(now())
   updatedAt             DateTime               @updatedAt
 }
@@ -744,14 +747,17 @@ model ChatMember {
 }
 
 model ChatMessage {
-  id        String            @id @default(cuid())
-  roomId    String
-  room      ChatRoom          @relation(fields: [roomId], references: [id], onDelete: Cascade)
-  senderId  String
-  sender    User              @relation(fields: [senderId], references: [id], onDelete: Cascade)
-  body      String
-  readBy    ChatMessageRead[]
-  createdAt DateTime          @default(now())
+  id          String                @id @default(cuid())
+  roomId      String
+  room        ChatRoom              @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  senderId    String
+  sender      User                  @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  body        String
+  readBy      ChatMessageRead[]
+  deliveredTo ChatMessageDelivery[]
+  hiddenFor   ChatMessageHide[]
+  deletedAt   DateTime?             // eliminado para todos (soft delete)
+  createdAt   DateTime              @default(now())
 
   @@index([roomId, createdAt])
 }
@@ -763,6 +769,32 @@ model ChatMessageRead {
   userId    String
   user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   readAt    DateTime    @default(now())
+
+  @@unique([messageId, userId])
+  @@index([messageId])
+  @@index([userId])
+}
+
+model ChatMessageDelivery {
+  id          String      @id @default(cuid())
+  messageId   String
+  message     ChatMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deliveredAt DateTime    @default(now())
+
+  @@unique([messageId, userId])
+  @@index([messageId])
+  @@index([userId])
+}
+
+model ChatMessageHide {
+  id        String      @id @default(cuid())
+  messageId String
+  message   ChatMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  hiddenAt  DateTime    @default(now())
 
   @@unique([messageId, userId])
   @@index([messageId])
