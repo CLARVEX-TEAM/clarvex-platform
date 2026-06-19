@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
-import { MessageSquare, Send, Smile, Users, ImagePlus, Trash2, MoreVertical, X } from "lucide-react";
+import { MessageSquare, Send, Smile, Users, ImagePlus, Trash2, MoreVertical, X, Reply } from "lucide-react";
 import { getSession } from "@/lib/auth";
 import { fetchAppData } from "@/lib/app-data";
 import { cn } from "@/lib/utils";
@@ -10,6 +10,8 @@ import { ProfileAvatar } from "@/components/ui";
 import {
   ChatPicker,
   MessageTicks,
+  ReplyQuote,
+  type ReplyInfo,
   computeMessageStatus,
   formatLastSeen,
   chatPreview,
@@ -40,6 +42,7 @@ type Message = {
   createdAt: string;
   readBy: string[];
   deliveredTo: string[];
+  replyTo: ReplyInfo | null;
 };
 
 type Member = { id: string; name: string; photoUrl: string | null; role: string; online: boolean; lastSeenAt: string | null };
@@ -110,6 +113,7 @@ export default function EscritorioChat() {
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [menuMsg, setMenuMsg] = useState<Message | null>(null);
+  const [replyTo, setReplyTo] = useState<Message | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -178,11 +182,13 @@ export default function EscritorioChat() {
   async function doSend(body: string) {
     if (!activeRoomId || !body.trim() || sending) return;
     setSending(true);
+    const replyToId = replyTo?.id;
+    setReplyTo(null);
     try {
       const res = await fetch(`/api/chat/${activeRoomId}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ body })
+        body: JSON.stringify({ body, replyToId })
       }).then((r) => r.json() as Promise<{ message: Message }>);
       setMessages((prev) => [...prev, res.message]);
       await loadRooms();
@@ -196,9 +202,12 @@ export default function EscritorioChat() {
     if (!activeRoomId || sending || !file.type.startsWith("image/")) return;
     setSending(true);
     setPickerOpen(false);
+    const replyToId = replyTo?.id;
+    setReplyTo(null);
     try {
       const fd = new FormData();
       fd.append("file", file);
+      if (replyToId) fd.append("replyToId", replyToId);
       const res = await fetch(`/api/chat/${activeRoomId}/image`, { method: "POST", body: fd }).then(
         (r) => r.json() as Promise<{ message?: Message; error?: string }>
       );
@@ -206,6 +215,15 @@ export default function EscritorioChat() {
       else if (res.error) alert(res.error);
     } finally {
       setSending(false);
+    }
+  }
+
+  function scrollToMessage(messageId: string) {
+    const el = document.getElementById(`dmsg-${messageId}`);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      el.classList.add("ring-2", "ring-volt", "rounded-2xl");
+      setTimeout(() => el.classList.remove("ring-2", "ring-volt", "rounded-2xl"), 1200);
     }
   }
 
@@ -430,9 +448,12 @@ export default function EscritorioChat() {
                             <ProfileAvatar name={msg.senderName} photoUrl={msg.senderPhoto} size="sm" className="size-8 rounded-xl text-xs" />
                           )}
                         </div>
-                        <div className={cn("flex max-w-[60%] flex-col", isMe ? "items-end" : "items-start")}>
+                        <div id={`dmsg-${msg.id}`} className={cn("flex max-w-[60%] flex-col", isMe ? "items-end" : "items-start")}>
                           {showAvatar && !isMe && roomInfo?.type === "GROUP" && (
                             <span className="mb-0.5 pl-1 text-[11px] font-bold text-muted">{msg.senderName}</span>
+                          )}
+                          {msg.replyTo && (
+                            <ReplyQuote reply={msg.replyTo} isMe={isMe} onClick={() => scrollToMessage(msg.replyTo!.id)} />
                           )}
                           <MessageBody msg={msg} isMe={isMe} />
                           <span className={cn("mt-0.5 flex items-center gap-1 text-[10px] text-muted", isMe ? "flex-row-reverse pr-1" : "pl-1")}>
@@ -440,16 +461,26 @@ export default function EscritorioChat() {
                             {isMe && !msg.deleted && otherIds.length > 0 && <MessageTicks status={status} />}
                           </span>
                         </div>
-                        {/* Acción eliminar (hover) */}
+                        {/* Acciones (hover) */}
                         {!msg.deleted && (
-                          <button
-                            type="button"
-                            onClick={() => setMenuMsg(msg)}
-                            className="grid size-7 shrink-0 place-items-center self-center rounded-full text-muted opacity-0 transition hover:bg-volt/10 hover:text-ink group-hover:opacity-100"
-                            title="Opciones"
-                          >
-                            <MoreVertical size={15} />
-                          </button>
+                          <div className="flex shrink-0 items-center gap-0.5 self-center opacity-0 transition group-hover:opacity-100">
+                            <button
+                              type="button"
+                              onClick={() => { setReplyTo(msg); inputRef.current?.focus(); }}
+                              className="grid size-7 place-items-center rounded-full text-muted transition hover:bg-volt/10 hover:text-ink"
+                              title="Responder"
+                            >
+                              <Reply size={15} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setMenuMsg(msg)}
+                              className="grid size-7 place-items-center rounded-full text-muted transition hover:bg-volt/10 hover:text-ink"
+                              title="Opciones"
+                            >
+                              <MoreVertical size={15} />
+                            </button>
+                          </div>
                         )}
                       </div>
                     </div>
@@ -475,6 +506,18 @@ export default function EscritorioChat() {
                 className="hidden"
                 onChange={(e) => { const f = e.target.files?.[0]; if (f) void uploadImage(f); e.target.value = ""; }}
               />
+              {replyTo && (
+                <div className="mb-2 flex items-center gap-2 rounded-2xl border-l-[3px] border-volt bg-volt/8 px-3 py-1.5">
+                  <Reply size={15} className="shrink-0 text-volt" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[11px] font-bold text-volt">Respondiendo a {replyTo.senderId === user?.id ? "ti" : replyTo.senderName}</p>
+                    <p className="truncate text-[11px] text-muted">{chatPreview(replyTo.body, replyTo.deleted)}</p>
+                  </div>
+                  <button type="button" onClick={() => setReplyTo(null)} className="grid size-7 shrink-0 place-items-center rounded-full text-muted transition hover:bg-volt/10">
+                    <X size={15} />
+                  </button>
+                </div>
+              )}
               <div className="flex items-end gap-2">
                 <button
                   type="button"
@@ -522,6 +565,15 @@ export default function EscritorioChat() {
       {menuMsg && (
         <div className="fixed inset-0 z-[60] grid place-items-center bg-black/40 p-4" onClick={() => setMenuMsg(null)}>
           <div className="w-full max-w-xs rounded-3xl bg-white p-2 shadow-2xl dark:bg-[#0f1729]" onClick={(e) => e.stopPropagation()}>
+            {!menuMsg.deleted && (
+              <button
+                type="button"
+                onClick={() => { setReplyTo(menuMsg); setMenuMsg(null); inputRef.current?.focus(); }}
+                className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-bold text-ink transition hover:bg-volt/8"
+              >
+                <Reply size={18} className="text-volt" /> Responder
+              </button>
+            )}
             {!menuMsg.deleted && (menuMsg.senderId === user?.id || isManager) && (
               <button
                 type="button"

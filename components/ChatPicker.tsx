@@ -151,6 +151,26 @@ export function MessageTicks({ status, className }: { status: MsgStatus; classNa
   return <CheckCheck size={13} className={cn("text-sky-500", className)} />;
 }
 
+// ─── Cita de respuesta ────────────────────────────────────────────────────────
+
+export type ReplyInfo = { id: string; senderName: string; preview: string; deleted: boolean };
+
+export function ReplyQuote({ reply, isMe, onClick }: { reply: ReplyInfo; isMe: boolean; onClick?: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "mb-0.5 flex w-full flex-col overflow-hidden rounded-xl border-l-[3px] px-2.5 py-1 text-left",
+        isMe ? "border-white/60 bg-white/15" : "border-volt bg-volt/10"
+      )}
+    >
+      <span className={cn("text-[11px] font-bold leading-tight", isMe ? "text-white" : "text-volt")}>{reply.senderName}</span>
+      <span className={cn("truncate text-[11px] leading-tight", isMe ? "text-white/85" : "text-muted")}>{reply.preview}</span>
+    </button>
+  );
+}
+
 // ─── Presencia (en línea / última vez) ────────────────────────────────────────
 
 export function formatLastSeen(lastSeenAt: string | null, online: boolean): string {

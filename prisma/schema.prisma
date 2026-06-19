@@ -753,6 +753,9 @@ model ChatMessage {
   senderId    String
   sender      User                  @relation(fields: [senderId], references: [id], onDelete: Cascade)
   body        String
+  replyToId   String?
+  replyTo     ChatMessage?          @relation("ChatReply", fields: [replyToId], references: [id], onDelete: SetNull)
+  replies     ChatMessage[]         @relation("ChatReply")
   readBy      ChatMessageRead[]
   deliveredTo ChatMessageDelivery[]
   hiddenFor   ChatMessageHide[]
@@ -760,6 +763,7 @@ model ChatMessage {
   createdAt   DateTime              @default(now())
 
   @@index([roomId, createdAt])
+  @@index([replyToId])
 }
 
 model ChatMessageRead {

@@ -2,7 +2,7 @@
 
 import { use, useEffect, useRef, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { Send, Smile, Users, ImagePlus, Trash2, X } from "lucide-react";
+import { Send, Smile, Users, ImagePlus, Trash2, X, Reply } from "lucide-react";
 import { getSession } from "@/lib/auth";
 import type { User } from "@/lib/types";
 import { AppHeader, ProfileAvatar } from "@/components/ui";
@@ -10,8 +10,11 @@ import { cn } from "@/lib/utils";
 import {
   ChatPicker,
   MessageTicks,
+  ReplyQuote,
+  type ReplyInfo,
   computeMessageStatus,
   formatLastSeen,
+  chatPreview,
   decodeStickerMsg,
   decodeGifMsg,
   decodeImageMsg,
@@ -30,6 +33,7 @@ type Message = {
   createdAt: string;
   readBy: string[];
   deliveredTo: string[];
+  replyTo: ReplyInfo | null;
 };
 
 type Member = { id: string; name: string; photoUrl: string | null; role: string; online: boolean; lastSeenAt: string | null };
@@ -108,10 +112,12 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
   const [loading, setLoading] = useState(true);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [menuMsg, setMenuMsg] = useState<Message | null>(null);
+  const [replyTo, setReplyTo] = useState<Message | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const pressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const swipe = useRef<{ x: number; y: number; el: HTMLElement; moved: number } | null>(null);
 
   useEffect(() => {
     getSession().then((s) => { if (!s) router.replace("/login"); else setSession(s); });
@@ -143,11 +149,13 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
   async function doSend(body: string) {
     if (!body.trim() || sending) return;
     setSending(true);
+    const replyToId = replyTo?.id;
+    setReplyTo(null);
     try {
       const res = await fetch(`/api/chat/${id}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ body })
+        body: JSON.stringify({ body, replyToId })
       }).then((r) => r.json() as Promise<{ message: Message }>);
       setMessages((prev) => [...prev, res.message]);
     } finally {
@@ -161,9 +169,12 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
     if (!file.type.startsWith("image/")) return;
     setSending(true);
     setPickerOpen(false);
+    const replyToId = replyTo?.id;
+    setReplyTo(null);
     try {
       const fd = new FormData();
       fd.append("file", file);
+      if (replyToId) fd.append("replyToId", replyToId);
       const res = await fetch(`/api/chat/${id}/image`, { method: "POST", body: fd }).then(
         (r) => r.json() as Promise<{ message?: Message; error?: string }>
       );
@@ -171,6 +182,43 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
       else if (res.error) alert(res.error);
     } finally {
       setSending(false);
+    }
+  }
+
+  function scrollToMessage(messageId: string) {
+    const el = document.getElementById(`msg-${messageId}`);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      el.classList.add("ring-2", "ring-volt", "rounded-2xl");
+      setTimeout(() => el.classList.remove("ring-2", "ring-volt", "rounded-2xl"), 1200);
+    }
+  }
+
+  // Deslizar a la derecha sobre un mensaje para responderlo (estilo WhatsApp).
+  function onSwipeStart(e: React.TouchEvent, el: HTMLElement) {
+    swipe.current = { x: e.touches[0].clientX, y: e.touches[0].clientY, el, moved: 0 };
+  }
+  function onSwipeMove(e: React.TouchEvent) {
+    if (!swipe.current) return;
+    const dx = e.touches[0].clientX - swipe.current.x;
+    const dy = e.touches[0].clientY - swipe.current.y;
+    if (dx > 8 && dx > Math.abs(dy)) {
+      cancelPress();
+      const clamped = Math.min(dx, 72);
+      swipe.current.moved = clamped;
+      swipe.current.el.style.transform = `translateX(${clamped}px)`;
+    }
+  }
+  function onSwipeEnd(msg: Message) {
+    const s = swipe.current;
+    swipe.current = null;
+    if (!s) return;
+    s.el.style.transition = "transform 0.15s ease-out";
+    s.el.style.transform = "";
+    window.setTimeout(() => { s.el.style.transition = ""; }, 160);
+    if (s.moved > 48 && !msg.deleted) {
+      setReplyTo(msg);
+      inputRef.current?.focus();
     }
   }
 
@@ -294,13 +342,20 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
                       <span className="mb-0.5 pl-1 text-[11px] font-bold text-muted">{msg.senderName}</span>
                     )}
                     <div
+                      id={`msg-${msg.id}`}
                       onPointerDown={() => startPress(msg)}
                       onPointerUp={cancelPress}
                       onPointerLeave={cancelPress}
                       onPointerMove={cancelPress}
                       onContextMenu={(e) => { e.preventDefault(); setMenuMsg(msg); }}
-                      className="select-none"
+                      onTouchStart={(e) => onSwipeStart(e, e.currentTarget)}
+                      onTouchMove={onSwipeMove}
+                      onTouchEnd={() => onSwipeEnd(msg)}
+                      className="flex select-none flex-col"
                     >
+                      {msg.replyTo && (
+                        <ReplyQuote reply={msg.replyTo} isMe={isMe} onClick={() => scrollToMessage(msg.replyTo!.id)} />
+                      )}
                       <MessageBody msg={msg} isMe={isMe} />
                     </div>
                     <span className={cn("mt-0.5 flex items-center gap-1 text-[10px] text-muted", isMe ? "flex-row-reverse pr-1" : "pl-1")}>
@@ -333,6 +388,18 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
           className="hidden"
           onChange={(e) => { const f = e.target.files?.[0]; if (f) void uploadImage(f); e.target.value = ""; }}
         />
+        {replyTo && (
+          <div className="mx-auto mb-2 flex max-w-md items-center gap-2 rounded-2xl border-l-[3px] border-volt bg-volt/8 px-3 py-1.5">
+            <Reply size={15} className="shrink-0 text-volt" />
+            <div className="min-w-0 flex-1">
+              <p className="text-[11px] font-bold text-volt">Respondiendo a {replyTo.senderId === session?.id ? "ti" : replyTo.senderName}</p>
+              <p className="truncate text-[11px] text-muted">{chatPreview(replyTo.body, replyTo.deleted)}</p>
+            </div>
+            <button type="button" onClick={() => setReplyTo(null)} className="grid size-7 shrink-0 place-items-center rounded-full text-muted active:bg-volt/10">
+              <X size={15} />
+            </button>
+          </div>
+        )}
         <div className="mx-auto flex max-w-md items-end gap-2">
           <button
             type="button"
@@ -384,6 +451,15 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mx-auto mb-2 mt-1 h-1 w-10 rounded-full bg-line" />
+            {!menuMsg.deleted && (
+              <button
+                type="button"
+                onClick={() => { setReplyTo(menuMsg); setMenuMsg(null); inputRef.current?.focus(); }}
+                className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-bold text-ink transition active:bg-volt/8"
+              >
+                <Reply size={18} className="text-volt" /> Responder
+              </button>
+            )}
             {!menuMsg.deleted && (menuMsg.senderId === session?.id || isManager) && (
               <button
                 type="button"

@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { dispatchPushToUsers } from "@/lib/push";
 import { validateEvidenceImage } from "@/lib/evidence";
 import { uploadToR2 } from "@/lib/r2";
-import { serializeChatMessage } from "@/lib/chat";
+import { resolveReplyTo, serializeChatMessage } from "@/lib/chat";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -12,7 +12,8 @@ export const runtime = "nodejs";
 const MESSAGE_INCLUDE = {
   sender: { select: { id: true, name: true, photoUrl: true } },
   readBy: { select: { userId: true } },
-  deliveredTo: { select: { userId: true } }
+  deliveredTo: { select: { userId: true } },
+  replyTo: { select: { id: true, body: true, deletedAt: true, sender: { select: { name: true } } } }
 } as const;
 
 // POST — enviar una imagen (foto / sticker). Multipart con campo "file".
@@ -45,11 +46,14 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     );
   }
 
+  const replyToId = await resolveReplyTo(id, form?.get("replyToId")?.toString() || undefined);
+
   const message = await prisma.chatMessage.create({
     data: {
       roomId: id,
       senderId: session.userId,
       body: `[img:${url}]`,
+      replyToId,
       readBy: { create: { userId: session.userId } },
       deliveredTo: { create: { userId: session.userId } }
     },
