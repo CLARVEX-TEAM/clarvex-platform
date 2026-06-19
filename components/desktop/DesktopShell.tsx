@@ -19,6 +19,7 @@ import {
   ListChecks,
   LogOut,
   Megaphone,
+  MessageSquare,
   Moon,
   PackageSearch,
   Smartphone,
@@ -56,6 +57,7 @@ const navGroups: { label: string; items: { href: string; label: string; icon: Lu
       { href: "/escritorio/pendientes", label: "Pendientes", icon: AlertTriangle },
       { href: "/escritorio/checklist", label: "Checklist", icon: CheckSquare },
       { href: "/escritorio/comunicados", label: "Comunicados", icon: Megaphone },
+      { href: "/escritorio/chat", label: "Chat", icon: MessageSquare },
       { href: "/escritorio/bitacora", label: "Bitácora", icon: BookOpen }
     ]
   },
@@ -88,6 +90,7 @@ const sectionTitles: Record<string, { title: string; subtitle: string }> = {
   "/escritorio/datos": { title: "Centro de Datos", subtitle: "Fuentes RDV y sincronización" },
   "/escritorio/bitacora": { title: "Bitácora", subtitle: "Registro cronológico de operación de tienda" },
   "/escritorio/capacitacion": { title: "Capacitación", subtitle: "Biblioteca de recursos y archivos del equipo" },
+  "/escritorio/chat": { title: "Chat", subtitle: "Mensajes directos y del equipo" },
   "/escritorio/notificaciones": { title: "Notificaciones", subtitle: "Avisos del equipo" },
   "/escritorio/perfil": { title: "Mi perfil", subtitle: "Tus datos y preferencias" }
 };
