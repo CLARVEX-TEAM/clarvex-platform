@@ -155,15 +155,8 @@ function goalSum(items: RawKpi[], useMonthlyGoal: boolean): number {
     const monthly = items.map((item) => number(item.monthlyGoal)).find((v) => v > 0);
     if (monthly) return monthly;
   }
-  const values = items.map((item) => number(item.dailyGoal));
-  const nonZero = values.filter((v) => v > 0);
-  if (nonZero.length === 0) return 0;
-  // When all days have their own goal, sum them directly.
-  if (nonZero.length === values.length) return round(values.reduce((total, v) => total + v, 0));
-  // When the Excel only placed the daily goal in one row per week (other days = 0),
-  // use the average of non-zero values as the per-day rate and apply to all days.
-  const avgDailyGoal = nonZero.reduce((total, v) => total + v, 0) / nonZero.length;
-  return round(avgDailyGoal * values.length);
+  const nonZero = items.map((item) => number(item.dailyGoal)).filter((v) => v > 0);
+  return nonZero.length > 0 ? round(nonZero.reduce((total, v) => total + v, 0)) : 0;
 }
 function sum<T extends RawKpi>(items: T[], key: keyof T) { return round(items.reduce((total, item) => total + number(item[key]), 0)); }
 function nullableSum<T extends RawKpi>(items: T[], key: keyof T) { return nullableNumberSum(items.map((item) => item[key] === null ? null : number(item[key]))); }
