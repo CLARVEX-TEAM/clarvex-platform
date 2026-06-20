@@ -251,19 +251,22 @@ function findWeekNumber(row: unknown[]) {
 function finalizeWeek(week: { weekNumber: number; dates: Date[]; records: ParsedKpiRecord[] } | null, retailMonthEnd: Date, ranges: RdvWeekRange[]) {
   if (!week || week.dates.length === 0) return;
 
-  // RDV files often place META DIARIA only in the first row of each week.
-  // Propagate the first non-zero dailyGoal to all other records for the same employee so the
-  // weekly goal equals the sum of daily goals, not a single day's value.
-  const goalByEmployee = new Map<string, number>();
+  // Some RDV files place META DIARIA only in the first row of each week.
+  // Propagate the daily goal to zero-goal records only when a single row has it — meaning the
+  // RDV encoded the per-day rate once for the whole week.  When multiple rows already carry a
+  // non-zero goal, each day's value is intentional and days with zero (e.g. Sunday with sales
+  // but no assigned goal) must stay at zero to avoid inflating the weekly total.
+  const goalByEmployee = new Map<string, { value: number; count: number }>();
   for (const record of week.records) {
-    if (record.dailyGoal > 0 && !goalByEmployee.has(record.employeeNumber)) {
-      goalByEmployee.set(record.employeeNumber, record.dailyGoal);
+    if (record.dailyGoal > 0) {
+      const info = goalByEmployee.get(record.employeeNumber);
+      goalByEmployee.set(record.employeeNumber, { value: info?.value ?? record.dailyGoal, count: (info?.count ?? 0) + 1 });
     }
   }
   for (const record of week.records) {
     if (record.dailyGoal === 0) {
-      const ref = goalByEmployee.get(record.employeeNumber);
-      if (ref) record.dailyGoal = ref;
+      const info = goalByEmployee.get(record.employeeNumber);
+      if (info && info.count === 1) record.dailyGoal = info.value;
     }
   }
 
