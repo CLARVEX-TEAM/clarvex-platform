@@ -809,13 +809,14 @@ model ChatMessageHide {
 
 model MatchEvent {
   id           String   @id @default(cuid())
-  opponent     String   // rival, p. ej. "Estados Unidos"
-  opponentFlag String?  // emoji de bandera del rival, p. ej. "🇺🇸"
-  competition  String?  // "Amistoso", "Copa Oro", "Eliminatorias"...
-  kickoff      DateTime // fecha y hora del partido
+  externalId   Int?     // api-football fixture ID para sync automático
+  opponent     String
+  opponentFlag String?
+  competition  String?
+  kickoff      DateTime
   mxScore      Int      @default(0)
   rivalScore   Int      @default(0)
-  status       String   @default("SCHEDULED") // SCHEDULED | LIVE | FINISHED
+  status       String   @default("SCHEDULED")
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 

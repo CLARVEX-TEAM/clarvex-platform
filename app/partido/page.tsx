@@ -2,11 +2,13 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { Trophy, Trash2, Plus, Radio, CheckCircle2 } from "lucide-react";
+import { Trophy, Trash2, Plus, Radio, CheckCircle2, Link2, Link2Off, Loader2 } from "lucide-react";
 import { getSession } from "@/lib/auth";
 import type { User } from "@/lib/types";
 import { AppFrame, AppHeader, BottomNav, Card } from "@/components/ui";
 import type { SerializedMatch } from "@/lib/match";
+
+type ApiFixtureResult = { externalId: number; rival: string; competition: string; status: string };
 
 export default function PartidoPage() {
   const router = useRouter();
@@ -16,6 +18,11 @@ export default function PartidoPage() {
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ opponent: "", opponentFlag: "", competition: "", kickoff: "" });
   const [error, setError] = useState("");
+  // id del partido cuyo panel de búsqueda está abierto
+  const [linking, setLinking] = useState<string | null>(null);
+  const [searchResults, setSearchResults] = useState<ApiFixtureResult[]>([]);
+  const [searchError, setSearchError] = useState("");
+  const [searching, setSearching] = useState(false);
 
   useEffect(() => {
     getSession().then((s) => {
@@ -48,7 +55,6 @@ export default function PartidoPage() {
           opponent: form.opponent.trim(),
           opponentFlag: form.opponentFlag.trim() || undefined,
           competition: form.competition.trim() || undefined,
-          // datetime-local es hora local del navegador → se convierte a ISO con zona.
           kickoff: new Date(form.kickoff).toISOString()
         })
       });
@@ -73,6 +79,42 @@ export default function PartidoPage() {
   async function remove(id: string) {
     if (!confirm("¿Eliminar este partido?")) return;
     await fetch(`/api/match/${id}`, { method: "DELETE" });
+    await load();
+  }
+
+  async function openLink(match: SerializedMatch) {
+    const dateIso = match.kickoff.slice(0, 10);
+    setLinking(match.id);
+    setSearchResults([]);
+    setSearchError("");
+    setSearching(true);
+    try {
+      const res = await fetch(`/api/match/search?date=${dateIso}`, { cache: "no-store" });
+      const data = (await res.json()) as { fixtures?: ApiFixtureResult[]; error?: string };
+      if (data.error) { setSearchError(data.error); return; }
+      setSearchResults(data.fixtures ?? []);
+      if ((data.fixtures ?? []).length === 0) setSearchError("No se encontraron partidos de México en esa fecha.");
+    } finally {
+      setSearching(false);
+    }
+  }
+
+  async function linkFixture(matchId: string, externalId: number) {
+    await fetch(`/api/match/${matchId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ externalId })
+    });
+    setLinking(null);
+    await load();
+  }
+
+  async function unlinkFixture(matchId: string) {
+    await fetch(`/api/match/${matchId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ externalId: null })
+    });
     await load();
   }
 
@@ -144,6 +186,7 @@ export default function PartidoPage() {
           <div className="grid gap-2">
             {matches.map((m) => {
               const badge = statusBadge[m.status] ?? statusBadge.SCHEDULED;
+              const isLinking = linking === m.id;
               return (
                 <Card key={m.id} className="p-3.5">
                   <div className="flex items-start justify-between gap-2">
@@ -156,6 +199,56 @@ export default function PartidoPage() {
                     </div>
                     <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-black ${badge.cls}`}>{badge.label}</span>
                   </div>
+
+                  {/* Estado vinculación */}
+                  {m.externalId ? (
+                    <div className="mt-2 flex items-center gap-1.5">
+                      <span className="flex items-center gap-1 text-[11px] font-semibold text-green-600">
+                        <Link2 size={12} /> Goles automáticos activos (ID {m.externalId})
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => void unlinkFixture(m.id)}
+                        className="ml-auto flex items-center gap-1 rounded-full bg-slate-500/10 px-2.5 py-0.5 text-[11px] font-bold text-muted transition active:scale-95"
+                      >
+                        <Link2Off size={11} /> Desvincular
+                      </button>
+                    </div>
+                  ) : m.status !== "FINISHED" ? (
+                    <div className="mt-2">
+                      <button
+                        type="button"
+                        onClick={() => isLinking ? setLinking(null) : void openLink(m)}
+                        className="flex items-center gap-1 rounded-full bg-green-500/10 px-3 py-1 text-[11px] font-bold text-green-700 transition active:scale-95 dark:text-green-400"
+                      >
+                        {searching && isLinking
+                          ? <><Loader2 size={11} className="animate-spin" /> Buscando…</>
+                          : <><Link2 size={11} /> {isLinking ? "Cerrar" : "Activar goles automáticos"}</>
+                        }
+                      </button>
+
+                      {isLinking && !searching && (
+                        <div className="mt-2 grid gap-1.5">
+                          {searchError && <p className="text-xs text-red-500">{searchError}</p>}
+                          {searchResults.map((f) => (
+                            <button
+                              key={f.externalId}
+                              type="button"
+                              onClick={() => void linkFixture(m.id, f.externalId)}
+                              className="flex items-center justify-between rounded-2xl border border-line bg-panel px-3 py-2 text-left transition active:scale-95"
+                            >
+                              <div>
+                                <p className="text-xs font-black text-ink">🇲🇽 México vs {f.rival}</p>
+                                <p className="text-[11px] text-muted">{f.competition} · ID {f.externalId}</p>
+                              </div>
+                              <span className="text-[11px] font-bold text-green-600">Vincular →</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ) : null}
+
                   <div className="mt-2.5 flex items-center gap-1.5">
                     {m.status === "SCHEDULED" && (
                       <button type="button" onClick={() => void setStatus(m.id, "LIVE")} className="flex items-center gap-1 rounded-full bg-green-500/15 px-3 py-1 text-xs font-bold text-green-600 transition active:scale-95">
