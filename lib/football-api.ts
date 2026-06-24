@@ -61,12 +61,27 @@ function parseEvent(event: EspnEvent): EspnFixture | null {
 }
 
 export async function searchMexicoFixtures(dateIso: string): Promise<EspnFixture[]> {
-  const dates = dateIso.replace(/-/g, "");
-  const data = await espnFetch<{ events: EspnEvent[] }>(`/scoreboard?dates=${dates}`);
-  return (data.events ?? []).flatMap((e) => {
-    const f = parseEvent(e);
-    return f ? [f] : [];
-  });
+  // Buscamos en la fecha dada y el día anterior para cubrir diferencias de zona horaria
+  // (partido a las 7pm México CDT = medianoche UTC = día siguiente en la API de ESPN).
+  const dates = [dateIso, prevDay(dateIso)];
+  const results: EspnFixture[] = [];
+  for (const d of dates) {
+    const param = d.replace(/-/g, "");
+    try {
+      const data = await espnFetch<{ events: EspnEvent[] }>(`/scoreboard?dates=${param}`);
+      for (const e of data.events ?? []) {
+        const f = parseEvent(e);
+        if (f && !results.some((r) => r.id === f.id)) results.push(f);
+      }
+    } catch { /* ignorar errores por fecha individual */ }
+  }
+  return results;
+}
+
+function prevDay(dateIso: string) {
+  const d = new Date(dateIso + "T12:00:00Z");
+  d.setUTCDate(d.getUTCDate() - 1);
+  return d.toISOString().slice(0, 10);
 }
 
 export async function getEspnFixture(externalId: number): Promise<{
