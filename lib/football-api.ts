@@ -31,7 +31,8 @@ async function apiFetch(path: string): Promise<{ response: ApiFixture[] }> {
 }
 
 export async function searchMexicoFixtures(dateIso: string) {
-  return apiFetch(`/fixtures?team=${MEXICO_TEAM_ID}&date=${dateIso}&timezone=America%2FMexico_City`);
+  const season = dateIso.slice(0, 4);
+  return apiFetch(`/fixtures?team=${MEXICO_TEAM_ID}&date=${dateIso}&season=${season}&timezone=America%2FMexico_City`);
 }
 
 export async function getFixture(externalId: number) {
