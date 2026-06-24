@@ -111,6 +111,13 @@ export function MatchBanner() {
     }
   }
 
+  function undoGoal(team: "MX" | "RIVAL") {
+    if (!match) return;
+    const current = team === "MX" ? match.mxScore : match.rivalScore;
+    if (current <= 0) return;
+    void act(`/api/match/${match.id}`, { [team === "MX" ? "mxScore" : "rivalScore"]: current - 1 });
+  }
+
   const isLive = phase === "live";
 
   return (
@@ -150,12 +157,26 @@ export function MatchBanner() {
 
           {canManage && isLive && (
             <div className="flex items-center gap-1.5 pb-0.5">
-              <button type="button" onClick={() => goal("MX")} disabled={busy} className="flex-1 rounded-full bg-white px-2 py-1 text-[12px] font-black text-[#006847] transition active:scale-95 disabled:opacity-50">
-                ⚽ Gol México
-              </button>
-              <button type="button" onClick={() => goal("RIVAL")} disabled={busy} className="rounded-full bg-white/20 px-2.5 py-1 text-[12px] font-bold transition active:scale-95 disabled:opacity-50">
-                Gol rival
-              </button>
+              <div className="flex flex-1 items-center gap-1">
+                <button type="button" onClick={() => goal("MX")} disabled={busy} className="flex-1 rounded-full bg-white px-2 py-1 text-[12px] font-black text-[#006847] transition active:scale-95 disabled:opacity-50">
+                  ⚽ Gol México
+                </button>
+                {match.mxScore > 0 && (
+                  <button type="button" onClick={() => undoGoal("MX")} disabled={busy} title="Deshacer gol México" className="grid size-6 shrink-0 place-items-center rounded-full bg-white/30 text-[11px] font-black transition active:scale-95 disabled:opacity-50">
+                    −
+                  </button>
+                )}
+              </div>
+              <div className="flex items-center gap-1">
+                <button type="button" onClick={() => goal("RIVAL")} disabled={busy} className="rounded-full bg-white/20 px-2.5 py-1 text-[12px] font-bold transition active:scale-95 disabled:opacity-50">
+                  Gol rival
+                </button>
+                {match.rivalScore > 0 && (
+                  <button type="button" onClick={() => undoGoal("RIVAL")} disabled={busy} title="Deshacer gol rival" className="grid size-6 shrink-0 place-items-center rounded-full bg-white/30 text-[11px] font-black transition active:scale-95 disabled:opacity-50">
+                    −
+                  </button>
+                )}
+              </div>
               <button type="button" onClick={() => void finish()} disabled={busy} className="rounded-full bg-black/25 px-2.5 py-1 text-[12px] font-bold transition active:scale-95 disabled:opacity-50">
                 Finalizar
               </button>
