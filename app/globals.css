@@ -206,6 +206,19 @@ svg.lucide {
   100% { transform: translateY(110vh) rotate(540deg); opacity: 0.85; }
 }
 
+/* Partículas flotantes del intro de partido */
+@keyframes introFloat {
+  0%   { transform: translateY(0) scale(1);     opacity: 0; }
+  8%   { opacity: 0.7; }
+  92%  { opacity: 0.55; }
+  100% { transform: translateY(-105vh) scale(0.6); opacity: 0; }
+}
+
+/* Tema tricolor — blobs del fondo cambian a verde/rojo cuando hay partido */
+html[data-matchday] .ambient-blob-one   { background: #006847; }
+html[data-matchday] .ambient-blob-two   { background: #CE1126; }
+html[data-matchday] .ambient-blob-three { background: #009a54; }
+
 .no-scrollbar {
   -ms-overflow-style: none;
   overscroll-behavior-x: contain;

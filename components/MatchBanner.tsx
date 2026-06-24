@@ -63,6 +63,16 @@ export function MatchBanner() {
   const phase = match ? matchPhase(match) : "past";
   const visible = !hidden && !!match && phase !== "past";
 
+  // Tema tricolor: activa data-matchday en <html> cuando el banner es visible.
+  useEffect(() => {
+    if (visible) {
+      document.documentElement.setAttribute("data-matchday", "1");
+    } else {
+      document.documentElement.removeAttribute("data-matchday");
+    }
+    return () => { document.documentElement.removeAttribute("data-matchday"); };
+  }, [visible]);
+
   // Compensar la altura del banner para no tapar el encabezado de las páginas.
   useEffect(() => {
     if (visible && bannerRef.current) {
