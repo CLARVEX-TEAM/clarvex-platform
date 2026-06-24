@@ -1,5 +1,5 @@
-const HOST = "api-football-v1.p.rapidapi.com";
-const BASE = `https://${HOST}/v3`;
+// API directa de api-football.com (api-sports.io), NO RapidAPI
+const BASE = "https://v3.football.api-sports.io";
 export const MEXICO_TEAM_ID = 262;
 
 export type ApiFixture = {
@@ -19,7 +19,7 @@ async function apiFetch(path: string): Promise<{ response: ApiFixture[] }> {
   const timeout = setTimeout(() => controller.abort(), 8000);
   try {
     const res = await fetch(`${BASE}${path}`, {
-      headers: { "X-RapidAPI-Key": key, "X-RapidAPI-Host": HOST },
+      headers: { "x-apisports-key": key },
       cache: "no-store",
       signal: controller.signal
     });
