@@ -94,8 +94,8 @@ export default function PartidoPage() {
       if (data.error) { setSearchError(data.error); return; }
       setSearchResults(data.fixtures ?? []);
       if ((data.fixtures ?? []).length === 0) setSearchError("No se encontraron partidos de México en esa fecha.");
-    } catch {
-      setSearchError("Error al conectar. Verifica que FOOTBALL_API_KEY esté configurado.");
+    } catch (err) {
+      setSearchError(err instanceof Error ? err.message : "Error desconocido al buscar.");
     } finally {
       setSearching(false);
     }
