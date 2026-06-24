@@ -20,6 +20,7 @@ export function matchPhase(m: MatchLike, now = Date.now()): MatchPhase {
 
 export type SerializedMatch = {
   id: string;
+  externalId: number | null;
   opponent: string;
   opponentFlag: string | null;
   competition: string | null;
@@ -31,6 +32,7 @@ export type SerializedMatch = {
 
 export function serializeMatch(m: {
   id: string;
+  externalId?: number | null;
   opponent: string;
   opponentFlag: string | null;
   competition: string | null;
@@ -41,6 +43,7 @@ export function serializeMatch(m: {
 }): SerializedMatch {
   return {
     id: m.id,
+    externalId: m.externalId ?? null,
     opponent: m.opponent,
     opponentFlag: m.opponentFlag,
     competition: m.competition,

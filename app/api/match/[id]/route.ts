@@ -20,6 +20,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     kickoff?: string;
     mxScore?: number;
     rivalScore?: number;
+    externalId?: number | null;
   };
 
   const current = await prisma.matchEvent.findUnique({ where: { id } });
@@ -36,6 +37,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   }
   if (typeof body.mxScore === "number" && body.mxScore >= 0) data.mxScore = Math.floor(body.mxScore);
   if (typeof body.rivalScore === "number" && body.rivalScore >= 0) data.rivalScore = Math.floor(body.rivalScore);
+  if (body.externalId === null || (typeof body.externalId === "number" && body.externalId > 0)) data.externalId = body.externalId;
 
   if (Object.keys(data).length === 0) return NextResponse.json({ error: "Nada que actualizar." }, { status: 400 });
 
