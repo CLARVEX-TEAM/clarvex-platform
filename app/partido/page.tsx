@@ -8,7 +8,7 @@ import type { User } from "@/lib/types";
 import { AppFrame, AppHeader, BottomNav, Card } from "@/components/ui";
 import type { SerializedMatch } from "@/lib/match";
 
-type ApiFixtureResult = { externalId: number; rival: string; competition: string; status: string };
+type ApiFixtureResult = { id: number; rival: string; competition: string; statusName: string };
 
 export default function PartidoPage() {
   const router = useRouter();
@@ -92,8 +92,9 @@ export default function PartidoPage() {
       const res = await fetch(`/api/match/search?date=${dateIso}`, { cache: "no-store" });
       const data = (await res.json()) as { fixtures?: ApiFixtureResult[]; error?: string };
       if (data.error) { setSearchError(data.error); return; }
-      setSearchResults(data.fixtures ?? []);
-      if ((data.fixtures ?? []).length === 0) setSearchError("No se encontraron partidos de México en esa fecha.");
+      const fixtures = (data.fixtures ?? []) as ApiFixtureResult[];
+      setSearchResults(fixtures);
+      if (fixtures.length === 0) setSearchError("No se encontraron partidos de México en esa fecha.");
     } catch (err) {
       setSearchError(err instanceof Error ? err.message : "Error desconocido al buscar.");
     } finally {
@@ -101,7 +102,7 @@ export default function PartidoPage() {
     }
   }
 
-  async function linkFixture(matchId: string, externalId: number) {
+  async function linkFixture(matchId: string, externalId: number | string) {
     await fetch(`/api/match/${matchId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -234,14 +235,14 @@ export default function PartidoPage() {
                           {searchError && <p className="text-xs text-red-500">{searchError}</p>}
                           {searchResults.map((f) => (
                             <button
-                              key={f.externalId}
+                              key={f.id}
                               type="button"
-                              onClick={() => void linkFixture(m.id, f.externalId)}
+                              onClick={() => void linkFixture(m.id, f.id)}
                               className="flex items-center justify-between rounded-2xl border border-line bg-panel px-3 py-2 text-left transition active:scale-95"
                             >
                               <div>
                                 <p className="text-xs font-black text-ink">🇲🇽 México vs {f.rival}</p>
-                                <p className="text-[11px] text-muted">{f.competition} · ID {f.externalId}</p>
+                                <p className="text-[11px] text-muted">{f.competition}</p>
                               </div>
                               <span className="text-[11px] font-bold text-green-600">Vincular →</span>
                             </button>
