@@ -15,12 +15,19 @@ export type ApiFixture = {
 async function apiFetch(path: string): Promise<{ response: ApiFixture[] }> {
   const key = process.env.FOOTBALL_API_KEY;
   if (!key) throw new Error("FOOTBALL_API_KEY no configurado");
-  const res = await fetch(`${BASE}${path}`, {
-    headers: { "X-RapidAPI-Key": key, "X-RapidAPI-Host": HOST },
-    cache: "no-store"
-  });
-  if (!res.ok) throw new Error(`api-football: ${res.status}`);
-  return res.json() as Promise<{ response: ApiFixture[] }>;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 8000);
+  try {
+    const res = await fetch(`${BASE}${path}`, {
+      headers: { "X-RapidAPI-Key": key, "X-RapidAPI-Host": HOST },
+      cache: "no-store",
+      signal: controller.signal
+    });
+    if (!res.ok) throw new Error(`api-football error ${res.status}`);
+    return res.json() as Promise<{ response: ApiFixture[] }>;
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 export async function searchMexicoFixtures(dateIso: string) {
