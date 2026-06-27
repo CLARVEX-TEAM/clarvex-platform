@@ -12,14 +12,25 @@ export function parsePeriodDate(value: string | null, fallback = new Date()) {
 export function buildRetailMonths(weeks: Array<{ weekStart: Date; weekEnd: Date }>): RetailMonth[] {
   const months = new Map<string, RetailMonth>();
   for (const week of weeks) {
-    const year = week.weekEnd.getUTCFullYear();
-    const month = week.weekEnd.getUTCMonth();
+    // For cross-calendar-month weeks determine the retail month by weekStart position:
+    // - weekStart on day 29-31 → the week OPENS a new retail month (use weekEnd's month)
+    // - weekStart on day 1-28 crossing into next month → the week CLOSES the current retail
+    //   month (last few days spill over, e.g. Jun 28 – Jul 4 belongs to June retail)
+    let year: number;
+    let month: number;
+    if (week.weekStart.getUTCMonth() !== week.weekEnd.getUTCMonth() && week.weekStart.getUTCDate() < 29) {
+      year = week.weekStart.getUTCFullYear();
+      month = week.weekStart.getUTCMonth();
+    } else {
+      year = week.weekEnd.getUTCFullYear();
+      month = week.weekEnd.getUTCMonth();
+    }
     const key = `${year}-${String(month + 1).padStart(2, "0")}`;
     const existing = months.get(key);
     months.set(key, {
       label: new Date(Date.UTC(year, month, 1)).toLocaleDateString("es-MX", { month: "long", year: "numeric", timeZone: "UTC" }).replace(" de ", " ").replace(/^./, (letter) => letter.toUpperCase()),
       start: existing && existing.start < week.weekStart ? existing.start : week.weekStart,
-      end: utcDate(year, month + 1, 0)
+      end: existing && existing.end > week.weekEnd ? existing.end : week.weekEnd
     });
   }
   return Array.from(months.values()).sort((left, right) => left.start.getTime() - right.start.getTime());

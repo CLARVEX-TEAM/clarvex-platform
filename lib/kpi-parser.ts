@@ -187,7 +187,7 @@ export function parseKpiWorkbook(workbook: XLSX.WorkBook): KpiParseResult {
     weeksDetected,
     retailMonthLabel: retailMonth.label,
     retailMonthStart,
-    retailMonthEnd: retailMonth.end,
+    retailMonthEnd: weeksDetected[weeksDetected.length - 1]?.weekEnd ?? retailMonth.end,
     crmTransactionsTotal: uniqueRecords.reduce((total, record) => total + record.crmTransactions, 0),
     totalSalesImported: round(uniqueRecords.reduce((total, record) => total + record.dailySales, 0)),
     totalGoalImported: round(uniqueRecords.reduce((total, record) => total + record.dailyGoal, 0)),
@@ -248,7 +248,7 @@ function findWeekNumber(row: unknown[]) {
   return match ? Number(match[1]) : null;
 }
 
-function finalizeWeek(week: { weekNumber: number; dates: Date[]; records: ParsedKpiRecord[] } | null, retailMonthEnd: Date, ranges: RdvWeekRange[]) {
+function finalizeWeek(week: { weekNumber: number; dates: Date[]; records: ParsedKpiRecord[] } | null, _retailMonthEnd: Date, ranges: RdvWeekRange[]) {
   if (!week || week.dates.length === 0) return;
 
   // Some RDV files place META DIARIA only in the first row of each week.
@@ -271,7 +271,7 @@ function finalizeWeek(week: { weekNumber: number; dates: Date[]; records: Parsed
   }
 
   const weekStart = new Date(Math.min(...week.dates.map((date) => date.getTime())));
-  const weekEnd = new Date(Math.min(Math.max(...week.dates.map((date) => date.getTime())), retailMonthEnd.getTime()));
+  const weekEnd = new Date(Math.max(...week.dates.map((date) => date.getTime())));
   ranges.push({ weekNumber: week.weekNumber, weekStart, weekEnd });
   for (const record of week.records) {
     record.weekStart = weekStart;
