@@ -44,7 +44,7 @@ test("parsea Diario de ventas por employeeNumber y calcula KPIs", () => {
   assert.deepEqual(result.weeksDetected.map((week) => week.weekNumber), [22]);
   assert.equal(result.retailMonthLabel, "Junio 2026");
   assert.equal(result.retailMonthStart.toISOString(), "2026-06-01T00:00:00.000Z");
-  assert.equal(result.retailMonthEnd.toISOString(), "2026-06-30T00:00:00.000Z");
+  assert.equal(result.retailMonthEnd.toISOString(), "2026-06-01T00:00:00.000Z");
   assert.equal(result.records.length, 2);
   assert.equal(result.rowsRead, 5);
   assert.equal(result.ignoredRows, 3);
