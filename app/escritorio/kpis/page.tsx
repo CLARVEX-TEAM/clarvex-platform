@@ -184,7 +184,7 @@ export default function EscritorioKpis() {
     const todayUtc = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
     if (todayUtc < start || todayUtc > end) return null;
     const dayMs = 86_400_000;
-    const totalWeeks = Math.max(1, Math.round(((end.getTime() - start.getTime()) / dayMs + 1) / 7));
+    const totalWeeks = Math.max(1, Math.ceil(((end.getTime() - start.getTime()) / dayMs + 1) / 7));
     const weeksWithData = report.availableWeeks.filter((week) => {
       const ws = new Date(`${week.weekStart}T00:00:00Z`);
       return ws >= start && ws <= end && ws <= todayUtc;
