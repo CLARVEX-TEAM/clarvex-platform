@@ -64,24 +64,9 @@ body {
   pointer-events: none;
 }
 
-@keyframes morphBlobA {
-  0%   { border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%; }
-  50%  { border-radius: 30% 60% 70% 40% / 50% 60% 30% 60%; }
-  100% { border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%; }
-}
-
-@keyframes morphBlobB {
-  0%   { border-radius: 40% 60% 60% 40% / 70% 30% 60% 40%; }
-  50%  { border-radius: 60% 40% 30% 60% / 40% 60% 40% 60%; }
-  100% { border-radius: 40% 60% 60% 40% / 70% 30% 60% 40%; }
-}
-
-@keyframes morphBlobC {
-  0%   { border-radius: 50% 50% 40% 60% / 40% 60% 50% 50%; }
-  50%  { border-radius: 70% 30% 60% 40% / 60% 40% 30% 70%; }
-  100% { border-radius: 50% 50% 40% 60% / 40% 60% 50% 50%; }
-}
-
+/* Blobs de ambiente: forma orgánica ESTÁTICA. Antes morfaban border-radius,
+   lo que re-rasterizaba el blur(80px) en cada frame (GPU constante en Android
+   de gama media). El movimiento lo aporta GSAP solo con transform (barato). */
 .ambient-blob {
   position: absolute;
   display: block;
@@ -97,7 +82,7 @@ body {
   width: 28rem;
   height: 28rem;
   background: #2563EB;
-  animation: morphBlobA 8s ease-in-out infinite;
+  border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
 }
 
 .ambient-blob-two {
@@ -106,7 +91,7 @@ body {
   width: 30rem;
   height: 30rem;
   background: #0ea5e9;
-  animation: morphBlobB 12s ease-in-out infinite;
+  border-radius: 40% 60% 60% 40% / 70% 30% 60% 40%;
 }
 
 .ambient-blob-three {
@@ -115,7 +100,7 @@ body {
   width: 32rem;
   height: 32rem;
   background: #6366f1;
-  animation: morphBlobC 10s ease-in-out infinite;
+  border-radius: 50% 50% 40% 60% / 40% 60% 50% 50%;
 }
 
 body > * {
@@ -146,6 +131,18 @@ select {
 
 ::selection {
   background: rgb(37 99 235 / 0.2);
+}
+
+/* Focus visible por teclado en toda la app. Los componentes con anillo propio
+   (focus-visible:ring) lo suprimen con outline-none; el resto lo hereda. */
+a:focus-visible,
+button:focus-visible,
+[role="button"]:focus-visible,
+[tabindex]:focus-visible,
+select:focus-visible,
+summary:focus-visible {
+  outline: 2px solid rgb(37 99 235 / 0.6);
+  outline-offset: 2px;
 }
 
 /* ─── Iconos estilo Apple (refinamiento global de lucide) ───────────────────
@@ -229,6 +226,9 @@ html[data-matchday] .ambient-blob-three { background: #009a54; }
   display: none;
 }
 
+/* Glass real (backdrop-filter): SOLO para superficies que flotan sobre
+   contenido en scroll — bottom nav, header, modales, toasts. Para cards de
+   contenido usar .solid-card: misma estética, sin costo de GPU. */
 .liquid-glass {
   position: relative;
   overflow: hidden;
@@ -239,6 +239,46 @@ html[data-matchday] .ambient-blob-three { background: #009a54; }
   backdrop-filter: blur(22px) saturate(1.2);
   -webkit-backdrop-filter: blur(22px) saturate(1.2);
   transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+}
+
+/* Card opaca premium: conserva el brillo superior y el borde del glass,
+   pero sin backdrop-filter (nada que difuminar detrás de una card estática). */
+.solid-card {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  border: 1px solid var(--glass-border);
+  background: rgb(var(--color-card));
+  box-shadow: 0 8px 24px rgb(15 23 42 / 0.06);
+  transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+}
+
+.solid-card::before {
+  content: "";
+  position: absolute;
+  inset: 1px 1px auto 1px;
+  height: 42%;
+  border-radius: inherit;
+  background:
+    linear-gradient(180deg, rgb(255 255 255 / 0.6), transparent),
+    linear-gradient(90deg, transparent, rgb(219 234 254 / 0.3) 34%, transparent 72%);
+  pointer-events: none;
+}
+
+.solid-card > * {
+  position: relative;
+  z-index: 1;
+}
+
+.solid-card:hover {
+  border-color: rgb(37 99 235 / 0.28);
+  box-shadow: 0 10px 28px rgb(37 99 235 / 0.1);
+}
+
+.dark .solid-card::before {
+  background:
+    linear-gradient(180deg, rgb(255 255 255 / 0.04), transparent),
+    linear-gradient(90deg, transparent, rgb(59 130 246 / 0.06) 34%, transparent 72%);
 }
 
 .liquid-glass::before {
