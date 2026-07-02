@@ -189,6 +189,7 @@ model User {
   passwordHash          String?
   pinHash               String?
   photoUrl              String?
+  active                Boolean                @default(true)
   biometricEnabled      Boolean                @default(false)
   lastLoginAt           DateTime?
   lastSeenAt            DateTime?

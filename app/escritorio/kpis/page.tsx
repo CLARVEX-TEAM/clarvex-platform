@@ -1,218 +1,45 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { BarChart3, Calculator, CalendarDays, Download, Percent, Receipt, Settings2, ShoppingBag, Target, TrendingUp, Trophy, UsersRound, X } from "lucide-react";
-import type { LucideIcon } from "lucide-react";
+import { Calculator, CalendarDays, Download, Receipt, Settings2, ShoppingBag, Target, TrendingUp, Trophy, UsersRound, X } from "lucide-react";
 import { getSession } from "@/lib/auth";
-import { findCommissionRule, projectMonthlyCommission, resolveCommissionMinimum } from "@/lib/commission";
-import { completion, money } from "@/lib/format";
-import { periodDateKey, type KpiPeriod } from "@/lib/kpi-period";
+import { money } from "@/lib/format";
+import type { KpiPeriod } from "@/lib/kpi-period";
 import type { KpiReportItem } from "@/lib/kpi-report";
 import type { CommissionRule, Role, User } from "@/lib/types";
+import { KPI_TABS as tabs, METRIC_CONFIG, localDateKey, type KpiTab as Tab, type KpiTarget, type MonthProjection, type MonthSalesProjection, type ReceiptLine, type ReceiptMonth } from "@/lib/kpi-view";
+import { useKpiDerived, useKpiReceipts, useKpiReport, useKpiTargets } from "@/lib/use-kpis";
 import { achievementTone, Badge, Card, ProfileAvatar, ProgressBar, ProgressRing, Skeleton, StatCard } from "@/components/ui";
 import { useTheme } from "@/components/ThemeProvider";
 import { useDesktopChrome } from "@/components/desktop/DesktopChrome";
 import { cn } from "@/lib/utils";
 
-type Tab = "resumen" | "ventas" | "comision" | "ranking" | "recibo";
-type KpiTarget = { id: string; metric: string; value: number; period: string };
-type MonthProjection = { weeksElapsed: number; totalWeeks: number; projectedSales: number; projectedCommission: number; percent: number; achievement: number };
-type MonthSalesProjection = { weeksElapsed: number; totalWeeks: number; projectedSales: number; goal: number; achievement: number };
-type KpiResponse = {
-  period: KpiPeriod;
-  selectedDate: string;
-  startDate: string;
-  endDate: string;
-  weekNumber: number | null;
-  availableWeeks: Array<{ weekNumber: number; weekStart: string; weekEnd: string }>;
-  availableRetailMonths: Array<{ label: string; start: string; end: string }>;
-  retailMonthLabel: string | null;
-  workedDays: number | null;
-  currentUserId: string;
-  role: Role;
-  store: KpiReportItem | null;
-  own: KpiReportItem | null;
-  team: KpiReportItem[];
-  commissionRules: CommissionRule[];
-  hasDiscountSource: boolean;
-  latestDiscountWeek: { weekNumber: number; margin: number | null } | null;
-};
-
-interface MetricConfig { label: string; gradient: string; glow: string; Icon: LucideIcon; targetLabel: string; }
-
-const METRIC_CONFIG: Record<string, MetricConfig> = {
-  upt:         { label: "UPT",          gradient: "from-blue-500 to-blue-700",     glow: "rgba(59,130,246,0.32)",  Icon: ShoppingBag, targetLabel: "Meta UPT"           },
-  aur:         { label: "AUR",          gradient: "from-sky-400 to-cyan-600",      glow: "rgba(14,165,233,0.32)",  Icon: Receipt,     targetLabel: "Meta AUR ($)"       },
-  ept:         { label: "EPT",          gradient: "from-violet-500 to-purple-700", glow: "rgba(139,92,246,0.32)",  Icon: BarChart3,   targetLabel: "Meta EPT ($)"       },
-  conversion:  { label: "Conversión",   gradient: "from-orange-400 to-amber-600",  glow: "rgba(251,146,60,0.32)",  Icon: Target,      targetLabel: "Meta Conversión (%)" },
-  margen:      { label: "Margen DTO",   gradient: "from-rose-500 to-pink-700",     glow: "rgba(244,63,94,0.32)",   Icon: Percent,     targetLabel: "Límite DTO (%)"     },
-  achievement: { label: "Cumplimiento", gradient: "from-emerald-500 to-teal-700",  glow: "rgba(16,185,129,0.32)",  Icon: TrendingUp,  targetLabel: "Meta cumplimiento (%)" },
-};
-
-const tabs: { id: Tab; label: string }[] = [
-  { id: "resumen", label: "Resumen" },
-  { id: "ventas", label: "Ventas" },
-  { id: "comision", label: "Comisión" },
-  { id: "ranking", label: "Ranking" },
-  { id: "recibo", label: "Recibo" }
-];
-
-type ReceiptLine = { name: string; photoUrl: string | null; sales: number; minimum: number; achievement: number; percent: number; commission: number; hasMinimum: boolean };
-type ReceiptMonth = { label: string; start: string; isCurrent: boolean; main: ReceiptLine; team: ReceiptLine[] };
-
-function computeReceiptLine(scope: { userName?: string; photoUrl?: string | null; sales: number; goal: number; commissionMinimum: number | null }, role: Role, rules: CommissionRule[]): ReceiptLine {
-  const minimum = resolveCommissionMinimum(scope.commissionMinimum, scope.goal);
-  const hasMinimum = minimum > 0;
-  const achievement = hasMinimum ? (scope.sales / minimum) * 100 : 0;
-  const rule = hasMinimum ? findCommissionRule(rules, role, achievement) : undefined;
-  const percent = rule?.commissionPercent ?? 0;
-  return {
-    name: scope.userName ?? "", photoUrl: scope.photoUrl ?? null, sales: scope.sales, minimum, achievement, percent,
-    commission: hasMinimum ? scope.sales * (percent / 100) : 0, hasMinimum
-  };
-}
-
 export default function EscritorioKpis() {
   const { setLastUpdated } = useDesktopChrome();
   const [session, setSession] = useState<User | null>(null);
-  const [report, setReport] = useState<KpiResponse | null>(null);
-  const [targets, setTargets] = useState<KpiTarget[]>([]);
   const [period, setPeriod] = useState<KpiPeriod>("week");
   const [selectedDate, setSelectedDate] = useState(localDateKey(new Date()));
   const [activeTab, setActiveTab] = useState<Tab>("resumen");
   const [simulatedSales, setSimulatedSales] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
   const [showTargetSheet, setShowTargetSheet] = useState(false);
-  const [receipts, setReceipts] = useState<ReceiptMonth[] | null>(null);
-  const [receiptsLoading, setReceiptsLoading] = useState(false);
 
   useEffect(() => { getSession().then(setSession); }, []);
 
-  useEffect(() => {
-    if (!session) return;
-    let cancelled = false;
-    const controller = new AbortController();
-    setLoading(true);
-    setError("");
-    setSimulatedSales("");
-    fetch(`/api/kpis?period=${period}&date=${selectedDate}`, { cache: "no-store", signal: controller.signal })
-      .then(async (response) => {
-        const payload = await response.json() as KpiResponse & { error?: string };
-        if (!response.ok) throw new Error(payload.error ?? "No se pudieron cargar los KPIs.");
-        if (cancelled) return;
-        setReport(payload);
-        if (period === "week" && payload.startDate !== selectedDate) setSelectedDate(payload.startDate);
-        setLastUpdated(new Date());
-        setLoading(false);
-      })
-      .catch((requestError: unknown) => {
-        if (cancelled || (requestError instanceof DOMException && requestError.name === "AbortError")) return;
-        setError(requestError instanceof Error ? requestError.message : "No se pudieron cargar los KPIs.");
-        setLoading(false);
-      });
-    return () => { cancelled = true; controller.abort(); };
-  }, [period, selectedDate, session, setLastUpdated]);
+  // Al recargar el reporte se limpia la simulación de comisión.
+  useEffect(() => { setSimulatedSales(""); }, [period, selectedDate]);
 
-  useEffect(() => {
-    if (!session) return;
-    fetch("/api/kpi-targets")
-      .then((r) => r.json() as Promise<{ targets?: KpiTarget[] }>)
-      .then((payload) => { if (payload.targets) setTargets(payload.targets); })
-      .catch(() => undefined);
-  }, [session]);
-
-  // Reinicia recibos al cambiar de período para recalcularlos al abrir la pestaña.
-  useEffect(() => { setReceipts(null); }, [period, selectedDate]);
-
-  useEffect(() => {
-    if (activeTab !== "recibo" || !session || !report || receipts !== null) return;
-    const months = report.availableRetailMonths;
-    if (months.length === 0) { setReceipts([]); return; }
-    const manager = session.role !== "ASESOR";
-    const todayKey = localDateKey(new Date());
-    const controller = new AbortController();
-    setReceiptsLoading(true);
-    Promise.all(months.map((month) =>
-      fetch(`/api/kpis?period=month&date=${month.start}`, { cache: "no-store", signal: controller.signal })
-        .then((r) => r.json() as Promise<KpiResponse>)
-        .then((payload): ReceiptMonth | null => {
-          const scope = manager ? payload.store : payload.own;
-          if (!scope) return null;
-          const main = computeReceiptLine(scope, manager ? session.role : "ASESOR", payload.commissionRules);
-          const team = manager
-            ? payload.team.filter((item) => item.role === "ASESOR").map((item) => computeReceiptLine(item, "ASESOR", payload.commissionRules))
-            : [];
-          return { label: month.label, start: month.start, isCurrent: todayKey >= month.start && todayKey <= month.end, main, team };
-        })
-        .catch(() => null)
-    ))
-      .then((list) => {
-        if (controller.signal.aborted) return;
-        setReceipts(list.filter((month): month is ReceiptMonth => month !== null).sort((a, b) => b.start.localeCompare(a.start)));
-      })
-      .finally(() => { if (!controller.signal.aborted) setReceiptsLoading(false); });
-    return () => controller.abort();
-  }, [activeTab, session, report, receipts]);
-
-  const isAdvisor = session?.role === "ASESOR";
-  const isManager = !isAdvisor;
-  const activeKpi = isAdvisor ? (report?.own ?? null) : (report?.store ?? null);
-  const periodLabel = period === "week" ? "semanal" : "mensual";
-  const progress = completion(activeKpi?.sales ?? 0, activeKpi?.goal ?? 0);
-  const commissionKpi = isAdvisor ? (report?.own ?? null) : (report?.store ?? null);
-  const initialSimulation = simulatedSales ? Number(simulatedSales) : commissionKpi?.sales ?? 0;
-  const commissionBase = resolveCommissionMinimum(commissionKpi?.commissionMinimum ?? null, commissionKpi?.goal ?? 0);
-  const hasCommissionMinimum = commissionBase > 0;
-  const simulatedAchievement = hasCommissionMinimum ? getAchievement(initialSimulation, commissionBase) : 0;
-  const commissionRole = isAdvisor ? "ASESOR" : session?.role ?? "GERENTE";
-  const activeRule = hasCommissionMinimum ? findCommissionRule(report?.commissionRules ?? [], commissionRole, simulatedAchievement) : undefined;
-  const appliedPercent = activeRule?.commissionPercent ?? 0;
-  const simulatedCommission = hasCommissionMinimum ? initialSimulation * (appliedPercent / 100) : 0;
-  const chartData = report?.team.map((item) => ({ name: item.userName, venta: item.sales, meta: item.goal })) ?? [];
-  const rangeLabel = report ? formatPeriodLabel(report.period, report.startDate, report.endDate, report.weekNumber, report.retailMonthLabel) : "Cargando periodo";
-  const periodKey = period === "week" ? "SEMANA" : "MES";
-  const periodTargets = useMemo(() => targets.filter((t) => t.period === periodKey), [targets, periodKey]);
-
-  const monthWeeks = useMemo<{ weeksElapsed: number; totalWeeks: number } | null>(() => {
-    if (!report || report.period !== "month") return null;
-    const start = new Date(`${report.startDate}T00:00:00Z`);
-    const end = new Date(`${report.endDate}T00:00:00Z`);
-    const now = new Date();
-    const todayUtc = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
-    if (todayUtc < start || todayUtc > end) return null;
-    const dayMs = 86_400_000;
-    const totalWeeks = Math.max(1, Math.ceil(((end.getTime() - start.getTime()) / dayMs + 1) / 7));
-    const weeksWithData = report.availableWeeks.filter((week) => {
-      const ws = new Date(`${week.weekStart}T00:00:00Z`);
-      return ws >= start && ws <= end && ws <= todayUtc;
-    }).length;
-    const calendarWeeksElapsed = Math.ceil(((todayUtc.getTime() - start.getTime()) / dayMs + 1) / 7);
-    const weeksElapsed = Math.min(totalWeeks, Math.max(1, weeksWithData || calendarWeeksElapsed));
-    return { weeksElapsed, totalWeeks };
-  }, [report]);
-
-  const monthProjection = useMemo<MonthProjection | null>(() => {
-    if (!monthWeeks || !report || !commissionKpi || commissionKpi.sales <= 0) return null;
-    const result = projectMonthlyCommission({
-      salesToDate: commissionKpi.sales,
-      minimumToDate: resolveCommissionMinimum(commissionKpi.commissionMinimum ?? null, commissionKpi.goal),
-      weeksElapsed: monthWeeks.weeksElapsed,
-      totalWeeks: monthWeeks.totalWeeks,
-      rules: report.commissionRules,
-      role: commissionRole
-    });
-    return result ? { ...monthWeeks, ...result } : null;
-  }, [monthWeeks, report, commissionKpi, commissionRole]);
-
-  const monthSalesProjection = useMemo<MonthSalesProjection | null>(() => {
-    if (!monthWeeks || !isManager || !activeKpi || activeKpi.sales <= 0 || activeKpi.goal <= 0) return null;
-    const projectedSales = (activeKpi.sales / monthWeeks.weeksElapsed) * monthWeeks.totalWeeks;
-    const achievement = Math.round((projectedSales / activeKpi.goal) * 100);
-    return { ...monthWeeks, projectedSales, goal: activeKpi.goal, achievement };
-  }, [monthWeeks, isManager, activeKpi]);
+  const onLoaded = useCallback(() => setLastUpdated(new Date()), [setLastUpdated]);
+  const { report, loading, error } = useKpiReport({ session, period, selectedDate, setSelectedDate, onLoaded });
+  const { targets, setTargets } = useKpiTargets(session);
+  const { receipts, receiptsLoading } = useKpiReceipts({ activeTab, session, report, period, selectedDate });
+  const {
+    isAdvisor, isManager, activeKpi, periodLabel, progress, commissionKpi,
+    hasCommissionMinimum, simulatedAchievement, commissionRole, activeRule,
+    appliedPercent, simulatedCommission, chartData, rangeLabel, periodKey,
+    periodTargets, monthProjection, monthSalesProjection
+  } = useKpiDerived({ session, report, period, targets, simulatedSales });
 
   return (
     <div className="space-y-4">
@@ -723,12 +550,3 @@ function TargetSheet({ targets, period, onClose, onSave }: { targets: KpiTarget[
 }
 
 function Mini({ label, value }: { label: string; value: string }) { return <div className="px-2"><p className="text-[11px] font-bold uppercase tracking-[0.1em] text-muted">{label}</p><p className="mt-1 font-black text-ink">{value}</p></div>; }
-function getAchievement(sales: number, goal: number) { return goal > 0 ? (sales / goal) * 100 : 0; }
-function localDateKey(date: Date) { return periodDateKey(new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()))); }
-function formatPeriodLabel(period: KpiPeriod, startValue: string, endValue: string, weekNumber: number | null, retailMonthLabel: string | null) {
-  const start = new Date(`${startValue}T00:00:00Z`); const end = new Date(`${endValue}T00:00:00Z`);
-  const startLabel = start.toLocaleDateString("es-MX", { day: "numeric", month: "short", timeZone: "UTC" }).replace(".", "");
-  const endLabel = end.toLocaleDateString("es-MX", { day: "numeric", month: "short", timeZone: "UTC" }).replace(".", "");
-  if (period === "month") return `${retailMonthLabel ?? "Mes retail"} · ${startLabel} - ${endLabel}`;
-  return `Semana ${weekNumber ?? "RDV"} · ${startLabel} - ${endLabel}`;
-}

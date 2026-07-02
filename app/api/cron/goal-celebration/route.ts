@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireCron } from "@/lib/cron-auth";
 import { NotificationType } from "@prisma/client";
 import { resolveMonterreyDate } from "@/lib/cron-time";
 import { buildGoalReachedMessage } from "@/lib/daily-summary";
@@ -13,11 +14,8 @@ const PUSH_TAG = "meta-alcanzada";
 const LOG_TYPE = "GOAL_REACHED";
 
 export async function POST(request: Request) {
-  const secret = process.env.CRON_SECRET;
-  const header = request.headers.get("authorization") ?? "";
-  if (!secret || header !== `Bearer ${secret}`) {
-    return NextResponse.json({ error: "No autorizado." }, { status: 401 });
-  }
+  const unauthorized = requireCron(request);
+  if (unauthorized) return unauthorized;
 
   const { dateKey, utcDate } = resolveMonterreyDate();
   const stores = await prisma.store.findMany({ select: { id: true } });

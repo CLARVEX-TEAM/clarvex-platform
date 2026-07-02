@@ -1,30 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
+import { rateLimitPreview } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
-
-// In-memory rate limiter: 10 req/min per IP
-const rateLimit = new Map<string, { count: number; resetAt: number }>();
-let cleanupCounter = 0;
-
-function checkRateLimit(ip: string): boolean {
-  const now = Date.now();
-  if (++cleanupCounter % 50 === 0) {
-    Array.from(rateLimit.entries()).forEach(([key, entry]) => {
-      if (entry.resetAt < now) rateLimit.delete(key);
-    });
-  }
-  const entry = rateLimit.get(ip);
-  if (!entry || entry.resetAt < now) {
-    rateLimit.set(ip, { count: 1, resetAt: now + 60_000 });
-    return true;
-  }
-  if (entry.count >= 10) return false;
-  entry.count++;
-  return true;
-}
 
 export async function GET(
   _request: NextRequest,
@@ -36,10 +16,11 @@ export async function GET(
     headersList.get("x-real-ip") ??
     "unknown";
 
-  if (!checkRateLimit(ip)) {
+  const rateLimit = rateLimitPreview(ip);
+  if (!rateLimit.allowed) {
     return NextResponse.json(
       { error: "Demasiadas solicitudes. Intenta en un minuto." },
-      { status: 429 }
+      { status: 429, headers: { "Retry-After": String(rateLimit.retryAfterSeconds) } }
     );
   }
 
@@ -50,6 +31,7 @@ export async function GET(
 
   const user = await prisma.user.findFirst({
     where: {
+      active: true,
       OR: [
         { employeeNumber },
         { employeeNumberAliases: { some: { employeeNumber } } },

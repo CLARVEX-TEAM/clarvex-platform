@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireCron } from "@/lib/cron-auth";
 import { NotificationType } from "@prisma/client";
 import { resolveMonterreyDate } from "@/lib/cron-time";
 import { buildMiddayAdvisorMessage, buildMiddayManagerSummary } from "@/lib/daily-summary";
@@ -17,11 +18,8 @@ const LOG_TYPE = "MIDDAY";
 const THRESHOLD = 0.5; // por debajo del 50% de la meta del día = atrasado
 
 export async function POST(request: Request) {
-  const secret = process.env.CRON_SECRET;
-  const header = request.headers.get("authorization") ?? "";
-  if (!secret || header !== `Bearer ${secret}`) {
-    return NextResponse.json({ error: "No autorizado." }, { status: 401 });
-  }
+  const unauthorized = requireCron(request);
+  if (unauthorized) return unauthorized;
 
   // Refrescar KPIs/horarios antes de avisar para no mandar datos viejos.
   await syncAllSources().catch(() => undefined);

@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import { prisma } from "@/lib/prisma";
 import type { User } from "@/lib/types";
 import { SESSION_COOKIE, verifySessionToken, type Session } from "@/lib/session-token";
 
@@ -7,7 +8,12 @@ export type { Session } from "@/lib/session-token";
 
 export async function getServerSession() {
   const token = (await cookies()).get(SESSION_COOKIE)?.value;
-  return token ? verifySessionToken(token) : null;
+  const session = token ? await verifySessionToken(token) : null;
+  if (!session) return null;
+  // Revocación: si el usuario fue desactivado (o eliminado), su JWT deja de
+  // valer de inmediato aunque no haya expirado.
+  const user = await prisma.user.findUnique({ where: { id: session.userId }, select: { active: true } });
+  return user?.active ? session : null;
 }
 
 export function sessionUser(session: Session): User {

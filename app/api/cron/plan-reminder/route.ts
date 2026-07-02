@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireCron } from "@/lib/cron-auth";
 import { NotificationType } from "@prisma/client";
 import { resolveMonterreyDate } from "@/lib/cron-time";
 import { createNotifications, type NotificationInput } from "@/lib/notifications";
@@ -14,11 +15,8 @@ const LOG_TYPE = "PLAN_REMINDER";
 // Recordatorio (≈7 PM): avisa a cada asesor las actividades de su plan de HOY que
 // siguen sin completar, e invita a comentarlas para que gerencia las reasigne mañana.
 export async function POST(request: Request) {
-  const secret = process.env.CRON_SECRET;
-  const header = request.headers.get("authorization") ?? "";
-  if (!secret || header !== `Bearer ${secret}`) {
-    return NextResponse.json({ error: "No autorizado." }, { status: 401 });
-  }
+  const unauthorized = requireCron(request);
+  if (unauthorized) return unauthorized;
 
   const { dateKey } = resolveMonterreyDate();
   const dayStart = new Date(`${dateKey}T00:00:00.000Z`);

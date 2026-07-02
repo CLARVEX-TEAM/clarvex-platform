@@ -35,12 +35,13 @@ export async function POST(request: Request) {
   const user = await prisma.user.findUnique({ where: { employeeNumber: parsed.data.employeeNumber } });
 
   if (isInspect) {
-    if (!user) return NextResponse.json({ error: "Numero de empleado no encontrado." }, { status: 404 });
+    // Los usuarios desactivados se tratan como inexistentes.
+    if (!user || !user.active) return NextResponse.json({ error: "Numero de empleado no encontrado." }, { status: 404 });
     return NextResponse.json({ user: publicUser(user), requiresPinSetup: !user.pinHash });
   }
 
-  // Unified error for "not found" and "wrong PIN" to prevent user enumeration via login
-  if (!user) {
+  // Unified error for "not found", "deactivated" and "wrong PIN" to prevent user enumeration via login
+  if (!user || !user.active) {
     return NextResponse.json({ error: "Credenciales invalidas." }, { status: 401 });
   }
 

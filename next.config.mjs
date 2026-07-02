@@ -27,6 +27,8 @@ const nextConfig = {
 
   async headers() {
     const imgSrc = ["'self'", "data:", "blob:", r2Domain].filter(Boolean).join(" ");
+    // 'unsafe-eval' solo es necesario para el HMR de desarrollo; en producción debilita el CSP.
+    const scriptSrc = ["'self'", "'unsafe-inline'", process.env.NODE_ENV === "development" ? "'unsafe-eval'" : ""].filter(Boolean).join(" ");
 
     return [
       {
@@ -41,7 +43,7 @@ const nextConfig = {
             key: "Content-Security-Policy",
             value: [
               "default-src 'self'",
-              "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+              `script-src ${scriptSrc}`,
               "style-src 'self' 'unsafe-inline'",
               `img-src ${imgSrc}`,
               "font-src 'self' data:",
