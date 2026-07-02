@@ -13,7 +13,8 @@ const schema = z.object({
   hireDate: z.string().regex(DATE_RE).nullable().optional(),
   hoursOwed: z.number().min(-1000).max(1000).optional(), // solo gerencia
   vacationDays: z.number().min(-1000).max(1000).optional(), // solo gerencia
-  paidDays: z.number().min(-1000).max(1000).optional() // solo gerencia
+  paidDays: z.number().min(-1000).max(1000).optional(), // solo gerencia
+  active: z.boolean().optional() // solo gerencia, sobre otro integrante
 });
 
 function toDate(value: string | null | undefined): Date | null | undefined {
@@ -53,7 +54,7 @@ export async function PUT(request: Request) {
     targetUserId = target.id;
   }
 
-  const data: { birthDate?: Date | null; hireDate?: Date | null; hoursOwed?: number; vacationDays?: number; paidDays?: number } = {};
+  const data: { birthDate?: Date | null; hireDate?: Date | null; hoursOwed?: number; vacationDays?: number; paidDays?: number; active?: boolean } = {};
   const birth = toDate(parsed.data.birthDate);
   const hire = toDate(parsed.data.hireDate);
   if (birth !== undefined) data.birthDate = birth;
@@ -63,6 +64,11 @@ export async function PUT(request: Request) {
     if (parsed.data.hoursOwed !== undefined) data.hoursOwed = parsed.data.hoursOwed;
     if (parsed.data.vacationDays !== undefined) data.vacationDays = parsed.data.vacationDays;
     if (parsed.data.paidDays !== undefined) data.paidDays = parsed.data.paidDays;
+    // Activar/desactivar cuenta: solo sobre otro integrante (nadie puede desactivarse a sí mismo).
+    if (parsed.data.active !== undefined) {
+      if (targetUserId === session.userId) return NextResponse.json({ error: "No puedes desactivar tu propia cuenta." }, { status: 400 });
+      data.active = parsed.data.active;
+    }
   }
 
   const user = await prisma.user.update({ where: { id: targetUserId }, data, select: { birthDate: true, hireDate: true, hoursOwed: true, vacationDays: true, paidDays: true } });

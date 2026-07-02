@@ -13,8 +13,6 @@ import {
   ReplyQuote,
   ReactionBar,
   ReactionChips,
-  type ReplyInfo,
-  type MessageReaction,
   computeMessageStatus,
   formatLastSeen,
   chatPreview,
@@ -25,29 +23,15 @@ import {
   encodeStickerMsg,
   encodeGifMsg
 } from "@/components/ChatPicker";
-
-type Message = {
-  id: string;
-  body: string;
-  deleted: boolean;
-  senderId: string;
-  senderName: string;
-  senderPhoto: string | null;
-  createdAt: string;
-  readBy: string[];
-  deliveredTo: string[];
-  reactions: MessageReaction[];
-  replyTo: ReplyInfo | null;
-};
-
-type Member = { id: string; name: string; photoUrl: string | null; role: string; online: boolean; lastSeenAt: string | null };
-
-type RoomInfo = {
-  id: string;
-  type: "DIRECT" | "GROUP";
-  name: string | null;
-  members: Member[];
-};
+import {
+  deleteChatMessage,
+  fetchChatRoom,
+  postChatImage,
+  postChatMessage,
+  postChatReaction,
+  type ChatMessageView as Message,
+  type ChatRoomInfoView as RoomInfo
+} from "@/lib/chat-client";
 
 function MessageBody({ msg, isMe, onImageClick }: { msg: Message; isMe: boolean; onImageClick?: (url: string) => void }) {
   if (msg.deleted) {
@@ -135,9 +119,7 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
   }, [router]);
 
   const fetchMessages = useCallback(async () => {
-    const res = await fetch(`/api/chat/${id}`, { cache: "no-store" }).then(
-      (r) => r.json() as Promise<{ messages: Message[]; room: RoomInfo | null }>
-    );
+    const res = await fetchChatRoom(id);
     setMessages(res.messages);
     if (res.room) setRoom(res.room);
   }, [id]);
@@ -163,12 +145,8 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
     const replyToId = replyTo?.id;
     setReplyTo(null);
     try {
-      const res = await fetch(`/api/chat/${id}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ body, replyToId })
-      }).then((r) => r.json() as Promise<{ message: Message }>);
-      setMessages((prev) => [...prev, res.message]);
+      const message = await postChatMessage(id, body, replyToId);
+      setMessages((prev) => [...prev, message]);
     } finally {
       setSending(false);
       inputRef.current?.focus();
@@ -183,12 +161,7 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
     const replyToId = replyTo?.id;
     setReplyTo(null);
     try {
-      const fd = new FormData();
-      fd.append("file", file);
-      if (replyToId) fd.append("replyToId", replyToId);
-      const res = await fetch(`/api/chat/${id}/image`, { method: "POST", body: fd }).then(
-        (r) => r.json() as Promise<{ message?: Message; error?: string }>
-      );
+      const res = await postChatImage(id, file, replyToId);
       if (res.message) setMessages((prev) => [...prev, res.message!]);
       else if (res.error) alert(res.error);
     } finally {
@@ -198,13 +171,9 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
 
   async function reactToMessage(msg: Message, emoji: string) {
     setMenuMsg(null);
-    const res = await fetch(`/api/chat/${id}/${msg.id}/reaction`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ emoji })
-    }).then((r) => r.json() as Promise<{ reactions?: MessageReaction[] }>);
-    if (res.reactions) {
-      setMessages((prev) => prev.map((m) => (m.id === msg.id ? { ...m, reactions: res.reactions! } : m)));
+    const reactions = await postChatReaction(id, msg.id, emoji);
+    if (reactions) {
+      setMessages((prev) => prev.map((m) => (m.id === msg.id ? { ...m, reactions } : m)));
     }
   }
 
@@ -247,7 +216,7 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
 
   async function deleteMessage(msg: Message, scope: "me" | "all") {
     setMenuMsg(null);
-    await fetch(`/api/chat/${id}/${msg.id}?scope=${scope}`, { method: "DELETE" });
+    await deleteChatMessage(id, msg.id, scope);
     if (scope === "me") {
       setMessages((prev) => prev.filter((m) => m.id !== msg.id));
     } else {

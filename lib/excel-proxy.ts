@@ -1,5 +1,6 @@
 import * as XLSX from "@/lib/spreadsheet";
 import type { SheetSummary } from "@/lib/data-source";
+import { syncLog } from "@/lib/sync-log";
 
 const MAX_EXCEL_BYTES = 20 * 1024 * 1024;
 const REQUEST_TIMEOUT_MS = 30_000;
@@ -34,8 +35,8 @@ export async function downloadExcelWorkbook(sourceUrl: string | null) {
 
   const workerUrl = buildWorkerDownloadUrl(workerBaseUrl, sourceUrl);
 
-  console.log("[EXCEL-PROXY] Llamando al Worker:", workerUrl);
-  console.log("[EXCEL-PROXY] Timeout configurado:", REQUEST_TIMEOUT_MS, "ms");
+  syncLog("[EXCEL-PROXY] Llamando al Worker:", workerUrl);
+  syncLog("[EXCEL-PROXY] Timeout configurado:", REQUEST_TIMEOUT_MS, "ms");
 
   let response: Response;
   try {
@@ -46,16 +47,16 @@ export async function downloadExcelWorkbook(sourceUrl: string | null) {
     });
   } catch (fetchError) {
     const reason = fetchError instanceof Error ? fetchError.message : String(fetchError);
-    console.log("[EXCEL-PROXY] fetch() lanzó excepción:", reason);
+    syncLog("[EXCEL-PROXY] fetch() lanzó excepción:", reason);
     throw new Error(`No se pudo conectar con el Worker: ${reason}`);
   }
 
-  console.log("[EXCEL-PROXY] Worker response status:", response.status);
-  console.log("[EXCEL-PROXY] Worker response headers:", Object.fromEntries(response.headers.entries()));
+  syncLog("[EXCEL-PROXY] Worker response status:", response.status);
+  syncLog("[EXCEL-PROXY] Worker response headers:", Object.fromEntries(response.headers.entries()));
 
   if (!response.ok) {
     const workerError = await response.text();
-    console.log("[EXCEL-PROXY] Worker response body (error):", workerError);
+    syncLog("[EXCEL-PROXY] Worker response body (error):", workerError);
     throw new Error(workerError || `El Worker respondio con HTTP ${response.status}.`);
   }
 
@@ -66,7 +67,7 @@ export async function downloadExcelWorkbook(sourceUrl: string | null) {
 
   if (!isExcel) {
     const workerText = await response.text();
-    console.log("[EXCEL-PROXY] Worker response body (content-type invalido):", workerText);
+    syncLog("[EXCEL-PROXY] Worker response body (content-type invalido):", workerText);
     throw new Error(workerText || `El Worker no devolvio un archivo Excel valido (content-type: ${contentType || "desconocido"}).`);
   }
 

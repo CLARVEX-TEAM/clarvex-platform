@@ -7,7 +7,7 @@ import { getSession } from "@/lib/auth";
 import { fetchAppData } from "@/lib/app-data";
 import { AppFrame, AppHeader, BottomNav, Button, Card, ProfileAvatar } from "@/components/ui";
 
-type Row = { id: string; name: string; photoUrl?: string | null; birthDate: string; hireDate: string; hoursOwed: string; vacationDays: string; paidDays: string };
+type Row = { id: string; name: string; photoUrl?: string | null; birthDate: string; hireDate: string; hoursOwed: string; vacationDays: string; paidDays: string; active: boolean };
 
 export default function TeamDatesPage() {
   const router = useRouter();
@@ -15,18 +15,21 @@ export default function TeamDatesPage() {
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [savedId, setSavedId] = useState<string | null>(null);
+  const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [error, setError] = useState("");
 
   useEffect(() => {
     getSession().then((current) => {
       if (!current) { router.replace("/login"); return; }
       if (current.role === "ASESOR") { router.replace("/advisor"); return; }
+      setCurrentUserId(current.id);
     });
   }, [router]);
 
   useEffect(() => {
     fetchAppData()
-      .then((data) => setRows(data.users.map((u) => ({ id: u.id, name: u.name, photoUrl: u.photoUrl, birthDate: u.birthDate ?? "", hireDate: u.hireDate ?? "", hoursOwed: String(u.hoursOwed ?? 0), vacationDays: String(u.vacationDays ?? 0), paidDays: String(u.paidDays ?? 0) }))))
+      .then((data) => setRows(data.users.map((u) => ({ id: u.id, name: u.name, photoUrl: u.photoUrl, birthDate: u.birthDate ?? "", hireDate: u.hireDate ?? "", hoursOwed: String(u.hoursOwed ?? 0), vacationDays: String(u.vacationDays ?? 0), paidDays: String(u.paidDays ?? 0), active: u.active ?? true }))))
       .catch(() => setError("No se pudo cargar el equipo."))
       .finally(() => setLoading(false));
   }, []);
@@ -34,6 +37,26 @@ export default function TeamDatesPage() {
   function update(id: string, field: "birthDate" | "hireDate" | "hoursOwed" | "vacationDays" | "paidDays", value: string) {
     setRows((current) => current.map((row) => row.id === id ? { ...row, [field]: value } : row));
     setSavedId(null);
+  }
+
+  async function toggleActive(row: Row) {
+    const next = !row.active;
+    if (!next && !window.confirm(`¿Desactivar la cuenta de ${row.name}? No podrá iniciar sesión y su sesión actual dejará de funcionar.`)) return;
+    setTogglingId(row.id);
+    setError("");
+    try {
+      const response = await fetch("/api/profile", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: row.id, active: next })
+      });
+      if (!response.ok) throw new Error();
+      setRows((current) => current.map((r) => r.id === row.id ? { ...r, active: next } : r));
+    } catch {
+      setError(`No se pudo ${next ? "activar" : "desactivar"} a ${row.name}.`);
+    } finally {
+      setTogglingId(null);
+    }
   }
 
   async function save(row: Row) {
@@ -70,7 +93,18 @@ export default function TeamDatesPage() {
               <Card key={row.id} className="p-3.5">
                 <div className="mb-3 flex items-center gap-3">
                   <ProfileAvatar name={row.name} photoUrl={row.photoUrl} size="sm" />
-                  <p className="font-black text-ink">{row.name}</p>
+                  <p className={`font-black ${row.active ? "text-ink" : "text-muted line-through"}`}>{row.name}</p>
+                  {!row.active ? <span className="rounded-full bg-rose-100 px-2 py-0.5 text-xs font-bold text-rose-700">Desactivado</span> : null}
+                  {row.id !== currentUserId ? (
+                    <button
+                      type="button"
+                      onClick={() => void toggleActive(row)}
+                      disabled={togglingId === row.id}
+                      className={`ml-auto min-h-8 rounded-full px-3 text-xs font-bold transition ${row.active ? "bg-rose-50 text-rose-700 hover:bg-rose-100" : "bg-emerald-50 text-emerald-700 hover:bg-emerald-100"} disabled:opacity-50`}
+                    >
+                      {togglingId === row.id ? "..." : row.active ? "Desactivar" : "Activar"}
+                    </button>
+                  ) : null}
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <label className="grid gap-1">

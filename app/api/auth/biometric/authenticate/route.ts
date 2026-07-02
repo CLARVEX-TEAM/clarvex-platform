@@ -26,7 +26,7 @@ export async function POST(request: Request) {
     where: { employeeNumber: parsed.data.employeeNumber },
     include: { webAuthnCredentials: true }
   });
-  if (!user) return NextResponse.json({ error: "Credenciales invalidas." }, { status: 401 });
+  if (!user || !user.active) return NextResponse.json({ error: "Credenciales invalidas." }, { status: 401 });
 
   const credential = user.webAuthnCredentials.find((c) => c.credentialId === authResponse.id);
   if (!credential) return NextResponse.json({ error: "Credencial no reconocida." }, { status: 401 });

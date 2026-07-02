@@ -6,6 +6,7 @@ import { parseKpiWorkbook } from "@/lib/kpi-parser";
 import { parsePosDiscountWorkbook } from "@/lib/pos-discount-parser";
 import { prisma } from "@/lib/prisma";
 import { parseScheduleWorkbook } from "@/lib/schedule-parser";
+import { syncLog } from "@/lib/sync-log";
 
 const SCHEDULE_BATCH_SIZE = 25;
 const SCHEDULE_IMPORT_TIMEOUT_MS = 4 * 60 * 1000;
@@ -154,7 +155,7 @@ async function importKpis(workbook: Parameters<typeof parseKpiWorkbook>[0], stor
   for (let batchStart = 0; batchStart < matchedRecords.length; batchStart += KPI_BATCH_SIZE) {
     const batch = matchedRecords.slice(batchStart, batchStart + KPI_BATCH_SIZE);
     if (process.env.NODE_ENV !== "production") {
-      console.log("Procesando lote de KPIs", { lote: Math.floor(batchStart / KPI_BATCH_SIZE) + 1, registros: batch.length });
+      syncLog("Procesando lote de KPIs", { lote: Math.floor(batchStart / KPI_BATCH_SIZE) + 1, registros: batch.length });
     }
 
     for (let index = 0; index < batch.length; index += 1) {
@@ -235,7 +236,7 @@ function logParsedKpiWeeks(parsed: ReturnType<typeof parseKpiWorkbook>) {
   for (const week of parsed.weeksDetected) {
     const weekRecords = weeks.get(`${week.weekNumber}:${week.weekStart.toISOString()}`) ?? [];
     if (process.env.NODE_ENV !== "production") {
-      console.log("Semana RDV detectada", {
+      syncLog("Semana RDV detectada", {
         weekNumber: week.weekNumber,
         weekStart: week.weekStart.toISOString().slice(0, 10),
         weekEnd: week.weekEnd.toISOString().slice(0, 10),
@@ -325,7 +326,7 @@ function buildKpiMetrics(
 }
 
 async function importSchedules(workbook: Parameters<typeof parseScheduleWorkbook>[0], storeId: string): Promise<ScheduleSyncMetrics> {
-  console.log("[SCHEDULE-SYNC] Hojas disponibles en el workbook:", workbook.SheetNames);
+  syncLog("[SCHEDULE-SYNC] Hojas disponibles en el workbook:", workbook.SheetNames);
   let parsed: ReturnType<typeof parseScheduleWorkbook>;
   try {
     parsed = parseScheduleWorkbook(workbook);
@@ -337,7 +338,7 @@ async function importSchedules(workbook: Parameters<typeof parseScheduleWorkbook
     }
     throw parseError;
   }
-  console.log("[SCHEDULE-SYNC] Semanas detectadas:", parsed.weeks.length, "| Empleados:", parsed.employeeNumbers.length, "| Registros:", parsed.records.length);
+  syncLog("[SCHEDULE-SYNC] Semanas detectadas:", parsed.weeks.length, "| Empleados:", parsed.employeeNumbers.length, "| Registros:", parsed.records.length);
   if (parsed.weeks.length === 0) {
     throw new Error("No se detectaron bloques semanales validos en el archivo de horarios.");
   }
@@ -372,7 +373,7 @@ async function importSchedules(workbook: Parameters<typeof parseScheduleWorkbook
   for (let batchStart = 0; batchStart < matchedRecords.length; batchStart += SCHEDULE_BATCH_SIZE) {
     const batch = matchedRecords.slice(batchStart, batchStart + SCHEDULE_BATCH_SIZE);
     if (process.env.NODE_ENV !== "production") {
-      console.log("Procesando lote de horarios", { lote: Math.floor(batchStart / SCHEDULE_BATCH_SIZE) + 1, registros: batch.length });
+      syncLog("Procesando lote de horarios", { lote: Math.floor(batchStart / SCHEDULE_BATCH_SIZE) + 1, registros: batch.length });
     }
 
     for (const record of batch) {

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireCron } from "@/lib/cron-auth";
 import { NotificationType } from "@prisma/client";
 import { resolveMonterreyDate, retailWeekRange } from "@/lib/cron-time";
 import { buildWeeklyAdvisorMessage, buildWeeklyManagerSummary } from "@/lib/daily-summary";
@@ -17,11 +18,8 @@ function formatDay(date: Date): string {
 }
 
 export async function POST(request: Request) {
-  const secret = process.env.CRON_SECRET;
-  const header = request.headers.get("authorization") ?? "";
-  if (!secret || header !== `Bearer ${secret}`) {
-    return NextResponse.json({ error: "No autorizado." }, { status: 401 });
-  }
+  const unauthorized = requireCron(request);
+  if (unauthorized) return unauthorized;
 
   const { dateKey, utcDate } = resolveMonterreyDate();
   const { weekStart, weekEnd } = retailWeekRange(utcDate);

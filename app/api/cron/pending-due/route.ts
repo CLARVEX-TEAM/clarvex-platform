@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireCron } from "@/lib/cron-auth";
 import { NotificationType } from "@prisma/client";
 import { resolveMonterreyDate } from "@/lib/cron-time";
 import { buildPendingDueReminder } from "@/lib/daily-summary";
@@ -14,11 +15,8 @@ const LOG_TYPE = "PENDING_DUE";
 const DAY_MS = 86_400_000;
 
 export async function POST(request: Request) {
-  const secret = process.env.CRON_SECRET;
-  const header = request.headers.get("authorization") ?? "";
-  if (!secret || header !== `Bearer ${secret}`) {
-    return NextResponse.json({ error: "No autorizado." }, { status: 401 });
-  }
+  const unauthorized = requireCron(request);
+  if (unauthorized) return unauthorized;
 
   const { dateKey, utcDate } = resolveMonterreyDate();
   const todayStart = utcDate.getTime();

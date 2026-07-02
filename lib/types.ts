@@ -17,6 +17,7 @@ export type User = {
   hoursOwed?: number;
   vacationDays?: number;
   paidDays?: number;
+  active?: boolean;
 };
 
 export type Kpi = {

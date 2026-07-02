@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireCron } from "@/lib/cron-auth";
 import { prisma } from "@/lib/prisma";
 import { dispatchPushToUsers } from "@/lib/push";
 import { getEspnFixture } from "@/lib/football-api";
@@ -9,11 +10,8 @@ export const runtime = "nodejs";
 
 // POST /api/cron/match-sync — llamar cada minuto durante el partido.
 export async function POST(request: Request) {
-  const secret = process.env.CRON_SECRET;
-  const header = request.headers.get("authorization") ?? "";
-  if (!secret || header !== `Bearer ${secret}`) {
-    return NextResponse.json({ error: "No autorizado." }, { status: 401 });
-  }
+  const unauthorized = requireCron(request);
+  if (unauthorized) return unauthorized;
 
   const match = await prisma.matchEvent.findFirst({
     where: { status: { not: "FINISHED" }, externalId: { not: null } }

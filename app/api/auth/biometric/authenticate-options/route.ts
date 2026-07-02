@@ -19,7 +19,7 @@ export async function POST(request: Request) {
     where: { employeeNumber: parsed.data.employeeNumber },
     include: { webAuthnCredentials: { select: { credentialId: true, transports: true } } }
   });
-  if (!user || !user.biometricEnabled || user.webAuthnCredentials.length === 0) {
+  if (!user || !user.active || !user.biometricEnabled || user.webAuthnCredentials.length === 0) {
     return NextResponse.json({ error: "Biometria no disponible para este usuario." }, { status: 404 });
   }
 

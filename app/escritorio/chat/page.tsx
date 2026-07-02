@@ -13,8 +13,6 @@ import {
   ReplyQuote,
   ReactionBar,
   ReactionChips,
-  type ReplyInfo,
-  type MessageReaction,
   computeMessageStatus,
   formatLastSeen,
   chatPreview,
@@ -25,38 +23,18 @@ import {
   encodeStickerMsg,
   encodeGifMsg
 } from "@/components/ChatPicker";
-
-type RoomSummary = {
-  id: string;
-  type: "DIRECT" | "GROUP";
-  name: string | null;
-  other: { id: string; name: string; photoUrl: string | null; role: string; online: boolean; lastSeenAt: string | null } | null;
-  lastMessage: { body: string; deleted: boolean; senderName: string; createdAt: string } | null;
-  unreadCount: number;
-};
-
-type Message = {
-  id: string;
-  body: string;
-  deleted: boolean;
-  senderId: string;
-  senderName: string;
-  senderPhoto: string | null;
-  createdAt: string;
-  readBy: string[];
-  deliveredTo: string[];
-  reactions: MessageReaction[];
-  replyTo: ReplyInfo | null;
-};
-
-type Member = { id: string; name: string; photoUrl: string | null; role: string; online: boolean; lastSeenAt: string | null };
-
-type RoomInfo = {
-  id: string;
-  type: "DIRECT" | "GROUP";
-  name: string | null;
-  members: Member[];
-};
+import {
+  deleteChatMessage,
+  fetchChatRoom,
+  fetchChatRooms,
+  openDirectChat,
+  postChatImage,
+  postChatMessage,
+  postChatReaction,
+  type ChatMessageView as Message,
+  type ChatRoomInfoView as RoomInfo,
+  type ChatRoomSummary as RoomSummary
+} from "@/lib/chat-client";
 
 type Teammate = { id: string; name: string; photoUrl: string | null };
 
@@ -130,10 +108,7 @@ export default function EscritorioChat() {
   const fileRef = useRef<HTMLInputElement>(null);
 
   const loadRooms = useCallback(async () => {
-    const res = await fetch("/api/chat", { cache: "no-store" }).then(
-      (r) => r.json() as Promise<{ rooms: RoomSummary[] }>
-    );
-    setRooms(res.rooms ?? []);
+    setRooms(await fetchChatRooms());
   }, []);
 
   useEffect(() => {
@@ -149,9 +124,7 @@ export default function EscritorioChat() {
   }, [loadRooms]);
 
   const fetchMessages = useCallback(async (roomId: string) => {
-    const res = await fetch(`/api/chat/${roomId}`, { cache: "no-store" }).then(
-      (r) => r.json() as Promise<{ messages: Message[]; room: RoomInfo | null }>
-    );
+    const res = await fetchChatRoom(roomId);
     setMessages(res.messages);
     if (res.room) setRoomInfo(res.room);
     setRooms((prev) => prev.map((r) => r.id === roomId ? { ...r, unreadCount: 0 } : r));
@@ -181,13 +154,9 @@ export default function EscritorioChat() {
   }
 
   async function openDirect(targetId: string) {
-    const res = await fetch("/api/chat", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ targetUserId: targetId })
-    }).then((r) => r.json() as Promise<{ room: { id: string } }>);
+    const room = await openDirectChat(targetId);
     await loadRooms();
-    await openRoom(res.room.id);
+    await openRoom(room.id);
   }
 
   async function doSend(body: string) {
@@ -196,12 +165,8 @@ export default function EscritorioChat() {
     const replyToId = replyTo?.id;
     setReplyTo(null);
     try {
-      const res = await fetch(`/api/chat/${activeRoomId}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ body, replyToId })
-      }).then((r) => r.json() as Promise<{ message: Message }>);
-      setMessages((prev) => [...prev, res.message]);
+      const message = await postChatMessage(activeRoomId, body, replyToId);
+      setMessages((prev) => [...prev, message]);
       await loadRooms();
     } finally {
       setSending(false);
@@ -216,12 +181,7 @@ export default function EscritorioChat() {
     const replyToId = replyTo?.id;
     setReplyTo(null);
     try {
-      const fd = new FormData();
-      fd.append("file", file);
-      if (replyToId) fd.append("replyToId", replyToId);
-      const res = await fetch(`/api/chat/${activeRoomId}/image`, { method: "POST", body: fd }).then(
-        (r) => r.json() as Promise<{ message?: Message; error?: string }>
-      );
+      const res = await postChatImage(activeRoomId, file, replyToId);
       if (res.message) { setMessages((prev) => [...prev, res.message!]); await loadRooms(); }
       else if (res.error) alert(res.error);
     } finally {
@@ -232,13 +192,9 @@ export default function EscritorioChat() {
   async function reactToMessage(msg: Message, emoji: string) {
     setMenuMsg(null);
     if (!activeRoomId) return;
-    const res = await fetch(`/api/chat/${activeRoomId}/${msg.id}/reaction`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ emoji })
-    }).then((r) => r.json() as Promise<{ reactions?: MessageReaction[] }>);
-    if (res.reactions) {
-      setMessages((prev) => prev.map((m) => (m.id === msg.id ? { ...m, reactions: res.reactions! } : m)));
+    const reactions = await postChatReaction(activeRoomId, msg.id, emoji);
+    if (reactions) {
+      setMessages((prev) => prev.map((m) => (m.id === msg.id ? { ...m, reactions } : m)));
     }
   }
 
@@ -254,7 +210,7 @@ export default function EscritorioChat() {
   async function deleteMessage(msg: Message, scope: "me" | "all") {
     setMenuMsg(null);
     if (!activeRoomId) return;
-    await fetch(`/api/chat/${activeRoomId}/${msg.id}?scope=${scope}`, { method: "DELETE" });
+    await deleteChatMessage(activeRoomId, msg.id, scope);
     if (scope === "me") setMessages((prev) => prev.filter((m) => m.id !== msg.id));
     else setMessages((prev) => prev.map((m) => (m.id === msg.id ? { ...m, deleted: true, body: "" } : m)));
     await loadRooms();
