@@ -62,13 +62,13 @@ export function GlassCard({ children, className = "", ...props }: Omit<HTMLMotio
   return (
     <motion.section
       {...props}
-      initial={{ opacity: 0, y: 14, scale: 0.985, filter: "blur(4px)" }}
-      whileInView={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
+      initial={{ opacity: 0, y: 14, scale: 0.985 }}
+      whileInView={{ opacity: 1, y: 0, scale: 1 }}
       viewport={{ once: true, margin: "0px 0px -12% 0px" }}
       whileTap={{ scale: 0.99, y: 1 }}
       whileHover={{ y: -2, boxShadow: "0 8px 30px rgba(37,99,235,0.15)" }}
       transition={{ duration: 0.34, ease: [0.22, 1, 0.36, 1] }}
-      className={cn("liquid-glass rounded-[28px] p-3.5 shadow-glass", className)}
+      className={cn("solid-card rounded-[28px] p-3.5 shadow-glass", className)}
     >
       {children}
     </motion.section>
@@ -105,12 +105,12 @@ export function PremiumButton({
       whileHover={{ scale: 1.02, y: -1 }}
       transition={tactileSpring}
       className={cn(
-        "tappable relative inline-flex min-h-12 items-center justify-center gap-2 overflow-hidden rounded-full px-4 text-sm font-black tracking-[-0.01em] focus:outline-none focus:ring-4 focus:ring-volt/20 disabled:cursor-not-allowed disabled:opacity-55",
+        "tappable relative inline-flex min-h-12 items-center justify-center gap-2 overflow-hidden rounded-full px-4 text-sm font-black tracking-[-0.01em] focus:outline-none focus-visible:ring-4 focus-visible:ring-volt/40 disabled:cursor-not-allowed disabled:opacity-55",
         solid && "btn-sheen",
         variant === "primary" && "bg-volt text-white shadow-[0_8px_20px_rgb(37_99_235_/_0.22)] hover:bg-[#1D4ED8]",
         variant === "success" && "bg-success text-white shadow-[0_8px_20px_rgb(34_197_94_/_0.24)]",
         variant === "danger" && "bg-orchid text-white shadow-[0_8px_20px_rgb(239_68_68_/_0.22)] hover:bg-[#DC2626]",
-        variant === "glass" && "liquid-glass text-ink hover:text-volt",
+        variant === "glass" && "solid-card text-ink hover:text-volt",
         variant === "ghost" && "bg-slate-100 dark:bg-slate-800 text-ink hover:bg-blue-50 dark:hover:bg-slate-700",
         className
       )}
@@ -493,7 +493,7 @@ export function AppHeader({
       <div className="mx-auto flex max-w-md items-center justify-between gap-3">
         <div className="flex min-w-0 items-start gap-3">
           {backHref ? (
-            <Link href={backHref} className="tappable liquid-glass mt-0.5 grid size-9 shrink-0 place-items-center rounded-[18px] text-ink/70" aria-label="Regresar al inicio">
+            <Link href={backHref} className="tappable solid-card mt-0.5 grid size-9 shrink-0 place-items-center rounded-[18px] text-ink/70" aria-label="Regresar al inicio">
               <ArrowLeft size={18} />
             </Link>
           ) : avatar || photoUrl ? (
@@ -532,7 +532,7 @@ function NotificationBell() {
 
   return (
     <div className="relative shrink-0">
-      <Link href="/notificaciones" aria-label={unreadCount ? `${unreadCount} notificaciones no leidas` : "Abrir notificaciones"} className="tappable liquid-glass grid size-11 place-items-center rounded-[22px] text-ink/62">
+      <Link href="/notificaciones" aria-label={unreadCount ? `${unreadCount} notificaciones no leidas` : "Abrir notificaciones"} className="tappable solid-card grid size-11 place-items-center rounded-[22px] text-ink/62">
         <Bell size={18} />
       </Link>
       {unreadCount > 0 ? (
@@ -619,7 +619,7 @@ export function AppFrame({ children }: { children: React.ReactNode }) {
 
 export function QuickLink({ href, icon: Icon, label, className = "" }: { href: string; icon: LucideIcon; label: string; className?: string }) {
   return (
-    <Link href={href} className={cn("tappable liquid-glass group flex min-h-12 items-center gap-2.5 rounded-[22px] px-3 text-[13px] font-black tracking-[-0.01em] text-ink/90", className)}>
+    <Link href={href} className={cn("tappable solid-card group flex min-h-12 items-center gap-2.5 rounded-[22px] px-3 text-[13px] font-black tracking-[-0.01em] text-ink/90", className)}>
       <span className="grid size-8 place-items-center rounded-[16px] border border-volt/20 bg-volt/12 text-volt shadow-[inset_0_1px_0_rgb(255_255_255_/_0.12)] transition-transform duration-200 group-hover:scale-105 group-active:scale-95">
         <Icon size={17} />
       </span>

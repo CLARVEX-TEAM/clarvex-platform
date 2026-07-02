@@ -65,7 +65,7 @@ export function QuickActions({ variant = "manager", delay = 0.30 }: QuickActions
         <motion.div key={action.href} whileTap={{ scale: 0.97 }}>
           <Link
             href={action.href}
-            className="flex min-h-[52px] items-center gap-2.5 rounded-[22px] border border-white/50 bg-white/75 px-3.5 py-3 backdrop-blur-2xl transition dark:border-slate-700/50 dark:bg-slate-800/60"
+            className="flex min-h-[52px] items-center gap-2.5 rounded-[22px] border border-white/50 bg-white/95 px-3.5 py-3 transition dark:border-slate-700/50 dark:bg-slate-800/90"
             style={{ boxShadow: "0 4px 16px rgba(15,23,42,0.05)" }}
           >
             <span className={cn("grid size-8 shrink-0 place-items-center rounded-[14px]", colorMap[action.color])}>
