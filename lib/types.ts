@@ -18,6 +18,7 @@ export type User = {
   vacationDays?: number;
   paidDays?: number;
   active?: boolean;
+  platformAdmin?: boolean;
 };
 
 export type Kpi = {
