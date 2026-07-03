@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCircle2 } from "lucide-react";
+import { CheckCircle2, UserPlus } from "lucide-react";
 import { getSession } from "@/lib/auth";
 import { fetchAppData } from "@/lib/app-data";
 import { AppFrame, AppHeader, BottomNav, Button, Card, ProfileAvatar } from "@/components/ui";
@@ -18,6 +18,11 @@ export default function TeamDatesPage() {
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [error, setError] = useState("");
+  const [newName, setNewName] = useState("");
+  const [newNumber, setNewNumber] = useState("");
+  const [newRole, setNewRole] = useState<"ASESOR" | "SUBGERENTE" | "GERENTE">("ASESOR");
+  const [adding, setAdding] = useState(false);
+  const [addedMessage, setAddedMessage] = useState("");
 
   useEffect(() => {
     getSession().then((current) => {
@@ -78,6 +83,31 @@ export default function TeamDatesPage() {
     }
   }
 
+  async function addMember(event: React.FormEvent) {
+    event.preventDefault();
+    setAdding(true);
+    setError("");
+    setAddedMessage("");
+    try {
+      const response = await fetch("/api/team", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: newName, employeeNumber: newNumber, role: newRole })
+      });
+      const payload = await response.json() as { user?: { id: string; name: string }; error?: string };
+      if (!response.ok || !payload.user) throw new Error(payload.error ?? "No se pudo agregar al integrante.");
+      setRows((current) => [...current, { id: payload.user!.id, name: payload.user!.name, photoUrl: null, birthDate: "", hireDate: "", hoursOwed: "0", vacationDays: "0", paidDays: "0", active: true }]);
+      setAddedMessage(`${payload.user.name} ya puede iniciar sesión con el número ${newNumber} y crear su PIN.`);
+      setNewName("");
+      setNewNumber("");
+      setNewRole("ASESOR");
+    } catch (addError) {
+      setError(addError instanceof Error ? addError.message : "No se pudo agregar al integrante.");
+    } finally {
+      setAdding(false);
+    }
+  }
+
   const inputClass = "min-h-11 rounded-2xl border border-line bg-panel px-3 text-sm font-bold text-ink outline-none focus:border-volt";
 
   return (
@@ -85,6 +115,37 @@ export default function TeamDatesPage() {
       <AppHeader title="Fechas del equipo" subtitle="Cumpleaños y aniversarios" backHref="/manager" />
       <AppFrame>
         {error ? <Card className="mb-3 text-sm font-semibold text-rose-700">{error}</Card> : null}
+        {addedMessage ? (
+          <Card className="mb-3 flex items-center gap-2 text-sm font-semibold text-emerald-700">
+            <CheckCircle2 size={16} className="shrink-0" />{addedMessage}
+          </Card>
+        ) : null}
+
+        <Card className="mb-4 p-3.5">
+          <p className="mb-3 flex items-center gap-2 font-black text-ink"><UserPlus size={16} />Agregar integrante</p>
+          <form onSubmit={(event) => void addMember(event)} className="grid grid-cols-2 gap-2">
+            <label className="col-span-2 grid gap-1">
+              <span className="text-xs font-bold text-muted">Nombre completo</span>
+              <input value={newName} onChange={(event) => setNewName(event.target.value)} required minLength={2} maxLength={120} placeholder="NOMBRE COMPLETO" className={inputClass} />
+            </label>
+            <label className="grid gap-1">
+              <span className="text-xs font-bold text-muted">Número de empleado</span>
+              <input value={newNumber} onChange={(event) => setNewNumber(event.target.value.replace(/\D/g, ""))} required inputMode="numeric" pattern="\d{1,30}" placeholder="95739" className={inputClass} />
+            </label>
+            <label className="grid gap-1">
+              <span className="text-xs font-bold text-muted">Puesto</span>
+              <select value={newRole} onChange={(event) => setNewRole(event.target.value as typeof newRole)} className={inputClass}>
+                <option value="ASESOR">Asesor</option>
+                <option value="SUBGERENTE">Subgerente</option>
+                <option value="GERENTE">Gerente</option>
+              </select>
+            </label>
+            <Button type="submit" variant="primary" disabled={adding} className="col-span-2 mt-1 min-h-10">
+              {adding ? "Agregando..." : "Agregar al equipo"}
+            </Button>
+          </form>
+        </Card>
+
         {loading ? (
           <Card className="text-sm font-semibold text-muted">Cargando equipo...</Card>
         ) : (

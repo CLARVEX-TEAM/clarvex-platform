@@ -7,6 +7,7 @@ import { motion } from "framer-motion";
 import {
   AlertTriangle,
   ArrowRight,
+  Building2,
   Cake,
   CheckCircle2,
   ClipboardCheck,
@@ -443,6 +444,28 @@ export default function ManagerDashboard() {
             </div>
           </Card>
         </motion.div>
+
+        {manager?.platformAdmin ? (
+          <motion.div {...cardAnim(0.88)} className="mt-3">
+            <Card className="p-3.5">
+              <div className="flex items-center gap-3">
+                <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-violet-50 dark:bg-[#2a1f40] text-violet-600">
+                  <Building2 size={20} />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <h2 className="font-black tracking-[-0.02em] text-ink">Administración</h2>
+                  <p className="mt-0.5 text-xs text-muted">Tiendas de la plataforma</p>
+                </div>
+                <Link
+                  href="/admin"
+                  className="inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-full bg-violet-600 px-3.5 text-xs font-black text-white transition active:scale-95"
+                >
+                  Abrir <ArrowRight size={14} />
+                </Link>
+              </div>
+            </Card>
+          </motion.div>
+        ) : null}
       </AppFrame>
       </PullToRefresh>
       <BottomNav />

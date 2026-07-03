@@ -12,6 +12,15 @@ export async function requireSession(roles?: Role[]): Promise<Session | NextResp
   return session;
 }
 
+export async function requirePlatformAdmin(): Promise<Session | NextResponse> {
+  const session = await getServerSession();
+  if (!session) return NextResponse.json({ error: "Sesion requerida." }, { status: 401 });
+  if (!session.platformAdmin) {
+    return NextResponse.json({ error: "No tienes permiso para esta accion." }, { status: 403 });
+  }
+  return session;
+}
+
 export async function parseJson<T>(request: Request, schema: ZodType<T>) {
   try {
     return { data: schema.parse(await request.json()) } as const;

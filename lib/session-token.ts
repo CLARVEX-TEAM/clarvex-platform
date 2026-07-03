@@ -12,6 +12,7 @@ export type Session = JWTPayload & {
   role: Role;
   name: string;
   employeeNumber: string;
+  platformAdmin: boolean;
 };
 
 function secret() {
@@ -26,8 +27,9 @@ export async function createSessionToken(user: {
   role: Role;
   name: string;
   employeeNumber: string;
+  platformAdmin?: boolean;
 }) {
-  return new SignJWT({ userId: user.id, storeId: user.storeId, role: user.role, name: user.name, employeeNumber: user.employeeNumber })
+  return new SignJWT({ userId: user.id, storeId: user.storeId, role: user.role, name: user.name, employeeNumber: user.employeeNumber, platformAdmin: user.platformAdmin === true })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime(`${SESSION_TTL_SECONDS}s`)
@@ -42,6 +44,8 @@ export async function verifySessionToken(token: string): Promise<Session | null>
       typeof payload.role !== "string" || typeof payload.name !== "string" ||
       typeof payload.employeeNumber !== "string"
     ) return null;
+    // Tokens emitidos antes de este campo no lo traen: tratarlos como no-admin.
+    if (typeof payload.platformAdmin !== "boolean") payload.platformAdmin = false;
     return payload as Session;
   } catch {
     return null;

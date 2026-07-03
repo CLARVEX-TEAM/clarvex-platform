@@ -22,6 +22,10 @@ export async function middleware(request: NextRequest) {
 
   if (!session) return NextResponse.redirect(new URL("/login", request.url));
   const isManager = session.role === "GERENTE" || session.role === "SUBGERENTE";
+  if (startsWithRoute(pathname, ["/admin"])) {
+    if (session.platformAdmin) return NextResponse.next();
+    return NextResponse.redirect(new URL(isManager ? "/manager" : "/advisor", request.url));
+  }
   if (startsWithRoute(pathname, ["/datos"]) && !canManageDataSources(session.role)) {
     return NextResponse.redirect(new URL("/advisor", request.url));
   }
@@ -36,5 +40,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/login", "/manager/:path*", "/advisor/:path*", "/pendientes/:path*", "/bitacora/:path*", "/comunicados/:path*", "/datos/:path*", "/escritorio/:path*", "/plan/:path*", "/kpis/:path*", "/horarios/:path*", "/perfil/:path*", "/notificaciones/:path*", "/actividad/:path*"]
+  matcher: ["/login", "/admin/:path*", "/manager/:path*", "/advisor/:path*", "/pendientes/:path*", "/bitacora/:path*", "/comunicados/:path*", "/datos/:path*", "/escritorio/:path*", "/plan/:path*", "/kpis/:path*", "/horarios/:path*", "/perfil/:path*", "/notificaciones/:path*", "/actividad/:path*"]
 };
