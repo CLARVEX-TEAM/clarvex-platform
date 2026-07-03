@@ -39,7 +39,12 @@ export async function GET() {
       name: true,
       createdAt: true,
       _count: { select: { users: true, dataSources: true } },
-      users: { where: { active: true }, select: { id: true } }
+      users: { where: { active: true }, select: { id: true } },
+      commissionRules: {
+        where: { active: true },
+        select: { id: true, role: true, minAchievement: true, maxAchievement: true, commissionPercent: true },
+        orderBy: [{ role: "asc" }, { minAchievement: "asc" }]
+      }
     }
   });
 
@@ -50,7 +55,14 @@ export async function GET() {
       createdAt: store.createdAt,
       totalUsers: store._count.users,
       activeUsers: store.users.length,
-      dataSources: store._count.dataSources
+      dataSources: store._count.dataSources,
+      commissionRules: store.commissionRules.map((rule) => ({
+        id: rule.id,
+        role: rule.role,
+        minAchievement: Number(rule.minAchievement),
+        maxAchievement: rule.maxAchievement === null ? null : Number(rule.maxAchievement),
+        commissionPercent: Number(rule.commissionPercent)
+      }))
     }))
   }, { headers: { "Cache-Control": "private, no-store" } });
 }
