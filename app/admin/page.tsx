@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Building2, CheckCircle2, ChevronDown, Percent, Plus } from "lucide-react";
 import { getSession } from "@/lib/auth";
@@ -26,7 +26,7 @@ type StoreRow = {
 
 const BRACKET_ROLES = ["GERENTE", "SUBGERENTE", "ASESOR"] as const;
 const BRACKET_MINS = [0, 100, 115] as const;
-const BRACKET_LABELS: Record<number, string> = { 0: "≤ 99.99%", 100: "100 – 114.99%", 115: "≥ 115%" };
+const BRACKET_LABELS: Record<number, string> = { 0: "≤ 99.99%", 100: "100–114.99%", 115: "≥ 115%" };
 const ROLE_LABELS: Record<(typeof BRACKET_ROLES)[number], string> = { GERENTE: "Gerente", SUBGERENTE: "Subgerente", ASESOR: "Asesor" };
 
 export default function AdminPage() {
@@ -198,24 +198,24 @@ export default function AdminPage() {
                 {expandedStoreId === store.id ? (
                   <div className="mt-3 border-t border-line pt-3">
                     <p className="mb-2 text-xs font-bold text-muted">% de comisión por alcance (zonificación de esta tienda)</p>
-                    <div className="grid grid-cols-[auto_1fr_1fr_1fr] items-center gap-1.5">
-                      <span />
-                      {BRACKET_MINS.map((min) => (
-                        <span key={min} className="text-center text-[11px] font-bold text-muted">{BRACKET_LABELS[min]}</span>
-                      ))}
+                    <div className="space-y-2.5">
                       {BRACKET_ROLES.map((role) => (
-                        <Fragment key={role}>
-                          <span className="pr-1 text-xs font-bold text-ink">{ROLE_LABELS[role]}</span>
-                          {BRACKET_MINS.map((min) => (
-                            <input
-                              key={`${role}:${min}`}
-                              value={draft[`${role}:${min}`] ?? ""}
-                              onChange={(event) => setDraft((current) => ({ ...current, [`${role}:${min}`]: event.target.value.replace(/[^\d.]/g, "") }))}
-                              inputMode="decimal"
-                              className="min-h-10 rounded-xl border border-line bg-panel px-2 text-center text-sm font-bold text-ink outline-none focus:border-volt"
-                            />
-                          ))}
-                        </Fragment>
+                        <div key={role}>
+                          <p className="mb-1 text-xs font-bold text-ink">{ROLE_LABELS[role]}</p>
+                          <div className="grid grid-cols-3 gap-1.5">
+                            {BRACKET_MINS.map((min) => (
+                              <label key={`${role}:${min}`} className="grid min-w-0 gap-1">
+                                <span className="truncate text-center text-[10px] font-bold text-muted">{BRACKET_LABELS[min]}</span>
+                                <input
+                                  value={draft[`${role}:${min}`] ?? ""}
+                                  onChange={(event) => setDraft((current) => ({ ...current, [`${role}:${min}`]: event.target.value.replace(/[^\d.]/g, "") }))}
+                                  inputMode="decimal"
+                                  className="min-h-10 w-full min-w-0 rounded-xl border border-line bg-panel px-1 text-center text-sm font-bold text-ink outline-none focus:border-volt"
+                                />
+                              </label>
+                            ))}
+                          </div>
+                        </div>
                       ))}
                     </div>
                     <div className="mt-3 flex items-center gap-3">
