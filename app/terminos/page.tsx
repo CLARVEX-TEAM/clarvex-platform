@@ -24,9 +24,9 @@ export default function TerminosPage() {
         <section className="space-y-2">
           <h2 className="text-lg font-black">1. Naturaleza de la herramienta</h2>
           <p>
-            CLARVEX Team es una aplicación de uso interno provista por [RAZÓN SOCIAL] para la gestión operativa
-            de sus tiendas. El acceso se otorga exclusivamente a personal autorizado y está ligado a la relación
-            laboral vigente.
+            CLARVEX Team es una aplicación de uso interno provista por CLARVEX, representada por su representante
+            legal Jesús Adrián Hernández Luna, para la gestión operativa de sus tiendas. El acceso se otorga
+            exclusivamente a personal autorizado y está ligado a la relación laboral vigente.
           </p>
         </section>
 
@@ -65,7 +65,7 @@ export default function TerminosPage() {
           </p>
         </section>
 
-        <p className="pt-2 text-sm font-semibold text-muted">Última actualización: [FECHA].</p>
+        <p className="pt-2 text-sm font-semibold text-muted">Última actualización: 4 de julio de 2026.</p>
       </article>
     </main>
   );

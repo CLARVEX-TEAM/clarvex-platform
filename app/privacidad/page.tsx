@@ -26,10 +26,11 @@ export default function PrivacidadPage() {
         <section className="space-y-2">
           <h2 className="text-lg font-black">1. Responsable de sus datos personales</h2>
           <p>
-            [RAZÓN SOCIAL DEL RESPONSABLE] (en adelante, “el Responsable”), con domicilio en
-            [DOMICILIO FISCAL / DE CONTACTO], es responsable del tratamiento de los datos personales que se
-            recaban a través de la aplicación CLARVEX Team, conforme a la Ley Federal de Protección de Datos
-            Personales en Posesión de los Particulares (LFPDPPP), su Reglamento y demás normativa aplicable.
+            CLARVEX, representada por su representante legal Jesús Adrián Hernández Luna (en adelante, “el
+            Responsable”), con domicilio en Loma Alta 164, Las Lomas Residencial, Nuevo León, es responsable del
+            tratamiento de los datos personales que se recaban a través de la aplicación CLARVEX Team, conforme a
+            la Ley Federal de Protección de Datos Personales en Posesión de los Particulares (LFPDPPP), su
+            Reglamento y demás normativa aplicable.
           </p>
         </section>
 
@@ -73,7 +74,7 @@ export default function PrivacidadPage() {
           <h2 className="text-lg font-black">5. Derechos ARCO y revocación</h2>
           <p>
             Usted puede ejercer sus derechos de Acceso, Rectificación, Cancelación y Oposición (ARCO), así como
-            revocar su consentimiento, enviando una solicitud a [CORREO DE CONTACTO DEL RESPONSABLE]. La solicitud
+            revocar su consentimiento, enviando una solicitud a contacto@clarvex.adrianluna.mx. La solicitud
             deberá indicar su nombre, número de empleado y una descripción clara de los datos o el derecho que
             desea ejercer. El Responsable dará respuesta en los plazos que marca la LFPDPPP.
           </p>
@@ -96,7 +97,7 @@ export default function PrivacidadPage() {
           </p>
         </section>
 
-        <p className="pt-2 text-sm font-semibold text-muted">Última actualización: [FECHA].</p>
+        <p className="pt-2 text-sm font-semibold text-muted">Última actualización: 4 de julio de 2026.</p>
       </article>
     </main>
   );

@@ -601,6 +601,15 @@ export function LiquidBottomNav() {
 
 export const BottomNav = LiquidBottomNav;
 
+// Pie de derechos de autor, visible al final de cada pantalla al hacer scroll.
+export function AppCopyright({ className = "" }: { className?: string }) {
+  return (
+    <p className={cn("px-4 pt-6 text-center text-[11px] font-semibold leading-4 text-muted/70", className)}>
+      © {new Date().getFullYear()} CLARVEX · Jesús Adrián Hernández Luna.<br className="sm:hidden" /> Todos los derechos reservados.
+    </p>
+  );
+}
+
 export function AppFrame({ children }: { children: React.ReactNode }) {
   return (
     <motion.main
@@ -610,6 +619,7 @@ export function AppFrame({ children }: { children: React.ReactNode }) {
       className="mx-auto min-h-screen max-w-md px-4 pb-24 pt-3"
     >
       {children}
+      <AppCopyright />
     </motion.main>
   );
 }
