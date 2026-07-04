@@ -97,16 +97,19 @@ export function formatPeriodLabel(period: KpiPeriod, startValue: string, endValu
   return `Semana ${weekNumber ?? "RDV"} · ${startLabel} - ${endLabel}`;
 }
 
-// Semanas con datos del mes retail en curso (base de todas las proyecciones).
-// Metas/mínimo/horarios se cargan semana por semana → se proyecta por semanas.
+// Semanas transcurridas del mes retail en curso (base de todas las proyecciones).
+// Se cuenta por DÍAS y la semana en curso aporta su fracción: si solo se contaran
+// semanas completas, en la última semana del mes la proyección sería igual a la
+// venta actual (X/X) y dejaría de extrapolar.
 export function computeMonthWeeks(report: KpiResponse | null, now = new Date()): { weeksElapsed: number; totalWeeks: number } | null {
   if (!report || report.period !== "month") return null;
   const start = new Date(`${report.startDate}T00:00:00Z`);
-  const end = new Date(`${report.endDate}T00:00:00Z`);
+  let end = new Date(`${report.endDate}T00:00:00Z`);
   const todayUtc = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
   if (todayUtc < start) return null; // solo el mes en curso
   const dayMs = 86_400_000;
   const detectedWeeks = Math.max(1, Math.ceil(((end.getTime() - start.getTime()) / dayMs + 1) / 7));
+  let totalWeeks = detectedWeeks;
 
   if (todayUtc > end) {
     // Mes retail de 5 semanas cuya quinta semana aún no aparece: el RDV solo
@@ -114,19 +117,23 @@ export function computeMonthWeeks(report: KpiResponse | null, now = new Date()):
     // para el sistema hasta que arranca. Si hoy cae en la semana inmediata
     // posterior al fin detectado, van 4 semanas detectadas y ningún otro mes
     // retail contiene la fecha de hoy, seguimos dentro de este mes: se
-    // proyecta con 4 de 5 semanas en lugar de apagar la proyección.
+    // extiende el rango una semana en lugar de apagar la proyección.
     const todayKey = todayUtc.toISOString().slice(0, 10);
     const anotherMonthHasToday = report.availableRetailMonths.some((month) => month.start !== report.startDate && todayKey >= month.start && todayKey <= month.end);
     const withinFollowingWeek = todayUtc.getTime() - end.getTime() <= 6 * dayMs;
     if (detectedWeeks !== 4 || !withinFollowingWeek || anotherMonthHasToday) return null;
-    return { weeksElapsed: 4, totalWeeks: 5 };
+    totalWeeks = 5;
+    end = new Date(end.getTime() + 7 * dayMs);
   }
 
-  const weeksWithData = report.availableWeeks.filter((week) => {
-    const ws = new Date(`${week.weekStart}T00:00:00Z`);
-    return ws >= start && ws <= end && ws <= todayUtc;
-  }).length;
-  const calendarWeeksElapsed = Math.ceil(((todayUtc.getTime() - start.getTime()) / dayMs + 1) / 7);
-  const weeksElapsed = Math.min(detectedWeeks, Math.max(1, weeksWithData || calendarWeeksElapsed));
-  return { weeksElapsed, totalWeeks: detectedWeeks };
+  const daysElapsed = (Math.min(todayUtc.getTime(), end.getTime()) - start.getTime()) / dayMs + 1;
+  // Piso de 1: en los primeros días del mes se proyecta como si hubiera una
+  // semana completa para no extrapolar salvajemente con 2 o 3 días de datos.
+  const weeksElapsed = Math.min(totalWeeks, Math.max(1, daysElapsed / 7));
+  return { weeksElapsed, totalWeeks };
+}
+
+// "4.9/5" en las tarjetas de proyección: entero cuando es exacto, un decimal si no.
+export function formatWeeksElapsed(weeks: number) {
+  return Number.isInteger(weeks) ? String(weeks) : (Math.round(weeks * 10) / 10).toFixed(1);
 }
