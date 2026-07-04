@@ -8,7 +8,7 @@ import { periodDateKey, type KpiPeriod } from "@/lib/kpi-period";
 import type { KpiReportItem } from "@/lib/kpi-report";
 import type { CommissionRule, Role } from "@/lib/types";
 
-export type KpiTab = "resumen" | "ventas" | "comision" | "ranking" | "recibo";
+export type KpiTab = "resumen" | "ventas" | "comision" | "ranking" | "historico" | "recibo";
 export type KpiTarget = { id: string; metric: string; value: number; period: string };
 export type MonthProjection = { weeksElapsed: number; totalWeeks: number; projectedSales: number; projectedCommission: number; percent: number; achievement: number };
 export type MonthSalesProjection = { weeksElapsed: number; totalWeeks: number; projectedSales: number; goal: number; achievement: number };
@@ -66,6 +66,7 @@ export const KPI_TABS: { id: KpiTab; label: string }[] = [
   { id: "ventas", label: "Ventas" },
   { id: "comision", label: "Comisión" },
   { id: "ranking", label: "Ranking" },
+  { id: "historico", label: "Histórico" },
   { id: "recibo", label: "Recibo" }
 ];
 
