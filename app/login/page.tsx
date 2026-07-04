@@ -731,10 +731,13 @@ export default function LoginPage() {
           ) : null}
         </AnimatePresence>
 
-        <footer className="pb-6 pt-2 text-center text-[11px] font-semibold text-slate-500 dark:text-slate-400">
-          <a href="/privacidad" className="underline-offset-2 hover:underline">Aviso de privacidad</a>
-          <span className="mx-2 opacity-50">·</span>
-          <a href="/terminos" className="underline-offset-2 hover:underline">Términos de uso</a>
+        <footer className="space-y-1 pb-6 pt-2 text-center text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+          <div>
+            <a href="/privacidad" className="underline-offset-2 hover:underline">Aviso de privacidad</a>
+            <span className="mx-2 opacity-50">·</span>
+            <a href="/terminos" className="underline-offset-2 hover:underline">Términos de uso</a>
+          </div>
+          <p className="opacity-70">© {new Date().getFullYear()} CLARVEX · Jesús Adrián Hernández Luna. Todos los derechos reservados.</p>
         </footer>
       </div>
     </main>

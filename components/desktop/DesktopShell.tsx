@@ -262,7 +262,12 @@ export function DesktopShell({ children }: { children: React.ReactNode }) {
               <DesktopNotifications />
             </div>
           </header>
-          <main className="mx-auto w-full max-w-6xl flex-1 px-8 py-6">{children}</main>
+          <main className="mx-auto w-full max-w-6xl flex-1 px-8 py-6">
+            {children}
+            <p className="pt-8 text-center text-[11px] font-semibold text-muted/70">
+              © {new Date().getFullYear()} CLARVEX · Jesús Adrián Hernández Luna. Todos los derechos reservados.
+            </p>
+          </main>
         </div>
       </DesktopChromeProvider>
     </div>
