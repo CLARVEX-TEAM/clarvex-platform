@@ -1,4 +1,9 @@
-const ESPN_BASE = "https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world";
+// Liga de ESPN configurable: fifa.world (Mundial) por default. Al terminar el
+// torneo se cambia por env sin tocar código, p. ej. ESPN_LEAGUE=concacaf.nations.league
+// o fifa.friendly, y ESPN_COMPETITION_LABEL con el nombre visible.
+const ESPN_LEAGUE = process.env.ESPN_LEAGUE?.trim() || "fifa.world";
+const COMPETITION_LABEL = process.env.ESPN_COMPETITION_LABEL?.trim() || "FIFA World Cup 2026";
+const ESPN_BASE = `https://site.api.espn.com/apis/site/v2/sports/soccer/${ESPN_LEAGUE}`;
 
 type EspnCompetitor = {
   team: { id: string; displayName: string; abbreviation: string };
@@ -53,7 +58,7 @@ function parseEvent(event: EspnEvent): EspnFixture | null {
   return {
     id: parseInt(event.id),
     rival: rival.team.displayName,
-    competition: "FIFA World Cup 2026",
+    competition: COMPETITION_LABEL,
     mxScore: parseInt(mx.score) || 0,
     rivalScore: parseInt(rival.score) || 0,
     statusName: comp.status.type.name

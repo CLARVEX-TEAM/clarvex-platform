@@ -9,7 +9,7 @@ import { money } from "@/lib/format";
 import type { KpiPeriod } from "@/lib/kpi-period";
 import type { KpiReportItem } from "@/lib/kpi-report";
 import type { CommissionRule, Role, User } from "@/lib/types";
-import { KPI_TABS as tabs, METRIC_CONFIG, formatWeeksElapsed, localDateKey, type KpiTab as Tab, type KpiTarget, type MonthProjection, type MonthSalesProjection, type ReceiptLine, type ReceiptMonth } from "@/lib/kpi-view";
+import { KPI_TABS as tabs, METRIC_ACCENT, METRIC_CONFIG, formatWeeksElapsed, localDateKey, type KpiTab as Tab, type KpiTarget, type MonthProjection, type MonthSalesProjection, type ReceiptLine, type ReceiptMonth } from "@/lib/kpi-view";
 import { useKpiDerived, useKpiReceipts, useKpiReport, useKpiTargets } from "@/lib/use-kpis";
 import { achievementTone, Badge, Card, ProfileAvatar, ProgressBar, ProgressRing, Skeleton, StatCard } from "@/components/ui";
 import { useTheme } from "@/components/ThemeProvider";
@@ -123,8 +123,6 @@ function PeriodBar({ period, setPeriod, selectedDate, setSelectedDate, rangeLabe
   );
 }
 
-const cardItem = { hidden: { opacity: 0, y: 16, scale: 0.95 }, show: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.38, ease: [0.25, 0.1, 0.25, 1] as [number, number, number, number] } } };
-const cardGrid = { hidden: {}, show: { transition: { staggerChildren: 0.05, delayChildren: 0.05 } } };
 
 function ResumenView({ activeKpi, team, progress, periodLabel, hasDiscountSource, latestDiscountWeek, targets, isManager, onOpenTargets, salesProjection }: { activeKpi: KpiReportItem; team: KpiReportItem[]; progress: number; periodLabel: string; hasDiscountSource: boolean; latestDiscountWeek: { weekNumber: number; margin: number | null } | null; targets: KpiTarget[]; isManager: boolean; onOpenTargets: () => void; salesProjection?: MonthSalesProjection | null }) {
   const discountValue = activeKpi.discountMargin !== null ? `${activeKpi.discountMargin}%`
@@ -188,14 +186,14 @@ function ResumenView({ activeKpi, team, progress, periodLabel, hasDiscountSource
         )}
       </div>
 
-      <motion.div variants={cardGrid} initial="hidden" animate="show" className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-3 gap-4">
         <MetricCard metric="upt"         value={activeKpi.upt === null ? "—" : String(activeKpi.upt)}            detail="Unidades por ticket"   sparkData={spark((m) => m.upt)}            trafficLight={semaphore(activeKpi.upt, "upt")} />
         <MetricCard metric="aur"         value={activeKpi.aur === null ? "—" : money(activeKpi.aur)}             detail="Precio promedio pieza" sparkData={spark((m) => m.aur)}            trafficLight={semaphore(activeKpi.aur, "aur")} />
         <MetricCard metric="ept"         value={activeKpi.ept === null ? "—" : money(activeKpi.ept)}             detail="Venta por transacción" sparkData={spark((m) => m.ept)}            trafficLight={semaphore(activeKpi.ept, "ept")} />
         <MetricCard metric="conversion"  value={activeKpi.conversion === null ? "—" : `${activeKpi.conversion}%`} detail={activeKpi.conversion === null ? "Sin tráfico" : "Tickets / Tráfico"} sparkData={spark((m) => m.conversion)}     trafficLight={semaphore(activeKpi.conversion, "conversion")} />
         <MetricCard metric="margen"      value={discountValue}                                                   detail={discountDetail}        sparkData={spark((m) => m.discountMargin)} trafficLight={semaphore(activeKpi.discountMargin, "margen")} />
         <MetricCard metric="achievement" value={`${progress}%`}                                                  detail={`Objetivo ${periodLabel}`} sparkData={team.map((m, i) => ({ i, v: m.achievement }))} trafficLight={semaphore(progress, "achievement")} />
-      </motion.div>
+      </div>
 
       {team.length > 0 ? <TeamTable team={team} /> : null}
     </div>
@@ -248,29 +246,33 @@ function TeamTable({ team }: { team: KpiReportItem[] }) {
 
 function MetricCard({ metric, value, detail, sparkData, trafficLight }: { metric: string; value: string; detail: string; sparkData: Array<{ i: number; v: number }>; trafficLight: "green" | "yellow" | "red" | "none" }) {
   const config = METRIC_CONFIG[metric];
-  if (!config) return null;
-  const { label, gradient, glow, Icon } = config;
+  const accent = METRIC_ACCENT[metric];
+  if (!config || !accent) return null;
+  const { label, Icon } = config;
+
+  // Semáforo vs meta configurada: única señal de color de estado en la tarjeta.
   const dotClass = {
-    green: "bg-green-300 shadow-[0_0_6px_rgba(134,239,172,0.8)]",
-    yellow: "bg-amber-300 shadow-[0_0_6px_rgba(252,211,77,0.8)]",
-    red: "bg-rose-300 shadow-[0_0_6px_rgba(252,165,165,0.8)]",
-    none: "bg-white/25",
+    green: "bg-success",
+    yellow: "bg-ember",
+    red: "bg-orchid",
+    none: "bg-line",
   }[trafficLight];
+
   return (
-    <motion.div variants={cardItem} whileHover={{ scale: 1.03, y: -2 }} className={cn("relative min-h-[130px] overflow-hidden rounded-[28px] p-4", `bg-gradient-to-br ${gradient}`)} style={{ boxShadow: `0 8px 24px ${glow}` }}>
+    <div className="solid-card relative min-h-[130px] overflow-hidden rounded-[28px] p-4">
       <span className={cn("absolute right-3 top-3 size-2.5 rounded-full", dotClass)} />
-      <span className="inline-grid size-9 place-items-center rounded-[14px] bg-white/20"><Icon size={17} className="text-white" /></span>
-      <p className="mt-2 text-[10px] font-bold uppercase tracking-[0.12em] text-white/70">{label}</p>
-      <p className="mt-0.5 text-[1.6rem] font-black leading-none tracking-[-0.03em] text-white">{value}</p>
-      <p className="mt-0.5 text-[11px] leading-4 text-white/55">{detail}</p>
+      <span className={cn("inline-grid size-9 place-items-center rounded-[14px]", accent.chip)}><Icon size={17} /></span>
+      <p className="mt-2 text-[10px] font-bold uppercase tracking-[0.12em] text-muted">{label}</p>
+      <p className="mt-0.5 text-[1.6rem] font-black leading-none tracking-[-0.03em] text-ink">{value}</p>
+      <p className="mt-0.5 text-[11px] leading-4 text-muted">{detail}</p>
       {sparkData.length > 2 ? (
-        <div className="pointer-events-none absolute bottom-0 right-0 h-12 w-24 opacity-45">
+        <div className="pointer-events-none absolute bottom-0 right-0 h-12 w-24 opacity-60">
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={sparkData} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}><Line type="monotone" dataKey="v" stroke="white" strokeWidth={1.5} dot={false} animationDuration={600} /></LineChart>
+            <LineChart data={sparkData} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}><Line type="monotone" dataKey="v" stroke={accent.spark} strokeWidth={1.5} dot={false} animationDuration={600} /></LineChart>
           </ResponsiveContainer>
         </div>
       ) : null}
-    </motion.div>
+    </div>
   );
 }
 
@@ -284,14 +286,14 @@ function VentasView({ activeKpi, chartData, team, progress, periodLabel }: { act
     <div className="space-y-4">
       <Card className="p-5">
         <div className="mb-3 flex items-center justify-between"><div className="flex items-center gap-2"><TrendingUp className="text-volt" size={18} /><h2 className="text-lg font-black text-ink">Venta vs meta por asesor</h2></div><Badge>{progress}%</Badge></div>
-        <div className="h-72 overflow-hidden rounded-xl" style={{ background: "#0f172a" }}>
+        <div className="h-72">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={team.map((m) => ({ name: m.userName.split(" ")[0], Venta: m.sales, Meta: m.goal }))} margin={{ top: 12, right: 12, left: 8, bottom: 0 }} barGap={4}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" vertical={false} />
-              <XAxis dataKey="name" tick={{ fill: "#94A3B8", fontSize: 11 }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fill: "#94A3B8", fontSize: 10 }} axisLine={false} tickLine={false} width={64} tickFormatter={(v: number) => money(v)} />
-              <Tooltip contentStyle={tooltipStyle} cursor={{ fill: "rgba(255,255,255,0.04)" }} formatter={(value) => money(Number(value))} />
-              <Bar dataKey="Meta" fill="#94A3B8" radius={[6, 6, 0, 0]} maxBarSize={34} />
+              <CartesianGrid strokeDasharray="3 3" stroke={isDark ? "rgba(255,255,255,0.08)" : "rgba(15,23,42,0.07)"} vertical={false} />
+              <XAxis dataKey="name" tick={{ fill: isDark ? "#8899BB" : "#64748B", fontSize: 11 }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fill: isDark ? "#8899BB" : "#64748B", fontSize: 10 }} axisLine={false} tickLine={false} width={64} tickFormatter={(v: number) => money(v)} />
+              <Tooltip contentStyle={tooltipStyle} cursor={{ fill: isDark ? "rgba(255,255,255,0.04)" : "rgba(15,23,42,0.04)" }} formatter={(value) => money(Number(value))} />
+              <Bar dataKey="Meta" fill={isDark ? "#3d4f74" : "#CBD5E1"} radius={[6, 6, 0, 0]} maxBarSize={34} />
               <Bar dataKey="Venta" fill="#2563EB" radius={[6, 6, 0, 0]} maxBarSize={34} animationDuration={700} />
             </BarChart>
           </ResponsiveContainer>
@@ -299,14 +301,14 @@ function VentasView({ activeKpi, chartData, team, progress, periodLabel }: { act
       </Card>
       <Card className="p-5">
         <h2 className="mb-3 text-lg font-black text-ink">Tendencia de venta</h2>
-        <div className="h-56 overflow-hidden rounded-xl" style={{ background: "#0f172a" }}>
+        <div className="h-56">
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={data} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
-              <defs><linearGradient id="kpiSalesD" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#3B82F6" stopOpacity={0.5} /><stop offset="95%" stopColor="#3B82F6" stopOpacity={0.05} /></linearGradient></defs>
-              <XAxis dataKey="name" tick={{ fill: "#94A3B8", fontSize: 10 }} axisLine={false} tickLine={false} />
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" />
+              <defs><linearGradient id="kpiSalesD" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#2563EB" stopOpacity={0.35} /><stop offset="95%" stopColor="#2563EB" stopOpacity={0.03} /></linearGradient></defs>
+              <XAxis dataKey="name" tick={{ fill: isDark ? "#8899BB" : "#64748B", fontSize: 10 }} axisLine={false} tickLine={false} />
+              <CartesianGrid strokeDasharray="3 3" stroke={isDark ? "rgba(255,255,255,0.08)" : "rgba(15,23,42,0.07)"} />
               <Tooltip contentStyle={tooltipStyle} formatter={(value) => [money(Number(value)), "Venta"]} />
-              <Area type="monotone" dataKey="venta" stroke="#3B82F6" strokeWidth={2.5} fill="url(#kpiSalesD)" dot={{ r: 4, fill: "#3B82F6", stroke: "#0f172a", strokeWidth: 1.5 }} activeDot={{ r: 6, fill: "#60A5FA", stroke: "#fff", strokeWidth: 2 }} animationDuration={800} />
+              <Area type="monotone" dataKey="venta" stroke="#2563EB" strokeWidth={2.5} fill="url(#kpiSalesD)" dot={{ r: 4, fill: "#2563EB", stroke: isDark ? "#1a2540" : "#FFFFFF", strokeWidth: 1.5 }} activeDot={{ r: 6, fill: "#3B82F6", stroke: isDark ? "#1a2540" : "#FFFFFF", strokeWidth: 2 }} animationDuration={800} />
             </AreaChart>
           </ResponsiveContainer>
         </div>
@@ -397,13 +399,13 @@ function RankingView({ ranking, periodLabel, isAdvisor, currentUserId }: { ranki
             </div>
           ) : null}
         </div>
-        <div className="h-64 overflow-hidden rounded-xl" style={{ background: "#0f172a" }}>
+        <div className="h-64">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={data} margin={{ top: 12, right: 12, left: 8, bottom: 0 }}>
-              <XAxis dataKey="name" tick={{ fill: "#94A3B8", fontSize: 11 }} axisLine={false} tickLine={false} />
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" vertical={false} />
+              <XAxis dataKey="name" tick={{ fill: isDark ? "#8899BB" : "#64748B", fontSize: 11 }} axisLine={false} tickLine={false} />
+              <CartesianGrid strokeDasharray="3 3" stroke={isDark ? "rgba(255,255,255,0.08)" : "rgba(15,23,42,0.07)"} vertical={false} />
               <Tooltip contentStyle={tooltipStyle} formatter={(value) => isAdvisor ? [`${value}%`, "Cumplimiento"] : [metric.fmt(Number(value)), metric.label]} />
-              <Bar dataKey="valor" fill="#3B82F6" radius={[8, 8, 8, 8]} animationDuration={800} />
+              <Bar dataKey="valor" fill="#2563EB" radius={[8, 8, 8, 8]} animationDuration={800} />
             </BarChart>
           </ResponsiveContainer>
         </div>

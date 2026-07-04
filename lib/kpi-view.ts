@@ -49,6 +49,18 @@ export const METRIC_CONFIG: Record<string, MetricConfig> = {
   achievement: { label: "Cumplimiento", gradient: "from-emerald-500 to-teal-700",  glow: "rgba(16,185,129,0.32)",  Icon: TrendingUp,  targetLabel: "Meta cumplimiento (%)" },
 };
 
+// Acento por métrica para las tarjetas del sistema (móvil y escritorio): tinte
+// en el chip del ícono y color de la sparkline. El valor va en tinta — el color
+// señala la métrica, no compite con la cifra.
+export const METRIC_ACCENT: Record<string, { chip: string; spark: string }> = {
+  upt:         { chip: "bg-volt/10 text-volt",       spark: "#2563EB" },
+  aur:         { chip: "bg-sky/10 text-sky",         spark: "#0EA5E9" },
+  ept:         { chip: "bg-purple/10 text-purple",   spark: "#4F46E5" },
+  conversion:  { chip: "bg-ember/10 text-ember",     spark: "#F59E0B" },
+  margen:      { chip: "bg-orchid/10 text-orchid",   spark: "#EF4444" },
+  achievement: { chip: "bg-success/10 text-success", spark: "#22C55E" }
+};
+
 export const KPI_TABS: { id: KpiTab; label: string }[] = [
   { id: "resumen", label: "Resumen" },
   { id: "ventas", label: "Ventas" },

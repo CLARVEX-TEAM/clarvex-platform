@@ -35,8 +35,9 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     const k = new Date(body.kickoff);
     if (!isNaN(k.getTime())) data.kickoff = k;
   }
-  if (typeof body.mxScore === "number" && body.mxScore >= 0) data.mxScore = Math.floor(body.mxScore);
-  if (typeof body.rivalScore === "number" && body.rivalScore >= 0) data.rivalScore = Math.floor(body.rivalScore);
+  // Tope 0–99: un número gigante reventaría el Int de Postgres con un 500.
+  if (typeof body.mxScore === "number" && body.mxScore >= 0 && body.mxScore <= 99) data.mxScore = Math.floor(body.mxScore);
+  if (typeof body.rivalScore === "number" && body.rivalScore >= 0 && body.rivalScore <= 99) data.rivalScore = Math.floor(body.rivalScore);
   if (body.externalId === null || (typeof body.externalId === "number" && body.externalId > 0)) data.externalId = body.externalId;
 
   if (Object.keys(data).length === 0) return NextResponse.json({ error: "Nada que actualizar." }, { status: 400 });
