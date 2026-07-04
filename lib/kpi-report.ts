@@ -24,7 +24,7 @@ export type KpiReportItem = {
   commissionMinimum: number | null;
 };
 
-type RawKpi = {
+export type RawKpi = {
   id?: string;
   userId: string;
   date?: Date;

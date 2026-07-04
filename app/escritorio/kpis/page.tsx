@@ -13,6 +13,7 @@ import type { CommissionRule, Role, User } from "@/lib/types";
 import { KPI_TABS as tabs, METRIC_ACCENT, METRIC_CONFIG, formatWeeksElapsed, localDateKey, type KpiTab as Tab, type KpiTarget, type MonthProjection, type MonthSalesProjection, type ReceiptLine, type ReceiptMonth } from "@/lib/kpi-view";
 import { useKpiDerived, useKpiReceipts, useKpiReport, useKpiTargets } from "@/lib/use-kpis";
 import { achievementTone, Badge, Card, ProfileAvatar, ProgressBar, ProgressRing, Skeleton, StatCard } from "@/components/ui";
+import { KpiHistoryView } from "@/components/KpiHistory";
 import { useTheme } from "@/components/ThemeProvider";
 import { useDesktopChrome } from "@/components/desktop/DesktopChrome";
 import { cn } from "@/lib/utils";
@@ -83,6 +84,7 @@ export default function EscritorioKpis() {
             {activeTab === "ventas" ? <VentasView activeKpi={activeKpi} chartData={chartData} team={report?.team ?? []} progress={progress} periodLabel={periodLabel} /> : null}
             {activeTab === "comision" ? <ComisionView activeKpi={commissionKpi ?? activeKpi} rules={report?.commissionRules ?? []} simulatedSales={simulatedSales} setSimulatedSales={setSimulatedSales} activeRule={activeRule} appliedPercent={appliedPercent} simulatedCommission={simulatedCommission} simulatedAchievement={simulatedAchievement} commissionRole={commissionRole} periodLabel={periodLabel} projection={monthProjection} hasMinimum={hasCommissionMinimum} /> : null}
             {activeTab === "ranking" ? <RankingView ranking={report?.team ?? []} periodLabel={periodLabel} isAdvisor={isAdvisor} currentUserId={report?.currentUserId} /> : null}
+            {activeTab === "historico" ? <div className="mx-auto max-w-3xl"><KpiHistoryView /></div> : null}
             {activeTab === "recibo" ? <ReciboView receipts={receipts} loading={receiptsLoading} isManager={isManager} /> : null}
           </motion.div>
         </AnimatePresence>
