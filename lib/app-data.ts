@@ -31,6 +31,11 @@ export async function fetchAppData(): Promise<AppData> {
   for (let attempt = 0; attempt < 3; attempt += 1) {
     try {
       const response = await fetchWithTimeout("/api/app-data", 12000);
+      if (response.status === 402) {
+        // Suscripción de la tienda vencida: pantalla de suspensión.
+        window.location.href = "/suspendida";
+        throw new Error("Suscripción vencida.");
+      }
       if (!response.ok) throw new Error("No se pudieron cargar los datos del panel.");
       return await response.json() as AppData;
     } catch (error) {
