@@ -9,7 +9,7 @@ import { money } from "@/lib/format";
 import type { KpiPeriod } from "@/lib/kpi-period";
 import type { KpiReportItem } from "@/lib/kpi-report";
 import type { CommissionRule, Role, User } from "@/lib/types";
-import { KPI_TABS as tabs, METRIC_CONFIG, localDateKey, type KpiTab as Tab, type KpiTarget, type MonthProjection, type MonthSalesProjection, type ReceiptLine, type ReceiptMonth } from "@/lib/kpi-view";
+import { KPI_TABS as tabs, METRIC_CONFIG, formatWeeksElapsed, localDateKey, type KpiTab as Tab, type KpiTarget, type MonthProjection, type MonthSalesProjection, type ReceiptLine, type ReceiptMonth } from "@/lib/kpi-view";
 import { useKpiDerived, useKpiReceipts, useKpiReport, useKpiTargets } from "@/lib/use-kpis";
 import { achievementTone, Badge, Card, ProfileAvatar, ProgressBar, ProgressRing, Skeleton, StatCard } from "@/components/ui";
 import { useTheme } from "@/components/ThemeProvider";
@@ -176,7 +176,7 @@ function ResumenView({ activeKpi, team, progress, periodLabel, hasDiscountSource
           <Card className="border border-emerald-400/30 bg-gradient-to-br from-emerald-50 to-blue-50 p-4 dark:from-[#0f2a1e] dark:to-[#11203f]">
             <p className="text-[11px] font-bold uppercase tracking-[0.13em] text-muted">Proyección de cierre</p>
             <h2 className="mt-1 text-[1.7rem] font-black leading-none text-ink">{money(salesProjection.projectedSales)}</h2>
-            <p className="mt-1.5 text-xs text-muted">{salesProjection.achievement}% de {money(salesProjection.goal)} · ritmo {salesProjection.weeksElapsed}/{salesProjection.totalWeeks} sem.</p>
+            <p className="mt-1.5 text-xs text-muted">{salesProjection.achievement}% de {money(salesProjection.goal)} · ritmo {formatWeeksElapsed(salesProjection.weeksElapsed)}/{salesProjection.totalWeeks} sem.</p>
             <div className="mt-2.5"><ProgressBar value={Math.min(salesProjection.achievement, 100)} /></div>
           </Card>
         ) : (
@@ -332,7 +332,7 @@ function ComisionView({ activeKpi, rules, simulatedSales, setSimulatedSales, act
               <div><p className="text-[11px] font-bold uppercase tracking-[0.13em] text-muted">Proyección de cierre de mes</p><h2 className="mt-1 text-[2rem] font-black leading-none text-ink">{money(projection.projectedCommission)}</h2><p className="mt-1.5 text-sm text-muted">Al ritmo de tus semanas con datos 💰</p></div>
               <span className="grid size-12 place-items-center rounded-2xl bg-emerald-100 text-emerald-600 dark:bg-[#10301f]"><TrendingUp size={25} /></span>
             </div>
-            <div className="mt-3 grid grid-cols-3 gap-2"><Mini label="Venta proy." value={money(projection.projectedSales)} /><Mini label="Nivel actual" value={`${projection.percent}%`} /><Mini label="Semanas" value={`${projection.weeksElapsed}/${projection.totalWeeks}`} /></div>
+            <div className="mt-3 grid grid-cols-3 gap-2"><Mini label="Venta proy." value={money(projection.projectedSales)} /><Mini label="Nivel actual" value={`${projection.percent}%`} /><Mini label="Semanas" value={`${formatWeeksElapsed(projection.weeksElapsed)}/${projection.totalWeeks}`} /></div>
           </Card>
         ) : null}
         <Card className="premium-hero p-5">
