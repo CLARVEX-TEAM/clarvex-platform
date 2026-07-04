@@ -3,6 +3,7 @@ import { z } from "zod";
 import { parseJson } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
 import { rateLimitAuth, rateLimitInspect } from "@/lib/rate-limit";
+import { clientIp } from "@/lib/request-ip";
 import { hashPin, publicUser, verifyPin } from "@/lib/security";
 import { createSessionToken, SESSION_COOKIE, sessionCookieOptions } from "@/lib/session";
 
@@ -14,17 +15,13 @@ const inputSchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("setup"), employeeNumber: z.string().trim().min(1).max(30), pin: z.string().regex(/^\d{4}$/, "El PIN debe tener 4 digitos.") })
 ]);
 
-function getClientIp(request: Request): string {
-  return request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
-}
-
 // Bloqueo por cuenta: complementa el rate limit por IP (que un atacante puede
 // esquivar rotando IPs). Tras 5 PINs errados, la cuenta espera 15 min.
 const MAX_PIN_ATTEMPTS = 5;
 const PIN_LOCK_MS = 15 * 60 * 1000;
 
 export async function POST(request: Request) {
-  const ip = getClientIp(request);
+  const ip = clientIp(request.headers);
   const parsed = await parseJson(request, inputSchema);
   if ("response" in parsed) return parsed.response;
 

@@ -730,6 +730,12 @@ export default function LoginPage() {
             </motion.div>
           ) : null}
         </AnimatePresence>
+
+        <footer className="pb-6 pt-2 text-center text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+          <a href="/privacidad" className="underline-offset-2 hover:underline">Aviso de privacidad</a>
+          <span className="mx-2 opacity-50">·</span>
+          <a href="/terminos" className="underline-offset-2 hover:underline">Términos de uso</a>
+        </footer>
       </div>
     </main>
   );

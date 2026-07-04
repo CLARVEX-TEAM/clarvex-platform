@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { rateLimitPreview } from "@/lib/rate-limit";
+import { clientIp } from "@/lib/request-ip";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -11,12 +12,7 @@ export async function GET(
   { params }: { params: Promise<{ employeeNumber: string }> }
 ) {
   const headersList = await headers();
-  const ip =
-    headersList.get("x-forwarded-for")?.split(",")[0]?.trim() ??
-    headersList.get("x-real-ip") ??
-    "unknown";
-
-  const rateLimit = rateLimitPreview(ip);
+  const rateLimit = rateLimitPreview(clientIp(headersList));
   if (!rateLimit.allowed) {
     return NextResponse.json(
       { error: "Demasiadas solicitudes. Intenta en un minuto." },
