@@ -115,26 +115,27 @@ export default function KpisPage() {
 function PeriodSelector({ period, setPeriod, selectedDate, setSelectedDate, rangeLabel, availableWeeks, availableRetailMonths }: { period: KpiPeriod; setPeriod: (period: KpiPeriod) => void; selectedDate: string; setSelectedDate: (date: string) => void; rangeLabel: string; availableWeeks: Array<{ weekNumber: number; weekStart: string; weekEnd: string }>; availableRetailMonths: Array<{ label: string; start: string; end: string }> }) {
   return (
     <Card className="mb-3 p-3">
-      <div className="flex rounded-full bg-slate-100 dark:bg-[#1a2540] p-1" role="group" aria-label="Periodo de KPIs">
-        {(["week", "month"] as const).map((option) => <button key={option} type="button" onClick={() => setPeriod(option)} className={`min-h-10 flex-1 rounded-full text-sm font-black transition ${period === option ? "bg-white dark:bg-[#2a3a5c] text-volt shadow-sm" : "text-muted"}`}>{option === "week" ? "Semana" : "Mes"}</button>)}
+      <div className="flex rounded-full bg-panel p-1" role="group" aria-label="Periodo de KPIs">
+        {(["week", "month"] as const).map((option) => <button key={option} type="button" onClick={() => setPeriod(option)} className={`min-h-10 flex-1 rounded-full text-sm font-black transition ${period === option ? "bg-card dark:bg-line text-volt shadow-sm" : "text-muted"}`}>{option === "week" ? "Semana" : "Mes"}</button>)}
       </div>
       <div className="mt-3 flex items-center gap-3">
-        <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-blue-50 dark:bg-[#1a2540] text-volt"><CalendarDays size={18} /></span>
+        <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-volt/10 text-volt"><CalendarDays size={18} /></span>
         <div className="min-w-0 flex-1"><p className="text-[11px] font-bold text-muted">Periodo seleccionado</p><p className="truncate text-sm font-black text-ink">{rangeLabel}</p></div>
-        {period === "week" ? <select aria-label="Seleccionar semana RDV" value={selectedDate} onChange={(event) => setSelectedDate(event.target.value)} className="min-h-10 w-[8.3rem] rounded-xl bg-slate-100 dark:bg-[#1a2540] px-2 text-xs font-bold text-ink outline-none focus:ring-4 focus:ring-volt/20">{availableWeeks.map((week) => <option key={`${week.weekNumber}-${week.weekStart}`} value={week.weekStart}>Semana {week.weekNumber}</option>)}</select> : <select aria-label="Seleccionar mes retail" value={availableRetailMonths.find((month) => selectedDate >= month.start && selectedDate <= month.end)?.start ?? availableRetailMonths.at(-1)?.start ?? selectedDate} onChange={(event) => setSelectedDate(event.target.value)} className="min-h-10 w-[8.3rem] rounded-xl bg-slate-100 dark:bg-[#1a2540] px-2 text-xs font-bold text-ink outline-none focus:ring-4 focus:ring-volt/20">{availableRetailMonths.map((month) => <option key={month.start} value={month.start}>{month.label}</option>)}</select>}
+        {period === "week" ? <select aria-label="Seleccionar semana RDV" value={selectedDate} onChange={(event) => setSelectedDate(event.target.value)} className="min-h-10 w-[8.3rem] rounded-xl bg-panel px-2 text-xs font-bold text-ink outline-none focus:ring-4 focus:ring-volt/20">{availableWeeks.map((week) => <option key={`${week.weekNumber}-${week.weekStart}`} value={week.weekStart}>Semana {week.weekNumber}</option>)}</select> : <select aria-label="Seleccionar mes retail" value={availableRetailMonths.find((month) => selectedDate >= month.start && selectedDate <= month.end)?.start ?? availableRetailMonths.at(-1)?.start ?? selectedDate} onChange={(event) => setSelectedDate(event.target.value)} className="min-h-10 w-[8.3rem] rounded-xl bg-panel px-2 text-xs font-bold text-ink outline-none focus:ring-4 focus:ring-volt/20">{availableRetailMonths.map((month) => <option key={month.start} value={month.start}>{month.label}</option>)}</select>}
       </div>
     </Card>
   );
 }
 
-const cardItem = {
-  hidden: { opacity: 0, y: 16, scale: 0.95 },
-  show: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.38, ease: [0.25, 0.1, 0.25, 1] as [number, number, number, number] } }
-};
-
-const cardGrid = {
-  hidden: {},
-  show: { transition: { staggerChildren: 0.055, delayChildren: 0.05 } }
+// Acento por métrica: tinte en el chip del ícono y color de la sparkline.
+// El valor va en tinta — el color señala la métrica, no compite con la cifra.
+const METRIC_ACCENT: Record<string, { chip: string; spark: string }> = {
+  upt:         { chip: "bg-volt/10 text-volt",       spark: "#2563EB" },
+  aur:         { chip: "bg-sky/10 text-sky",         spark: "#0EA5E9" },
+  ept:         { chip: "bg-purple/10 text-purple",   spark: "#4F46E5" },
+  conversion:  { chip: "bg-ember/10 text-ember",     spark: "#F59E0B" },
+  margen:      { chip: "bg-orchid/10 text-orchid",   spark: "#EF4444" },
+  achievement: { chip: "bg-success/10 text-success", spark: "#22C55E" }
 };
 
 function ResumenView({ activeKpi, team, progress, periodLabel, hasDiscountSource, latestDiscountWeek, targets, isManager, onOpenTargets, salesProjection }: { activeKpi: KpiReportItem; team: KpiReportItem[]; progress: number; periodLabel: string; hasDiscountSource: boolean; latestDiscountWeek: { weekNumber: number; margin: number | null } | null; targets: KpiTarget[]; isManager: boolean; onOpenTargets: () => void; salesProjection?: MonthSalesProjection | null }) {
@@ -185,8 +186,7 @@ function ResumenView({ activeKpi, team, progress, periodLabel, hasDiscountSource
               <motion.button
                 onClick={onOpenTargets}
                 whileTap={{ scale: 0.9 }}
-                whileHover={{ scale: 1.08 }}
-                className="grid size-10 place-items-center rounded-2xl bg-blue-100/70 dark:bg-[#1a2540] text-volt"
+                className="grid size-10 place-items-center rounded-2xl bg-volt/10 text-volt"
                 aria-label="Configurar metas KPI"
               >
                 <Settings2 size={18} />
@@ -206,64 +206,60 @@ function ResumenView({ activeKpi, team, progress, periodLabel, hasDiscountSource
               <h2 className="mt-1 text-[1.9rem] font-black leading-none text-ink">{money(salesProjection.projectedSales)}</h2>
               <p className="mt-1.5 text-sm text-muted">{salesProjection.achievement}% de la meta {money(salesProjection.goal)} · al ritmo de las semanas con datos ({salesProjection.weeksElapsed}/{salesProjection.totalWeeks})</p>
             </div>
-            <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-emerald-100 text-emerald-600 dark:bg-[#10301f]"><TrendingUp size={25} /></span>
+            <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-success/10 text-success"><TrendingUp size={25} /></span>
           </div>
           <div className="mt-2.5"><ProgressBar value={Math.min(salesProjection.achievement, 100)} /></div>
         </Card>
       ) : null}
 
-      <motion.div variants={cardGrid} initial="hidden" animate="show" className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-3">
         <MetricCard metric="upt"         value={activeKpi.upt === null ? "—" : String(activeKpi.upt)}                                   detail="Unidades por ticket"               sparkData={spark((m) => m.upt)}            trafficLight={semaphore(activeKpi.upt, "upt")} />
         <MetricCard metric="aur"         value={activeKpi.aur === null ? "—" : money(activeKpi.aur)}                                    detail="Precio promedio pieza"             sparkData={spark((m) => m.aur)}            trafficLight={semaphore(activeKpi.aur, "aur")} />
         <MetricCard metric="ept"         value={activeKpi.ept === null ? "—" : money(activeKpi.ept)}                                    detail="Venta por transacción"             sparkData={spark((m) => m.ept)}            trafficLight={semaphore(activeKpi.ept, "ept")} />
         <MetricCard metric="conversion"  value={activeKpi.conversion === null ? "—" : `${activeKpi.conversion}%`}                       detail={activeKpi.conversion === null ? "Sin tráfico" : "Tickets / Tráfico"}  sparkData={spark((m) => m.conversion)}     trafficLight={semaphore(activeKpi.conversion, "conversion")} />
         <MetricCard metric="margen"      value={discountValue}                                                                          detail={discountDetail}                    sparkData={spark((m) => m.discountMargin)} trafficLight={semaphore(activeKpi.discountMargin, "margen")} />
         <MetricCard metric="achievement" value={`${progress}%`}                                                                        detail={`Objetivo ${periodLabel}`}         sparkData={team.map((m, i) => ({ i, v: m.achievement }))} trafficLight={semaphore(progress, "achievement")} />
-      </motion.div>
+      </div>
     </>
   );
 }
 
 function MetricCard({ metric, value, detail, sparkData, trafficLight }: { metric: string; value: string; detail: string; sparkData: Array<{ i: number; v: number }>; trafficLight: "green" | "yellow" | "red" | "none" }) {
   const config = METRIC_CONFIG[metric];
-  if (!config) return null;
-  const { label, gradient, glow, Icon } = config;
+  const accent = METRIC_ACCENT[metric];
+  if (!config || !accent) return null;
+  const { label, Icon } = config;
 
+  // Semáforo vs meta configurada: única señal de color de estado en la tarjeta.
   const dotClass = {
-    green: "bg-green-300 shadow-[0_0_6px_rgba(134,239,172,0.8)]",
-    yellow: "bg-amber-300 shadow-[0_0_6px_rgba(252,211,77,0.8)]",
-    red: "bg-rose-300 shadow-[0_0_6px_rgba(252,165,165,0.8)]",
-    none: "bg-white/25",
+    green: "bg-success",
+    yellow: "bg-ember",
+    red: "bg-orchid",
+    none: "bg-line",
   }[trafficLight];
 
   return (
-    <motion.div
-      variants={cardItem}
-      whileHover={{ scale: 1.03, y: -2 }}
-      whileTap={{ scale: 0.97 }}
-      className={cn("relative min-h-[118px] overflow-hidden rounded-[28px] p-3.5", `bg-gradient-to-br ${gradient}`)}
-      style={{ boxShadow: `0 8px 24px ${glow}` }}
-    >
+    <div className="solid-card relative min-h-[118px] overflow-hidden rounded-[28px] p-3.5">
       <span className={cn("absolute right-3 top-3 size-2.5 rounded-full", dotClass)} />
 
-      <span className="inline-grid size-8 place-items-center rounded-[14px] bg-white/20">
-        <Icon size={15} className="text-white" />
+      <span className={cn("inline-grid size-8 place-items-center rounded-[14px]", accent.chip)}>
+        <Icon size={15} />
       </span>
 
-      <p className="mt-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-white/70">{label}</p>
-      <p className="mt-0.5 text-[1.36rem] font-black leading-none tracking-[-0.03em] text-white">{value}</p>
-      <p className="mt-0.5 text-[11px] leading-4 text-white/55">{detail}</p>
+      <p className="mt-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-muted">{label}</p>
+      <p className="mt-0.5 text-[1.36rem] font-black leading-none tracking-[-0.03em] text-ink">{value}</p>
+      <p className="mt-0.5 text-[11px] leading-4 text-muted">{detail}</p>
 
       {sparkData.length > 2 ? (
-        <div className="pointer-events-none absolute bottom-0 right-0 h-10 w-20 opacity-45">
+        <div className="pointer-events-none absolute bottom-0 right-0 h-10 w-20 opacity-60">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={sparkData} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
-              <Line type="monotone" dataKey="v" stroke="white" strokeWidth={1.5} dot={false} animationDuration={600} />
+              <Line type="monotone" dataKey="v" stroke={accent.spark} strokeWidth={1.5} dot={false} animationDuration={600} />
             </LineChart>
           </ResponsiveContainer>
         </div>
       ) : null}
-    </motion.div>
+    </div>
   );
 }
 
@@ -313,11 +309,11 @@ function TargetSheet({ targets, period, onClose, onSave }: { targets: KpiTarget[
         animate={{ y: 0, opacity: 1 }}
         exit={{ y: "100%", opacity: 0 }}
         transition={{ type: "spring", damping: 30, stiffness: 380 }}
-        className="w-full max-w-lg rounded-t-3xl bg-white dark:bg-slate-900 p-6 shadow-2xl"
+        className="w-full max-w-lg rounded-t-3xl bg-card dark:bg-panel p-6 shadow-2xl"
       >
         <div className="mb-5 flex items-center justify-between">
           <h2 className="text-lg font-black text-ink">Metas KPI — {period === "SEMANA" ? "Semana" : "Mes"}</h2>
-          <button onClick={onClose} className="grid size-9 place-items-center rounded-full bg-slate-100 dark:bg-slate-800 text-ink">
+          <button onClick={onClose} className="grid size-9 place-items-center rounded-full bg-panel dark:bg-line/60 text-ink">
             <X size={16} />
           </button>
         </div>
@@ -334,7 +330,7 @@ function TargetSheet({ targets, period, onClose, onSave }: { targets: KpiTarget[
                   value={form[metric]}
                   onChange={(e) => setForm((prev) => ({ ...prev, [metric]: e.target.value }))}
                   placeholder={metric === "upt" ? "Ej: 1.5" : metric === "conversion" ? "Ej: 25" : "Ej: 50000"}
-                  className="mt-1 min-h-11 w-full rounded-2xl border border-line bg-slate-50 dark:bg-slate-800/50 px-4 text-sm font-bold text-ink outline-none focus:border-volt focus:ring-4 focus:ring-volt/15"
+                  className="mt-1 min-h-11 w-full rounded-2xl border border-line bg-panel px-4 text-sm font-bold text-ink outline-none focus:border-volt focus:ring-4 focus:ring-volt/15"
                 />
               </div>
             );
@@ -349,7 +345,7 @@ function TargetSheet({ targets, period, onClose, onSave }: { targets: KpiTarget[
           type="button"
           onClick={() => void handleSave()}
           disabled={saving}
-          className="mt-4 min-h-12 w-full rounded-2xl bg-gradient-to-r from-blue-600 to-blue-500 text-sm font-black text-white shadow-[0_8px_30px_rgba(37,99,235,0.35)] transition active:scale-95 disabled:opacity-60"
+          className="mt-4 min-h-12 w-full rounded-2xl bg-volt text-sm font-black text-white shadow-[0_8px_20px_rgb(37_99_235_/_0.22)] transition hover:bg-[#1D4ED8] active:scale-95 disabled:opacity-60"
         >
           {saving ? "Guardando..." : "Guardar metas"}
         </button>
@@ -364,12 +360,17 @@ function VentasView({ activeKpi, chartData, progress, periodLabel }: { activeKpi
     ? { background: "#1a2540", border: "1px solid #2a3a5c", borderRadius: 12, color: "#f0f4ff", boxShadow: "0 6px 14px rgb(0 0 0 / 0.3)" }
     : { background: "#FFFFFF", border: "1px solid #E2E8F0", borderRadius: 12, color: "#0F172A", boxShadow: "0 6px 14px rgb(15 23 42 / 0.08)" };
   const data = chartData.length ? chartData : [{ name: activeKpi.userName, venta: activeKpi.sales, meta: activeKpi.goal }];
-  return <><Card className="mb-3 p-3.5"><div className="mb-2.5 flex items-center justify-between"><div className="flex items-center gap-2"><TrendingUp className="text-volt" size={18} /><h2 className="text-lg font-black">Ventas {periodLabel}s</h2></div><Badge>{progress}%</Badge></div><div className="h-44 rounded-xl overflow-hidden" style={{ background: "#0f172a" }}><ResponsiveContainer width="100%" height="100%"><AreaChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}><defs><linearGradient id="kpiSales" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#3B82F6" stopOpacity={0.5} /><stop offset="95%" stopColor="#3B82F6" stopOpacity={0.05} /></linearGradient></defs><XAxis dataKey="name" tick={{ fill: "#94A3B8", fontSize: 9 }} axisLine={false} tickLine={false} /><CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" /><Tooltip contentStyle={tooltipStyle} formatter={(value) => [money(Number(value)), "Venta"]} /><Area type="monotone" dataKey="venta" stroke="#3B82F6" strokeWidth={2.5} fill="url(#kpiSales)" dot={{ r: 4, fill: "#3B82F6", stroke: "#0f172a", strokeWidth: 1.5 }} activeDot={{ r: 6, fill: "#60A5FA", stroke: "#fff", strokeWidth: 2 }} animationDuration={800} animationEasing="ease-out" animationBegin={0} /></AreaChart></ResponsiveContainer></div></Card><div className="grid grid-cols-2 gap-3"><StatCard compact label={`Venta ${periodLabel}`} value={money(activeKpi.sales)} detail="Acumulada" progress={progress} icon={<ShoppingBag size={15} />} /><StatCard compact label={`Meta ${periodLabel}`} value={money(activeKpi.goal)} detail="Suma de metas diarias" tone="sky" icon={<Target size={15} />} /><StatCard compact label="Cumplimiento" value={`${progress}%`} detail={`Periodo ${periodLabel}`} tone="purple" progress={progress} icon={<TrendingUp size={15} />} /><StatCard compact label="Transacciones" value={String(activeKpi.transactions)} detail="Tickets acumulados" tone="ember" icon={<Receipt size={15} />} /></div></>;
+  // La gráfica vive directo sobre la card, en los colores del tema: nada de
+  // cajas oscuras hardcodeadas en tema claro.
+  const tickFill = isDark ? "#8899BB" : "#64748B";
+  const gridStroke = isDark ? "rgba(255,255,255,0.08)" : "rgba(15,23,42,0.07)";
+  const dotStroke = isDark ? "#1a2540" : "#FFFFFF";
+  return <><Card className="mb-3 p-3.5"><div className="mb-2.5 flex items-center justify-between"><div className="flex items-center gap-2"><TrendingUp className="text-volt" size={18} /><h2 className="text-lg font-black">Ventas {periodLabel === "semanal" ? "de la semana" : "del mes"}</h2></div><Badge>{progress}%</Badge></div><div className="h-44"><ResponsiveContainer width="100%" height="100%"><AreaChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}><defs><linearGradient id="kpiSales" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#2563EB" stopOpacity={0.35} /><stop offset="95%" stopColor="#2563EB" stopOpacity={0.03} /></linearGradient></defs><XAxis dataKey="name" tick={{ fill: tickFill, fontSize: 9 }} axisLine={false} tickLine={false} /><CartesianGrid strokeDasharray="3 3" stroke={gridStroke} /><Tooltip contentStyle={tooltipStyle} formatter={(value) => [money(Number(value)), "Venta"]} /><Area type="monotone" dataKey="venta" stroke="#2563EB" strokeWidth={2.5} fill="url(#kpiSales)" dot={{ r: 4, fill: "#2563EB", stroke: dotStroke, strokeWidth: 1.5 }} activeDot={{ r: 6, fill: "#3B82F6", stroke: dotStroke, strokeWidth: 2 }} animationDuration={800} animationEasing="ease-out" animationBegin={0} /></AreaChart></ResponsiveContainer></div></Card><div className="grid grid-cols-2 gap-3"><StatCard compact label={`Venta ${periodLabel}`} value={money(activeKpi.sales)} detail="Acumulada" progress={progress} icon={<ShoppingBag size={15} />} /><StatCard compact label={`Meta ${periodLabel}`} value={money(activeKpi.goal)} detail="Suma de metas diarias" tone="sky" icon={<Target size={15} />} /><StatCard compact label="Cumplimiento" value={`${progress}%`} detail={`Periodo ${periodLabel}`} tone="purple" progress={progress} icon={<TrendingUp size={15} />} /><StatCard compact label="Transacciones" value={String(activeKpi.transactions)} detail="Tickets acumulados" tone="ember" icon={<Receipt size={15} />} /></div></>;
 }
 
 function ComisionView({ activeKpi, rules, simulatedSales, setSimulatedSales, activeRule, appliedPercent, simulatedCommission, simulatedAchievement, commissionRole, periodLabel, projection, hasMinimum }: { activeKpi: KpiReportItem; rules: CommissionRule[]; simulatedSales: string; setSimulatedSales: (value: string) => void; activeRule?: CommissionRule; appliedPercent: number; simulatedCommission: number; simulatedAchievement: number; commissionRole: Role; periodLabel: string; projection?: MonthProjection | null; hasMinimum: boolean }) {
   const missingRuleMessage = !hasMinimum ? "Sin mínimo de comisión sincronizado" : `No existe regla para ${commissionRole} ${Math.round(simulatedAchievement)}%`;
-  return <>{projection ? <Card className="mb-3 border border-emerald-400/30 bg-gradient-to-br from-emerald-50 to-blue-50 p-3.5 dark:from-[#0f2a1e] dark:to-[#11203f]"><div className="flex items-start justify-between gap-4"><div><p className="text-[11px] font-bold uppercase tracking-[0.13em] text-muted">Proyección de cierre de mes</p><h2 className="mt-1 text-[2rem] font-black leading-none text-ink">{money(projection.projectedCommission)}</h2><p className="mt-1.5 text-sm text-muted">Al ritmo de tus semanas con datos 💰</p></div><span className="grid size-12 place-items-center rounded-2xl bg-emerald-100 text-emerald-600 dark:bg-[#10301f]"><TrendingUp size={25} /></span></div><div className="mt-2.5 grid grid-cols-3 gap-2"><Mini label="Venta proy." value={money(projection.projectedSales)} /><Mini label="Nivel actual" value={`${projection.percent}%`} /><Mini label="Semanas" value={`${projection.weeksElapsed}/${projection.totalWeeks}`} /></div></Card> : null}<Card className="premium-hero mb-3 p-3.5"><div className="flex items-start justify-between gap-4"><div><p className="text-[11px] font-bold uppercase tracking-[0.13em] text-muted">Comision estimada {periodLabel}</p><h2 className="mt-1 text-[2.1rem] font-black leading-none text-ink">{hasMinimum ? money(simulatedCommission) : "—"}</h2><p className={`mt-1 text-sm ${activeRule ? "text-muted" : "font-semibold text-rose-700"}`}>{activeRule ? `${activeRule.commissionPercent}% por nivel actual` : missingRuleMessage}</p></div><span className="grid size-12 place-items-center rounded-2xl bg-violet-50 dark:bg-[#1a2540] text-purple"><Trophy size={25} /></span></div><div className="mt-2.5 grid grid-cols-2 gap-2"><Mini label="Porcentaje" value={hasMinimum ? `${appliedPercent}%` : "—"} /><Mini label="Alcance vs mínimo" value={hasMinimum ? `${Math.round(simulatedAchievement)}%` : "—"} /></div></Card><Card className="mb-3 p-3.5"><div className="mb-2.5 flex items-center gap-2"><Calculator className="text-volt" size={18} /><h2 className="text-lg font-black">Simulador {periodLabel}</h2></div><input value={simulatedSales} onChange={(event) => setSimulatedSales(event.target.value.replace(/[^\d.]/g, ""))} inputMode="decimal" placeholder={String(Math.round(activeKpi.sales))} aria-label={`Venta simulada ${periodLabel}`} className="min-h-14 w-full rounded-2xl border border-line bg-blue-50 dark:bg-[#1a2540] px-4 text-xl font-black text-ink outline-none focus:border-volt focus:ring-4 focus:ring-volt/15" /></Card><Card className="p-3.5"><div className="mb-2.5 flex items-center justify-between"><h2 className="text-lg font-black">Escalera de niveles</h2><Badge>{commissionRole}</Badge></div>{rules.filter((rule) => rule.active && rule.role === commissionRole).map((rule) => <div key={rule.id} className="flex items-center justify-between border-t border-line py-2.5 first:border-0"><div><p className="font-black">{rule.minAchievement}% a {rule.maxAchievement ?? "mas"}%</p><p className="text-xs text-muted">Regla por cumplimiento</p></div><Badge tone={rule.id === activeRule?.id ? "success" : "default"}>{rule.commissionPercent}%</Badge></div>)}</Card></>;
+  return <>{projection ? <Card className="mb-3 border border-emerald-400/30 bg-gradient-to-br from-emerald-50 to-blue-50 p-3.5 dark:from-[#0f2a1e] dark:to-[#11203f]"><div className="flex items-start justify-between gap-4"><div><p className="text-[11px] font-bold uppercase tracking-[0.13em] text-muted">Proyección de cierre de mes</p><h2 className="mt-1 text-[2rem] font-black leading-none text-ink">{money(projection.projectedCommission)}</h2><p className="mt-1.5 text-sm text-muted">Al ritmo de tus semanas con datos 💰</p></div><span className="grid size-12 place-items-center rounded-2xl bg-success/10 text-success"><TrendingUp size={25} /></span></div><div className="mt-2.5 grid grid-cols-3 gap-2"><Mini label="Venta proy." value={money(projection.projectedSales)} /><Mini label="Nivel actual" value={`${projection.percent}%`} /><Mini label="Semanas" value={`${projection.weeksElapsed}/${projection.totalWeeks}`} /></div></Card> : null}<Card className="premium-hero mb-3 p-3.5"><div className="flex items-start justify-between gap-4"><div><p className="text-[11px] font-bold uppercase tracking-[0.13em] text-muted">Comision estimada {periodLabel}</p><h2 className="mt-1 text-[2.1rem] font-black leading-none text-ink">{hasMinimum ? money(simulatedCommission) : "—"}</h2><p className={`mt-1 text-sm ${activeRule ? "text-muted" : "font-semibold text-rose-700"}`}>{activeRule ? `${activeRule.commissionPercent}% por nivel actual` : missingRuleMessage}</p></div><span className="grid size-12 place-items-center rounded-2xl bg-purple/10 text-purple"><Trophy size={25} /></span></div><div className="mt-2.5 grid grid-cols-2 gap-2"><Mini label="Porcentaje" value={hasMinimum ? `${appliedPercent}%` : "—"} /><Mini label="Alcance vs mínimo" value={hasMinimum ? `${Math.round(simulatedAchievement)}%` : "—"} /></div></Card><Card className="mb-3 p-3.5"><div className="mb-2.5 flex items-center gap-2"><Calculator className="text-volt" size={18} /><h2 className="text-lg font-black">Simulador {periodLabel}</h2></div><input value={simulatedSales} onChange={(event) => setSimulatedSales(event.target.value.replace(/[^\d.]/g, ""))} inputMode="decimal" placeholder={String(Math.round(activeKpi.sales))} aria-label={`Venta simulada ${periodLabel}`} className="min-h-14 w-full rounded-2xl border border-line bg-panel px-4 text-xl font-black text-ink outline-none focus:border-volt focus:ring-4 focus:ring-volt/15" /></Card><Card className="p-3.5"><div className="mb-2.5 flex items-center justify-between"><h2 className="text-lg font-black">Escalera de niveles</h2><Badge>{commissionRole}</Badge></div>{rules.filter((rule) => rule.active && rule.role === commissionRole).map((rule) => <div key={rule.id} className="flex items-center justify-between border-t border-line py-2.5 first:border-0"><div><p className="font-black">{rule.minAchievement}% a {rule.maxAchievement ?? "mas"}%</p><p className="text-xs text-muted">Regla por cumplimiento</p></div><Badge tone={rule.id === activeRule?.id ? "success" : "default"}>{rule.commissionPercent}%</Badge></div>)}</Card></>;
 }
 
 type RankMetricId = "venta" | "conversion" | "upt" | "ept";
@@ -409,7 +410,7 @@ function RankingView({ ranking, periodLabel, isAdvisor, currentUserId }: { ranki
           ))}
         </div>
       ) : null}
-      <div className="h-28 rounded-xl overflow-hidden" style={{ background: "#0f172a" }}><ResponsiveContainer width="100%" height="100%"><BarChart data={data}><XAxis dataKey="name" tick={{ fill: "#94A3B8", fontSize: 10 }} axisLine={false} tickLine={false} /><CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" vertical={false} /><Tooltip contentStyle={tooltipStyle} formatter={(value) => isAdvisor ? [`${value}%`, "Cumplimiento"] : [metric.fmt(Number(value)), metric.label]} /><Bar dataKey="valor" fill="#3B82F6" radius={[8, 8, 8, 8]} animationDuration={800} animationEasing="ease-out" animationBegin={0} /></BarChart></ResponsiveContainer></div>
+      <div className="h-28"><ResponsiveContainer width="100%" height="100%"><BarChart data={data}><XAxis dataKey="name" tick={{ fill: isDark ? "#8899BB" : "#64748B", fontSize: 10 }} axisLine={false} tickLine={false} /><CartesianGrid strokeDasharray="3 3" stroke={isDark ? "rgba(255,255,255,0.08)" : "rgba(15,23,42,0.07)"} vertical={false} /><Tooltip contentStyle={tooltipStyle} formatter={(value) => isAdvisor ? [`${value}%`, "Cumplimiento"] : [metric.fmt(Number(value)), metric.label]} /><Bar dataKey="valor" fill="#2563EB" radius={[8, 8, 8, 8]} animationDuration={800} animationEasing="ease-out" animationBegin={0} /></BarChart></ResponsiveContainer></div>
     </Card>
     <Card className="divide-y divide-line p-3.5">{ranked.length ? ranked.map((entry) => {
       const item = entry.item;
