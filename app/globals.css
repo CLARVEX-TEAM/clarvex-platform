@@ -50,7 +50,7 @@ body {
   overscroll-behavior-y: none;
   background: var(--bg);
   color: rgb(var(--color-ink));
-  font-family: Geist, Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: var(--font-geist), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   font-feature-settings: "tnum";
   text-rendering: geometricPrecision;
   -webkit-font-smoothing: antialiased;
@@ -270,7 +270,10 @@ html[data-matchday] .ambient-blob-three { background: #009a54; }
   z-index: 1;
 }
 
-.solid-card:hover {
+/* El hover-glow solo tiene sentido en cards interactivas (links/botones);
+   en cards de contenido era decoración que "respondía" sin ser tocable. */
+a.solid-card:hover,
+button.solid-card:hover {
   border-color: rgb(37 99 235 / 0.28);
   box-shadow: 0 10px 28px rgb(37 99 235 / 0.1);
 }

@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { Geist } from "next/font/google";
 import "./globals.css";
 import { PwaRegister } from "@/components/PwaRegister";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
@@ -9,6 +10,10 @@ import { OfflineBanner } from "@/components/OfflineBanner";
 import { WhatsNewModal } from "@/components/WhatsNewModal";
 import { MatchBanner } from "@/components/MatchBanner";
 import { MatchIntro } from "@/components/MatchIntro";
+
+// Auto-alojada por next/font en el build: cero peticiones externas en runtime
+// (compatible con el CSP font-src 'self') y sin FOUT en Android.
+const geist = Geist({ subsets: ["latin"], variable: "--font-geist", display: "swap" });
 
 export const metadata: Metadata = {
   title: "CLARVEX Team",
@@ -32,8 +37,8 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: [
-    { media: "(prefers-color-scheme: dark)", color: "#0f172a" },
-    { media: "(prefers-color-scheme: light)", color: "#eff6ff" },
+    { media: "(prefers-color-scheme: dark)", color: "#0f1729" },
+    { media: "(prefers-color-scheme: light)", color: "#F5F8FF" },
   ],
   width: "device-width",
   initialScale: 1,
@@ -44,7 +49,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="es" suppressHydrationWarning>
+    <html lang="es" suppressHydrationWarning className={geist.variable}>
       <body>
         <ThemeProvider>
           <ToastProvider>
