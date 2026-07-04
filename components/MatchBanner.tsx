@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
+import { motion } from "framer-motion";
 import { GoalConfetti } from "@/components/GoalConfetti";
 import { matchPhase, type SerializedMatch } from "@/lib/match";
 
@@ -128,7 +129,15 @@ export function MatchBanner() {
     void act(`/api/match/${match.id}`, { [team === "MX" ? "mxScore" : "rivalScore"]: current - 1 });
   }
 
-  const isLive = phase === "live";
+  // "En vivo" de verdad: por estado (sync/manual) o porque ya pasó la hora del
+  // silbatazo. En la ventana previa (2 h antes) el banner presenta el duelo sin
+  // marcador ni botones — evita goles fantasma antes de empezar.
+  const started = match.status === "LIVE" || Date.now() >= new Date(match.kickoff).getTime();
+  const isLive = phase === "live" && started;
+  const minutesToKickoff = Math.max(0, Math.round((new Date(match.kickoff).getTime() - Date.now()) / 60_000));
+  const countdown = minutesToKickoff > 0 && minutesToKickoff <= 120
+    ? `Arranca en ${minutesToKickoff >= 60 ? `${Math.floor(minutesToKickoff / 60)} h ` : ""}${minutesToKickoff % 60} min`
+    : formatKickoff(match.kickoff);
 
   return (
     <>
@@ -139,25 +148,35 @@ export function MatchBanner() {
       >
         <div className="mx-auto flex max-w-2xl flex-col gap-1 px-3 py-1.5">
           <div className="flex items-center justify-between gap-2">
-            <div className="flex min-w-0 items-center gap-2">
-              <span className="text-lg leading-none">🇲🇽</span>
-              {isLive ? (
-                <div className="min-w-0">
-                  <div className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider">
-                    <span className="inline-block size-1.5 animate-pulse rounded-full bg-white" />
-                    En vivo{match.competition ? ` · ${match.competition}` : ""}
-                  </div>
-                  <p className="truncate text-sm font-black">
-                    México <span className="tabular-nums">{match.mxScore} - {match.rivalScore}</span> {match.opponentFlag ?? ""} {match.opponent}
-                  </p>
+            {isLive ? (
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center justify-center gap-1.5 text-[10px] font-black uppercase tracking-wider">
+                  <span className="inline-block size-1.5 animate-pulse rounded-full bg-white" />
+                  En vivo{match.competition ? ` · ${match.competition}` : ""}{match.externalId ? " · marcador automático" : ""}
                 </div>
-              ) : (
+                <div className="mt-0.5 flex items-center justify-center gap-3">
+                  <span className="min-w-0 truncate text-right text-sm font-black">🇲🇽 México</span>
+                  <motion.span
+                    key={`${match.mxScore}-${match.rivalScore}`}
+                    initial={{ scale: 1.45 }}
+                    animate={{ scale: 1 }}
+                    transition={{ type: "spring", stiffness: 400, damping: 22 }}
+                    className="shrink-0 rounded-lg bg-black/25 px-2.5 py-0.5 text-lg font-black leading-none tabular-nums"
+                  >
+                    {match.mxScore} – {match.rivalScore}
+                  </motion.span>
+                  <span className="min-w-0 truncate text-left text-sm font-black">{match.opponentFlag ?? ""} {match.opponent}</span>
+                </div>
+              </div>
+            ) : (
+              <div className="flex min-w-0 flex-1 items-center gap-2">
+                <span className="text-lg leading-none">🇲🇽</span>
                 <div className="min-w-0">
-                  <div className="text-[10px] font-black uppercase tracking-wider opacity-90">{formatKickoff(match.kickoff)}{match.competition ? ` · ${match.competition}` : ""}</div>
+                  <div className="text-[10px] font-black uppercase tracking-wider opacity-90">{countdown}{match.competition ? ` · ${match.competition}` : ""}</div>
                   <p className="truncate text-sm font-black">¡Juega México! 🆚 {match.opponentFlag ?? ""} {match.opponent}</p>
                 </div>
-              )}
-            </div>
+              </div>
+            )}
             {canManage && (
               <a href="/partido" className="grid size-8 shrink-0 place-items-center rounded-full bg-white/20 text-base transition hover:bg-white/30" aria-label="Administrar partidos">
                 ⚙️

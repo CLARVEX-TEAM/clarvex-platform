@@ -1,122 +1,38 @@
 import { NextResponse } from "next/server";
 import { requireCron } from "@/lib/cron-auth";
-import { prisma } from "@/lib/prisma";
-import { dispatchPushToUsers } from "@/lib/push";
-import { getEspnFixture } from "@/lib/football-api";
+import { findSyncableMatch, syncLinkedMatch } from "@/lib/match-sync";
 import { serializeMatch } from "@/lib/match";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-// POST /api/cron/match-sync — llamar cada minuto durante el partido.
+// POST /api/cron/match-sync — respaldo para cuando nadie tiene la app abierta:
+// el sync en vivo lo hace /api/match/active con cada visita del banner.
 export async function POST(request: Request) {
   const unauthorized = requireCron(request);
   if (unauthorized) return unauthorized;
 
-  // Solo vale la pena consultar ESPN cerca del silbatazo: sin la ventana el
-  // cron podía engancharse a un partido futuro arbitrario (con varios
-  // programados) y golpear la API cada minuto durante días.
-  const now = Date.now();
-  const SYNC_WINDOW_MS = 6 * 60 * 60 * 1000;
-  const match = await prisma.matchEvent.findFirst({
-    where: {
-      status: { not: "FINISHED" },
-      externalId: { not: null },
-      kickoff: { gte: new Date(now - SYNC_WINDOW_MS), lte: new Date(now + SYNC_WINDOW_MS) }
-    },
-    orderBy: { kickoff: "asc" }
-  });
-
-  if (!match?.externalId) {
+  const match = await findSyncableMatch();
+  if (!match) {
     return NextResponse.json({ skipped: true, reason: "Sin partido activo vinculado" });
   }
 
-  let fixture;
+  let result;
   try {
-    fixture = await getEspnFixture(match.externalId);
+    result = await syncLinkedMatch(match);
   } catch (err) {
     return NextResponse.json({ error: String(err) }, { status: 502 });
   }
 
-  if (!fixture) {
-    return NextResponse.json({ skipped: true, reason: "Fixture no encontrado en ESPN" });
+  if (result.skipped) {
+    return NextResponse.json(result.reason === "Sin cambios" ? { ok: true, unchanged: true } : { skipped: true, reason: result.reason });
   }
-
-  const { mxScore, rivalScore, live, finished } = fixture;
-  const prevMx = match.mxScore;
-  const prevRival = match.rivalScore;
-  const newStatus = finished ? "FINISHED" : live ? "LIVE" : match.status;
-
-  if (mxScore === prevMx && rivalScore === prevRival && newStatus === match.status) {
-    return NextResponse.json({ ok: true, unchanged: true });
-  }
-
-  // Guarda optimista: si el marcador cambió entre la lectura y esta escritura
-  // (gol manual del gerente), no pisarlo — el siguiente tick reconcilia.
-  const guarded = await prisma.matchEvent.updateMany({
-    where: { id: match.id, mxScore: prevMx, rivalScore: prevRival },
-    data: { mxScore, rivalScore, status: newStatus }
-  });
-  if (guarded.count === 0) {
-    return NextResponse.json({ ok: true, skipped: true, reason: "Marcador modificado durante el sync" });
-  }
-  const updated = await prisma.matchEvent.findUniqueOrThrow({ where: { id: match.id } });
-
-  const users = await prisma.user.findMany({ select: { id: true } });
-  const ids = users.map((u) => u.id);
-  const flag = match.opponentFlag ? ` ${match.opponentFlag}` : "";
-  const rival = `${match.opponent}${flag}`;
-  const comp = match.competition ? ` · ${match.competition}` : "";
-  const pushes: Promise<unknown>[] = [];
-
-  const mxGoals = mxScore - prevMx;
-  for (let i = 0; i < mxGoals; i++) {
-    const partial = prevMx + i + 1;
-    pushes.push(dispatchPushToUsers(ids, {
-      title: "¡GOOOOL de México! 🇲🇽⚽",
-      body: `México ${partial} - ${rivalScore} ${rival}`,
-      tag: `gol-mexico-${match.id}-${partial}`,
-      url: "/"
-    }));
-  }
-
-  const rivalGoals = rivalScore - prevRival;
-  for (let i = 0; i < rivalGoals; i++) {
-    const partial = prevRival + i + 1;
-    pushes.push(dispatchPushToUsers(ids, {
-      title: `Gol del rival 😬`,
-      body: `México ${mxScore} - ${partial} ${rival}`,
-      tag: `gol-rival-${match.id}-${partial}`,
-      url: "/"
-    }));
-  }
-
-  if (finished && match.status !== "FINISHED") {
-    const emoji = mxScore > rivalScore ? "🏆🎉" : mxScore === rivalScore ? "🤝" : "💪";
-    pushes.push(dispatchPushToUsers(ids, {
-      title: `Partido terminado ${emoji}`,
-      body: `México ${mxScore} - ${rivalScore} ${rival}${comp}`,
-      tag: `partido-fin-${match.id}`,
-      url: "/"
-    }));
-  }
-
-  if (live && match.status === "SCHEDULED" && mxGoals === 0 && rivalGoals === 0) {
-    pushes.push(dispatchPushToUsers(ids, {
-      title: `¡Arranca el partido! 🇲🇽⚽`,
-      body: `México vs ${rival}${comp} — ¡ya están jugando!`,
-      tag: `partido-live-${match.id}`,
-      url: "/"
-    }));
-  }
-
-  await Promise.allSettled(pushes);
 
   return NextResponse.json({
     ok: true,
-    match: serializeMatch(updated),
-    mxGoals,
-    rivalGoals,
-    statusChange: newStatus !== match.status ? `${match.status} → ${newStatus}` : null
+    match: serializeMatch(result.updated),
+    mxGoals: result.mxGoals,
+    rivalGoals: result.rivalGoals,
+    statusChange: result.statusChange
   });
 }
