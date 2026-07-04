@@ -18,6 +18,11 @@ function getClientIp(request: Request): string {
   return request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
 }
 
+// Bloqueo por cuenta: complementa el rate limit por IP (que un atacante puede
+// esquivar rotando IPs). Tras 5 PINs errados, la cuenta espera 15 min.
+const MAX_PIN_ATTEMPTS = 5;
+const PIN_LOCK_MS = 15 * 60 * 1000;
+
 export async function POST(request: Request) {
   const ip = getClientIp(request);
   const parsed = await parseJson(request, inputSchema);
@@ -50,14 +55,30 @@ export async function POST(request: Request) {
     user.pinHash = await hashPin(parsed.data.pin);
   } else {
     if (!user.pinHash) return NextResponse.json({ error: "Debes crear tu PIN antes de iniciar sesion." }, { status: 409 });
+    // Cuenta bloqueada por intentos fallidos: no se procesa el PIN.
+    if (user.pinLockedUntil && user.pinLockedUntil.getTime() > Date.now()) {
+      const retryAfterSeconds = Math.ceil((user.pinLockedUntil.getTime() - Date.now()) / 1000);
+      return NextResponse.json(
+        { error: "Demasiados intentos. Tu cuenta está bloqueada unos minutos por seguridad." },
+        { status: 429, headers: { "Retry-After": String(retryAfterSeconds) } }
+      );
+    }
     if (!(await verifyPin(parsed.data.pin, user.pinHash))) {
+      // PIN incorrecto: cuenta el fallo y bloquea al llegar al máximo.
+      const attempts = user.failedPinAttempts + 1;
+      const lock = attempts >= MAX_PIN_ATTEMPTS;
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { failedPinAttempts: lock ? 0 : attempts, pinLockedUntil: lock ? new Date(Date.now() + PIN_LOCK_MS) : user.pinLockedUntil }
+      });
       return NextResponse.json({ error: "Credenciales invalidas." }, { status: 401 });
     }
   }
 
   const updated = await prisma.user.update({
     where: { id: user.id },
-    data: { pinHash: user.pinHash, lastLoginAt: new Date() }
+    // Login/registro exitoso: reinicia el contador y limpia el bloqueo.
+    data: { pinHash: user.pinHash, lastLoginAt: new Date(), failedPinAttempts: 0, pinLockedUntil: null }
   });
   const token = await createSessionToken(updated);
   const response = NextResponse.json({ user: publicUser(updated) });

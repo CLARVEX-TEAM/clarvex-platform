@@ -64,7 +64,9 @@ export async function POST(request: Request) {
     data: { counter: verification.authenticationInfo.newCounter }
   });
 
-  const updated = await prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
+  // La biometría es prueba fuerte de identidad (no forzable por fuerza bruta):
+  // un login exitoso reinicia el contador y limpia el bloqueo de PIN del dueño.
+  const updated = await prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date(), failedPinAttempts: 0, pinLockedUntil: null } });
   const token = await createSessionToken(updated);
   const res = NextResponse.json({ user: publicUser(updated) });
   res.cookies.set(SESSION_COOKIE, token, sessionCookieOptions);
