@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Calculator, CalendarDays, Download, Receipt, Settings2, ShoppingBag, Target, TrendingUp, Trophy, UsersRound, X } from "lucide-react";
 import { getSession } from "@/lib/auth";
+import { computeNextBracketGap, resolveCommissionMinimum } from "@/lib/commission";
 import { money } from "@/lib/format";
 import type { KpiPeriod } from "@/lib/kpi-period";
 import type { KpiReportItem } from "@/lib/kpi-report";
@@ -325,9 +326,38 @@ function VentasView({ activeKpi, chartData, team, progress, periodLabel }: { act
 
 function ComisionView({ activeKpi, rules, simulatedSales, setSimulatedSales, activeRule, appliedPercent, simulatedCommission, simulatedAchievement, commissionRole, periodLabel, projection, hasMinimum }: { activeKpi: KpiReportItem; rules: CommissionRule[]; simulatedSales: string; setSimulatedSales: (value: string) => void; activeRule?: CommissionRule; appliedPercent: number; simulatedCommission: number; simulatedAchievement: number; commissionRole: Role; periodLabel: string; projection?: MonthProjection | null; hasMinimum: boolean }) {
   const missingRuleMessage = !hasMinimum ? "Sin mínimo de comisión sincronizado" : `No existe regla para ${commissionRole} ${Math.round(simulatedAchievement)}%`;
+  // "¿Cuánto me falta?" — venta restante para el siguiente bracket de comisión.
+  const bracketGap = hasMinimum && activeKpi.sales > 0
+    ? computeNextBracketGap({ sales: activeKpi.sales, minimum: resolveCommissionMinimum(activeKpi.commissionMinimum ?? null, activeKpi.goal), rules, role: commissionRole })
+    : null;
   return (
     <div className="grid grid-cols-2 gap-4">
       <div className="space-y-4">
+        {bracketGap ? (
+          bracketGap.atTop ? (
+            <Card className="border border-amber-400/40 bg-gradient-to-br from-amber-50 to-orange-50 p-5 dark:from-[#2a2110] dark:to-[#241a0d]">
+              <div className="flex items-center gap-3">
+                <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-amber-400/15 text-2xl">🏆</span>
+                <div>
+                  <h2 className="text-lg font-black leading-tight text-ink">¡Nivel máximo de comisión!</h2>
+                  <p className="mt-0.5 text-sm font-semibold text-muted">Ya ganas el {bracketGap.currentPercent}% — mantén el ritmo.</p>
+                </div>
+              </div>
+            </Card>
+          ) : (
+            <Card className="border border-volt/25 bg-gradient-to-br from-blue-50 to-indigo-50 p-5 dark:from-[#101c3a] dark:to-[#141233]">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-[0.13em] text-muted">Te faltan</p>
+                  <h2 className="mt-1 text-[2rem] font-black leading-none text-ink">{money(bracketGap.salesNeeded)}</h2>
+                  <p className="mt-1.5 text-sm text-muted">para el {bracketGap.targetAchievement}% y subir tu comisión de {bracketGap.currentPercent}% a <span className="font-black text-volt">{bracketGap.nextPercent}%</span></p>
+                </div>
+                <span className="grid size-12 place-items-center rounded-2xl bg-volt/10 text-2xl">🎯</span>
+              </div>
+              {bracketGap.extraCommission > 0 ? <div className="mt-3"><Mini label="Comisión extra estimada" value={`+${money(bracketGap.extraCommission)}`} /></div> : null}
+            </Card>
+          )
+        ) : null}
         {projection ? (
           <Card className="border border-emerald-400/30 bg-gradient-to-br from-emerald-50 to-blue-50 p-5 dark:from-[#0f2a1e] dark:to-[#11203f]">
             <div className="flex items-start justify-between gap-4">

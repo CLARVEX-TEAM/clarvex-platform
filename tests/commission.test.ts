@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { findCommissionRule, projectMonthlyCommission, resolveCommissionMinimum } from "../lib/commission";
+import { computeNextBracketGap, findCommissionRule, projectMonthlyCommission, resolveCommissionMinimum } from "../lib/commission";
 import type { CommissionRule } from "../lib/types";
 
 const rules: CommissionRule[] = [
@@ -59,4 +59,40 @@ test("proyeccion: no extrapola si ya estan todas las semanas cargadas", () => {
   const result = projectMonthlyCommission({ salesToDate: 100_000, minimumToDate: 90_000, weeksElapsed: 4, totalWeeks: 4, rules: advisorRules, role: "ASESOR" });
   assert.ok(result);
   assert.equal(result!.projectedSales, 100_000);
+});
+
+test("siguiente bracket: calcula venta faltante y comision extra", () => {
+  // 80k / 100k = 80% -> siguiente bracket 100% (1.91%): faltan 20k
+  const gap = computeNextBracketGap({ sales: 80_000, minimum: 100_000, rules: advisorRules, role: "ASESOR" });
+  assert.ok(gap);
+  assert.equal(gap!.atTop, false);
+  assert.equal(gap!.salesNeeded, 20_000);
+  assert.equal(gap!.targetAchievement, 100);
+  assert.equal(gap!.currentPercent, 1.53);
+  assert.equal(gap!.nextPercent, 1.91);
+  // extra = 100k*1.91% - 80k*1.53% = 1910 - 1224 = 686
+  assert.equal(gap!.extraCommission, 686);
+});
+
+test("siguiente bracket: en 111 por ciento apunta al 115", () => {
+  const gap = computeNextBracketGap({ sales: 111_000, minimum: 100_000, rules: advisorRules, role: "ASESOR" });
+  assert.ok(gap);
+  assert.equal(gap!.targetAchievement, 115);
+  assert.equal(gap!.salesNeeded, 4_000);
+  assert.equal(gap!.nextPercent, 2.29);
+});
+
+test("siguiente bracket: en el nivel maximo devuelve atTop", () => {
+  const gap = computeNextBracketGap({ sales: 130_000, minimum: 100_000, rules: advisorRules, role: "ASESOR" });
+  assert.ok(gap);
+  assert.equal(gap!.atTop, true);
+  assert.equal(gap!.currentPercent, 2.29);
+  assert.equal(gap!.salesNeeded, 0);
+});
+
+test("siguiente bracket: sin minimo o sin reglas devuelve null", () => {
+  assert.equal(computeNextBracketGap({ sales: 80_000, minimum: 0, rules: advisorRules, role: "ASESOR" }), null);
+  assert.equal(computeNextBracketGap({ sales: 80_000, minimum: 100_000, rules: [], role: "ASESOR" }), null);
+  // Reglas de otro rol no aplican
+  assert.equal(computeNextBracketGap({ sales: 80_000, minimum: 100_000, rules: advisorRules, role: "GERENTE" }), null);
 });
