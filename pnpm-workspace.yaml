@@ -1,0 +1,8 @@
+# pnpm 10+ lee los overrides desde aquí (ya no del campo "pnpm" de package.json).
+# Parches de seguridad de subdependencias transitivas:
+#  - postcss <8.5.10: XSS en el stringify (vía next)
+#  - uuid <11.1.1: bounds check de buffer en v3/v5/v6 (vía exceljs; no explotable
+#    con el v4 que usa exceljs, pero se fija para dejar el audit en cero)
+overrides:
+  postcss@<8.5.10: ">=8.5.10"
+  exceljs>uuid: ">=11.1.1"

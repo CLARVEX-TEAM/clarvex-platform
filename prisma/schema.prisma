@@ -195,6 +195,8 @@ model User {
   photoUrl              String?
   active                Boolean                @default(true)
   platformAdmin         Boolean                @default(false)
+  failedPinAttempts     Int                    @default(0)
+  pinLockedUntil        DateTime?
   biometricEnabled      Boolean                @default(false)
   lastLoginAt           DateTime?
   lastSeenAt            DateTime?
