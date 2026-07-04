@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { isApiError, parseJson, requirePlatformAdmin } from "@/lib/api";
+import { recordAudit } from "@/lib/audit";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -19,7 +20,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
   const parsed = await parseJson(request, billingSchema);
   if ("response" in parsed) return parsed.response;
 
-  const store = await prisma.store.findUnique({ where: { id }, select: { id: true } });
+  const store = await prisma.store.findUnique({ where: { id }, select: { id: true, name: true } });
   if (!store) return NextResponse.json({ error: "Tienda no encontrada." }, { status: 404 });
 
   const updated = await prisma.store.update({
@@ -31,6 +32,12 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
         : null
     },
     select: { id: true, billingExempt: true, subscriptionPaidUntil: true }
+  });
+
+  await recordAudit({
+    session, action: "billing.update", entity: "Store", entityId: store.id,
+    storeId: store.id, storeName: store.name,
+    detail: `Exenta: ${parsed.data.billingExempt ? "sí" : "no"} · Pagado hasta: ${parsed.data.subscriptionPaidUntil ?? "—"}.`
   });
 
   return NextResponse.json({ store: updated });

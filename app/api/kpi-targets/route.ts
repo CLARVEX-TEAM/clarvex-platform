@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { isApiError, parseJson, requireSession } from "@/lib/api";
+import { recordAudit } from "@/lib/audit";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -36,6 +37,12 @@ export async function POST(request: Request) {
     where: { storeId_metric_period: { storeId: session.storeId, metric, period } },
     update: { value, createdBy: session.userId, updatedAt: new Date() },
     create: { storeId: session.storeId, metric, value, period, createdBy: session.userId },
+  });
+
+  await recordAudit({
+    session, action: "target.update", entity: "KpiTarget", entityId: target.id,
+    storeId: session.storeId,
+    detail: `Meta interna ${metric} (${period}) → ${value}.`
   });
 
   return NextResponse.json({ target: { ...target, value: Number(target.value) } });

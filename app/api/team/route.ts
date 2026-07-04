@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { Role } from "@prisma/client";
 import { isApiError, parseJson, requireSession } from "@/lib/api";
+import { recordAudit } from "@/lib/audit";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -43,6 +44,12 @@ export async function POST(request: Request) {
       // pinHash null: la persona crea su PIN en el primer inicio de sesión.
     },
     select: { id: true, name: true, employeeNumber: true, role: true }
+  });
+
+  await recordAudit({
+    session, action: "user.create", entity: "User", entityId: user.id,
+    storeId: session.storeId,
+    detail: `Alta de ${user.name} (#${user.employeeNumber}) como ${user.role}.`
   });
 
   return NextResponse.json({ user }, { status: 201 });
