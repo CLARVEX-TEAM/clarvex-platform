@@ -2,8 +2,10 @@ import { NextResponse } from "next/server";
 import ExcelJS from "exceljs";
 import { DATA_SOURCE_ROLES } from "@/lib/access-control";
 import { isApiError, requireSession } from "@/lib/api";
-import { aggregateKpis, aggregateStore, type KpiReportItem } from "@/lib/kpi-report";
+import { aggregateKpis, aggregateStore, aggregateStoreTraffic, type KpiReportItem } from "@/lib/kpi-report";
 import { prisma } from "@/lib/prisma";
+import { buildWeeklyCloseColumn, buildWeeklyCloseColumns } from "@/lib/weekly-close";
+import { buildWeeklyCloseSheet } from "@/lib/weekly-close-excel";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -45,19 +47,46 @@ export async function GET(request: Request) {
   }
   const periodLabel = params.get("period") === "month" ? "Mensual" : "Semanal";
   const rangeLabel = params.get("label")?.slice(0, 80) ?? "";
+  const weekParam = params.get("week");
+  const weekNumber = weekParam && /^\d{1,3}$/.test(weekParam) ? Number(weekParam) : null;
 
-  const rows = await prisma.kpi.findMany({
-    where: { storeId: session.storeId, date: { gte: start, lte: end } },
-    include: { user: { select: { name: true, role: true, photoUrl: true } } },
-    orderBy: [{ date: "asc" }, { userId: "asc" }]
-  });
+  const [rows, storeRecord] = await Promise.all([
+    prisma.kpi.findMany({
+      where: { storeId: session.storeId, date: { gte: start, lte: end } },
+      include: { user: { select: { name: true, role: true, photoUrl: true } } },
+      orderBy: [{ date: "asc" }, { userId: "asc" }]
+    }),
+    prisma.store.findUnique({ where: { id: session.storeId }, select: { name: true } })
+  ]);
 
   const reports = aggregateKpis(rows, periodLabel === "Mensual");
-  const store = aggregateStore(reports);
+  const store = aggregateStore(reports, aggregateStoreTraffic(rows));
   const ordered = [...reports].sort((a, b) => b.sales - a.sales);
 
   const workbook = new ExcelJS.Workbook();
   workbook.creator = "Clarvex Team";
+
+  // Cierre semanal: formato "RESUMEN DE DESEMPEÑO SEMANAL (ASESORES)"
+  if (periodLabel === "Semanal" && store) {
+    buildWeeklyCloseSheet(workbook, {
+      storeName: storeRecord?.name ?? "Tienda",
+      weekNumber,
+      rangeLabel,
+      columns: buildWeeklyCloseColumns(reports, store),
+      store: buildWeeklyCloseColumn(store, store)
+    });
+    const weeklyBuffer = await workbook.xlsx.writeBuffer();
+    const weeklyName = `cierre-semana${weekNumber ? `-${weekNumber}` : ""}-${params.get("start")}.xlsx`;
+    return new NextResponse(weeklyBuffer as ArrayBuffer, {
+      status: 200,
+      headers: {
+        "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "Content-Disposition": `attachment; filename="${weeklyName}"`,
+        "Cache-Control": "no-store"
+      }
+    });
+  }
+
   const sheet = workbook.addWorksheet("Reporte KPIs");
 
   const title = sheet.addRow(["Clarvex Team — Reporte de KPIs"]);

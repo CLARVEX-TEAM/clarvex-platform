@@ -55,7 +55,7 @@ export default function EscritorioKpis() {
         />
         {isManager && report ? (
           <a
-            href={`/api/reports/kpis?start=${report.startDate}&end=${report.endDate}&period=${period}&label=${encodeURIComponent(rangeLabel)}`}
+            href={`/api/reports/kpis?start=${report.startDate}&end=${report.endDate}&period=${period}&label=${encodeURIComponent(rangeLabel)}${report.weekNumber ? `&week=${report.weekNumber}` : ""}`}
             className="flex min-h-11 items-center justify-center gap-2 rounded-2xl border border-line bg-panel px-4 text-sm font-black text-volt transition hover:border-volt"
           >
             <Download size={16} /> Exportar (Excel)

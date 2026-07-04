@@ -61,7 +61,7 @@ export default function KpisPage() {
 
         {isManager && report ? (
           <a
-            href={`/api/reports/kpis?start=${report.startDate}&end=${report.endDate}&period=${period}&label=${encodeURIComponent(rangeLabel)}`}
+            href={`/api/reports/kpis?start=${report.startDate}&end=${report.endDate}&period=${period}&label=${encodeURIComponent(rangeLabel)}${report.weekNumber ? `&week=${report.weekNumber}` : ""}`}
             className="mb-3 flex min-h-11 items-center justify-center gap-2 rounded-2xl border border-line bg-panel text-sm font-black text-volt transition hover:border-volt active:scale-95"
           >
             <Download size={16} /> Exportar reporte (Excel)
