@@ -832,6 +832,25 @@ model MatchEvent {
   @@index([status])
 }
 
+// Auditoría de acciones sensibles (metas, comisiones, usuarios, cobros).
+// Sin llaves foráneas a propósito: el registro debe sobrevivir aunque se
+// elimine el usuario o la tienda (se guardan snapshots de nombre).
+model AuditLog {
+  id        String   @id @default(cuid())
+  storeId   String?
+  storeName String?
+  actorId   String?
+  actorName String
+  action    String   // p.ej. "commission.update", "user.create", "billing.update"
+  entity    String   // p.ej. "CommissionRule", "User", "Store", "KpiTarget"
+  entityId  String?
+  detail    String?  // resumen legible de lo que cambió
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([storeId, createdAt])
+}
+
 model ChatMessageReaction {
   id        String      @id @default(cuid())
   messageId String

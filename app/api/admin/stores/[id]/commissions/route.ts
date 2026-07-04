@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { isApiError, parseJson, requirePlatformAdmin } from "@/lib/api";
+import { recordAudit } from "@/lib/audit";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -23,7 +24,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
   const parsed = await parseJson(request, updateSchema);
   if ("response" in parsed) return parsed.response;
 
-  const store = await prisma.store.findUnique({ where: { id }, select: { id: true } });
+  const store = await prisma.store.findUnique({ where: { id }, select: { id: true, name: true } });
   if (!store) return NextResponse.json({ error: "Tienda no encontrada." }, { status: 404 });
 
   const existing = await prisma.commissionRule.findMany({
@@ -43,6 +44,12 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
       data: { commissionPercent: rule.commissionPercent }
     }))
   );
+
+  await recordAudit({
+    session, action: "commission.update", entity: "CommissionRule",
+    storeId: store.id, storeName: store.name,
+    detail: parsed.data.rules.map((rule) => `${rule.role} ${rule.minAchievement}%+ → ${rule.commissionPercent}%`).join(" · ")
+  });
 
   return NextResponse.json({ ok: true });
 }

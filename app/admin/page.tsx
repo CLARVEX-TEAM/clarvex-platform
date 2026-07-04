@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Building2, CheckCircle2, ChevronDown, Percent, Plus } from "lucide-react";
+import { Building2, CheckCircle2, ChevronDown, Percent, Plus, ScrollText } from "lucide-react";
 import { getSession } from "@/lib/auth";
 import { AppFrame, AppHeader, BottomNav, Button, Card } from "@/components/ui";
 
@@ -12,6 +12,23 @@ type CommissionRuleRow = {
   minAchievement: number;
   maxAchievement: number | null;
   commissionPercent: number;
+};
+
+type AuditEntry = {
+  id: string;
+  createdAt: string;
+  storeName: string | null;
+  actorName: string;
+  action: string;
+  detail: string | null;
+};
+
+const AUDIT_ACTION_LABELS: Record<string, string> = {
+  "store.create": "Tienda creada",
+  "user.create": "Alta de usuario",
+  "commission.update": "Comisiones",
+  "billing.update": "Cobro",
+  "target.update": "Meta interna"
 };
 
 type StoreRow = {
@@ -57,6 +74,23 @@ export default function AdminPage() {
   const [billingExempt, setBillingExempt] = useState(true);
   const [paidUntil, setPaidUntil] = useState("");
   const [savingBilling, setSavingBilling] = useState(false);
+  const [showAudit, setShowAudit] = useState(false);
+  const [auditEntries, setAuditEntries] = useState<AuditEntry[] | null>(null);
+
+  async function toggleAudit() {
+    const next = !showAudit;
+    setShowAudit(next);
+    if (next && auditEntries === null) {
+      try {
+        const response = await fetch("/api/admin/audit", { cache: "no-store" });
+        if (!response.ok) throw new Error(String(response.status));
+        const payload = await response.json() as { entries: AuditEntry[] };
+        setAuditEntries(payload.entries);
+      } catch {
+        setAuditEntries([]);
+      }
+    }
+  }
 
   useEffect(() => {
     getSession().then((current) => {
@@ -295,6 +329,31 @@ export default function AdminPage() {
             ))}
           </div>
         )}
+
+        <Card className="mt-4 p-3.5">
+          <button type="button" onClick={() => void toggleAudit()} className="flex w-full items-center justify-between">
+            <span className="flex items-center gap-2 font-black text-ink"><ScrollText size={16} className="text-volt" />Auditoría</span>
+            <ChevronDown size={15} className={`text-muted transition-transform ${showAudit ? "rotate-180" : ""}`} />
+          </button>
+          {showAudit ? (
+            <div className="mt-3 divide-y divide-line border-t border-line">
+              {auditEntries === null ? (
+                <p className="pt-3 text-sm font-semibold text-muted">Cargando...</p>
+              ) : auditEntries.length === 0 ? (
+                <p className="pt-3 text-sm font-semibold text-muted">Sin movimientos registrados todavía.</p>
+              ) : auditEntries.map((entry) => (
+                <div key={entry.id} className="py-2.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="min-w-0 truncate text-sm font-black text-ink">{entry.actorName}{entry.storeName ? ` · ${entry.storeName}` : ""}</p>
+                    <span className="shrink-0 rounded-full bg-panel px-2 py-0.5 text-[10px] font-bold text-muted ring-1 ring-line">{AUDIT_ACTION_LABELS[entry.action] ?? entry.action}</span>
+                  </div>
+                  {entry.detail ? <p className="mt-0.5 text-xs font-semibold text-muted">{entry.detail}</p> : null}
+                  <p className="mt-0.5 text-[10px] font-semibold text-muted/70">{new Date(entry.createdAt).toLocaleString("es-MX", { timeZone: "America/Monterrey", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</p>
+                </div>
+              ))}
+            </div>
+          ) : null}
+        </Card>
       </AppFrame>
       <BottomNav />
     </>

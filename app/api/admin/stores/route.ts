@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { Role } from "@prisma/client";
 import { isApiError, parseJson, requirePlatformAdmin } from "@/lib/api";
+import { recordAudit } from "@/lib/audit";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -104,6 +105,12 @@ export async function POST(request: Request) {
       data: DEFAULT_COMMISSION_RULES.map((rule) => ({ ...rule, storeId: created.id, minSales: 0, maxSales: null, active: true }))
     });
     return created;
+  });
+
+  await recordAudit({
+    session, action: "store.create", entity: "Store", entityId: store.id,
+    storeId: store.id, storeName: store.name,
+    detail: `Tienda "${store.name}" creada con gerente ${manager.name} (#${manager.employeeNumber}).`
   });
 
   return NextResponse.json({ store: { id: store.id, name: store.name } }, { status: 201 });
