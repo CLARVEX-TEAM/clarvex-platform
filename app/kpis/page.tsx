@@ -9,7 +9,7 @@ import { money } from "@/lib/format";
 import type { KpiPeriod } from "@/lib/kpi-period";
 import type { KpiReportItem } from "@/lib/kpi-report";
 import type { CommissionRule, Role, User } from "@/lib/types";
-import { KPI_TABS as tabs, METRIC_CONFIG, formatWeeksElapsed, localDateKey, type KpiTab as Tab, type KpiTarget, type MonthProjection, type MonthSalesProjection, type ReceiptLine, type ReceiptMonth } from "@/lib/kpi-view";
+import { KPI_TABS as tabs, METRIC_ACCENT, METRIC_CONFIG, formatWeeksElapsed, localDateKey, type KpiTab as Tab, type KpiTarget, type MonthProjection, type MonthSalesProjection, type ReceiptLine, type ReceiptMonth } from "@/lib/kpi-view";
 import { useKpiDerived, useKpiReceipts, useKpiReport, useKpiTargets } from "@/lib/use-kpis";
 import { achievementTone, AppFrame, AppHeader, Badge, BottomNav, Card, ProfileAvatar, ProgressBar, ProgressRing, Skeleton, StatCard } from "@/components/ui";
 import { PullToRefresh } from "@/components/PullToRefresh";
@@ -127,16 +127,6 @@ function PeriodSelector({ period, setPeriod, selectedDate, setSelectedDate, rang
   );
 }
 
-// Acento por métrica: tinte en el chip del ícono y color de la sparkline.
-// El valor va en tinta — el color señala la métrica, no compite con la cifra.
-const METRIC_ACCENT: Record<string, { chip: string; spark: string }> = {
-  upt:         { chip: "bg-volt/10 text-volt",       spark: "#2563EB" },
-  aur:         { chip: "bg-sky/10 text-sky",         spark: "#0EA5E9" },
-  ept:         { chip: "bg-purple/10 text-purple",   spark: "#4F46E5" },
-  conversion:  { chip: "bg-ember/10 text-ember",     spark: "#F59E0B" },
-  margen:      { chip: "bg-orchid/10 text-orchid",   spark: "#EF4444" },
-  achievement: { chip: "bg-success/10 text-success", spark: "#22C55E" }
-};
 
 function ResumenView({ activeKpi, team, progress, periodLabel, hasDiscountSource, latestDiscountWeek, targets, isManager, onOpenTargets, salesProjection }: { activeKpi: KpiReportItem; team: KpiReportItem[]; progress: number; periodLabel: string; hasDiscountSource: boolean; latestDiscountWeek: { weekNumber: number; margin: number | null } | null; targets: KpiTarget[]; isManager: boolean; onOpenTargets: () => void; salesProjection?: MonthSalesProjection | null }) {
   const discountValue = activeKpi.discountMargin !== null

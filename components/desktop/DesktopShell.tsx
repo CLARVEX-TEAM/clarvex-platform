@@ -8,6 +8,7 @@ import {
   AlertTriangle,
   BarChart3,
   BookOpen,
+  Building2,
   CalendarClock,
   CalendarDays,
   CheckSquare,
@@ -24,6 +25,7 @@ import {
   PackageSearch,
   Smartphone,
   Sun,
+  Trophy,
   UsersRound
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -40,7 +42,7 @@ import { consumeDesktopFreshLogin } from "@/lib/desktop-profiles";
 // Ancho mínimo para considerar "escritorio". Por debajo, gerencia usa la app móvil.
 export const DESKTOP_MIN_WIDTH = 1024;
 
-const navGroups: { label: string; items: { href: string; label: string; icon: LucideIcon }[] }[] = [
+const navGroups: { label: string; items: { href: string; label: string; icon: LucideIcon; adminOnly?: boolean }[] }[] = [
   {
     label: "Operación",
     items: [
@@ -69,7 +71,9 @@ const navGroups: { label: string; items: { href: string; label: string; icon: Lu
       { href: "/escritorio/kudos", label: "Reconocimientos", icon: HeartHandshake },
       { href: "/escritorio/encuestas", label: "Encuestas", icon: ClipboardCheck },
       { href: "/escritorio/capacitacion", label: "Capacitación", icon: GraduationCap },
-      { href: "/escritorio/datos", label: "Centro de Datos", icon: Database }
+      { href: "/escritorio/datos", label: "Centro de Datos", icon: Database },
+      { href: "/partido", label: "Partido México", icon: Trophy },
+      { href: "/admin", label: "Administración", icon: Building2, adminOnly: true }
     ]
   }
 ];
@@ -184,7 +188,7 @@ export function DesktopShell({ children }: { children: React.ReactNode }) {
           {navGroups.map((group) => (
             <div key={group.label} className="flex flex-col gap-0.5">
               <p className="px-3 pb-1 text-[10px] font-black uppercase tracking-[0.14em] text-muted/70">{group.label}</p>
-              {group.items.map((item) => {
+              {group.items.filter((item) => !item.adminOnly || user?.platformAdmin).map((item) => {
                 const active = pathname === item.href || (item.href !== "/escritorio" && pathname.startsWith(`${item.href}/`));
                 return (
                   <Link
