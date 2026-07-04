@@ -105,6 +105,10 @@ enum ChatRoomType {
 model Store {
   id             String         @id @default(cuid())
   name           String
+  // Cobro SaaS: exenta por default (tienda propia / cortesía). Una tienda de
+  // pago se marca billingExempt=false y se le fija subscriptionPaidUntil.
+  billingExempt  Boolean        @default(true)
+  subscriptionPaidUntil DateTime?
   users          User[]
   kpis           Kpi[]
   schedules      Schedule[]

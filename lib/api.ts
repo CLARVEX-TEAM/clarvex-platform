@@ -6,6 +6,9 @@ import type { Role } from "@/lib/types";
 export async function requireSession(roles?: Role[]): Promise<Session | NextResponse> {
   const session = await getServerSession();
   if (!session) return NextResponse.json({ error: "Sesion requerida." }, { status: 401 });
+  if (session.storeSuspended && !session.platformAdmin) {
+    return NextResponse.json({ error: "La suscripción de esta tienda venció." }, { status: 402 });
+  }
   if (roles && !roles.includes(session.role)) {
     return NextResponse.json({ error: "No tienes permiso para esta accion." }, { status: 403 });
   }

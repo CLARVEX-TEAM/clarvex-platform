@@ -13,6 +13,8 @@ export type Session = JWTPayload & {
   name: string;
   employeeNumber: string;
   platformAdmin: boolean;
+  // Calculado por getServerSession (no viaja en el JWT): tienda sin suscripción vigente.
+  storeSuspended?: boolean;
 };
 
 function secret() {

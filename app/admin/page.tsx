@@ -21,8 +21,19 @@ type StoreRow = {
   totalUsers: number;
   activeUsers: number;
   dataSources: number;
+  billingExempt: boolean;
+  subscriptionPaidUntil: string | null;
   commissionRules: CommissionRuleRow[];
 };
+
+function billingStatus(store: StoreRow): { label: string; tone: "ok" | "warn" | "bad" } {
+  if (store.billingExempt) return { label: "Exenta", tone: "ok" };
+  if (!store.subscriptionPaidUntil) return { label: "Sin pago", tone: "bad" };
+  const paidUntil = new Date(`${store.subscriptionPaidUntil}T23:59:59Z`).getTime();
+  if (paidUntil < Date.now()) return { label: "Vencida", tone: "bad" };
+  const daysLeft = Math.ceil((paidUntil - Date.now()) / 86_400_000);
+  return daysLeft <= 7 ? { label: `Vence en ${daysLeft} d`, tone: "warn" } : { label: `Al corriente`, tone: "ok" };
+}
 
 const BRACKET_ROLES = ["GERENTE", "SUBGERENTE", "ASESOR"] as const;
 const BRACKET_MINS = [0, 100, 115] as const;
@@ -43,6 +54,9 @@ export default function AdminPage() {
   const [draft, setDraft] = useState<Record<string, string>>({});
   const [savingCommissions, setSavingCommissions] = useState(false);
   const [savedStoreId, setSavedStoreId] = useState<string | null>(null);
+  const [billingExempt, setBillingExempt] = useState(true);
+  const [paidUntil, setPaidUntil] = useState("");
+  const [savingBilling, setSavingBilling] = useState(false);
 
   useEffect(() => {
     getSession().then((current) => {
@@ -104,8 +118,31 @@ export default function AdminPage() {
       next[`${rule.role}:${rule.minAchievement}`] = String(rule.commissionPercent);
     }
     setDraft(next);
+    setBillingExempt(store.billingExempt);
+    setPaidUntil(store.subscriptionPaidUntil ?? "");
     setSavedStoreId(null);
     setExpandedStoreId(store.id);
+  }
+
+  async function saveBilling(store: StoreRow) {
+    setSavingBilling(true);
+    setError("");
+    setSavedStoreId(null);
+    try {
+      const response = await fetch(`/api/admin/stores/${store.id}/billing`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ billingExempt, subscriptionPaidUntil: paidUntil || null })
+      });
+      const payload = await response.json() as { error?: string };
+      if (!response.ok) throw new Error(payload.error ?? "No se pudo guardar la suscripción.");
+      setSavedStoreId(store.id);
+      await loadStores();
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : "No se pudo guardar la suscripción.");
+    } finally {
+      setSavingBilling(false);
+    }
   }
 
   async function saveCommissions(store: StoreRow) {
@@ -183,6 +220,9 @@ export default function AdminPage() {
                     <p className="truncate font-black text-ink">{store.name}</p>
                     <p className="text-xs font-semibold text-muted">
                       {store.activeUsers} activos de {store.totalUsers} · {store.dataSources} fuentes de datos
+                      {(() => { const s = billingStatus(store); return (
+                        <span className={`ml-1.5 rounded-full px-1.5 py-0.5 text-[10px] font-bold ${s.tone === "ok" ? "bg-success/10 text-success" : s.tone === "warn" ? "bg-ember/10 text-ember" : "bg-orchid/10 text-orchid"}`}>{s.label}</span>
+                      ); })()}
                     </p>
                   </div>
                   <button
@@ -197,6 +237,31 @@ export default function AdminPage() {
 
                 {expandedStoreId === store.id ? (
                   <div className="mt-3 border-t border-line pt-3">
+                    <p className="mb-2 text-xs font-bold text-muted">Suscripción</p>
+                    <div className="mb-2 flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setBillingExempt((current) => !current)}
+                        className={`min-h-9 rounded-full px-3 text-xs font-bold transition ${billingExempt ? "bg-success/10 text-success ring-1 ring-success/30" : "bg-panel text-muted ring-1 ring-line"}`}
+                      >
+                        {billingExempt ? "Exenta de cobro ✓" : "Tienda de pago"}
+                      </button>
+                      <input
+                        type="date"
+                        value={paidUntil}
+                        onChange={(event) => setPaidUntil(event.target.value)}
+                        disabled={billingExempt}
+                        aria-label="Pagado hasta"
+                        className="min-h-9 flex-1 rounded-xl border border-line bg-panel px-2 text-xs font-bold text-ink outline-none focus:border-volt disabled:opacity-40"
+                      />
+                      <Button type="button" variant="primary" onClick={() => void saveBilling(store)} disabled={savingBilling} className="min-h-9 px-3 text-xs">
+                        {savingBilling ? "..." : "Guardar"}
+                      </Button>
+                    </div>
+                    <p className="mb-3 text-[11px] leading-4 text-muted">
+                      Una tienda de pago con fecha vencida queda suspendida: sus usuarios ven la pantalla de reactivación al abrir la app.
+                    </p>
+
                     <p className="mb-2 text-xs font-bold text-muted">% de comisión por alcance (zonificación de esta tienda)</p>
                     <div className="space-y-2.5">
                       {BRACKET_ROLES.map((role) => (

@@ -38,6 +38,8 @@ export async function GET() {
       id: true,
       name: true,
       createdAt: true,
+      billingExempt: true,
+      subscriptionPaidUntil: true,
       _count: { select: { users: true, dataSources: true } },
       users: { where: { active: true }, select: { id: true } },
       commissionRules: {
@@ -56,6 +58,8 @@ export async function GET() {
       totalUsers: store._count.users,
       activeUsers: store.users.length,
       dataSources: store._count.dataSources,
+      billingExempt: store.billingExempt,
+      subscriptionPaidUntil: store.subscriptionPaidUntil ? store.subscriptionPaidUntil.toISOString().slice(0, 10) : null,
       commissionRules: store.commissionRules.map((rule) => ({
         id: rule.id,
         role: rule.role,
