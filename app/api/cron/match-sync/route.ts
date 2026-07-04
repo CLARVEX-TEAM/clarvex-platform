@@ -13,8 +13,18 @@ export async function POST(request: Request) {
   const unauthorized = requireCron(request);
   if (unauthorized) return unauthorized;
 
+  // Solo vale la pena consultar ESPN cerca del silbatazo: sin la ventana el
+  // cron podía engancharse a un partido futuro arbitrario (con varios
+  // programados) y golpear la API cada minuto durante días.
+  const now = Date.now();
+  const SYNC_WINDOW_MS = 6 * 60 * 60 * 1000;
   const match = await prisma.matchEvent.findFirst({
-    where: { status: { not: "FINISHED" }, externalId: { not: null } }
+    where: {
+      status: { not: "FINISHED" },
+      externalId: { not: null },
+      kickoff: { gte: new Date(now - SYNC_WINDOW_MS), lte: new Date(now + SYNC_WINDOW_MS) }
+    },
+    orderBy: { kickoff: "asc" }
   });
 
   if (!match?.externalId) {
@@ -41,10 +51,16 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true, unchanged: true });
   }
 
-  const updated = await prisma.matchEvent.update({
-    where: { id: match.id },
+  // Guarda optimista: si el marcador cambió entre la lectura y esta escritura
+  // (gol manual del gerente), no pisarlo — el siguiente tick reconcilia.
+  const guarded = await prisma.matchEvent.updateMany({
+    where: { id: match.id, mxScore: prevMx, rivalScore: prevRival },
     data: { mxScore, rivalScore, status: newStatus }
   });
+  if (guarded.count === 0) {
+    return NextResponse.json({ ok: true, skipped: true, reason: "Marcador modificado durante el sync" });
+  }
+  const updated = await prisma.matchEvent.findUniqueOrThrow({ where: { id: match.id } });
 
   const users = await prisma.user.findMany({ select: { id: true } });
   const ids = users.map((u) => u.id);

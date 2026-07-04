@@ -15,10 +15,12 @@ export async function GET() {
   const match = await prisma.matchEvent.findFirst({
     where: {
       status: { not: "FINISHED" },
-      kickoff: {
-        gte: new Date(now - POST_WINDOW_MS),
-        lte: new Date(now + UPCOMING_WINDOW_MS)
-      }
+      // Un partido EN VIVO nunca sale de la ventana: con tiempos extra y
+      // penales puede rebasar las 3 h desde el kickoff.
+      OR: [
+        { status: "LIVE" },
+        { kickoff: { gte: new Date(now - POST_WINDOW_MS), lte: new Date(now + UPCOMING_WINDOW_MS) } }
+      ]
     },
     orderBy: { kickoff: "asc" }
   });
