@@ -21,6 +21,41 @@ export function resolveCommissionMinimum(commissionMinimum: number | null | unde
   return goal > 0 ? Math.round((goal / MINIMUM_TO_GOAL_FACTOR) * 100) / 100 : 0;
 }
 
+export type NextBracketGap = {
+  atTop: boolean;
+  currentPercent: number;
+  nextPercent: number;
+  targetAchievement: number;
+  salesNeeded: number;
+  extraCommission: number;
+};
+
+/**
+ * Calcula cuánto falta vender para alcanzar el SIGUIENTE bracket de comisión.
+ * El alcance se mide contra el mínimo (misma regla que el cálculo real).
+ * No modifica el cálculo de comisión: solo lo lee para motivar la venta.
+ */
+export function computeNextBracketGap(input: { sales: number; minimum: number; rules: CommissionRule[]; role: Role }): NextBracketGap | null {
+  if (input.minimum <= 0) return null;
+  const achievement = (input.sales / input.minimum) * 100;
+  const active = input.rules
+    .filter((rule) => rule.active && rule.role === input.role)
+    .sort((left, right) => left.minAchievement - right.minAchievement);
+  if (active.length === 0) return null;
+  const current = findCommissionRule(active, input.role, achievement);
+  const currentPercent = current?.commissionPercent ?? 0;
+  const next = active.find((rule) => rule.minAchievement > achievement);
+  if (!next) {
+    return { atTop: true, currentPercent, nextPercent: currentPercent, targetAchievement: current?.minAchievement ?? 0, salesNeeded: 0, extraCommission: 0 };
+  }
+  const targetSales = input.minimum * (next.minAchievement / 100);
+  const salesNeeded = round2(Math.max(0, targetSales - input.sales));
+  const extraCommission = round2(targetSales * (next.commissionPercent / 100) - input.sales * (currentPercent / 100));
+  return { atTop: false, currentPercent, nextPercent: next.commissionPercent, targetAchievement: next.minAchievement, salesNeeded, extraCommission };
+}
+
+function round2(value: number) { return Math.round(value * 100) / 100; }
+
 export type MonthlyCommissionProjection = {
   projectedSales: number;
   projectedCommission: number;
