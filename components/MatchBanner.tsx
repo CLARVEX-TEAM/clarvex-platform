@@ -3,8 +3,16 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
+import { Settings } from "lucide-react";
 import { GoalConfetti } from "@/components/GoalConfetti";
 import { matchPhase, type SerializedMatch } from "@/lib/match";
+
+// El banner (y el tema tricolor que lo acompaña) solo aparecen el DÍA del
+// partido en zona México — no 48 h antes.
+function isMatchToday(iso: string) {
+  const fmt = (d: Date) => d.toLocaleDateString("es-MX", { timeZone: "America/Mexico_City" });
+  return fmt(new Date(iso)) === fmt(new Date());
+}
 
 function formatKickoff(iso: string) {
   const d = new Date(iso);
@@ -62,7 +70,9 @@ export function MatchBanner() {
   }, [refresh]);
 
   const phase = match ? matchPhase(match) : "past";
-  const visible = !hidden && !!match && phase !== "past";
+  // Solo el día del juego (o si sigue EN VIVO pasada la medianoche).
+  const isToday = !!match && (isMatchToday(match.kickoff) || match.status === "LIVE");
+  const visible = !hidden && !!match && phase !== "past" && isToday;
 
   // Tema tricolor: activa data-matchday en <html> cuando el banner es visible.
   useEffect(() => {
@@ -143,10 +153,12 @@ export function MatchBanner() {
     <>
       <div
         ref={bannerRef}
-        className="fixed inset-x-0 top-0 z-[55] bg-gradient-to-r from-[#006847] via-[#0b8a5b] to-[#ce1126] text-white shadow-lg"
-        style={{ paddingTop: "env(safe-area-inset-top)" }}
+        className="fixed inset-x-0 top-0 z-[55] px-3 pb-1.5"
+        style={{ paddingTop: "calc(env(safe-area-inset-top) + 6px)" }}
       >
-        <div className="mx-auto flex max-w-2xl flex-col gap-1 px-3 py-1.5">
+        <div className="relative mx-auto max-w-md overflow-hidden rounded-[22px] border border-white/15 bg-gradient-to-br from-[#0a5741] to-[#0d6a4e] text-white shadow-[0_10px_28px_rgb(6_78_59_/_0.4)] backdrop-blur-xl">
+          <span className="pointer-events-none absolute inset-x-5 bottom-0 h-[2px] rounded-full bg-gradient-to-r from-[#2ea277] via-white/85 to-[#e4526b] opacity-80" />
+          <div className="flex flex-col gap-1 px-3 py-2">
           <div className="flex items-center justify-between gap-2">
             {isLive ? (
               <div className="min-w-0 flex-1">
@@ -178,8 +190,8 @@ export function MatchBanner() {
               </div>
             )}
             {canManage && (
-              <a href="/partido" className="grid size-8 shrink-0 place-items-center rounded-full bg-white/20 text-base transition hover:bg-white/30" aria-label="Administrar partidos">
-                ⚙️
+              <a href="/partido" className="grid size-8 shrink-0 place-items-center rounded-full bg-white/15 text-white/90 transition hover:bg-white/25" aria-label="Administrar partidos">
+                <Settings size={15} />
               </a>
             )}
           </div>
@@ -211,6 +223,7 @@ export function MatchBanner() {
               </button>
             </div>
           )}
+          </div>
         </div>
       </div>
       <GoalConfetti trigger={confetti} />
