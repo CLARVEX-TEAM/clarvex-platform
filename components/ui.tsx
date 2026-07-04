@@ -50,7 +50,7 @@ const accentBg: Record<Accent, string> = {
 };
 
 const badgeTones: Record<Tone, string> = {
-  default: "border-line bg-slate-50 dark:bg-slate-800 text-muted",
+  default: "border-line bg-panel text-muted",
   success: "border-success/25 bg-success/10 text-success",
   done: "border-success/25 bg-success/10 text-success",
   warn: "border-ember/35 bg-ember/12 text-ember",
@@ -58,16 +58,13 @@ const badgeTones: Record<Tone, string> = {
   info: "border-sky-400/30 bg-sky-400/10 text-sky-600 dark:text-sky-300"
 };
 
+// Card de contenido: quieta por defecto. El movimiento es feedback de estado
+// (botones, toggles), no decoración; la entrada de página la da AppFrame.
+// Sigue siendo motion.section para que un caller pueda animarla explícitamente.
 export function GlassCard({ children, className = "", ...props }: Omit<HTMLMotionProps<"section">, "children"> & { children: React.ReactNode }) {
   return (
     <motion.section
       {...props}
-      initial={{ opacity: 0, y: 14, scale: 0.985 }}
-      whileInView={{ opacity: 1, y: 0, scale: 1 }}
-      viewport={{ once: true, margin: "0px 0px -12% 0px" }}
-      whileTap={{ scale: 0.99, y: 1 }}
-      whileHover={{ y: -2, boxShadow: "0 8px 30px rgba(37,99,235,0.15)" }}
-      transition={{ duration: 0.34, ease: [0.22, 1, 0.36, 1] }}
       className={cn("solid-card rounded-[28px] p-3.5 shadow-glass", className)}
     >
       {children}
@@ -111,7 +108,7 @@ export function PremiumButton({
         variant === "success" && "bg-success text-white shadow-[0_8px_20px_rgb(34_197_94_/_0.24)]",
         variant === "danger" && "bg-orchid text-white shadow-[0_8px_20px_rgb(239_68_68_/_0.22)] hover:bg-[#DC2626]",
         variant === "glass" && "solid-card text-ink hover:text-volt",
-        variant === "ghost" && "bg-slate-100 dark:bg-slate-800 text-ink hover:bg-blue-50 dark:hover:bg-slate-700",
+        variant === "ghost" && "bg-panel text-ink hover:bg-line/60",
         className
       )}
       disabled={loading || success || disabled}
@@ -180,7 +177,7 @@ export function achievementTone(progress: number): Accent {
 export function ProgressBar({ value, tone = "volt" }: { value: number; tone?: Accent }) {
   const clamped = Math.max(0, Math.min(100, value));
   return (
-    <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-200 dark:bg-[#2a3a5c]">
+    <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-line">
       <motion.div
         className={cn("h-full rounded-full", accentBg[tone])}
         initial={{ width: 0 }}
@@ -194,7 +191,7 @@ export function ProgressBar({ value, tone = "volt" }: { value: number; tone?: Ac
 // Bloque de carga con barrido de luz (shimmer): imita la forma del contenido
 // real para una sensación más rápida y premium.
 export function Skeleton({ className = "" }: { className?: string }) {
-  return <div className={cn("skeleton-shimmer relative overflow-hidden rounded-2xl bg-slate-200 dark:bg-slate-800", className)} />;
+  return <div className={cn("skeleton-shimmer relative overflow-hidden rounded-2xl bg-line dark:bg-panel", className)} />;
 }
 
 // Estado vacío con ícono, mensaje y acción opcional.
@@ -220,7 +217,7 @@ export function EmptyState({
         initial={{ scale: 0.4, rotate: -12, opacity: 0 }}
         animate={{ scale: 1, rotate: 0, opacity: 1 }}
         transition={{ type: "spring", stiffness: 380, damping: 17, delay: 0.08 }}
-        className="grid size-14 place-items-center rounded-[20px] border border-line bg-blue-50 text-volt dark:bg-[#1a2540]"
+        className="grid size-14 place-items-center rounded-[20px] border border-line bg-volt/10 text-volt"
       >
         <Icon size={26} />
       </motion.span>
@@ -238,9 +235,9 @@ export function ProgressRing({ value, tone = "volt", size = 76 }: { value: numbe
   const circumference = 2 * Math.PI * radius;
 
   return (
-    <div className="relative grid place-items-center rounded-full bg-blue-50 dark:bg-[#1a2540]" style={{ width: size, height: size }}>
+    <div className="relative grid place-items-center rounded-full bg-volt/10 dark:bg-panel" style={{ width: size, height: size }}>
       <svg viewBox="0 0 72 72" className="size-full -rotate-90">
-        <circle cx="36" cy="36" r={radius} fill="none" stroke="currentColor" strokeWidth="7" className="text-slate-200 dark:text-[#2a3a5c]" />
+        <circle cx="36" cy="36" r={radius} fill="none" stroke="currentColor" strokeWidth="7" className="text-line" />
         <motion.circle
           cx="36"
           cy="36"
@@ -295,7 +292,7 @@ export function KPIStatCard({
     <GlassCard className={cn(compact ? "min-h-[98px] p-3" : "min-h-[142px] p-4")}>
       <div className="flex items-start justify-between gap-2">
         <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-muted">{label}</p>
-        {icon ? <span className={cn("grid place-items-center border border-line bg-blue-50 dark:bg-[#1a2540]", compact ? "size-7 rounded-[14px]" : "size-9 rounded-[18px]", accentText[tone])}>{icon}</span> : null}
+        {icon ? <span className={cn("grid place-items-center border border-line bg-volt/10", compact ? "size-7 rounded-[14px]" : "size-9 rounded-[18px]", accentText[tone])}>{icon}</span> : null}
         {!icon && delta ? <StatusBadge tone="success">{delta}</StatusBadge> : null}
       </div>
       <p className={cn("font-black leading-none tracking-[-0.03em]", compact ? "mt-1.5 text-[1.4rem]" : "mt-3 text-[1.72rem]", accentText[tone])}><AnimatedNumber value={value} /></p>
@@ -307,7 +304,7 @@ export function KPIStatCard({
               initial={{ height: 4, opacity: 0.35 }}
               animate={{ height: `${height}%`, opacity: 1 }}
               transition={{ delay: index * 0.035, duration: 0.28 }}
-              className={cn("w-full rounded-full bg-slate-200 dark:bg-[#2a3a5c]", index === bars.length - 1 && accentBg[tone])}
+              className={cn("w-full rounded-full bg-line", index === bars.length - 1 && accentBg[tone])}
             />
           ))}
         </div>
@@ -370,7 +367,7 @@ export function TaskItem({ activity, onToggle }: { activity: Activity; onToggle?
     <motion.button
       whileTap={{ scale: 0.985, y: 1 }}
       onClick={handleClick}
-      className="flex min-h-11 w-full items-center gap-3 border-b border-white/[0.07] px-1 py-2 text-left transition last:border-b-0 hover:text-volt"
+      className="flex min-h-11 w-full items-center gap-3 border-b border-line px-1 py-2 text-left transition last:border-b-0 hover:text-volt"
     >
       <span className="relative grid size-7 shrink-0 place-items-center">
         {/* Ráfaga de chispas al completar */}
@@ -396,7 +393,7 @@ export function TaskItem({ activity, onToggle }: { activity: Activity; onToggle?
           transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
           className={cn(
             "grid size-7 place-items-center rounded-[10px] border transition",
-            activity.completed ? "border-volt bg-volt/20 text-volt" : "border-white/15 text-transparent"
+            activity.completed ? "border-volt bg-volt/20 text-volt" : "border-line text-transparent"
           )}
         >
           {activity.completed ? (
@@ -433,7 +430,7 @@ export function NotificationCard({
   return (
     <GlassCard className={cn("p-3", unread && "border-volt/35 bg-volt/[0.055]")}>
       <div className="flex items-start gap-2.5">
-        {author ? <ProfileAvatar name={author.name} photoUrl={author.photoUrl} size="sm" className="size-9 rounded-full shadow-none" /> : <span className={cn("grid size-9 shrink-0 place-items-center rounded-[16px] border border-line", unread ? "bg-volt/10 text-volt" : "bg-slate-100 dark:bg-[#1a2540] text-muted")}><Bell size={16} /></span>}
+        {author ? <ProfileAvatar name={author.name} photoUrl={author.photoUrl} size="sm" className="size-9 rounded-full shadow-none" /> : <span className={cn("grid size-9 shrink-0 place-items-center rounded-[16px] border border-line", unread ? "bg-volt/10 text-volt" : "bg-panel text-muted")}><Bell size={16} /></span>}
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-3">
             <div>
@@ -484,7 +481,7 @@ export function AppHeader({
   return (
     <header
       className={cn(
-        "sticky top-0 z-20 border-b bg-white/80 dark:bg-[#0f1729]/95 px-4 backdrop-blur-xl transition-all duration-300",
+        "sticky top-0 z-20 border-b bg-card/85 dark:bg-void/95 px-4 backdrop-blur-xl transition-all duration-300",
         scrolled
           ? "border-line py-1 shadow-[0_8px_24px_rgb(15_23_42_/_0.1)]"
           : "border-line/80 py-2 shadow-[0_4px_16px_rgb(15_23_42_/_0.04)]"
@@ -536,7 +533,7 @@ function NotificationBell() {
         <Bell size={18} />
       </Link>
       {unreadCount > 0 ? (
-        <span className="pointer-events-none absolute -right-1 -top-1 grid h-[18px] min-w-[18px] place-items-center rounded-full bg-rose-500 px-[5px] text-[10px] font-black leading-none text-white shadow-sm ring-2 ring-white dark:ring-[#0f1729]">
+        <span className="pointer-events-none absolute -right-1 -top-1 grid h-[18px] min-w-[18px] place-items-center rounded-full bg-rose-500 px-[5px] text-[10px] font-black leading-none text-white shadow-sm ring-2 ring-card dark:ring-void">
           {unreadCount > 99 ? "99+" : unreadCount}
         </span>
       ) : null}
@@ -563,7 +560,7 @@ export function LiquidBottomNav() {
 
   return (
     <nav className="pointer-events-none fixed inset-x-0 bottom-2 z-30 px-3">
-      <div className="liquid-glass pointer-events-auto mx-auto grid max-w-md grid-cols-6 gap-0.5 rounded-[30px] border-line/80 bg-white/90 dark:bg-[#1a2540]/95 p-1.5 shadow-[0_14px_34px_rgb(15_23_42_/_0.14)] backdrop-blur-xl">
+      <div className="liquid-glass pointer-events-auto mx-auto grid max-w-md grid-cols-6 gap-0.5 rounded-[30px] border-line/80 bg-card/90 dark:bg-panel/95 p-1.5 shadow-[0_14px_34px_rgb(15_23_42_/_0.14)] backdrop-blur-xl">
         {navItems.map((item) => {
           const href = item.href === "/manager" ? homeHref : item.href;
           const active = pathname === href || (item.href === "/manager" && (pathname === "/manager" || pathname === "/advisor")) || (item.href === "/chat" && pathname.startsWith("/chat"));
