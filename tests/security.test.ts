@@ -10,7 +10,8 @@ const advisorSession: Session = {
   storeId: "store-a",
   role: "ASESOR",
   name: "Asesor",
-  employeeNumber: "100"
+  employeeNumber: "100",
+  platformAdmin: false
 };
 
 test("login acepta el PIN correcto", async () => {
