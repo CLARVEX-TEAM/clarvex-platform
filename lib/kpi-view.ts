@@ -99,20 +99,34 @@ export function formatPeriodLabel(period: KpiPeriod, startValue: string, endValu
 
 // Semanas con datos del mes retail en curso (base de todas las proyecciones).
 // Metas/mínimo/horarios se cargan semana por semana → se proyecta por semanas.
-export function computeMonthWeeks(report: KpiResponse | null): { weeksElapsed: number; totalWeeks: number } | null {
+export function computeMonthWeeks(report: KpiResponse | null, now = new Date()): { weeksElapsed: number; totalWeeks: number } | null {
   if (!report || report.period !== "month") return null;
   const start = new Date(`${report.startDate}T00:00:00Z`);
   const end = new Date(`${report.endDate}T00:00:00Z`);
-  const now = new Date();
   const todayUtc = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
-  if (todayUtc < start || todayUtc > end) return null; // solo el mes en curso
+  if (todayUtc < start) return null; // solo el mes en curso
   const dayMs = 86_400_000;
-  const totalWeeks = Math.max(1, Math.ceil(((end.getTime() - start.getTime()) / dayMs + 1) / 7));
+  const detectedWeeks = Math.max(1, Math.ceil(((end.getTime() - start.getTime()) / dayMs + 1) / 7));
+
+  if (todayUtc > end) {
+    // Mes retail de 5 semanas cuya quinta semana aún no aparece: el RDV solo
+    // trae filas hasta el último día con datos, así que la semana 5 no existe
+    // para el sistema hasta que arranca. Si hoy cae en la semana inmediata
+    // posterior al fin detectado, van 4 semanas detectadas y ningún otro mes
+    // retail contiene la fecha de hoy, seguimos dentro de este mes: se
+    // proyecta con 4 de 5 semanas en lugar de apagar la proyección.
+    const todayKey = todayUtc.toISOString().slice(0, 10);
+    const anotherMonthHasToday = report.availableRetailMonths.some((month) => month.start !== report.startDate && todayKey >= month.start && todayKey <= month.end);
+    const withinFollowingWeek = todayUtc.getTime() - end.getTime() <= 6 * dayMs;
+    if (detectedWeeks !== 4 || !withinFollowingWeek || anotherMonthHasToday) return null;
+    return { weeksElapsed: 4, totalWeeks: 5 };
+  }
+
   const weeksWithData = report.availableWeeks.filter((week) => {
     const ws = new Date(`${week.weekStart}T00:00:00Z`);
     return ws >= start && ws <= end && ws <= todayUtc;
   }).length;
   const calendarWeeksElapsed = Math.ceil(((todayUtc.getTime() - start.getTime()) / dayMs + 1) / 7);
-  const weeksElapsed = Math.min(totalWeeks, Math.max(1, weeksWithData || calendarWeeksElapsed));
-  return { weeksElapsed, totalWeeks };
+  const weeksElapsed = Math.min(detectedWeeks, Math.max(1, weeksWithData || calendarWeeksElapsed));
+  return { weeksElapsed, totalWeeks: detectedWeeks };
 }
