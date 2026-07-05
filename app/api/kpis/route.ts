@@ -78,9 +78,11 @@ export async function GET(request: NextRequest) {
   ]);
   const rows = manager ? allRows : allRows.filter((row) => row.userId === session.userId);
 
-  const advisorUserIds = Array.from(new Set(rows.filter((row) => row.user.role === "ASESOR").map((row) => row.userId)));
-  const schedules = advisorUserIds.length ? await prisma.schedule.findMany({
-    where: { storeId: session.storeId, userId: { in: advisorUserIds }, date: { gte: start, lte: end } },
+  // Horarios de TODO el equipo: los días laborados definen el tráfico (y la
+  // conversión) de cada colaborador, gerencia incluida.
+  const teamUserIds = Array.from(new Set(allRows.map((row) => row.userId)));
+  const schedules = teamUserIds.length ? await prisma.schedule.findMany({
+    where: { storeId: session.storeId, userId: { in: teamUserIds }, date: { gte: start, lte: end } },
     select: { userId: true, date: true, status: true, statusRaw: true }
   }) : [];
   const workingKeys = buildWorkingScheduleKeys(schedules);

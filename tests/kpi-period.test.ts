@@ -67,17 +67,21 @@ test("con horarios, el trafico del asesor son sus dias laborados (HORARIOS)", ()
   assert.equal(reports[0].traffic, 1614);
 });
 
-test("gerencia recibe el trafico completo de la tienda del periodo", () => {
+test("gerencia usa la misma regla de dias laborados que los asesores", () => {
   const base = { conversion: null, grossSales: null, discountAmount: null, discountLimit: null, commissionAmount: 0, commissionPercent: 0 };
   const gerente = { name: "Itzel", role: "GERENTE" as const, photoUrl: null };
   const asesor = { name: "Waira", role: "ASESOR" as const, photoUrl: null };
-  const reports = aggregateKpis([
+  const rows = [
     { ...base, userId: "g", user: gerente, date: new Date("2026-06-29T00:00:00.000Z"), dailySales: 900, dailyGoal: 700, transactions: 3, pieces: 4, traffic: 1400 },
-    // La gerente descansó este día, pero el tráfico de tienda igual es suyo.
+    { ...base, userId: "g", user: gerente, date: new Date("2026-06-30T00:00:00.000Z"), dailySales: 0, dailyGoal: 700, transactions: 0, pieces: 0, traffic: 629 },
     { ...base, userId: "w", user: asesor, date: new Date("2026-06-30T00:00:00.000Z"), dailySales: 800, dailyGoal: 700, transactions: 2, pieces: 3, traffic: 629 }
-  ]);
-  const itzel = reports.find((report) => report.userId === "g");
-  assert.equal(itzel?.traffic, 2029);
+  ];
+  // Itzel laboró todos los días → tráfico completo de la tienda.
+  const todos = aggregateKpis(rows, false, new Set(["g:2026-06-29", "g:2026-06-30", "w:2026-06-30"]));
+  assert.equal(todos.find((report) => report.userId === "g")?.traffic, 2029);
+  // Si descansa un día, ese día no cuenta — igual que un asesor.
+  const conDescanso = aggregateKpis(rows, false, new Set(["g:2026-06-29", "w:2026-06-30"]));
+  assert.equal(conDescanso.find((report) => report.userId === "g")?.traffic, 1400);
 });
 
 test("deduplica el trafico de tienda por fecha", () => {
