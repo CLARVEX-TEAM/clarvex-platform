@@ -186,6 +186,9 @@ async function importKpis(workbook: Parameters<typeof parseKpiWorkbook>[0], stor
             traffic: record.traffic,
             pieces: record.pieces,
             transactions: record.transactions,
+            orkestraSales: record.orkestraSales,
+            orkestraTransactions: record.orkestraTransactions,
+            orkestraPieces: record.orkestraPieces,
             ranking: record.ranking,
             commissionMinimum: record.commissionMinimum
           },
@@ -206,6 +209,9 @@ async function importKpis(workbook: Parameters<typeof parseKpiWorkbook>[0], stor
             traffic: record.traffic,
             pieces: record.pieces,
             transactions: record.transactions,
+            orkestraSales: record.orkestraSales,
+            orkestraTransactions: record.orkestraTransactions,
+            orkestraPieces: record.orkestraPieces,
             ranking: record.ranking,
             commissionMinimum: record.commissionMinimum
           }

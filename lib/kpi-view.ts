@@ -1,7 +1,7 @@
 // Capa compartida (sin JSX) entre la vista móvil (app/kpis) y la de
 // escritorio (app/escritorio/kpis). Tipos, constantes y cálculos derivados
 // viven aquí para que un arreglo aplique a ambas versiones a la vez.
-import { BarChart3, Percent, Receipt, ShoppingBag, Target, TrendingUp } from "lucide-react";
+import { BarChart3, MessageCircle, Percent, Receipt, ShoppingBag, Target, TrendingUp } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { findCommissionRule, resolveCommissionMinimum } from "@/lib/commission";
 import { periodDateKey, type KpiPeriod } from "@/lib/kpi-period";
@@ -47,6 +47,7 @@ export const METRIC_CONFIG: Record<string, MetricConfig> = {
   conversion:  { label: "Conversión",   gradient: "from-orange-400 to-amber-600",  glow: "rgba(251,146,60,0.32)",  Icon: Target,      targetLabel: "Meta Conversión (%)" },
   margen:      { label: "Margen DTO",   gradient: "from-rose-500 to-pink-700",     glow: "rgba(244,63,94,0.32)",   Icon: Percent,     targetLabel: "Límite DTO (%)"     },
   achievement: { label: "Cumplimiento", gradient: "from-emerald-500 to-teal-700",  glow: "rgba(16,185,129,0.32)",  Icon: TrendingUp,  targetLabel: "Meta cumplimiento (%)" },
+  whatsapp:    { label: "WhatsApp",     gradient: "from-green-500 to-emerald-700", glow: "rgba(34,197,94,0.32)",   Icon: MessageCircle, targetLabel: "PPTO WhatsApp semanal ($)" },
 };
 
 // Acento por métrica para las tarjetas del sistema (móvil y escritorio): tinte

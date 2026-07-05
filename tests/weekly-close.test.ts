@@ -10,7 +10,8 @@ function member(overrides: Partial<KpiReportItem>): KpiReportItem {
     userId: "u1", userName: "Asesor", role: "ASESOR", avatar: "AS", photoUrl: null,
     sales: 0, goal: 0, achievement: 0, transactions: 0, pieces: 0,
     upt: null, aur: null, ept: null, conversion: null, traffic: null, ranking: 0,
-    grossSales: null, discountAmount: null, discountMargin: null, discountLimit: null,
+    grossSales: null, orkestraSales: null, orkestraTransactions: null, orkestraPieces: null,
+    discountAmount: null, discountMargin: null, discountLimit: null,
     commissionAmount: 0, commissionPercent: 0, commissionMinimum: null
   };
   const merged = { ...base, ...overrides };
@@ -91,6 +92,24 @@ test("sin tickets no hay pérdidas ni división entre cero", () => {
   assert.equal(column.lossUpt, null);
   assert.equal(column.lossAur, null);
   assert.equal(column.difference, 0);
+});
+
+test("meta WhatsApp: PPTO repartido en partes iguales entre asesores con venta", () => {
+  // 4 con venta (Itzel, Waira, Jazmín, Alonso) + Adrián sin venta
+  const columns = buildWeeklyCloseColumns([itzel, adrian, waira, jazmin, alonso], storeTotal, 1_381.06);
+  const itzelColumn = columns.find((column) => column.name === "Itzel")!;
+  const adrianColumn = columns.find((column) => column.name === "Adrián")!;
+  assert.equal(itzelColumn.waMeta, 345.27); // 1381.06 / 4
+  assert.equal(adrianColumn.waMeta, null);  // sin venta, sin meta
+  // El total de tienda conserva el PPTO completo
+  const store = buildWeeklyCloseColumn(storeTotal, storeTotal, 1_381.06);
+  assert.equal(store.waMeta, 1_381.06);
+});
+
+test("meta WhatsApp: sin PPTO capturado no hay metas", () => {
+  const columns = buildWeeklyCloseColumns([itzel, waira], storeTotal);
+  assert.equal(columns[0].waMeta, null);
+  assert.equal(columns[1].waMeta, null);
 });
 
 test("columnas ordenadas por rol y nombre", () => {

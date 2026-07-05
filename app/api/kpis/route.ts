@@ -136,7 +136,7 @@ export async function GET(request: NextRequest) {
       ? team
       : team.map((item) => item.userId === session.userId
         ? item
-        : { ...item, sales: 0, goal: 0, transactions: 0, pieces: 0, upt: null, aur: null, ept: null, grossSales: null, discountAmount: null, discountMargin: null, discountLimit: null, commissionAmount: 0, commissionPercent: 0 }
+        : { ...item, sales: 0, goal: 0, transactions: 0, pieces: 0, upt: null, aur: null, ept: null, grossSales: null, orkestraSales: null, orkestraTransactions: null, orkestraPieces: null, discountAmount: null, discountMargin: null, discountLimit: null, commissionAmount: 0, commissionPercent: 0 }
       ),
     hasDiscountSource,
     latestDiscountWeek,

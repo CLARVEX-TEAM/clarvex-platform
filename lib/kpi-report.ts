@@ -16,6 +16,9 @@ export type KpiReportItem = {
   traffic: number | null;
   ranking: number;
   grossSales: number | null;
+  orkestraSales: number | null;
+  orkestraTransactions: number | null;
+  orkestraPieces: number | null;
   discountAmount: number | null;
   discountMargin: number | null;
   discountLimit: number | null;
@@ -36,6 +39,9 @@ export type RawKpi = {
   conversion: unknown;
   traffic: number | null;
   grossSales: unknown | null;
+  orkestraSales?: unknown | null;
+  orkestraTransactions?: number | null;
+  orkestraPieces?: number | null;
   discountAmount: unknown | null;
   discountLimit: unknown | null;
   commissionAmount: unknown;
@@ -83,6 +89,9 @@ export function aggregateKpis(rows: RawKpi[], useMonthlyGoal = false) {
       traffic,
       ranking: 0,
       grossSales,
+      orkestraSales: nullableNumberSum(items.map((item) => item.orkestraSales === null || item.orkestraSales === undefined ? null : number(item.orkestraSales))),
+      orkestraTransactions: nullableIntegerSum(items.map((item) => item.orkestraTransactions ?? null)),
+      orkestraPieces: nullableIntegerSum(items.map((item) => item.orkestraPieces ?? null)),
       discountAmount,
       discountMargin,
       discountLimit: latestNullable(items, "discountLimit"),
@@ -131,6 +140,9 @@ export function aggregateStore(
     traffic,
     ranking: 0,
     grossSales,
+    orkestraSales: nullableNumberSum(items.map((item) => item.orkestraSales)),
+    orkestraTransactions: nullableIntegerSum(items.map((item) => item.orkestraTransactions)),
+    orkestraPieces: nullableIntegerSum(items.map((item) => item.orkestraPieces)),
     discountAmount,
     discountMargin: grossSales && discountAmount !== null ? round((discountAmount / grossSales) * 100) : null,
     discountLimit: null,

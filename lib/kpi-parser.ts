@@ -17,6 +17,9 @@ export type ParsedKpiRecord = {
   transactions: number;
   pieces: number;
   crmTransactions: number;
+  orkestraSales: number;
+  orkestraTransactions: number;
+  orkestraPieces: number;
   traffic: number | null;
   upt: number;
   aur: number;
@@ -57,7 +60,7 @@ type EmployeeGroup = {
   columns: Partial<Record<MetricKey, number>>;
 };
 
-type MetricKey = "dailyGoal" | "dailySales" | "transactions" | "pieces" | "crmTransactions";
+type MetricKey = "dailyGoal" | "dailySales" | "transactions" | "pieces" | "crmTransactions" | "orkestraSales" | "orkestraTransactions" | "orkestraPieces";
 
 export function parseKpiWorkbook(workbook: XLSX.WorkBook): KpiParseResult {
   const sheetName = workbook.SheetNames.find((name) => normalizeText(name) === normalizeText(RDV_SHEET_NAME));
@@ -147,6 +150,9 @@ export function parseKpiWorkbook(workbook: XLSX.WorkBook): KpiParseResult {
       const transactions = integerCell(row[group.columns.transactions ?? -1]);
       const pieces = integerCell(row[group.columns.pieces ?? -1]);
       const crmTransactions = integerCell(row[group.columns.crmTransactions ?? -1]);
+      const orkestraSales = numericCell(row[group.columns.orkestraSales ?? -1]);
+      const orkestraTransactions = integerCell(row[group.columns.orkestraTransactions ?? -1]);
+      const orkestraPieces = integerCell(row[group.columns.orkestraPieces ?? -1]);
       if (dailyGoal === 0 && dailySales === 0) continue;
 
       const record: ParsedKpiRecord = {
@@ -162,6 +168,9 @@ export function parseKpiWorkbook(workbook: XLSX.WorkBook): KpiParseResult {
         transactions,
         pieces,
         crmTransactions,
+        orkestraSales,
+        orkestraTransactions,
+        orkestraPieces,
         traffic,
         upt: ratio(pieces, transactions),
         aur: ratio(dailySales, pieces),
@@ -347,6 +356,13 @@ function metricFromHeader(value: unknown): MetricKey | null {
   if (header === "TX TTLS") return "transactions";
   if (header === "UNID TTLS") return "pieces";
   if (header.includes("TX CAP CRM")) return "crmTransactions";
+  // Venta por WhatsApp (ORKESTRA). Sin colisión con los headers Ttls:
+  // se comparan de forma exacta o con "TTLS" incluido arriba.
+  if (header.includes("ORKESTRA")) {
+    if (header.includes("VTAS")) return "orkestraSales";
+    if (header.includes("TX")) return "orkestraTransactions";
+    if (header.includes("UNID")) return "orkestraPieces";
+  }
   return null;
 }
 
