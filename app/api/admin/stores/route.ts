@@ -3,6 +3,7 @@ import { z } from "zod";
 import { Role } from "@prisma/client";
 import { isApiError, parseJson, requirePlatformAdmin } from "@/lib/api";
 import { recordAudit } from "@/lib/audit";
+import { resolveMonterreyDate, retailWeekRange } from "@/lib/cron-time";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -33,23 +34,40 @@ export async function GET() {
   const session = await requirePlatformAdmin();
   if (isApiError(session)) return session;
 
-  const stores = await prisma.store.findMany({
-    orderBy: { createdAt: "asc" },
-    select: {
-      id: true,
-      name: true,
-      createdAt: true,
-      billingExempt: true,
-      subscriptionPaidUntil: true,
-      _count: { select: { users: true, dataSources: true } },
-      users: { where: { active: true }, select: { id: true } },
-      commissionRules: {
-        where: { active: true },
-        select: { id: true, role: true, minAchievement: true, maxAchievement: true, commissionPercent: true },
-        orderBy: [{ role: "asc" }, { minAchievement: "asc" }]
+  // Vista consolidada: venta de la semana retail en curso + salud de sync
+  const { utcDate } = resolveMonterreyDate();
+  const { weekStart, weekEnd } = retailWeekRange(utcDate);
+
+  const [stores, weekTotals, kpiSources] = await Promise.all([
+    prisma.store.findMany({
+      orderBy: { createdAt: "asc" },
+      select: {
+        id: true,
+        name: true,
+        createdAt: true,
+        billingExempt: true,
+        subscriptionPaidUntil: true,
+        _count: { select: { users: true, dataSources: true } },
+        users: { where: { active: true }, select: { id: true } },
+        commissionRules: {
+          where: { active: true },
+          select: { id: true, role: true, minAchievement: true, maxAchievement: true, commissionPercent: true },
+          orderBy: [{ role: "asc" }, { minAchievement: "asc" }]
+        }
       }
-    }
-  });
+    }),
+    prisma.kpi.groupBy({
+      by: ["storeId"],
+      where: { date: { gte: weekStart, lte: weekEnd } },
+      _sum: { dailySales: true, dailyGoal: true }
+    }),
+    prisma.dataSource.findMany({
+      where: { type: "KPIS" },
+      select: { storeId: true, lastSyncAt: true, syncLogs: { orderBy: { createdAt: "desc" }, take: 1, select: { status: true } } }
+    })
+  ]);
+  const totalsByStore = new Map(weekTotals.map((total) => [total.storeId, total]));
+  const syncByStore = new Map(kpiSources.map((source) => [source.storeId, source]));
 
   return NextResponse.json({
     stores: stores.map((store) => ({
@@ -61,6 +79,10 @@ export async function GET() {
       dataSources: store._count.dataSources,
       billingExempt: store.billingExempt,
       subscriptionPaidUntil: store.subscriptionPaidUntil ? store.subscriptionPaidUntil.toISOString().slice(0, 10) : null,
+      weekSales: Number(totalsByStore.get(store.id)?._sum.dailySales ?? 0),
+      weekGoal: Number(totalsByStore.get(store.id)?._sum.dailyGoal ?? 0),
+      lastSyncAt: syncByStore.get(store.id)?.lastSyncAt?.toISOString() ?? null,
+      lastSyncStatus: syncByStore.get(store.id)?.syncLogs[0]?.status ?? null,
       commissionRules: store.commissionRules.map((rule) => ({
         id: rule.id,
         role: rule.role,
