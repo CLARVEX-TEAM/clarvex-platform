@@ -310,6 +310,7 @@ function buildKpiMetrics(
     retailMonthLabel: parsed.retailMonthLabel,
     retailMonthStart: parsed.retailMonthStart.toISOString().slice(0, 10),
     retailMonthEnd: parsed.retailMonthEnd.toISOString().slice(0, 10),
+    employeeOrder: parsed.employeeNumbers,
     collaboratorsDetected: parsed.employeeNumbers.length,
     employeesProcessed,
     rowsRead: parsed.rowsRead,

@@ -42,10 +42,18 @@ export function buildWeeklyCloseColumns(
   members: KpiReportItem[],
   store: KpiReportItem,
   whatsappBudget: number | null = null,
-  waMetaByUser: Map<string, number> | null = null
+  waMetaByUser: Map<string, number> | null = null,
+  rdvOrder: Map<string, number> | null = null
 ): WeeklyCloseColumn[] {
+  // Orden de columnas: el mismo del RDV (gerente, subgerentes, vendedor 1, 2…)
+  // cuando el sync lo reporta; quien no aparezca en el RDV va al final por
+  // rol y nombre (mismo fallback de siempre).
+  const position = (item: KpiReportItem) => rdvOrder?.get(item.userId) ?? Number.MAX_SAFE_INTEGER;
   const ordered = [...members]
-    .sort((left, right) => ROLE_ORDER[left.role] - ROLE_ORDER[right.role] || left.userName.localeCompare(right.userName, "es"));
+    .sort((left, right) =>
+      position(left) - position(right)
+      || ROLE_ORDER[left.role] - ROLE_ORDER[right.role]
+      || left.userName.localeCompare(right.userName, "es"));
   // Con horarios sincronizados la meta se reparte por días laborados; sin
   // horarios, en partes iguales entre quienes tuvieron venta (fallback).
   if (waMetaByUser && waMetaByUser.size > 0) {

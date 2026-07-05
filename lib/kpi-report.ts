@@ -67,7 +67,10 @@ export function aggregateKpis(rows: RawKpi[], useMonthlyGoal = false) {
     const goal = goalSum(items, useMonthlyGoal);
     const transactions = items.reduce((total, item) => total + item.transactions, 0);
     const pieces = items.reduce((total, item) => total + item.pieces, 0);
-    const traffic = nullableIntegerSum(items.map((item) => item.traffic));
+    // Tráfico del colaborador: solo cuenta los días en que tuvo actividad
+    // (tickets o venta). Un registro con meta asignada pero sin venta —su día
+    // de descanso— no debe sumar el tráfico de la tienda a su conversión.
+    const traffic = nullableIntegerSum(items.map((item) => item.transactions > 0 || number(item.dailySales) > 0 ? item.traffic : null));
     const grossSales = nullableSum(items, "grossSales");
     const discountAmount = nullableSum(items, "discountAmount");
     const discountMargin = grossSales && discountAmount !== null ? round((discountAmount / grossSales) * 100) : null;

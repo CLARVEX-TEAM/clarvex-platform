@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import ExcelJS from "exceljs";
 import { DATA_SOURCE_ROLES } from "@/lib/access-control";
 import { isApiError, requireSession } from "@/lib/api";
+import { decodeSyncLogMessage, type KpiSyncMetrics } from "@/lib/data-source";
 import { aggregateKpis, aggregateStore, aggregateStoreTraffic, type KpiReportItem } from "@/lib/kpi-report";
 import { prisma } from "@/lib/prisma";
 import { buildWeeklyCloseColumn, buildWeeklyCloseColumns, distributeWhatsappBudget } from "@/lib/weekly-close";
@@ -73,10 +74,29 @@ export async function GET(request: Request) {
   if (periodLabel === "Semanal" && store) {
     // Todo el equipo activo aparece en el reporte, aunque no tenga datos esa
     // semana (vacaciones, incapacidad): columna en ceros como el formato.
-    const teamUsers = await prisma.user.findMany({
-      where: { storeId: session.storeId, active: true, role: { in: ["GERENTE", "SUBGERENTE", "ASESOR"] } },
-      select: { id: true, name: true, role: true, photoUrl: true }
-    });
+    const [teamUsers, latestKpiSource] = await Promise.all([
+      prisma.user.findMany({
+        where: { storeId: session.storeId, active: true, role: { in: ["GERENTE", "SUBGERENTE", "ASESOR"] } },
+        select: { id: true, name: true, role: true, photoUrl: true, employeeNumber: true, employeeNumberAliases: { select: { employeeNumber: true } } }
+      }),
+      prisma.dataSource.findFirst({
+        where: { storeId: session.storeId, type: "KPIS" },
+        include: { syncLogs: { where: { status: "SUCCESS" }, orderBy: { createdAt: "desc" }, take: 1 } }
+      })
+    ]);
+    // Columnas en el orden del RDV (gerente, subgerentes, vendedor 1, 2…):
+    // el último sync guarda los números de empleado en ese orden.
+    const syncDetails = latestKpiSource?.syncLogs[0] ? decodeSyncLogMessage(latestKpiSource.syncLogs[0].message).details : null;
+    const employeeOrder = (syncDetails as Partial<KpiSyncMetrics> | null)?.employeeOrder;
+    let rdvOrder: Map<string, number> | null = null;
+    if (Array.isArray(employeeOrder) && employeeOrder.length > 0) {
+      rdvOrder = new Map();
+      for (const user of teamUsers) {
+        const numbers = [user.employeeNumber, ...user.employeeNumberAliases.map((alias) => alias.employeeNumber)];
+        const index = numbers.map((num) => employeeOrder.indexOf(num)).filter((i) => i >= 0).sort((a, b) => a - b)[0];
+        if (index !== undefined) rdvOrder.set(user.id, index);
+      }
+    }
     const withData = new Set(reports.map((report) => report.userId));
     const fullReports: KpiReportItem[] = [
       ...reports,
@@ -119,7 +139,7 @@ export async function GET(request: Request) {
       storeName: storeRecord?.name ?? "Tienda",
       weekNumber,
       rangeLabel,
-      columns: buildWeeklyCloseColumns(fullReports, store, whatsappBudget, waMetaByUser),
+      columns: buildWeeklyCloseColumns(fullReports, store, whatsappBudget, waMetaByUser, rdvOrder),
       store: buildWeeklyCloseColumn(store, store, whatsappBudget)
     });
     const weeklyBuffer = await workbook.xlsx.writeBuffer();

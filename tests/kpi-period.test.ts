@@ -39,6 +39,19 @@ test("no suma dos veces el mismo usuario y dia calendario", () => {
   assert.equal(reports[0].goal, 200);
 });
 
+test("el trafico del colaborador solo cuenta dias con actividad", () => {
+  const base = { conversion: null, grossSales: null, discountAmount: null, discountLimit: null, commissionAmount: 0, commissionPercent: 0, user: { name: "Waira", role: "ASESOR" as const, photoUrl: null } };
+  const reports = aggregateKpis([
+    // Día trabajado con venta: su tráfico sí cuenta.
+    { ...base, userId: "w", date: new Date("2026-06-29T00:00:00.000Z"), dailySales: 1000, dailyGoal: 800, transactions: 5, pieces: 8, traffic: 1614 },
+    // Día de descanso: registro con meta pero sin venta ni tickets — el
+    // tráfico de la tienda ese día no infla su conversión.
+    { ...base, userId: "w", date: new Date("2026-06-30T00:00:00.000Z"), dailySales: 0, dailyGoal: 800, transactions: 0, pieces: 0, traffic: 192 }
+  ]);
+  assert.equal(reports[0].traffic, 1614);
+  assert.equal(reports[0].conversion, Math.round((5 / 1614) * 100 * 100) / 100);
+});
+
 test("deduplica el trafico de tienda por fecha", () => {
   const traffic = aggregateStoreTraffic([
     { date: new Date("2026-06-01T00:00:00.000Z"), traffic: 100 },

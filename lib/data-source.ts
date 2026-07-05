@@ -29,6 +29,9 @@ export type ScheduleSyncMetrics = {
 export type KpiSyncMetrics = {
   sheetUsed: "Diario de ventas";
   weeksDetected: Array<{ weekNumber: number; weekStart: string; weekEnd: string }>;
+  // Números de empleado en el orden de columnas del RDV (gerente primero,
+  // luego subgerentes y vendedores). Se usa para ordenar el cierre semanal.
+  employeeOrder?: string[];
   retailMonthLabel: string;
   retailMonthStart: string;
   retailMonthEnd: string;
