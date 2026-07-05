@@ -38,12 +38,67 @@ export type WeeklyCloseColumn = {
 
 const ROLE_ORDER: Record<KpiReportItem["role"], number> = { GERENTE: 0, SUBGERENTE: 1, ASESOR: 2 };
 
-export function buildWeeklyCloseColumns(members: KpiReportItem[], store: KpiReportItem, whatsappBudget: number | null = null): WeeklyCloseColumn[] {
+export function buildWeeklyCloseColumns(
+  members: KpiReportItem[],
+  store: KpiReportItem,
+  whatsappBudget: number | null = null,
+  waMetaByUser: Map<string, number> | null = null
+): WeeklyCloseColumn[] {
   const ordered = [...members]
     .sort((left, right) => ROLE_ORDER[left.role] - ROLE_ORDER[right.role] || left.userName.localeCompare(right.userName, "es"));
+  // Con horarios sincronizados la meta se reparte por días laborados; sin
+  // horarios, en partes iguales entre quienes tuvieron venta (fallback).
+  if (waMetaByUser && waMetaByUser.size > 0) {
+    return ordered.map((member) => {
+      const meta = waMetaByUser.get(member.userId) ?? 0;
+      return buildWeeklyCloseColumn(member, store, meta > 0 ? round2(meta) : null);
+    });
+  }
   const withSales = ordered.filter((member) => member.sales > 0).length;
   const metaShare = whatsappBudget !== null && whatsappBudget > 0 && withSales > 0 ? round2(whatsappBudget / withSales) : null;
   return ordered.map((member) => buildWeeklyCloseColumn(member, store, member.sales > 0 ? metaShare : null));
+}
+
+// % fijos de la lógica de HORARIOS: gerente y subgerente reciben una fracción
+// fija del PPTO diario cuando laboran; el resto se divide en partes iguales
+// entre los asesores presentes ese día.
+export const WA_MANAGER_SHARE = 0.1;
+export const WA_ASSISTANT_SHARE = 0.15;
+
+/**
+ * Reparte el PPTO semanal de WhatsApp según los días laborados (hoja HORARIOS):
+ * PPTO÷7 por día; cada día solo participan quienes laboran — gerente 10% fijo,
+ * subgerente 15% fijo y el remanente en partes iguales entre asesores presentes.
+ */
+export function distributeWhatsappBudget(
+  budget: number,
+  presenceByDay: Map<string, Set<string>>,
+  roles: Map<string, KpiReportItem["role"]>
+): Map<string, number> {
+  const totals = new Map<string, number>();
+  if (budget <= 0) return totals;
+  const daily = budget / 7;
+  const add = (userId: string, amount: number) => totals.set(userId, (totals.get(userId) ?? 0) + amount);
+  for (const present of Array.from(presenceByDay.values())) {
+    const users = Array.from(present);
+    if (users.length === 0) continue;
+    const fixed = users.map((userId) => ({
+      userId,
+      share: roles.get(userId) === "GERENTE" ? WA_MANAGER_SHARE : roles.get(userId) === "SUBGERENTE" ? WA_ASSISTANT_SHARE : 0
+    }));
+    const fixedSum = fixed.reduce((total, item) => total + item.share, 0);
+    const advisors = users.filter((userId) => (roles.get(userId) ?? "ASESOR") === "ASESOR");
+    const remainder = Math.max(0, 1 - fixedSum);
+    for (const item of fixed) if (item.share > 0) add(item.userId, daily * item.share);
+    if (advisors.length > 0) {
+      for (const userId of advisors) add(userId, (daily * remainder) / advisors.length);
+    } else if (fixedSum > 0) {
+      // Solo gerencia presente: el remanente se reparte proporcional a su % fijo
+      for (const item of fixed) if (item.share > 0) add(item.userId, daily * remainder * (item.share / fixedSum));
+    }
+  }
+  for (const entry of Array.from(totals.entries())) totals.set(entry[0], round2(entry[1]));
+  return totals;
 }
 
 export function buildWeeklyCloseColumn(item: KpiReportItem, store: KpiReportItem, waMeta: number | null = null): WeeklyCloseColumn {

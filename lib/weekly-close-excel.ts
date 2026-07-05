@@ -210,18 +210,20 @@ function addConditionalFormats(sheet: ExcelJS.Worksheet) {
   scale("D20:M20", 1, 1);
   // ALCANCE: semáforo rojo bajo / estrella dorada al llegar (mismos umbrales
   // que la referencia: 85% en punto de venta, 99% en WhatsApp)
-  const icons = (ref: string, priority: number, mid: number, x14Id: string) => sheet.addConditionalFormatting({
+  // `custom: true` obliga a exceljs a escribir la regla como x14 (extensión)
+  // con los iconos mezclados: semáforo rojo/amarillo + estrella dorada ≥100%.
+  const icons = (ref: string, priority: number, mid: number) => sheet.addConditionalFormatting({
     ref,
     rules: [{
-      type: "iconSet", x14Id, priority, iconSet: "3TrafficLights1", reverse: false, showValue: true,
+      type: "iconSet", priority, iconSet: "3TrafficLights1", reverse: false, showValue: true, custom: true,
       cfvo: [{ type: "percent", value: 0 }, { type: "num", value: mid }, { type: "num", value: 1 }],
       icons: [
         { iconSet: "3TrafficLights1", iconId: 0 },
-        { iconSet: "3TrafficLights1", iconId: 0 },
+        { iconSet: "3TrafficLights1", iconId: 1 },
         { iconSet: "3Stars", iconId: 2 }
       ]
     } as unknown as ExcelJS.ConditionalFormattingRule]
   });
-  icons("O10 D10:M10", 18, 0.85, "{D690AB48-7C9E-4473-A166-7763075AE791}");
-  icons("O27 D27:M27", 19, 0.99, "{57BB159E-D368-4F44-A970-2843A29291AB}");
+  icons("O10 D10:M10", 18, 0.85);
+  icons("O27 D27:M27", 19, 0.99);
 }
