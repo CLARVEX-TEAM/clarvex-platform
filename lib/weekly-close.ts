@@ -110,7 +110,7 @@ export function buildWeeklyCloseColumn(item: KpiReportItem, store: KpiReportItem
   const lossUpt = hasOwn && hasStore ? round2((item.pieces / item.transactions - store.pieces / store.transactions) * item.transactions * (item.sales / item.pieces)) : null;
   const lossAur = hasOwn && hasStore ? round2((item.sales / item.pieces - store.sales / store.pieces) * item.pieces) : null;
   return {
-    name: item.userName,
+    name: firstName(item.userName),
     role: item.role,
     goal: item.goal,
     sales: item.sales,
@@ -145,3 +145,9 @@ function computeFocus(item: KpiReportItem, lossUpt: number | null, lossAur: numb
 }
 
 function round2(value: number) { return Math.round(value * 100) / 100; }
+
+/** Primer nombre en formato título ("WAIRA ZITLALI POPOCA" → "Waira"), como el formato de tienda. */
+export function firstName(fullName: string) {
+  const first = fullName.trim().split(/\s+/)[0] ?? "";
+  return first.charAt(0).toUpperCase() + first.slice(1).toLowerCase();
+}

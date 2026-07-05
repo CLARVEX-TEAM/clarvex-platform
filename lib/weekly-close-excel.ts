@@ -118,7 +118,7 @@ export function buildWeeklyCloseSheet(workbook: ExcelJS.Workbook, options: Sheet
 
   // PUNTO DE VENTA (filas 7-13)
   label(7, "META");        dataRow(7, (column) => column.goal, { numFmt: MONEY });                 totalCell(7, store.goal, MONEY);
-  label(8, "VENTA");       dataRow(8, (column) => zeroAsNull(column.sales), { numFmt: MONEY });    totalCell(8, store.sales, MONEY);
+  label(8, "VENTA");       dataRow(8, (column) => column.sales, { numFmt: MONEY });                totalCell(8, store.sales, MONEY);
   label(9, "DIFERENCIA");  dataRow(9, (column) => column.difference, { numFmt: MONEY });           totalCell(9, store.difference, MONEY);
   label(10, "ALCANCE");    dataRow(10, (column) => column.achievement / 100, { numFmt: PCT, size: 12 }); totalCell(10, store.achievement / 100, PCT, 12);
   label(11, "TICKETS");    dataRow(11, (column) => column.transactions);                           totalCell(11, store.transactions);
@@ -171,8 +171,6 @@ function waAchievement(column: WeeklyCloseColumn): number | null {
   if (column.waMeta === null || column.waMeta <= 0 || column.waSales === null) return null;
   return column.waSales / column.waMeta;
 }
-
-function zeroAsNull(value: number) { return value === 0 ? null : value; }
 
 function solid(argb: string): ExcelJS.Fill {
   return { type: "pattern", pattern: "solid", fgColor: { argb } };

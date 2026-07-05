@@ -71,6 +71,25 @@ export async function GET(request: Request) {
 
   // Cierre semanal: formato "RESUMEN DE DESEMPEÑO SEMANAL (ASESORES)"
   if (periodLabel === "Semanal" && store) {
+    // Todo el equipo activo aparece en el reporte, aunque no tenga datos esa
+    // semana (vacaciones, incapacidad): columna en ceros como el formato.
+    const teamUsers = await prisma.user.findMany({
+      where: { storeId: session.storeId, active: true, role: { in: ["GERENTE", "SUBGERENTE", "ASESOR"] } },
+      select: { id: true, name: true, role: true, photoUrl: true }
+    });
+    const withData = new Set(reports.map((report) => report.userId));
+    const fullReports: KpiReportItem[] = [
+      ...reports,
+      ...teamUsers.filter((user) => !withData.has(user.id)).map((user): KpiReportItem => ({
+        userId: user.id, userName: user.name, role: user.role as KpiReportItem["role"],
+        avatar: user.name.slice(0, 2).toUpperCase(), photoUrl: user.photoUrl,
+        sales: 0, goal: 0, achievement: 0, transactions: 0, pieces: 0,
+        upt: null, aur: null, ept: null, conversion: null, traffic: null, ranking: 0,
+        grossSales: null, orkestraSales: null, orkestraTransactions: null, orkestraPieces: null,
+        discountAmount: null, discountMargin: null, discountLimit: null,
+        commissionAmount: 0, commissionPercent: 0, commissionMinimum: null
+      }))
+    ];
     // Meta WhatsApp repartida por días laborados (horarios sincronizados)
     let waMetaByUser: Map<string, number> | null = null;
     if (whatsappBudget && whatsappBudget > 0) {
@@ -92,7 +111,7 @@ export async function GET(request: Request) {
         if (!presenceByDay.has(dateKey)) presenceByDay.set(dateKey, new Set());
         presenceByDay.get(dateKey)!.add(userId);
       }
-      const roles = new Map(reports.map((report) => [report.userId, report.role]));
+      const roles = new Map(fullReports.map((report) => [report.userId, report.role]));
       const distributed = distributeWhatsappBudget(whatsappBudget, presenceByDay, roles);
       if (distributed.size > 0) waMetaByUser = distributed;
     }
@@ -100,7 +119,7 @@ export async function GET(request: Request) {
       storeName: storeRecord?.name ?? "Tienda",
       weekNumber,
       rangeLabel,
-      columns: buildWeeklyCloseColumns(reports, store, whatsappBudget, waMetaByUser),
+      columns: buildWeeklyCloseColumns(fullReports, store, whatsappBudget, waMetaByUser),
       store: buildWeeklyCloseColumn(store, store, whatsappBudget)
     });
     const weeklyBuffer = await workbook.xlsx.writeBuffer();

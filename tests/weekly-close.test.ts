@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { KpiReportItem } from "../lib/kpi-report";
-import { buildWeeklyCloseColumn, buildWeeklyCloseColumns, distributeWhatsappBudget } from "../lib/weekly-close";
+import { buildWeeklyCloseColumn, buildWeeklyCloseColumns, distributeWhatsappBudget, firstName } from "../lib/weekly-close";
 
 // Datos reales del formato de tienda (San Agustín, semana 25) usados para
 // verificar que las fórmulas de pérdida replican el Excel original.
@@ -153,4 +153,22 @@ test("columnas ordenadas por rol y nombre", () => {
   const gerente = member({ userId: "g", userName: "Zoe", role: "GERENTE", sales: 10, transactions: 1, pieces: 1 });
   const columns = buildWeeklyCloseColumns([alonso, gerente, itzel], storeTotal);
   assert.deepEqual(columns.map((column) => column.name), ["Zoe", "Alonso", "Itzel"]);
+});
+
+test("encabezados usan solo el primer nombre en formato título", () => {
+  assert.equal(firstName("WAIRA ZITLALI POPOCA"), "Waira");
+  assert.equal(firstName("jazmín castro"), "Jazmín");
+  assert.equal(firstName("  Alonso Treviño "), "Alonso");
+  const full = member({ userId: "w2", userName: "WAIRA ZITLALI POPOCA", sales: 100, transactions: 1, pieces: 1 });
+  assert.equal(buildWeeklyCloseColumn(full, storeTotal).name, "Waira");
+});
+
+test("miembro sin datos de la semana sale con ceros y SIN DATOS", () => {
+  const vacaciones = member({ userId: "v1", userName: "Adrián Hernández", role: "SUBGERENTE" });
+  const column = buildWeeklyCloseColumn(vacaciones, storeTotal);
+  assert.equal(column.name, "Adrián");
+  assert.equal(column.sales, 0);
+  assert.equal(column.goal, 0);
+  assert.equal(column.transactions, 0);
+  assert.equal(column.focus, "SIN DATOS");
 });
