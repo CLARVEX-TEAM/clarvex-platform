@@ -155,6 +155,21 @@ test("columnas ordenadas por rol y nombre", () => {
   assert.deepEqual(columns.map((column) => column.name), ["Zoe", "Alonso", "Itzel"]);
 });
 
+test("columnas en el orden del RDV cuando el sync lo reporta", () => {
+  // RDV: Itzel (gerente), Adrián (subgerente), Waira, Jazmín, Alonso.
+  // El orden alfabético pondría Alonso antes que Waira; el RDV manda.
+  const rdvOrder = new Map([["itzel", 0], ["adrian", 1], ["waira", 2], ["jazmin", 3], ["alonso", 4]]);
+  const columns = buildWeeklyCloseColumns([alonso, jazmin, waira, adrian, itzel], storeTotal, null, null, rdvOrder);
+  assert.deepEqual(columns.map((column) => column.name), ["Itzel", "Adrián", "Waira", "Jazmín", "Alonso"]);
+});
+
+test("quien no está en el orden RDV va al final por rol y nombre", () => {
+  const nuevo = member({ userId: "nuevo", userName: "Bruno", sales: 5, transactions: 1, pieces: 1 });
+  const rdvOrder = new Map([["waira", 0], ["jazmin", 1]]);
+  const columns = buildWeeklyCloseColumns([nuevo, jazmin, waira], storeTotal, null, null, rdvOrder);
+  assert.deepEqual(columns.map((column) => column.name), ["Waira", "Jazmín", "Bruno"]);
+});
+
 test("encabezados usan solo el primer nombre en formato título", () => {
   assert.equal(firstName("WAIRA ZITLALI POPOCA"), "Waira");
   assert.equal(firstName("jazmín castro"), "Jazmín");
