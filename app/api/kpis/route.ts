@@ -5,6 +5,7 @@ import { aggregateKpis, aggregateStore, aggregateStoreTraffic } from "@/lib/kpi-
 import { buildRetailMonths, parsePeriodDate, periodDateKey, type KpiPeriod } from "@/lib/kpi-period";
 import { prisma } from "@/lib/prisma";
 import { mergeRdvWeeks } from "@/lib/rdv-week";
+import { buildWorkingScheduleKeys } from "@/lib/working-days";
 
 export const dynamic = "force-dynamic";
 
@@ -84,8 +85,8 @@ export async function GET(request: NextRequest) {
   }) : [];
   const workingKeys = buildWorkingScheduleKeys(schedules);
   const useMonthlyGoal = period === "month";
-  const storeReports = aggregateKpis(rows, useMonthlyGoal);
-  const allReports = manager ? storeReports : aggregateKpis(allRows, useMonthlyGoal);
+  const storeReports = aggregateKpis(rows, useMonthlyGoal, workingKeys);
+  const allReports = manager ? storeReports : aggregateKpis(allRows, useMonthlyGoal, workingKeys);
   const team = allReports
     .filter((item) => item.role === "ASESOR")
     .sort((a, b) => b.sales - a.sales || b.achievement - a.achievement);
@@ -158,16 +159,6 @@ function selectRetailMonth(months: Array<{ label: string; start: Date; end: Date
     ?? months.find((month) => month.end.getUTCFullYear() === selectedDate.getUTCFullYear() && month.end.getUTCMonth() === selectedDate.getUTCMonth())
     ?? months.at(-1)
     ?? null;
-}
-
-function buildWorkingScheduleKeys(schedules: Array<{ userId: string; date: Date; status: string; statusRaw: string | null }>) {
-  const byUserDate = new Map<string, { status: string; quality: number }>();
-  for (const schedule of schedules) {
-    const key = `${schedule.userId}:${periodDateKey(schedule.date)}`;
-    const quality = (schedule.statusRaw ? 2 : 0) + (schedule.date.getUTCHours() === 0 ? 1 : 0);
-    if (!byUserDate.has(key) || quality > byUserDate.get(key)!.quality) byUserDate.set(key, { status: schedule.status, quality });
-  }
-  return new Set(Array.from(byUserDate.entries()).filter(([, schedule]) => schedule.status === "WORKING").map(([key]) => key));
 }
 
 function selectRdvWeek(weeks: Array<{ weekNumber: number; weekStart: Date; weekEnd: Date }>, selectedDate: Date) {

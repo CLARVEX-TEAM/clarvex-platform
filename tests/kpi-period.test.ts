@@ -39,7 +39,7 @@ test("no suma dos veces el mismo usuario y dia calendario", () => {
   assert.equal(reports[0].goal, 200);
 });
 
-test("el trafico del colaborador solo cuenta dias con actividad", () => {
+test("sin horarios, el trafico del asesor solo cuenta dias con actividad", () => {
   const base = { conversion: null, grossSales: null, discountAmount: null, discountLimit: null, commissionAmount: 0, commissionPercent: 0, user: { name: "Waira", role: "ASESOR" as const, photoUrl: null } };
   const reports = aggregateKpis([
     // Día trabajado con venta: su tráfico sí cuenta.
@@ -50,6 +50,34 @@ test("el trafico del colaborador solo cuenta dias con actividad", () => {
   ]);
   assert.equal(reports[0].traffic, 1614);
   assert.equal(reports[0].conversion, Math.round((5 / 1614) * 100 * 100) / 100);
+});
+
+test("con horarios, el trafico del asesor son sus dias laborados (HORARIOS)", () => {
+  const base = { conversion: null, grossSales: null, discountAmount: null, discountLimit: null, commissionAmount: 0, commissionPercent: 0, user: { name: "Waira", role: "ASESOR" as const, photoUrl: null } };
+  const rows = [
+    // Laboró y vendió.
+    { ...base, userId: "w", date: new Date("2026-06-29T00:00:00.000Z"), dailySales: 1000, dailyGoal: 800, transactions: 5, pieces: 8, traffic: 1400 },
+    // Laboró pero no vendió (meta sin venta): su tráfico SÍ cuenta.
+    { ...base, userId: "w", date: new Date("2026-06-30T00:00:00.000Z"), dailySales: 0, dailyGoal: 800, transactions: 0, pieces: 0, traffic: 214 },
+    // Vendió (ej. venta remota) pero NO estaba en horario: no cuenta su tráfico.
+    { ...base, userId: "w", date: new Date("2026-07-01T00:00:00.000Z"), dailySales: 500, dailyGoal: 0, transactions: 1, pieces: 1, traffic: 192 }
+  ];
+  const workingKeys = new Set(["w:2026-06-29", "w:2026-06-30"]);
+  const reports = aggregateKpis(rows, false, workingKeys);
+  assert.equal(reports[0].traffic, 1614);
+});
+
+test("gerencia recibe el trafico completo de la tienda del periodo", () => {
+  const base = { conversion: null, grossSales: null, discountAmount: null, discountLimit: null, commissionAmount: 0, commissionPercent: 0 };
+  const gerente = { name: "Itzel", role: "GERENTE" as const, photoUrl: null };
+  const asesor = { name: "Waira", role: "ASESOR" as const, photoUrl: null };
+  const reports = aggregateKpis([
+    { ...base, userId: "g", user: gerente, date: new Date("2026-06-29T00:00:00.000Z"), dailySales: 900, dailyGoal: 700, transactions: 3, pieces: 4, traffic: 1400 },
+    // La gerente descansó este día, pero el tráfico de tienda igual es suyo.
+    { ...base, userId: "w", user: asesor, date: new Date("2026-06-30T00:00:00.000Z"), dailySales: 800, dailyGoal: 700, transactions: 2, pieces: 3, traffic: 629 }
+  ]);
+  const itzel = reports.find((report) => report.userId === "g");
+  assert.equal(itzel?.traffic, 2029);
 });
 
 test("deduplica el trafico de tienda por fecha", () => {

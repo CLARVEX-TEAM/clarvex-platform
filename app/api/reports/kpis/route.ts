@@ -7,6 +7,7 @@ import { aggregateKpis, aggregateStore, aggregateStoreTraffic, type KpiReportIte
 import { prisma } from "@/lib/prisma";
 import { buildWeeklyCloseColumn, buildWeeklyCloseColumns, distributeWhatsappBudget } from "@/lib/weekly-close";
 import { buildWeeklyCloseSheet } from "@/lib/weekly-close-excel";
+import { buildWorkingScheduleKeys } from "@/lib/working-days";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -51,7 +52,7 @@ export async function GET(request: Request) {
   const weekParam = params.get("week");
   const weekNumber = weekParam && /^\d{1,3}$/.test(weekParam) ? Number(weekParam) : null;
 
-  const [rows, storeRecord, whatsappTarget] = await Promise.all([
+  const [rows, storeRecord, whatsappTarget, schedules] = await Promise.all([
     prisma.kpi.findMany({
       where: { storeId: session.storeId, date: { gte: start, lte: end } },
       include: { user: { select: { name: true, role: true, photoUrl: true } } },
@@ -59,11 +60,17 @@ export async function GET(request: Request) {
     }),
     prisma.store.findUnique({ where: { id: session.storeId }, select: { name: true } }),
     // PPTO semanal de WhatsApp capturado por gerencia en Metas internas
-    prisma.kpiTarget.findUnique({ where: { storeId_metric_period: { storeId: session.storeId, metric: "whatsapp", period: "SEMANA" } } })
+    prisma.kpiTarget.findUnique({ where: { storeId_metric_period: { storeId: session.storeId, metric: "whatsapp", period: "SEMANA" } } }),
+    // Días laborados (HORARIOS): definen el tráfico por asesor y la meta WhatsApp
+    prisma.schedule.findMany({
+      where: { storeId: session.storeId, date: { gte: start, lte: end } },
+      select: { userId: true, date: true, status: true, statusRaw: true }
+    })
   ]);
   const whatsappBudget = whatsappTarget ? Number(whatsappTarget.value) : null;
+  const workingKeys = buildWorkingScheduleKeys(schedules);
 
-  const reports = aggregateKpis(rows, periodLabel === "Mensual");
+  const reports = aggregateKpis(rows, periodLabel === "Mensual", workingKeys);
   const store = aggregateStore(reports, aggregateStoreTraffic(rows));
   const ordered = [...reports].sort((a, b) => b.sales - a.sales);
 
@@ -113,21 +120,9 @@ export async function GET(request: Request) {
     // Meta WhatsApp repartida por días laborados (horarios sincronizados)
     let waMetaByUser: Map<string, number> | null = null;
     if (whatsappBudget && whatsappBudget > 0) {
-      const schedules = await prisma.schedule.findMany({
-        where: { storeId: session.storeId, date: { gte: start, lte: end } },
-        select: { userId: true, date: true, status: true, statusRaw: true }
-      });
-      // Mejor registro por usuario y día (mismo criterio de calidad que /api/kpis)
-      const best = new Map<string, { status: string; quality: number }>();
-      for (const schedule of schedules) {
-        const key = `${schedule.userId}:${schedule.date.toISOString().slice(0, 10)}`;
-        const quality = (schedule.statusRaw ? 2 : 0) + (schedule.date.getUTCHours() === 0 ? 1 : 0);
-        if (!best.has(key) || quality > best.get(key)!.quality) best.set(key, { status: schedule.status, quality });
-      }
       const presenceByDay = new Map<string, Set<string>>();
-      for (const entry of Array.from(best.entries())) {
-        if (entry[1].status !== "WORKING") continue;
-        const [userId, dateKey] = [entry[0].slice(0, entry[0].indexOf(":")), entry[0].slice(entry[0].indexOf(":") + 1)];
+      for (const key of Array.from(workingKeys)) {
+        const [userId, dateKey] = [key.slice(0, key.indexOf(":")), key.slice(key.indexOf(":") + 1)];
         if (!presenceByDay.has(dateKey)) presenceByDay.set(dateKey, new Set());
         presenceByDay.get(dateKey)!.add(userId);
       }
