@@ -378,6 +378,10 @@ model Kpi {
   transactions   Int
   ranking        Int
   grossSales     Decimal? @db.Decimal(12, 2)
+  // Venta por WhatsApp (columnas ORKESTRA del RDV)
+  orkestraSales        Decimal? @db.Decimal(12, 2)
+  orkestraTransactions Int?
+  orkestraPieces       Int?
   discountAmount Decimal? @db.Decimal(12, 2)
   discountMargin Decimal? @db.Decimal(5, 2)
   discountLimit  Decimal? @db.Decimal(5, 2)

@@ -50,14 +50,17 @@ export async function GET(request: Request) {
   const weekParam = params.get("week");
   const weekNumber = weekParam && /^\d{1,3}$/.test(weekParam) ? Number(weekParam) : null;
 
-  const [rows, storeRecord] = await Promise.all([
+  const [rows, storeRecord, whatsappTarget] = await Promise.all([
     prisma.kpi.findMany({
       where: { storeId: session.storeId, date: { gte: start, lte: end } },
       include: { user: { select: { name: true, role: true, photoUrl: true } } },
       orderBy: [{ date: "asc" }, { userId: "asc" }]
     }),
-    prisma.store.findUnique({ where: { id: session.storeId }, select: { name: true } })
+    prisma.store.findUnique({ where: { id: session.storeId }, select: { name: true } }),
+    // PPTO semanal de WhatsApp capturado por gerencia en Metas internas
+    prisma.kpiTarget.findUnique({ where: { storeId_metric_period: { storeId: session.storeId, metric: "whatsapp", period: "SEMANA" } } })
   ]);
+  const whatsappBudget = whatsappTarget ? Number(whatsappTarget.value) : null;
 
   const reports = aggregateKpis(rows, periodLabel === "Mensual");
   const store = aggregateStore(reports, aggregateStoreTraffic(rows));
@@ -72,8 +75,8 @@ export async function GET(request: Request) {
       storeName: storeRecord?.name ?? "Tienda",
       weekNumber,
       rangeLabel,
-      columns: buildWeeklyCloseColumns(reports, store),
-      store: buildWeeklyCloseColumn(store, store)
+      columns: buildWeeklyCloseColumns(reports, store, whatsappBudget),
+      store: buildWeeklyCloseColumn(store, store, whatsappBudget)
     });
     const weeklyBuffer = await workbook.xlsx.writeBuffer();
     const weeklyName = `cierre-semana${weekNumber ? `-${weekNumber}` : ""}-${params.get("start")}.xlsx`;

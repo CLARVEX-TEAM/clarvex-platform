@@ -28,17 +28,25 @@ export type WeeklyCloseColumn = {
   lossUpt: number | null;
   lossAur: number | null;
   focus: WeeklyCloseFocus;
+  // Sección WHATSAPP (ORKESTRA del RDV). Meta = PPTO repartido en partes
+  // iguales entre los asesores con venta esa semana.
+  waMeta: number | null;
+  waSales: number | null;
+  waTransactions: number | null;
+  waPieces: number | null;
 };
 
 const ROLE_ORDER: Record<KpiReportItem["role"], number> = { GERENTE: 0, SUBGERENTE: 1, ASESOR: 2 };
 
-export function buildWeeklyCloseColumns(members: KpiReportItem[], store: KpiReportItem): WeeklyCloseColumn[] {
-  return [...members]
-    .sort((left, right) => ROLE_ORDER[left.role] - ROLE_ORDER[right.role] || left.userName.localeCompare(right.userName, "es"))
-    .map((member) => buildWeeklyCloseColumn(member, store));
+export function buildWeeklyCloseColumns(members: KpiReportItem[], store: KpiReportItem, whatsappBudget: number | null = null): WeeklyCloseColumn[] {
+  const ordered = [...members]
+    .sort((left, right) => ROLE_ORDER[left.role] - ROLE_ORDER[right.role] || left.userName.localeCompare(right.userName, "es"));
+  const withSales = ordered.filter((member) => member.sales > 0).length;
+  const metaShare = whatsappBudget !== null && whatsappBudget > 0 && withSales > 0 ? round2(whatsappBudget / withSales) : null;
+  return ordered.map((member) => buildWeeklyCloseColumn(member, store, member.sales > 0 ? metaShare : null));
 }
 
-export function buildWeeklyCloseColumn(item: KpiReportItem, store: KpiReportItem): WeeklyCloseColumn {
+export function buildWeeklyCloseColumn(item: KpiReportItem, store: KpiReportItem, waMeta: number | null = null): WeeklyCloseColumn {
   // Las pérdidas se calculan con los valores crudos (venta/tickets/piezas),
   // no con los KPIs ya redondeados, para replicar el Excel original.
   const hasOwn = item.transactions > 0 && item.pieces > 0;
@@ -63,7 +71,11 @@ export function buildWeeklyCloseColumn(item: KpiReportItem, store: KpiReportItem
     lossEpt,
     lossUpt,
     lossAur,
-    focus: computeFocus(item, lossUpt, lossAur)
+    focus: computeFocus(item, lossUpt, lossAur),
+    waMeta,
+    waSales: item.orkestraSales,
+    waTransactions: item.orkestraTransactions,
+    waPieces: item.orkestraPieces
   };
 }
 
