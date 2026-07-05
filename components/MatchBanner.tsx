@@ -37,6 +37,9 @@ export function MatchBanner() {
 
   // No mostrar en login ni dentro de una conversación de chat (pantalla completa).
   const hidden = !pathname || pathname === "/login" || pathname.startsWith("/chat/");
+  // En el escritorio el banner no puede empujar el layout ni taparse con el
+  // header: va como tarjeta flotante abajo a la derecha.
+  const isDesktop = !!pathname && pathname.startsWith("/escritorio");
 
   const refresh = useCallback(async () => {
     if (hidden) return;
@@ -85,14 +88,15 @@ export function MatchBanner() {
   }, [visible]);
 
   // Compensar la altura del banner para no tapar el encabezado de las páginas.
+  // Solo en móvil: en escritorio el banner flota y no desplaza el layout.
   useEffect(() => {
-    if (visible && bannerRef.current) {
+    if (visible && !isDesktop && bannerRef.current) {
       document.body.style.paddingTop = `${bannerRef.current.offsetHeight}px`;
     } else {
       document.body.style.paddingTop = "";
     }
     return () => { document.body.style.paddingTop = ""; };
-  }, [visible, match, canManage]);
+  }, [visible, isDesktop, match, canManage]);
 
   if (!visible || !match) return <GoalConfetti trigger={confetti} />;
 
@@ -153,8 +157,10 @@ export function MatchBanner() {
     <>
       <div
         ref={bannerRef}
-        className="fixed inset-x-0 top-0 z-[55] px-3 pb-1.5"
-        style={{ paddingTop: "calc(env(safe-area-inset-top) + 6px)" }}
+        className={isDesktop
+          ? "fixed bottom-6 right-6 z-[55] w-[26rem] max-w-[calc(100vw-3rem)]"
+          : "fixed inset-x-0 top-0 z-[55] px-3 pb-1.5"}
+        style={isDesktop ? undefined : { paddingTop: "calc(env(safe-area-inset-top) + 6px)" }}
       >
         <div className="relative mx-auto max-w-md overflow-hidden rounded-[22px] border border-white/15 bg-gradient-to-br from-[#0a5741] to-[#0d6a4e] text-white shadow-[0_10px_28px_rgb(6_78_59_/_0.4)] backdrop-blur-xl">
           <span className="pointer-events-none absolute inset-x-5 bottom-0 h-[2px] rounded-full bg-gradient-to-r from-[#2ea277] via-white/85 to-[#e4526b] opacity-80" />
