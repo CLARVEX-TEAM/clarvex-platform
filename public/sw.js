@@ -1,4 +1,4 @@
-const CACHE_NAME = "clarvex-team-v6";
+const CACHE_NAME = "clarvex-team-v7";
 const CORE_ASSETS = ["/", "/login", "/manifest.webmanifest", "/icon.svg"];
 
 self.addEventListener("install", (event) => {
