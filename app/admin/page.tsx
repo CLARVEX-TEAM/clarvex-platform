@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Building2, CheckCircle2, ChevronDown, Percent, Plus, ScrollText } from "lucide-react";
+import { Building2, CheckCircle2, ChevronDown, Percent, Plus, ScrollText, TrendingUp } from "lucide-react";
 import { getSession } from "@/lib/auth";
+import { money } from "@/lib/format";
 import { AppFrame, AppHeader, BottomNav, Button, Card } from "@/components/ui";
 
 type CommissionRuleRow = {
@@ -40,8 +41,20 @@ type StoreRow = {
   dataSources: number;
   billingExempt: boolean;
   subscriptionPaidUntil: string | null;
+  weekSales: number;
+  weekGoal: number;
+  lastSyncAt: string | null;
+  lastSyncStatus: "SUCCESS" | "ERROR" | "RUNNING" | null;
   commissionRules: CommissionRuleRow[];
 };
+
+function syncBadge(store: StoreRow): { label: string; ok: boolean } {
+  if (!store.lastSyncAt) return { label: "Sin sync", ok: false };
+  const hours = Math.floor((Date.now() - new Date(store.lastSyncAt).getTime()) / 3_600_000);
+  const ago = hours < 1 ? "hace <1 h" : hours < 48 ? `hace ${hours} h` : `hace ${Math.floor(hours / 24)} d`;
+  if (store.lastSyncStatus === "ERROR") return { label: `Sync con error (${ago})`, ok: false };
+  return { label: `Sync ${ago}`, ok: hours <= 26 };
+}
 
 function billingStatus(store: StoreRow): { label: string; tone: "ok" | "warn" | "bad" } {
   if (store.billingExempt) return { label: "Exenta", tone: "ok" };
@@ -245,6 +258,16 @@ export default function AdminPage() {
         {loading ? (
           <Card className="text-sm font-semibold text-muted">Cargando tiendas...</Card>
         ) : (
+          <>
+          {stores.length > 1 ? (
+            <Card className="mb-3 p-3.5">
+              <p className="mb-1 flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.13em] text-muted"><TrendingUp size={13} className="text-volt" />Todas las tiendas · semana en curso</p>
+              <div className="flex items-baseline gap-3">
+                <p className="text-2xl font-black text-ink">{money(stores.reduce((total, store) => total + store.weekSales, 0))}</p>
+                {(() => { const goal = stores.reduce((total, store) => total + store.weekGoal, 0); const sales = stores.reduce((total, store) => total + store.weekSales, 0); return goal > 0 ? <span className={`text-sm font-black ${sales >= goal ? "text-success" : "text-muted"}`}>{Math.round((sales / goal) * 100)}% de meta</span> : null; })()}
+              </div>
+            </Card>
+          ) : null}
           <div className="space-y-2.5">
             {stores.map((store) => (
               <Card key={store.id} className="p-3.5">
@@ -256,6 +279,12 @@ export default function AdminPage() {
                       {store.activeUsers} activos de {store.totalUsers} · {store.dataSources} fuentes de datos
                       {(() => { const s = billingStatus(store); return (
                         <span className={`ml-1.5 rounded-full px-1.5 py-0.5 text-[10px] font-bold ${s.tone === "ok" ? "bg-success/10 text-success" : s.tone === "warn" ? "bg-ember/10 text-ember" : "bg-orchid/10 text-orchid"}`}>{s.label}</span>
+                      ); })()}
+                    </p>
+                    <p className="mt-0.5 text-xs font-semibold text-muted">
+                      💰 {money(store.weekSales)}{store.weekGoal > 0 ? ` · ${Math.round((store.weekSales / store.weekGoal) * 100)}%` : ""} esta semana
+                      {(() => { const s = syncBadge(store); return (
+                        <span className={`ml-1.5 rounded-full px-1.5 py-0.5 text-[10px] font-bold ${s.ok ? "bg-success/10 text-success" : "bg-ember/10 text-ember"}`}>{s.label}</span>
                       ); })()}
                     </p>
                   </div>
@@ -328,6 +357,7 @@ export default function AdminPage() {
               </Card>
             ))}
           </div>
+          </>
         )}
 
         <Card className="mt-4 p-3.5">
