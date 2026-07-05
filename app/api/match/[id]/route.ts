@@ -3,6 +3,7 @@ import { requireSession, isApiError } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
 import { dispatchPushToUsers } from "@/lib/push";
 import { serializeMatch } from "@/lib/match";
+import { normalizeStreamUrl } from "@/lib/stream-url";
 
 export const dynamic = "force-dynamic";
 
@@ -44,7 +45,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   else if (typeof body.streamUrl === "string") {
     const trimmed = body.streamUrl.trim().slice(0, 500);
     if (!trimmed) data.streamUrl = null;
-    else if (/^https?:\/\//i.test(trimmed)) data.streamUrl = trimmed;
+    else if (/^https?:\/\//i.test(trimmed)) data.streamUrl = normalizeStreamUrl(trimmed);
     else return NextResponse.json({ error: "El enlace debe empezar con http:// o https://." }, { status: 400 });
   }
 
