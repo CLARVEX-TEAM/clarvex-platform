@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { KpiReportItem } from "../lib/kpi-report";
-import { buildWeeklyCloseColumn, buildWeeklyCloseColumns } from "../lib/weekly-close";
+import { buildWeeklyCloseColumn, buildWeeklyCloseColumns, distributeWhatsappBudget } from "../lib/weekly-close";
 
 // Datos reales del formato de tienda (San Agustín, semana 25) usados para
 // verificar que las fórmulas de pérdida replican el Excel original.
@@ -110,6 +110,43 @@ test("meta WhatsApp: sin PPTO capturado no hay metas", () => {
   const columns = buildWeeklyCloseColumns([itzel, waira], storeTotal);
   assert.equal(columns[0].waMeta, null);
   assert.equal(columns[1].waMeta, null);
+});
+
+test("reparto por días laborados: gerente 10% fijo por día (como HORARIOS)", () => {
+  // Itzel (gerente) labora los 7 días → 10% del PPTO = $138.11 (igual que la referencia)
+  const roles = new Map<string, KpiReportItem["role"]>([["g1", "GERENTE"], ["a1", "ASESOR"], ["a2", "ASESOR"]]);
+  const presence = new Map<string, Set<string>>();
+  for (let day = 1; day <= 7; day += 1) presence.set(`2026-06-0${day}`, new Set(["g1", "a1", "a2"]));
+  const result = distributeWhatsappBudget(1_381.06, presence, roles);
+  assert.equal(result.get("g1"), 138.11); // 10% × PPTO
+  // Los asesores se reparten el 90% en partes iguales: 45% cada uno
+  assert.equal(result.get("a1"), 621.48);
+  assert.equal(result.get("a2"), 621.48);
+});
+
+test("reparto por días laborados: quien no labora un día no participa ese día", () => {
+  const roles = new Map<string, KpiReportItem["role"]>([["a1", "ASESOR"], ["a2", "ASESOR"]]);
+  const presence = new Map<string, Set<string>>([
+    ["2026-06-01", new Set(["a1", "a2"])], // ambos: 50% cada uno
+    ["2026-06-02", new Set(["a1"])]        // solo a1: 100%
+  ]);
+  const result = distributeWhatsappBudget(700, presence, roles);
+  const daily = 100; // 700 / 7
+  assert.equal(result.get("a1"), daily * 0.5 + daily); // 150
+  assert.equal(result.get("a2"), daily * 0.5);         // 50
+});
+
+test("reparto por días laborados: sin PPTO devuelve mapa vacío", () => {
+  assert.equal(distributeWhatsappBudget(0, new Map(), new Map()).size, 0);
+});
+
+test("columnas usan el reparto por horarios cuando existe", () => {
+  const waMetaByUser = new Map<string, number>([["itzel", 138.11], ["waira", 400]]);
+  const columns = buildWeeklyCloseColumns([itzel, waira, alonso], storeTotal, 1_381.06, waMetaByUser);
+  assert.equal(columns.find((column) => column.name === "Itzel")!.waMeta, 138.11);
+  assert.equal(columns.find((column) => column.name === "Waira")!.waMeta, 400);
+  // Alonso sin días laborados registrados → sin meta
+  assert.equal(columns.find((column) => column.name === "Alonso")!.waMeta, null);
 });
 
 test("columnas ordenadas por rol y nombre", () => {

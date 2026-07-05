@@ -4,7 +4,7 @@ import { DATA_SOURCE_ROLES } from "@/lib/access-control";
 import { isApiError, requireSession } from "@/lib/api";
 import { aggregateKpis, aggregateStore, aggregateStoreTraffic, type KpiReportItem } from "@/lib/kpi-report";
 import { prisma } from "@/lib/prisma";
-import { buildWeeklyCloseColumn, buildWeeklyCloseColumns } from "@/lib/weekly-close";
+import { buildWeeklyCloseColumn, buildWeeklyCloseColumns, distributeWhatsappBudget } from "@/lib/weekly-close";
 import { buildWeeklyCloseSheet } from "@/lib/weekly-close-excel";
 
 export const dynamic = "force-dynamic";
@@ -71,11 +71,36 @@ export async function GET(request: Request) {
 
   // Cierre semanal: formato "RESUMEN DE DESEMPEÑO SEMANAL (ASESORES)"
   if (periodLabel === "Semanal" && store) {
+    // Meta WhatsApp repartida por días laborados (horarios sincronizados)
+    let waMetaByUser: Map<string, number> | null = null;
+    if (whatsappBudget && whatsappBudget > 0) {
+      const schedules = await prisma.schedule.findMany({
+        where: { storeId: session.storeId, date: { gte: start, lte: end } },
+        select: { userId: true, date: true, status: true, statusRaw: true }
+      });
+      // Mejor registro por usuario y día (mismo criterio de calidad que /api/kpis)
+      const best = new Map<string, { status: string; quality: number }>();
+      for (const schedule of schedules) {
+        const key = `${schedule.userId}:${schedule.date.toISOString().slice(0, 10)}`;
+        const quality = (schedule.statusRaw ? 2 : 0) + (schedule.date.getUTCHours() === 0 ? 1 : 0);
+        if (!best.has(key) || quality > best.get(key)!.quality) best.set(key, { status: schedule.status, quality });
+      }
+      const presenceByDay = new Map<string, Set<string>>();
+      for (const entry of Array.from(best.entries())) {
+        if (entry[1].status !== "WORKING") continue;
+        const [userId, dateKey] = [entry[0].slice(0, entry[0].indexOf(":")), entry[0].slice(entry[0].indexOf(":") + 1)];
+        if (!presenceByDay.has(dateKey)) presenceByDay.set(dateKey, new Set());
+        presenceByDay.get(dateKey)!.add(userId);
+      }
+      const roles = new Map(reports.map((report) => [report.userId, report.role]));
+      const distributed = distributeWhatsappBudget(whatsappBudget, presenceByDay, roles);
+      if (distributed.size > 0) waMetaByUser = distributed;
+    }
     buildWeeklyCloseSheet(workbook, {
       storeName: storeRecord?.name ?? "Tienda",
       weekNumber,
       rangeLabel,
-      columns: buildWeeklyCloseColumns(reports, store, whatsappBudget),
+      columns: buildWeeklyCloseColumns(reports, store, whatsappBudget, waMetaByUser),
       store: buildWeeklyCloseColumn(store, store, whatsappBudget)
     });
     const weeklyBuffer = await workbook.xlsx.writeBuffer();
