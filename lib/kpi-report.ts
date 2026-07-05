@@ -50,7 +50,7 @@ export type RawKpi = {
   user: { name: string; role: KpiReportItem["role"]; photoUrl: string | null };
 };
 
-export function aggregateKpis(rows: RawKpi[], useMonthlyGoal = false) {
+export function aggregateKpis(rows: RawKpi[], useMonthlyGoal = false, workingKeys?: Set<string>) {
   const groups = new Map<string, RawKpi[]>();
   const uniqueRows = new Map<string, RawKpi>();
   for (const row of rows) {
@@ -61,16 +61,27 @@ export function aggregateKpis(rows: RawKpi[], useMonthlyGoal = false) {
   }
   for (const row of Array.from(uniqueRows.values())) groups.set(row.userId, [...(groups.get(row.userId) ?? []), row]);
 
+  // Tráfico de la tienda por día (cada fila del día trae el mismo valor).
+  const dailyTraffic = new Map<string, number>();
+  for (const row of Array.from(uniqueRows.values())) {
+    if (!row.traffic || !(row.date instanceof Date)) continue;
+    const key = row.date.toISOString().slice(0, 10);
+    dailyTraffic.set(key, Math.max(dailyTraffic.get(key) ?? 0, row.traffic));
+  }
+  const storeTraffic = dailyTraffic.size ? Array.from(dailyTraffic.values()).reduce((total, value) => total + value, 0) : null;
+
   const reports = Array.from(groups.values()).map((items) => {
     const first = items[0];
     const sales = sum(items, "dailySales");
     const goal = goalSum(items, useMonthlyGoal);
     const transactions = items.reduce((total, item) => total + item.transactions, 0);
     const pieces = items.reduce((total, item) => total + item.pieces, 0);
-    // Tráfico del colaborador: solo cuenta los días en que tuvo actividad
-    // (tickets o venta). Un registro con meta asignada pero sin venta —su día
-    // de descanso— no debe sumar el tráfico de la tienda a su conversión.
-    const traffic = nullableIntegerSum(items.map((item) => item.transactions > 0 || number(item.dailySales) > 0 ? item.traffic : null));
+    // Tráfico del colaborador — misma regla que el formato manual de tienda:
+    // · GERENTE/SUBGERENTE: el tráfico completo de la tienda del período.
+    // · ASESOR con horarios sincronizados: la suma del tráfico de la tienda
+    //   SOLO en sus días laborados (hoja HORARIOS).
+    // · ASESOR sin horarios: fallback a días con actividad (tickets o venta).
+    const traffic = computeMemberTraffic(first, items, dailyTraffic, storeTraffic, workingKeys);
     const grossSales = nullableSum(items, "grossSales");
     const discountAmount = nullableSum(items, "discountAmount");
     const discountMargin = grossSales && discountAmount !== null ? round((discountAmount / grossSales) * 100) : null;
@@ -153,6 +164,25 @@ export function aggregateStore(
     commissionPercent: 0,
     commissionMinimum: commissionMinimumOverride ?? null
   };
+}
+
+function computeMemberTraffic(
+  first: RawKpi,
+  items: RawKpi[],
+  dailyTraffic: Map<string, number>,
+  storeTraffic: number | null,
+  workingKeys?: Set<string>
+): number | null {
+  if (first.user.role !== "ASESOR") {
+    return storeTraffic ?? nullableIntegerSum(items.map((item) => item.traffic));
+  }
+  const prefix = `${first.userId}:`;
+  const workedDates = workingKeys ? Array.from(workingKeys).filter((key) => key.startsWith(prefix)).map((key) => key.slice(prefix.length)) : [];
+  if (workedDates.length > 0) {
+    const total = workedDates.reduce((sum, date) => sum + (dailyTraffic.get(date) ?? 0), 0);
+    return total > 0 ? total : null;
+  }
+  return nullableIntegerSum(items.map((item) => item.transactions > 0 || number(item.dailySales) > 0 ? item.traffic : null));
 }
 
 export function aggregateStoreTraffic(rows: Array<{ date: Date; traffic: number | null }>) {
