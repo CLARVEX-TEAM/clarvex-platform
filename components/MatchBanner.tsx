@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
-import { Settings } from "lucide-react";
+import { Settings, Tv } from "lucide-react";
 import { GoalConfetti } from "@/components/GoalConfetti";
 import { matchPhase, type SerializedMatch } from "@/lib/match";
 
@@ -195,11 +195,21 @@ export function MatchBanner() {
                 </div>
               </div>
             )}
-            {canManage && (
-              <a href="/partido" className="grid size-8 shrink-0 place-items-center rounded-full bg-white/15 text-white/90 transition hover:bg-white/25" aria-label="Administrar partidos">
-                <Settings size={15} />
-              </a>
-            )}
+            <div className="flex shrink-0 items-center gap-1.5">
+              {match.streamUrl && (
+                <a
+                  href="/partido/ver"
+                  className="flex h-8 items-center gap-1.5 rounded-full bg-white px-3 text-[12px] font-black text-[#006847] transition hover:bg-white/90 active:scale-95"
+                >
+                  <Tv size={13} /> Ver partido
+                </a>
+              )}
+              {canManage && (
+                <a href="/partido" className="grid size-8 place-items-center rounded-full bg-white/15 text-white/90 transition hover:bg-white/25" aria-label="Administrar partidos">
+                  <Settings size={15} />
+                </a>
+              )}
+            </div>
           </div>
 
           {canManage && isLive && (

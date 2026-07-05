@@ -21,6 +21,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     mxScore?: number;
     rivalScore?: number;
     externalId?: number | null;
+    streamUrl?: string | null;
   };
 
   const current = await prisma.matchEvent.findUnique({ where: { id } });
@@ -39,6 +40,13 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   if (typeof body.mxScore === "number" && body.mxScore >= 0 && body.mxScore <= 99) data.mxScore = Math.floor(body.mxScore);
   if (typeof body.rivalScore === "number" && body.rivalScore >= 0 && body.rivalScore <= 99) data.rivalScore = Math.floor(body.rivalScore);
   if (body.externalId === null || (typeof body.externalId === "number" && body.externalId > 0)) data.externalId = body.externalId;
+  if (body.streamUrl === null) data.streamUrl = null;
+  else if (typeof body.streamUrl === "string") {
+    const trimmed = body.streamUrl.trim().slice(0, 500);
+    if (!trimmed) data.streamUrl = null;
+    else if (/^https?:\/\//i.test(trimmed)) data.streamUrl = trimmed;
+    else return NextResponse.json({ error: "El enlace debe empezar con http:// o https://." }, { status: 400 });
+  }
 
   if (Object.keys(data).length === 0) return NextResponse.json({ error: "Nada que actualizar." }, { status: 400 });
 

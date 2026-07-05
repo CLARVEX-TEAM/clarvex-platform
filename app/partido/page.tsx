@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { Trophy, Trash2, Plus, Radio, CheckCircle2, Link2, Link2Off, Loader2 } from "lucide-react";
+import { Trophy, Trash2, Plus, Radio, CheckCircle2, Link2, Link2Off, Loader2, Tv } from "lucide-react";
 import { getSession } from "@/lib/auth";
 import type { User } from "@/lib/types";
 import { AppFrame, AppHeader, BottomNav, Card } from "@/components/ui";
@@ -23,6 +23,11 @@ export default function PartidoPage() {
   const [searchResults, setSearchResults] = useState<ApiFixtureResult[]>([]);
   const [searchError, setSearchError] = useState("");
   const [searching, setSearching] = useState(false);
+  // id del partido cuyo enlace de transmisión se está editando
+  const [streamEditing, setStreamEditing] = useState<string | null>(null);
+  const [streamDraft, setStreamDraft] = useState("");
+  const [streamError, setStreamError] = useState("");
+  const [streamSaving, setStreamSaving] = useState(false);
 
   useEffect(() => {
     getSession().then((s) => {
@@ -119,6 +124,24 @@ export default function PartidoPage() {
       body: JSON.stringify({ externalId: null })
     });
     await load();
+  }
+
+  async function saveStreamUrl(matchId: string) {
+    setStreamError("");
+    setStreamSaving(true);
+    try {
+      const res = await fetch(`/api/match/${matchId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ streamUrl: streamDraft.trim() || null })
+      });
+      const data = (await res.json()) as { error?: string };
+      if (data.error) { setStreamError(data.error); return; }
+      setStreamEditing(null);
+      await load();
+    } finally {
+      setStreamSaving(false);
+    }
   }
 
   function fmt(iso: string) {
@@ -251,6 +274,64 @@ export default function PartidoPage() {
                       )}
                     </div>
                   ) : null}
+
+                  {/* Enlace de transmisión ("Ver partido" en el banner) */}
+                  {m.status !== "FINISHED" && (
+                    <div className="mt-2">
+                      {streamEditing === m.id ? (
+                        <div className="grid gap-1.5">
+                          <input
+                            value={streamDraft}
+                            onChange={(e) => setStreamDraft(e.target.value)}
+                            placeholder="https://… enlace de la transmisión"
+                            inputMode="url"
+                            className="rounded-2xl border border-line bg-panel px-3 py-2 text-xs font-semibold text-ink outline-none focus:border-volt"
+                          />
+                          {streamError && <p className="text-xs text-red-500">{streamError}</p>}
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => void saveStreamUrl(m.id)}
+                              disabled={streamSaving}
+                              className="flex items-center gap-1 rounded-full bg-green-600 px-3 py-1 text-[11px] font-black text-white transition active:scale-95 disabled:opacity-50"
+                            >
+                              {streamSaving ? "Guardando…" : "Guardar enlace"}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => { setStreamEditing(null); setStreamError(""); }}
+                              className="rounded-full bg-slate-500/10 px-3 py-1 text-[11px] font-bold text-muted transition active:scale-95"
+                            >
+                              Cancelar
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1.5">
+                          <span className={`flex min-w-0 items-center gap-1 text-[11px] font-semibold ${m.streamUrl ? "text-green-600" : "text-muted"}`}>
+                            <Tv size={12} className="shrink-0" />
+                            {m.streamUrl ? <span className="truncate">Transmisión configurada</span> : "Sin enlace de transmisión"}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => { setStreamEditing(m.id); setStreamDraft(m.streamUrl ?? ""); setStreamError(""); }}
+                            className="ml-auto shrink-0 rounded-full bg-blue-500/10 px-2.5 py-0.5 text-[11px] font-bold text-blue-600 transition active:scale-95 dark:text-blue-400"
+                          >
+                            {m.streamUrl ? "Cambiar" : "Agregar"}
+                          </button>
+                          {m.streamUrl && (
+                            <button
+                              type="button"
+                              onClick={() => { setStreamDraft(""); setStreamEditing(null); void fetch(`/api/match/${m.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ streamUrl: null }) }).then(() => load()); }}
+                              className="shrink-0 rounded-full bg-slate-500/10 px-2.5 py-0.5 text-[11px] font-bold text-muted transition active:scale-95"
+                            >
+                              Quitar
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   <div className="mt-2.5 flex items-center gap-1.5">
                     {m.status === "SCHEDULED" && (

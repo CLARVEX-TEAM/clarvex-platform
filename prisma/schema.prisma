@@ -825,6 +825,7 @@ model MatchEvent {
   opponent     String
   opponentFlag String?
   competition  String?
+  streamUrl    String?  // enlace configurable para "Ver partido" el día del juego
   kickoff      DateTime
   mxScore      Int      @default(0)
   rivalScore   Int      @default(0)

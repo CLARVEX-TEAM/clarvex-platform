@@ -24,6 +24,7 @@ export type SerializedMatch = {
   opponent: string;
   opponentFlag: string | null;
   competition: string | null;
+  streamUrl: string | null;
   kickoff: string;
   mxScore: number;
   rivalScore: number;
@@ -36,6 +37,7 @@ export function serializeMatch(m: {
   opponent: string;
   opponentFlag: string | null;
   competition: string | null;
+  streamUrl?: string | null;
   kickoff: Date;
   mxScore: number;
   rivalScore: number;
@@ -47,6 +49,7 @@ export function serializeMatch(m: {
     opponent: m.opponent,
     opponentFlag: m.opponentFlag,
     competition: m.competition,
+    streamUrl: m.streamUrl ?? null,
     kickoff: m.kickoff.toISOString(),
     mxScore: m.mxScore,
     rivalScore: m.rivalScore,
