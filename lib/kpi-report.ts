@@ -68,7 +68,6 @@ export function aggregateKpis(rows: RawKpi[], useMonthlyGoal = false, workingKey
     const key = row.date.toISOString().slice(0, 10);
     dailyTraffic.set(key, Math.max(dailyTraffic.get(key) ?? 0, row.traffic));
   }
-  const storeTraffic = dailyTraffic.size ? Array.from(dailyTraffic.values()).reduce((total, value) => total + value, 0) : null;
 
   const reports = Array.from(groups.values()).map((items) => {
     const first = items[0];
@@ -76,12 +75,11 @@ export function aggregateKpis(rows: RawKpi[], useMonthlyGoal = false, workingKey
     const goal = goalSum(items, useMonthlyGoal);
     const transactions = items.reduce((total, item) => total + item.transactions, 0);
     const pieces = items.reduce((total, item) => total + item.pieces, 0);
-    // Tráfico del colaborador — misma regla que el formato manual de tienda:
-    // · GERENTE/SUBGERENTE: el tráfico completo de la tienda del período.
-    // · ASESOR con horarios sincronizados: la suma del tráfico de la tienda
-    //   SOLO en sus días laborados (hoja HORARIOS).
-    // · ASESOR sin horarios: fallback a días con actividad (tickets o venta).
-    const traffic = computeMemberTraffic(first, items, dailyTraffic, storeTraffic, workingKeys);
+    // Tráfico del colaborador — misma regla que el formato manual de tienda,
+    // para TODOS los roles: la suma del tráfico de la tienda SOLO en sus días
+    // laborados (hoja HORARIOS). Sin horarios sincronizados, fallback a los
+    // días con actividad (tickets o venta).
+    const traffic = computeMemberTraffic(first, items, dailyTraffic, workingKeys);
     const grossSales = nullableSum(items, "grossSales");
     const discountAmount = nullableSum(items, "discountAmount");
     const discountMargin = grossSales && discountAmount !== null ? round((discountAmount / grossSales) * 100) : null;
@@ -170,12 +168,8 @@ function computeMemberTraffic(
   first: RawKpi,
   items: RawKpi[],
   dailyTraffic: Map<string, number>,
-  storeTraffic: number | null,
   workingKeys?: Set<string>
 ): number | null {
-  if (first.user.role !== "ASESOR") {
-    return storeTraffic ?? nullableIntegerSum(items.map((item) => item.traffic));
-  }
   const prefix = `${first.userId}:`;
   const workedDates = workingKeys ? Array.from(workingKeys).filter((key) => key.startsWith(prefix)).map((key) => key.slice(prefix.length)) : [];
   if (workedDates.length > 0) {
