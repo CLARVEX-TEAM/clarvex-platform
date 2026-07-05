@@ -68,6 +68,23 @@ test("ignora filas sin semana retail asignada", () => {
   assert.equal(weeks[0].weekNumber, 25);
 });
 
+test("filas con weekStart guardado por día se fusionan en una sola semana", () => {
+  // Regresión: en producción hay filas con weekStart=weekEnd=su propia fecha
+  // (p.ej. "4 jul – 4 jul"); deben agruparse por la semana retail de la fecha.
+  const fragmented = [
+    row({ userId: "u1", date: "2026-06-28", weekNumber: 26, weekStart: "2026-06-28", weekEnd: "2026-06-28", sales: 92_509, goal: 80_000, transactions: 10, pieces: 15 }),
+    row({ userId: "u1", date: "2026-07-01", weekNumber: 26, weekStart: "2026-07-01", weekEnd: "2026-07-01", sales: 40_461, goal: 15_000, transactions: 8, pieces: 12 }),
+    row({ userId: "u1", date: "2026-07-04", weekNumber: 26, weekStart: "2026-07-04", weekEnd: "2026-07-04", sales: 27_152, goal: 50_000, transactions: 6, pieces: 9 })
+  ];
+  const weeks = buildWeekHistory(fragmented);
+  assert.equal(weeks.length, 1);
+  assert.equal(weeks[0].weekNumber, 26);
+  assert.equal(weeks[0].weekStart, "2026-06-28"); // domingo
+  assert.equal(weeks[0].weekEnd, "2026-07-04");   // sábado
+  assert.equal(weeks[0].sales, 160_122);
+  assert.equal(weeks[0].transactions, 24);
+});
+
 test("percentDelta: variación con 1 decimal y null si no es comparable", () => {
   assert.equal(percentDelta(110, 100), 10);
   assert.equal(percentDelta(95, 100), -5);

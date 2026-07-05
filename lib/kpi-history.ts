@@ -28,12 +28,20 @@ type HistoryRow = RawKpi & {
   weekEnd: Date | null;
 };
 
+const DAY_MS = 86_400_000;
+
 export function buildWeekHistory(rows: HistoryRow[], ownUserId: string | null = null): WeekHistoryPoint[] {
+  // Agrupar por la semana retail normalizada (domingo–sábado) de la FECHA de
+  // cada fila — no por weekStart crudo: hay filas históricas guardadas con
+  // weekStart por día y agrupar por ese campo fragmenta una semana en 7.
   const byWeek = new Map<string, { weekNumber: number; weekStart: Date; weekEnd: Date; rows: HistoryRow[] }>();
   for (const row of rows) {
     if (row.weekNumber === null || !row.weekStart || !row.weekEnd) continue;
-    const key = row.weekStart.toISOString();
-    const group = byWeek.get(key) ?? { weekNumber: row.weekNumber, weekStart: row.weekStart, weekEnd: row.weekEnd, rows: [] };
+    const day = new Date(Date.UTC(row.date.getUTCFullYear(), row.date.getUTCMonth(), row.date.getUTCDate()));
+    const sunday = new Date(day.getTime() - day.getUTCDay() * DAY_MS);
+    const key = sunday.toISOString().slice(0, 10);
+    const group = byWeek.get(key) ?? { weekNumber: row.weekNumber, weekStart: sunday, weekEnd: new Date(sunday.getTime() + 6 * DAY_MS), rows: [] };
+    group.weekNumber = row.weekNumber; // el weekNumber del RDV manda (última fila gana)
     group.rows.push(row);
     byWeek.set(key, group);
   }
