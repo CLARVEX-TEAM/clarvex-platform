@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus } from "lucide-react";
+import Link from "next/link";
+import { Plus, Printer } from "lucide-react";
 import { getSession } from "@/lib/auth";
 import type { User } from "@/lib/types";
 import type { CycleZone, SerializedTag } from "@/lib/cycle-count";
@@ -96,6 +97,12 @@ export default function MarbetesPage() {
           </div>
           {error && <p className="mt-1.5 text-xs font-semibold text-red-500">{error}</p>}
           <p className="mt-2 text-[11px] font-semibold text-muted">Los marbetes son fijos: se capturan una vez y sirven para todos los conteos. Toca uno para desactivarlo (no se borra el historial).</p>
+          <Link
+            href="/conteos/marbetes/imprimir"
+            className="mt-2.5 flex items-center justify-center gap-2 rounded-2xl border border-line bg-panel py-2.5 text-sm font-black text-ink transition active:scale-95"
+          >
+            <Printer size={15} /> Imprimir marbetes QR
+          </Link>
         </Card>
 
         {/* Listado */}

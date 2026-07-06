@@ -3,10 +3,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
-import { AlertTriangle, CheckCircle2, Download, Lock, LockOpen, Plus, Trash2, X } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Download, Lock, LockOpen, Plus, ScanLine, Trash2, X } from "lucide-react";
 import { getSession } from "@/lib/auth";
 import type { User } from "@/lib/types";
-import { entryNeedsRecount, entryReal, zoneProgress, type CycleZone, type SerializedEntry, type SerializedTag } from "@/lib/cycle-count";
+import { entryNeedsRecount, entryReal, parseTagQr, zoneProgress, type CycleZone, type SerializedEntry, type SerializedTag } from "@/lib/cycle-count";
 import { AppFrame, AppHeader, Badge, BottomNav, Card, ProgressBar } from "@/components/ui";
 
 type CountDetail = {
@@ -29,6 +29,7 @@ export default function ConteoDetallePage() {
   const [entries, setEntries] = useState<Map<string, SerializedEntry>>(new Map());
   const [zone, setZone] = useState<CycleZone>("PISO");
   const [active, setActive] = useState<TagRow | null>(null);
+  const [scanning, setScanning] = useState(false);
   const [notFound, setNotFound] = useState(false);
 
   useEffect(() => {
@@ -126,7 +127,7 @@ export default function ConteoDetallePage() {
                 Total: {totalPieces.toLocaleString("es-MX")} piezas
                 {count.theoretical !== null && (
                   <span className={`ml-2 ${totalPieces - count.theoretical === 0 ? "text-emerald-500" : "text-rose-500"}`}>
-                    ({totalPieces - count.theoretical >= 0 ? "+" : ""}{(totalPieces - count.theoretical).toLocaleString("es-MX")} vs teórico)
+                    ({totalPieces - count.theoretical >= 0 ? "+" : ""}{(totalPieces - count.theoretical).toLocaleString("es-MX")} vs Kardex {count.theoretical.toLocaleString("es-MX")})
                   </span>
                 )}
               </p>
@@ -137,18 +138,30 @@ export default function ConteoDetallePage() {
               )}
             </Card>
 
-            {/* Zona */}
-            <div className="mb-3 flex rounded-full bg-slate-100 p-1 dark:bg-[#1a2540]">
-              {(["PISO", "BODEGA"] as const).map((z) => (
+            {/* Zona + escáner */}
+            <div className="mb-3 flex items-center gap-1.5">
+              <div className="flex min-w-0 flex-1 rounded-full bg-slate-100 p-1 dark:bg-[#1a2540]">
+                {(["PISO", "BODEGA"] as const).map((z) => (
+                  <button
+                    key={z}
+                    type="button"
+                    onClick={() => setZone(z)}
+                    className={`min-h-10 flex-1 rounded-full text-sm font-black transition ${zone === z ? "bg-white text-ink shadow dark:bg-slate-700" : "text-muted"}`}
+                  >
+                    {z === "PISO" ? "Piso de venta" : "Bodega"}
+                  </button>
+                ))}
+              </div>
+              {isOpen && (
                 <button
-                  key={z}
                   type="button"
-                  onClick={() => setZone(z)}
-                  className={`min-h-10 flex-1 rounded-full text-sm font-black transition ${zone === z ? "bg-white text-ink shadow dark:bg-slate-700" : "text-muted"}`}
+                  onClick={() => setScanning(true)}
+                  aria-label="Escanear marbete"
+                  className="grid size-11 shrink-0 place-items-center rounded-full bg-volt text-white shadow-[0_6px_16px_rgb(37_99_235_/_0.3)] transition active:scale-95"
                 >
-                  {z === "PISO" ? "Piso de venta" : "Bodega"}
+                  <ScanLine size={19} />
                 </button>
-              ))}
+              )}
             </div>
 
             {/* Grid de marbetes */}
@@ -196,6 +209,21 @@ export default function ConteoDetallePage() {
       </AppFrame>
 
       <AnimatePresence>
+        {scanning && (
+          <ScannerOverlay
+            key="scanner"
+            onClose={() => setScanning(false)}
+            onScan={(number) => {
+              const tag = tags.find((candidate) => candidate.number === number);
+              if (tag) {
+                setScanning(false);
+                setZone(tag.zone);
+                setActive(tag);
+                if (typeof navigator !== "undefined" && "vibrate" in navigator) navigator.vibrate(80);
+              }
+            }}
+          />
+        )}
         {active && count && (
           <CaptureSheet
             key={active.id}
@@ -213,6 +241,86 @@ export default function ConteoDetallePage() {
       </AnimatePresence>
       <BottomNav />
     </>
+  );
+}
+
+// ── Escáner de marbetes QR (cámara trasera + BarcodeDetector) ────────────────
+type BarcodeDetectorLike = {
+  detect: (source: CanvasImageSource) => Promise<Array<{ rawValue: string }>>;
+};
+declare global {
+  interface Window {
+    BarcodeDetector?: new (options?: { formats?: string[] }) => BarcodeDetectorLike;
+  }
+}
+
+function ScannerOverlay({ onScan, onClose }: { onScan: (number: number) => void; onClose: () => void }) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let stream: MediaStream | null = null;
+    let interval: ReturnType<typeof setInterval> | null = null;
+    let cancelled = false;
+
+    (async () => {
+      if (!window.BarcodeDetector) {
+        setError("Este navegador no soporta el escáner. Toca el marbete en la lista para capturarlo.");
+        return;
+      }
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+      } catch {
+        setError("Sin acceso a la cámara. Da permiso o captura desde la lista.");
+        return;
+      }
+      if (cancelled || !videoRef.current) return;
+      videoRef.current.srcObject = stream;
+      await videoRef.current.play().catch(() => undefined);
+      const detector = new window.BarcodeDetector({ formats: ["qr_code"] });
+      interval = setInterval(async () => {
+        if (!videoRef.current || videoRef.current.readyState < 2) return;
+        try {
+          const codes = await detector.detect(videoRef.current);
+          for (const code of codes) {
+            const number = parseTagQr(code.rawValue);
+            if (number !== null) { onScan(number); return; }
+          }
+        } catch { /* frame no disponible: reintentar en el siguiente tick */ }
+      }, 250);
+    })();
+
+    return () => {
+      cancelled = true;
+      if (interval) clearInterval(interval);
+      stream?.getTracks().forEach((track) => track.stop());
+    };
+  }, [onScan]);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[85] flex flex-col bg-black"
+      onClick={onClose}
+    >
+      <div className="flex items-center justify-between px-4 pb-2" style={{ paddingTop: "calc(env(safe-area-inset-top) + 12px)" }}>
+        <p className="text-sm font-black text-white">Escanea el QR del marbete</p>
+        <button type="button" onClick={onClose} aria-label="Cerrar escáner" className="grid size-9 place-items-center rounded-full bg-white/15 text-white"><X size={16} /></button>
+      </div>
+      {error ? (
+        <div className="grid flex-1 place-items-center px-8 text-center text-sm font-semibold text-white/70">{error}</div>
+      ) : (
+        <div className="relative flex-1 overflow-hidden">
+          {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+          <video ref={videoRef} playsInline muted className="absolute inset-0 size-full object-cover" />
+          {/* Marco guía */}
+          <div className="pointer-events-none absolute left-1/2 top-1/2 size-56 -translate-x-1/2 -translate-y-1/2 rounded-3xl border-[3px] border-white/80 shadow-[0_0_0_9999px_rgb(0_0_0_/_0.45)]" />
+          <p className="pointer-events-none absolute inset-x-0 bottom-10 text-center text-xs font-bold text-white/80">Acerca la cámara al código pegado en el mueble</p>
+        </div>
+      )}
+    </motion.div>
   );
 }
 
@@ -342,6 +450,26 @@ function ManagerPanel({ countId, count, isOpen, onChanged, onToggleStatus }: {
   const [concept, setConcept] = useState("");
   const [pieces, setPieces] = useState("");
   const [busy, setBusy] = useState(false);
+  const [kardex, setKardex] = useState(count.theoretical !== null ? String(count.theoretical) : "");
+  const [kardexSaved, setKardexSaved] = useState(false);
+
+  async function saveKardex() {
+    const parsed = kardex === "" ? null : parseInt(kardex, 10);
+    if (parsed !== null && !Number.isFinite(parsed)) return;
+    setBusy(true);
+    try {
+      await fetch(`/api/conteos/${countId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ theoretical: parsed })
+      });
+      setKardexSaved(true);
+      setTimeout(() => setKardexSaved(false), 2000);
+      await onChanged();
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function addNoUpc() {
     const parsed = parseInt(pieces, 10);
@@ -373,6 +501,33 @@ function ManagerPanel({ countId, count, isOpen, onChanged, onToggleStatus }: {
   return (
     <Card className="mt-3 p-3.5">
       <p className="text-[11px] font-black uppercase tracking-[0.14em] text-muted">Mesa de control</p>
+
+      {/* Inventario Kardex (teórico): la diferencia en vivo sale arriba */}
+      <div className="mt-2">
+        <p className="text-xs font-black text-ink">Inventario Kardex (teórico)</p>
+        <div className="mt-1.5 flex gap-1.5">
+          <input
+            value={kardex}
+            onChange={(e) => setKardex(e.target.value.replace(/\D/g, "").slice(0, 7))}
+            inputMode="numeric"
+            placeholder="Piezas según sistema"
+            aria-label="Inventario Kardex"
+            disabled={!isOpen}
+            className="min-w-0 flex-1 rounded-2xl border border-line bg-panel px-3 py-2 text-sm font-black tabular-nums text-ink outline-none focus:border-volt disabled:opacity-60"
+          />
+          {isOpen && (
+            <button
+              type="button"
+              onClick={() => void saveKardex()}
+              disabled={busy}
+              className={`shrink-0 rounded-2xl px-4 text-sm font-black transition active:scale-95 disabled:opacity-50 ${kardexSaved ? "bg-emerald-500/15 text-emerald-600" : "bg-volt text-white"}`}
+            >
+              {kardexSaved ? "✓" : "Guardar"}
+            </button>
+          )}
+        </div>
+        <p className="mt-1 text-[11px] font-semibold text-muted">Con el Kardex capturado, arriba verás en vivo la diferencia contra lo contado.</p>
+      </div>
 
       {/* Piezas sin UPC */}
       <div className="mt-2">
