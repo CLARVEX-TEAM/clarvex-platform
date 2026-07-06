@@ -16,12 +16,13 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   const session = await requireSession(["GERENTE", "SUBGERENTE"]);
   if (isApiError(session)) return session;
 
-  const [count, tags] = await Promise.all([
+  const [count, tags, store] = await Promise.all([
     prisma.cycleCount.findFirst({
       where: { id, storeId: session.storeId },
       include: { entries: true, noUpcItems: { orderBy: { concept: "asc" } } }
     }),
-    prisma.cycleCountTag.findMany({ where: { storeId: session.storeId, active: true }, orderBy: { number: "asc" } })
+    prisma.cycleCountTag.findMany({ where: { storeId: session.storeId, active: true }, orderBy: { number: "asc" } }),
+    prisma.store.findUnique({ where: { id: session.storeId }, select: { name: true } })
   ]);
   if (!count) return NextResponse.json({ error: "Conteo no encontrado." }, { status: 404 });
 
@@ -56,6 +57,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   await workbook.xlsx.readFile(TEMPLATE_PATH);
   fillMesaControl(workbook, {
     date: count.date,
+    sucursal: store?.name ?? "",
     theoretical: count.theoretical,
     piso: zoneRows("PISO"),
     bodega: zoneRows("BODEGA"),
