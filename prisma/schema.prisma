@@ -822,6 +822,11 @@ model ChatMessageHide {
 model MatchEvent {
   id           String   @id @default(cuid())
   externalId   Int?     // api-football fixture ID para sync automático
+  // Equipo local. Null = México (modo histórico con tema tricolor). Con valor,
+  // el partido es de cualquier selección y usa el tema FIFA. mxScore guarda el
+  // marcador del equipo local; rivalScore el del visitante (opponent).
+  homeTeam     String?
+  homeFlag     String?
   opponent     String
   opponentFlag String?
   competition  String?

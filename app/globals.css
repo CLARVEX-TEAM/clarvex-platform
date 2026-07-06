@@ -227,6 +227,15 @@ html[data-matchday] .liquid-glass::after {
   opacity: 0.75;
 }
 
+/* Variante FIFA — partidos del Mundial sin México: azules y violeta en lugar
+   del tricolor (México ya quedó fuera, pero el Mundial sigue 🏆). */
+html[data-matchday="fifa"] .ambient-blob-one   { background: #1a1f71; }
+html[data-matchday="fifa"] .ambient-blob-two   { background: #7b2fbf; }
+html[data-matchday="fifa"] .ambient-blob-three { background: #0aa2c0; }
+html[data-matchday="fifa"] .liquid-glass::after {
+  background: linear-gradient(90deg, #26d0ce 0%, #4557d2 50%, #b03fd9 100%);
+}
+
 .no-scrollbar {
   -ms-overflow-style: none;
   overscroll-behavior-x: contain;

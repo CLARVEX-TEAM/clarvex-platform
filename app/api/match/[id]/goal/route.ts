@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { requireSession, isApiError } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
 import { dispatchPushToUsers } from "@/lib/push";
-import { serializeMatch } from "@/lib/match";
+import { matchHome, serializeMatch } from "@/lib/match";
 
 export const dynamic = "force-dynamic";
 
@@ -28,15 +28,18 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     }
   });
 
-  if (team === "MX") {
+  const home = matchHome(match);
+  if (team === "MX" || !home.isMexico) {
+    // En partidos genéricos también se notifica el gol del visitante.
+    const scorer = team === "MX" ? home.name : match.opponent;
     const users = await prisma.user.findMany({ select: { id: true } });
     const flag = match.opponentFlag ? ` ${match.opponentFlag}` : "";
     void dispatchPushToUsers(
       users.map((u) => u.id),
       {
-        title: "¡GOOOOL de México! 🇲🇽⚽",
-        body: `México ${match.mxScore} - ${match.rivalScore} ${match.opponent}${flag}`,
-        tag: `gol-mexico-${match.id}`,
+        title: home.isMexico ? "¡GOOOOL de México! 🇲🇽⚽" : `¡Gol de ${scorer}! ⚽`,
+        body: `${home.name} ${match.mxScore} - ${match.rivalScore} ${match.opponent}${flag}`,
+        tag: `gol-${team === "MX" ? "mexico" : "rival"}-${match.id}`,
         url: "/"
       }
     );

@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
 import { Settings, Tv } from "lucide-react";
 import { GoalConfetti } from "@/components/GoalConfetti";
-import { matchPhase, type SerializedMatch } from "@/lib/match";
+import { matchHome, matchPhase, type SerializedMatch } from "@/lib/match";
 
 // El banner (y el tema tricolor que lo acompaña) solo aparecen el DÍA del
 // partido en zona México — no 48 h antes.
@@ -79,15 +79,17 @@ export function MatchBanner() {
   const isToday = !!match && (isMatchToday(match.kickoff) || match.status === "LIVE");
   const visible = !hidden && !!match && phase !== "past" && isToday;
 
-  // Tema tricolor: activa data-matchday en <html> cuando el banner es visible.
+  // Tema del día de partido: tricolor si juega México, FIFA (azules) si es
+  // cualquier otro cruce del Mundial.
+  const isMexicoMatch = !match?.homeTeam;
   useEffect(() => {
     if (visible) {
-      document.documentElement.setAttribute("data-matchday", "1");
+      document.documentElement.setAttribute("data-matchday", isMexicoMatch ? "1" : "fifa");
     } else {
       document.documentElement.removeAttribute("data-matchday");
     }
     return () => { document.documentElement.removeAttribute("data-matchday"); };
-  }, [visible]);
+  }, [visible, isMexicoMatch]);
 
   // Compensar la altura del banner para no tapar el encabezado de las páginas.
   // Solo en móvil: en escritorio el banner flota y no desplaza el layout.
@@ -154,6 +156,14 @@ export function MatchBanner() {
   const countdown = minutesToKickoff > 0 && minutesToKickoff <= 120
     ? `Arranca en ${minutesToKickoff >= 60 ? `${Math.floor(minutesToKickoff / 60)} h ` : ""}${minutesToKickoff % 60} min`
     : formatKickoff(match.kickoff);
+  const home = matchHome(match);
+  // México: verde selección. Otro cruce del Mundial: azul FIFA.
+  const bannerGradient = home.isMexico
+    ? "bg-gradient-to-br from-[#0a5741] to-[#0d6a4e] shadow-[0_10px_28px_rgb(6_78_59_/_0.4)]"
+    : "bg-gradient-to-br from-[#1a1f71] to-[#3c2f9e] shadow-[0_10px_28px_rgb(26_31_113_/_0.45)]";
+  const accentLine = home.isMexico
+    ? "bg-gradient-to-r from-[#2ea277] via-white/85 to-[#e4526b]"
+    : "bg-gradient-to-r from-[#26d0ce] via-white/85 to-[#b03fd9]";
 
   return (
     <>
@@ -164,8 +174,8 @@ export function MatchBanner() {
           : "fixed inset-x-0 top-0 z-[55] px-3 pb-1.5"}
         style={isDesktop ? undefined : { paddingTop: "calc(env(safe-area-inset-top) + 6px)" }}
       >
-        <div className="relative mx-auto max-w-md overflow-hidden rounded-[22px] border border-white/15 bg-gradient-to-br from-[#0a5741] to-[#0d6a4e] text-white shadow-[0_10px_28px_rgb(6_78_59_/_0.4)] backdrop-blur-xl">
-          <span className="pointer-events-none absolute inset-x-5 bottom-0 h-[2px] rounded-full bg-gradient-to-r from-[#2ea277] via-white/85 to-[#e4526b] opacity-80" />
+        <div className={`relative mx-auto max-w-md overflow-hidden rounded-[22px] border border-white/15 text-white backdrop-blur-xl ${bannerGradient}`}>
+          <span className={`pointer-events-none absolute inset-x-5 bottom-0 h-[2px] rounded-full opacity-80 ${accentLine}`} />
           <div className="flex flex-col gap-1 px-3 py-2">
           <div className="flex items-center justify-between gap-2">
             {isLive ? (
@@ -175,7 +185,7 @@ export function MatchBanner() {
                   En vivo{match.competition ? ` · ${match.competition}` : ""}{match.externalId ? " · marcador automático" : ""}
                 </div>
                 <div className="mt-0.5 flex items-center justify-center gap-3">
-                  <span className="min-w-0 truncate text-right text-sm font-black">🇲🇽 México</span>
+                  <span className="min-w-0 truncate text-right text-sm font-black">{home.flag} {home.name}</span>
                   <motion.span
                     key={`${match.mxScore}-${match.rivalScore}`}
                     initial={{ scale: 1.45 }}
@@ -190,10 +200,12 @@ export function MatchBanner() {
               </div>
             ) : (
               <div className="flex min-w-0 flex-1 items-center gap-2">
-                <span className="text-lg leading-none">🇲🇽</span>
+                <span className="text-lg leading-none">{home.isMexico ? "🇲🇽" : home.flag || "🏆"}</span>
                 <div className="min-w-0">
                   <div className="text-[10px] font-black uppercase tracking-wider opacity-90">{countdown}{match.competition ? ` · ${match.competition}` : ""}</div>
-                  <p className="truncate text-sm font-black">¡Juega México! 🆚 {match.opponentFlag ?? ""} {match.opponent}</p>
+                  <p className="truncate text-sm font-black">
+                    {home.isMexico ? "¡Juega México!" : `${home.name}`} 🆚 {match.opponentFlag ?? ""} {match.opponent}
+                  </p>
                 </div>
               </div>
             )}
@@ -217,8 +229,8 @@ export function MatchBanner() {
           {canManage && isLive && (
             <div className="flex items-center gap-1.5 pb-0.5">
               <div className="flex flex-1 items-center gap-1">
-                <button type="button" onClick={() => goal("MX")} disabled={busy} className="flex-1 rounded-full bg-white px-2 py-1 text-[12px] font-black text-[#006847] transition active:scale-95 disabled:opacity-50">
-                  ⚽ Gol México
+                <button type="button" onClick={() => goal("MX")} disabled={busy} className={`flex-1 rounded-full bg-white px-2 py-1 text-[12px] font-black transition active:scale-95 disabled:opacity-50 ${home.isMexico ? "text-[#006847]" : "text-[#1a1f71]"}`}>
+                  ⚽ Gol {home.name}
                 </button>
                 {match.mxScore > 0 && (
                   <button type="button" onClick={() => undoGoal("MX")} disabled={busy} title="Deshacer gol México" className="grid size-6 shrink-0 place-items-center rounded-full bg-white/30 text-[11px] font-black transition active:scale-95 disabled:opacity-50">

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { BarChart3, BookOpen, CalendarClock, CalendarDays, CheckSquare, ClipboardCheck, ClipboardList, GraduationCap, HeartHandshake, PackageSearch } from "lucide-react";
+import { BarChart3, BookOpen, CalendarClock, CalendarDays, CheckSquare, ClipboardCheck, ClipboardList, GraduationCap, HeartHandshake, PackageSearch, Trophy } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { LucideIcon } from "lucide-react";
 
@@ -24,7 +24,8 @@ const managerActions: Action[] = [
   { href: "/solicitudes", icon: CalendarClock, label: "Solicitudes", color: "blue" },
   { href: "/faltantes", icon: PackageSearch, label: "Faltantes", color: "orange" },
   { href: "/capacitacion", icon: GraduationCap, label: "Capacitación", color: "purple" },
-  { href: "/encuestas", icon: ClipboardCheck, label: "Encuestas", color: "green" }
+  { href: "/encuestas", icon: ClipboardCheck, label: "Encuestas", color: "green" },
+  { href: "/mundial", icon: Trophy, label: "Mundial 2026", color: "purple" }
 ];
 
 const advisorActions: Action[] = [
@@ -35,7 +36,8 @@ const advisorActions: Action[] = [
   { href: "/solicitudes", icon: CalendarClock, label: "Solicitar día", color: "blue" },
   { href: "/faltantes", icon: PackageSearch, label: "Faltantes", color: "orange" },
   { href: "/capacitacion", icon: GraduationCap, label: "Capacitación", color: "purple" },
-  { href: "/encuestas", icon: ClipboardCheck, label: "Encuestas", color: "green" }
+  { href: "/encuestas", icon: ClipboardCheck, label: "Encuestas", color: "green" },
+  { href: "/mundial", icon: Trophy, label: "Mundial 2026", color: "purple" }
 ];
 
 const colorMap: Record<ActionColor, string> = {

@@ -20,6 +20,8 @@ export async function POST(request: Request) {
   if (isApiError(session)) return session;
 
   const body = (await request.json().catch(() => ({}))) as {
+    homeTeam?: string;
+    homeFlag?: string;
     opponent?: string;
     opponentFlag?: string;
     competition?: string;
@@ -33,6 +35,9 @@ export async function POST(request: Request) {
 
   const match = await prisma.matchEvent.create({
     data: {
+      // Sin equipo local es un partido de México (modo tricolor de siempre).
+      homeTeam: body.homeTeam?.trim().slice(0, 60) || null,
+      homeFlag: body.homeFlag?.trim().slice(0, 8) || null,
       opponent: opponent.slice(0, 60),
       opponentFlag: body.opponentFlag?.trim().slice(0, 8) || null,
       competition: body.competition?.trim().slice(0, 40) || null,

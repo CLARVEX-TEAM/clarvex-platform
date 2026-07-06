@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 import { requireSession, isApiError } from "@/lib/api";
-import { searchMexicoFixtures } from "@/lib/football-api";
+import { searchFixturesByDate } from "@/lib/football-api";
 
 export const dynamic = "force-dynamic";
 
-// GET /api/match/search?date=2026-06-24
+// GET /api/match/search?date=2026-07-11 — todos los partidos del torneo ese
+// día (México primero si juega), para vincular el marcador automático.
 export async function GET(request: Request) {
   const session = await requireSession(["GERENTE", "SUBGERENTE"]);
   if (isApiError(session)) return session;
@@ -16,7 +17,7 @@ export async function GET(request: Request) {
   }
 
   try {
-    const fixtures = await searchMexicoFixtures(date);
+    const fixtures = await searchFixturesByDate(date);
     return NextResponse.json({ fixtures });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Error al consultar ESPN.";
