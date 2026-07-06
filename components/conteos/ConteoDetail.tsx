@@ -254,8 +254,8 @@ function ScannerOverlay({ onScan, onClose }: { onScan: (number: number) => void;
     let cancelled = false;
 
     (async () => {
-      if (!window.BarcodeDetector) {
-        setError("Este navegador no soporta el escáner. Toca el marbete en la lista para capturarlo.");
+      if (!navigator.mediaDevices?.getUserMedia) {
+        setError("Este navegador no tiene acceso a la cámara. Toca el marbete en la lista para capturarlo.");
         return;
       }
       try {
@@ -267,17 +267,42 @@ function ScannerOverlay({ onScan, onClose }: { onScan: (number: number) => void;
       if (cancelled || !videoRef.current) return;
       videoRef.current.srcObject = stream;
       await videoRef.current.play().catch(() => undefined);
-      const detector = new window.BarcodeDetector({ formats: ["qr_code"] });
-      interval = setInterval(async () => {
-        if (!videoRef.current || videoRef.current.readyState < 2) return;
-        try {
-          const codes = await detector.detect(videoRef.current);
-          for (const code of codes) {
-            const number = parseTagQr(code.rawValue);
-            if (number !== null) { onScan(number); return; }
-          }
-        } catch { /* frame no disponible: reintentar en el siguiente tick */ }
-      }, 250);
+
+      const handleText = (text: string): boolean => {
+        const number = parseTagQr(text);
+        if (number !== null) { onScan(number); return true; }
+        return false;
+      };
+
+      if (window.BarcodeDetector) {
+        // Chrome/Android: detector nativo.
+        const detector = new window.BarcodeDetector({ formats: ["qr_code"] });
+        interval = setInterval(async () => {
+          if (!videoRef.current || videoRef.current.readyState < 2) return;
+          try {
+            const codes = await detector.detect(videoRef.current);
+            for (const code of codes) if (handleText(code.rawValue)) return;
+          } catch { /* frame no disponible: reintentar en el siguiente tick */ }
+        }, 250);
+      } else {
+        // iPhone/Safari: sin BarcodeDetector — decodificar frames con jsQR.
+        const { default: jsQR } = await import("jsqr");
+        if (cancelled) return;
+        const canvas = document.createElement("canvas");
+        const context = canvas.getContext("2d", { willReadFrequently: true });
+        interval = setInterval(() => {
+          const video = videoRef.current;
+          if (!video || video.readyState < 2 || !context) return;
+          // Reducir el frame (~480 px) para decodificar rápido sin calentar el cel.
+          const scale = Math.min(1, 480 / (video.videoWidth || 480));
+          canvas.width = Math.round((video.videoWidth || 480) * scale);
+          canvas.height = Math.round((video.videoHeight || 640) * scale);
+          context.drawImage(video, 0, 0, canvas.width, canvas.height);
+          const image = context.getImageData(0, 0, canvas.width, canvas.height);
+          const code = jsQR(image.data, image.width, image.height, { inversionAttempts: "dontInvert" });
+          if (code) handleText(code.data);
+        }, 300);
+      }
     })();
 
     return () => {
