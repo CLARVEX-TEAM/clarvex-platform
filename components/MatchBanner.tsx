@@ -35,8 +35,10 @@ export function MatchBanner() {
   const prevMx = useRef<number | null>(null);
   const matchId = useRef<string | null>(null);
 
-  // No mostrar en login ni dentro de una conversación de chat (pantalla completa).
-  const hidden = !pathname || pathname === "/login" || pathname.startsWith("/chat/");
+  // No mostrar en login, dentro de una conversación de chat (pantalla completa)
+  // ni viendo el partido: /partido/ver ya trae su propio marcador arriba y el
+  // banner taparía el video.
+  const hidden = !pathname || pathname === "/login" || pathname.startsWith("/chat/") || pathname.startsWith("/partido/ver");
   // En el escritorio el banner no puede empujar el layout ni taparse con el
   // header: va como tarjeta flotante abajo a la derecha.
   const isDesktop = !!pathname && pathname.startsWith("/escritorio");
