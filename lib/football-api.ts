@@ -1,3 +1,5 @@
+import { translateTeam } from "@/lib/world-cup-teams";
+
 // Liga de ESPN configurable: fifa.world (Mundial) por default. Al terminar el
 // torneo se cambia por env sin tocar código, p. ej. ESPN_LEAGUE=concacaf.nations.league
 // o fifa.friendly, y ESPN_COMPETITION_LABEL con el nombre visible.
@@ -31,6 +33,8 @@ export type EspnFixture = {
   id: number;
   home: string;
   away: string;
+  homeFlag: string;
+  awayFlag: string;
   homeScore: number;
   awayScore: number;
   competition: string;
@@ -60,10 +64,14 @@ function parseEvent(event: EspnEvent): EspnFixture | null {
   const home = comp.competitors.find((c) => c.homeAway === "home");
   const away = comp.competitors.find((c) => c.homeAway === "away");
   if (!home || !away) return null;
+  const homeEs = translateTeam(home.team.displayName);
+  const awayEs = translateTeam(away.team.displayName);
   return {
     id: parseInt(event.id),
-    home: home.team.displayName,
-    away: away.team.displayName,
+    home: homeEs.name,
+    away: awayEs.name,
+    homeFlag: homeEs.flag,
+    awayFlag: awayEs.flag,
     homeScore: parseInt(home.score) || 0,
     awayScore: parseInt(away.score) || 0,
     competition: COMPETITION_LABEL,
@@ -140,6 +148,7 @@ export async function getEspnFixture(externalId: number, generic = false): Promi
 export type BracketTeam = {
   name: string;
   abbrev: string;
+  flag: string;
   logo: string | null;
   score: number | null;
   winner: boolean;
@@ -182,9 +191,11 @@ function roundFromEvent(event: EspnEvent): string {
 
 function bracketTeam(side: EspnCompetitor | undefined, started: boolean): BracketTeam | null {
   if (!side) return null;
+  const es = translateTeam(side.team.displayName);
   return {
-    name: side.team.displayName,
+    name: es.name,
     abbrev: side.team.abbreviation,
+    flag: es.flag,
     logo: side.team.logo ?? side.team.logos?.[0]?.href ?? null,
     score: started ? parseInt(side.score) || 0 : null,
     winner: side.winner === true
