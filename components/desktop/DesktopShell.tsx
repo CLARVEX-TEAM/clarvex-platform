@@ -69,14 +69,14 @@ const navGroups: { label: string; items: { href: string; label: string; icon: Lu
     label: "Gestión",
     items: [
       { href: "/escritorio/solicitudes", label: "Solicitudes", icon: CalendarClock },
-      { href: "/conteos", label: "Conteos", icon: Boxes },
+      { href: "/escritorio/conteos", label: "Conteos", icon: Boxes },
       { href: "/escritorio/faltantes", label: "Faltantes", icon: PackageSearch },
       { href: "/escritorio/kudos", label: "Reconocimientos", icon: HeartHandshake },
       { href: "/escritorio/encuestas", label: "Encuestas", icon: ClipboardCheck },
       { href: "/escritorio/capacitacion", label: "Capacitación", icon: GraduationCap },
       { href: "/escritorio/datos", label: "Centro de Datos", icon: Database },
-      { href: "/mundial", label: "Mundial 2026", icon: Globe },
-      { href: "/partido", label: "Partido México", icon: Trophy },
+      { href: "/escritorio/mundial", label: "Mundial 2026", icon: Globe },
+      { href: "/escritorio/partido", label: "Partidos", icon: Trophy },
       { href: "/admin", label: "Administración", icon: Building2, adminOnly: true }
     ]
   }
@@ -100,8 +100,21 @@ const sectionTitles: Record<string, { title: string; subtitle: string }> = {
   "/escritorio/capacitacion": { title: "Capacitación", subtitle: "Biblioteca de recursos y archivos del equipo" },
   "/escritorio/chat": { title: "Chat", subtitle: "Mensajes directos y del equipo" },
   "/escritorio/notificaciones": { title: "Notificaciones", subtitle: "Avisos del equipo" },
-  "/escritorio/perfil": { title: "Mi perfil", subtitle: "Tus datos y preferencias" }
+  "/escritorio/perfil": { title: "Mi perfil", subtitle: "Tus datos y preferencias" },
+  "/escritorio/conteos": { title: "Conteos", subtitle: "Inventario físico por marbete" },
+  "/escritorio/conteos/marbetes": { title: "Marbetes", subtitle: "Catálogo fijo de tienda y bodega" },
+  "/escritorio/mundial": { title: "Mundial 2026", subtitle: "Cuadro de la fase final" },
+  "/escritorio/partido": { title: "Partidos", subtitle: "Programa partidos y transmisiones" }
 };
+
+// Título por prefijo para rutas dinámicas (p. ej. /escritorio/conteos/[id]).
+function resolveSection(pathname: string) {
+  if (sectionTitles[pathname]) return sectionTitles[pathname];
+  const prefix = Object.keys(sectionTitles)
+    .filter((key) => key !== "/escritorio" && pathname.startsWith(`${key}/`))
+    .sort((a, b) => b.length - a.length)[0];
+  return prefix ? sectionTitles[prefix] : { title: "Escritorio", subtitle: "" };
+}
 
 // Sesión desbloqueada cacheada a nivel de módulo. Sobrevive a la navegación
 // entre páginas del escritorio (mismo contexto JS, aunque el layout se remonte)
@@ -162,7 +175,7 @@ export function DesktopShell({ children }: { children: React.ReactNode }) {
     router.push("/login");
   }
 
-  const section = sectionTitles[pathname] ?? { title: "Escritorio", subtitle: "" };
+  const section = resolveSection(pathname);
   const roleLabel = user?.role === "GERENTE" ? "Gerente" : user?.role === "SUBGERENTE" ? "Subgerente" : "";
   const todayLabel = new Date().toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long" });
 
