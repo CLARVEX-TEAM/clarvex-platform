@@ -18,8 +18,6 @@ export default function VerPartidoPage() {
   const router = useRouter();
   const [match, setMatch] = useState<SerializedMatch | null>(null);
   const [loading, setLoading] = useState(true);
-  // null = verificando; false = el sitio bloquea iframes → pantalla con botón
-  const [embeddable, setEmbeddable] = useState<boolean | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -43,18 +41,6 @@ export default function VerPartidoPage() {
     });
     return () => { cancelled = true; if (interval) clearInterval(interval); };
   }, [router]);
-
-  // Verificar en el servidor si el enlace permite iframes (X-Frame-Options).
-  // Si no, en vez del error gris del navegador mostramos botón para abrirlo.
-  useEffect(() => {
-    if (!match?.id || !match.streamUrl) return;
-    let cancelled = false;
-    fetch(`/api/match/stream-check?id=${match.id}`, { cache: "no-store" })
-      .then((res) => res.json() as Promise<{ embeddable?: boolean }>)
-      .then((data) => { if (!cancelled) setEmbeddable(data.embeddable !== false); })
-      .catch(() => { if (!cancelled) setEmbeddable(true); });
-    return () => { cancelled = true; };
-  }, [match?.id, match?.streamUrl]);
 
   const enabled = !!match
     && !!match.streamUrl
@@ -106,29 +92,8 @@ export default function VerPartidoPage() {
       </header>
 
       {/* Contenido */}
-      {loading || (enabled && embeddable === null) ? (
+      {loading ? (
         <div className="grid flex-1 place-items-center text-sm font-bold text-white/60">Cargando…</div>
-      ) : enabled && match?.streamUrl && embeddable === false ? (
-        // El sitio de la transmisión no permite verse dentro de la app:
-        // pantalla limpia con acceso directo en lugar del error del navegador.
-        <div className="grid flex-1 place-items-center px-8 text-center">
-          <div>
-            <span className="mb-4 mx-auto grid size-16 place-items-center rounded-3xl bg-white/10"><Tv size={30} /></span>
-            <p className="text-lg font-black">La transmisión se abre fuera de la app</p>
-            <p className="mt-1.5 text-sm text-white/55">
-              El sitio de la transmisión no permite reproducirse aquí dentro.
-              Ábrela en el navegador y regresa para seguir el marcador.
-            </p>
-            <a
-              href={match.streamUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-6 inline-flex items-center gap-2 rounded-full bg-white px-7 py-3 text-sm font-black text-[#006847] transition active:scale-95"
-            >
-              <ExternalLink size={16} /> Ver transmisión
-            </a>
-          </div>
-        </div>
       ) : enabled && match?.streamUrl ? (
         <iframe
           src={normalizeStreamUrl(match.streamUrl)}
@@ -136,7 +101,7 @@ export default function VerPartidoPage() {
           className="w-full flex-1 border-0 bg-black"
           allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
           allowFullScreen
-          referrerPolicy="no-referrer"
+          referrerPolicy="no-referrer-when-downgrade"
         />
       ) : (
         <div className="grid flex-1 place-items-center px-8 text-center">
