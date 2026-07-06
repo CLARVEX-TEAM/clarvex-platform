@@ -35,7 +35,10 @@ export async function GET(request: NextRequest) {
     }),
     prisma.dataSource.findFirst({
       where: { storeId: session.storeId, type: "KPIS" },
-      include: { syncLogs: { where: { status: "SUCCESS" }, orderBy: { createdAt: "desc" }, take: 1 } }
+      // Se conservan varios logs: los TTLS (meta/tráfico/mínimo de tienda) se
+      // toman del último sync DEL MES CONSULTADO, no del último sync global —
+      // al vincular el RDV de julio, junio seguía leyendo los TTLS de julio.
+      include: { syncLogs: { where: { status: "SUCCESS" }, orderBy: { createdAt: "desc" }, take: 60 } }
     }),
     prisma.dataSource.findFirst({ where: { storeId: session.storeId, type: "DESCUENTOS_POS" } })
   ]);
@@ -94,7 +97,10 @@ export async function GET(request: NextRequest) {
     .sort((a, b) => b.sales - a.sales || b.achievement - a.achievement);
   team.forEach((item, index) => { item.ranking = index + 1; });
   const own = allReports.find((item) => item.userId === session.userId) ?? null;
-  const kpiTtls = isKpiSyncMetrics(latestDetails) && "ttlsMeta" in latestDetails ? latestDetails as KpiSyncMetrics : null;
+  // TTLS del mes retail consultado: junio (cerrado) usa su ÚLTIMO sync de
+  // junio, aunque el sync más reciente ya sea del RDV de julio.
+  const referenceMonth = selectRetailMonth(retailMonths, start);
+  const kpiTtls = pickTtlsForMonth(latestKpiSource?.syncLogs ?? [], referenceMonth?.label ?? null);
   const ttlsGoalOverride = period === "month" && kpiTtls?.ttlsMeta && kpiTtls.ttlsMeta > 0 ? kpiTtls.ttlsMeta : undefined;
   const ttlsTxOverride = period === "month" && kpiTtls?.ttlsTransactions && kpiTtls.ttlsTransactions > 0 ? kpiTtls.ttlsTransactions : undefined;
   const ttlsPiecesOverride = period === "month" && kpiTtls?.ttlsPieces && kpiTtls.ttlsPieces > 0 ? kpiTtls.ttlsPieces : undefined;
@@ -154,6 +160,18 @@ export async function GET(request: NextRequest) {
 
 function isKpiSyncMetrics(details: unknown): details is KpiSyncMetrics {
   return typeof details === "object" && details !== null && "sheetUsed" in details && "weeksDetected" in details && Array.isArray((details as KpiSyncMetrics).weeksDetected);
+}
+
+// El último sync cuyo RDV corresponde al mes retail consultado. Sin mes de
+// referencia (o si ningún log coincide, p. ej. meses previos al historial)
+// no hay TTLS y la tienda cae a la suma de metas por colaborador.
+function pickTtlsForMonth(logs: Array<{ message: string }>, monthLabel: string | null): KpiSyncMetrics | null {
+  for (const log of logs) {
+    const details = decodeSyncLogMessage(log.message).details;
+    if (!isKpiSyncMetrics(details) || !("ttlsMeta" in details)) continue;
+    if (!monthLabel || details.retailMonthLabel === monthLabel) return details as KpiSyncMetrics;
+  }
+  return null;
 }
 
 function selectRetailMonth(months: Array<{ label: string; start: Date; end: Date }>, selectedDate: Date) {
