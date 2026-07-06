@@ -35,10 +35,14 @@ export function MatchBanner() {
   const prevMx = useRef<number | null>(null);
   const matchId = useRef<string | null>(null);
 
-  // No mostrar en login, dentro de una conversación de chat (pantalla completa)
-  // ni viendo el partido: /partido/ver ya trae su propio marcador arriba y el
-  // banner taparía el video.
-  const hidden = !pathname || pathname === "/login" || pathname.startsWith("/chat/") || pathname.startsWith("/partido/ver");
+  // No mostrar en login, dentro de una conversación de chat (pantalla completa),
+  // viendo el partido (/partido/ver trae su propio marcador y taparía el video)
+  // ni en la hoja imprimible de marbetes QR.
+  const hidden = !pathname
+    || pathname === "/login"
+    || pathname.startsWith("/chat/")
+    || pathname.startsWith("/partido/ver")
+    || pathname.startsWith("/conteos/marbetes/imprimir");
   // En el escritorio el banner no puede empujar el layout ni taparse con el
   // header: va como tarjeta flotante abajo a la derecha.
   const isDesktop = !!pathname && pathname.startsWith("/escritorio");
@@ -178,8 +182,8 @@ export function MatchBanner() {
       <div
         ref={bannerRef}
         className={isDesktop
-          ? "fixed bottom-6 right-6 z-[55] w-[26rem] max-w-[calc(100vw-3rem)]"
-          : "fixed inset-x-0 top-0 z-[55] px-3 pb-1.5"}
+          ? "fixed bottom-6 right-6 z-[55] w-[26rem] max-w-[calc(100vw-3rem)] print:hidden"
+          : "fixed inset-x-0 top-0 z-[55] px-3 pb-1.5 print:hidden"}
         style={isDesktop ? undefined : { paddingTop: "calc(env(safe-area-inset-top) + 6px)" }}
       >
         {/* Fondo del strip (solo móvil): el contenido que pasa por detrás al

@@ -44,7 +44,7 @@ export function MatchIntro() {
   const [show, setShow] = useState(false);
 
   useEffect(() => {
-    if (pathname === "/login") return;
+    if (pathname === "/login" || pathname.startsWith("/conteos/marbetes/imprimir")) return;
     void (async () => {
       try {
         const res = await fetch("/api/match/active", { cache: "no-store" });
