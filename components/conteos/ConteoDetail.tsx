@@ -200,8 +200,13 @@ export function ConteoDetailView({ countId: id, desktop = false }: { countId: st
                 countId={id}
                 count={count}
                 isOpen={!!isOpen}
+                canDelete={!!session?.platformAdmin}
                 onChanged={load}
                 onToggleStatus={toggleStatus}
+                onDelete={async () => {
+                  const res = await fetch(`/api/conteos/${id}`, { method: "DELETE" });
+                  if (res.ok) router.replace(desktop ? "/escritorio/conteos" : "/conteos");
+                }}
               />
             )}
           </>
@@ -477,12 +482,14 @@ function CaptureSheet({ countId, tag, entry, isOpen, onClose, onSaved }: {
 }
 
 // ── Panel de gerencia: sin UPC, cerrar/reabrir, exportar ─────────────────────
-function ManagerPanel({ countId, count, isOpen, onChanged, onToggleStatus }: {
+function ManagerPanel({ countId, count, isOpen, canDelete, onChanged, onToggleStatus, onDelete }: {
   countId: string;
   count: CountDetail;
   isOpen: boolean;
+  canDelete: boolean;
   onChanged: () => Promise<void>;
   onToggleStatus: () => Promise<void>;
+  onDelete: () => Promise<void>;
 }) {
   const [concept, setConcept] = useState("");
   const [pieces, setPieces] = useState("");
@@ -603,6 +610,19 @@ function ManagerPanel({ countId, count, isOpen, onChanged, onToggleStatus }: {
           {isOpen ? <><Lock size={14} /> Cerrar conteo</> : <><LockOpen size={14} /> Reabrir</>}
         </button>
       </div>
+
+      {/* Eliminar: solo administrador de plataforma (depurar pruebas) */}
+      {canDelete && (
+        <button
+          type="button"
+          onClick={() => {
+            if (confirm("¿Eliminar este conteo con TODAS sus capturas? Esta acción no se puede deshacer.")) void onDelete();
+          }}
+          className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-full bg-red-500/10 px-3 py-2 text-xs font-black text-red-500 transition active:scale-95"
+        >
+          <Trash2 size={14} /> Eliminar conteo (admin)
+        </button>
+      )}
     </Card>
   );
 }
