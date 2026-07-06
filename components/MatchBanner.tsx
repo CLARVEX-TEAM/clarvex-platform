@@ -232,7 +232,7 @@ export function MatchBanner() {
                 </a>
               )}
               {canManage && (
-                <a href="/partido" className="grid size-8 place-items-center rounded-full bg-white/15 text-white/90 transition hover:bg-white/25" aria-label="Administrar partidos">
+                <a href={isDesktop ? "/escritorio/partido" : "/partido"} className="grid size-8 place-items-center rounded-full bg-white/15 text-white/90 transition hover:bg-white/25" aria-label="Administrar partidos">
                   <Settings size={15} />
                 </a>
               )}
