@@ -8,6 +8,7 @@ import {
   AlertTriangle,
   BarChart3,
   BookOpen,
+  Boxes,
   Building2,
   CalendarClock,
   CalendarDays,
@@ -68,6 +69,7 @@ const navGroups: { label: string; items: { href: string; label: string; icon: Lu
     label: "Gestión",
     items: [
       { href: "/escritorio/solicitudes", label: "Solicitudes", icon: CalendarClock },
+      { href: "/conteos", label: "Conteos", icon: Boxes },
       { href: "/escritorio/faltantes", label: "Faltantes", icon: PackageSearch },
       { href: "/escritorio/kudos", label: "Reconocimientos", icon: HeartHandshake },
       { href: "/escritorio/encuestas", label: "Encuestas", icon: ClipboardCheck },
