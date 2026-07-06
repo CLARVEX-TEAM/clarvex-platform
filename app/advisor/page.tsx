@@ -91,7 +91,7 @@ export default function AdvisorDashboard() {
   if (!user || !data) {
     return (
       <>
-        <div className="sticky top-0 z-20 h-[68px] border-b border-slate-200/60 bg-white/88 dark:border-slate-800/60 dark:bg-slate-950/95 backdrop-blur-xl" />
+        <div className="sticky top-[var(--matchday-offset,0px)] z-20 h-[68px] border-b border-slate-200/60 bg-white/88 dark:border-slate-800/60 dark:bg-slate-950/95 backdrop-blur-xl" />
         <AppFrame>
           <div className="animate-pulse space-y-3">
             <div className="h-36 rounded-[28px] bg-slate-200 dark:bg-slate-800" />

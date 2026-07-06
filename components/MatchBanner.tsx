@@ -93,13 +93,21 @@ export function MatchBanner() {
 
   // Compensar la altura del banner para no tapar el encabezado de las páginas.
   // Solo en móvil: en escritorio el banner flota y no desplaza el layout.
+  // --matchday-offset ancla los headers sticky DEBAJO del banner (sin la
+  // variable se pegan en top:0, detrás del banner, y el scroll se encima).
   useEffect(() => {
     if (visible && !isDesktop && bannerRef.current) {
-      document.body.style.paddingTop = `${bannerRef.current.offsetHeight}px`;
+      const height = bannerRef.current.offsetHeight;
+      document.body.style.paddingTop = `${height}px`;
+      document.documentElement.style.setProperty("--matchday-offset", `${height}px`);
     } else {
       document.body.style.paddingTop = "";
+      document.documentElement.style.removeProperty("--matchday-offset");
     }
-    return () => { document.body.style.paddingTop = ""; };
+    return () => {
+      document.body.style.paddingTop = "";
+      document.documentElement.style.removeProperty("--matchday-offset");
+    };
   }, [visible, isDesktop, match, canManage]);
 
   if (!visible || !match) return <GoalConfetti trigger={confetti} />;
@@ -174,6 +182,11 @@ export function MatchBanner() {
           : "fixed inset-x-0 top-0 z-[55] px-3 pb-1.5"}
         style={isDesktop ? undefined : { paddingTop: "calc(env(safe-area-inset-top) + 6px)" }}
       >
+        {/* Fondo del strip (solo móvil): el contenido que pasa por detrás al
+            hacer scroll se difumina en vez de verse crudo junto al pill. */}
+        {!isDesktop && (
+          <span className="pointer-events-none absolute inset-0 -z-10 bg-white/85 backdrop-blur-xl dark:bg-slate-950/85" />
+        )}
         <div className={`relative mx-auto max-w-md overflow-hidden rounded-[22px] border border-white/15 text-white backdrop-blur-xl ${bannerGradient}`}>
           <span className={`pointer-events-none absolute inset-x-5 bottom-0 h-[2px] rounded-full opacity-80 ${accentLine}`} />
           <div className="flex flex-col gap-1 px-3 py-2">
