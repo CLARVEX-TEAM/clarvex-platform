@@ -48,6 +48,20 @@ export function entryNeedsRecount(entry: EntryLike): boolean {
   return entry.count1 !== null && entry.count2 !== null && entry.count2 !== entry.count1 && entry.count3 === null;
 }
 
+// Contenido del QR impreso en cada marbete. Con prefijo propio para ignorar
+// cualquier otro código (UPC de prendas, etiquetas de caja…) al escanear.
+const QR_PREFIX = "CLVX:M:";
+
+export function tagQrPayload(number: number): string {
+  return `${QR_PREFIX}${number}`;
+}
+
+export function parseTagQr(text: string): number | null {
+  if (!text.startsWith(QR_PREFIX)) return null;
+  const parsed = parseInt(text.slice(QR_PREFIX.length), 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+}
+
 export type ZoneProgress = {
   zone: CycleZone;
   total: number;
