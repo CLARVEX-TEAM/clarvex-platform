@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, ExternalLink, Tv } from "lucide-react";
 import { getSession } from "@/lib/auth";
-import { matchPhase, type SerializedMatch } from "@/lib/match";
+import { matchHome, matchPhase, type SerializedMatch } from "@/lib/match";
 import { normalizeStreamUrl } from "@/lib/stream-url";
 
 // Pantalla para ver el partido con el enlace que configura gerencia.
@@ -48,12 +48,14 @@ export default function VerPartidoPage() {
     && (isMatchToday(match.kickoff) || match.status === "LIVE");
   const started = !!match && (match.status === "LIVE" || Date.now() >= new Date(match.kickoff).getTime());
   const rival = match ? `${match.opponentFlag ?? ""} ${match.opponent}`.trim() : "";
+  const home = match ? matchHome(match) : null;
+  const headerBg = home && !home.isMexico ? "bg-[#12143a]/95" : "bg-[#0a1f16]/95";
 
   return (
     <div className="fixed inset-0 z-[70] flex flex-col bg-[#06100a] text-white">
       {/* Barra superior */}
       <header
-        className="flex items-center gap-3 border-b border-white/10 bg-[#0a1f16]/95 px-3 pb-2.5 backdrop-blur-xl"
+        className={`flex items-center gap-3 border-b border-white/10 px-3 pb-2.5 backdrop-blur-xl ${headerBg}`}
         style={{ paddingTop: "calc(env(safe-area-inset-top) + 10px)" }}
       >
         <button
@@ -71,11 +73,11 @@ export default function VerPartidoPage() {
                 {match.status === "LIVE" ? "🔴 En vivo" : "Partido de hoy"}{match.competition ? ` · ${match.competition}` : ""}
               </p>
               <p className="truncate text-sm font-black">
-                🇲🇽 México {started ? <span className="mx-1 rounded-md bg-white/15 px-1.5 py-0.5 tabular-nums">{match.mxScore} – {match.rivalScore}</span> : " 🆚 "} {rival}
+                {home?.flag} {home?.name} {started ? <span className="mx-1 rounded-md bg-white/15 px-1.5 py-0.5 tabular-nums">{match.mxScore} – {match.rivalScore}</span> : " 🆚 "} {rival}
               </p>
             </>
           ) : (
-            <p className="text-sm font-black">Partido de México</p>
+            <p className="text-sm font-black">Partido en vivo</p>
           )}
         </div>
         {enabled && match?.streamUrl ? (
@@ -97,7 +99,7 @@ export default function VerPartidoPage() {
       ) : enabled && match?.streamUrl ? (
         <iframe
           src={normalizeStreamUrl(match.streamUrl)}
-          title={`México vs ${match.opponent}`}
+          title={`${home?.name ?? "Partido"} vs ${match.opponent}`}
           className="w-full flex-1 border-0 bg-black"
           allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
           allowFullScreen
@@ -115,7 +117,7 @@ export default function VerPartidoPage() {
             <p className="mt-1.5 text-sm text-white/55">
               {match && matchPhase(match) !== "past" && !match.streamUrl
                 ? "Gerencia puede agregar el enlace en Partido México."
-                : "Vuelve cuando juegue la Selección. 🇲🇽"}
+                : "Vuelve cuando haya partido programado. ⚽"}
             </p>
             <button
               type="button"

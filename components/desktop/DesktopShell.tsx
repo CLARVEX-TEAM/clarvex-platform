@@ -14,6 +14,7 @@ import {
   CheckSquare,
   ClipboardCheck,
   Database,
+  Globe,
   GraduationCap,
   HeartHandshake,
   LayoutDashboard,
@@ -72,6 +73,7 @@ const navGroups: { label: string; items: { href: string; label: string; icon: Lu
       { href: "/escritorio/encuestas", label: "Encuestas", icon: ClipboardCheck },
       { href: "/escritorio/capacitacion", label: "Capacitación", icon: GraduationCap },
       { href: "/escritorio/datos", label: "Centro de Datos", icon: Database },
+      { href: "/mundial", label: "Mundial 2026", icon: Globe },
       { href: "/partido", label: "Partido México", icon: Trophy },
       { href: "/admin", label: "Administración", icon: Building2, adminOnly: true }
     ]

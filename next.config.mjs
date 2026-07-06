@@ -26,7 +26,8 @@ const nextConfig = {
   },
 
   async headers() {
-    const imgSrc = ["'self'", "data:", "blob:", r2Domain].filter(Boolean).join(" ");
+    // a.espncdn.com: escudos de las selecciones en la sección Mundial.
+    const imgSrc = ["'self'", "data:", "blob:", r2Domain, "https://a.espncdn.com"].filter(Boolean).join(" ");
     // 'unsafe-eval' solo es necesario para el HMR de desarrollo; en producción debilita el CSP.
     const scriptSrc = ["'self'", "'unsafe-inline'", process.env.NODE_ENV === "development" ? "'unsafe-eval'" : ""].filter(Boolean).join(" ");
 

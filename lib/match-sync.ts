@@ -2,6 +2,7 @@ import type { MatchEvent } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { dispatchPushToUsers } from "@/lib/push";
 import { getEspnFixture } from "@/lib/football-api";
+import { matchHome } from "@/lib/match";
 
 // Solo vale la pena consultar ESPN cerca del silbatazo: sin la ventana el
 // sync podía engancharse a un partido futuro arbitrario (con varios
@@ -29,7 +30,7 @@ export type MatchSyncResult =
 export async function syncLinkedMatch(match: MatchEvent): Promise<MatchSyncResult> {
   if (!match.externalId) return { skipped: true, reason: "Partido sin vincular" };
 
-  const fixture = await getEspnFixture(match.externalId);
+  const fixture = await getEspnFixture(match.externalId, !!match.homeTeam);
   if (!fixture) return { skipped: true, reason: "Fixture no encontrado en ESPN" };
 
   const { mxScore, rivalScore, live, finished } = fixture;
@@ -54,6 +55,8 @@ export async function syncLinkedMatch(match: MatchEvent): Promise<MatchSyncResul
 
   const users = await prisma.user.findMany({ select: { id: true } });
   const ids = users.map((u) => u.id);
+  const home = matchHome(match);
+  const homeName = home.flag ? `${home.flag} ${home.name}` : home.name;
   const flag = match.opponentFlag ? ` ${match.opponentFlag}` : "";
   const rival = `${match.opponent}${flag}`;
   const comp = match.competition ? ` · ${match.competition}` : "";
@@ -63,8 +66,8 @@ export async function syncLinkedMatch(match: MatchEvent): Promise<MatchSyncResul
   for (let i = 0; i < mxGoals; i++) {
     const partial = prevMx + i + 1;
     pushes.push(dispatchPushToUsers(ids, {
-      title: "¡GOOOOL de México! 🇲🇽⚽",
-      body: `México ${partial} - ${rivalScore} ${rival}`,
+      title: home.isMexico ? "¡GOOOOL de México! 🇲🇽⚽" : `¡Gol de ${home.name}! ⚽`,
+      body: `${home.name} ${partial} - ${rivalScore} ${rival}`,
       tag: `gol-mexico-${match.id}-${partial}`,
       url: "/"
     }));
@@ -74,18 +77,20 @@ export async function syncLinkedMatch(match: MatchEvent): Promise<MatchSyncResul
   for (let i = 0; i < rivalGoals; i++) {
     const partial = prevRival + i + 1;
     pushes.push(dispatchPushToUsers(ids, {
-      title: `Gol del rival 😬`,
-      body: `México ${mxScore} - ${partial} ${rival}`,
+      title: home.isMexico ? "Gol del rival 😬" : `¡Gol de ${match.opponent}! ⚽`,
+      body: `${home.name} ${mxScore} - ${partial} ${rival}`,
       tag: `gol-rival-${match.id}-${partial}`,
       url: "/"
     }));
   }
 
   if (finished && match.status !== "FINISHED") {
-    const emoji = mxScore > rivalScore ? "🏆🎉" : mxScore === rivalScore ? "🤝" : "💪";
+    const emoji = home.isMexico
+      ? (mxScore > rivalScore ? "🏆🎉" : mxScore === rivalScore ? "🤝" : "💪")
+      : "🏁";
     pushes.push(dispatchPushToUsers(ids, {
       title: `Partido terminado ${emoji}`,
-      body: `México ${mxScore} - ${rivalScore} ${rival}${comp}`,
+      body: `${home.name} ${mxScore} - ${rivalScore} ${rival}${comp}`,
       tag: `partido-fin-${match.id}`,
       url: "/"
     }));
@@ -93,8 +98,8 @@ export async function syncLinkedMatch(match: MatchEvent): Promise<MatchSyncResul
 
   if (live && match.status === "SCHEDULED" && mxGoals === 0 && rivalGoals === 0) {
     pushes.push(dispatchPushToUsers(ids, {
-      title: `¡Arranca el partido! 🇲🇽⚽`,
-      body: `México vs ${rival}${comp} — ¡ya están jugando!`,
+      title: home.isMexico ? "¡Arranca el partido! 🇲🇽⚽" : "¡Arranca el partido! ⚽🏆",
+      body: `${homeName} vs ${rival}${comp} — ¡ya están jugando!`,
       tag: `partido-live-${match.id}`,
       url: "/"
     }));

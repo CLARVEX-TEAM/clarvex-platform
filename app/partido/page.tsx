@@ -8,7 +8,7 @@ import type { User } from "@/lib/types";
 import { AppFrame, AppHeader, BottomNav, Card } from "@/components/ui";
 import type { SerializedMatch } from "@/lib/match";
 
-type ApiFixtureResult = { id: number; rival: string; competition: string; statusName: string };
+type ApiFixtureResult = { id: number; home: string; away: string; competition: string; statusName: string; involvesMexico: boolean };
 
 export default function PartidoPage() {
   const router = useRouter();
@@ -16,7 +16,7 @@ export default function PartidoPage() {
   const [matches, setMatches] = useState<SerializedMatch[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({ opponent: "", opponentFlag: "", competition: "", kickoff: "" });
+  const [form, setForm] = useState({ homeTeam: "", homeFlag: "", opponent: "", opponentFlag: "", competition: "", kickoff: "" });
   const [error, setError] = useState("");
   // id del partido cuyo panel de búsqueda está abierto
   const [linking, setLinking] = useState<string | null>(null);
@@ -57,6 +57,8 @@ export default function PartidoPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          homeTeam: form.homeTeam.trim() || undefined,
+          homeFlag: form.homeFlag.trim() || undefined,
           opponent: form.opponent.trim(),
           opponentFlag: form.opponentFlag.trim() || undefined,
           competition: form.competition.trim() || undefined,
@@ -65,7 +67,7 @@ export default function PartidoPage() {
       });
       const data = (await res.json()) as { match?: SerializedMatch; error?: string };
       if (data.error) { setError(data.error); return; }
-      setForm({ opponent: "", opponentFlag: "", competition: "", kickoff: "" });
+      setForm({ homeTeam: "", homeFlag: "", opponent: "", opponentFlag: "", competition: "", kickoff: "" });
       await load();
     } finally {
       setSaving(false);
@@ -99,7 +101,7 @@ export default function PartidoPage() {
       if (data.error) { setSearchError(data.error); return; }
       const fixtures = (data.fixtures ?? []) as ApiFixtureResult[];
       setSearchResults(fixtures);
-      if (fixtures.length === 0) setSearchError("No se encontraron partidos de México en esa fecha.");
+      if (fixtures.length === 0) setSearchError("No se encontraron partidos en esa fecha.");
     } catch (err) {
       setSearchError(err instanceof Error ? err.message : "Error desconocido al buscar.");
     } finally {
@@ -107,11 +109,18 @@ export default function PartidoPage() {
     }
   }
 
-  async function linkFixture(matchId: string, externalId: number | string) {
+  async function linkFixture(matchId: string, fixture: ApiFixtureResult) {
+    // Con México en la cancha se conserva el modo tricolor (homeTeam null y el
+    // rival como opponent); en cualquier otro cruce se fijan ambos equipos
+    // desde ESPN para que el marcador automático mapee local/visitante.
+    const isMx = (name: string) => name.toLowerCase().includes("mexico") || name.toLowerCase().includes("méxico");
+    const payload = fixture.involvesMexico
+      ? { externalId: fixture.id, homeTeam: null, opponent: isMx(fixture.home) ? fixture.away : fixture.home }
+      : { externalId: fixture.id, homeTeam: fixture.home, opponent: fixture.away };
     await fetch(`/api/match/${matchId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ externalId })
+      body: JSON.stringify(payload)
     });
     setLinking(null);
     await load();
@@ -167,6 +176,20 @@ export default function PartidoPage() {
           <div className="grid gap-2.5">
             <div className="flex gap-2">
               <input
+                value={form.homeFlag}
+                onChange={(e) => setForm((f) => ({ ...f, homeFlag: e.target.value }))}
+                placeholder="🏴"
+                className="w-16 rounded-2xl border border-line bg-panel px-3 py-2.5 text-center text-lg outline-none focus:border-volt"
+              />
+              <input
+                value={form.homeTeam}
+                onChange={(e) => setForm((f) => ({ ...f, homeTeam: e.target.value }))}
+                placeholder="Equipo local (vacío = México 🇲🇽)"
+                className="flex-1 rounded-2xl border border-line bg-panel px-3 py-2.5 text-sm font-semibold text-ink outline-none focus:border-volt"
+              />
+            </div>
+            <div className="flex gap-2">
+              <input
                 value={form.opponentFlag}
                 onChange={(e) => setForm((f) => ({ ...f, opponentFlag: e.target.value }))}
                 placeholder="🇺🇸"
@@ -175,7 +198,7 @@ export default function PartidoPage() {
               <input
                 value={form.opponent}
                 onChange={(e) => setForm((f) => ({ ...f, opponent: e.target.value }))}
-                placeholder="Rival (ej. Estados Unidos)"
+                placeholder="Rival (ej. Inglaterra)"
                 className="flex-1 rounded-2xl border border-line bg-panel px-3 py-2.5 text-sm font-semibold text-ink outline-none focus:border-volt"
               />
             </div>
@@ -217,7 +240,7 @@ export default function PartidoPage() {
                 <Card key={m.id} className="p-3.5">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-black text-ink">🇲🇽 México 🆚 {m.opponentFlag ?? ""} {m.opponent}</p>
+                      <p className="truncate text-sm font-black text-ink">{m.homeTeam ? `${m.homeFlag ?? "🏆"} ${m.homeTeam}` : "🇲🇽 México"} 🆚 {m.opponentFlag ?? ""} {m.opponent}</p>
                       <p className="text-xs text-muted">{fmt(m.kickoff)}{m.competition ? ` · ${m.competition}` : ""}</p>
                       {m.status !== "SCHEDULED" && (
                         <p className="mt-0.5 text-sm font-black tabular-nums text-green-600">{m.mxScore} - {m.rivalScore}</p>
@@ -260,11 +283,11 @@ export default function PartidoPage() {
                             <button
                               key={f.id}
                               type="button"
-                              onClick={() => void linkFixture(m.id, f.id)}
+                              onClick={() => void linkFixture(m.id, f)}
                               className="flex items-center justify-between rounded-2xl border border-line bg-panel px-3 py-2 text-left transition active:scale-95"
                             >
                               <div>
-                                <p className="text-xs font-black text-ink">🇲🇽 México vs {f.rival}</p>
+                                <p className="text-xs font-black text-ink">{f.involvesMexico ? "🇲🇽 " : "🏆 "}{f.home} vs {f.away}</p>
                                 <p className="text-[11px] text-muted">{f.competition}</p>
                               </div>
                               <span className="text-[11px] font-bold text-green-600">Vincular →</span>

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { requireSession, isApiError } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
 import { dispatchPushToUsers } from "@/lib/push";
-import { serializeMatch } from "@/lib/match";
+import { matchHome, serializeMatch } from "@/lib/match";
 import { normalizeStreamUrl } from "@/lib/stream-url";
 
 export const dynamic = "force-dynamic";
@@ -15,6 +15,8 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
   const body = (await request.json().catch(() => ({}))) as {
     status?: string;
+    homeTeam?: string | null;
+    homeFlag?: string | null;
     opponent?: string;
     opponentFlag?: string;
     competition?: string;
@@ -30,6 +32,10 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
   const data: Record<string, unknown> = {};
   if (body.status && ["SCHEDULED", "LIVE", "FINISHED"].includes(body.status)) data.status = body.status;
+  if (body.homeTeam === null) data.homeTeam = null;
+  else if (typeof body.homeTeam === "string") data.homeTeam = body.homeTeam.trim().slice(0, 60) || null;
+  if (body.homeFlag === null) data.homeFlag = null;
+  else if (typeof body.homeFlag === "string") data.homeFlag = body.homeFlag.trim().slice(0, 8) || null;
   if (typeof body.opponent === "string" && body.opponent.trim()) data.opponent = body.opponent.trim().slice(0, 60);
   if (typeof body.opponentFlag === "string") data.opponentFlag = body.opponentFlag.trim().slice(0, 8) || null;
   if (typeof body.competition === "string") data.competition = body.competition.trim().slice(0, 40) || null;
@@ -57,24 +63,26 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   if (newStatus && newStatus !== current.status) {
     const users = await prisma.user.findMany({ select: { id: true } });
     const ids = users.map((u) => u.id);
+    const home = matchHome(match);
+    const homeName = home.flag ? `${home.flag} ${home.name}` : home.name;
     const flag = match.opponentFlag ? ` ${match.opponentFlag}` : "";
     const rival = `${match.opponent}${flag}`;
     const comp = match.competition ? ` · ${match.competition}` : "";
 
     if (newStatus === "LIVE") {
       void dispatchPushToUsers(ids, {
-        title: `¡Arranca el partido! 🇲🇽⚽`,
-        body: `México vs ${rival}${comp} — ¡ya están jugando!`,
+        title: home.isMexico ? "¡Arranca el partido! 🇲🇽⚽" : "¡Arranca el partido! ⚽🏆",
+        body: `${homeName} vs ${rival}${comp} — ¡ya están jugando!`,
         tag: `partido-live-${match.id}`,
         url: "/"
       });
     } else if (newStatus === "FINISHED") {
       const mxWon = match.mxScore > match.rivalScore;
       const draw = match.mxScore === match.rivalScore;
-      const emoji = mxWon ? "🏆🎉" : draw ? "🤝" : "💪";
+      const emoji = home.isMexico ? (mxWon ? "🏆🎉" : draw ? "🤝" : "💪") : "🏁";
       void dispatchPushToUsers(ids, {
         title: `Partido terminado ${emoji}`,
-        body: `México ${match.mxScore} - ${match.rivalScore} ${rival}`,
+        body: `${home.name} ${match.mxScore} - ${match.rivalScore} ${rival}`,
         tag: `partido-fin-${match.id}`,
         url: "/"
       });

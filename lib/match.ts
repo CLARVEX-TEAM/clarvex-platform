@@ -21,6 +21,8 @@ export function matchPhase(m: MatchLike, now = Date.now()): MatchPhase {
 export type SerializedMatch = {
   id: string;
   externalId: number | null;
+  homeTeam: string | null;
+  homeFlag: string | null;
   opponent: string;
   opponentFlag: string | null;
   competition: string | null;
@@ -34,6 +36,8 @@ export type SerializedMatch = {
 export function serializeMatch(m: {
   id: string;
   externalId?: number | null;
+  homeTeam?: string | null;
+  homeFlag?: string | null;
   opponent: string;
   opponentFlag: string | null;
   competition: string | null;
@@ -46,6 +50,8 @@ export function serializeMatch(m: {
   return {
     id: m.id,
     externalId: m.externalId ?? null,
+    homeTeam: m.homeTeam ?? null,
+    homeFlag: m.homeFlag ?? null,
     opponent: m.opponent,
     opponentFlag: m.opponentFlag,
     competition: m.competition,
@@ -54,5 +60,17 @@ export function serializeMatch(m: {
     mxScore: m.mxScore,
     rivalScore: m.rivalScore,
     status: m.status
+  };
+}
+
+// Equipo local del partido. Sin homeTeam es un partido de México (modo
+// histórico: tema tricolor, textos de la Selección). Con homeTeam es un
+// partido genérico del Mundial (tema FIFA).
+export function matchHome(m: { homeTeam?: string | null; homeFlag?: string | null }) {
+  const isMexico = !m.homeTeam;
+  return {
+    isMexico,
+    name: m.homeTeam ?? "México",
+    flag: m.homeFlag ?? (isMexico ? "🇲🇽" : "")
   };
 }
