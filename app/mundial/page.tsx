@@ -129,7 +129,11 @@ function TeamRow({ team, other, finished }: { team: BracketTeam | null; other: B
   const loser = finished && team && other && !team.winner && (other.winner || (other.score ?? 0) > (team.score ?? 0));
   return (
     <div className={`flex items-center gap-2.5 ${loser ? "opacity-45" : ""}`}>
-      {team?.logo ? (
+      {/* Bandera emoji propia: los escudos remotos de ESPN los bloquean
+          algunos navegadores (Brave, ad-blockers). */}
+      {team?.flag ? (
+        <span className="w-[26px] shrink-0 text-center text-lg leading-none">{team.flag}</span>
+      ) : team?.logo ? (
         <Image src={team.logo} alt="" width={22} height={22} unoptimized className="size-[22px] shrink-0 rounded-full object-contain" />
       ) : (
         <span className="grid size-[22px] shrink-0 place-items-center rounded-full bg-slate-500/15 text-[11px]">⚽</span>

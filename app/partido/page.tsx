@@ -8,7 +8,7 @@ import type { User } from "@/lib/types";
 import { AppFrame, AppHeader, BottomNav, Card } from "@/components/ui";
 import type { SerializedMatch } from "@/lib/match";
 
-type ApiFixtureResult = { id: number; home: string; away: string; competition: string; statusName: string; involvesMexico: boolean };
+type ApiFixtureResult = { id: number; home: string; away: string; homeFlag: string; awayFlag: string; competition: string; statusName: string; involvesMexico: boolean };
 
 export default function PartidoPage() {
   const router = useRouter();
@@ -115,8 +115,19 @@ export default function PartidoPage() {
     // desde ESPN para que el marcador automático mapee local/visitante.
     const isMx = (name: string) => name.toLowerCase().includes("mexico") || name.toLowerCase().includes("méxico");
     const payload = fixture.involvesMexico
-      ? { externalId: fixture.id, homeTeam: null, opponent: isMx(fixture.home) ? fixture.away : fixture.home }
-      : { externalId: fixture.id, homeTeam: fixture.home, opponent: fixture.away };
+      ? {
+          externalId: fixture.id,
+          homeTeam: null,
+          opponent: isMx(fixture.home) ? fixture.away : fixture.home,
+          opponentFlag: isMx(fixture.home) ? fixture.awayFlag : fixture.homeFlag
+        }
+      : {
+          externalId: fixture.id,
+          homeTeam: fixture.home,
+          homeFlag: fixture.homeFlag,
+          opponent: fixture.away,
+          opponentFlag: fixture.awayFlag
+        };
     await fetch(`/api/match/${matchId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -287,7 +298,7 @@ export default function PartidoPage() {
                               className="flex items-center justify-between rounded-2xl border border-line bg-panel px-3 py-2 text-left transition active:scale-95"
                             >
                               <div>
-                                <p className="text-xs font-black text-ink">{f.involvesMexico ? "🇲🇽 " : "🏆 "}{f.home} vs {f.away}</p>
+                                <p className="text-xs font-black text-ink">{f.homeFlag || "🏆"} {f.home} vs {f.awayFlag} {f.away}</p>
                                 <p className="text-[11px] text-muted">{f.competition}</p>
                               </div>
                               <span className="text-[11px] font-bold text-green-600">Vincular →</span>
