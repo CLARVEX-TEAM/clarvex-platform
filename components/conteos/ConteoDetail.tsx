@@ -50,13 +50,21 @@ export function ConteoDetailView({ countId: id, desktop = false }: { countId: st
     setEntries(new Map((data.entries ?? []).map((entry) => [entry.tagId, entry])));
   }, [id]);
 
-  // Avance en vivo: varias personas capturan a la vez.
+  // Avance en vivo: varias personas capturan a la vez. Con el conteo abierto
+  // el poll es de 3 s (casi en vivo); cerrado baja a 30 s. Al volver la app al
+  // frente se refresca de inmediato.
+  const pollMs = count?.status === "OPEN" ? 3_000 : 30_000;
   useEffect(() => {
     if (!session) return;
     void load();
-    const interval = setInterval(() => { void load(); }, 10_000);
-    return () => clearInterval(interval);
-  }, [session, load]);
+    const interval = setInterval(() => { void load(); }, pollMs);
+    const onVisible = () => { if (document.visibilityState === "visible") void load(); };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [session, load, pollMs]);
 
   const manager = session?.role === "GERENTE" || session?.role === "SUBGERENTE";
   const isOpen = count?.status === "OPEN";
@@ -247,11 +255,17 @@ declare global {
 function ScannerOverlay({ onScan, onClose }: { onScan: (number: number) => void; onClose: () => void }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [error, setError] = useState("");
+  // El callback vive en un ref: si dependiera del efecto, cada re-render del
+  // padre (poll en vivo) reiniciaría la cámara — en iPhone eso re-pedía el
+  // permiso y tiraba la primera lectura.
+  const onScanRef = useRef(onScan);
+  useEffect(() => { onScanRef.current = onScan; }, [onScan]);
 
   useEffect(() => {
     let stream: MediaStream | null = null;
     let interval: ReturnType<typeof setInterval> | null = null;
     let cancelled = false;
+    let handled = false;
 
     (async () => {
       if (!navigator.mediaDevices?.getUserMedia) {
@@ -269,8 +283,14 @@ function ScannerOverlay({ onScan, onClose }: { onScan: (number: number) => void;
       await videoRef.current.play().catch(() => undefined);
 
       const handleText = (text: string): boolean => {
+        if (handled) return true;
         const number = parseTagQr(text);
-        if (number !== null) { onScan(number); return true; }
+        if (number !== null) {
+          handled = true;
+          if (interval) clearInterval(interval);
+          onScanRef.current(number);
+          return true;
+        }
         return false;
       };
 
@@ -310,7 +330,9 @@ function ScannerOverlay({ onScan, onClose }: { onScan: (number: number) => void;
       if (interval) clearInterval(interval);
       stream?.getTracks().forEach((track) => track.stop());
     };
-  }, [onScan]);
+    // La cámara arranca UNA sola vez por apertura del escáner.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <motion.div

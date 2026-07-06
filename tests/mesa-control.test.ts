@@ -12,6 +12,7 @@ test("rellena la plantilla oficial sin romper su estructura", async () => {
 
   fillMesaControl(workbook, {
     date: new Date("2026-07-20T00:00:00.000Z"),
+    sucursal: "TH PUNTA NORTE",
     theoretical: 7100,
     piso: [
       { number: 1, count1: 21, count2: null, count3: null },
@@ -33,6 +34,7 @@ test("rellena la plantilla oficial sin romper su estructura", async () => {
   );
 
   const resumen = reloaded.getWorksheet("Resumen")!;
+  assert.equal(resumen.getCell("D8").value, "TH PUNTA NORTE");
   assert.equal(resumen.getCell("F19").value, 7100);
   assert.equal(resumen.getCell("G24").value, "ITZEL REYES");
   assert.equal(resumen.getCell("G26").value, "ALONSO");

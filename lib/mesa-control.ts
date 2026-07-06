@@ -22,6 +22,8 @@ export type MesaControlRow = {
 
 export type MesaControlData = {
   date: Date;
+  // Nombre de la tienda → Resumen!D8; las hojas de detalle lo heredan por fórmula.
+  sucursal: string;
   theoretical: number | null;
   piso: MesaControlRow[];
   bodega: MesaControlRow[];
@@ -43,6 +45,7 @@ export function fillMesaControl(workbook: ExcelJS.Workbook, data: MesaControlDat
   const resumen = workbook.getWorksheet("Resumen");
   if (!resumen) throw new Error("La plantilla no tiene la hoja Resumen.");
 
+  resumen.getCell("D8").value = data.sucursal;
   resumen.getCell("D9").value = data.date;
   resumen.getCell("F19").value = data.theoretical;
   resumen.getCell("G20").value = null; // diferencia previa manual del conteo de la plantilla
