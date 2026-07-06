@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { requireSession, isApiError, parseJson } from "@/lib/api";
+import { requirePlatformAdmin, requireSession, isApiError, parseJson } from "@/lib/api";
 import { recordAudit } from "@/lib/audit";
 import { prisma } from "@/lib/prisma";
 
@@ -91,13 +91,15 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   return NextResponse.json({ ok: true, status: updated.status });
 }
 
-// DELETE — gerencia elimina un conteo (con sus capturas).
+// DELETE — solo el administrador de plataforma elimina conteos (con sus
+// capturas): un conteo es evidencia de inventario, no debe borrarse a la ligera.
 export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const session = await requireSession(["GERENTE", "SUBGERENTE"]);
+  const session = await requirePlatformAdmin();
   if (isApiError(session)) return session;
 
-  const count = await prisma.cycleCount.findFirst({ where: { id, storeId: session.storeId } });
+  // El admin de plataforma puede depurar conteos de cualquier tienda.
+  const count = await prisma.cycleCount.findFirst({ where: { id } });
   if (!count) return NextResponse.json({ error: "Conteo no encontrado." }, { status: 404 });
 
   await prisma.cycleCount.delete({ where: { id } });
