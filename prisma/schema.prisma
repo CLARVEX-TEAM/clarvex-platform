@@ -131,6 +131,8 @@ model Store {
   fixtures        StoreFixture[]
   surveys         Survey[]
   chatRooms       ChatRoom[]
+  cycleCountTags  CycleCountTag[]
+  cycleCounts     CycleCount[]
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
 }
@@ -840,6 +842,83 @@ model MatchEvent {
 
   @@index([kickoff])
   @@index([status])
+}
+
+// ── Conteos cíclicos de inventario (cada 15 días, por marbete) ──────────────
+
+enum CycleCountZone {
+  PISO
+  BODEGA
+}
+
+// Marbete fijo del catálogo de la tienda: mismo folio = misma ubicación en
+// cada conteo. Se desactiva en lugar de borrarse para conservar historial.
+model CycleCountTag {
+  id      String         @id @default(cuid())
+  storeId String
+  number  Int
+  zone    CycleCountZone
+  label   String?
+  active  Boolean        @default(true)
+  store   Store          @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  entries CycleCountEntry[]
+  createdAt DateTime @default(now())
+
+  @@unique([storeId, number])
+  @@index([storeId, zone])
+}
+
+model CycleCount {
+  id          String   @id @default(cuid())
+  storeId     String
+  date        DateTime
+  status      String   @default("OPEN") // OPEN | CLOSED
+  theoretical Int?     // inventario teórico del sistema (opcional)
+  notes       String?
+  store       Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  entries     CycleCountEntry[]
+  noUpcItems  CycleCountNoUpc[]
+  createdAt   DateTime @default(now())
+  closedAt    DateTime?
+
+  @@index([storeId, date])
+}
+
+// Captura por marbete. count1 es el conteo físico; count2/count3 son los
+// reconteos del formato de mesa de control (2do y 3er conteo). Quién contó se
+// guarda como snapshot (id + nombre) para sobrevivir bajas de usuarios.
+model CycleCountEntry {
+  id        String    @id @default(cuid())
+  countId   String
+  tagId     String
+  count1    Int?
+  count1ById String?
+  count1ByName String?
+  count1At  DateTime?
+  count2    Int?
+  count2ById String?
+  count2ByName String?
+  count2At  DateTime?
+  count3    Int?
+  count3ById String?
+  count3ByName String?
+  count3At  DateTime?
+  count     CycleCount    @relation(fields: [countId], references: [id], onDelete: Cascade)
+  tag       CycleCountTag @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@unique([countId, tagId])
+  @@index([countId])
+}
+
+// "Piezas Sin UPC" del formato: renglones libres de concepto + piezas.
+model CycleCountNoUpc {
+  id      String     @id @default(cuid())
+  countId String
+  concept String
+  pieces  Int
+  count   CycleCount @relation(fields: [countId], references: [id], onDelete: Cascade)
+
+  @@index([countId])
 }
 
 // Auditoría de acciones sensibles (metas, comisiones, usuarios, cobros).
