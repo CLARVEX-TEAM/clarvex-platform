@@ -458,7 +458,12 @@ function CaptureSheet({ countId, tag, entry, isOpen, onClose, onSaved }: {
               ref={inputRef}
               value={value}
               onChange={(event) => setValue(event.target.value.replace(/\D/g, "").slice(0, 5))}
+              onKeyDown={(event) => {
+                // Enter guarda igual que el botón (sin tener que tocarlo).
+                if (event.key === "Enter" && !saving && value !== "") { event.preventDefault(); void save(); }
+              }}
               inputMode="numeric"
+              enterKeyHint="done"
               placeholder="0"
               aria-label={`Piezas del marbete ${tag.number}`}
               className="mt-3 min-h-16 w-full rounded-2xl border border-line bg-blue-50 px-4 text-center text-3xl font-black tabular-nums text-ink outline-none focus:border-volt dark:bg-[#1a2540]"
