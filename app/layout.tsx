@@ -10,6 +10,7 @@ import { OfflineBanner } from "@/components/OfflineBanner";
 import { WhatsNewModal } from "@/components/WhatsNewModal";
 import { MatchBanner } from "@/components/MatchBanner";
 import { MatchIntro } from "@/components/MatchIntro";
+import { TermsGate } from "@/components/TermsGate";
 
 // Auto-alojada por next/font en el build: cero peticiones externas en runtime
 // (compatible con el CSP font-src 'self') y sin FOUT en Android.
@@ -58,6 +59,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <OfflineBanner />
             <MatchBanner />
             <MatchIntro />
+            <TermsGate />
             <PageTransition>{children}</PageTransition>
             <WhatsNewModal />
           </ToastProvider>
