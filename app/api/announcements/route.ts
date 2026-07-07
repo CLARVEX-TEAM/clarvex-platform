@@ -54,7 +54,7 @@ export async function POST(request: Request) {
       data: { storeId: session.storeId, authorId: session.userId, title, body, imageUrl },
       include: { reads: true }
     });
-    const advisors = await tx.user.findMany({ where: { storeId: session.storeId, role: "ASESOR" }, select: { id: true } });
+    const advisors = await tx.user.findMany({ where: { storeId: session.storeId, role: "ASESOR", active: true }, select: { id: true } });
     await createNotifications(tx, advisors.map((advisor) => ({
       storeId: session.storeId,
       userId: advisor.id,

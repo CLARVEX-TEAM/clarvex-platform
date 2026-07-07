@@ -22,7 +22,7 @@ export async function GET() {
         responses: { select: { userId: true } }
       }
     }),
-    prisma.user.count({ where: { storeId: session.storeId } })
+    prisma.user.count({ where: { storeId: session.storeId, active: true } })
   ]);
 
   return NextResponse.json({
@@ -73,7 +73,7 @@ export async function POST(request: Request) {
   });
 
   const recipients = await prisma.user.findMany({
-    where: { storeId: session.storeId, id: { not: session.userId } },
+    where: { storeId: session.storeId, active: true, id: { not: session.userId } },
     select: { id: true }
   });
   const recipientIds = recipients.map((recipient) => recipient.id);

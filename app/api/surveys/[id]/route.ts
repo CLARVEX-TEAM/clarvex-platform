@@ -27,7 +27,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   });
   if (!survey) return NextResponse.json({ error: "Encuesta no encontrada." }, { status: 404 });
 
-  const totalRecipients = await prisma.user.count({ where: { storeId: session.storeId } });
+  const totalRecipients = await prisma.user.count({ where: { storeId: session.storeId, active: true } });
 
   const questions = survey.questions.map((question) => {
     const answers = survey.responses.flatMap((response) =>

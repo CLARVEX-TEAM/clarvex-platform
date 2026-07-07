@@ -27,7 +27,7 @@ export async function GET() {
       include: { author: { select: { name: true } }, views: { include: { user: { select: { id: true, name: true } } } } },
       orderBy: { createdAt: "desc" }
     }),
-    prisma.user.count({ where: { storeId: session.storeId, role: "ASESOR" } })
+    prisma.user.count({ where: { storeId: session.storeId, role: "ASESOR", active: true } })
   ]);
 
   return NextResponse.json({
@@ -98,7 +98,7 @@ export async function POST(request: Request) {
         data: { storeId: session.storeId, authorId: session.userId, title, description: description || null, category, linkUrl: linkUrl || null, fileUrl, fileName },
         include: { author: { select: { name: true } } }
       });
-      const advisors = await tx.user.findMany({ where: { storeId: session.storeId, role: "ASESOR" }, select: { id: true } });
+      const advisors = await tx.user.findMany({ where: { storeId: session.storeId, role: "ASESOR", active: true }, select: { id: true } });
       await createNotifications(tx, advisors.map((advisor) => ({
         storeId: session.storeId,
         userId: advisor.id,
