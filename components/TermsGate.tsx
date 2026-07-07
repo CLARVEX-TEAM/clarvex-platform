@@ -21,18 +21,35 @@ export function TermsGate() {
   useEffect(() => {
     if (excluded) { setShow(false); return; }
     let cancelled = false;
+    // Chequeo con reintentos: si el primer login coincide con un parpadeo de red,
+    // igual debe aparecer el aviso. No se rinde a la primera falla.
     void (async () => {
-      const session = await getSession();
+      const session = await getSession().catch(() => null);
       if (!session || cancelled) return;
-      try {
-        const res = await fetch("/api/legal/accept", { cache: "no-store" });
-        if (!res.ok) return;
-        const data = (await res.json()) as { accepted?: boolean };
-        if (!cancelled) setShow(data.accepted === false);
-      } catch { /* sin conexión: no bloquear */ }
+      for (let attempt = 0; attempt < 4; attempt += 1) {
+        try {
+          const res = await fetch("/api/legal/accept", { cache: "no-store" });
+          if (!res.ok) throw new Error(String(res.status));
+          const data = (await res.json()) as { accepted?: boolean };
+          if (!cancelled) setShow(data.accepted === false);
+          return;
+        } catch {
+          if (cancelled) return;
+          await new Promise((r) => setTimeout(r, 700 * (attempt + 1)));
+        }
+      }
     })();
     return () => { cancelled = true; };
   }, [pathname, excluded]);
+
+  // Mientras el aviso está visible, bloquea el scroll del fondo para que la app
+  // no se pueda usar por detrás.
+  useEffect(() => {
+    if (!show) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = previous; };
+  }, [show]);
 
   async function accept() {
     setSaving(true);
