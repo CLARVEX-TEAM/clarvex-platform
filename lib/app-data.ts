@@ -26,11 +26,12 @@ async function fetchWithTimeout(url: string, ms: number): Promise<Response> {
 
 // Reintenta con timeout: en iOS (PWA) Safari a veces aborta la petición al cambiar
 // de pantalla, lo que dejaba la vista pegada en el esqueleto. Aquí se recupera sola.
-export async function fetchAppData(): Promise<AppData> {
+export async function fetchAppData(options?: { includeInactive?: boolean }): Promise<AppData> {
+  const url = options?.includeInactive ? "/api/app-data?includeInactive=1" : "/api/app-data";
   let lastError: unknown;
   for (let attempt = 0; attempt < 3; attempt += 1) {
     try {
-      const response = await fetchWithTimeout("/api/app-data", 12000);
+      const response = await fetchWithTimeout(url, 12000);
       if (response.status === 402) {
         // Suscripción de la tienda vencida: pantalla de suspensión.
         window.location.href = "/suspendida";

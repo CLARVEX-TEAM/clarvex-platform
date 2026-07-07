@@ -33,7 +33,7 @@ export default function TeamDatesPage() {
   }, [router]);
 
   useEffect(() => {
-    fetchAppData()
+    fetchAppData({ includeInactive: true })
       .then((data) => setRows(data.users.map((u) => ({ id: u.id, name: u.name, photoUrl: u.photoUrl, birthDate: u.birthDate ?? "", hireDate: u.hireDate ?? "", hoursOwed: String(u.hoursOwed ?? 0), vacationDays: String(u.vacationDays ?? 0), paidDays: String(u.paidDays ?? 0), active: u.active ?? true }))))
       .catch(() => setError("No se pudo cargar el equipo."))
       .finally(() => setLoading(false));

@@ -9,16 +9,21 @@ function lower(value: string) {
   return value.toLowerCase().replace("_", " ");
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   const session = await requireSession();
   if (isApiError(session)) return session;
   const manager = session.role !== "ASESOR";
   const own = manager ? {} : { userId: session.userId };
+  // Por defecto solo usuarios ACTIVOS: un asesor desactivado no debe aparecer en
+  // cumpleaños, ranking ni equipo. La pantalla de gestión de equipo (/equipo)
+  // pide includeInactive=1 para poder reactivar cuentas.
+  const includeInactive = new URL(request.url).searchParams.get("includeInactive") === "1" && manager;
+  const activeFilter = includeInactive ? {} : { active: true };
   const dashboardDate = dashboardDateKey();
   const dashboardRange = dashboardDateRange(dashboardDate);
 
   const [users, kpis, dashboardRows, plans, pendings, logEntries, announcements, schedules, evidences, commissionRules] = await Promise.all([
-    prisma.user.findMany({ where: { storeId: session.storeId }, orderBy: [{ role: "asc" }, { name: "asc" }] }),
+    prisma.user.findMany({ where: { storeId: session.storeId, ...activeFilter }, orderBy: [{ role: "asc" }, { name: "asc" }] }),
     prisma.kpi.findMany({ where: { storeId: session.storeId, ...own }, orderBy: [{ date: "desc" }, { ranking: "asc" }] }),
     prisma.kpi.findMany({
       // Gerencia: todas las filas del día (para el TOTAL de tienda). Asesor: solo la suya.

@@ -149,7 +149,7 @@ export async function POST(request: Request) {
 async function ensureGroupRoom(storeId: string, userId: string) {
   let group = await prisma.chatRoom.findFirst({ where: { storeId, type: "GROUP" } });
   if (!group) {
-    const allUsers = await prisma.user.findMany({ where: { storeId }, select: { id: true } });
+    const allUsers = await prisma.user.findMany({ where: { storeId, active: true }, select: { id: true } });
     group = await prisma.chatRoom.create({
       data: {
         storeId,

@@ -27,7 +27,7 @@ export async function POST(request: Request) {
 
   for (const store of stores) {
     const [users, sentLogs] = await Promise.all([
-      prisma.user.findMany({ where: { storeId: store.id }, select: { id: true, name: true, birthDate: true, hireDate: true } }),
+      prisma.user.findMany({ where: { storeId: store.id, active: true }, select: { id: true, name: true, birthDate: true, hireDate: true } }),
       prisma.dailyNotificationLog.findMany({ where: { date: dateKey, type: LOG_TYPE }, select: { employeeId: true } })
     ]);
     const alreadySent = new Set(sentLogs.map((log) => log.employeeId));
