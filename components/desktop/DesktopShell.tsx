@@ -40,6 +40,7 @@ import { DesktopChromeProvider, FreshnessPill } from "@/components/desktop/Deskt
 import { DesktopNotifications } from "@/components/desktop/DesktopNotifications";
 import { DesktopLock } from "@/components/desktop/DesktopLock";
 import { consumeDesktopFreshLogin } from "@/lib/desktop-profiles";
+import { setViewPreference } from "@/lib/view-mode";
 
 // Ancho mínimo para considerar "escritorio". Por debajo, gerencia usa la app móvil.
 export const DESKTOP_MIN_WIDTH = 1024;
@@ -243,9 +244,13 @@ export function DesktopShell({ children }: { children: React.ReactNode }) {
               <p className="text-[11px] font-bold text-muted">{roleLabel}</p>
             </div>
           </Link>
-          <Link href="/manager" className="tappable flex min-h-10 items-center gap-2.5 rounded-2xl px-3 text-[13px] font-bold text-muted transition hover:bg-slate-100 hover:text-ink dark:hover:bg-slate-800/60">
+          <button
+            type="button"
+            onClick={() => { setViewPreference("mobile"); router.replace("/manager"); }}
+            className="tappable flex min-h-10 w-full items-center gap-2.5 rounded-2xl px-3 text-[13px] font-bold text-muted transition hover:bg-slate-100 hover:text-ink dark:hover:bg-slate-800/60"
+          >
             <Smartphone size={16} /> Ver versión móvil
-          </Link>
+          </button>
           <button onClick={relock} className="tappable flex min-h-10 w-full items-center gap-2.5 rounded-2xl px-3 text-[13px] font-bold text-muted transition hover:bg-slate-100 hover:text-ink dark:hover:bg-slate-800/60">
             <UsersRound size={16} /> Cambiar de usuario
           </button>

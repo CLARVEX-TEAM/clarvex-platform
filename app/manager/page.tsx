@@ -36,6 +36,7 @@ import { TeamCelebrationsCard } from "@/components/home/TeamCelebrationsCard";
 import { buildSalesTrend, buildDailySeries } from "@/lib/trend";
 import { upcomingCelebrations } from "@/lib/celebrations";
 import { DesktopAutoRedirect } from "@/components/desktop/DesktopAutoRedirect";
+import { DesktopSwitchLink } from "@/components/desktop/DesktopSwitchLink";
 
 const cardAnim = (delay: number) => ({
   initial: { opacity: 0, y: 12 },
@@ -229,6 +230,8 @@ export default function ManagerDashboard() {
         <div className="mt-3">
           <QuickKpiGrid cards={kpiCards} delay={0.16} />
         </div>
+
+        <DesktopSwitchLink />
 
         {advisors.length === 0 ? (
           <motion.div {...cardAnim(0.2)} className="mt-3">

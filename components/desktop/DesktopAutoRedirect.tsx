@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { getSession } from "@/lib/auth";
-import { DESKTOP_MIN_WIDTH } from "@/components/desktop/DesktopShell";
+import { prefersDesktop } from "@/lib/view-mode";
 
 /**
  * Si gerencia abre la app móvil en una pantalla grande (computadora), la lleva a
@@ -13,7 +13,7 @@ import { DESKTOP_MIN_WIDTH } from "@/components/desktop/DesktopShell";
 export function DesktopAutoRedirect() {
   const router = useRouter();
   useEffect(() => {
-    if (typeof window === "undefined" || window.innerWidth < DESKTOP_MIN_WIDTH) return;
+    if (!prefersDesktop()) return;
     getSession().then((session) => {
       if (session && session.role !== "ASESOR") router.replace("/escritorio");
     });

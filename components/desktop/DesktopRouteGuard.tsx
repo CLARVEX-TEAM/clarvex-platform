@@ -3,10 +3,7 @@
 import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { getSession } from "@/lib/auth";
-
-// Mismo umbral que DESKTOP_MIN_WIDTH en DesktopShell. Se define aquí para no
-// arrastrar todo el shell de escritorio al bundle global del layout.
-const DESKTOP_MIN_WIDTH = 1024;
+import { prefersDesktop } from "@/lib/view-mode";
 
 // Rutas de gerencia que tienen equivalente en el escritorio (/escritorio/<seg>).
 const MIRRORED = new Set([
@@ -28,7 +25,7 @@ export function DesktopRouteGuard() {
   const pathname = usePathname();
 
   useEffect(() => {
-    if (typeof window === "undefined" || window.innerWidth < DESKTOP_MIN_WIDTH) return;
+    if (!prefersDesktop()) return;
     if (!pathname || pathname.startsWith("/escritorio")) return;
     if (NEVER.some((route) => pathname === route || pathname.startsWith(`${route}/`))) return;
 
