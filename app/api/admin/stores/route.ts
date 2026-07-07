@@ -49,9 +49,9 @@ export async function GET() {
         subscriptionPaidUntil: true,
         _count: { select: { users: true, dataSources: true } },
         users: {
-          where: { active: true },
-          select: { id: true, name: true, employeeNumber: true, role: true },
-          orderBy: [{ role: "asc" }, { name: "asc" }]
+          // Incluye inactivos para poder reactivarlos o eliminarlos desde admin.
+          select: { id: true, name: true, employeeNumber: true, role: true, active: true },
+          orderBy: [{ active: "desc" }, { role: "asc" }, { name: "asc" }]
         },
         commissionRules: {
           where: { active: true },
@@ -79,8 +79,8 @@ export async function GET() {
       name: store.name,
       createdAt: store.createdAt,
       totalUsers: store._count.users,
-      activeUsers: store.users.length,
-      members: store.users.map((user) => ({ id: user.id, name: user.name, employeeNumber: user.employeeNumber, role: user.role })),
+      activeUsers: store.users.filter((user) => user.active).length,
+      members: store.users.map((user) => ({ id: user.id, name: user.name, employeeNumber: user.employeeNumber, role: user.role, active: user.active })),
       dataSources: store._count.dataSources,
       billingExempt: store.billingExempt,
       subscriptionPaidUntil: store.subscriptionPaidUntil ? store.subscriptionPaidUntil.toISOString().slice(0, 10) : null,

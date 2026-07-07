@@ -3,6 +3,7 @@ import { z } from "zod";
 import { Role } from "@prisma/client";
 import { isApiError, parseJson, requirePlatformAdmin } from "@/lib/api";
 import { recordAudit } from "@/lib/audit";
+import { deleteStoreUser } from "@/lib/user-delete";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -44,4 +45,28 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   });
 
   return NextResponse.json({ user: updated });
+}
+
+// Eliminación definitiva de una cuenta (admin de plataforma). Mismas reglas de
+// seguridad que para gerencia (helper compartido).
+export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string; userId: string }> }) {
+  const { id, userId } = await params;
+  const session = await requirePlatformAdmin();
+  if (isApiError(session)) return session;
+
+  const target = await prisma.user.findFirst({
+    where: { id: userId, storeId: id },
+    select: { name: true, employeeNumber: true, store: { select: { name: true } } }
+  });
+
+  const result = await deleteStoreUser(userId, id, session.userId);
+  if (!result.ok) return NextResponse.json({ error: result.error }, { status: result.status });
+
+  await recordAudit({
+    session, action: "user.delete", entity: "User", entityId: userId,
+    storeId: id, storeName: target?.store.name ?? null,
+    detail: target ? `Eliminó definitivamente a ${target.name} (#${target.employeeNumber}).` : "Eliminó una cuenta desactivada."
+  });
+
+  return NextResponse.json({ ok: true });
 }

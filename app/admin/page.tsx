@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Building2, CheckCircle2, ChevronDown, Percent, Plus, ScrollText, TrendingUp } from "lucide-react";
+import { Building2, CheckCircle2, ChevronDown, Percent, Plus, ScrollText, Trash2, TrendingUp } from "lucide-react";
 import { getSession } from "@/lib/auth";
 import { money } from "@/lib/format";
 import { AppFrame, AppHeader, BottomNav, Button, Card } from "@/components/ui";
@@ -30,7 +30,8 @@ const AUDIT_ACTION_LABELS: Record<string, string> = {
   "commission.update": "Comisiones",
   "billing.update": "Cobro",
   "target.update": "Meta interna",
-  "user.role": "Cambio de rol"
+  "user.role": "Cambio de rol",
+  "user.delete": "Cuenta eliminada"
 };
 
 type StoreRow = {
@@ -39,7 +40,7 @@ type StoreRow = {
   createdAt: string;
   totalUsers: number;
   activeUsers: number;
-  members: Array<{ id: string; name: string; employeeNumber: string; role: "GERENTE" | "SUBGERENTE" | "ASESOR" }>;
+  members: Array<{ id: string; name: string; employeeNumber: string; role: "GERENTE" | "SUBGERENTE" | "ASESOR"; active: boolean }>;
   dataSources: number;
   billingExempt: boolean;
   subscriptionPaidUntil: string | null;
@@ -92,6 +93,7 @@ export default function AdminPage() {
   const [showAudit, setShowAudit] = useState(false);
   const [auditEntries, setAuditEntries] = useState<AuditEntry[] | null>(null);
   const [savingRoleId, setSavingRoleId] = useState<string | null>(null);
+  const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
 
   async function toggleAudit() {
     const next = !showAudit;
@@ -190,6 +192,22 @@ export default function AdminPage() {
       setError(roleError instanceof Error ? roleError.message : "No se pudo cambiar el rol.");
     } finally {
       setSavingRoleId(null);
+    }
+  }
+
+  async function deleteMember(store: StoreRow, userId: string, name: string) {
+    if (!window.confirm(`¿Eliminar definitivamente a ${name}? Esta acción no se puede deshacer.`)) return;
+    setError("");
+    setDeletingUserId(userId);
+    try {
+      const response = await fetch(`/api/admin/stores/${store.id}/users/${userId}`, { method: "DELETE" });
+      const payload = await response.json() as { error?: string };
+      if (!response.ok) throw new Error(payload.error ?? "No se pudo eliminar la cuenta.");
+      await loadStores();
+    } catch (deleteError) {
+      setError(deleteError instanceof Error ? deleteError.message : "No se pudo eliminar la cuenta.");
+    } finally {
+      setDeletingUserId(null);
     }
   }
 
@@ -329,19 +347,32 @@ export default function AdminPage() {
                       ) : store.members.map((member) => (
                         <div key={member.id} className="flex items-center justify-between gap-2">
                           <div className="min-w-0">
-                            <p className="truncate text-sm font-black text-ink">{member.name}</p>
-                            <p className="font-mono text-[10px] font-semibold text-muted">#{member.employeeNumber}</p>
+                            <p className={`truncate text-sm font-black ${member.active ? "text-ink" : "text-muted line-through"}`}>{member.name}</p>
+                            <p className="font-mono text-[10px] font-semibold text-muted">#{member.employeeNumber}{member.active ? "" : " · desactivado"}</p>
                           </div>
-                          <select
-                            value={member.role}
-                            disabled={savingRoleId === member.id}
-                            onChange={(event) => void changeRole(store, member.id, event.target.value as "GERENTE" | "SUBGERENTE" | "ASESOR")}
-                            className="min-h-9 shrink-0 rounded-xl border border-line bg-panel px-2 text-xs font-bold text-ink outline-none focus:border-volt disabled:opacity-40"
-                          >
-                            <option value="GERENTE">Gerente</option>
-                            <option value="SUBGERENTE">Subgerente</option>
-                            <option value="ASESOR">Asesor</option>
-                          </select>
+                          <div className="flex shrink-0 items-center gap-1.5">
+                            <select
+                              value={member.role}
+                              disabled={savingRoleId === member.id || !member.active}
+                              onChange={(event) => void changeRole(store, member.id, event.target.value as "GERENTE" | "SUBGERENTE" | "ASESOR")}
+                              className="min-h-9 rounded-xl border border-line bg-panel px-2 text-xs font-bold text-ink outline-none focus:border-volt disabled:opacity-40"
+                            >
+                              <option value="GERENTE">Gerente</option>
+                              <option value="SUBGERENTE">Subgerente</option>
+                              <option value="ASESOR">Asesor</option>
+                            </select>
+                            {!member.active ? (
+                              <button
+                                type="button"
+                                onClick={() => void deleteMember(store, member.id, member.name)}
+                                disabled={deletingUserId === member.id}
+                                aria-label={`Eliminar definitivamente a ${member.name}`}
+                                className="grid size-9 place-items-center rounded-xl bg-rose-50 text-rose-700 transition hover:bg-rose-100 disabled:opacity-40 dark:bg-rose-950/40"
+                              >
+                                {deletingUserId === member.id ? "..." : <Trash2 size={14} />}
+                              </button>
+                            ) : null}
+                          </div>
                         </div>
                       ))}
                     </div>

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, UserPlus } from "lucide-react";
+import { CheckCircle2, Trash2, UserPlus } from "lucide-react";
 import { getSession } from "@/lib/auth";
 import { fetchAppData } from "@/lib/app-data";
 import { AppFrame, AppHeader, BottomNav, Button, Card, ProfileAvatar } from "@/components/ui";
@@ -16,6 +16,7 @@ export default function TeamDatesPage() {
   const [savingId, setSavingId] = useState<string | null>(null);
   const [savedId, setSavedId] = useState<string | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [newName, setNewName] = useState("");
@@ -61,6 +62,22 @@ export default function TeamDatesPage() {
       setError(`No se pudo ${next ? "activar" : "desactivar"} a ${row.name}.`);
     } finally {
       setTogglingId(null);
+    }
+  }
+
+  async function removeMember(row: Row) {
+    if (!window.confirm(`¿Eliminar definitivamente a ${row.name}? Esta acción no se puede deshacer.`)) return;
+    setDeletingId(row.id);
+    setError("");
+    try {
+      const response = await fetch(`/api/team/${row.id}`, { method: "DELETE" });
+      const payload = await response.json() as { error?: string };
+      if (!response.ok) throw new Error(payload.error ?? "No se pudo eliminar la cuenta.");
+      setRows((current) => current.filter((r) => r.id !== row.id));
+    } catch (deleteError) {
+      setError(deleteError instanceof Error ? deleteError.message : "No se pudo eliminar la cuenta.");
+    } finally {
+      setDeletingId(null);
     }
   }
 
@@ -157,14 +174,27 @@ export default function TeamDatesPage() {
                   <p className={`font-black ${row.active ? "text-ink" : "text-muted line-through"}`}>{row.name}</p>
                   {!row.active ? <span className="rounded-full bg-rose-100 px-2 py-0.5 text-xs font-bold text-rose-700">Desactivado</span> : null}
                   {row.id !== currentUserId ? (
-                    <button
-                      type="button"
-                      onClick={() => void toggleActive(row)}
-                      disabled={togglingId === row.id}
-                      className={`ml-auto min-h-8 rounded-full px-3 text-xs font-bold transition ${row.active ? "bg-rose-50 text-rose-700 hover:bg-rose-100" : "bg-emerald-50 text-emerald-700 hover:bg-emerald-100"} disabled:opacity-50`}
-                    >
-                      {togglingId === row.id ? "..." : row.active ? "Desactivar" : "Activar"}
-                    </button>
+                    <div className="ml-auto flex items-center gap-1.5">
+                      {!row.active ? (
+                        <button
+                          type="button"
+                          onClick={() => void removeMember(row)}
+                          disabled={deletingId === row.id}
+                          aria-label={`Eliminar definitivamente a ${row.name}`}
+                          className="grid size-8 place-items-center rounded-full bg-rose-50 text-rose-700 transition hover:bg-rose-100 disabled:opacity-50"
+                        >
+                          {deletingId === row.id ? "..." : <Trash2 size={14} />}
+                        </button>
+                      ) : null}
+                      <button
+                        type="button"
+                        onClick={() => void toggleActive(row)}
+                        disabled={togglingId === row.id}
+                        className={`min-h-8 rounded-full px-3 text-xs font-bold transition ${row.active ? "bg-rose-50 text-rose-700 hover:bg-rose-100" : "bg-emerald-50 text-emerald-700 hover:bg-emerald-100"} disabled:opacity-50`}
+                      >
+                        {togglingId === row.id ? "..." : row.active ? "Desactivar" : "Activar"}
+                      </button>
+                    </div>
                   ) : null}
                 </div>
                 <div className="grid grid-cols-2 gap-2">
