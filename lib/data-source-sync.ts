@@ -405,8 +405,8 @@ async function importSchedules(workbook: Parameters<typeof parseScheduleWorkbook
         day: record.day,
         status: record.status,
         statusRaw: record.statusRaw,
-        startTime: null,
-        endTime: null,
+        startTime: record.startTime,
+        endTime: record.endTime,
         weekStart: record.weekStart
       };
 

@@ -11,6 +11,8 @@ export type ParsedSchedule = {
   weekLabel: string;
   status: ParsedScheduleStatus;
   statusRaw: string;
+  startTime: string | null;
+  endTime: string | null;
   sheetName: string;
 };
 
@@ -87,7 +89,12 @@ export function parseScheduleWorkbook(workbook: XLSX.WorkBook): ScheduleParseRes
         for (const day of datedDays) {
           const statusRaw = cleanCell(row[day.column]);
           if (!statusRaw) continue;
-          const status = statusMap[normalizeText(statusRaw)];
+
+          // Una celda con rango de horas (ej. "10:30-19:00" o "12-9") es un
+          // turno LABORANDO con hora de entrada y salida. Si no es horario, se
+          // interpreta como estatus (LABORANDO/DESCANSO/...).
+          const shift = parseTimeRange(statusRaw);
+          const status = shift ? "WORKING" : statusMap[normalizeText(statusRaw)];
           if (!status) {
             unknownValues[statusRaw] = (unknownValues[statusRaw] ?? 0) + 1;
             continue;
@@ -102,6 +109,8 @@ export function parseScheduleWorkbook(workbook: XLSX.WorkBook): ScheduleParseRes
             weekLabel,
             status,
             statusRaw,
+            startTime: shift?.start ?? null,
+            endTime: shift?.end ?? null,
             sheetName
           });
         }
@@ -115,6 +124,24 @@ export function parseScheduleWorkbook(workbook: XLSX.WorkBook): ScheduleParseRes
     employeeNumbers: Array.from(employeeNumbers),
     unknownValues
   };
+}
+
+// Detecta un rango de horas en la celda: "10:30-19:00", "10:30 a 7", "12-9"…
+// Convención retail: si la hora de salida es menor o igual a la de entrada, se
+// asume PM (entra 12, sale 9 → 21:00). Devuelve horas normalizadas "HH:MM".
+function parseTimeRange(value: unknown): { start: string; end: string } | null {
+  const text = cleanCell(value);
+  const match = text.match(/^(\d{1,2})(?::(\d{2}))?\s*(?:-|–|—|a|to)\s*(\d{1,2})(?::(\d{2}))?$/i);
+  if (!match) return null;
+  let startH = Number(match[1]);
+  const startM = match[2] ? Number(match[2]) : 0;
+  let endH = Number(match[3]);
+  const endM = match[4] ? Number(match[4]) : 0;
+  if (startH > 23 || endH > 23 || startM > 59 || endM > 59) return null;
+  // Salida en formato 12h que cae en la tarde/noche.
+  if (endH < startH || (endH === startH && endM <= startM)) { if (endH <= 11) endH += 12; }
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return { start: `${pad(startH)}:${pad(startM)}`, end: `${pad(endH)}:${pad(endM)}` };
 }
 
 function detectHeader(row: unknown[]) {
