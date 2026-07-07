@@ -3,10 +3,15 @@ import { ZodError, type ZodType } from "zod";
 import { getServerSession, type Session } from "@/lib/session";
 import type { Role } from "@/lib/types";
 
-export async function requireSession(roles?: Role[]): Promise<Session | NextResponse> {
+export async function requireSession(
+  roles?: Role[],
+  options?: { allowSuspended?: boolean }
+): Promise<Session | NextResponse> {
   const session = await getServerSession();
   if (!session) return NextResponse.json({ error: "Sesion requerida." }, { status: 401 });
-  if (session.storeSuspended && !session.platformAdmin) {
+  // Los endpoints de pago (allowSuspended) deben funcionar aun con la tienda
+  // suspendida: es justo donde el gerente paga para reactivarla.
+  if (session.storeSuspended && !session.platformAdmin && !options?.allowSuspended) {
     return NextResponse.json({ error: "La suscripción de esta tienda venció." }, { status: 402 });
   }
   if (roles && !roles.includes(session.role)) {

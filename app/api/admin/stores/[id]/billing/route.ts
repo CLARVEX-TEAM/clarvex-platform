@@ -9,7 +9,9 @@ export const dynamic = "force-dynamic";
 const billingSchema = z.object({
   billingExempt: z.boolean(),
   // Fecha "pagado hasta" (fin de ese día). null = sin pago registrado.
-  subscriptionPaidUntil: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Usa formato YYYY-MM-DD.").nullable()
+  subscriptionPaidUntil: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Usa formato YYYY-MM-DD.").nullable(),
+  // Precio por usuario activo (MXN). null = usa el default ($80).
+  pricePerUserMxn: z.number().min(0).max(100_000).nullable().optional()
 });
 
 export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -29,7 +31,8 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
       billingExempt: parsed.data.billingExempt,
       subscriptionPaidUntil: parsed.data.subscriptionPaidUntil
         ? new Date(`${parsed.data.subscriptionPaidUntil}T23:59:59.999Z`)
-        : null
+        : null,
+      ...(parsed.data.pricePerUserMxn !== undefined ? { pricePerUserMxn: parsed.data.pricePerUserMxn } : {})
     },
     select: { id: true, billingExempt: true, subscriptionPaidUntil: true }
   });

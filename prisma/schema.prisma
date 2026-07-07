@@ -109,6 +109,10 @@ model Store {
   // pago se marca billingExempt=false y se le fija subscriptionPaidUntil.
   billingExempt  Boolean        @default(true)
   subscriptionPaidUntil DateTime?
+  // Precio por usuario activo al mes (MXN, IVA incl.). null = usa el default ($80).
+  // La mensualidad = usuarios activos × este precio.
+  pricePerUserMxn Decimal?        @db.Decimal(10, 2)
+  subscriptionPayments SubscriptionPayment[]
   users          User[]
   kpis           Kpi[]
   schedules      Schedule[]
@@ -922,6 +926,23 @@ model CycleCountNoUpc {
   count   CycleCount @relation(fields: [countId], references: [id], onDelete: Cascade)
 
   @@index([countId])
+}
+
+// Pagos de suscripción (Mercado Pago). Un registro por pago aprobado; el
+// mpPaymentId es único para que el webhook no acredite dos veces el mismo pago.
+model SubscriptionPayment {
+  id          String   @id @default(cuid())
+  storeId     String
+  store       Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  mpPaymentId String   @unique
+  amountMxn   Decimal  @db.Decimal(10, 2)
+  status      String   // approved | pending | rejected
+  method      String?  // account_money | oxxo | spei | credit_card…
+  paidAt      DateTime @default(now())
+  periodEnd   DateTime // hasta cuándo dejó pagada la suscripción este pago
+  createdAt   DateTime @default(now())
+
+  @@index([storeId, paidAt])
 }
 
 // Auditoría de acciones sensibles (metas, comisiones, usuarios, cobros).

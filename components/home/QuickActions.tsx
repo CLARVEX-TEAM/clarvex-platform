@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { BarChart3, BookOpen, Boxes, CalendarClock, CalendarDays, CheckSquare, ClipboardCheck, ClipboardList, GraduationCap, HeartHandshake, PackageSearch, Trophy } from "lucide-react";
+import { BarChart3, BookOpen, Boxes, CalendarClock, CalendarDays, CheckSquare, ClipboardCheck, ClipboardList, CreditCard, GraduationCap, HeartHandshake, PackageSearch, Trophy } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { LucideIcon } from "lucide-react";
 
@@ -26,6 +26,7 @@ const managerActions: Action[] = [
   { href: "/capacitacion", icon: GraduationCap, label: "Capacitación", color: "purple" },
   { href: "/encuestas", icon: ClipboardCheck, label: "Encuestas", color: "green" },
   { href: "/conteos", icon: Boxes, label: "Conteos", color: "blue" },
+  { href: "/suscripcion", icon: CreditCard, label: "Suscripción", color: "green" },
   { href: "/mundial", icon: Trophy, label: "Mundial 2026", color: "purple" }
 ];
 

@@ -44,6 +44,7 @@ type StoreRow = {
   dataSources: number;
   billingExempt: boolean;
   subscriptionPaidUntil: string | null;
+  pricePerUserMxn: number | null;
   weekSales: number;
   weekGoal: number;
   lastSyncAt: string | null;
@@ -89,6 +90,7 @@ export default function AdminPage() {
   const [savedStoreId, setSavedStoreId] = useState<string | null>(null);
   const [billingExempt, setBillingExempt] = useState(true);
   const [paidUntil, setPaidUntil] = useState("");
+  const [priceMxn, setPriceMxn] = useState("");
   const [savingBilling, setSavingBilling] = useState(false);
   const [showAudit, setShowAudit] = useState(false);
   const [auditEntries, setAuditEntries] = useState<AuditEntry[] | null>(null);
@@ -172,6 +174,7 @@ export default function AdminPage() {
     setDraft(next);
     setBillingExempt(store.billingExempt);
     setPaidUntil(store.subscriptionPaidUntil ?? "");
+    setPriceMxn(store.pricePerUserMxn !== null ? String(store.pricePerUserMxn) : "");
     setSavedStoreId(null);
     setExpandedStoreId(store.id);
   }
@@ -219,7 +222,7 @@ export default function AdminPage() {
       const response = await fetch(`/api/admin/stores/${store.id}/billing`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ billingExempt, subscriptionPaidUntil: paidUntil || null })
+        body: JSON.stringify({ billingExempt, subscriptionPaidUntil: paidUntil || null, pricePerUserMxn: priceMxn ? Number(priceMxn) : null })
       });
       const payload = await response.json() as { error?: string };
       if (!response.ok) throw new Error(payload.error ?? "No se pudo guardar la suscripción.");
@@ -397,6 +400,18 @@ export default function AdminPage() {
                       <Button type="button" variant="primary" onClick={() => void saveBilling(store)} disabled={savingBilling} className="min-h-9 px-3 text-xs">
                         {savingBilling ? "..." : "Guardar"}
                       </Button>
+                    </div>
+                    <div className="mb-2 flex items-center gap-2">
+                      <span className="text-xs font-bold text-muted">$ por usuario</span>
+                      <input
+                        type="number" min="0" step="1" inputMode="decimal"
+                        value={priceMxn}
+                        onChange={(event) => setPriceMxn(event.target.value.replace(/[^\d.]/g, ""))}
+                        placeholder="80 (default)"
+                        aria-label="Precio por usuario en pesos"
+                        className="min-h-9 w-28 rounded-xl border border-line bg-panel px-2 text-xs font-bold text-ink outline-none focus:border-volt"
+                      />
+                      <span className="text-[11px] text-muted">× {store.activeUsers} activos = ${((Number(priceMxn) || 80) * store.activeUsers).toLocaleString("es-MX")} / mes</span>
                     </div>
                     <p className="mb-3 text-[11px] leading-4 text-muted">
                       Una tienda de pago con fecha vencida queda suspendida: sus usuarios ven la pantalla de reactivación al abrir la app.

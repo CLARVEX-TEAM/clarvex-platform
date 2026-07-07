@@ -47,6 +47,7 @@ export async function GET() {
         createdAt: true,
         billingExempt: true,
         subscriptionPaidUntil: true,
+        pricePerUserMxn: true,
         _count: { select: { users: true, dataSources: true } },
         users: {
           // Incluye inactivos para poder reactivarlos o eliminarlos desde admin.
@@ -84,6 +85,7 @@ export async function GET() {
       dataSources: store._count.dataSources,
       billingExempt: store.billingExempt,
       subscriptionPaidUntil: store.subscriptionPaidUntil ? store.subscriptionPaidUntil.toISOString().slice(0, 10) : null,
+      pricePerUserMxn: store.pricePerUserMxn ? Number(store.pricePerUserMxn) : null,
       weekSales: Number(totalsByStore.get(store.id)?._sum.dailySales ?? 0),
       weekGoal: Number(totalsByStore.get(store.id)?._sum.dailyGoal ?? 0),
       lastSyncAt: syncByStore.get(store.id)?.lastSyncAt?.toISOString() ?? null,
