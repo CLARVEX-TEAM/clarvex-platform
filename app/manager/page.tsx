@@ -56,11 +56,12 @@ export default function ManagerDashboard() {
     });
   }, [router]);
 
+  const [loadFailed, setLoadFailed] = useState(false);
   const load = useCallback(
     () =>
       fetchAppData()
-        .then((d) => { setData(d); setLastUpdated(new Date()); })
-        .catch(() => {}),
+        .then((d) => { setData(d); setLastUpdated(new Date()); setLoadFailed(false); })
+        .catch(() => setLoadFailed(true)),
     []
   );
 
@@ -81,6 +82,27 @@ export default function ManagerDashboard() {
     await logout();
     router.push("/login");
   };
+
+  if (!data && loadFailed) {
+    return (
+      <>
+        <div className="grid min-h-screen place-items-center px-8 text-center">
+          <div>
+            <span className="mx-auto mb-3 grid size-14 place-items-center rounded-3xl bg-rose-500/10 text-2xl">📡</span>
+            <p className="text-base font-black text-ink">No se pudo cargar la información</p>
+            <p className="mt-1 text-sm font-semibold text-muted">Revisa tu conexión e intenta de nuevo.</p>
+            <button
+              type="button"
+              onClick={() => { setLoadFailed(false); void load(); }}
+              className="mt-4 rounded-full bg-volt px-7 py-2.5 text-sm font-black text-white transition active:scale-95"
+            >
+              Reintentar
+            </button>
+          </div>
+        </div>
+      </>
+    );
+  }
 
   if (!data) {
     return (
