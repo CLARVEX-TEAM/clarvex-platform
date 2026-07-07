@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Plus, Printer } from "lucide-react";
+import { ArrowLeftRight, Plus, Power, Printer, X } from "lucide-react";
 import { getSession } from "@/lib/auth";
 import type { User } from "@/lib/types";
 import type { CycleZone, SerializedTag } from "@/lib/cycle-count";
@@ -20,6 +20,7 @@ export function ConteosMarbetesView({ desktop = false }: { desktop?: boolean }) 
   const [to, setTo] = useState("");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     getSession().then((s) => {
@@ -62,13 +63,31 @@ export function ConteosMarbetesView({ desktop = false }: { desktop?: boolean }) 
     }
   }
 
-  async function toggleActive(tag: SerializedTag) {
-    await fetch("/api/conteos/tags", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ updates: [{ id: tag.id, active: !tag.active }] })
+  function toggleSelect(id: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
     });
-    await load();
+  }
+
+  // Aplica un cambio (zona o activo/inactivo) a los marbetes seleccionados.
+  async function applyToSelected(change: { zone?: CycleZone; active?: boolean }) {
+    const ids = Array.from(selected);
+    if (ids.length === 0) return;
+    setSaving(true);
+    setError("");
+    try {
+      await fetch("/api/conteos/tags", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ updates: ids.map((id) => ({ id, ...change })) })
+      });
+      setSelected(new Set());
+      await load();
+    } finally {
+      setSaving(false);
+    }
   }
 
   const zones: Array<{ id: CycleZone; label: string }> = [
@@ -96,7 +115,7 @@ export function ConteosMarbetesView({ desktop = false }: { desktop?: boolean }) 
             </button>
           </div>
           {error && <p className="mt-1.5 text-xs font-semibold text-red-500">{error}</p>}
-          <p className="mt-2 text-[11px] font-semibold text-muted">Los marbetes son fijos: se capturan una vez y sirven para todos los conteos. Toca uno para desactivarlo (no se borra el historial).</p>
+          <p className="mt-2 text-[11px] font-semibold text-muted">Los marbetes son fijos y sirven para todos los conteos. Toca uno o varios para seleccionarlos y luego muévelos de zona, actívalos o desactívalos. No se borra el historial.</p>
           <Link
             href="/conteos/marbetes/imprimir"
             className="mt-2.5 flex items-center justify-center gap-2 rounded-2xl border border-line bg-panel py-2.5 text-sm font-black text-ink transition active:scale-95"
@@ -104,6 +123,32 @@ export function ConteosMarbetesView({ desktop = false }: { desktop?: boolean }) 
             <Printer size={15} /> Imprimir marbetes QR
           </Link>
         </Card>
+
+        {/* Barra de acciones para los marbetes seleccionados */}
+        {selected.size > 0 ? (
+          <Card className="sticky top-2 z-10 mb-3 p-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-sm font-black text-ink">{selected.size} seleccionado{selected.size === 1 ? "" : "s"}</span>
+              <div className="ml-auto flex flex-wrap gap-1.5">
+                <button type="button" disabled={saving} onClick={() => void applyToSelected({ zone: "BODEGA" })} className="flex items-center gap-1 rounded-xl bg-volt px-3 py-2 text-xs font-black text-white transition active:scale-95 disabled:opacity-50">
+                  <ArrowLeftRight size={13} /> A Bodega
+                </button>
+                <button type="button" disabled={saving} onClick={() => void applyToSelected({ zone: "PISO" })} className="flex items-center gap-1 rounded-xl bg-volt px-3 py-2 text-xs font-black text-white transition active:scale-95 disabled:opacity-50">
+                  <ArrowLeftRight size={13} /> A Piso
+                </button>
+                <button type="button" disabled={saving} onClick={() => void applyToSelected({ active: false })} className="flex items-center gap-1 rounded-xl bg-panel px-3 py-2 text-xs font-black text-rose-600 ring-1 ring-line transition active:scale-95 disabled:opacity-50">
+                  <Power size={13} /> Desactivar
+                </button>
+                <button type="button" disabled={saving} onClick={() => void applyToSelected({ active: true })} className="flex items-center gap-1 rounded-xl bg-panel px-3 py-2 text-xs font-black text-emerald-600 ring-1 ring-line transition active:scale-95 disabled:opacity-50">
+                  <Power size={13} /> Activar
+                </button>
+                <button type="button" onClick={() => setSelected(new Set())} aria-label="Cancelar selección" className="grid size-9 place-items-center rounded-xl bg-panel text-muted ring-1 ring-line transition active:scale-95">
+                  <X size={14} />
+                </button>
+              </div>
+            </div>
+          </Card>
+        ) : null}
 
         {/* Listado */}
         {tags === null ? (
@@ -116,16 +161,26 @@ export function ConteosMarbetesView({ desktop = false }: { desktop?: boolean }) 
               <Card key={z.id} className="mb-3 p-3.5">
                 <p className="mb-2 text-xs font-black uppercase tracking-[0.14em] text-muted">{z.label} · {zoneTags.filter((t) => t.active).length} activos</p>
                 <div className="grid grid-cols-6 gap-1.5">
-                  {zoneTags.map((tag) => (
-                    <button
-                      key={tag.id}
-                      type="button"
-                      onClick={() => void toggleActive(tag)}
-                      className={`min-h-9 rounded-xl border text-xs font-black transition active:scale-95 ${tag.active ? "border-line bg-panel text-ink" : "border-line/50 bg-slate-500/5 text-muted/50 line-through"}`}
-                    >
-                      {tag.number}
-                    </button>
-                  ))}
+                  {zoneTags.map((tag) => {
+                    const isSelected = selected.has(tag.id);
+                    return (
+                      <button
+                        key={tag.id}
+                        type="button"
+                        onClick={() => toggleSelect(tag.id)}
+                        aria-pressed={isSelected}
+                        className={`min-h-9 rounded-xl border text-xs font-black transition active:scale-95 ${
+                          isSelected
+                            ? "border-volt bg-volt/15 text-volt ring-2 ring-volt/40"
+                            : tag.active
+                              ? "border-line bg-panel text-ink"
+                              : "border-line/50 bg-slate-500/5 text-muted/50 line-through"
+                        }`}
+                      >
+                        {tag.number}
+                      </button>
+                    );
+                  })}
                 </div>
               </Card>
             );
