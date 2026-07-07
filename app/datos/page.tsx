@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
+  AlertTriangle,
   ArrowRight,
   CalendarClock,
   CalendarDays,
@@ -284,6 +285,24 @@ export default function DataCenterPage() {
                               <span className="text-muted">TX</span><span className="font-bold text-ink">{(kpiMetrics as KpiSyncMetrics).ttlsTransactions?.toLocaleString("es-MX") ?? "—"}</span>
                               <span className="text-muted">Piezas</span><span className="font-bold text-ink">{(kpiMetrics as KpiSyncMetrics).ttlsPieces?.toLocaleString("es-MX") ?? "—"}</span>
                             </div>
+                          </div>
+                        ) : null}
+                        {kpiMetrics.employeesNotFound.length > 0 ? (
+                          <div className="mt-1 rounded-2xl border border-amber-400/40 bg-amber-50 px-3 py-2 dark:bg-amber-950/30">
+                            <p className="mb-1.5 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.1em] text-amber-700 dark:text-amber-400">
+                              <AlertTriangle size={12} />{kpiMetrics.employeesNotFound.length} en el RDV sin dar de alta
+                            </p>
+                            <div className="grid gap-1">
+                              {(kpiMetrics.employeesNotFoundNamed ?? kpiMetrics.employeesNotFound.map((n) => ({ employeeNumber: n, name: "" }))).map((emp) => (
+                                <div key={emp.employeeNumber} className="flex items-center justify-between gap-3 text-[11px]">
+                                  <span className="truncate font-bold text-ink/80">{emp.name || "Sin nombre en RDV"}</span>
+                                  <span className="shrink-0 font-mono font-semibold text-muted">#{emp.employeeNumber}</span>
+                                </div>
+                              ))}
+                            </div>
+                            <p className="mt-1.5 text-[10px] leading-4 text-amber-700/80 dark:text-amber-400/70">
+                              Da de alta a estas personas en Equipo con su número exacto (o revisa que coincida) para que sus datos aparezcan.
+                            </p>
                           </div>
                         ) : null}
                       </>

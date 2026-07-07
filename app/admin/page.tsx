@@ -29,7 +29,8 @@ const AUDIT_ACTION_LABELS: Record<string, string> = {
   "user.create": "Alta de usuario",
   "commission.update": "Comisiones",
   "billing.update": "Cobro",
-  "target.update": "Meta interna"
+  "target.update": "Meta interna",
+  "user.role": "Cambio de rol"
 };
 
 type StoreRow = {
@@ -38,6 +39,7 @@ type StoreRow = {
   createdAt: string;
   totalUsers: number;
   activeUsers: number;
+  members: Array<{ id: string; name: string; employeeNumber: string; role: "GERENTE" | "SUBGERENTE" | "ASESOR" }>;
   dataSources: number;
   billingExempt: boolean;
   subscriptionPaidUntil: string | null;
@@ -89,6 +91,7 @@ export default function AdminPage() {
   const [savingBilling, setSavingBilling] = useState(false);
   const [showAudit, setShowAudit] = useState(false);
   const [auditEntries, setAuditEntries] = useState<AuditEntry[] | null>(null);
+  const [savingRoleId, setSavingRoleId] = useState<string | null>(null);
 
   async function toggleAudit() {
     const next = !showAudit;
@@ -169,6 +172,25 @@ export default function AdminPage() {
     setPaidUntil(store.subscriptionPaidUntil ?? "");
     setSavedStoreId(null);
     setExpandedStoreId(store.id);
+  }
+
+  async function changeRole(store: StoreRow, userId: string, role: "GERENTE" | "SUBGERENTE" | "ASESOR") {
+    setError("");
+    setSavingRoleId(userId);
+    try {
+      const response = await fetch(`/api/admin/stores/${store.id}/users/${userId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ role })
+      });
+      const payload = await response.json() as { error?: string };
+      if (!response.ok) throw new Error(payload.error ?? "No se pudo cambiar el rol.");
+      await loadStores();
+    } catch (roleError) {
+      setError(roleError instanceof Error ? roleError.message : "No se pudo cambiar el rol.");
+    } finally {
+      setSavingRoleId(null);
+    }
   }
 
   async function saveBilling(store: StoreRow) {
@@ -300,7 +322,31 @@ export default function AdminPage() {
 
                 {expandedStoreId === store.id ? (
                   <div className="mt-3 border-t border-line pt-3">
-                    <p className="mb-2 text-xs font-bold text-muted">Suscripción</p>
+                    <p className="mb-2 text-xs font-bold text-muted">Equipo y roles</p>
+                    <div className="mb-3 space-y-1.5">
+                      {store.members.length === 0 ? (
+                        <p className="text-xs font-semibold text-muted">Sin miembros activos todavía.</p>
+                      ) : store.members.map((member) => (
+                        <div key={member.id} className="flex items-center justify-between gap-2">
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-black text-ink">{member.name}</p>
+                            <p className="font-mono text-[10px] font-semibold text-muted">#{member.employeeNumber}</p>
+                          </div>
+                          <select
+                            value={member.role}
+                            disabled={savingRoleId === member.id}
+                            onChange={(event) => void changeRole(store, member.id, event.target.value as "GERENTE" | "SUBGERENTE" | "ASESOR")}
+                            className="min-h-9 shrink-0 rounded-xl border border-line bg-panel px-2 text-xs font-bold text-ink outline-none focus:border-volt disabled:opacity-40"
+                          >
+                            <option value="GERENTE">Gerente</option>
+                            <option value="SUBGERENTE">Subgerente</option>
+                            <option value="ASESOR">Asesor</option>
+                          </select>
+                        </div>
+                      ))}
+                    </div>
+
+                    <p className="mb-2 border-t border-line pt-3 text-xs font-bold text-muted">Suscripción</p>
                     <div className="mb-2 flex items-center gap-2">
                       <button
                         type="button"

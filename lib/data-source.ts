@@ -42,6 +42,9 @@ export type KpiSyncMetrics = {
   recordsCreated: number;
   recordsUpdated: number;
   employeesNotFound: string[];
+  // Nombre por número de empleado (del RDV) para los no encontrados, para
+  // mostrarlos con nombre en el Centro de Datos. Opcional (logs viejos no lo traen).
+  employeesNotFoundNamed?: Array<{ employeeNumber: string; name: string }>;
   errors: string[];
   crmTransactionsProcessed: number;
   totalSalesImported: number;

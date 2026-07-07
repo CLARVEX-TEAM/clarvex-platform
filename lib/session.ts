@@ -14,9 +14,13 @@ export async function getServerSession() {
   // valer de inmediato aunque no haya expirado.
   const user = await prisma.user.findUnique({
     where: { id: session.userId },
-    select: { active: true, store: { select: { billingExempt: true, subscriptionPaidUntil: true } } }
+    select: { active: true, role: true, name: true, store: { select: { billingExempt: true, subscriptionPaidUntil: true } } }
   });
   if (!user?.active) return null;
+  // El rol y el nombre se re-leen de la BD: si un admin cambia el rol, aplica
+  // en la siguiente petición sin obligar a re-login (el JWT podría estar viejo).
+  session.role = user.role;
+  session.name = user.name;
   // Paywall: la tienda sin suscripción vigente queda suspendida (los admins de
   // plataforma nunca se bloquean). requireSession responde 402 con esta marca.
   session.storeSuspended = !user.store.billingExempt

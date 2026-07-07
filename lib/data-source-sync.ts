@@ -300,8 +300,15 @@ function buildKpiMetrics(
   employeesNotFound: string[],
   errors: string[]
 ): KpiSyncMetrics {
+  // Nombre de cada número de empleado del RDV (para mostrar los no encontrados
+  // con nombre, no solo el número).
+  const nameByNumber = new Map<string, string>();
+  for (const record of parsed.records) {
+    if (record.employeeName && !nameByNumber.has(record.employeeNumber)) nameByNumber.set(record.employeeNumber, record.employeeName);
+  }
   return {
     sheetUsed: parsed.sheetUsed,
+    employeesNotFoundNamed: employeesNotFound.map((employeeNumber) => ({ employeeNumber, name: nameByNumber.get(employeeNumber) ?? "" })),
     weeksDetected: parsed.weeksDetected.map((week) => ({
       weekNumber: week.weekNumber,
       weekStart: week.weekStart.toISOString().slice(0, 10),
