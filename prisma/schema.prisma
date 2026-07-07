@@ -199,6 +199,9 @@ model User {
   platformAdmin         Boolean                @default(false)
   failedPinAttempts     Int                    @default(0)
   pinLockedUntil        DateTime?
+  // Evidencia de consentimiento: cuándo y qué versión de términos aceptó.
+  termsAcceptedAt       DateTime?
+  termsAcceptedVersion  String?
   biometricEnabled      Boolean                @default(false)
   lastLoginAt           DateTime?
   lastSeenAt            DateTime?
