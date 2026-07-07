@@ -37,11 +37,31 @@ export function PwaRegister() {
   const [showBanner, setShowBanner] = useState(false);
 
   useEffect(() => {
-    if (!("serviceWorker" in navigator) || !("Notification" in window)) return;
+    if (!("serviceWorker" in navigator)) return;
+
+    // Recarga automática al activarse un SW nuevo: evita la pantalla en blanco
+    // tras un deploy, cuando el shell HTML viejo (cacheado por la PWA) apunta a
+    // chunks de JS que ya no existen. Al tomar control el SW nuevo, refrescamos
+    // una sola vez para cargar los assets frescos. Guard contra bucles.
+    let refreshing = false;
+    const onControllerChange = () => {
+      if (refreshing) return;
+      refreshing = true;
+      window.location.reload();
+    };
+    navigator.serviceWorker.addEventListener("controllerchange", onControllerChange);
+
+    if (!("Notification" in window)) {
+      navigator.serviceWorker.register("/sw.js").catch(() => undefined);
+      return () => navigator.serviceWorker.removeEventListener("controllerchange", onControllerChange);
+    }
+
     navigator.serviceWorker
       .register("/sw.js")
       .then((registration) => {
         setReg(registration);
+        // Busca actualizaciones al abrir la app (clave en PWA que rara vez recarga).
+        registration.update().catch(() => undefined);
         const permission = Notification.permission;
         if (permission === "granted") {
           saveSubscription(registration).catch(() => undefined);
@@ -51,6 +71,8 @@ export function PwaRegister() {
         }
       })
       .catch(() => undefined);
+
+    return () => navigator.serviceWorker.removeEventListener("controllerchange", onControllerChange);
   }, []);
 
   async function handleActivate() {
