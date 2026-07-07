@@ -1,10 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
-import { FileCheck2 } from "lucide-react";
 import { getSession } from "@/lib/auth";
 
 // Compuerta de consentimiento: al primer ingreso (o al cambiar la versión de
@@ -62,15 +60,15 @@ export function TermsGate() {
             transition={{ type: "spring", stiffness: 340, damping: 30 }}
             className="w-full max-w-md rounded-[26px] border border-line bg-card p-5 shadow-2xl"
           >
-            <span className="mb-3 grid size-12 place-items-center rounded-2xl bg-volt/12 text-volt">
-              <FileCheck2 size={24} />
+            <span className="mb-3 grid size-12 place-items-center rounded-2xl bg-volt/12 text-2xl">
+              📋
             </span>
             <h2 className="text-lg font-black text-ink">Términos y privacidad</h2>
             <p className="mt-1.5 text-sm leading-relaxed text-muted">
               Para usar Clarvex Team necesitas aceptar los{" "}
-              <Link href="/terminos" target="_blank" className="font-black text-volt underline">Términos de Servicio</Link>{" "}
+              <a href="/terminos" target="_blank" rel="noreferrer" className="font-black text-volt underline">Términos de Servicio</a>{" "}
               y el{" "}
-              <Link href="/privacidad" target="_blank" className="font-black text-volt underline">Aviso de Privacidad</Link>.
+              <a href="/privacidad" target="_blank" rel="noreferrer" className="font-black text-volt underline">Aviso de Privacidad</a>.
               Tu aceptación queda registrada con fecha y versión.
             </p>
             <button
