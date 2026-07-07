@@ -481,11 +481,12 @@ export function AppHeader({
   return (
     <header
       className={cn(
-        "sticky top-[var(--matchday-offset,0px)] z-20 border-b bg-card/85 dark:bg-void/95 px-4 backdrop-blur-xl transition-all duration-300",
+        "pt-safe sticky top-[var(--matchday-offset,0px)] z-20 border-b bg-card/85 dark:bg-void/95 px-4 backdrop-blur-xl transition-all duration-300",
         scrolled
-          ? "border-line py-1 shadow-[0_8px_24px_rgb(15_23_42_/_0.1)]"
-          : "border-line/80 py-2 shadow-[0_4px_16px_rgb(15_23_42_/_0.04)]"
+          ? "border-line pb-1 shadow-[0_8px_24px_rgb(15_23_42_/_0.1)]"
+          : "border-line/80 pb-2 shadow-[0_4px_16px_rgb(15_23_42_/_0.04)]"
       )}
+      style={{ ["--pt-safe-base" as string]: scrolled ? "0.25rem" : "0.5rem" }}
     >
       <div className="mx-auto flex max-w-md items-center justify-between gap-3">
         <div className="flex min-w-0 items-start gap-3">

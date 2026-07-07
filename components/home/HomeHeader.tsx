@@ -40,7 +40,7 @@ export function HomeHeader({ name, role, photoUrl, storeName, lastUpdated, onLog
   }, [pathname]);
 
   return (
-    <header className="sticky top-[var(--matchday-offset,0px)] z-20 border-b border-slate-200/60 dark:border-slate-800/60 bg-white/88 dark:bg-slate-950/95 px-4 py-3 backdrop-blur-xl">
+    <header className="pt-safe sticky top-[var(--matchday-offset,0px)] z-20 border-b border-slate-200/60 dark:border-slate-800/60 bg-white/88 dark:bg-slate-950/95 px-4 pb-3 backdrop-blur-xl" style={{ ["--pt-safe-base" as string]: "0.75rem" }}>
       <div className="mx-auto flex max-w-md items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
           <Link href="/perfil" aria-label="Mi perfil" className="shrink-0 transition active:scale-95">

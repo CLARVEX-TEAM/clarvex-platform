@@ -37,6 +37,16 @@
   box-sizing: border-box;
 }
 
+/* PWA en iOS: con viewport-fit=cover + barra de estado translúcida, el
+   contenido pegado al tope queda debajo del notch. Estas utilidades añaden
+   el inset seguro sin pelear con las clases de padding de Tailwind. */
+.pt-safe {
+  padding-top: calc(env(safe-area-inset-top) + var(--pt-safe-base, 0px));
+}
+.top-safe {
+  top: env(safe-area-inset-top);
+}
+
 html {
   background: var(--bg);
   overscroll-behavior: none;

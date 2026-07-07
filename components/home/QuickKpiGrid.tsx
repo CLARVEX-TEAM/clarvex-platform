@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { motion } from "framer-motion";
 import { Area, AreaChart, ResponsiveContainer } from "recharts";
 import { cn } from "@/lib/utils";
@@ -17,6 +18,8 @@ export interface KpiCardData {
   trend?: number[];
   icon: LucideIcon;
   color: KpiColor;
+  /** Si se define, la tarjeta se vuelve un enlace a esta ruta. */
+  href?: string;
 }
 
 const colorMap: Record<KpiColor, { icon: string; value: string; bar: string; stroke: string }> = {
@@ -97,13 +100,15 @@ export function QuickKpiGrid({ cards, delay = 0.16 }: QuickKpiGridProps) {
     >
       {cards.map((card) => {
         const colors = colorMap[card.color];
+        const MotionCard = card.href ? motion(Link) : motion.div;
         return (
-          <motion.div
+          <MotionCard
             key={card.label}
+            {...(card.href ? { href: card.href } : {})}
             variants={itemVariants}
             whileTap={{ scale: 0.97 }}
             whileHover={{ scale: 1.02, y: -2, boxShadow: "0 8px 30px rgba(37,99,235,0.15)" }}
-            className="min-h-[100px] rounded-[28px] border border-white/50 bg-white/75 p-3.5 backdrop-blur-2xl dark:border-slate-700/50 dark:bg-slate-800/60"
+            className="block min-h-[100px] rounded-[28px] border border-white/50 bg-white/75 p-3.5 backdrop-blur-2xl dark:border-slate-700/50 dark:bg-slate-800/60"
             style={{ boxShadow: "0 4px 20px rgba(15,23,42,0.06)" }}
           >
             <span className={cn("inline-grid size-9 place-items-center rounded-[18px]", colors.icon)}>
@@ -128,7 +133,7 @@ export function QuickKpiGrid({ cards, delay = 0.16 }: QuickKpiGridProps) {
                 />
               </div>
             ) : null}
-          </motion.div>
+          </MotionCard>
         );
       })}
     </motion.div>

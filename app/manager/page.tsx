@@ -50,10 +50,12 @@ export default function ManagerDashboard() {
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
   useEffect(() => {
-    getSession().then((session) => {
-      if (!session) router.replace("/login");
-      else setManager(session);
-    });
+    getSession()
+      .then((session) => {
+        if (!session) router.replace("/login");
+        else setManager(session);
+      })
+      .catch(() => {}); // un fallo de red no debe tumbar la pantalla; el reintento de fetchAppData recupera
   }, [router]);
 
   const [loadFailed, setLoadFailed] = useState(false);
@@ -108,7 +110,7 @@ export default function ManagerDashboard() {
     return (
       <>
         <DesktopAutoRedirect />
-        <div className="sticky top-[var(--matchday-offset,0px)] z-20 h-[68px] border-b border-slate-200/60 bg-white/88 dark:border-slate-800/60 dark:bg-slate-950/95 backdrop-blur-xl" />
+        <div className="pt-safe sticky top-[var(--matchday-offset,0px)] z-20 h-[68px] border-b border-slate-200/60 bg-white/88 dark:border-slate-800/60 dark:bg-slate-950/95 backdrop-blur-xl" />
         <AppFrame>
           <div className="animate-pulse space-y-3">
             <div className="h-36 rounded-[28px] bg-slate-200 dark:bg-slate-800" />
@@ -189,9 +191,10 @@ export default function ManagerDashboard() {
     {
       label: "EQUIPO",
       value: String(advisors.length),
-      detail: "Asesores activos",
+      detail: advisors.length === 0 ? "Toca para dar de alta" : "Asesores activos",
       icon: UsersRound,
-      color: "purple"
+      color: "purple",
+      href: "/equipo"
     },
     {
       label: "CRÍTICOS",
@@ -226,6 +229,22 @@ export default function ManagerDashboard() {
         <div className="mt-3">
           <QuickKpiGrid cards={kpiCards} delay={0.16} />
         </div>
+
+        {advisors.length === 0 ? (
+          <motion.div {...cardAnim(0.2)} className="mt-3">
+            <Link
+              href="/equipo"
+              className="flex items-center gap-3 rounded-[28px] border border-volt/30 bg-gradient-to-br from-blue-50 to-indigo-50 p-4 transition active:scale-[0.98] dark:from-[#101c3a] dark:to-[#141233]"
+            >
+              <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-volt/15 text-volt"><UsersRound size={22} /></span>
+              <div className="min-w-0 flex-1">
+                <p className="font-black text-ink">Da de alta a tu equipo</p>
+                <p className="text-xs font-semibold text-muted">Agrega a tus asesores y subgerentes para empezar.</p>
+              </div>
+              <ArrowRight size={18} className="shrink-0 text-volt" />
+            </Link>
+          </motion.div>
+        ) : null}
 
         <div className="mt-3">
           <StoreStatusCard
