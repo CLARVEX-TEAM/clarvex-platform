@@ -180,6 +180,7 @@
       <li><a href="#horarios">Horarios</a></li>
       <li><a href="#dia">Plan del día y pendientes</a></li>
       <li><a href="#comunicacion">Chat y comunicados</a></li>
+      <li><a href="#conteos">Conteos de inventario</a></li>
       <li><a href="#gerencia">Herramientas de gerencia</a></li>
       <li><a href="#admin">Administración de plataforma</a></li>
       <li><a href="#notificaciones">Notificaciones</a></li>
@@ -332,6 +333,80 @@
         <h4>Comunicados</h4>
         <p>Avisos oficiales de la gerencia. Se marca quién los leyó y llega notificación push al publicarlos.</p>
       </div>
+    </div>
+  </section>
+
+  <section id="conteos">
+    <span class="eyebrow">Inventario</span>
+    <h2 class="sec">Conteos de inventario</h2>
+    <p class="lead">El módulo de Conteos reemplaza la hoja de papel: cada quien cuenta desde su celular, se ve el avance en vivo y al final sale la Mesa de Control en Excel lista.</p>
+
+    <h3>Cómo funciona en resumen</h3>
+    <p>La tienda tiene <strong>marbetes fijos</strong> (etiquetas numeradas) repartidos en <strong>Piso de venta</strong> y <strong>Bodega</strong>. Cada persona abre un marbete, cuenta las piezas de esa ubicación y las captura. El sistema pide hasta <strong>3 conteos</strong> cuando hay diferencias, para asegurar el número correcto.</p>
+
+    <div class="note tip">
+      <svg class="n-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 12 2 2 4-4"/><circle cx="12" cy="12" r="9"/></svg>
+      <div class="n-body"><strong>Los marbetes se capturan una sola vez</strong> (por gerencia) y sirven para todos los conteos futuros. No hay que volver a crearlos cada quincena.</div>
+    </div>
+
+    <h3>1. Preparar los marbetes (gerencia)</h3>
+    <p>En <strong>Conteos → Marbetes</strong>:</p>
+    <div class="rows">
+      <div class="row"><div class="r-key">Dar de alta</div><div class="r-val">Elige <strong>Piso</strong> o <strong>Bodega</strong>, escribe <strong>Del</strong> y <strong>Al</strong> (ej. 1 a 60) y toca <strong>+ Alta</strong>.</div></div>
+      <div class="row"><div class="r-key">Mover de zona</div><div class="r-val">Toca uno o varios marbetes para seleccionarlos → botón <strong>A Bodega</strong> o <strong>A Piso</strong>. Útil al reorganizar la tienda.</div></div>
+      <div class="row"><div class="r-key">Desactivar</div><div class="r-val">Selecciónalos y toca <strong>Desactivar</strong>: dejan de aparecer en conteos nuevos. Es reversible (Activar) y <strong>no borra el historial</strong>.</div></div>
+      <div class="row"><div class="r-key">Imprimir QR</div><div class="r-val"><strong>Imprimir marbetes QR</strong> genera las etiquetas para pegar en cada ubicación y escanearlas al contar.</div></div>
+    </div>
+    <div class="note warn">
+      <svg class="n-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4"/><path d="M12 17h.01"/><path d="M10.3 3.2 1.9 18a2 2 0 0 0 1.7 3h16.8a2 2 0 0 0 1.7-3L13.7 3.2a2 2 0 0 0-3.4 0Z"/></svg>
+      <div class="n-body">El número de marbete es <strong>único en toda la tienda</strong>: no puede haber dos marbetes “12”. Piso y Bodega usan números distintos.</div>
+    </div>
+
+    <h3>2. Contar (todo el equipo)</h3>
+    <ol class="steps">
+      <li><strong>Abre el conteo del día</strong><span>En Conteos, entra al conteo abierto. Verás el tablero de marbetes por zona (Piso / Bodega).</span></li>
+      <li><strong>Abre un marbete</strong><span>Tócalo en el tablero, o usa el botón de <strong>escanear</strong> 📷 para leer su QR con la cámara (más rápido y sin equivocarte de número).</span></li>
+      <li><strong>Escribe las piezas y presiona Enter</strong><span>Captura la cantidad y da <strong>Enter (↵)</strong> — se guarda sin tener que tocar “Guardar piezas”. También puedes tocar el botón.</span></li>
+      <li><strong>Sigue con el siguiente</strong><span>El marbete queda marcado en verde con las piezas. Repite hasta terminar la zona.</span></li>
+    </ol>
+
+    <h3>3. El sistema de 3 conteos</h3>
+    <p>Así se evita error humano:</p>
+    <div class="rows">
+      <div class="row"><div class="r-key">1er conteo</div><div class="r-val">La primera cuenta de ese marbete.</div></div>
+      <div class="row"><div class="r-key">2º conteo</div><div class="r-val">Alguien vuelve a contarlo. Si <strong>coincide</strong> con el 1º → queda confirmado. Si <strong>no coincide</strong> → pide un 3º.</div></div>
+      <div class="row"><div class="r-key">3er conteo</div><div class="r-val">Desempata: se toma como valor bueno. El marbete con diferencia se marca <strong>⚠ recontar</strong> hasta que se hace.</div></div>
+    </div>
+
+    <div class="note tip">
+      <svg class="n-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 12 2 2 4-4"/><circle cx="12" cy="12" r="9"/></svg>
+      <div class="n-body"><strong>¿En qué conteo va cada marbete?</strong> Un <strong>número chico en la esquina</strong> del marbete te lo dice sin abrirlo: <strong>1</strong> gris (va 1 conteo), <strong>2</strong> ámbar (van 2), <strong>3</strong> morado (los 3 hechos). Y <strong>⚠ recontar</strong> significa que el 1º y 2º no coincidieron y falta el 3º.</div>
+    </div>
+
+    <h3>4. Ver quién cuenta en vivo (escritorio)</h3>
+    <p>Si la gerencia abre el conteo en la <strong>computadora</strong>, ve <strong>en vivo</strong> quién está capturando cada marbete: aparece una burbuja <em>“Waira está contando el marbete 12”</em> y el marbete se resalta. Es solo para supervisar; no estorba.</p>
+
+    <h3>5. Piezas sin código (sin UPC)</h3>
+    <p>Si hay producto que no tiene código de barras/UPC, gerencia lo agrega aparte en el conteo: escribe el <strong>concepto</strong> y las <strong>piezas</strong>. Suma al total sin necesidad de marbete.</p>
+
+    <h3>6. Cerrar y exportar</h3>
+    <div class="rows">
+      <div class="row"><div class="r-key">Teórico (Kardex)</div><div class="r-val">Gerencia puede capturar el teórico para que el reporte muestre la diferencia (físico vs Kardex).</div></div>
+      <div class="row"><div class="r-key">Cerrar conteo</div><div class="r-val">Al terminar, gerencia lo cierra. Si faltan marbetes, avisa cuántos antes de cerrar.</div></div>
+      <div class="row"><div class="r-key">Exportar Excel</div><div class="r-val"><strong>Descargar</strong> genera la <strong>Mesa de Control</strong> en el formato oficial, con piso, bodega, sin UPC y el equipo que contó.</div></div>
+    </div>
+    <div class="note warn">
+      <svg class="n-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4"/><path d="M12 17h.01"/><path d="M10.3 3.2 1.9 18a2 2 0 0 0 1.7 3h16.8a2 2 0 0 0 1.7-3L13.7 3.2a2 2 0 0 0-3.4 0Z"/></svg>
+      <div class="n-body">El reporte refleja <strong>el estado actual</strong> de los marbetes: si mueves uno de zona o lo desactivas, así saldrá aunque exportes un conteo viejo. Un marbete desactivado <strong>no aparece</strong> en el Excel.</div>
+    </div>
+
+    <h3>Dudas frecuentes de conteos</h3>
+    <div class="rows">
+      <div class="row"><div class="r-key">No aparece un marbete</div><div class="r-val">Revisa que esté <strong>activo</strong> y en la <strong>zona correcta</strong> (Piso/Bodega) en Marbetes.</div></div>
+      <div class="row"><div class="r-key">Marca “⚠ recontar”</div><div class="r-val">El 1º y 2º conteo no coincidieron. Ábrelo y haz el <strong>3er conteo</strong> para desempatar.</div></div>
+      <div class="row"><div class="r-key">Me equivoqué en las piezas</div><div class="r-val">Vuelve a abrir el marbete y captura de nuevo; se corrige el conteo.</div></div>
+      <div class="row"><div class="r-key">La cámara no escanea</div><div class="r-val">Da permiso de cámara al navegador y apunta bien al QR; si no, toca el marbete por su número.</div></div>
+      <div class="row"><div class="r-key">Reorganizamos la tienda</div><div class="r-val">Selecciona los marbetes y muévelos de zona, o desactiva los que ya no existen. El historial se conserva.</div></div>
     </div>
   </section>
 
