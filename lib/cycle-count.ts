@@ -48,6 +48,11 @@ export function entryNeedsRecount(entry: EntryLike): boolean {
   return entry.count1 !== null && entry.count2 !== null && entry.count2 !== entry.count1 && entry.count3 === null;
 }
 
+/** Cuántos conteos se han registrado en el marbete (0 a 3). */
+export function entryCountsDone(entry: EntryLike): number {
+  return (entry.count1 !== null ? 1 : 0) + (entry.count2 !== null ? 1 : 0) + (entry.count3 !== null ? 1 : 0);
+}
+
 // Contenido del QR impreso en cada marbete. Con prefijo propio para ignorar
 // cualquier otro código (UPC de prendas, etiquetas de caja…) al escanear.
 const QR_PREFIX = "CLVX:M:";

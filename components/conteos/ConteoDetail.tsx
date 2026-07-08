@@ -6,7 +6,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { AlertTriangle, CheckCircle2, Download, Lock, LockOpen, Plus, ScanLine, Trash2, X } from "lucide-react";
 import { getSession } from "@/lib/auth";
 import type { User } from "@/lib/types";
-import { entryNeedsRecount, entryReal, parseTagQr, zoneProgress, type CycleZone, type SerializedEntry, type SerializedTag } from "@/lib/cycle-count";
+import { entryCountsDone, entryNeedsRecount, entryReal, parseTagQr, zoneProgress, type CycleZone, type SerializedEntry, type SerializedTag } from "@/lib/cycle-count";
 import { Badge, Card, ProgressBar } from "@/components/ui";
 
 // Captura del conteo. Compartida entre movil y escritorio.
@@ -196,6 +196,7 @@ export function ConteoDetailView({ countId: id, desktop = false }: { countId: st
                   const entry = entries.get(tag.id) ?? null;
                   const real = entry ? entryReal(entry) : null;
                   const needsRecount = entry ? entryNeedsRecount(entry) : false;
+                  const countsDone = entry ? entryCountsDone(entry) : 0;
                   const counter = countingByNumber.get(tag.number);
                   return (
                     <button
@@ -216,6 +217,16 @@ export function ConteoDetailView({ countId: id, desktop = false }: { countId: st
                         <span className="absolute -right-1 -top-1 flex size-3">
                           <span className="absolute inline-flex size-full animate-ping rounded-full bg-volt/60" />
                           <span className="relative inline-flex size-3 rounded-full bg-volt ring-2 ring-card" />
+                        </span>
+                      ) : null}
+                      {countsDone > 0 ? (
+                        <span
+                          title={`${countsDone}° conteo`}
+                          className={`absolute left-1 top-1 grid size-4 place-items-center rounded-full text-[9px] font-black leading-none text-white ${
+                            countsDone >= 3 ? "bg-purple-500" : countsDone === 2 ? "bg-amber-500" : "bg-slate-500"
+                          }`}
+                        >
+                          {countsDone}
                         </span>
                       ) : null}
                       <span className={`text-sm font-black ${real !== null ? "text-emerald-600 dark:text-emerald-400" : "text-ink"}`}>{tag.number}</span>
