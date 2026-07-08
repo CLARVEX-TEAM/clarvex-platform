@@ -32,6 +32,8 @@ export function ConteoDetailView({ countId: id, desktop = false }: { countId: st
   const [active, setActive] = useState<TagRow | null>(null);
   const [scanning, setScanning] = useState(false);
   const [notFound, setNotFound] = useState(false);
+  // Presencia en vivo (solo escritorio, solo gerencia): quién cuenta qué marbete.
+  const [present, setPresent] = useState<Array<{ userId: string; userName: string; tagNumber: number }>>([]);
 
   useEffect(() => {
     getSession().then((s) => {
@@ -68,6 +70,27 @@ export function ConteoDetailView({ countId: id, desktop = false }: { countId: st
 
   const manager = session?.role === "GERENTE" || session?.role === "SUBGERENTE";
   const isOpen = count?.status === "OPEN";
+
+  // Poll de presencia: solo en escritorio y con el conteo abierto.
+  useEffect(() => {
+    if (!desktop || !session || count?.status !== "OPEN") { setPresent([]); return; }
+    let cancelled = false;
+    const poll = () => {
+      fetch(`/api/conteos/${id}/presence`, { cache: "no-store" })
+        .then((response) => response.ok ? response.json() as Promise<{ present: typeof present }> : { present: [] })
+        .then((data) => { if (!cancelled) setPresent(data.present ?? []); })
+        .catch(() => {});
+    };
+    poll();
+    const interval = setInterval(poll, 4_000);
+    return () => { cancelled = true; clearInterval(interval); };
+  }, [desktop, session, count?.status, id]);
+
+  const countingByNumber = useMemo(() => {
+    const map = new Map<number, string>();
+    for (const person of present) map.set(person.tagNumber, person.userName);
+    return map;
+  }, [present]);
   const progress = useMemo(() => ({
     PISO: zoneProgress("PISO", tags, entries),
     BODEGA: zoneProgress("BODEGA", tags, entries)
@@ -173,19 +196,28 @@ export function ConteoDetailView({ countId: id, desktop = false }: { countId: st
                   const entry = entries.get(tag.id) ?? null;
                   const real = entry ? entryReal(entry) : null;
                   const needsRecount = entry ? entryNeedsRecount(entry) : false;
+                  const counter = countingByNumber.get(tag.number);
                   return (
                     <button
                       key={tag.id}
                       type="button"
                       onClick={() => setActive(tag)}
-                      className={`flex min-h-[3.4rem] flex-col items-center justify-center rounded-2xl border text-center transition active:scale-95 ${
-                        needsRecount
-                          ? "border-amber-400/60 bg-amber-500/10"
-                          : real !== null
-                            ? "border-emerald-400/40 bg-emerald-500/10"
-                            : "border-line bg-panel"
+                      className={`relative flex min-h-[3.4rem] flex-col items-center justify-center rounded-2xl border text-center transition active:scale-95 ${
+                        counter
+                          ? "border-volt/60 bg-volt/10 ring-2 ring-volt/30"
+                          : needsRecount
+                            ? "border-amber-400/60 bg-amber-500/10"
+                            : real !== null
+                              ? "border-emerald-400/40 bg-emerald-500/10"
+                              : "border-line bg-panel"
                       }`}
                     >
+                      {counter ? (
+                        <span className="absolute -right-1 -top-1 flex size-3">
+                          <span className="absolute inline-flex size-full animate-ping rounded-full bg-volt/60" />
+                          <span className="relative inline-flex size-3 rounded-full bg-volt ring-2 ring-card" />
+                        </span>
+                      ) : null}
                       <span className={`text-sm font-black ${real !== null ? "text-emerald-600 dark:text-emerald-400" : "text-ink"}`}>{tag.number}</span>
                       <span className="text-[10px] font-bold text-muted">{needsRecount ? "⚠ recontar" : real !== null ? `${real} pzas` : "—"}</span>
                     </button>
@@ -242,6 +274,44 @@ export function ConteoDetailView({ countId: id, desktop = false }: { countId: st
             }}
           />
         )}
+      </AnimatePresence>
+
+      {desktop ? <LivePresence present={present} /> : null}
+    </div>
+  );
+}
+
+// Burbujas flotantes (solo escritorio): quién está contando en vivo. No invasivo:
+// abajo a la derecha, con avatar, nombre y un punto que late.
+function LivePresence({ present }: { present: Array<{ userId: string; userName: string; tagNumber: number }> }) {
+  return (
+    <div className="pointer-events-none fixed bottom-4 right-4 z-30 flex flex-col items-end gap-2">
+      <AnimatePresence>
+        {present.map((person) => {
+          const first = person.userName.trim().split(/\s+/)[0];
+          return (
+            <motion.div
+              key={person.userId}
+              layout
+              initial={{ opacity: 0, x: 24, scale: 0.9 }}
+              animate={{ opacity: 1, x: 0, scale: 1 }}
+              exit={{ opacity: 0, x: 24, scale: 0.9 }}
+              transition={{ type: "spring", stiffness: 380, damping: 30 }}
+              className="flex items-center gap-2.5 rounded-full border border-line bg-card/95 py-1.5 pl-1.5 pr-3.5 shadow-[0_8px_24px_rgb(15_23_42_/_0.14)] backdrop-blur-xl"
+            >
+              <span className="grid size-8 shrink-0 place-items-center rounded-full bg-volt text-xs font-black text-white">
+                {first.slice(0, 2).toUpperCase()}
+              </span>
+              <span className="text-[13px] font-bold text-ink">
+                <span className="font-black">{first}</span> está contando el <span className="font-black text-volt">marbete {person.tagNumber}</span>
+              </span>
+              <span className="relative flex size-2.5">
+                <span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-400/70" />
+                <span className="relative inline-flex size-2.5 rounded-full bg-emerald-500" />
+              </span>
+            </motion.div>
+          );
+        })}
       </AnimatePresence>
     </div>
   );
@@ -385,6 +455,25 @@ function CaptureSheet({ countId, tag, entry, isOpen, onClose, onSaved }: {
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { inputRef.current?.focus(); }, []);
+
+  // Presencia en vivo: mientras esta hoja está abierta, avisa cada 5 s que estoy
+  // contando este marbete (gerencia lo ve en escritorio). Al cerrar, salgo.
+  useEffect(() => {
+    if (!isOpen) return;
+    const beat = () => {
+      void fetch(`/api/conteos/${countId}/presence`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tagNumber: tag.number })
+      }).catch(() => {});
+    };
+    beat();
+    const interval = setInterval(beat, 5_000);
+    return () => {
+      clearInterval(interval);
+      void fetch(`/api/conteos/${countId}/presence`, { method: "DELETE" }).catch(() => {});
+    };
+  }, [countId, tag.number, isOpen]);
 
   async function save() {
     const pieces = parseInt(value, 10);
