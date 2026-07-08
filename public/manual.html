@@ -162,12 +162,16 @@
   <div class="hero-inner">
     <div class="brand-row">
       <div class="logo" aria-label="Clarvex">
-        <svg viewBox="0 0 68 66" fill="none" xmlns="http://www.w3.org/2000/svg" role="img">
-          <!-- Hexágono -->
-          <path d="M34 3.5 L61 19 V47 L34 62.5 L7 47 V19 Z" fill="none" stroke="#ffffff" stroke-width="5.4" stroke-linejoin="round"/>
-          <!-- Marca angular "e / C" -->
-          <path d="M45 20 L27 20 L16 33 L27 46 L45 46" fill="none" stroke="#ffffff" stroke-width="5.4" stroke-linecap="round" stroke-linejoin="round"/>
-          <path d="M16 33 L36 33" fill="none" stroke="#ffffff" stroke-width="5.4" stroke-linecap="round"/>
+        <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" role="img">
+          <defs>
+            <linearGradient id="cx-bg" x1="12%" y1="90%" x2="88%" y2="10%">
+              <stop offset="0" stop-color="#0A1A40"/>
+              <stop offset="1" stop-color="#1E6FE6"/>
+            </linearGradient>
+          </defs>
+          <rect x="3" y="3" width="94" height="94" rx="23" fill="url(#cx-bg)"/>
+          <!-- Marca "e" angular: espina izquierda + 3 brazos a la derecha -->
+          <path fill="#ffffff" d="M33 30 L79 33 L56 47 L81 51 L56 55 L77 66 L33 70 Z"/>
         </svg>
       </div>
       <div class="brand-name">Clarvex Team</div>
