@@ -14,6 +14,11 @@ const r2Domain = r2PublicUrl
 const nextConfig = {
   reactStrictMode: true,
 
+  // URL limpia para el manual de uso (archivo estático en /public/manual.html).
+  async rewrites() {
+    return [{ source: "/manual", destination: "/manual.html" }];
+  },
+
   images: {
     remotePatterns: [
       ...(r2Domain ? [{ protocol: /** @type {"https"} */ ("https"), hostname: r2Domain, pathname: "/**" }] : []),
