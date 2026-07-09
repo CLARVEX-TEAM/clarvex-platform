@@ -67,8 +67,8 @@ Debes responder estrictamente en formato JSON utilizando el siguiente esquema:
 }
 `;
 
-    // 3. Llamada HTTP a Gemini 1.5 Flash
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+    // 3. Llamada HTTP a Gemini 2.5 Flash
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
     const response = await fetch(geminiUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
