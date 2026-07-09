@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Bot, MessageSquare, Send, Sparkles, X } from "lucide-react";
 import { getSession } from "@/lib/auth";
 import type { User } from "@/lib/types";
 
 export function ClarvexCopilot() {
+  const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [messages, setMessages] = useState<Array<{ role: "user" | "assistant"; content: string }>>([]);
@@ -15,18 +17,31 @@ export function ClarvexCopilot() {
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
+    // Hidden on login screen
+    if (pathname === "/login") {
+      setUser(null);
+      setMessages([]);
+      setIsOpen(false);
+      return;
+    }
+
     getSession().then((session) => {
       if (session) {
         setUser(session);
-        setMessages([
-          {
-            role: "assistant",
-            content: `¡Hola, ${session.name}! Soy Clarvex Copilot. Estoy conectado en tiempo real a los KPIs, pendientes y horarios de tu tienda. ¿En qué te puedo ayudar hoy?`,
-          },
-        ]);
+        if (messages.length === 0) {
+          setMessages([
+            {
+              role: "assistant",
+              content: `¡Hola, ${session.name}! Soy Clarvex Copilot. Estoy conectado en tiempo real a los KPIs, pendientes y horarios de tu tienda. ¿En qué te puedo ayudar hoy?`,
+            },
+          ]);
+        }
+      } else {
+        setUser(null);
+        setMessages([]);
       }
     });
-  }, [isOpen]);
+  }, [pathname, isOpen]);
 
   useEffect(() => {
     if (messagesEndRef.current) {
