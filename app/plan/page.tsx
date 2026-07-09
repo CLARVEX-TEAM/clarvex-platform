@@ -50,20 +50,49 @@ export default function PlanPage() {
   const [suggesting, setSuggesting] = useState(false);
 
   async function suggestWithAI() {
+    if (!userId) {
+      toast("Por favor selecciona un asesor primero para generar su plan personalizado.", "error");
+      return;
+    }
     if (suggesting) return;
     setSuggesting(true);
     try {
       const res = await fetch("/api/ai/plan-manager", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ date })
+        body: JSON.stringify({ date, userId })
       });
-      const payload = await res.json() as { focus?: string; message?: string; activities?: string[]; error?: string };
+      interface AIPlanPayload {
+        focus?: string;
+        message?: string;
+        activities?: {
+          comerciales?: string[];
+          operativas?: string[];
+          servicio?: string[];
+          capacitacion?: string[];
+        } | string[];
+        error?: string;
+      }
+      const payload = await res.json() as AIPlanPayload;
       if (!res.ok) throw new Error(payload.error || "No se pudo obtener la sugerencia.");
       setFocus(payload.focus ?? "");
       setMessage(payload.message ?? "");
-      setActivityChips(payload.activities ?? []);
-      toast("Plan sugerido por la IA cargado. ¡Revísalo antes de guardarlo!", "success");
+      
+      let allActivities: string[] = [];
+      if (payload.activities) {
+        if (Array.isArray(payload.activities)) {
+          allActivities = payload.activities;
+        } else {
+          allActivities = [
+            ...(payload.activities.comerciales || []),
+            ...(payload.activities.operativas || []),
+            ...(payload.activities.servicio || []),
+            ...(payload.activities.capacitacion || [])
+          ];
+        }
+      }
+      setActivityChips(allActivities);
+      toast("Plan personalizado sugerido por la IA. ¡Revísalo antes de guardarlo!", "success");
     } catch (error: any) {
       toast(error.message || "Error al conectar con el Asistente IA.", "error");
     } finally {

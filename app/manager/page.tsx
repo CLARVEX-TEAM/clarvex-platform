@@ -27,6 +27,7 @@ import { AppFrame, Badge, BottomNav, Card, ProfileAvatar, ProgressBar, priorityT
 import { PullToRefresh } from "@/components/PullToRefresh";
 import { HomeHeader } from "@/components/home/HomeHeader";
 import { DailySalesCard } from "@/components/home/DailySalesCard";
+import { ExecutiveDashboard } from "@/components/home/ExecutiveDashboard";
 import { QuickKpiGrid, type KpiCardData } from "@/components/home/QuickKpiGrid";
 import { StoreStatusCard } from "@/components/home/StoreStatusCard";
 import { QuickActions } from "@/components/home/QuickActions";
@@ -203,6 +204,8 @@ export default function ManagerDashboard() {
           label="Venta diaria tienda"
           delay={0.08}
         />
+
+        <ExecutiveDashboard />
 
         <div className="mt-3">
           <QuickKpiGrid cards={kpiCards} delay={0.16} />

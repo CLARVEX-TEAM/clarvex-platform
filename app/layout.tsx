@@ -12,6 +12,7 @@ import { MatchBanner } from "@/components/MatchBanner";
 import { MatchIntro } from "@/components/MatchIntro";
 import { TermsGate } from "@/components/TermsGate";
 import { DesktopRouteGuard } from "@/components/desktop/DesktopRouteGuard";
+import { ClarvexCopilot } from "@/components/ClarvexCopilot";
 
 // Auto-alojada por next/font en el build: cero peticiones externas en runtime
 // (compatible con el CSP font-src 'self') y sin FOUT en Android.
@@ -64,6 +65,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <TermsGate />
             <PageTransition>{children}</PageTransition>
             <WhatsNewModal />
+            <ClarvexCopilot />
           </ToastProvider>
         </ThemeProvider>
       </body>
