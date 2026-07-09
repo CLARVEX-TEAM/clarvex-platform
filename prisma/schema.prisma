@@ -7,10 +7,860 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model Store {
+  id                    String                @id @default(cuid())
+  name                  String
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+  billingExempt         Boolean               @default(true)
+  subscriptionPaidUntil DateTime?
+  pricePerUserMxn       Decimal?              @db.Decimal(10, 2)
+  announcements         Announcement[]
+  chatRooms             ChatRoom[]
+  checklistEntries      ChecklistEntry[]
+  choreAssignments      ChoreAssignment[]
+  comments              Comment[]
+  commissionRules       CommissionRule[]
+  cycleCounts           CycleCount[]
+  cycleCountTags        CycleCountTag[]
+  dataSources           DataSource[]
+  plans                 DayPlan[]
+  evidences             Evidence[]
+  inventoryReports      InventoryReport[]
+  kpis                  Kpi[]
+  kpiTargets            KpiTarget[]
+  kudos                 Kudo[]
+  notifications         Notification[]
+  pendings              Pending[]
+  schedules             Schedule[]
+  shiftRequests         ShiftRequest[]
+  fixtures              StoreFixture[]
+  logEntries            StoreLog[]
+  subscriptionPayments  SubscriptionPayment[]
+  surveys               Survey[]
+  trainingResources     TrainingResource[]
+  users                 User[]
+}
+
+model StoreFixture {
+  id        String   @id @default(cuid())
+  storeId   String
+  name      String
+  col       Int      @default(1)
+  row       Int      @default(1)
+  styles    String[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  type      String   @default("TABLE")
+  rotation  Int      @default(0)
+  posX      Float    @default(0)
+  posZ      Float    @default(0)
+  store     Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@index([storeId])
+}
+
+model DataSource {
+  id         String              @id @default(cuid())
+  storeId    String
+  type       DataSourceType
+  provider   DataSourceProvider  @default(MANUAL)
+  name       String
+  url        String?
+  status     DataSourceStatus    @default(DISCONNECTED)
+  lastSyncAt DateTime?
+  nextSyncAt DateTime?
+  createdAt  DateTime            @default(now())
+  updatedAt  DateTime            @updatedAt
+  frequency  DataSourceFrequency @default(MANUAL)
+  store      Store               @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  syncLogs   SyncLog[]
+
+  @@unique([storeId, type])
+  @@index([storeId, status])
+}
+
+model SyncLog {
+  id               String        @id @default(cuid())
+  dataSourceId     String
+  status           SyncLogStatus
+  message          String
+  recordsProcessed Int           @default(0)
+  createdAt        DateTime      @default(now())
+  dataSource       DataSource    @relation(fields: [dataSourceId], references: [id], onDelete: Cascade)
+
+  @@index([dataSourceId, createdAt])
+}
+
+model User {
+  id                    String                 @id @default(cuid())
+  name                  String
+  email                 String                 @unique
+  employeeNumber        String                 @unique
+  passwordHash          String?
+  role                  Role
+  storeId               String
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+  pinHash               String?
+  photoUrl              String?
+  biometricEnabled      Boolean                @default(false)
+  lastLoginAt           DateTime?
+  birthDate             DateTime?
+  hireDate              DateTime?
+  hoursOwed             Float                  @default(0)
+  vacationDays          Float                  @default(0)
+  paidDays              Float                  @default(0)
+  lastSeenAt            DateTime?
+  active                Boolean                @default(true)
+  platformAdmin         Boolean                @default(false)
+  failedPinAttempts     Int                    @default(0)
+  pinLockedUntil        DateTime?
+  termsAcceptedAt       DateTime?
+  termsAcceptedVersion  String?
+  authoredAnnouncements Announcement[]
+  announcementReactions AnnouncementReaction[]
+  announcementReads     AnnouncementRead[]
+  chatMemberships       ChatMember[]
+  chatMessages          ChatMessage[]
+  chatMessageDeliveries ChatMessageDelivery[]
+  chatMessageHides      ChatMessageHide[]
+  chatMessageReactions  ChatMessageReaction[]
+  chatMessageReads      ChatMessageRead[]
+  choreAssignments      ChoreAssignment[]
+  comments              Comment[]              @relation("CommentAuthor")
+  plans                 DayPlan[]
+  employeeNumberAliases EmployeeNumberAlias[]
+  evidences             Evidence[]             @relation("EvidenceAuthor")
+  inventoryReports      InventoryReport[]      @relation("InventoryReporter")
+  inventoryResolved     InventoryReport[]      @relation("InventoryResolver")
+  kpis                  Kpi[]
+  kudosSent             Kudo[]                 @relation("KudoFrom")
+  kudosReceived         Kudo[]                 @relation("KudoTo")
+  notifications         Notification[]
+  assignedPendings      Pending[]              @relation("PendingOwner")
+  pushSubscriptions     PushSubscription[]
+  schedules             Schedule[]
+  shiftRequests         ShiftRequest[]         @relation("ShiftRequester")
+  authoredLogs          StoreLog[]
+  authoredSurveys       Survey[]               @relation("SurveyAuthor")
+  surveyResponses       SurveyResponse[]       @relation("SurveyRespondent")
+  authoredTraining      TrainingResource[]     @relation("TrainingAuthor")
+  trainingViews         TrainingResourceView[] @relation("TrainingViewer")
+  store                 Store                  @relation(fields: [storeId], references: [id])
+  webAuthnCredentials   WebAuthnCredential[]
+}
+
+model TrainingResource {
+  id          String                 @id @default(cuid())
+  storeId     String
+  authorId    String
+  title       String
+  description String?
+  category    String
+  linkUrl     String?
+  fileUrl     String?
+  fileName    String?
+  createdAt   DateTime               @default(now())
+  updatedAt   DateTime               @updatedAt
+  author      User                   @relation("TrainingAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  store       Store                  @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  views       TrainingResourceView[]
+
+  @@index([storeId, createdAt])
+}
+
+model TrainingResourceView {
+  id         String           @id @default(cuid())
+  resourceId String
+  userId     String
+  viewedAt   DateTime         @default(now())
+  resource   TrainingResource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+  user       User             @relation("TrainingViewer", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([resourceId, userId])
+  @@index([resourceId])
+}
+
+model InventoryReport {
+  id           String    @id @default(cuid())
+  storeId      String
+  reporterId   String
+  productName  String
+  category     String
+  note         String?
+  photoUrl     String?
+  status       String    @default("ABIERTO")
+  resolvedById String?
+  resolvedAt   DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  reporter     User      @relation("InventoryReporter", fields: [reporterId], references: [id], onDelete: Cascade)
+  resolvedBy   User?     @relation("InventoryResolver", fields: [resolvedById], references: [id])
+  store        Store     @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@index([storeId, status, createdAt])
+}
+
+model ShiftRequest {
+  id           String    @id @default(cuid())
+  storeId      String
+  requesterId  String
+  date         String
+  type         String
+  reason       String?
+  status       String    @default("PENDIENTE")
+  resolvedById String?
+  resolvedAt   DateTime?
+  managerNote  String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  hours        Float?
+  requester    User      @relation("ShiftRequester", fields: [requesterId], references: [id], onDelete: Cascade)
+  store        Store     @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@index([storeId, status, date])
+  @@index([requesterId, createdAt])
+}
+
+model Kudo {
+  id         String   @id @default(cuid())
+  storeId    String
+  fromUserId String
+  toUserId   String
+  emoji      String
+  message    String?
+  createdAt  DateTime @default(now())
+  fromUser   User     @relation("KudoFrom", fields: [fromUserId], references: [id], onDelete: Cascade)
+  store      Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  toUser     User     @relation("KudoTo", fields: [toUserId], references: [id], onDelete: Cascade)
+
+  @@index([storeId, createdAt])
+  @@index([toUserId, createdAt])
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  storeId   String
+  userId    String
+  type      NotificationType
+  title     String
+  body      String
+  readAt    DateTime?
+  createdAt DateTime         @default(now())
+  store     Store            @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt, createdAt])
+  @@index([storeId, createdAt])
+}
+
+model EmployeeNumberAlias {
+  id             String   @id @default(cuid())
+  employeeNumber String   @unique
+  userId         String
+  createdAt      DateTime @default(now())
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Kpi {
+  id                   String    @id @default(cuid())
+  userId               String
+  storeId              String
+  date                 DateTime
+  dailySales           Decimal   @db.Decimal(12, 2)
+  monthlySales         Decimal   @db.Decimal(12, 2)
+  dailyGoal            Decimal   @db.Decimal(12, 2)
+  monthlyGoal          Decimal   @db.Decimal(12, 2)
+  avgTicket            Decimal   @db.Decimal(12, 2)
+  upt                  Decimal   @db.Decimal(5, 2)
+  conversion           Decimal?  @db.Decimal(5, 2)
+  pieces               Int
+  transactions         Int
+  ranking              Int
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+  discountMargin       Decimal?  @db.Decimal(5, 2)
+  commissionAmount     Decimal   @default(0) @db.Decimal(12, 2)
+  commissionPercent    Decimal   @default(0) @db.Decimal(5, 2)
+  grossSales           Decimal?  @db.Decimal(12, 2)
+  discountAmount       Decimal?  @db.Decimal(12, 2)
+  discountLimit        Decimal?  @db.Decimal(5, 2)
+  weekNumber           Int?
+  weekStart            DateTime?
+  weekEnd              DateTime?
+  traffic              Int?
+  commissionMinimum    Decimal?  @db.Decimal(12, 2)
+  orkestraSales        Decimal?  @db.Decimal(12, 2)
+  orkestraTransactions Int?
+  orkestraPieces       Int?
+  store                Store     @relation(fields: [storeId], references: [id])
+  user                 User      @relation(fields: [userId], references: [id])
+
+  @@unique([userId, date])
+  @@index([storeId, date])
+  @@index([storeId, weekStart, weekNumber])
+}
+
+model Schedule {
+  id        String         @id @default(cuid())
+  userId    String
+  storeId   String
+  day       String
+  startTime String?
+  endTime   String?
+  zone      String?
+  weekStart DateTime
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+  date      DateTime
+  status    ScheduleStatus @default(WORKING)
+  statusRaw String?
+  store     Store          @relation(fields: [storeId], references: [id])
+  user      User           @relation(fields: [userId], references: [id])
+
+  @@unique([userId, date])
+  @@index([storeId, date])
+}
+
+model DayPlan {
+  id          String        @id @default(cuid())
+  userId      String
+  storeId     String
+  date        DateTime
+  dailyGoal   Decimal       @db.Decimal(12, 2)
+  focus       String
+  message     String
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  publishedAt DateTime?
+  activities  DayPlanTask[]
+  store       Store         @relation(fields: [storeId], references: [id])
+  user        User          @relation(fields: [userId], references: [id])
+}
+
+model DayPlanTask {
+  id          String     @id @default(cuid())
+  planId      String
+  title       String
+  completed   Boolean    @default(false)
+  completedAt DateTime?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  autoKey     String?
+  plan        DayPlan    @relation(fields: [planId], references: [id], onDelete: Cascade)
+  comments    Comment[]
+  evidences   Evidence[]
+
+  @@map("Activity")
+}
+
+model ChoreAssignment {
+  id        String   @id @default(cuid())
+  storeId   String
+  date      DateTime
+  choreKey  String
+  userId    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  store     Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([storeId, date, choreKey])
+  @@index([storeId, choreKey])
+}
+
+model Pending {
+  id          String          @id @default(cuid())
+  storeId     String
+  title       String
+  description String
+  category    PendingCategory
+  priority    PendingPriority
+  ownerId     String
+  status      PendingStatus   @default(PENDIENTE)
+  dueDate     DateTime
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  comments    Comment[]
+  evidences   Evidence[]
+  owner       User            @relation("PendingOwner", fields: [ownerId], references: [id])
+  store       Store           @relation(fields: [storeId], references: [id])
+}
+
+model StoreLog {
+  id          String     @id @default(cuid())
+  storeId     String
+  authorId    String
+  category    String
+  description String
+  evidenceUrl String?
+  createdAt   DateTime   @default(now())
+  comments    Comment[]
+  evidences   Evidence[]
+  author      User       @relation(fields: [authorId], references: [id])
+  store       Store      @relation(fields: [storeId], references: [id])
+}
+
+model Evidence {
+  id           String       @id @default(cuid())
+  storeId      String
+  uploadedById String
+  pendingId    String?
+  logEntryId   String?
+  taskId       String?
+  url          String
+  fileName     String?
+  mimeType     String?
+  note         String?
+  createdAt    DateTime     @default(now())
+  logEntry     StoreLog?    @relation(fields: [logEntryId], references: [id], onDelete: Cascade)
+  pending      Pending?     @relation(fields: [pendingId], references: [id], onDelete: Cascade)
+  store        Store        @relation(fields: [storeId], references: [id])
+  task         DayPlanTask? @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  uploadedBy   User         @relation("EvidenceAuthor", fields: [uploadedById], references: [id])
+
+  @@index([storeId, pendingId])
+  @@index([storeId, taskId])
+  @@index([storeId, logEntryId])
+}
+
+model Comment {
+  id             String        @id @default(cuid())
+  storeId        String
+  authorId       String
+  pendingId      String?
+  taskId         String?
+  logEntryId     String?
+  body           String
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  announcementId String?
+  announcement   Announcement? @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+  author         User          @relation("CommentAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  logEntry       StoreLog?     @relation(fields: [logEntryId], references: [id], onDelete: Cascade)
+  pending        Pending?      @relation(fields: [pendingId], references: [id], onDelete: Cascade)
+  store          Store         @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  task           DayPlanTask?  @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([storeId, pendingId, createdAt])
+  @@index([storeId, taskId, createdAt])
+  @@index([storeId, logEntryId, createdAt])
+  @@index([storeId, announcementId, createdAt])
+}
+
+model CommissionRule {
+  id                String   @id @default(cuid())
+  storeId           String
+  role              Role?
+  minSales          Decimal  @default(0) @db.Decimal(12, 2)
+  maxSales          Decimal? @db.Decimal(12, 2)
+  commissionPercent Decimal  @default(0) @db.Decimal(5, 2)
+  active            Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  minAchievement    Decimal  @default(0) @db.Decimal(5, 2)
+  maxAchievement    Decimal? @db.Decimal(5, 2)
+  store             Store    @relation(fields: [storeId], references: [id])
+}
+
+model Announcement {
+  id        String                 @id @default(cuid())
+  storeId   String
+  authorId  String
+  title     String
+  body      String
+  createdAt DateTime               @default(now())
+  updatedAt DateTime               @updatedAt
+  imageUrl  String?
+  author    User                   @relation(fields: [authorId], references: [id])
+  store     Store                  @relation(fields: [storeId], references: [id])
+  reactions AnnouncementReaction[]
+  reads     AnnouncementRead[]
+  comments  Comment[]
+}
+
+model AnnouncementReaction {
+  id             String       @id @default(cuid())
+  announcementId String
+  userId         String
+  emoji          String
+  createdAt      DateTime     @default(now())
+  announcement   Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([announcementId, userId, emoji])
+  @@index([announcementId])
+}
+
+model WebAuthnCredential {
+  id           String   @id @default(cuid())
+  userId       String
+  credentialId String   @unique
+  publicKey    String
+  counter      BigInt   @default(0)
+  transports   String?
+  createdAt    DateTime @default(now())
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model WebAuthnChallenge {
+  id        String   @id @default(cuid())
+  challenge String   @unique
+  userId    String?
+  expiresAt DateTime
+
+  @@index([expiresAt])
+}
+
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model AnnouncementRead {
+  id             String       @id @default(cuid())
+  announcementId String
+  userId         String
+  readAt         DateTime     @default(now())
+  announcement   Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id])
+
+  @@unique([announcementId, userId])
+}
+
+model KpiTarget {
+  id        String   @id @default(cuid())
+  storeId   String
+  metric    String
+  value     Decimal  @db.Decimal(12, 2)
+  period    String
+  createdBy String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  store     Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@unique([storeId, metric, period])
+  @@index([storeId])
+}
+
+model ChecklistEntry {
+  id          String    @id @default(cuid())
+  storeId     String
+  date        String
+  section     String
+  itemKey     String
+  completed   Boolean   @default(false)
+  note        String?
+  evidenceUrl String?
+  completedBy String?
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  store       Store     @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@unique([storeId, date, itemKey])
+  @@index([storeId, date])
+}
+
+model DailyNotificationLog {
+  id         String   @id @default(cuid())
+  employeeId String
+  date       String
+  sent       Boolean  @default(true)
+  case       String?
+  createdAt  DateTime @default(now())
+  type       String
+
+  @@unique([employeeId, date, type])
+  @@index([date])
+}
+
+model Survey {
+  id          String           @id @default(cuid())
+  storeId     String
+  authorId    String
+  title       String
+  description String?
+  anonymous   Boolean          @default(true)
+  active      Boolean          @default(true)
+  createdAt   DateTime         @default(now())
+  author      User             @relation("SurveyAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  store       Store            @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  questions   SurveyQuestion[]
+  responses   SurveyResponse[]
+
+  @@index([storeId, createdAt])
+}
+
+model SurveyQuestion {
+  id       String         @id @default(cuid())
+  surveyId String
+  text     String
+  type     String         @default("RATING")
+  order    Int            @default(0)
+  answers  SurveyAnswer[]
+  survey   Survey         @relation(fields: [surveyId], references: [id], onDelete: Cascade)
+
+  @@index([surveyId])
+}
+
+model SurveyResponse {
+  id        String         @id @default(cuid())
+  surveyId  String
+  userId    String
+  createdAt DateTime       @default(now())
+  answers   SurveyAnswer[]
+  survey    Survey         @relation(fields: [surveyId], references: [id], onDelete: Cascade)
+  user      User           @relation("SurveyRespondent", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([surveyId, userId])
+  @@index([surveyId])
+}
+
+model SurveyAnswer {
+  id         String         @id @default(cuid())
+  responseId String
+  questionId String
+  rating     Int?
+  text       String?
+  question   SurveyQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  response   SurveyResponse @relation(fields: [responseId], references: [id], onDelete: Cascade)
+
+  @@index([responseId])
+  @@index([questionId])
+}
+
+model ChatRoom {
+  id        String        @id @default(cuid())
+  storeId   String
+  type      ChatRoomType  @default(DIRECT)
+  name      String?
+  createdAt DateTime      @default(now())
+  members   ChatMember[]
+  messages  ChatMessage[]
+  store     Store         @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@index([storeId])
+}
+
+model ChatMember {
+  id       String   @id @default(cuid())
+  roomId   String
+  userId   String
+  joinedAt DateTime @default(now())
+  room     ChatRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([roomId, userId])
+  @@index([userId])
+}
+
+model ChatMessage {
+  id          String                @id @default(cuid())
+  roomId      String
+  senderId    String
+  body        String
+  createdAt   DateTime              @default(now())
+  deletedAt   DateTime?
+  replyToId   String?
+  replyTo     ChatMessage?          @relation("ChatReply", fields: [replyToId], references: [id])
+  replies     ChatMessage[]         @relation("ChatReply")
+  room        ChatRoom              @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  sender      User                  @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  deliveredTo ChatMessageDelivery[]
+  hiddenFor   ChatMessageHide[]
+  reactions   ChatMessageReaction[]
+  readBy      ChatMessageRead[]
+
+  @@index([roomId, createdAt])
+  @@index([replyToId])
+}
+
+model ChatMessageRead {
+  id        String      @id @default(cuid())
+  messageId String
+  userId    String
+  readAt    DateTime    @default(now())
+  message   ChatMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId])
+  @@index([messageId])
+  @@index([userId])
+}
+
+model ChatMessageDelivery {
+  id          String      @id @default(cuid())
+  messageId   String
+  userId      String
+  deliveredAt DateTime    @default(now())
+  message     ChatMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId])
+  @@index([messageId])
+  @@index([userId])
+}
+
+model ChatMessageHide {
+  id        String      @id @default(cuid())
+  messageId String
+  userId    String
+  hiddenAt  DateTime    @default(now())
+  message   ChatMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId])
+  @@index([messageId])
+  @@index([userId])
+}
+
+model MatchEvent {
+  id           String   @id @default(cuid())
+  opponent     String
+  opponentFlag String?
+  competition  String?
+  kickoff      DateTime
+  mxScore      Int      @default(0)
+  rivalScore   Int      @default(0)
+  status       String   @default("SCHEDULED")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  externalId   Int?
+  streamUrl    String?
+  homeTeam     String?
+  homeFlag     String?
+
+  @@index([kickoff])
+  @@index([status])
+}
+
+model CycleCountTag {
+  id        String            @id @default(cuid())
+  storeId   String
+  number    Int
+  zone      CycleCountZone
+  label     String?
+  active    Boolean           @default(true)
+  createdAt DateTime          @default(now())
+  entries   CycleCountEntry[]
+  store     Store             @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@unique([storeId, number])
+  @@index([storeId, zone])
+}
+
+model CycleCount {
+  id          String            @id @default(cuid())
+  storeId     String
+  date        DateTime
+  status      String            @default("OPEN")
+  theoretical Int?
+  notes       String?
+  createdAt   DateTime          @default(now())
+  closedAt    DateTime?
+  store       Store             @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  entries     CycleCountEntry[]
+  noUpcItems  CycleCountNoUpc[]
+
+  @@index([storeId, date])
+}
+
+model CycleCountEntry {
+  id           String        @id @default(cuid())
+  countId      String
+  tagId        String
+  count1       Int?
+  count1ById   String?
+  count1ByName String?
+  count1At     DateTime?
+  count2       Int?
+  count2ById   String?
+  count2ByName String?
+  count2At     DateTime?
+  count3       Int?
+  count3ById   String?
+  count3ByName String?
+  count3At     DateTime?
+  count        CycleCount    @relation(fields: [countId], references: [id], onDelete: Cascade)
+  tag          CycleCountTag @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@unique([countId, tagId])
+  @@index([countId])
+}
+
+model CycleCountNoUpc {
+  id      String     @id @default(cuid())
+  countId String
+  concept String
+  pieces  Int
+  count   CycleCount @relation(fields: [countId], references: [id], onDelete: Cascade)
+
+  @@index([countId])
+}
+
+model SubscriptionPayment {
+  id          String   @id @default(cuid())
+  storeId     String
+  mpPaymentId String   @unique
+  amountMxn   Decimal  @db.Decimal(10, 2)
+  status      String
+  method      String?
+  paidAt      DateTime @default(now())
+  periodEnd   DateTime
+  createdAt   DateTime @default(now())
+  store       Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@index([storeId, paidAt])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  storeId   String?
+  storeName String?
+  actorId   String?
+  actorName String
+  action    String
+  entity    String
+  entityId  String?
+  detail    String?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([storeId, createdAt])
+}
+
+model ChatMessageReaction {
+  id        String      @id @default(cuid())
+  messageId String
+  userId    String
+  emoji     String
+  createdAt DateTime    @default(now())
+  message   ChatMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId])
+  @@index([messageId])
+  @@index([userId])
+}
+
 enum Role {
   GERENTE
   SUBGERENTE
   ASESOR
+  REGIONAL
 }
 
 enum PendingCategory {
@@ -102,878 +952,7 @@ enum ChatRoomType {
   GROUP
 }
 
-model Store {
-  id             String         @id @default(cuid())
-  name           String
-  // Cobro SaaS: exenta por default (tienda propia / cortesía). Una tienda de
-  // pago se marca billingExempt=false y se le fija subscriptionPaidUntil.
-  billingExempt  Boolean        @default(true)
-  subscriptionPaidUntil DateTime?
-  // Precio por usuario activo al mes (MXN, IVA incl.). null = usa el default ($80).
-  // La mensualidad = usuarios activos × este precio.
-  pricePerUserMxn Decimal?        @db.Decimal(10, 2)
-  subscriptionPayments SubscriptionPayment[]
-  users          User[]
-  kpis           Kpi[]
-  schedules      Schedule[]
-  plans          DayPlan[]
-  pendings       Pending[]
-  logEntries     StoreLog[]
-  announcements  Announcement[]
-  evidences      Evidence[]
-  commissionRules CommissionRule[]
-  dataSources     DataSource[]
-  notifications   Notification[]
-  comments        Comment[]
-  kpiTargets      KpiTarget[]
-  checklistEntries ChecklistEntry[]
-  kudos           Kudo[]
-  shiftRequests   ShiftRequest[]
-  inventoryReports InventoryReport[]
-  trainingResources TrainingResource[]
-  choreAssignments ChoreAssignment[]
-  fixtures        StoreFixture[]
-  surveys         Survey[]
-  chatRooms       ChatRoom[]
-  cycleCountTags  CycleCountTag[]
-  cycleCounts     CycleCount[]
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
-}
-
-model StoreFixture {
-  id        String   @id @default(cuid())
-  storeId   String
-  store     Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
-  name      String
-  type      String   @default("TABLE") // WALL | TABLE | ROUND | RACK | CURVE | COUNTER
-  col       Int      @default(1)
-  row       Int      @default(1)
-  posX      Float    @default(0) // posición libre en el plano 3D
-  posZ      Float    @default(0)
-  rotation  Int      @default(0) // grados 0 | 90 | 180 | 270
-  styles    String[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([storeId])
-}
-
-model DataSource {
-  id         String             @id @default(cuid())
-  storeId    String
-  store      Store              @relation(fields: [storeId], references: [id], onDelete: Cascade)
-  type       DataSourceType
-  provider   DataSourceProvider @default(MANUAL)
-  name       String
-  url        String?
-  status     DataSourceStatus   @default(DISCONNECTED)
-  frequency  DataSourceFrequency @default(MANUAL)
-  lastSyncAt DateTime?
-  nextSyncAt DateTime?
-  syncLogs   SyncLog[]
-  createdAt  DateTime           @default(now())
-  updatedAt  DateTime           @updatedAt
-
-  @@unique([storeId, type])
-  @@index([storeId, status])
-}
-
-model SyncLog {
-  id               String        @id @default(cuid())
-  dataSourceId     String
-  dataSource       DataSource    @relation(fields: [dataSourceId], references: [id], onDelete: Cascade)
-  status           SyncLogStatus
-  message          String
-  recordsProcessed Int           @default(0)
-  createdAt        DateTime      @default(now())
-
-  @@index([dataSourceId, createdAt])
-}
-
-model User {
-  id                    String                 @id @default(cuid())
-  name                  String
-  email                 String                 @unique
-  employeeNumber        String                 @unique
-  passwordHash          String?
-  pinHash               String?
-  photoUrl              String?
-  active                Boolean                @default(true)
-  platformAdmin         Boolean                @default(false)
-  failedPinAttempts     Int                    @default(0)
-  pinLockedUntil        DateTime?
-  // Evidencia de consentimiento: cuándo y qué versión de términos aceptó.
-  termsAcceptedAt       DateTime?
-  termsAcceptedVersion  String?
-  biometricEnabled      Boolean                @default(false)
-  lastLoginAt           DateTime?
-  lastSeenAt            DateTime?
-  birthDate             DateTime?
-  hireDate              DateTime?
-  hoursOwed             Float                  @default(0)
-  vacationDays          Float                  @default(0)
-  paidDays              Float                  @default(0)
-  role                  Role
-  storeId               String
-  store                 Store                  @relation(fields: [storeId], references: [id])
-  kpis                  Kpi[]
-  schedules             Schedule[]
-  plans                 DayPlan[]
-  assignedPendings      Pending[]              @relation("PendingOwner")
-  authoredLogs          StoreLog[]
-  evidences             Evidence[]             @relation("EvidenceAuthor")
-  authoredAnnouncements Announcement[]
-  announcementReads     AnnouncementRead[]
-  announcementReactions AnnouncementReaction[]
-  employeeNumberAliases EmployeeNumberAlias[]
-  notifications         Notification[]
-  pushSubscriptions     PushSubscription[]
-  webAuthnCredentials   WebAuthnCredential[]
-  comments              Comment[]              @relation("CommentAuthor")
-  kudosSent             Kudo[]                 @relation("KudoFrom")
-  kudosReceived         Kudo[]                 @relation("KudoTo")
-  shiftRequests         ShiftRequest[]         @relation("ShiftRequester")
-  inventoryReports      InventoryReport[]      @relation("InventoryReporter")
-  inventoryResolved     InventoryReport[]      @relation("InventoryResolver")
-  authoredTraining      TrainingResource[]     @relation("TrainingAuthor")
-  trainingViews         TrainingResourceView[] @relation("TrainingViewer")
-  choreAssignments      ChoreAssignment[]
-  authoredSurveys       Survey[]               @relation("SurveyAuthor")
-  surveyResponses       SurveyResponse[]       @relation("SurveyRespondent")
-  chatMemberships       ChatMember[]
-  chatMessages          ChatMessage[]
-  chatMessageReads      ChatMessageRead[]
-  chatMessageDeliveries ChatMessageDelivery[]
-  chatMessageHides      ChatMessageHide[]
-  chatMessageReactions  ChatMessageReaction[]
-  createdAt             DateTime               @default(now())
-  updatedAt             DateTime               @updatedAt
-}
-
-model TrainingResource {
-  id          String                 @id @default(cuid())
-  storeId     String
-  store       Store                  @relation(fields: [storeId], references: [id], onDelete: Cascade)
-  authorId    String
-  author      User                   @relation("TrainingAuthor", fields: [authorId], references: [id], onDelete: Cascade)
-  title       String
-  description String?
-  category    String                 // VENTAS | PRODUCTO | ATENCION | POLITICAS | OTRO
-  linkUrl     String?
-  fileUrl     String?
-  fileName    String?
-  views       TrainingResourceView[]
-  createdAt   DateTime               @default(now())
-  updatedAt   DateTime               @updatedAt
-
-  @@index([storeId, createdAt])
-}
-
-model TrainingResourceView {
-  id         String           @id @default(cuid())
-  resourceId String
-  resource   TrainingResource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
-  userId     String
-  user       User             @relation("TrainingViewer", fields: [userId], references: [id], onDelete: Cascade)
-  viewedAt   DateTime         @default(now())
-
-  @@unique([resourceId, userId])
-  @@index([resourceId])
-}
-
-model InventoryReport {
-  id           String    @id @default(cuid())
-  storeId      String
-  store        Store     @relation(fields: [storeId], references: [id], onDelete: Cascade)
-  reporterId   String
-  reporter     User      @relation("InventoryReporter", fields: [reporterId], references: [id], onDelete: Cascade)
-  productName  String
-  category     String    // AGOTADO | DANADO | FALTANTE | ETIQUETA | OTRO
-  note         String?
-  photoUrl     String?
-  status       String    @default("ABIERTO") // ABIERTO | RESUELTO
-  resolvedById String?
-  resolvedBy   User?     @relation("InventoryResolver", fields: [resolvedById], references: [id])
-  resolvedAt   DateTime?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-
-  @@index([storeId, status, createdAt])
-}
-
-model ShiftRequest {
-  id           String    @id @default(cuid())
-  storeId      String
-  store        Store     @relation(fields: [storeId], references: [id], onDelete: Cascade)
-  requesterId  String
-  requester    User      @relation("ShiftRequester", fields: [requesterId], references: [id], onDelete: Cascade)
-  date         String    // "YYYY-MM-DD"
-  type         String    // VACACIONES | DESCANSO | PAGO_DIA | SALIR_TEMPRANO | ENTRAR_TARDE
-  hours        Float?    // para SALIR_TEMPRANO / ENTRAR_TARDE
-  reason       String?
-  status       String    @default("PENDIENTE") // PENDIENTE | APROBADO | RECHAZADO
-  resolvedById String?
-  resolvedAt   DateTime?
-  managerNote  String?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-
-  @@index([storeId, status, date])
-  @@index([requesterId, createdAt])
-}
-
-model Kudo {
-  id         String   @id @default(cuid())
-  storeId    String
-  store      Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
-  fromUserId String
-  fromUser   User     @relation("KudoFrom", fields: [fromUserId], references: [id], onDelete: Cascade)
-  toUserId   String
-  toUser     User     @relation("KudoTo", fields: [toUserId], references: [id], onDelete: Cascade)
-  emoji      String
-  message    String?
-  createdAt  DateTime @default(now())
-
-  @@index([storeId, createdAt])
-  @@index([toUserId, createdAt])
-}
-
-model Notification {
-  id        String           @id @default(cuid())
-  storeId   String
-  store     Store            @relation(fields: [storeId], references: [id], onDelete: Cascade)
-  userId    String
-  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  type      NotificationType
-  title     String
-  body      String
-  readAt    DateTime?
-  createdAt DateTime         @default(now())
-
-  @@index([userId, readAt, createdAt])
-  @@index([storeId, createdAt])
-}
-
-model EmployeeNumberAlias {
-  id             String @id @default(cuid())
-  employeeNumber String @unique
-  userId         String
-  user           User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt      DateTime @default(now())
-
-  @@index([userId])
-}
-
-model Kpi {
-  id             String   @id @default(cuid())
-  userId         String
-  user           User     @relation(fields: [userId], references: [id])
-  storeId        String
-  store          Store    @relation(fields: [storeId], references: [id])
-  date           DateTime
-  weekNumber     Int?
-  weekStart      DateTime?
-  weekEnd        DateTime?
-  dailySales     Decimal  @db.Decimal(12, 2)
-  monthlySales   Decimal  @db.Decimal(12, 2)
-  dailyGoal      Decimal  @db.Decimal(12, 2)
-  monthlyGoal    Decimal  @db.Decimal(12, 2)
-  avgTicket      Decimal  @db.Decimal(12, 2)
-  upt            Decimal  @db.Decimal(5, 2)
-  conversion     Decimal? @db.Decimal(5, 2)
-  traffic        Int?
-  pieces         Int
-  transactions   Int
-  ranking        Int
-  grossSales     Decimal? @db.Decimal(12, 2)
-  // Venta por WhatsApp (columnas ORKESTRA del RDV)
-  orkestraSales        Decimal? @db.Decimal(12, 2)
-  orkestraTransactions Int?
-  orkestraPieces       Int?
-  discountAmount Decimal? @db.Decimal(12, 2)
-  discountMargin Decimal? @db.Decimal(5, 2)
-  discountLimit  Decimal? @db.Decimal(5, 2)
-  commissionAmount Decimal @default(0) @db.Decimal(12, 2)
-  commissionPercent Decimal @default(0) @db.Decimal(5, 2)
-  commissionMinimum Decimal? @db.Decimal(12, 2)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-
-  @@unique([userId, date])
-  @@index([storeId, date])
-  @@index([storeId, weekStart, weekNumber])
-}
-
-model Schedule {
-  id        String         @id @default(cuid())
-  userId    String
-  user      User           @relation(fields: [userId], references: [id])
-  storeId   String
-  store     Store          @relation(fields: [storeId], references: [id])
-  date      DateTime
-  day       String
-  status    ScheduleStatus @default(WORKING)
-  statusRaw String?
-  startTime String?
-  endTime   String?
-  zone      String?
-  weekStart DateTime
-  createdAt DateTime       @default(now())
-  updatedAt DateTime       @updatedAt
-
-  @@unique([userId, date])
-  @@index([storeId, date])
-}
-
-model DayPlan {
-  id        String     @id @default(cuid())
-  userId    String
-  user      User       @relation(fields: [userId], references: [id])
-  storeId   String
-  store     Store      @relation(fields: [storeId], references: [id])
-  date      DateTime
-  dailyGoal Decimal    @db.Decimal(12, 2)
-  focus     String
-  message   String
-  publishedAt DateTime? // null = borrador (solo visible para gerencia hasta enviarlo)
-  activities DayPlanTask[]
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
-}
-
-model DayPlanTask {
-  id          String   @id @default(cuid())
-  planId      String
-  plan        DayPlan  @relation(fields: [planId], references: [id], onDelete: Cascade)
-  title       String
-  completed   Boolean  @default(false)
-  completedAt DateTime?
-  autoKey     String?  // null = manual; con valor = actividad operativa generada (CICLICO, BARRER_MOPEAR, ...)
-  evidences   Evidence[]
-  comments    Comment[]
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  @@map("Activity")
-}
-
-model ChoreAssignment {
-  id        String   @id @default(cuid())
-  storeId   String
-  store     Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
-  date      DateTime
-  choreKey  String   // CICLICO | BARRER_MOPEAR | TRAPEAR | VIDRIOS
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@unique([storeId, date, choreKey])
-  @@index([storeId, choreKey])
-}
-
-model Pending {
-  id          String          @id @default(cuid())
-  storeId     String
-  store       Store           @relation(fields: [storeId], references: [id])
-  title       String
-  description String
-  category    PendingCategory
-  priority    PendingPriority
-  ownerId     String
-  owner       User            @relation("PendingOwner", fields: [ownerId], references: [id])
-  status      PendingStatus   @default(PENDIENTE)
-  dueDate     DateTime
-  evidences   Evidence[]
-  comments    Comment[]
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
-}
-
-model StoreLog {
-  id          String   @id @default(cuid())
-  storeId     String
-  store       Store    @relation(fields: [storeId], references: [id])
-  authorId    String
-  author      User     @relation(fields: [authorId], references: [id])
-  category    String
-  description String
-  evidenceUrl String?
-  evidences   Evidence[]
-  comments    Comment[]
-  createdAt   DateTime @default(now())
-}
-
-model Evidence {
-  id           String       @id @default(cuid())
-  storeId      String
-  store        Store        @relation(fields: [storeId], references: [id])
-  uploadedById String
-  uploadedBy   User         @relation("EvidenceAuthor", fields: [uploadedById], references: [id])
-  pendingId    String?
-  pending      Pending?     @relation(fields: [pendingId], references: [id], onDelete: Cascade)
-  logEntryId   String?
-  logEntry     StoreLog?    @relation(fields: [logEntryId], references: [id], onDelete: Cascade)
-  taskId       String?
-  task         DayPlanTask? @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  url          String
-  fileName     String?
-  mimeType     String?
-  note         String?
-  createdAt    DateTime     @default(now())
-
-  @@index([storeId, pendingId])
-  @@index([storeId, taskId])
-  @@index([storeId, logEntryId])
-}
-
-model Comment {
-  id         String       @id @default(cuid())
-  storeId    String
-  store      Store        @relation(fields: [storeId], references: [id], onDelete: Cascade)
-  authorId   String
-  author     User         @relation("CommentAuthor", fields: [authorId], references: [id], onDelete: Cascade)
-  pendingId  String?
-  pending    Pending?     @relation(fields: [pendingId], references: [id], onDelete: Cascade)
-  taskId     String?
-  task       DayPlanTask? @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  logEntryId String?
-  logEntry   StoreLog?    @relation(fields: [logEntryId], references: [id], onDelete: Cascade)
-  announcementId String?
-  announcement   Announcement? @relation(fields: [announcementId], references: [id], onDelete: Cascade)
-  body       String
-  createdAt  DateTime     @default(now())
-  updatedAt  DateTime     @updatedAt
-
-  @@index([storeId, pendingId, createdAt])
-  @@index([storeId, taskId, createdAt])
-  @@index([storeId, logEntryId, createdAt])
-  @@index([storeId, announcementId, createdAt])
-}
-
-model CommissionRule {
-  id                String   @id @default(cuid())
-  storeId           String
-  store             Store    @relation(fields: [storeId], references: [id])
-  role              Role?
-  minSales          Decimal  @default(0) @db.Decimal(12, 2)
-  maxSales          Decimal? @db.Decimal(12, 2)
-  minAchievement    Decimal  @default(0) @db.Decimal(5, 2)
-  maxAchievement    Decimal? @db.Decimal(5, 2)
-  commissionPercent Decimal  @default(0) @db.Decimal(5, 2)
-  active            Boolean  @default(true)
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-}
-
-model Announcement {
-  id        String             @id @default(cuid())
-  storeId   String
-  store     Store              @relation(fields: [storeId], references: [id])
-  authorId  String
-  author    User               @relation(fields: [authorId], references: [id])
-  title     String
-  body      String
-  imageUrl  String?
-  reads     AnnouncementRead[]
-  reactions AnnouncementReaction[]
-  comments  Comment[]
-  createdAt DateTime           @default(now())
-  updatedAt DateTime           @updatedAt
-}
-
-model AnnouncementReaction {
-  id             String       @id @default(cuid())
-  announcementId String
-  announcement   Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
-  userId         String
-  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  emoji          String
-  createdAt      DateTime     @default(now())
-
-  @@unique([announcementId, userId, emoji])
-  @@index([announcementId])
-}
-
-model WebAuthnCredential {
-  id           String   @id @default(cuid())
-  userId       String
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  credentialId String   @unique
-  publicKey    String
-  counter      BigInt   @default(0)
-  transports   String?
-  createdAt    DateTime @default(now())
-
-  @@index([userId])
-}
-
-model WebAuthnChallenge {
-  id        String   @id @default(cuid())
-  challenge String   @unique
-  userId    String?
-  expiresAt DateTime
-
-  @@index([expiresAt])
-}
-
-model PushSubscription {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  endpoint  String   @unique
-  p256dh    String
-  auth      String
-  createdAt DateTime @default(now())
-
-  @@index([userId])
-}
-
-model AnnouncementRead {
-  id             String       @id @default(cuid())
-  announcementId String
-  announcement   Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
-  userId         String
-  user           User         @relation(fields: [userId], references: [id])
-  readAt         DateTime     @default(now())
-
-  @@unique([announcementId, userId])
-}
-
-model KpiTarget {
-  id        String   @id @default(cuid())
-  storeId   String
-  store     Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
-  metric    String
-  value     Decimal  @db.Decimal(12, 2)
-  period    String
-  createdBy String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@unique([storeId, metric, period])
-  @@index([storeId])
-}
-
-model ChecklistEntry {
-  id          String    @id @default(cuid())
-  storeId     String
-  store       Store     @relation(fields: [storeId], references: [id], onDelete: Cascade)
-  date        String    // "2026-06-14" (día retail en zona America/Monterrey)
-  section     String    // "APERTURA" | "CIERRE"
-  itemKey     String
-  completed   Boolean   @default(false)
-  note        String?
-  evidenceUrl String?
-  completedBy String?
-  completedAt DateTime?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-
-  @@unique([storeId, date, itemKey])
-  @@index([storeId, date])
-}
-
-model DailyNotificationLog {
-  id         String   @id @default(cuid())
-  employeeId String
-  date       String   // formato "2026-06-13" (día retail en zona America/Monterrey)
-  type       String   // "MORNING" o "EVENING"
-  case       String?  // "A"-"G", "skipped", o null (gerencia / matutina)
-  sent       Boolean  @default(true)
-  createdAt  DateTime @default(now())
-
-  @@unique([employeeId, date, type])
-  @@index([date])
-}
-
-model Survey {
-  id          String           @id @default(cuid())
-  storeId     String
-  store       Store            @relation(fields: [storeId], references: [id], onDelete: Cascade)
-  authorId    String
-  author      User             @relation("SurveyAuthor", fields: [authorId], references: [id], onDelete: Cascade)
-  title       String
-  description String?
-  anonymous   Boolean          @default(true)
-  active      Boolean          @default(true)
-  questions   SurveyQuestion[]
-  responses   SurveyResponse[]
-  createdAt   DateTime         @default(now())
-
-  @@index([storeId, createdAt])
-}
-
-model SurveyQuestion {
-  id       String         @id @default(cuid())
-  surveyId String
-  survey   Survey         @relation(fields: [surveyId], references: [id], onDelete: Cascade)
-  text     String
-  type     String         @default("RATING") // RATING (1-5) | TEXT
-  order    Int            @default(0)
-  answers  SurveyAnswer[]
-
-  @@index([surveyId])
-}
-
-model SurveyResponse {
-  id        String         @id @default(cuid())
-  surveyId  String
-  survey    Survey         @relation(fields: [surveyId], references: [id], onDelete: Cascade)
-  userId    String
-  user      User           @relation("SurveyRespondent", fields: [userId], references: [id], onDelete: Cascade)
-  answers   SurveyAnswer[]
-  createdAt DateTime       @default(now())
-
-  @@unique([surveyId, userId])
-  @@index([surveyId])
-}
-
-model SurveyAnswer {
-  id         String         @id @default(cuid())
-  responseId String
-  response   SurveyResponse @relation(fields: [responseId], references: [id], onDelete: Cascade)
-  questionId String
-  question   SurveyQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
-  rating     Int?
-  text       String?
-
-  @@index([responseId])
-  @@index([questionId])
-}
-
-model ChatRoom {
-  id        String        @id @default(cuid())
-  storeId   String
-  store     Store         @relation(fields: [storeId], references: [id], onDelete: Cascade)
-  type      ChatRoomType  @default(DIRECT)
-  name      String?
-  members   ChatMember[]
-  messages  ChatMessage[]
-  createdAt DateTime      @default(now())
-
-  @@index([storeId])
-}
-
-model ChatMember {
-  id       String   @id @default(cuid())
-  roomId   String
-  room     ChatRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
-  userId   String
-  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  joinedAt DateTime @default(now())
-
-  @@unique([roomId, userId])
-  @@index([userId])
-}
-
-model ChatMessage {
-  id          String                @id @default(cuid())
-  roomId      String
-  room        ChatRoom              @relation(fields: [roomId], references: [id], onDelete: Cascade)
-  senderId    String
-  sender      User                  @relation(fields: [senderId], references: [id], onDelete: Cascade)
-  body        String
-  replyToId   String?
-  replyTo     ChatMessage?          @relation("ChatReply", fields: [replyToId], references: [id], onDelete: SetNull)
-  replies     ChatMessage[]         @relation("ChatReply")
-  readBy      ChatMessageRead[]
-  deliveredTo ChatMessageDelivery[]
-  hiddenFor   ChatMessageHide[]
-  reactions   ChatMessageReaction[]
-  deletedAt   DateTime?             // eliminado para todos (soft delete)
-  createdAt   DateTime              @default(now())
-
-  @@index([roomId, createdAt])
-  @@index([replyToId])
-}
-
-model ChatMessageRead {
-  id        String      @id @default(cuid())
-  messageId String
-  message   ChatMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
-  userId    String
-  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  readAt    DateTime    @default(now())
-
-  @@unique([messageId, userId])
-  @@index([messageId])
-  @@index([userId])
-}
-
-model ChatMessageDelivery {
-  id          String      @id @default(cuid())
-  messageId   String
-  message     ChatMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
-  userId      String
-  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  deliveredAt DateTime    @default(now())
-
-  @@unique([messageId, userId])
-  @@index([messageId])
-  @@index([userId])
-}
-
-model ChatMessageHide {
-  id        String      @id @default(cuid())
-  messageId String
-  message   ChatMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
-  userId    String
-  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  hiddenAt  DateTime    @default(now())
-
-  @@unique([messageId, userId])
-  @@index([messageId])
-  @@index([userId])
-}
-
-model MatchEvent {
-  id           String   @id @default(cuid())
-  externalId   Int?     // api-football fixture ID para sync automático
-  // Equipo local. Null = México (modo histórico con tema tricolor). Con valor,
-  // el partido es de cualquier selección y usa el tema FIFA. mxScore guarda el
-  // marcador del equipo local; rivalScore el del visitante (opponent).
-  homeTeam     String?
-  homeFlag     String?
-  opponent     String
-  opponentFlag String?
-  competition  String?
-  streamUrl    String?  // enlace configurable para "Ver partido" el día del juego
-  kickoff      DateTime
-  mxScore      Int      @default(0)
-  rivalScore   Int      @default(0)
-  status       String   @default("SCHEDULED")
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  @@index([kickoff])
-  @@index([status])
-}
-
-// ── Conteos cíclicos de inventario (cada 15 días, por marbete) ──────────────
-
 enum CycleCountZone {
   PISO
   BODEGA
-}
-
-// Marbete fijo del catálogo de la tienda: mismo folio = misma ubicación en
-// cada conteo. Se desactiva en lugar de borrarse para conservar historial.
-model CycleCountTag {
-  id      String         @id @default(cuid())
-  storeId String
-  number  Int
-  zone    CycleCountZone
-  label   String?
-  active  Boolean        @default(true)
-  store   Store          @relation(fields: [storeId], references: [id], onDelete: Cascade)
-  entries CycleCountEntry[]
-  createdAt DateTime @default(now())
-
-  @@unique([storeId, number])
-  @@index([storeId, zone])
-}
-
-model CycleCount {
-  id          String   @id @default(cuid())
-  storeId     String
-  date        DateTime
-  status      String   @default("OPEN") // OPEN | CLOSED
-  theoretical Int?     // inventario teórico del sistema (opcional)
-  notes       String?
-  store       Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
-  entries     CycleCountEntry[]
-  noUpcItems  CycleCountNoUpc[]
-  createdAt   DateTime @default(now())
-  closedAt    DateTime?
-
-  @@index([storeId, date])
-}
-
-// Captura por marbete. count1 es el conteo físico; count2/count3 son los
-// reconteos del formato de mesa de control (2do y 3er conteo). Quién contó se
-// guarda como snapshot (id + nombre) para sobrevivir bajas de usuarios.
-model CycleCountEntry {
-  id        String    @id @default(cuid())
-  countId   String
-  tagId     String
-  count1    Int?
-  count1ById String?
-  count1ByName String?
-  count1At  DateTime?
-  count2    Int?
-  count2ById String?
-  count2ByName String?
-  count2At  DateTime?
-  count3    Int?
-  count3ById String?
-  count3ByName String?
-  count3At  DateTime?
-  count     CycleCount    @relation(fields: [countId], references: [id], onDelete: Cascade)
-  tag       CycleCountTag @relation(fields: [tagId], references: [id], onDelete: Cascade)
-
-  @@unique([countId, tagId])
-  @@index([countId])
-}
-
-// "Piezas Sin UPC" del formato: renglones libres de concepto + piezas.
-model CycleCountNoUpc {
-  id      String     @id @default(cuid())
-  countId String
-  concept String
-  pieces  Int
-  count   CycleCount @relation(fields: [countId], references: [id], onDelete: Cascade)
-
-  @@index([countId])
-}
-
-// Pagos de suscripción (Mercado Pago). Un registro por pago aprobado; el
-// mpPaymentId es único para que el webhook no acredite dos veces el mismo pago.
-model SubscriptionPayment {
-  id          String   @id @default(cuid())
-  storeId     String
-  store       Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
-  mpPaymentId String   @unique
-  amountMxn   Decimal  @db.Decimal(10, 2)
-  status      String   // approved | pending | rejected
-  method      String?  // account_money | oxxo | spei | credit_card…
-  paidAt      DateTime @default(now())
-  periodEnd   DateTime // hasta cuándo dejó pagada la suscripción este pago
-  createdAt   DateTime @default(now())
-
-  @@index([storeId, paidAt])
-}
-
-// Auditoría de acciones sensibles (metas, comisiones, usuarios, cobros).
-// Sin llaves foráneas a propósito: el registro debe sobrevivir aunque se
-// elimine el usuario o la tienda (se guardan snapshots de nombre).
-model AuditLog {
-  id        String   @id @default(cuid())
-  storeId   String?
-  storeName String?
-  actorId   String?
-  actorName String
-  action    String   // p.ej. "commission.update", "user.create", "billing.update"
-  entity    String   // p.ej. "CommissionRule", "User", "Store", "KpiTarget"
-  entityId  String?
-  detail    String?  // resumen legible de lo que cambió
-  createdAt DateTime @default(now())
-
-  @@index([createdAt])
-  @@index([storeId, createdAt])
-}
-
-model ChatMessageReaction {
-  id        String      @id @default(cuid())
-  messageId String
-  message   ChatMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
-  userId    String
-  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  emoji     String
-  createdAt DateTime    @default(now())
-
-  @@unique([messageId, userId]) // una reacción por usuario y mensaje (estilo WhatsApp)
-  @@index([messageId])
-  @@index([userId])
 }

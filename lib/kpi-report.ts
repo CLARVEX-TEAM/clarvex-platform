@@ -1,7 +1,9 @@
+import type { Role } from "@/lib/types";
+
 export type KpiReportItem = {
   userId: string;
   userName: string;
-  role: "GERENTE" | "SUBGERENTE" | "ASESOR";
+  role: Role;
   avatar: string;
   photoUrl: string | null;
   sales: number;

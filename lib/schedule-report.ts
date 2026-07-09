@@ -1,11 +1,12 @@
 import { dateKey } from "@/lib/schedule-week";
+import type { Role } from "@/lib/types";
 
 export type ScheduleViewStatus = "WORKING" | "OFF" | "VACATION" | "PAID_DAY" | "INVENTORY" | "TERMINATED" | "UNKNOWN";
 
 type ScheduleUser = {
   id: string;
   name: string;
-  role: "GERENTE" | "SUBGERENTE" | "ASESOR";
+  role: Role;
   photoUrl: string | null;
 };
 

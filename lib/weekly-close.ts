@@ -36,7 +36,7 @@ export type WeeklyCloseColumn = {
   waPieces: number | null;
 };
 
-const ROLE_ORDER: Record<KpiReportItem["role"], number> = { GERENTE: 0, SUBGERENTE: 1, ASESOR: 2 };
+const ROLE_ORDER: Record<KpiReportItem["role"], number> = { GERENTE: 0, SUBGERENTE: 1, ASESOR: 2, REGIONAL: 3 };
 
 export function buildWeeklyCloseColumns(
   members: KpiReportItem[],

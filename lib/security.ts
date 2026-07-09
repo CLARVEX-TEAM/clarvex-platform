@@ -1,5 +1,6 @@
 import bcrypt from "bcryptjs";
 import type { Session } from "@/lib/session-token";
+import type { Role } from "@/lib/types";
 
 export function hashPin(pin: string) {
   return bcrypt.hash(pin, 12);
@@ -17,7 +18,7 @@ export function canModifyPending(session: Session | null, storeId: string) {
   return Boolean(session && session.storeId === storeId && (session.role === "GERENTE" || session.role === "SUBGERENTE"));
 }
 
-export function publicUser<T extends { id: string; name: string; employeeNumber: string; role: "GERENTE" | "SUBGERENTE" | "ASESOR"; photoUrl: string | null; biometricEnabled: boolean; lastLoginAt: Date | null }>(user: T) {
+export function publicUser<T extends { id: string; name: string; employeeNumber: string; role: Role; photoUrl: string | null; biometricEnabled: boolean; lastLoginAt: Date | null }>(user: T) {
   return {
     id: user.id,
     name: user.name,

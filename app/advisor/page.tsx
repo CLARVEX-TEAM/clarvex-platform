@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { Receipt, ShoppingBag, Target, Trophy } from "lucide-react";
+import { Receipt, ShoppingBag, Target, Trophy, Sparkles } from "lucide-react";
 import { getSession, logout } from "@/lib/auth";
 import { completion, money } from "@/lib/format";
 import { haptic } from "@/lib/haptics";
@@ -12,7 +12,7 @@ import { computeAchievements } from "@/lib/achievements";
 import { buildSalesTrend, buildDailySeries } from "@/lib/trend";
 import type { User } from "@/lib/types";
 import Link from "next/link";
-import { AppFrame, Badge, BottomNav, Card, NotificationCard } from "@/components/ui";
+import { AppFrame, Badge, BottomNav, Card, NotificationCard, SimulatorCard } from "@/components/ui";
 import { TaskList } from "@/components/TaskList";
 import { Confetti } from "@/components/Confetti";
 import { PullToRefresh } from "@/components/PullToRefresh";
@@ -37,6 +37,29 @@ export default function AdvisorDashboard() {
   const [user, setUser] = useState<User | null>(null);
   const [celebrate, setCelebrate] = useState(false);
   const { data, lastUpdated, loadFailed, setLoadFailed, load } = useAppData();
+  const [tips, setTips] = useState<{ title: string; description: string }[]>([]);
+  const [loadingTips, setLoadingTips] = useState(false);
+  const [tipsError, setTipsError] = useState("");
+
+  async function fetchSalesTips() {
+    if (!data) return;
+    setLoadingTips(true);
+    setTipsError("");
+    try {
+      const res = await fetch("/api/ai/coach-advisor", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ date: data.dashboardDaily.date })
+      });
+      const payload = await res.json() as { tips?: { title: string; description: string }[]; error?: string };
+      if (!res.ok) throw new Error(payload.error || "No se pudo obtener consejos.");
+      setTips(payload.tips || []);
+    } catch (err: any) {
+      setTipsError(err.message || "Error al obtener sugerencias.");
+    } finally {
+      setLoadingTips(false);
+    }
+  }
 
   useEffect(() => {
     getSession().then((session) => {
@@ -195,6 +218,16 @@ export default function AdvisorDashboard() {
           <QuickActions variant="advisor" delay={0.24} />
         </div>
 
+        <motion.div {...cardAnim(0.26)} className="mt-3">
+          <SimulatorCard
+            sales={daily.dailySales}
+            goal={daily.dailyGoal}
+            minimum={kpi?.commissionMinimum}
+            rules={data.commissionRules}
+            role={user.role}
+          />
+        </motion.div>
+
         <motion.div {...cardAnim(0.28)} className="mt-3">
           <Card>
             <div className="flex items-start justify-between gap-4">
@@ -216,6 +249,48 @@ export default function AdvisorDashboard() {
           <AchievementsCard achievements={achievements} />
         </motion.div>
 
+        <motion.div {...cardAnim(0.31)} className="mt-3">
+          <Card>
+            <h2 className="mb-3 text-lg font-black flex items-center gap-2">
+              <span className="text-[#00FF66]">🎯</span> Retos del Día
+            </h2>
+            <div className="space-y-3.5">
+              {/* Reto 1: Meta de Ventas */}
+              <div className="flex items-center justify-between gap-4 text-sm">
+                <div className="min-w-0">
+                  <p className="font-bold text-white">Objetivo de Venta</p>
+                  <p className="text-xs text-slate-400 mt-0.5">Alcanzar tu meta personal de {money(daily.dailyGoal)}</p>
+                </div>
+                <Badge tone={daily.dailySales >= daily.dailyGoal && daily.dailyGoal > 0 ? "success" : "warn"}>
+                  {daily.dailySales >= daily.dailyGoal && daily.dailyGoal > 0 ? "Completado" : "Pendiente"}
+                </Badge>
+              </div>
+
+              {/* Reto 2: Checklist */}
+              <div className="flex items-center justify-between gap-4 text-sm border-t border-white/[0.07] pt-3">
+                <div className="min-w-0">
+                  <p className="font-bold text-white">Checklist Operativo</p>
+                  <p className="text-xs text-slate-400 mt-0.5">Completar todas las tareas del plan de hoy ({planDone}/{planTotal})</p>
+                </div>
+                <Badge tone={planTotal > 0 && planDone === planTotal ? "success" : "warn"}>
+                  {planTotal > 0 && planDone === planTotal ? "Completado" : "Pendiente"}
+                </Badge>
+              </div>
+
+              {/* Reto 3: UPT */}
+              <div className="flex items-center justify-between gap-4 text-sm border-t border-white/[0.07] pt-3">
+                <div className="min-w-0">
+                  <p className="font-bold text-white">UPT Imparable</p>
+                  <p className="text-xs text-slate-400 mt-0.5">Mantener tu ratio de artículos por ticket arriba de 2.0 (UPT actual: {kpi?.upt ?? 0})</p>
+                </div>
+                <Badge tone={(kpi?.upt ?? 0) >= 2.0 ? "success" : "warn"}>
+                  {(kpi?.upt ?? 0) >= 2.0 ? "Completado" : "Bajo"}
+                </Badge>
+              </div>
+            </div>
+          </Card>
+        </motion.div>
+
         <motion.div {...cardAnim(0.32)} className="mt-3">
           <Card>
             <div className="mb-3 flex items-center justify-between gap-2">
@@ -231,6 +306,52 @@ export default function AdvisorDashboard() {
             <div className="mt-2">
               <TaskList activities={plan?.activities ?? []} />
             </div>
+          </Card>
+        </motion.div>
+
+        <motion.div {...cardAnim(0.34)} className="mt-3">
+          <Card>
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <Sparkles className="text-volt animate-pulse" size={18} />
+                <h2 className="text-lg font-black">Coach de Ventas IA</h2>
+              </div>
+              <Badge tone="success">Recomendaciones</Badge>
+            </div>
+            
+            {tips.length === 0 ? (
+              <div className="py-2">
+                <p className="text-xs text-muted mb-3">Obtén recomendaciones personalizadas basadas en tus métricas actuales para elevar tus ventas.</p>
+                <button
+                  type="button"
+                  onClick={() => void fetchSalesTips()}
+                  disabled={loadingTips}
+                  className="w-full flex items-center justify-center gap-2 rounded-2xl bg-volt px-4 py-2.5 text-sm font-black text-white transition active:scale-95 disabled:opacity-40"
+                >
+                  <Sparkles size={16} />
+                  {loadingTips ? "Analizando KPIs..." : "Consultar a mi Coach IA"}
+                </button>
+                {tipsError && <p className="mt-2 text-xs text-rose-500 font-semibold">{tipsError}</p>}
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {tips.map((tip, idx) => (
+                  <div key={idx} className="border-b border-white/[0.07] pb-3 last:border-0 last:pb-0">
+                    <p className="text-sm font-bold text-volt">{tip.title}</p>
+                    <p className="mt-1 text-xs text-muted">{tip.description}</p>
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => void fetchSalesTips()}
+                  disabled={loadingTips}
+                  className="w-full mt-2 flex items-center justify-center gap-1.5 rounded-xl border border-line py-2 text-xs font-bold text-muted hover:text-ink transition"
+                >
+                  <Sparkles size={12} />
+                  {loadingTips ? "Actualizando..." : "Actualizar consejos"}
+                </button>
+              </div>
+            )}
           </Card>
         </motion.div>
 

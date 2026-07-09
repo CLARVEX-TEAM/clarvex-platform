@@ -19,6 +19,7 @@ export { AppFrame, AppCopyright } from "./AppFrame";
 export { Skeleton } from "./Skeleton";
 export { EmptyState } from "./EmptyState";
 export { QuickLink, FloatingActionButton } from "./QuickLink";
+export { SimulatorCard } from "./SimulatorCard";
 
 // Re-export de iconos de página usados por componentes externos.
 import { CalendarDays, BookOpen, UserRound } from "lucide-react";

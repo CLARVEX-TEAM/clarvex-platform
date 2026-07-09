@@ -2,12 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { motion } from "framer-motion";
 import { HeartHandshake, Send, Trophy } from "lucide-react";
 import { getSession } from "@/lib/auth";
 import { fetchAppData } from "@/lib/app-data";
 import { KUDO_OPTIONS } from "@/lib/kudos";
 import type { User } from "@/lib/types";
 import { AppFrame, AppHeader, Badge, BottomNav, Button, Card, ProfileAvatar } from "@/components/ui";
+import { Confetti } from "@/components/Confetti";
 
 type KudoItem = { id: string; emoji: string; message: string | null; from: { name: string; photoUrl?: string | null }; to: { name: string; photoUrl?: string | null }; createdAt: string };
 type TopWeek = { name: string; photoUrl: string | null; count: number } | null;
@@ -25,6 +27,7 @@ export default function KudosPage() {
   const [sending, setSending] = useState(false);
   const [status, setStatus] = useState("");
   const [loading, setLoading] = useState(true);
+  const [showConfetti, setShowConfetti] = useState(false);
 
   useEffect(() => {
     getSession().then((current) => { if (!current) router.replace("/login"); else setSession(current); });
@@ -67,6 +70,8 @@ export default function KudosPage() {
       const payload = await response.json() as { error?: string };
       if (!response.ok) throw new Error(payload.error ?? "No se pudo enviar.");
       setStatus("¡Reconocimiento enviado! 🎉");
+      setShowConfetti(true);
+      setTimeout(() => setShowConfetti(false), 2600);
       setMessage("");
       setToUserId("");
       await refreshFeed();
@@ -80,6 +85,7 @@ export default function KudosPage() {
   return (
     <>
       <AppHeader title="Reconocimiento" subtitle="Reconoce el buen trabajo de tu equipo" backHref={session?.role === "ASESOR" ? "/advisor" : "/manager"} />
+      <Confetti show={showConfetti} />
       <AppFrame>
         {topWeek ? (
           <Card className="mb-3 border border-amber-300/40 bg-gradient-to-br from-amber-50 to-orange-50 p-3.5 dark:from-[#2a2410] dark:to-[#2a1c10]">
@@ -146,15 +152,21 @@ export default function KudosPage() {
             <p className="py-4 text-sm text-muted">Aún no hay reconocimientos. ¡Sé el primero! 👏</p>
           ) : (
             <div className="divide-y divide-white/[0.07]">
-              {kudos.map((kudo) => (
-                <div key={kudo.id} className="flex items-start gap-3 py-2.5">
+              {kudos.map((kudo, index) => (
+                <motion.div
+                  key={kudo.id}
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3, delay: Math.min(index * 0.05, 0.4) }}
+                  className="flex items-start gap-3 py-2.5"
+                >
                   <span className="mt-0.5 text-xl">{kudo.emoji}</span>
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-bold text-ink"><span className="text-volt">{kudo.from.name}</span> → {kudo.to.name}</p>
                     {kudo.message ? <p className="mt-0.5 text-sm text-muted">{kudo.message}</p> : null}
                     <p className="mt-0.5 text-[11px] text-muted">{new Date(kudo.createdAt).toLocaleString("es-MX", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" })}</p>
                   </div>
-                </div>
+                </motion.div>
               ))}
             </div>
           )}

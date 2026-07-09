@@ -1,4 +1,4 @@
-export type Role = "GERENTE" | "SUBGERENTE" | "ASESOR";
+export type Role = "GERENTE" | "SUBGERENTE" | "ASESOR" | "REGIONAL";
 export type Priority = "baja" | "media" | "alta" | "critica";
 export type PendingStatus = "pendiente" | "en proceso" | "completado";
 
@@ -41,6 +41,7 @@ export type Kpi = {
   discountLimit: number | null;
   commissionAmount: number;
   commissionPercent: number;
+  commissionMinimum?: number | null;
 };
 
 export type Activity = {

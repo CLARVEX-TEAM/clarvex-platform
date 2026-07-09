@@ -47,6 +47,29 @@ export default function PlanPage() {
   const [published, setPublished] = useState(false);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [suggesting, setSuggesting] = useState(false);
+
+  async function suggestWithAI() {
+    if (suggesting) return;
+    setSuggesting(true);
+    try {
+      const res = await fetch("/api/ai/plan-manager", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ date })
+      });
+      const payload = await res.json() as { focus?: string; message?: string; activities?: string[]; error?: string };
+      if (!res.ok) throw new Error(payload.error || "No se pudo obtener la sugerencia.");
+      setFocus(payload.focus ?? "");
+      setMessage(payload.message ?? "");
+      setActivityChips(payload.activities ?? []);
+      toast("Plan sugerido por la IA cargado. ¡Revísalo antes de guardarlo!", "success");
+    } catch (error: any) {
+      toast(error.message || "Error al conectar con el Asistente IA.", "error");
+    } finally {
+      setSuggesting(false);
+    }
+  }
 
   useEffect(() => {
     getSession().then(setSession);
@@ -282,7 +305,18 @@ export default function PlanPage() {
         {/* ── Crear plan ── */}
         {!isAdvisor ? (
           <Card className="mb-3">
-            <h2 className="mb-4 text-lg font-black">Crear plan</h2>
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <h2 className="text-lg font-black">Crear plan</h2>
+              <button
+                type="button"
+                onClick={() => void suggestWithAI()}
+                disabled={suggesting}
+                className="flex items-center gap-1.5 rounded-full bg-volt/15 px-3 py-1.5 text-xs font-black text-[#00FF66] ring-1 ring-volt/40 transition active:scale-95 disabled:opacity-40"
+              >
+                <Sparkles size={13} className="text-volt animate-pulse" />
+                {suggesting ? "Pensando..." : "Sugerir con IA"}
+              </button>
+            </div>
             <form className="grid gap-3" onSubmit={createPlan}>
               <div className="grid grid-cols-2 gap-3">
                 <AppDatePicker label="Fecha" value={date} onChange={setDate} required />

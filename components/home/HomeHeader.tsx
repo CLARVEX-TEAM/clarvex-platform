@@ -11,7 +11,8 @@ import { timeGreeting } from "@/lib/greeting";
 const roleLabel: Record<Role, string> = {
   GERENTE: "Gerente",
   SUBGERENTE: "Subgerente",
-  ASESOR: "Asesor"
+  ASESOR: "Asesor",
+  REGIONAL: "Dir. Regional"
 };
 
 interface HomeHeaderProps {
