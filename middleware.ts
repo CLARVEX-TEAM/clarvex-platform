@@ -26,15 +26,18 @@ export async function middleware(request: NextRequest) {
   if (!session) return NextResponse.redirect(new URL("/login", request.url));
   const isRegional = session.role === "REGIONAL";
   const isManager = session.role === "GERENTE" || session.role === "SUBGERENTE";
+  const isPlatformAdmin = session.platformAdmin === true;
+
   if (startsWithRoute(pathname, ["/admin"])) {
-    if (session.platformAdmin) return NextResponse.next();
+    if (isPlatformAdmin) return NextResponse.next();
     if (isRegional) return NextResponse.redirect(new URL("/regional", request.url));
     return NextResponse.redirect(new URL(isManager ? "/manager" : "/advisor", request.url));
   }
-  if (startsWithRoute(pathname, ["/datos"]) && !canManageDataSources(session.role)) {
+  if (startsWithRoute(pathname, ["/datos"]) && !canManageDataSources(session.role) && !isPlatformAdmin) {
     return NextResponse.redirect(new URL(isRegional ? "/regional" : "/advisor", request.url));
   }
-  const allowed = startsWithRoute(pathname, sharedRoutes)
+  const allowed = isPlatformAdmin
+    || startsWithRoute(pathname, sharedRoutes)
     || (isRegional && startsWithRoute(pathname, ["/regional"]))
     || (isManager && startsWithRoute(pathname, managerRoutes))
     || (!isManager && !isRegional && startsWithRoute(pathname, advisorRoutes));
