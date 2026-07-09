@@ -15,6 +15,15 @@ export function ClarvexCopilot() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  const [lockUpdate, setLockUpdate] = useState(0);
+
+  useEffect(() => {
+    function handleLockChange() {
+      setLockUpdate((prev) => prev + 1);
+    }
+    window.addEventListener("desktop-lock-change", handleLockChange);
+    return () => window.removeEventListener("desktop-lock-change", handleLockChange);
+  }, []);
 
   useEffect(() => {
     // Hidden on login screen
@@ -25,23 +34,36 @@ export function ClarvexCopilot() {
       return;
     }
 
+    // Hidden on desktop routes if screen is locked
+    const isDesktop = pathname.startsWith("/escritorio");
+    const isDesktopUnlocked = typeof window !== "undefined" && sessionStorage.getItem("desktop_unlocked") === "true";
+    if (isDesktop && !isDesktopUnlocked) {
+      setUser(null);
+      setMessages([]);
+      setIsOpen(false);
+      return;
+    }
+
     getSession().then((session) => {
       if (session) {
         setUser(session);
-        if (messages.length === 0) {
-          setMessages([
-            {
-              role: "assistant",
-              content: `¡Hola, ${session.name}! Soy Clarvex Copilot. Estoy conectado en tiempo real a los KPIs, pendientes y horarios de tu tienda. ¿En qué te puedo ayudar hoy?`,
-            },
-          ]);
-        }
+        setMessages((prev) => {
+          if (prev.length === 0) {
+            return [
+              {
+                role: "assistant",
+                content: `¡Hola, ${session.name}! Soy Clarvex Copilot. Estoy conectado en tiempo real a los KPIs, pendientes y horarios de tu tienda. ¿En qué te puedo ayudar hoy?`,
+              },
+            ];
+          }
+          return prev;
+        });
       } else {
         setUser(null);
         setMessages([]);
       }
     });
-  }, [pathname, isOpen]);
+  }, [pathname, isOpen, lockUpdate]);
 
   useEffect(() => {
     if (messagesEndRef.current) {

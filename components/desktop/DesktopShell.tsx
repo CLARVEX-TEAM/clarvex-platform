@@ -146,10 +146,14 @@ export function DesktopShell({ children }: { children: React.ReactNode }) {
           unlockedSession = session;
           setUser(session);
           setUnlocked(true);
+          sessionStorage.setItem("desktop_unlocked", "true");
+          window.dispatchEvent(new Event("desktop-lock-change"));
         }
         setChecking(false);
       });
     } else {
+      sessionStorage.removeItem("desktop_unlocked");
+      window.dispatchEvent(new Event("desktop-lock-change"));
       setChecking(false);
     }
   }, [router]);
@@ -162,16 +166,22 @@ export function DesktopShell({ children }: { children: React.ReactNode }) {
     unlockedSession = unlockedUser;
     setUser(unlockedUser);
     setUnlocked(true);
+    sessionStorage.setItem("desktop_unlocked", "true");
+    window.dispatchEvent(new Event("desktop-lock-change"));
   }
 
   function relock() {
     unlockedSession = null;
     setUser(null);
     setUnlocked(false);
+    sessionStorage.removeItem("desktop_unlocked");
+    window.dispatchEvent(new Event("desktop-lock-change"));
   }
 
   async function handleLogout() {
     unlockedSession = null;
+    sessionStorage.removeItem("desktop_unlocked");
+    window.dispatchEvent(new Event("desktop-lock-change"));
     await logout();
     router.push("/login");
   }
