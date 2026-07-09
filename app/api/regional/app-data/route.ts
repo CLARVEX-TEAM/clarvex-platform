@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { isApiError, requireSession } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
 import { dashboardDateKey, dashboardDateRange } from "@/lib/dashboard-kpi";
+import { buildRetailMonths, selectRetailMonth } from "@/lib/kpi-period";
+import { mergeRdvWeeks } from "@/lib/rdv-week";
 
 export const dynamic = "force-dynamic";
 
@@ -32,14 +34,38 @@ export async function GET(request: Request) {
       }
     });
 
-    // 3. Obtener ventas y metas del mes (acumuladas) agrupadas por tienda
-    // Para simplificar, tomamos los registros del mes actual de la base de datos
-    const firstDayOfMonth = new Date(dashboardRange.start);
-    firstDayOfMonth.setDate(1);
+    // 3. Obtener el rango del mes retail actual a partir de las semanas registradas
+    const [availableWeekRows, legacyWeekRows] = await Promise.all([
+      prisma.kpi.findMany({
+        where: { weekNumber: { not: null }, weekStart: { not: null }, weekEnd: { not: null } },
+        distinct: ["weekStart", "weekNumber"],
+        select: { weekNumber: true, weekStart: true, weekEnd: true },
+        orderBy: { weekStart: "desc" }
+      }),
+      prisma.kpi.findMany({
+        where: { OR: [{ weekNumber: null }, { weekStart: null }, { weekEnd: null }] },
+        distinct: ["date"],
+        select: { date: true },
+        orderBy: { date: "desc" }
+      })
+    ]);
+
+    const persistedWeeks = availableWeekRows.flatMap((week) =>
+      week.weekNumber !== null && week.weekStart && week.weekEnd
+        ? [{ weekNumber: week.weekNumber, weekStart: week.weekStart, weekEnd: week.weekEnd }]
+        : []
+    );
+
+    const availableWeeks = mergeRdvWeeks(persistedWeeks, legacyWeekRows.map((row) => row.date))
+      .sort((left, right) => left.weekStart.getTime() - right.weekStart.getTime());
+
+    const retailMonths = buildRetailMonths(availableWeeks);
+    const selectedRetailMonth = selectRetailMonth(retailMonths, dashboardRange.start);
+    const retailMonthStart = selectedRetailMonth?.start ?? new Date(dashboardRange.start.getFullYear(), dashboardRange.start.getMonth(), 1);
 
     const monthlyKpis = await prisma.kpi.findMany({
       where: {
-        date: { gte: firstDayOfMonth, lt: dashboardRange.end }
+        date: { gte: retailMonthStart, lt: dashboardRange.end }
       },
       select: {
         storeId: true,
@@ -81,7 +107,7 @@ export async function GET(request: Request) {
     // Agrupamos la venta mensual acumulada por usuario en el rango del mes
     const topAdvisorsRaw = await prisma.kpi.findMany({
       where: {
-        date: { gte: firstDayOfMonth, lt: dashboardRange.end },
+        date: { gte: retailMonthStart, lt: dashboardRange.end },
         user: { role: "ASESOR", active: true }
       },
       include: {

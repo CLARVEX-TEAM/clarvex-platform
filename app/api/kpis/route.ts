@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { isApiError, requireSession } from "@/lib/api";
 import { decodeSyncLogMessage, type KpiSyncMetrics } from "@/lib/data-source";
 import { aggregateKpis, aggregateStore, aggregateStoreTraffic } from "@/lib/kpi-report";
-import { buildRetailMonths, parsePeriodDate, periodDateKey, type KpiPeriod } from "@/lib/kpi-period";
+import { buildRetailMonths, parsePeriodDate, periodDateKey, selectRetailMonth, selectRdvWeek, type KpiPeriod } from "@/lib/kpi-period";
 import { prisma } from "@/lib/prisma";
 import { mergeRdvWeeks } from "@/lib/rdv-week";
 import { buildWorkingScheduleKeys } from "@/lib/working-days";
@@ -174,15 +174,4 @@ function pickTtlsForMonth(logs: Array<{ message: string }>, monthLabel: string |
   return null;
 }
 
-function selectRetailMonth(months: Array<{ label: string; start: Date; end: Date }>, selectedDate: Date) {
-  return months.find((month) => selectedDate >= month.start && selectedDate <= month.end)
-    ?? months.find((month) => month.end.getUTCFullYear() === selectedDate.getUTCFullYear() && month.end.getUTCMonth() === selectedDate.getUTCMonth())
-    ?? months.at(-1)
-    ?? null;
-}
 
-function selectRdvWeek(weeks: Array<{ weekNumber: number; weekStart: Date; weekEnd: Date }>, selectedDate: Date) {
-  return weeks.find((week) => week.weekStart.getTime() === selectedDate.getTime())
-    ?? weeks.find((week) => selectedDate >= week.weekStart && selectedDate <= week.weekEnd)
-    ?? null;
-}

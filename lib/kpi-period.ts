@@ -40,6 +40,20 @@ export function periodDateKey(date: Date) {
   return date.toISOString().slice(0, 10);
 }
 
+export function selectRetailMonth(months: Array<{ label: string; start: Date; end: Date }>, selectedDate: Date) {
+  return months.find((month) => selectedDate >= month.start && selectedDate <= month.end)
+    ?? months.find((month) => month.end.getUTCFullYear() === selectedDate.getUTCFullYear() && month.end.getUTCMonth() === selectedDate.getUTCMonth())
+    ?? months.at(-1)
+    ?? null;
+}
+
+export function selectRdvWeek(weeks: Array<{ weekNumber: number; weekStart: Date; weekEnd: Date }>, selectedDate: Date) {
+  return weeks.find((week) => week.weekStart.getTime() === selectedDate.getTime())
+    ?? weeks.find((week) => selectedDate >= week.weekStart && selectedDate <= week.weekEnd)
+    ?? null;
+}
+
 function utcDate(year: number, month: number, day: number) {
   return new Date(Date.UTC(year, month, day));
 }
+
