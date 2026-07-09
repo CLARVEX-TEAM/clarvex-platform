@@ -1,11 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { Receipt, ShoppingBag, Target, Trophy } from "lucide-react";
 import { getSession, logout } from "@/lib/auth";
-import { fetchAppData, type AppData } from "@/lib/app-data";
 import { completion, money } from "@/lib/format";
 import { haptic } from "@/lib/haptics";
 import { computeDailyStreak } from "@/lib/streaks";
@@ -25,6 +24,7 @@ import { SalesTrendCard } from "@/components/home/SalesTrendCard";
 import { TeamCelebrationsCard } from "@/components/home/TeamCelebrationsCard";
 import { PaceCard } from "@/components/home/PaceCard";
 import { AchievementsCard } from "@/components/home/AchievementsCard";
+import { useAppData } from "@/lib/use-app-data";
 
 const cardAnim = (delay: number) => ({
   initial: { opacity: 0, y: 12 },
@@ -35,9 +35,8 @@ const cardAnim = (delay: number) => ({
 export default function AdvisorDashboard() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
-  const [data, setData] = useState<AppData | null>(null);
-  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [celebrate, setCelebrate] = useState(false);
+  const { data, lastUpdated, loadFailed, setLoadFailed, load } = useAppData();
 
   useEffect(() => {
     getSession().then((session) => {
@@ -45,28 +44,6 @@ export default function AdvisorDashboard() {
       else setUser(session);
     });
   }, [router]);
-
-  const [loadFailed, setLoadFailed] = useState(false);
-  const load = useCallback(
-    () =>
-      fetchAppData()
-        .then((d) => { setData(d); setLastUpdated(new Date()); setLoadFailed(false); })
-        .catch(() => setLoadFailed(true)),
-    []
-  );
-
-  useEffect(() => {
-    void load();
-    const id = setInterval(load, 5 * 60 * 1000);
-    const onVisible = () => { if (document.visibilityState === "visible") void load(); };
-    window.addEventListener("clarvex-online", load);
-    document.addEventListener("visibilitychange", onVisible);
-    return () => {
-      clearInterval(id);
-      window.removeEventListener("clarvex-online", load);
-      document.removeEventListener("visibilitychange", onVisible);
-    };
-  }, [load]);
 
   // Confetti al alcanzar la meta del día (una sola vez por día/sesión).
   useEffect(() => {

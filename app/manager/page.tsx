@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import {
@@ -19,7 +19,6 @@ import {
   UsersRound
 } from "lucide-react";
 import { getSession, logout } from "@/lib/auth";
-import { fetchAppData, type AppData } from "@/lib/app-data";
 import { completion, money, performanceTone, performanceTextClass } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { computeDailyStreak } from "@/lib/streaks";
@@ -37,6 +36,7 @@ import { buildSalesTrend, buildDailySeries } from "@/lib/trend";
 import { upcomingCelebrations } from "@/lib/celebrations";
 import { DesktopAutoRedirect } from "@/components/desktop/DesktopAutoRedirect";
 import { DesktopSwitchLink } from "@/components/desktop/DesktopSwitchLink";
+import { useAppData } from "@/lib/use-app-data";
 
 const cardAnim = (delay: number) => ({
   initial: { opacity: 0, y: 12 },
@@ -46,9 +46,8 @@ const cardAnim = (delay: number) => ({
 
 export default function ManagerDashboard() {
   const router = useRouter();
-  const [data, setData] = useState<AppData | null>(null);
   const [manager, setManager] = useState<User | null>(null);
-  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const { data, lastUpdated, loadFailed, setLoadFailed, load } = useAppData();
 
   useEffect(() => {
     getSession()
@@ -58,28 +57,6 @@ export default function ManagerDashboard() {
       })
       .catch(() => {}); // un fallo de red no debe tumbar la pantalla; el reintento de fetchAppData recupera
   }, [router]);
-
-  const [loadFailed, setLoadFailed] = useState(false);
-  const load = useCallback(
-    () =>
-      fetchAppData()
-        .then((d) => { setData(d); setLastUpdated(new Date()); setLoadFailed(false); })
-        .catch(() => setLoadFailed(true)),
-    []
-  );
-
-  useEffect(() => {
-    void load();
-    const id = setInterval(load, 5 * 60 * 1000);
-    const onVisible = () => { if (document.visibilityState === "visible") void load(); };
-    window.addEventListener("clarvex-online", load);
-    document.addEventListener("visibilitychange", onVisible);
-    return () => {
-      clearInterval(id);
-      window.removeEventListener("clarvex-online", load);
-      document.removeEventListener("visibilitychange", onVisible);
-    };
-  }, [load]);
 
   const handleLogout = async () => {
     await logout();
