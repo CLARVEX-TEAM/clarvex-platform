@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { AlertTriangle, ClipboardCheck, Search, Trash2 } from "lucide-react";
+import { AlertTriangle, ClipboardCheck, Search, Sparkles, Trash2, X } from "lucide-react";
 import type { Pending } from "@/lib/types";
 import { Badge, Card, EmptyState, ProfileAvatar, priorityTone, statusTone } from "@/components/ui";
 import { AppDatePicker, AppInput, AppSelect, AppTextarea, type SelectOption } from "@/components/forms";
@@ -46,6 +46,24 @@ export default function EscritorioPendientes() {
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [query, setQuery] = useState("");
+  const [optimization, setOptimization] = useState<any | null>(null);
+  const [loadingOpt, setLoadingOpt] = useState(false);
+  const [showOptModal, setShowOptModal] = useState(false);
+
+  async function fetchTaskOptimization() {
+    setLoadingOpt(true);
+    try {
+      const res = await fetch("/api/ai/tasks-optimize");
+      const payload = await res.json();
+      if (!res.ok) throw new Error(payload.error || "No se pudo obtener la optimización.");
+      setOptimization(payload);
+      setShowOptModal(true);
+    } catch (err: any) {
+      toast(err.message || "Error al conectar con la optimización IA.", "error");
+    } finally {
+      setLoadingOpt(false);
+    }
+  }
 
   useEffect(() => { if (data && !ownerId) setOwnerId(data.users[0]?.id ?? ""); }, [data, ownerId]);
   useUnsavedGuard(Boolean(title.trim() || description.trim()));
@@ -182,6 +200,14 @@ export default function EscritorioPendientes() {
               <button key={value} onClick={() => setFilter(value)} className={`tappable min-h-9 rounded-full px-4 text-[13px] font-bold transition ${filter === value ? "bg-volt text-white" : "bg-panel text-muted ring-1 ring-line hover:text-ink"}`}>{label}</button>
             ))}
           </div>
+          <button
+            onClick={() => void fetchTaskOptimization()}
+            disabled={loadingOpt}
+            className="flex min-h-9 items-center justify-center gap-2 rounded-full bg-[#00FF66] px-4 text-[13px] font-black text-black transition active:scale-95 disabled:opacity-50"
+          >
+            <Sparkles size={14} />
+            {loadingOpt ? "Optimizando..." : "Optimizar con IA"}
+          </button>
           <div className="relative ml-auto w-56">
             <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
             <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar…" className="min-h-9 w-full rounded-full border border-line bg-panel pl-9 pr-3 text-[13px] font-semibold text-ink outline-none transition focus:border-volt focus:ring-4 focus:ring-volt/10" />
@@ -236,6 +262,86 @@ export default function EscritorioPendientes() {
         onConfirm={() => void confirmDelete()}
         onCancel={() => setDeleteTargetId(null)}
       />
+
+      {/* Modal Optimización IA */}
+      <AnimatePresence>
+        {showOptModal && optimization && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="w-full max-w-xl rounded-2xl bg-[#0A0A0A] border border-white/10 p-6 space-y-4 max-h-[85vh] overflow-y-auto no-scrollbar shadow-2xl"
+            >
+              <div className="flex items-center justify-between border-b border-white/5 pb-3">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="text-[#00FF66]" size={20} />
+                  <h3 className="text-sm font-black text-white">Priorización & Handover IA</h3>
+                </div>
+                <button
+                  onClick={() => setShowOptModal(false)}
+                  className="rounded-full bg-white/5 p-1.5 text-slate-400 hover:text-white transition"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              <div className="space-y-4 text-xs text-slate-300 leading-relaxed">
+                <div>
+                  <h4 className="font-bold text-[#00FF66] uppercase tracking-wider text-[10px] mb-1.5">⚡ Prioridades Recomendadas</h4>
+                  <div className="space-y-2">
+                    {optimization.prioritizedTasks.map((task: any) => {
+                      const orig = data.pendings.find((p) => p.id === task.id);
+                      return (
+                        <div key={task.id} className="rounded-xl bg-white/5 border border-white/5 p-3 space-y-1">
+                          <p className="font-black text-white">{orig?.title || "Tarea"}</p>
+                          <p className="text-slate-400">{task.justification}</p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {optimization.duplicates && optimization.duplicates.length > 0 && (
+                  <div>
+                    <h4 className="font-bold text-yellow-500 uppercase tracking-wider text-[10px] mb-1.5">👯 Tareas Duplicadas Detectadas</h4>
+                    <div className="space-y-2">
+                      {optimization.duplicates.map((dup: any, idx: number) => (
+                        <div key={idx} className="rounded-xl bg-yellow-500/5 border border-yellow-500/10 p-3">
+                          <p className="font-black text-white">Fusión sugerida: &quot;{dup.suggestedTitle}&quot;</p>
+                          <p className="text-slate-400 mt-1 text-[11px]">Cubre {dup.taskIds.length} pendientes repetidos.</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div>
+                  <h4 className="font-bold text-blue-400 uppercase tracking-wider text-[10px] mb-1.5">👤 Asignación de Responsables sugerida</h4>
+                  <div className="space-y-2">
+                    {optimization.suggestions.map((sug: any) => {
+                      const orig = data.pendings.find((p) => p.id === sug.taskId);
+                      return (
+                        <div key={sug.taskId} className="rounded-xl bg-blue-500/5 border border-blue-500/10 p-3 space-y-1">
+                          <p className="font-black text-white">{orig?.title || "Tarea"}</p>
+                          <p className="text-slate-400 leading-normal">
+                            Asignar a: <strong className="text-blue-400">{sug.recommendedOwnerName}</strong> · {sug.reason}
+                          </p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

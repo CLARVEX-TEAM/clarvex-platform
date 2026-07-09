@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import NextImage from "next/image";
 import { AnimatePresence, motion } from "framer-motion";
-import { ImagePlus, Megaphone, Search, Trash2, X } from "lucide-react";
+import { ImagePlus, Megaphone, Search, Sparkles, Trash2, X } from "lucide-react";
 import type { Announcement } from "@/lib/types";
 import { Badge, Card, EmptyState, ProfileAvatar } from "@/components/ui";
 import { AppInput, AppTextarea } from "@/components/forms";
@@ -28,6 +28,32 @@ export default function EscritorioComunicados() {
   const [deleting, setDeleting] = useState(false);
   const [query, setQuery] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [generatingAnnouncement, setGeneratingAnnouncement] = useState(false);
+  const [announcementPrompt, setAnnouncementPrompt] = useState("");
+  const [showAnnouncementPrompt, setShowAnnouncementPrompt] = useState(false);
+
+  async function handleGenerateAnnouncement() {
+    if (!announcementPrompt.trim()) return;
+    setGeneratingAnnouncement(true);
+    try {
+      const response = await fetch("/api/ai/announcements-gen", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt: announcementPrompt })
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || "No se pudo generar el comunicado.");
+      setTitle(payload.title || "");
+      setBody(payload.body || "");
+      setShowAnnouncementPrompt(false);
+      setAnnouncementPrompt("");
+      toast("Comunicado profesional generado con éxito. ¡Revísalo!", "success");
+    } catch (err: any) {
+      toast(err.message || "Error al generar el comunicado con IA.", "error");
+    } finally {
+      setGeneratingAnnouncement(false);
+    }
+  }
 
   useEffect(() => { if (data) setAnnouncements(data.announcements); }, [data]);
 
@@ -106,10 +132,46 @@ export default function EscritorioComunicados() {
     <div className="grid grid-cols-5 gap-5">
       {/* Crear comunicado */}
       <Card className="col-span-2 h-fit p-5">
-        <div className="mb-4 flex items-center gap-2">
-          <Megaphone className="text-volt" size={18} />
-          <h2 className="text-lg font-black text-ink">Nuevo comunicado</h2>
+        <div className="mb-4 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Megaphone className="text-volt" size={18} />
+            <h2 className="text-lg font-black text-ink">Nuevo comunicado</h2>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowAnnouncementPrompt((prev) => !prev)}
+            className="flex items-center gap-1.5 text-[11px] font-black uppercase tracking-wider bg-[#00FF66] text-black px-3 py-1 rounded-xl active:scale-95 transition"
+          >
+            <Sparkles size={11} />
+            IA
+          </button>
         </div>
+
+        {showAnnouncementPrompt && (
+          <div className="mb-3 rounded-2xl border border-[#00FF66]/20 bg-[#00FF66]/5 p-3 space-y-2">
+            <p className="text-[11px] font-black text-white flex items-center gap-1">
+              <Sparkles size={12} className="text-[#00FF66]" /> Redactar con IA:
+            </p>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={announcementPrompt}
+                onChange={(e) => setAnnouncementPrompt(e.target.value)}
+                placeholder="Ej. Promoción Jeans 30% descuento este fin..."
+                className="flex-1 min-h-9 rounded-xl border border-white/10 bg-[#0A0A0A] px-3 text-xs text-white placeholder-slate-500 outline-none focus:border-[#00FF66]"
+              />
+              <button
+                type="button"
+                onClick={() => void handleGenerateAnnouncement()}
+                disabled={generatingAnnouncement || !announcementPrompt.trim()}
+                className="rounded-xl bg-[#00FF66] px-3 text-xs font-black text-black active:scale-95 transition disabled:opacity-50"
+              >
+                {generatingAnnouncement ? "Generando..." : "Generar"}
+              </button>
+            </div>
+          </div>
+        )}
+
         <form className="grid gap-3" onSubmit={publish}>
           <AppInput label="Título" value={title} onChange={(e) => setTitle(e.target.value)} required />
           <AppTextarea label="Mensaje" value={body} onChange={(e) => setBody(e.target.value)} required />

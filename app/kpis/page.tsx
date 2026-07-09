@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis } from "recharts";
-import { Calculator, CalendarDays, Download, Receipt, Settings2, ShoppingBag, Target, TrendingUp, Trophy, UsersRound, X } from "lucide-react";
+import { Calculator, CalendarDays, Download, Receipt, Settings2, ShoppingBag, Sparkles, Target, TrendingUp, Trophy, UsersRound, X } from "lucide-react";
 import { getSession } from "@/lib/auth";
 import { computeNextBracketGap, resolveCommissionMinimum } from "@/lib/commission";
 import { money } from "@/lib/format";
@@ -29,6 +29,26 @@ export default function KpisPage() {
   const [simulatedSales, setSimulatedSales] = useState("");
   const [refreshTick, setRefreshTick] = useState(0);
   const [showTargetSheet, setShowTargetSheet] = useState(false);
+  const [iaReport, setIaReport] = useState<any | null>(null);
+  const [loadingIaReport, setLoadingIaReport] = useState(false);
+  const [showIaReportModal, setShowIaReportModal] = useState(false);
+
+  async function fetchIaReport() {
+    if (!report) return;
+    setLoadingIaReport(true);
+    try {
+      const type = period === "month" ? "MONTHLY" : "WEEKLY";
+      const res = await fetch(`/api/ai/reports?start=${report.startDate}&end=${report.endDate}&type=${type}`);
+      const payload = await res.json();
+      if (!res.ok) throw new Error(payload.error || "No se pudo generar el reporte.");
+      setIaReport(payload);
+      setShowIaReportModal(true);
+    } catch (err: any) {
+      alert(err.message || "Error al obtener el reporte.");
+    } finally {
+      setLoadingIaReport(false);
+    }
+  }
 
   useEffect(() => { getSession().then(setSession); }, []);
 
@@ -62,12 +82,22 @@ export default function KpisPage() {
         {isAdvisor && report ? <Card className="mb-3 p-3"><p className="text-sm font-black text-ink">{report.workedDays ? "Calculado sobre tus dias laborados" : "Sin dias laborados en este periodo"}</p><p className="mt-1 text-xs font-semibold text-muted">Dias laborados: {report.workedDays ?? 0}</p></Card> : null}
 
         {isManager && report ? (
-          <a
-            href={`/api/reports/kpis?start=${report.startDate}&end=${report.endDate}&period=${period}&label=${encodeURIComponent(rangeLabel)}${report.weekNumber ? `&week=${report.weekNumber}` : ""}`}
-            className="mb-3 flex min-h-11 items-center justify-center gap-2 rounded-2xl border border-line bg-panel text-sm font-black text-volt transition hover:border-volt active:scale-95"
-          >
-            <Download size={16} /> Exportar reporte (Excel)
-          </a>
+          <div className="mb-3 flex gap-2">
+            <a
+              href={`/api/reports/kpis?start=${report.startDate}&end=${report.endDate}&period=${period}&label=${encodeURIComponent(rangeLabel)}${report.weekNumber ? `&week=${report.weekNumber}` : ""}`}
+              className="flex-1 flex min-h-11 items-center justify-center gap-2 rounded-2xl border border-line bg-panel text-sm font-black text-white transition hover:border-volt active:scale-95"
+            >
+              <Download size={16} /> Exportar (Excel)
+            </a>
+            <button
+              onClick={() => void fetchIaReport()}
+              disabled={loadingIaReport}
+              className="flex-1 flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-[#00FF66] text-sm font-black text-black transition active:scale-95 disabled:opacity-50"
+            >
+              <Sparkles size={16} />
+              {loadingIaReport ? "Generando..." : "Reporte IA"}
+            </button>
+          </div>
         ) : null}
 
         <div className="no-scrollbar tab-glass-shell -mx-1 mb-3 flex gap-1 overflow-x-auto overflow-y-hidden p-1">
@@ -110,6 +140,69 @@ export default function KpisPage() {
             }}
           />
         ) : null}
+        {showIaReportModal && iaReport && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm p-4"
+          >
+            <motion.div
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              transition={{ type: "spring", damping: 25, stiffness: 220 }}
+              className="w-full max-w-lg rounded-t-[32px] bg-[#0A0A0A] border border-white/10 p-6 space-y-4 max-h-[85vh] overflow-y-auto no-scrollbar shadow-2xl"
+            >
+              <div className="flex items-center justify-between border-b border-white/5 pb-3">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="text-[#00FF66]" size={20} />
+                  <h3 className="text-sm font-black text-white">{iaReport.title}</h3>
+                </div>
+                <button
+                  onClick={() => setShowIaReportModal(false)}
+                  className="rounded-full bg-white/5 p-1.5 text-slate-400 hover:text-white transition"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              <div className="space-y-4 text-xs text-slate-300 leading-relaxed">
+                <div>
+                  <h4 className="font-bold text-[#00FF66] uppercase tracking-wider text-[10px]">Resumen Ejecutivo</h4>
+                  <p className="mt-1 bg-white/[0.02] border border-white/5 rounded-xl p-3 text-slate-200 italic">{iaReport.executiveSummary}</p>
+                </div>
+
+                <div>
+                  <h4 className="font-bold text-white uppercase tracking-wider text-[10px]">Análisis de Desempeño</h4>
+                  <p className="mt-1">{iaReport.performanceAnalysis}</p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="rounded-xl bg-emerald-500/5 border border-emerald-500/10 p-3">
+                    <span className="font-bold text-emerald-400">Fortalezas:</span>
+                    <ul className="list-disc list-inside mt-1.5 space-y-1 text-slate-300 text-[11px]">
+                      {iaReport.strengths.map((s: string, idx: number) => <li key={idx}>{s}</li>)}
+                    </ul>
+                  </div>
+                  <div className="rounded-xl bg-rose-500/5 border border-rose-500/10 p-3">
+                    <span className="font-bold text-rose-400">Oportunidades:</span>
+                    <ul className="list-disc list-inside mt-1.5 space-y-1 text-slate-300 text-[11px]">
+                      {iaReport.weaknesses.map((w: string, idx: number) => <li key={idx}>{w}</li>)}
+                    </ul>
+                  </div>
+                </div>
+
+                <div className="rounded-xl bg-blue-500/5 border border-blue-500/10 p-3.5 space-y-1.5">
+                  <span className="font-bold text-blue-400">Recomendaciones Estratégicas:</span>
+                  <ul className="list-decimal list-inside space-y-1">
+                    {iaReport.strategicRecommendations.map((r: string, idx: number) => <li key={idx}>{r}</li>)}
+                  </ul>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
       </AnimatePresence>
     </>
   );

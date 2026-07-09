@@ -285,7 +285,7 @@ INSTRUCCIONES DE FORMATO IMPORTANTES:
     const parsedDate = new Date(`${dateStr}T12:00:00.000Z`);
 
     // 1. Load context
-    const [targetUser, userKpis, pendingTasks, weekPlans, storeLog] = await Promise.all([
+    const [targetUser, userKpis, pendingTasks, weekPlans, storeLog, feedbackMemory] = await Promise.all([
       prisma.user.findUnique({ where: { id: userId } }),
       prisma.kpi.findMany({
         where: { userId, date: { lte: parsedDate } },
@@ -305,9 +305,14 @@ INSTRUCCIONES DE FORMATO IMPORTANTES:
         orderBy: { createdAt: "desc" },
         take: 5,
       }),
+      prisma.aiMemory.findUnique({
+        where: { storeId_userId_key: { storeId: session.storeId, userId, key: `advisor_feedback_${userId}` } },
+      }),
     ]);
 
     if (!targetUser) throw new Error("Colaborador no encontrado.");
+
+    const feedback = feedbackMemory ? JSON.parse(feedbackMemory.content) : { successes: [], failures: [] };
 
     const kpiSummary = userKpis.map((k) => ({
       date: k.date.toISOString().slice(0, 10),
@@ -324,10 +329,14 @@ INSTRUCCIONES DE FORMATO IMPORTANTES:
 
     const prompt = `
 Eres un consultor experto en operaciones de retail y analista de tiendas. Tu objetivo es proponer el "Plan del Día" estratégico y personalizado para el asesor ${targetUser.name}.
-Analiza sus métricas recientes de KPIs, tareas pendientes y las actividades ya asignadas recientemente para no repetirlas.
+Analiza sus métricas recientes de KPIs, tareas pendientes, las actividades ya asignadas recientemente para no repetirlas, y el aprendizaje de qué estrategias funcionaron antes.
 
 Métricas recientes de ${targetUser.name}:
 ${JSON.stringify(kpiSummary, null, 2)}
+
+Estrategias anteriores y su impacto (¡Aprendizaje IA!):
+- Exitosas (cumplieron meta): ${JSON.stringify(feedback.successes)}
+- Fallidas (no cumplieron meta): ${JSON.stringify(feedback.failures)}
 
 Pendientes de la tienda:
 ${tasks.join(", ") || "Ninguno"}
@@ -492,15 +501,35 @@ Responde estrictamente en formato JSON utilizando el siguiente esquema:
     const generatedText = await this.callGemini(prompt, true);
     const parsedResult = JSON.parse(generatedText);
 
+    // Suggest actual training resources based on weak KPI
+    let recommendedResources: Array<{ id: string; title: string }> = [];
+    try {
+      const weakKpiName = parsedResult.weakestKpi?.name?.toLowerCase() || "";
+      const category = weakKpiName.includes("convers") || weakKpiName.includes("ticket")
+        ? "VENTAS"
+        : weakKpiName.includes("servicio") || weakKpiName.includes("upt")
+        ? "ATENCION"
+        : "VENTAS";
+
+      recommendedResources = await prisma.trainingResource.findMany({
+        where: { storeId: session.storeId, category },
+        select: { id: true, title: true },
+        take: 2,
+      });
+    } catch (e) {
+      console.error("[Training Recommendations Error]:", e);
+    }
+    parsedResult.recommendedResources = recommendedResources;
+
     // Save in memory cache
     await prisma.aiMemory.upsert({
       where: { storeId_userId_key: { storeId: session.storeId, userId, key: memoryKey } },
-      update: { content: generatedText },
+      update: { content: JSON.stringify(parsedResult) },
       create: {
         storeId: session.storeId,
         userId,
         key: memoryKey,
-        content: generatedText,
+        content: JSON.stringify(parsedResult),
       },
     });
 
@@ -710,5 +739,190 @@ Responde estrictamente en formato JSON utilizando el siguiente esquema:
 
     const generatedText = await this.callGemini(prompt, true);
     return JSON.parse(generatedText);
+  }
+
+  /**
+   * Resumen Diario IA - Generates an executive daily report summarizing sales, KPIs, rankings, and pending tasks.
+   */
+  public static async generateDailySummary(session: Session, dateStr: string) {
+    const parsedDate = new Date(`${dateStr}T12:00:00.000Z`);
+    const [kpis, pendings] = await Promise.all([
+      prisma.kpi.findMany({
+        where: { storeId: session.storeId, date: parsedDate },
+        include: { user: { select: { name: true, role: true } } },
+      }),
+      prisma.pending.findMany({
+        where: { storeId: session.storeId },
+      }),
+    ]);
+
+    const salesTotal = kpis.reduce((acc, k) => acc + Number(k.dailySales), 0);
+    const goalTotal = kpis.reduce((acc, k) => acc + Number(k.dailyGoal), 0);
+    const kpiDetails = kpis.map((k) => ({
+      advisor: k.user.name,
+      sales: Number(k.dailySales),
+      goal: Number(k.dailyGoal),
+      upt: Number(k.upt),
+      conversion: k.conversion ? Number(k.conversion) : null,
+      ranking: k.ranking,
+    }));
+    const pendingList = pendings.map((p) => `${p.title} (Estado: ${p.status}, Prioridad: ${p.priority})`);
+
+    const prompt = `
+Eres un gerente regional y analista operativo de retail. Analiza el rendimiento del día de hoy en la tienda y genera un resumen ejecutivo diario detallado.
+
+Fecha: ${dateStr}
+Venta total de la tienda hoy: $${salesTotal.toFixed(2)} pesos
+Meta total de la tienda hoy: $${goalTotal.toFixed(2)} pesos
+Rendimiento por colaborador:
+${JSON.stringify(kpiDetails, null, 2)}
+
+Pendientes de la tienda:
+${JSON.stringify(pendingList, null, 2)}
+
+Responde estrictamente en formato JSON utilizando el siguiente esquema:
+{
+  "summary": "string (Resumen general del día, tono profesional, analizando si se cumplió la meta de tienda y destacando hitos)",
+  "positives": ["string (Puntos positivos destacados hoy, p.ej. alto UPT o metas individuales cumplidas)"],
+  "negatives": ["string (Áreas de oportunidad o fallas operativas hoy, p.ej. baja conversión o pendientes urgentes sin atender)"],
+  "actionPlanTomorrow": ["string (Acciones específicas sugeridas para la apertura y operación de mañana)"]
+}
+`;
+    const generatedText = await this.callGemini(prompt, true);
+    return JSON.parse(generatedText);
+  }
+
+  /**
+   * Reportes IA - Generates daily, weekly, or monthly analytical performance reports.
+   */
+  public static async generateIaReport(session: Session, type: "DAILY" | "WEEKLY" | "MONTHLY", startStr: string, endStr: string) {
+    const start = new Date(`${startStr}T00:00:00.000Z`);
+    const end = new Date(`${endStr}T23:59:59.999Z`);
+
+    const [kpis, store] = await Promise.all([
+      prisma.kpi.findMany({
+        where: { storeId: session.storeId, date: { gte: start, lte: end } },
+        include: { user: { select: { name: true, role: true } } },
+      }),
+      prisma.store.findUnique({ where: { id: session.storeId }, select: { name: true } }),
+    ]);
+
+    const salesTotal = kpis.reduce((acc, k) => acc + Number(k.dailySales), 0);
+    const goalTotal = kpis.reduce((acc, k) => acc + Number(k.dailyGoal), 0);
+    const advisorPerformance = new Map<string, { name: string; sales: number; goal: number; count: number }>();
+
+    for (const k of kpis) {
+      const current = advisorPerformance.get(k.userId) || { name: k.user.name, sales: 0, goal: 0, count: 0 };
+      advisorPerformance.set(k.userId, {
+        name: k.user.name,
+        sales: current.sales + Number(k.dailySales),
+        goal: current.goal + Number(k.dailyGoal),
+        count: current.count + 1,
+      });
+    }
+
+    const performanceSummary: any[] = [];
+    advisorPerformance.forEach((v) => {
+      performanceSummary.push({
+        colaborador: v.name,
+        ventasAcumuladas: v.sales,
+        metaAcumulada: v.goal,
+        porcentajeCumplimiento: v.goal > 0 ? Math.round((v.sales / v.goal) * 100) : 100,
+        diasTrabajados: v.count,
+      });
+    });
+
+    const prompt = `
+Eres un consultor ejecutivo de retail de alto nivel. Analiza el desempeño del periodo indicado y genera un informe de rendimiento de negocio estructurado y profesional para la tienda "${store?.name}".
+
+Tipo de Reporte: ${type}
+Periodo: del ${startStr} al ${endStr}
+Venta total acumulada en tienda: $${salesTotal.toFixed(2)} pesos
+Meta total acumulada en tienda: $${goalTotal.toFixed(2)} pesos
+Rendimiento acumulado de los colaboradores en el periodo:
+${JSON.stringify(performanceSummary, null, 2)}
+
+Escribe un reporte de negocio completo. Responde estrictamente en formato JSON utilizando el siguiente esquema:
+{
+  "title": "string (Título formal del reporte)",
+  "executiveSummary": "string (Resumen ejecutivo del desempeño general y financiero del periodo)",
+  "performanceAnalysis": "string (Análisis de la productividad del equipo y comportamiento de los KPIs)",
+  "strengths": ["string", "string"],
+  "weaknesses": ["string", "string"],
+  "strategicRecommendations": ["string (Acciones estratégicas clave a mediano plazo para impulsar ventas, conversión y eficiencia)"]
+}
+`;
+    const generatedText = await this.callGemini(prompt, true);
+    return JSON.parse(generatedText);
+  }
+
+  /**
+   * Aprendizaje Operativo - Evaluates historical daily plans outcomes based on actual end-of-day sales data.
+   */
+  public static async evaluatePlanOutcomes(storeId: string) {
+    const cutoffDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const plans = await prisma.aiPlanHistory.findMany({
+      where: {
+        storeId,
+        date: { gte: cutoffDate },
+        outcomeSuccess: null,
+      },
+    });
+
+    if (plans.length === 0) return { evaluated: 0 };
+
+    let count = 0;
+    for (const plan of plans) {
+      const kpi = await prisma.kpi.findFirst({
+        where: {
+          userId: plan.userId,
+          date: plan.date,
+        },
+      });
+
+      if (kpi) {
+        const sales = Number(kpi.dailySales);
+        const goal = Number(kpi.dailyGoal);
+        const success = goal > 0 ? sales >= goal : sales > 0;
+
+        await prisma.aiPlanHistory.update({
+          where: { id: plan.id },
+          data: {
+            outcomeSales: sales,
+            outcomeGoal: goal,
+            outcomeSuccess: success,
+          },
+        });
+        count++;
+
+        const memoryKey = `advisor_feedback_${plan.userId}`;
+        const existingMemory = await prisma.aiMemory.findUnique({
+          where: { storeId_userId_key: { storeId, userId: plan.userId, key: memoryKey } },
+        });
+
+        const feedbackData = existingMemory ? JSON.parse(existingMemory.content) : { successes: [], failures: [] };
+        if (success) {
+          feedbackData.successes.push({ focus: plan.focus, date: plan.date.toISOString().slice(0, 10) });
+        } else {
+          feedbackData.failures.push({ focus: plan.focus, date: plan.date.toISOString().slice(0, 10) });
+        }
+
+        feedbackData.successes = feedbackData.successes.slice(-5);
+        feedbackData.failures = feedbackData.failures.slice(-5);
+
+        await prisma.aiMemory.upsert({
+          where: { storeId_userId_key: { storeId, userId: plan.userId, key: memoryKey } },
+          update: { content: JSON.stringify(feedbackData) },
+          create: {
+            storeId,
+            userId: plan.userId,
+            key: memoryKey,
+            content: JSON.stringify(feedbackData),
+          },
+        });
+      }
+    }
+
+    return { evaluated: count };
   }
 }

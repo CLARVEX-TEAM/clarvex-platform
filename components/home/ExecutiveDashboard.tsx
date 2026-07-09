@@ -24,6 +24,12 @@ interface ExecutiveData {
     probabilityCommission: number;
     details: string;
   };
+  dailySummary?: {
+    summary: string;
+    positives: string[];
+    negatives: string[];
+    actionPlanTomorrow: string[];
+  };
 }
 
 export function ExecutiveDashboard() {
@@ -62,11 +68,25 @@ export function ExecutiveDashboard() {
     );
   }
 
-  if (error || !data) {
-    return null; // Don't break layout if AI dashboard is not active
+  if (error) {
+    return (
+      <GlassCard className="p-5 border border-amber-500/20 bg-amber-500/5">
+        <div className="flex items-center gap-2 text-amber-400">
+          <Sparkles size={18} />
+          <h3 className="font-black text-sm">Dashboard IA Desconectado</h3>
+        </div>
+        <p className="mt-2 text-xs text-slate-400 leading-normal">
+          El análisis operativo y predictivo por Inteligencia Artificial no pudo cargarse debido a que se alcanzó el límite de cuota de la API o la clave es inválida. Los datos tradicionales de la tienda siguen operando con total normalidad.
+        </p>
+      </GlassCard>
+    );
   }
 
-  const { health, predictions } = data;
+  if (!data) {
+    return null;
+  }
+
+  const { health, predictions, dailySummary } = data;
 
   const healthColors = {
     VERDE: { bg: "bg-[#00FF66]/10 border-[#00FF66]/30 text-[#00FF66]", label: "Estable / Saludable" },
@@ -159,6 +179,44 @@ export function ExecutiveDashboard() {
             ))}
           </ul>
         </div>
+
+        {/* Resumen Diario IA */}
+        {dailySummary && (
+          <div className="mt-4 border-t border-white/5 pt-3.5 space-y-2.5 text-xs">
+            <p className="font-black text-[#00FF66] flex items-center gap-1.5">
+              <span>📋</span> Resumen Diario IA:
+            </p>
+            <p className="text-white/70 leading-relaxed italic bg-white/[0.02] p-2.5 rounded-xl border border-white/5">{dailySummary.summary}</p>
+            
+            <div className="grid grid-cols-2 gap-3 pt-1">
+              {dailySummary.positives.length > 0 && (
+                <div className="rounded-xl bg-emerald-500/5 border border-emerald-500/10 p-2.5">
+                  <span className="font-bold text-emerald-400">Éxitos de hoy:</span>
+                  <ul className="list-disc list-inside mt-1 space-y-1 text-white/60 text-[11px]">
+                    {dailySummary.positives.map((p, idx) => <li key={idx}>{p}</li>)}
+                  </ul>
+                </div>
+              )}
+              {dailySummary.negatives.length > 0 && (
+                <div className="rounded-xl bg-rose-500/5 border border-rose-500/10 p-2.5">
+                  <span className="font-bold text-rose-400">Puntos a cuidar:</span>
+                  <ul className="list-disc list-inside mt-1 space-y-1 text-white/60 text-[11px]">
+                    {dailySummary.negatives.map((n, idx) => <li key={idx}>{n}</li>)}
+                  </ul>
+                </div>
+              )}
+            </div>
+
+            {dailySummary.actionPlanTomorrow.length > 0 && (
+              <div className="rounded-xl bg-[#00FF66]/5 border border-[#00FF66]/10 p-3 space-y-1.5">
+                <span className="font-bold text-[#00FF66]">Estrategia para mañana:</span>
+                <ul className="list-decimal list-inside space-y-1 text-white/70">
+                  {dailySummary.actionPlanTomorrow.map((planText, idx) => <li key={idx} className="leading-relaxed">{planText}</li>)}
+                </ul>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </GlassCard>
   );

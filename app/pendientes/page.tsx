@@ -1,8 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { AnimatePresence } from "framer-motion";
-import { AlertTriangle, ClipboardCheck, Plus, UserRound } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
+import { AlertTriangle, ClipboardCheck, Plus, Sparkles, UserRound, X } from "lucide-react";
 import { fetchAppData, type AppData } from "@/lib/app-data";
 import { getSession } from "@/lib/auth";
 import type { Pending, User } from "@/lib/types";
@@ -32,6 +32,24 @@ export default function PendientesPage() {
   const [saved, setSaved] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
   const [deletingPending, setDeletingPending] = useState(false);
+  const [optimization, setOptimization] = useState<any | null>(null);
+  const [loadingOpt, setLoadingOpt] = useState(false);
+  const [showOptModal, setShowOptModal] = useState(false);
+
+  async function fetchTaskOptimization() {
+    setLoadingOpt(true);
+    try {
+      const res = await fetch("/api/ai/tasks-optimize");
+      const payload = await res.json();
+      if (!res.ok) throw new Error(payload.error || "No se pudo obtener la optimización.");
+      setOptimization(payload);
+      setShowOptModal(true);
+    } catch (err: any) {
+      toast(err.message || "Error al conectar con la optimización IA.", "error");
+    } finally {
+      setLoadingOpt(false);
+    }
+  }
 
   const load = useCallback(() => fetchAppData().then(setData).catch(() => setData(null)), []);
 
@@ -163,6 +181,17 @@ export default function PendientesPage() {
       <AppHeader title="Pendientes" subtitle={isAdvisor ? "Tus pendientes asignados." : "Handover, responsables y fechas limite."} backHref={isAdvisor ? "/advisor" : "/manager"} />
       <PullToRefresh onRefresh={load}>
       <AppFrame>
+        {!isAdvisor && (
+          <button
+            onClick={() => void fetchTaskOptimization()}
+            disabled={loadingOpt}
+            className="mb-3 w-full flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-[#00FF66] text-sm font-black text-black transition active:scale-95 disabled:opacity-50"
+          >
+            <Sparkles size={16} />
+            {loadingOpt ? "Optimizando Handover..." : "Optimizar Pendientes con IA"}
+          </button>
+        )}
+
         <div className="no-scrollbar tab-glass-shell -mx-1 mb-3 flex gap-1 overflow-x-auto overflow-y-hidden p-1 scroll-px-4">
           {[
             ["todos", "Todos"],
@@ -284,6 +313,87 @@ export default function PendientesPage() {
         onConfirm={() => void confirmDelete()}
         onCancel={() => setDeleteTargetId(null)}
       />
+
+      {/* Modal Optimización IA */}
+      <AnimatePresence>
+        {showOptModal && optimization && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm p-4"
+          >
+            <motion.div
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              transition={{ type: "spring", damping: 25, stiffness: 220 }}
+              className="w-full max-w-lg rounded-t-[32px] bg-[#0A0A0A] border border-white/10 p-6 space-y-4 max-h-[85vh] overflow-y-auto no-scrollbar shadow-2xl"
+            >
+              <div className="flex items-center justify-between border-b border-white/5 pb-3">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="text-[#00FF66]" size={20} />
+                  <h3 className="text-sm font-black text-white">Priorización & Handover IA</h3>
+                </div>
+                <button
+                  onClick={() => setShowOptModal(false)}
+                  className="rounded-full bg-white/5 p-1.5 text-slate-400 hover:text-white transition"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              <div className="space-y-4 text-xs text-slate-300 leading-relaxed">
+                <div>
+                  <h4 className="font-bold text-[#00FF66] uppercase tracking-wider text-[10px] mb-1.5">⚡ Prioridades Recomendadas</h4>
+                  <div className="space-y-2">
+                    {optimization.prioritizedTasks.map((task: any) => {
+                      const orig = data.pendings.find((p) => p.id === task.id);
+                      return (
+                        <div key={task.id} className="rounded-xl bg-white/5 border border-white/5 p-3 space-y-1">
+                          <p className="font-black text-white">{orig?.title || "Tarea"}</p>
+                          <p className="text-slate-400">{task.justification}</p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {optimization.duplicates && optimization.duplicates.length > 0 && (
+                  <div>
+                    <h4 className="font-bold text-yellow-500 uppercase tracking-wider text-[10px] mb-1.5">👯 Tareas Duplicadas Detectadas</h4>
+                    <div className="space-y-2">
+                      {optimization.duplicates.map((dup: any, idx: number) => (
+                        <div key={idx} className="rounded-xl bg-yellow-500/5 border border-yellow-500/10 p-3">
+                          <p className="font-black text-white">Fusión sugerida: &quot;{dup.suggestedTitle}&quot;</p>
+                          <p className="text-slate-400 mt-1 text-[11px]">Cubre {dup.taskIds.length} pendientes repetidos.</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div>
+                  <h4 className="font-bold text-blue-400 uppercase tracking-wider text-[10px] mb-1.5">👤 Asignación de Responsables sugerida</h4>
+                  <div className="space-y-2">
+                    {optimization.suggestions.map((sug: any) => {
+                      const orig = data.pendings.find((p) => p.id === sug.taskId);
+                      return (
+                        <div key={sug.taskId} className="rounded-xl bg-blue-500/5 border border-blue-500/10 p-3 space-y-1">
+                          <p className="font-black text-white">{orig?.title || "Tarea"}</p>
+                          <p className="text-slate-400 leading-normal">
+                            Asignar a: <strong className="text-blue-400">{sug.recommendedOwnerName}</strong> · {sug.reason}
+                          </p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </>
   );
 }

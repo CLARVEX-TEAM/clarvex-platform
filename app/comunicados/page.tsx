@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import NextImage from "next/image";
-import { ImagePlus, Megaphone, MessageCircle, X } from "lucide-react";
+import { ImagePlus, Megaphone, MessageCircle, Sparkles, X } from "lucide-react";
 import { fetchAppData, type AppData } from "@/lib/app-data";
 import { getSession } from "@/lib/auth";
 import { ANNOUNCEMENT_REACTIONS } from "@/lib/reactions";
@@ -34,6 +34,32 @@ export default function ComunicadosPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [session, setSession] = useState<User | null>(null);
   const [filter, setFilter] = useState<Filter>("todos");
+  const [generatingAnnouncement, setGeneratingAnnouncement] = useState(false);
+  const [announcementPrompt, setAnnouncementPrompt] = useState("");
+  const [showAnnouncementPrompt, setShowAnnouncementPrompt] = useState(false);
+
+  async function handleGenerateAnnouncement() {
+    if (!announcementPrompt.trim()) return;
+    setGeneratingAnnouncement(true);
+    try {
+      const response = await fetch("/api/ai/announcements-gen", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt: announcementPrompt })
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || "No se pudo generar el comunicado.");
+      setTitle(payload.title || "");
+      setBody(payload.body || "");
+      setShowAnnouncementPrompt(false);
+      setAnnouncementPrompt("");
+      toast("Comunicado profesional generado con éxito. ¡Revísalo!", "success");
+    } catch (err: any) {
+      toast(err.message || "Error al generar el comunicado con IA.", "error");
+    } finally {
+      setGeneratingAnnouncement(false);
+    }
+  }
 
   const load = useCallback(
     () => fetchAppData()
@@ -204,12 +230,48 @@ export default function ComunicadosPage() {
         {!data ? <div className="mb-3 space-y-2.5"><Skeleton className="h-28 rounded-[28px]" /><Skeleton className="h-40 rounded-[28px]" /></div> : null}
 
         {session?.role !== "ASESOR" ? (
-          <Card className="mb-3">
-            <div className="flex items-center gap-2">
-              <Megaphone className="text-volt" size={18} />
-              <h2 className="text-lg font-black">Publicar comunicado</h2>
+          <Card className="mb-3 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Megaphone className="text-volt" size={18} />
+                <h2 className="text-lg font-black">Publicar comunicado</h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAnnouncementPrompt((prev) => !prev)}
+                className="flex items-center gap-1.5 text-[11px] font-black uppercase tracking-wider bg-[#00FF66] text-black px-3 py-1 rounded-xl active:scale-95 transition"
+              >
+                <Sparkles size={11} />
+                IA
+              </button>
             </div>
-            <form className="mt-3 grid gap-3" onSubmit={publishAnnouncement}>
+
+            {showAnnouncementPrompt && (
+              <div className="rounded-2xl border border-[#00FF66]/20 bg-[#00FF66]/5 p-3 space-y-2">
+                <p className="text-[11px] font-black text-white flex items-center gap-1">
+                  <Sparkles size={12} className="text-[#00FF66]" /> Redactar con IA:
+                </p>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={announcementPrompt}
+                    onChange={(e) => setAnnouncementPrompt(e.target.value)}
+                    placeholder="Ej. Promoción Jeans 30% descuento este fin..."
+                    className="flex-1 min-h-9 rounded-xl border border-white/10 bg-[#0A0A0A] px-3 text-xs text-white placeholder-slate-500 outline-none focus:border-[#00FF66]"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => void handleGenerateAnnouncement()}
+                    disabled={generatingAnnouncement || !announcementPrompt.trim()}
+                    className="rounded-xl bg-[#00FF66] px-3 text-xs font-black text-black active:scale-95 transition disabled:opacity-50"
+                  >
+                    {generatingAnnouncement ? "Generando..." : "Generar"}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <form className="grid gap-3" onSubmit={publishAnnouncement}>
               <AppInput
                 label="Título"
                 value={title}

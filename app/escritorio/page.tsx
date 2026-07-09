@@ -13,6 +13,7 @@ import { TeamCelebrationsCard } from "@/components/home/TeamCelebrationsCard";
 import { useTheme } from "@/components/ThemeProvider";
 import { useDesktopData } from "@/components/desktop/useDesktopData";
 import { DesktopError } from "@/components/desktop/DesktopError";
+import { ExecutiveDashboard } from "@/components/home/ExecutiveDashboard";
 
 // Días hasta el próximo cumpleaños (para ordenar por más cercano).
 function daysUntilBirthday(birthDate?: string | null): number {
@@ -82,6 +83,24 @@ export default function EscritorioDashboard() {
       </div>
 
       <div className="grid grid-cols-3 gap-4">
+        {/* Análisis Operativo IA */}
+        <div className="col-span-2">
+          <ExecutiveDashboard />
+        </div>
+
+        {/* Alcance del día + accesos */}
+        <Card className="flex flex-col items-center justify-center p-5 text-center">
+          <p className="text-[11px] font-bold uppercase tracking-[0.13em] text-muted">Alcance del día</p>
+          <div className="my-3"><ProgressRing value={storeProgress} tone={achievementTone(storeProgress)} size={120} /></div>
+          <p className="text-sm text-muted">{money(store?.dailySales ?? 0)} de {money(store?.dailyGoal ?? 0)}</p>
+          <div className="mt-4 grid w-full gap-2">
+            <QuickAction href="/escritorio/comunicados" icon={Megaphone} label="Nuevo comunicado" />
+            <QuickAction href="/escritorio/pendientes" icon={AlertTriangle} label="Nuevo pendiente" />
+          </div>
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-3 gap-4">
         {/* Tendencia de ventas */}
         <Card className="col-span-2 p-5">
           <div className="mb-3 flex items-center justify-between">
@@ -108,17 +127,6 @@ export default function EscritorioDashboard() {
                 <Area type="monotone" dataKey="sales" stroke="#2563EB" strokeWidth={2.5} fill="url(#deskSales)" dot={false} activeDot={{ r: 5 }} />
               </AreaChart>
             </ResponsiveContainer>
-          </div>
-        </Card>
-
-        {/* Alcance del día + accesos */}
-        <Card className="flex flex-col items-center justify-center p-5 text-center">
-          <p className="text-[11px] font-bold uppercase tracking-[0.13em] text-muted">Alcance del día</p>
-          <div className="my-3"><ProgressRing value={storeProgress} tone={achievementTone(storeProgress)} size={120} /></div>
-          <p className="text-sm text-muted">{money(store?.dailySales ?? 0)} de {money(store?.dailyGoal ?? 0)}</p>
-          <div className="mt-4 grid w-full gap-2">
-            <QuickAction href="/escritorio/comunicados" icon={Megaphone} label="Nuevo comunicado" />
-            <QuickAction href="/escritorio/pendientes" icon={AlertTriangle} label="Nuevo pendiente" />
           </div>
         </Card>
       </div>

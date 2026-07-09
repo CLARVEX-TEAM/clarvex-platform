@@ -155,6 +155,15 @@ export default function AdvisorDashboard() {
     todayKey,
     streakBest: streak.best
   });
+
+  const unlockedCount = achievements.filter((a) => a.unlocked).length;
+  const totalHistoricalSales = data.kpis.filter((k) => k.userId === user.id).reduce((sum, k) => sum + Number(k.dailySales), 0);
+  const xp = (unlockedCount * 100) + Math.floor(totalHistoricalSales / 100) + (planDone * 50);
+  const level = Math.floor(Math.sqrt(xp / 100)) + 1;
+  const nextLevelXp = Math.pow(level, 2) * 100;
+  const currentLevelMinXp = Math.pow(level - 1, 2) * 100;
+  const xpProgress = Math.round(((xp - currentLevelMinXp) / (nextLevelXp - currentLevelMinXp)) * 100);
+
   const salesTrend = buildSalesTrend(data.kpis.map((k) => ({ date: k.date, dailySales: k.dailySales, dailyGoal: k.dailyGoal })), todayKey);
   const ventasSeries = buildDailySeries(data.kpis.map((k) => ({ date: k.date, value: k.dailySales })), todayKey, 7);
   const ticketsSeries = buildDailySeries(data.kpis.map((k) => ({ date: k.date, value: k.transactions })), todayKey, 7);
@@ -231,6 +240,61 @@ export default function AdvisorDashboard() {
         )}
 
         <DailySalesCard sales={daily.dailySales} goal={daily.dailyGoal} delay={0.08} />
+
+        {/* Gamificación (Nivel, XP y Retos) */}
+        <motion.div {...cardAnim(0.1)} className="mt-3">
+          <Card className="border border-white/10 bg-[#0A0A0A]/60 backdrop-blur-xl p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <span className="grid size-10 place-items-center rounded-2xl bg-gradient-to-br from-yellow-400 to-amber-500 text-white font-black text-lg shadow-lg shadow-amber-500/10">
+                  {level}
+                </span>
+                <div>
+                  <p className="text-xs font-bold text-white">Nivel actual</p>
+                  <p className="text-[11px] text-slate-400 mt-0.5">Siguiente nivel en {nextLevelXp - xp} XP</p>
+                </div>
+              </div>
+              <Badge tone="success">{xp} XP Totales</Badge>
+            </div>
+            
+            <div className="mt-3">
+              <div className="flex justify-between text-[10px] text-slate-400 mb-1 font-semibold">
+                <span>Progreso de Nivel</span>
+                <span>{xpProgress}%</span>
+              </div>
+              <div className="h-2 w-full rounded-full bg-white/5 overflow-hidden">
+                <motion.div
+                  initial={{ width: 0 }}
+                  animate={{ width: `${xpProgress}%` }}
+                  className="h-full bg-gradient-to-r from-[#00FF66] to-emerald-400"
+                />
+              </div>
+            </div>
+
+            {/* Retos y Tareas Diarias */}
+            <div className="mt-4 pt-3.5 border-t border-white/5 space-y-2">
+              <p className="text-xs font-black text-white flex items-center gap-1.5">
+                <span>⚡</span> Retos del Día:
+              </p>
+              <div className="grid grid-cols-2 gap-2 text-[11px]">
+                <div className={`rounded-xl border p-2 flex flex-col justify-between ${daily.dailySales >= daily.dailyGoal && daily.dailyGoal > 0 ? "bg-emerald-500/10 border-emerald-500/20" : "bg-white/5 border-white/5"}`}>
+                  <p className="font-bold text-white">Meta Diaria</p>
+                  <p className="text-slate-400 mt-0.5">Vender {money(daily.dailyGoal)}</p>
+                  <span className={`mt-1.5 font-bold uppercase tracking-wider text-[9px] ${daily.dailySales >= daily.dailyGoal && daily.dailyGoal > 0 ? "text-[#00FF66]" : "text-amber-500"}`}>
+                    {daily.dailySales >= daily.dailyGoal && daily.dailyGoal > 0 ? "Completado" : "Pendiente"}
+                  </span>
+                </div>
+                <div className={`rounded-xl border p-2 flex flex-col justify-between ${planTotal > 0 && planDone === planTotal ? "bg-emerald-500/10 border-emerald-500/20" : "bg-white/5 border-white/5"}`}>
+                  <p className="font-bold text-white">Checklist</p>
+                  <p className="text-slate-400 mt-0.5">Plan ({planDone}/{planTotal})</p>
+                  <span className={`mt-1.5 font-bold uppercase tracking-wider text-[9px] ${planTotal > 0 && planDone === planTotal ? "text-[#00FF66]" : "text-amber-500"}`}>
+                    {planTotal > 0 && planDone === planTotal ? "Completado" : "Pendiente"}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </Card>
+        </motion.div>
 
         <motion.div {...cardAnim(0.12)} className="mt-3">
           <PaceCard sales={daily.dailySales} goal={daily.dailyGoal} userId={user.id} />
@@ -401,6 +465,26 @@ export default function AdvisorDashboard() {
                         <li key={idx}>{t}</li>
                       ))}
                     </ul>
+                  </div>
+                )}
+
+                {profile && profile.recommendedResources && profile.recommendedResources.length > 0 && (
+                  <div className="rounded-xl bg-white/5 border border-white/5 p-3 space-y-2">
+                    <p className="text-[11px] font-black uppercase tracking-wider text-[#00FF66] flex items-center gap-1">
+                      📚 Capacitación Recomendada:
+                    </p>
+                    <div className="space-y-2">
+                      {profile.recommendedResources.map((res: any) => (
+                        <Link
+                          key={res.id}
+                          href={`/capacitacion`}
+                          className="flex items-center justify-between gap-2 rounded-lg bg-white/[0.03] hover:bg-white/5 border border-white/5 p-2 transition"
+                        >
+                          <span className="text-xs text-white/90 font-semibold truncate">{res.title}</span>
+                          <span className="text-[10px] text-volt shrink-0 font-bold uppercase tracking-wider">Ver artículo</span>
+                        </Link>
+                      ))}
+                    </div>
                   </div>
                 )}
 

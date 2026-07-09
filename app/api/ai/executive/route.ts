@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireSession, isApiError } from "@/lib/api";
 import { ClarvexIntelligence } from "@/lib/clarvex-intelligence";
+import { resolveMonterreyDate } from "@/lib/cron-time";
 
 export const dynamic = "force-dynamic";
 
@@ -9,12 +10,20 @@ export async function GET() {
   if (isApiError(session)) return session;
 
   try {
-    const [health, predictions] = await Promise.all([
+    const { dateKey } = resolveMonterreyDate();
+
+    // Evaluate recent plans outcomes first to feed operational memory
+    await ClarvexIntelligence.evaluatePlanOutcomes(session.storeId).catch((err) => {
+      console.error("[Evaluate Plan Outcomes Error]:", err);
+    });
+
+    const [health, predictions, dailySummary] = await Promise.all([
       ClarvexIntelligence.getExecutiveHealth(session),
       ClarvexIntelligence.predictMetrics(session),
+      ClarvexIntelligence.generateDailySummary(session, dateKey),
     ]);
 
-    return NextResponse.json({ health, predictions });
+    return NextResponse.json({ health, predictions, dailySummary });
   } catch (error: any) {
     console.error("[Executive Route Error]:", error);
     return NextResponse.json(
