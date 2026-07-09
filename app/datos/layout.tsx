@@ -6,7 +6,7 @@ export default async function DataCenterLayout({ children }: { children: React.R
   const session = await getServerSession();
 
   if (!session) redirect("/login");
-  if (!canManageDataSources(session.role)) redirect("/advisor");
+  if (!canManageDataSources(session.role) && !session.platformAdmin) redirect("/advisor");
 
   return children;
 }

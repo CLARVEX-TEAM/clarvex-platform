@@ -14,7 +14,7 @@ export async function requireSession(
   if (session.storeSuspended && !session.platformAdmin && !options?.allowSuspended) {
     return NextResponse.json({ error: "La suscripción de esta tienda venció." }, { status: 402 });
   }
-  if (roles && !roles.includes(session.role)) {
+  if (roles && !roles.includes(session.role) && !session.platformAdmin) {
     return NextResponse.json({ error: "No tienes permiso para esta accion." }, { status: 403 });
   }
   return session;
