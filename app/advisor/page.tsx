@@ -38,6 +38,7 @@ export default function AdvisorDashboard() {
   const [celebrate, setCelebrate] = useState(false);
   const { data, lastUpdated, loadFailed, setLoadFailed, load } = useAppData();
   const [tips, setTips] = useState<{ title: string; description: string }[]>([]);
+  const [profile, setProfile] = useState<any | null>(null);
   const [loadingTips, setLoadingTips] = useState(false);
   const [tipsError, setTipsError] = useState("");
 
@@ -51,9 +52,10 @@ export default function AdvisorDashboard() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ date: data.dashboardDaily.date })
       });
-      const payload = await res.json() as { tips?: { title: string; description: string }[]; error?: string };
+      const payload = await res.json() as any;
       if (!res.ok) throw new Error(payload.error || "No se pudo obtener consejos.");
       setTips(payload.tips || []);
+      setProfile(payload);
     } catch (err: any) {
       setTipsError(err.message || "Error al obtener sugerencias.");
     } finally {
@@ -204,6 +206,30 @@ export default function AdvisorDashboard() {
       <Confetti show={celebrate} />
       <PullToRefresh onRefresh={load}>
       <AppFrame>
+        {unread.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-3 rounded-2xl bg-[#00FF66]/10 border border-[#00FF66]/20 p-3.5 flex items-center justify-between gap-3 shadow-lg shadow-[#00FF66]/5"
+          >
+            <div className="flex items-center gap-3">
+              <span className="text-xl">📢</span>
+              <div className="min-w-0">
+                <p className="text-xs font-bold text-white">Comunicados pendientes</p>
+                <p className="text-[11px] text-[#00FF66] font-semibold mt-0.5">
+                  Tienes {unread.length} {unread.length === 1 ? "comunicado" : "comunicados"} sin confirmar lectura.
+                </p>
+              </div>
+            </div>
+            <Link
+              href="/comunicados"
+              className="rounded-xl bg-[#00FF66] px-3.5 py-1.5 text-xs font-black text-black transition active:scale-95 shrink-0"
+            >
+              Leer ahora
+            </Link>
+          </motion.div>
+        )}
+
         <DailySalesCard sales={daily.dailySales} goal={daily.dailyGoal} delay={0.08} />
 
         <motion.div {...cardAnim(0.12)} className="mt-3">
@@ -326,7 +352,7 @@ export default function AdvisorDashboard() {
                   type="button"
                   onClick={() => void fetchSalesTips()}
                   disabled={loadingTips}
-                  className="w-full flex items-center justify-center gap-2 rounded-2xl bg-volt px-4 py-2.5 text-sm font-black text-white transition active:scale-95 disabled:opacity-40"
+                  className="w-full flex items-center justify-center gap-2 rounded-2xl bg-[#00FF66] px-4 py-2.5 text-sm font-black text-black transition active:scale-95 disabled:opacity-40"
                 >
                   <Sparkles size={16} />
                   {loadingTips ? "Analizando KPIs..." : "Consultar a mi Coach IA"}
@@ -334,13 +360,59 @@ export default function AdvisorDashboard() {
                 {tipsError && <p className="mt-2 text-xs text-rose-500 font-semibold">{tipsError}</p>}
               </div>
             ) : (
-              <div className="space-y-3">
-                {tips.map((tip, idx) => (
-                  <div key={idx} className="border-b border-white/[0.07] pb-3 last:border-0 last:pb-0">
-                    <p className="text-sm font-bold text-volt">{tip.title}</p>
-                    <p className="mt-1 text-xs text-muted">{tip.description}</p>
+              <div className="space-y-4">
+                {profile && profile.operationalRisk && (
+                  <div className="rounded-xl bg-white/5 border border-white/5 p-3 flex items-center justify-between">
+                    <div className="min-w-0 pr-2">
+                      <p className="text-[10px] uppercase tracking-wider text-white/40 font-bold">Riesgo Operacional</p>
+                      <p className="text-xs text-slate-300 mt-0.5 leading-relaxed truncate">{profile.operationalRisk.reason}</p>
+                    </div>
+                    <Badge tone={
+                      profile.operationalRisk.level === "Bajo" ? "success" :
+                      profile.operationalRisk.level === "Medio" ? "warn" : "danger"
+                    }>
+                      {profile.operationalRisk.level}
+                    </Badge>
                   </div>
-                ))}
+                )}
+
+                {profile && profile.strongestKpi && (
+                  <div className="grid grid-cols-2 gap-3 text-xs">
+                    <div className="rounded-xl bg-emerald-500/10 border border-emerald-500/20 p-2.5">
+                      <p className="font-bold text-emerald-400 text-[10px] uppercase tracking-wider">Fuerte 🚀</p>
+                      <p className="font-black text-white mt-1 text-[13px]">{profile.strongestKpi.name}</p>
+                      <p className="text-white/60 mt-0.5 leading-relaxed text-[11px]">{profile.strongestKpi.details}</p>
+                    </div>
+                    <div className="rounded-xl bg-rose-500/10 border border-rose-500/20 p-2.5">
+                      <p className="font-bold text-rose-400 text-[10px] uppercase tracking-wider">Mejora 🎯</p>
+                      <p className="font-black text-white mt-1 text-[13px]">{profile.weakestKpi.name}</p>
+                      <p className="text-white/60 mt-0.5 leading-relaxed text-[11px]">{profile.weakestKpi.details}</p>
+                    </div>
+                  </div>
+                )}
+
+                {profile && profile.techniques && (
+                  <div className="rounded-xl bg-white/5 border border-white/5 p-3 space-y-2">
+                    <p className="text-[11px] font-black text-white uppercase tracking-wider text-white/40 flex items-center gap-1">
+                      💡 Técnicas de Venta Recomendadas:
+                    </p>
+                    <ul className="list-disc pl-4 space-y-1 text-xs text-white/70 leading-relaxed">
+                      {profile.techniques.map((t: string, idx: number) => (
+                        <li key={idx}>{t}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                <div className="space-y-3 pt-2">
+                  {tips.map((tip, idx) => (
+                    <div key={idx} className="border-b border-white/[0.07] pb-3 last:border-0 last:pb-0">
+                      <p className="text-sm font-bold text-volt">{tip.title}</p>
+                      <p className="mt-1 text-xs text-muted">{tip.description}</p>
+                    </div>
+                  ))}
+                </div>
+
                 <button
                   type="button"
                   onClick={() => void fetchSalesTips()}

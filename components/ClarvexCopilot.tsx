@@ -124,7 +124,7 @@ export function ClarvexCopilot() {
                     className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
                   >
                     <div
-                      className={`max-w-[85%] rounded-[20px] px-4 py-3 text-sm leading-relaxed ${
+                      className={`max-w-[85%] rounded-[20px] px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap ${
                         msg.role === "user"
                           ? "bg-[#00FF66]/10 text-white border border-[#00FF66]/20 rounded-tr-none"
                           : "bg-white/5 text-white/90 border border-white/5 rounded-tl-none"
