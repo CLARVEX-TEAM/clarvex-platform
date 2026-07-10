@@ -49,7 +49,19 @@ const mockPrisma = {
     findFirst: async () => null
   },
   dataSource: { findFirst: async () => null },
-  commissionRule: { findMany: async () => [] },
+  commissionRule: {
+    findMany: async () => [
+      { id: "r1", storeId: "store-1", role: "ASESOR", minSales: 0, maxSales: null, minAchievement: 0, maxAchievement: 99.99, commissionPercent: 1.53, active: true },
+      { id: "r2", storeId: "store-1", role: "ASESOR", minSales: 0, maxSales: null, minAchievement: 100, maxAchievement: 114.99, commissionPercent: 1.91, active: true },
+      { id: "r3", storeId: "store-1", role: "ASESOR", minSales: 0, maxSales: null, minAchievement: 115, maxAchievement: null, commissionPercent: 2.29, active: true },
+      { id: "r4", storeId: "store-1", role: "GERENTE", minSales: 0, maxSales: null, minAchievement: 0, maxAchievement: 99.99, commissionPercent: 1.25, active: true },
+      { id: "r5", storeId: "store-1", role: "GERENTE", minSales: 0, maxSales: null, minAchievement: 100, maxAchievement: 114.99, commissionPercent: 1.56, active: true },
+      { id: "r6", storeId: "store-1", role: "GERENTE", minSales: 0, maxSales: null, minAchievement: 115, maxAchievement: null, commissionPercent: 1.87, active: true },
+      { id: "r7", storeId: "store-1", role: "SUBGERENTE", minSales: 0, maxSales: null, minAchievement: 0, maxAchievement: 99.99, commissionPercent: 0.93, active: true },
+      { id: "r8", storeId: "store-1", role: "SUBGERENTE", minSales: 0, maxSales: null, minAchievement: 100, maxAchievement: 114.99, commissionPercent: 1.16, active: true },
+      { id: "r9", storeId: "store-1", role: "SUBGERENTE", minSales: 0, maxSales: null, minAchievement: 115, maxAchievement: null, commissionPercent: 1.39, active: true }
+    ]
+  },
   schedule: { findMany: async () => [] },
   user: {
     findMany: async () => [{ id: "adv-self", name: "Yo Mismo", role: "ASESOR", photoUrl: null }],
@@ -105,6 +117,7 @@ test("CLARVEX Copilot — Fase 1 (solo lectura)", async (t) => {
   const { MockProvider } = await import("../lib/ai/providers/mock-provider");
   const { getStoreDailyResultsTool } = await import("../lib/ai/tools/read/get-store-daily-results");
   const { getAdvisorPerformanceTool } = await import("../lib/ai/tools/read/get-advisor-performance");
+  const { getCommissionsTool } = await import("../lib/ai/tools/read/get-commissions");
   const { getOpenPendingsTool } = await import("../lib/ai/tools/read/get-open-pendings");
   const { prepareAnnouncementDraftTool } = await import("../lib/ai/tools/draft/prepare-announcement-draft");
   const { proposeCreateAnnouncementTool } = await import("../lib/ai/tools/action/propose-create-announcement");
@@ -119,13 +132,14 @@ test("CLARVEX Copilot — Fase 1 (solo lectura)", async (t) => {
     assert.equal(modelForTier("advanced"), "openai/gpt-oss-120b");
   });
 
-  await t.test("El registro expone 5 herramientas de lectura (ninguna mutante)", () => {
+  await t.test("El registro expone 6 herramientas de lectura (ninguna mutante)", () => {
     const tools = selectTools(advisorCtx, 1);
-    assert.equal(tools.length, 5);
+    assert.equal(tools.length, 6);
     assert.ok(tools.every((tool) => tool.mutates === false));
     const schemas = toolSchemas(tools);
     assert.ok(schemas.every((schema) => typeof schema.name === "string" && typeof schema.parameters === "object"));
     assert.ok(schemas.some((schema) => schema.name === "getStoreDailyResults"));
+    assert.ok(schemas.some((schema) => schema.name === "getCommissions"));
   });
 
   await t.test("executeTool rechaza herramienta desconocida y argumentos inválidos", async () => {
@@ -170,6 +184,45 @@ test("CLARVEX Copilot — Fase 1 (solo lectura)", async (t) => {
     }
   });
 
+  await t.test("getCommissions: gerencia ve tienda + equipo; asesor solo las suyas", async () => {
+    const mgr = await getCommissionsTool.execute(managerCtx, { period: "month", date: "2026-07-10" });
+    assert.equal(mgr.ok, true);
+    if (mgr.ok) {
+      const data = mgr.data as {
+        scope: string;
+        own: { commissionPercent: number; commissionAmount: number; hasMinimum: boolean };
+        team: Array<{ userId: string; commissionAmount: number }>;
+        activeRules: Array<{ role: string }>;
+      };
+      assert.equal(data.scope, "team");
+      assert.equal(data.own.hasMinimum, true);
+      assert.ok(data.own.commissionPercent > 0);
+      assert.ok(data.team.length >= 2);
+      assert.ok(data.activeRules.some((rule) => rule.role === "ASESOR"));
+    }
+
+    const adv = await getCommissionsTool.execute(advisorCtx, { period: "month", date: "2026-07-10", userId: "adv-other" });
+    assert.equal(adv.ok, true);
+    if (adv.ok) {
+      const data = adv.data as { scope: string; own: { userId: string }; team?: unknown };
+      assert.equal(data.scope, "own");
+      assert.equal(data.own.userId, "adv-self");
+      assert.equal(data.team, undefined);
+    }
+  });
+
+  await t.test("MockProvider enruta preguntas de comisión a getCommissions", async () => {
+    const provider = new MockProvider();
+    const tools = toolSchemas(selectTools(managerCtx, 1));
+    const step1 = await provider.chatComplete({
+      model: "m",
+      messages: [{ role: "user", content: "¿Quién está más cerca de comisionar o qué comisiones tenemos activas?" }],
+      tools
+    });
+    assert.equal(step1.toolCalls.length, 1);
+    assert.equal(step1.toolCalls[0].name, "getCommissions");
+  });
+
   await t.test("getOpenPendings devuelve los pendientes de la tienda", async () => {
     const result = await getOpenPendingsTool.execute(managerCtx, {});
     assert.equal(result.ok, true);
@@ -184,10 +237,10 @@ test("CLARVEX Copilot — Fase 1 (solo lectura)", async (t) => {
   await t.test("FASE 2: los borradores solo se exponen a gerencia (nunca a asesor)", () => {
     const mgrTools = selectTools(managerCtx, 2);
     const advTools = selectTools(advisorCtx, 2);
-    assert.equal(mgrTools.length, 8);
+    assert.equal(mgrTools.length, 9);
     assert.ok(mgrTools.some((tool) => tool.name === "prepareAnnouncementDraft"));
-    // El asesor sigue con 5 herramientas de lectura: ningún borrador.
-    assert.equal(advTools.length, 5);
+    // El asesor sigue con 6 herramientas de lectura: ningún borrador.
+    assert.equal(advTools.length, 6);
     assert.ok(!advTools.some((tool) => tool.name.startsWith("prepare")));
     // Ninguna herramienta de borrador escribe en la BD.
     assert.ok(mgrTools.every((tool) => tool.mutates === false));

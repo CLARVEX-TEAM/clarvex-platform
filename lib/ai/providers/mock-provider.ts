@@ -41,6 +41,7 @@ export class MockProvider implements LLMProvider {
 
 function pickTool(query: string, available: Set<string>): { name: string; args: Record<string, unknown> } | null {
   const candidates: Array<{ match: RegExp; name: string; args: Record<string, unknown> }> = [
+    { match: /(comision|comisión|bracket|recibo)/, name: "getCommissions", args: { period: "month" } },
     { match: /(pendiente|tarea|pend\b)/, name: "getOpenPendings", args: {} },
     { match: /(horario|turno|schedule)/, name: "getSchedules", args: {} },
     { match: /(compar|tendencia|\bvs\b|semana pasada|mes pasado)/, name: "comparePeriods", args: { period: "week" } },
@@ -89,6 +90,16 @@ function mockAnswerFromTool(name: string, content: string): string {
   if (name === "comparePeriods") {
     const delta = num(record.salesDeltaPct);
     return `La venta cambió ${delta > 0 ? "+" : ""}${delta}% respecto al periodo anterior.`;
+  }
+  if (name === "getCommissions") {
+    const own = (record.own ?? record.advisor) as { commissionAmount?: number; commissionPercent?: number; name?: string } | undefined;
+    const amount = num(own?.commissionAmount);
+    const percent = num(own?.commissionPercent);
+    const team = Array.isArray(record.team) ? record.team : [];
+    if (team.length > 0) {
+      return `Comisión de tienda: $${amount.toLocaleString("es-MX")} (${percent}%). Hay ${team.length} asesor(es) con datos de comisión en el periodo.`;
+    }
+    return `Tu comisión estimada es $${amount.toLocaleString("es-MX")} al ${percent}%.`;
   }
   return `Datos obtenidos correctamente de la herramienta ${name}.`;
 }
