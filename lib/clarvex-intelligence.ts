@@ -5,6 +5,18 @@ import { computeDailyStreak } from "@/lib/streaks";
 import { decodeSyncLogMessage } from "@/lib/data-source";
 import { buildRetailMonths, selectRetailMonth } from "@/lib/kpi-period";
 import { mergeRdvWeeks } from "@/lib/rdv-week";
+import { z } from "zod";
+import crypto from "crypto";
+import { Prisma } from "@prisma/client";
+
+export const DailySummaryContentSchema = z.object({
+  summary: z.string().min(1).max(1500),
+  positives: z.array(z.string().max(300)).max(10),
+  negatives: z.array(z.string().max(300)).max(10),
+  actionPlanTomorrow: z.array(z.string().max(300)).max(10),
+});
+
+export type DailySummaryContent = z.infer<typeof DailySummaryContentSchema>;
 
 export class ClarvexIntelligence {
   private static getApiKey() {
@@ -18,6 +30,14 @@ export class ClarvexIntelligence {
   private static async callGemini(prompt: string, jsonMode = true): Promise<string> {
     if (process.env.NODE_ENV === "test" || process.env.MOCK_EXTERNAL_SERVICES === "true") {
       const p = prompt.toLowerCase();
+      if (p.includes("actionplantomorrow") || p.includes("positives") || p.includes("resumen diario")) {
+        return JSON.stringify({
+          summary: "Cierre sólido de la tienda con buen desempeño general.",
+          positives: ["Se superó la meta diaria por un 10%", "Excelente conversión del 15%"],
+          negatives: ["UPT de 1.8 por debajo del objetivo de 2.0"],
+          actionPlanTomorrow: ["Enfocarse en ofrecer calzado deportivo", "Asegurar cobertura en horas pico"]
+        });
+      }
       if (p.includes("advisor") || p.includes("coaching") || p.includes("asesor")) {
         return JSON.stringify({
           techniques: ["Ofrecer producto adicional al cierre", "Escucha activa"],
@@ -779,11 +799,104 @@ Responde estrictamente en formato JSON utilizando el siguiente esquema:
   /**
    * Resumen Diario IA - Generates an executive daily report summarizing sales, KPIs, rankings, and pending tasks.
    */
-  public static async generateDailySummary(session: Session, dateStr: string) {
-    const parsedDate = new Date(`${dateStr}T12:00:00.000Z`);
+  public static async generateDailySummary(session: Session, dateStr: string, forceRegenerate = false) {
+    const summaryDate = new Date(`${dateStr}T12:00:00.000Z`);
+
+    // 1. Intentar cargar el caché existente
+    let summaryRecord = await prisma.aiDailySummary.findUnique({
+      where: {
+        storeId_summaryDate_type_scopeKey: {
+          storeId: session.storeId,
+          summaryDate,
+          type: "STORE_DAILY",
+          scopeKey: "STORE"
+        }
+      }
+    });
+
+    if (summaryRecord && !forceRegenerate) {
+      // Si está en proceso, esperar brevemente a que el otro hilo finalice
+      if (summaryRecord.status === "PENDING") {
+        for (let i = 0; i < 10; i++) {
+          await new Promise((resolve) => setTimeout(resolve, 500));
+          summaryRecord = await prisma.aiDailySummary.findUnique({
+            where: {
+              storeId_summaryDate_type_scopeKey: {
+                storeId: session.storeId,
+                summaryDate,
+                type: "STORE_DAILY",
+                scopeKey: "STORE"
+              }
+            }
+          });
+          if (summaryRecord && summaryRecord.status !== "PENDING") {
+            break;
+          }
+        }
+      }
+
+      // Si ya está listo o no hay datos, devolver
+      if (summaryRecord && (summaryRecord.status === "READY" || summaryRecord.status === "NO_DATA" || summaryRecord.status === "FAILED")) {
+        return summaryRecord;
+      }
+    }
+
+    // 2. Adquirir el bloqueo/crear registro como PENDING
+    let lockAcquired = false;
+    try {
+      summaryRecord = await prisma.aiDailySummary.upsert({
+        where: {
+          storeId_summaryDate_type_scopeKey: {
+            storeId: session.storeId,
+            summaryDate,
+            type: "STORE_DAILY",
+            scopeKey: "STORE"
+          }
+        },
+        update: {
+          status: "PENDING",
+          errorMessage: null,
+          content: Prisma.DbNull,
+          generatedAt: null
+        },
+        create: {
+          storeId: session.storeId,
+          summaryDate,
+          type: "STORE_DAILY",
+          scopeKey: "STORE",
+          status: "PENDING"
+        }
+      });
+      lockAcquired = true;
+    } catch (err: any) {
+      if (err.code === "P2002") {
+        // Concurrencia: esperar que termine el otro hilo
+        for (let i = 0; i < 10; i++) {
+          await new Promise((resolve) => setTimeout(resolve, 500));
+          summaryRecord = await prisma.aiDailySummary.findUnique({
+            where: {
+              storeId_summaryDate_type_scopeKey: {
+                storeId: session.storeId,
+                summaryDate,
+                type: "STORE_DAILY",
+                scopeKey: "STORE"
+              }
+            }
+          });
+          if (summaryRecord && summaryRecord.status !== "PENDING") {
+            return summaryRecord;
+          }
+        }
+        throw new Error("El resumen está siendo generado por otro proceso. Intente de nuevo.");
+      } else {
+        throw err;
+      }
+    }
+
+    // 3. Obtener los datos del día anterior de PostgreSQL
     const [kpis, pendings] = await Promise.all([
       prisma.kpi.findMany({
-        where: { storeId: session.storeId, date: parsedDate },
+        where: { storeId: session.storeId, date: summaryDate },
         include: { user: { select: { name: true, role: true } } },
       }),
       prisma.pending.findMany({
@@ -793,38 +906,159 @@ Responde estrictamente en formato JSON utilizando el siguiente esquema:
 
     const salesTotal = kpis.reduce((acc, k) => acc + Number(k.dailySales), 0);
     const goalTotal = kpis.reduce((acc, k) => acc + Number(k.dailyGoal), 0);
-    const kpiDetails = kpis.map((k) => ({
-      advisor: k.user.name,
+
+    // 4. Si no hay datos, marcar como NO_DATA y no llamar a Gemini
+    if (kpis.length === 0 || (salesTotal === 0 && goalTotal === 0)) {
+      return await prisma.aiDailySummary.update({
+        where: { id: summaryRecord.id },
+        data: {
+          status: "NO_DATA",
+          content: Prisma.DbNull,
+          metricsSnapshot: {},
+          sourceDataHash: "",
+          generatedAt: new Date()
+        }
+      });
+    }
+
+    // 5. Cálculos deterministas
+    const ticketsTotal = kpis.reduce((acc, k) => acc + k.transactions, 0);
+    const piecesTotal = kpis.reduce((acc, k) => acc + k.pieces, 0);
+    const trafficTotal = kpis.reduce((acc, k) => acc + (k.traffic ?? 0), 0);
+
+    const storeReach = goalTotal > 0 ? (salesTotal / goalTotal) * 100 : 0;
+    const storeDiff = salesTotal - goalTotal;
+    const storeUpt = ticketsTotal > 0 ? piecesTotal / ticketsTotal : 0;
+    const storeAur = piecesTotal > 0 ? salesTotal / piecesTotal : 0;
+    const storeEpt = ticketsTotal > 0 ? salesTotal / ticketsTotal : 0;
+    const storeConversion = trafficTotal > 0 ? (ticketsTotal / trafficTotal) * 100 : 0;
+
+    const advisors = kpis.map((k) => ({
+      name: k.user.name,
+      role: k.user.role,
       sales: Number(k.dailySales),
       goal: Number(k.dailyGoal),
+      achievement: Number(k.dailyGoal) > 0 ? (Number(k.dailySales) / Number(k.dailyGoal)) * 100 : 0,
       upt: Number(k.upt),
       conversion: k.conversion ? Number(k.conversion) : null,
       ranking: k.ranking,
     }));
+
+    const sortedAdvisors = [...advisors].sort((a, b) => b.achievement - a.achievement);
+    const topAdvisor = sortedAdvisors[0] ? `${sortedAdvisors[0].name} (${sortedAdvisors[0].achievement.toFixed(1)}% meta)` : "Ninguno";
+    const opportunityAdvisor = sortedAdvisors[sortedAdvisors.length - 1]
+      ? `${sortedAdvisors[sortedAdvisors.length - 1].name} (${sortedAdvisors[sortedAdvisors.length - 1].achievement.toFixed(1)}% meta)`
+      : "Ninguno";
+
     const pendingList = pendings.map((p) => `${p.title} (Estado: ${p.status}, Prioridad: ${p.priority})`);
 
+    const metricsSnapshot = {
+      storeSales: salesTotal,
+      storeGoal: goalTotal,
+      storeReach,
+      storeDiff,
+      storeUpt,
+      storeAur,
+      storeEpt,
+      storeConversion,
+      topAdvisor,
+      opportunityAdvisor,
+      advisors,
+      pendingCount: pendingList.length
+    };
+
+    const normalizedSnapshotStr = JSON.stringify({
+      storeSales: Number(salesTotal).toFixed(2),
+      storeGoal: Number(goalTotal).toFixed(2),
+      topAdvisor,
+      opportunityAdvisor,
+      advisors: advisors.map((a) => ({ name: a.name, sales: a.sales.toFixed(2), goal: a.goal.toFixed(2) }))
+    });
+    const sourceDataHash = crypto.createHash("sha256").update(normalizedSnapshotStr).digest("hex");
+
+    // Prompt adaptado para Gemini
     const prompt = `
-Eres un gerente regional y analista operativo de retail. Analiza el rendimiento del día de hoy en la tienda y genera un resumen ejecutivo diario detallado.
+Eres un gerente regional y analista operativo de retail para la cadena Clarvex. Analiza el rendimiento del día anterior y redacta el resumen diario.
 
-Fecha: ${dateStr}
-Venta total de la tienda hoy: $${salesTotal.toFixed(2)} pesos
-Meta total de la tienda hoy: $${goalTotal.toFixed(2)} pesos
-Rendimiento por colaborador:
-${JSON.stringify(kpiDetails, null, 2)}
+Fecha analizada: ${dateStr}
 
-Pendientes de la tienda:
+MÉTRICAS DE LA TIENDA YA CALCULADAS (DETERMINISTAS):
+- Venta total: $${salesTotal.toFixed(2)} pesos
+- Meta total: $${goalTotal.toFixed(2)} pesos
+- Alcance de meta de tienda: ${storeReach.toFixed(1)}%
+- Diferencia vs meta: $${storeDiff.toFixed(2)} pesos (${storeDiff >= 0 ? 'excedente' : 'faltante'})
+- UPT (Unidades por ticket) promedio de tienda: ${storeUpt.toFixed(2)}
+- AUR (Precio promedio por unidad): $${storeAur.toFixed(2)}
+- EPT (Venta promedio por ticket): $${storeEpt.toFixed(2)}
+- Conversión de tráfico promedio de tienda: ${storeConversion.toFixed(1)}%
+
+RENDIMIENTO DE COLABORADORES:
+${JSON.stringify(advisors, null, 2)}
+
+Colaborador más destacado: ${topAdvisor}
+Colaborador con mayor oportunidad: ${opportunityAdvisor}
+
+PENDIENTES ACTUALES DE LA TIENDA:
 ${JSON.stringify(pendingList, null, 2)}
+
+Instrucciones de redacción:
+1. Redacta un resumen analizando el desempeño, explicando los motivos detrás de las métricas (UPT, conversión, AUR) y destacando hitos y problemas del día anterior.
+2. Identifica puntos positivos (Éxitos) y puntos negativos/áreas de oportunidad (Puntos a cuidar).
+3. Diseña un plan de acción sugerido para hoy (Estrategia).
+4. No realices cálculos numéricos tú mismo; básate exclusivamente en los datos deterministas proporcionados.
 
 Responde estrictamente en formato JSON utilizando el siguiente esquema:
 {
-  "summary": "string (Resumen general del día, tono profesional, analizando si se cumplió la meta de tienda y destacando hitos)",
-  "positives": ["string (Puntos positivos destacados hoy, p.ej. alto UPT o metas individuales cumplidas)"],
-  "negatives": ["string (Áreas de oportunidad o fallas operativas hoy, p.ej. baja conversión o pendientes urgentes sin atender)"],
-  "actionPlanTomorrow": ["string (Acciones específicas sugeridas para la apertura y operación de mañana)"]
+  "summary": "string (Resumen general del desempeño del día analizado, tono ejecutivo profesional, entre 3 y 5 oraciones)",
+  "positives": ["string (Mínimo 1, máximo 3 puntos positivos destacados)"],
+  "negatives": ["string (Mínimo 1, máximo 3 áreas de oportunidad)"],
+  "actionPlanTomorrow": ["string (Mínimo 2, máximo 4 acciones concretas sugeridas para la operación de hoy en base al desempeño previo)"]
 }
 `;
-    const generatedText = await this.callGemini(prompt, true);
-    return JSON.parse(generatedText);
+
+    // 6. Invocar y Validar respuesta
+    let attempt = 0;
+    let validatedContent: DailySummaryContent | null = null;
+    let geminiErrorMsg = "";
+
+    while (attempt < 2 && !validatedContent) {
+      try {
+        const generatedText = await this.callGemini(prompt, true);
+        const parsed = JSON.parse(generatedText);
+        validatedContent = DailySummaryContentSchema.parse(parsed);
+      } catch (err: any) {
+        attempt++;
+        geminiErrorMsg = err.message || String(err);
+        if (attempt < 2) {
+          console.warn(`[Gemini Validation Failed] Intento ${attempt} fallido. Reintentando...`, err);
+        }
+      }
+    }
+
+    if (validatedContent) {
+      return await prisma.aiDailySummary.update({
+        where: { id: summaryRecord.id },
+        data: {
+          status: "READY",
+          content: validatedContent as any,
+          metricsSnapshot: metricsSnapshot as any,
+          sourceDataHash,
+          errorMessage: null,
+          generatedAt: new Date()
+        }
+      });
+    } else {
+      return await prisma.aiDailySummary.update({
+        where: { id: summaryRecord.id },
+        data: {
+          status: "FAILED",
+          errorMessage: geminiErrorMsg || "Error al validar la estructura JSON de la respuesta de Gemini.",
+          metricsSnapshot: metricsSnapshot as any,
+          sourceDataHash,
+          generatedAt: new Date()
+        }
+      });
+    }
   }
 
   /**

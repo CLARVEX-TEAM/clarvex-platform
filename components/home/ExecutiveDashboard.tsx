@@ -5,6 +5,7 @@ import { AlertCircle, ArrowUpRight, BarChart3, ShieldAlert, Sparkles, TrendingUp
 import { GlassCard } from "@/components/ui/GlassCard";
 import { Badge } from "@/components/ui/StatusBadge";
 import { money } from "@/lib/format";
+import { getSession } from "@/lib/auth";
 
 interface ExecutiveData {
   health: {
@@ -25,10 +26,17 @@ interface ExecutiveData {
     details: string;
   };
   dailySummary?: {
-    summary: string;
-    positives: string[];
-    negatives: string[];
-    actionPlanTomorrow: string[];
+    id: string;
+    summaryDate: string;
+    status: "PENDING" | "READY" | "NO_DATA" | "FAILED";
+    content?: {
+      summary: string;
+      positives: string[];
+      negatives: string[];
+      actionPlanTomorrow: string[];
+    };
+    errorMessage?: string;
+    generatedAt?: string;
   };
 }
 
@@ -36,8 +44,15 @@ export function ExecutiveDashboard() {
   const [data, setData] = useState<ExecutiveData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [userRole, setUserRole] = useState<string | null>(null);
+  const [isRegenerating, setIsRegenerating] = useState(false);
+  const [regenError, setRegenError] = useState("");
 
   useEffect(() => {
+    getSession().then((session) => {
+      if (session) setUserRole(session.role);
+    }).catch(() => {});
+
     fetch("/api/ai/executive")
       .then(async (res) => {
         const payload = await res.json();
@@ -51,6 +66,52 @@ export function ExecutiveDashboard() {
         setLoading(false);
       });
   }, []);
+
+  const handleRegenerate = async () => {
+    if (!window.confirm("¿Estás seguro de que deseas regenerar el resumen con IA para el día anterior? Esto consumirá cuota de Gemini.")) {
+      return;
+    }
+    setIsRegenerating(true);
+    setRegenError("");
+    try {
+      const res = await fetch("/api/ai/daily-summary/regenerate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({})
+      });
+      const payload = await res.json();
+      if (!res.ok) throw new Error(payload.error || "No se pudo regenerar el resumen.");
+      setData((prev) => prev ? { ...prev, dailySummary: payload } : null);
+    } catch (err: any) {
+      setRegenError(err.message || "Error al regenerar el resumen diario.");
+    } finally {
+      setIsRegenerating(false);
+    }
+  };
+
+  const formatSummaryDate = (dateStr: string) => {
+    try {
+      const date = new Date(dateStr);
+      return date.toLocaleDateString("es-MX", { day: "numeric", month: "long", timeZone: "UTC" });
+    } catch {
+      return "el día anterior";
+    }
+  };
+
+  const formatGeneratedAt = (dateStr?: string) => {
+    if (!dateStr) return "";
+    try {
+      const date = new Date(dateStr);
+      return date.toLocaleString("es-MX", {
+        day: "numeric",
+        month: "short",
+        hour: "2-digit",
+        minute: "2-digit"
+      });
+    } catch {
+      return "";
+    }
+  };
 
   if (loading) {
     return (
@@ -182,37 +243,112 @@ export function ExecutiveDashboard() {
 
         {/* Resumen Diario IA */}
         {dailySummary && (
-          <div className="mt-4 border-t border-white/5 pt-3.5 space-y-2.5 text-xs">
-            <p className="font-black text-[#00FF66] flex items-center gap-1.5">
-              <span>📋</span> Resumen Diario IA:
-            </p>
-            <p className="text-white/70 leading-relaxed italic bg-white/[0.02] p-2.5 rounded-xl border border-white/5">{dailySummary.summary}</p>
-            
-            <div className="grid grid-cols-2 gap-3 pt-1">
-              {dailySummary.positives.length > 0 && (
-                <div className="rounded-xl bg-emerald-500/5 border border-emerald-500/10 p-2.5">
-                  <span className="font-bold text-emerald-400">Éxitos de hoy:</span>
-                  <ul className="list-disc list-inside mt-1 space-y-1 text-white/60 text-[11px]">
-                    {dailySummary.positives.map((p, idx) => <li key={idx}>{p}</li>)}
-                  </ul>
-                </div>
-              )}
-              {dailySummary.negatives.length > 0 && (
-                <div className="rounded-xl bg-rose-500/5 border border-rose-500/10 p-2.5">
-                  <span className="font-bold text-rose-400">Puntos a cuidar:</span>
-                  <ul className="list-disc list-inside mt-1 space-y-1 text-white/60 text-[11px]">
-                    {dailySummary.negatives.map((n, idx) => <li key={idx}>{n}</li>)}
-                  </ul>
-                </div>
+          <div className="mt-4 border-t border-white/5 pt-3.5 space-y-3.5 text-xs">
+            <div className="flex items-center justify-between">
+              <p className="font-black text-[#00FF66] flex items-center gap-1.5">
+                <span>📋</span> Resumen del {formatSummaryDate(dailySummary.summaryDate)}:
+              </p>
+              {dailySummary.generatedAt && (
+                <span className="text-[10px] text-white/30">
+                  Generado: {formatGeneratedAt(dailySummary.generatedAt)}
+                </span>
               )}
             </div>
 
-            {dailySummary.actionPlanTomorrow.length > 0 && (
-              <div className="rounded-xl bg-[#00FF66]/5 border border-[#00FF66]/10 p-3 space-y-1.5">
-                <span className="font-bold text-[#00FF66]">Estrategia para mañana:</span>
-                <ul className="list-decimal list-inside space-y-1 text-white/70">
-                  {dailySummary.actionPlanTomorrow.map((planText, idx) => <li key={idx} className="leading-relaxed">{planText}</li>)}
-                </ul>
+            {/* Estado PENDING */}
+            {dailySummary.status === "PENDING" && (
+              <div className="animate-pulse py-4 space-y-2">
+                <div className="h-4 w-full bg-white/10 rounded" />
+                <div className="h-4 w-5/6 bg-white/10 rounded" />
+                <div className="h-4 w-4/6 bg-white/10 rounded" />
+                <p className="text-[10px] text-white/40 italic">Generando resumen con IA en tiempo real...</p>
+              </div>
+            )}
+
+            {/* Estado NO_DATA */}
+            {dailySummary.status === "NO_DATA" && (
+              <div className="rounded-xl bg-white/[0.02] border border-white/5 p-4 text-center">
+                <p className="text-white/60">No hay datos suficientes del {formatSummaryDate(dailySummary.summaryDate)} para generar el resumen.</p>
+              </div>
+            )}
+
+            {/* Estado FAILED */}
+            {dailySummary.status === "FAILED" && (
+              <div className="rounded-xl bg-rose-500/5 border border-rose-500/10 p-4 space-y-2.5">
+                <p className="text-rose-400 font-semibold">No fue posible generar el resumen del {formatSummaryDate(dailySummary.summaryDate)}.</p>
+                {dailySummary.errorMessage && (
+                  <p className="text-[10px] text-white/40 leading-normal font-mono bg-black/30 p-2 rounded">
+                    Detalle: {dailySummary.errorMessage}
+                  </p>
+                )}
+                {(userRole === "GERENTE" || userRole === "SUBGERENTE") && (
+                  <button
+                    onClick={handleRegenerate}
+                    disabled={isRegenerating}
+                    className="w-full mt-2 py-2 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 font-bold border border-rose-500/25 transition disabled:opacity-50 text-[11px]"
+                  >
+                    {isRegenerating ? "Regenerando..." : "Intentar generar de nuevo"}
+                  </button>
+                )}
+              </div>
+            )}
+
+            {/* Estado READY */}
+            {dailySummary.status === "READY" && dailySummary.content && (
+              <div className="space-y-3">
+                <p className="text-white/70 leading-relaxed italic bg-white/[0.02] p-2.5 rounded-xl border border-white/5">
+                  {dailySummary.content.summary}
+                </p>
+
+                <div className="grid grid-cols-2 gap-3 pt-1">
+                  {dailySummary.content.positives && dailySummary.content.positives.length > 0 && (
+                    <div className="rounded-xl bg-emerald-500/5 border border-emerald-500/10 p-2.5">
+                      <span className="font-bold text-emerald-400">Éxitos:</span>
+                      <ul className="list-disc list-inside mt-1 space-y-1 text-white/60 text-[11px]">
+                        {dailySummary.content.positives.map((p, idx) => (
+                          <li key={idx} className="leading-snug">{p}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {dailySummary.content.negatives && dailySummary.content.negatives.length > 0 && (
+                    <div className="rounded-xl bg-rose-500/5 border border-rose-500/10 p-2.5">
+                      <span className="font-bold text-rose-400">Oportunidades:</span>
+                      <ul className="list-disc list-inside mt-1 space-y-1 text-white/60 text-[11px]">
+                        {dailySummary.content.negatives.map((n, idx) => (
+                          <li key={idx} className="leading-snug">{n}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+
+                {dailySummary.content.actionPlanTomorrow && dailySummary.content.actionPlanTomorrow.length > 0 && (
+                  <div className="rounded-xl bg-[#00FF66]/5 border border-[#00FF66]/10 p-3 space-y-1.5">
+                    <span className="font-bold text-[#00FF66]">Estrategia sugerida:</span>
+                    <ul className="list-decimal list-inside space-y-1 text-white/70">
+                      {dailySummary.content.actionPlanTomorrow.map((planText, idx) => (
+                        <li key={idx} className="leading-relaxed">{planText}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {/* Botón de Regeneración Manual para Gerentes/Subgerentes */}
+                {(userRole === "GERENTE" || userRole === "SUBGERENTE") && (
+                  <div className="flex flex-col gap-1 pt-1.5 border-t border-white/5">
+                    <button
+                      onClick={handleRegenerate}
+                      disabled={isRegenerating}
+                      className="w-full py-2 rounded-xl bg-white/5 hover:bg-white/10 text-white/75 font-semibold border border-white/10 transition disabled:opacity-50 text-[11px]"
+                    >
+                      {isRegenerating ? "Regenerando resumen..." : "Regenerar resumen con IA"}
+                    </button>
+                    {regenError && (
+                      <p className="text-[10px] text-rose-400 mt-1">{regenError}</p>
+                    )}
+                  </div>
+                )}
               </div>
             )}
           </div>

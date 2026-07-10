@@ -43,6 +43,7 @@ model Store {
   aiMemories             AiMemory[]
   aiPlanHistories        AiPlanHistory[]
   aiRecommendations      AiRecommendationHistory[]
+  aiDailySummaries       AiDailySummary[]
 }
 
 model StoreFixture {
@@ -1009,4 +1010,25 @@ model AiRecommendationHistory {
   user           User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([storeId, userId])
+}
+
+model AiDailySummary {
+  id              String    @id @default(cuid())
+  storeId         String
+  summaryDate     DateTime  @db.Date
+  type            String    @default("STORE_DAILY")
+  scopeKey        String    @default("STORE")
+  status          String    @default("PENDING")
+  content         Json?
+  metricsSnapshot Json?
+  sourceDataHash  String?
+  errorMessage    String?
+  generatedAt     DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@unique([storeId, summaryDate, type, scopeKey])
+  @@index([storeId, summaryDate])
 }

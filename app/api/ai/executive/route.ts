@@ -10,7 +10,10 @@ export async function GET() {
   if (isApiError(session)) return session;
 
   try {
-    const { dateKey } = resolveMonterreyDate();
+    const todayInfo = resolveMonterreyDate();
+    const yesterday = new Date(todayInfo.utcDate);
+    yesterday.setUTCDate(yesterday.getUTCDate() - 1);
+    const yesterdayStr = yesterday.toISOString().slice(0, 10);
 
     // Evaluate recent plans outcomes first to feed operational memory
     await ClarvexIntelligence.evaluatePlanOutcomes(session.storeId).catch((err) => {
@@ -20,7 +23,7 @@ export async function GET() {
     const [health, predictions, dailySummary] = await Promise.all([
       ClarvexIntelligence.getExecutiveHealth(session),
       ClarvexIntelligence.predictMetrics(session),
-      ClarvexIntelligence.generateDailySummary(session, dateKey),
+      ClarvexIntelligence.generateDailySummary(session, yesterdayStr, false),
     ]);
 
     return NextResponse.json({ health, predictions, dailySummary });
