@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { AI_CONFIG } from "@/lib/ai/config";
 import { createProviderRouter } from "@/lib/ai/providers/provider-router";
+import { recordAiUsage } from "@/lib/ai/telemetry";
 import type { Session } from "@/lib/session";
 import { computeAchievements } from "@/lib/achievements";
 import { computeDailyStreak } from "@/lib/streaks";
@@ -21,7 +22,7 @@ export const DailySummaryContentSchema = z.object({
 export type DailySummaryContent = z.infer<typeof DailySummaryContentSchema>;
 
 export class ClarvexIntelligence {
-  private static async callGemini(prompt: string, jsonMode = true): Promise<string> {
+  private static async callGemini(prompt: string, jsonMode = true, usageMeta?: { storeId: string; userId?: string | null; feature: string }): Promise<string> {
     if (process.env.NODE_ENV === "test" || process.env.MOCK_EXTERNAL_SERVICES === "true") {
       const p = prompt.toLowerCase();
       if (p.includes("actionplantomorrow") || p.includes("positives") || p.includes("resumen diario")) {
@@ -68,18 +69,54 @@ export class ClarvexIntelligence {
     // El transporte real ahora pasa por la abstracción de proveedor (Groq como
     // principal, con fallback a Cloudflare). Se mantiene el nombre callGemini y
     // el bloque mock de arriba por compatibilidad interna y con los tests.
+    const startedAt = Date.now();
     const router = createProviderRouter();
-    const result = await router.chatComplete({
-      model: AI_CONFIG.models.advanced,
-      messages: [{ role: "user", content: prompt }],
-      temperature: 0.7,
-      jsonMode
-    });
-    const text = result.content;
-    if (!text) {
-      throw new Error("No se recibió respuesta válida del modelo de IA.");
+    try {
+      const result = await router.chatComplete({
+        model: AI_CONFIG.models.advanced,
+        messages: [{ role: "user", content: prompt }],
+        temperature: 0.7,
+        jsonMode
+      });
+      const text = result.content;
+      if (!text) {
+        throw new Error("No se recibió respuesta válida del modelo de IA.");
+      }
+      if (usageMeta) {
+        await recordAiUsage({
+          storeId: usageMeta.storeId,
+          userId: usageMeta.userId ?? null,
+          feature: usageMeta.feature,
+          provider: result.provider,
+          model: result.model,
+          modelTier: "advanced",
+          usage: result.usage ?? { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
+          toolCalls: 0,
+          iterations: 1,
+          latencyMs: Date.now() - startedAt,
+          status: "success"
+        });
+      }
+      return text.trim();
+    } catch (error) {
+      if (usageMeta) {
+        await recordAiUsage({
+          storeId: usageMeta.storeId,
+          userId: usageMeta.userId ?? null,
+          feature: usageMeta.feature,
+          provider: AI_CONFIG.provider,
+          model: AI_CONFIG.models.advanced,
+          modelTier: "advanced",
+          usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
+          toolCalls: 0,
+          iterations: 1,
+          latencyMs: Date.now() - startedAt,
+          status: "error",
+          errorMessage: error instanceof Error ? error.message : String(error)
+        });
+      }
+      throw error;
     }
-    return text.trim();
   }
 
   /**
@@ -312,7 +349,7 @@ INSTRUCCIONES DE FORMATO IMPORTANTES:
 - NUNCA respondas en un solo párrafo largo y corrido. Separa los puntos con saltos de línea para que sea fácil de leer en pantallas móviles.
 `;
 
-    return this.callGemini(contextPrompt, false);
+    return this.callGemini(contextPrompt, false, { storeId: session.storeId, userId: session.userId, feature: "copilot-legacy" });
   }
 
   /**
@@ -416,7 +453,7 @@ Debes responder estrictamente en formato JSON utilizando el siguiente esquema:
 }
 `;
 
-    const generatedText = await this.callGemini(prompt, true);
+    const generatedText = await this.callGemini(prompt, true, { storeId: session.storeId, userId: session.userId, feature: "daily-plan" });
     const planResult = JSON.parse(generatedText);
 
     // Save in history to update memory
@@ -535,7 +572,7 @@ Responde estrictamente en formato JSON utilizando el siguiente esquema:
 }
 `;
 
-    const generatedText = await this.callGemini(prompt, true);
+    const generatedText = await this.callGemini(prompt, true, { storeId: session.storeId, userId: session.userId, feature: "coach" });
     const parsedResult = JSON.parse(generatedText);
 
     // Suggest actual training resources based on weak KPI
@@ -627,7 +664,7 @@ Responde estrictamente en formato JSON utilizando el siguiente esquema:
 }
 `;
 
-    const generatedText = await this.callGemini(prompt, true);
+    const generatedText = await this.callGemini(prompt, true, { storeId: session.storeId, userId: session.userId, feature: "predict" });
     return JSON.parse(generatedText);
   }
 
@@ -688,7 +725,7 @@ Responde estrictamente en formato JSON utilizando el siguiente esquema:
 }
 `;
 
-    const generatedText = await this.callGemini(prompt, true);
+    const generatedText = await this.callGemini(prompt, true, { storeId: session.storeId, userId: session.userId, feature: "executive" });
     return JSON.parse(generatedText);
   }
 
@@ -752,7 +789,7 @@ Responde estrictamente en formato JSON utilizando el siguiente esquema:
 }
 `;
 
-    const generatedText = await this.callGemini(prompt, true);
+    const generatedText = await this.callGemini(prompt, true, { storeId: session.storeId, userId: session.userId, feature: "tasks-optimize" });
     return JSON.parse(generatedText);
   }
 
@@ -774,7 +811,7 @@ Responde estrictamente en formato JSON utilizando el siguiente esquema:
 }
 `;
 
-    const generatedText = await this.callGemini(prompt, true);
+    const generatedText = await this.callGemini(prompt, true, { storeId: session.storeId, userId: session.userId, feature: "announcement" });
     return JSON.parse(generatedText);
   }
 
@@ -1005,7 +1042,7 @@ Responde estrictamente en formato JSON utilizando el siguiente esquema:
 
     while (attempt < 2 && !validatedContent) {
       try {
-        const generatedText = await this.callGemini(prompt, true);
+        const generatedText = await this.callGemini(prompt, true, { storeId: session.storeId, userId: session.userId, feature: "daily-summary" });
         const parsed = JSON.parse(generatedText);
         validatedContent = DailySummaryContentSchema.parse(parsed);
       } catch (err: any) {
@@ -1103,7 +1140,7 @@ Escribe un reporte de negocio completo. Responde estrictamente en formato JSON u
   "strategicRecommendations": ["string (Acciones estratégicas clave a mediano plazo para impulsar ventas, conversión y eficiencia)"]
 }
 `;
-    const generatedText = await this.callGemini(prompt, true);
+    const generatedText = await this.callGemini(prompt, true, { storeId: session.storeId, userId: session.userId, feature: "report" });
     return JSON.parse(generatedText);
   }
 
