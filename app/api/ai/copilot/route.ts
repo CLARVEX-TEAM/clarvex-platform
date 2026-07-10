@@ -1,25 +1,40 @@
 import { NextResponse } from "next/server";
-import { requireSession, isApiError } from "@/lib/api";
-import { ClarvexIntelligence } from "@/lib/clarvex-intelligence";
+import { z } from "zod";
+import { isApiError, parseJson, requireSession } from "@/lib/api";
+import { runCopilot } from "@/lib/ai/orchestrator";
 
 export const dynamic = "force-dynamic";
+
+// Contrato retrocompatible: acepta { query } (un turno) o { messages } (multi-
+// turno). Devuelve { answer } como antes; añade metadatos no-sensibles.
+const inputSchema = z
+  .object({
+    query: z.string().trim().min(1).max(2000).optional(),
+    messages: z
+      .array(z.object({ role: z.enum(["user", "assistant"]), content: z.string().trim().min(1).max(4000) }))
+      .min(1)
+      .max(20)
+      .optional()
+  })
+  .refine((value) => Boolean(value.query) || Boolean(value.messages), { message: "Consulta vacía o inválida." });
 
 export async function POST(request: Request) {
   const session = await requireSession();
   if (isApiError(session)) return session;
 
-  try {
-    const { query } = await request.json();
-    if (!query || typeof query !== "string") {
-      return NextResponse.json({ error: "Consulta vacía o inválida." }, { status: 400 });
-    }
+  const parsed = await parseJson(request, inputSchema);
+  if ("response" in parsed) return parsed.response;
 
-    const answer = await ClarvexIntelligence.askCopilot(session, query);
-    return NextResponse.json({ answer });
-  } catch (error: any) {
+  try {
+    const turn = await runCopilot(session, { query: parsed.data.query, messages: parsed.data.messages });
+    return NextResponse.json(
+      { answer: turn.answer, meta: { model: turn.model, tier: turn.modelTier, tools: turn.toolInvocations.map((t) => t.name) } },
+      { headers: { "Cache-Control": "private, no-store" } }
+    );
+  } catch (error) {
     console.error("[Copilot Route Error]:", error);
     return NextResponse.json(
-      { error: error.message || "Error al procesar la respuesta del copiloto." },
+      { error: error instanceof Error ? error.message : "Error al procesar la respuesta del copiloto." },
       { status: 500 }
     );
   }
