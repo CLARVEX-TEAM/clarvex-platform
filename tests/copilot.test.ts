@@ -9,6 +9,7 @@ import test from "node:test";
 
 // --- Mock Prisma -----------------------------------------------------------
 let usageCreateCount = 0;
+const proposals = new Map<string, any>();
 
 const dailyRows = [{ dailyGoal: 12000, dailySales: 15000, transactions: 60, pieces: 120, traffic: 300 }];
 
@@ -59,13 +60,37 @@ const mockPrisma = {
       { id: "p-1", title: "Revisar exhibición", description: "Antes de abrir", category: "COMERCIAL", priority: "ALTA", ownerId: "mgr-1", status: "PENDIENTE", dueDate: new Date("2026-07-10T00:00:00.000Z"), owner: { name: "Gerente" } }
     ]
   },
-  announcement: { findMany: async () => [] },
+  announcement: {
+    findMany: async () => [],
+    create: async (args: any) => ({ id: "ann-1", ...args.data, createdAt: new Date(), reads: [] })
+  },
+  notification: { createMany: async () => ({ count: 0 }) },
+  auditLog: { create: async (args: any) => ({ id: `audit-${Math.random()}`, ...args.data }) },
+  aiRecommendationHistory: {
+    create: async (args: any) => {
+      const rec = { id: `prop-${proposals.size + 1}`, outcomeSuccess: null, createdAt: new Date(), ...args.data };
+      proposals.set(rec.id, rec);
+      return rec;
+    },
+    findFirst: async (args: any) => {
+      const rec = proposals.get(args.where.id);
+      if (!rec) return null;
+      if (args.where.storeId && rec.storeId !== args.where.storeId) return null;
+      return rec;
+    },
+    update: async (args: any) => {
+      const rec = proposals.get(args.where.id);
+      Object.assign(rec, args.data);
+      return rec;
+    }
+  },
   aiUsageLog: {
     create: async (args: any) => {
       usageCreateCount++;
       return { id: `usage-${usageCreateCount}`, ...args.data };
     }
-  }
+  },
+  $transaction: async (fn: any) => fn(mockPrisma)
 };
 
 (globalThis as any).prisma = mockPrisma;
@@ -82,6 +107,8 @@ test("CLARVEX Copilot — Fase 1 (solo lectura)", async (t) => {
   const { getAdvisorPerformanceTool } = await import("../lib/ai/tools/read/get-advisor-performance");
   const { getOpenPendingsTool } = await import("../lib/ai/tools/read/get-open-pendings");
   const { prepareAnnouncementDraftTool } = await import("../lib/ai/tools/draft/prepare-announcement-draft");
+  const { proposeCreateAnnouncementTool } = await import("../lib/ai/tools/action/propose-create-announcement");
+  const { confirmProposal } = await import("../lib/ai/actions");
   const { runCopilot } = await import("../lib/ai/orchestrator");
 
   await t.test("Selección de modelo por reglas", () => {
@@ -175,6 +202,32 @@ test("CLARVEX Copilot — Fase 1 (solo lectura)", async (t) => {
       assert.equal(data.isDraft, true);
       assert.ok(data.todayResults);
     }
+  });
+
+  await t.test("FASE 3: proponer NO ejecuta; confirmar SÍ (con aislamiento y anti-doble-ejecución)", async () => {
+    // Gating: la acción solo existe en fase 3 y solo para gerencia.
+    assert.ok(selectTools(managerCtx, 3).some((tool) => tool.name === "proposeCreateAnnouncement"));
+    assert.ok(!selectTools(advisorCtx, 3).some((tool) => tool.name === "proposeCreateAnnouncement"));
+    assert.ok(!selectTools(managerCtx, 2).some((tool) => tool.name === "proposeCreateAnnouncement"));
+
+    // Proponer: registra una propuesta pendiente, NO publica.
+    const proposeRes = await proposeCreateAnnouncementTool.execute(managerCtx, { title: "Cierre de mes", body: "Vamos con todo el fin de mes, equipo." });
+    assert.equal(proposeRes.ok, true);
+    if (!proposeRes.ok) return;
+    const proposal = proposeRes.data as { requiresConfirmation: boolean; proposalId: string };
+    assert.equal(proposal.requiresConfirmation, true);
+    assert.ok(proposal.proposalId);
+
+    // Otra tienda NO puede confirmar la propuesta.
+    await assert.rejects(() => confirmProposal({ ...managerSession, storeId: "store-otra" }, proposal.proposalId), /no encontrada/i);
+
+    // Confirmar: ejecuta la creación real del comunicado.
+    const outcome = await confirmProposal(managerSession, proposal.proposalId);
+    assert.equal(outcome.type, "ACTION_CREATE_ANNOUNCEMENT");
+    assert.equal((outcome.result as { title: string }).title, "Cierre de mes");
+
+    // Doble confirmación rechazada.
+    await assert.rejects(() => confirmProposal(managerSession, proposal.proposalId), /ya fue procesada/i);
   });
 
   await t.test("Orquestador end-to-end: pregunta → herramienta → respuesta + telemetría", async () => {

@@ -28,7 +28,11 @@ export async function POST(request: Request) {
   try {
     const turn = await runCopilot(session, { query: parsed.data.query, messages: parsed.data.messages });
     return NextResponse.json(
-      { answer: turn.answer, meta: { model: turn.model, tier: turn.modelTier, tools: turn.toolInvocations.map((t) => t.name) } },
+      {
+        answer: turn.answer,
+        pendingActions: turn.pendingActions,
+        meta: { model: turn.model, tier: turn.modelTier, tools: turn.toolInvocations.map((t) => t.name) }
+      },
       { headers: { "Cache-Control": "private, no-store" } }
     );
   } catch (error) {

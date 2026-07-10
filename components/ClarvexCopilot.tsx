@@ -7,11 +7,19 @@ import { Bot, MessageSquare, Send, Sparkles, X } from "lucide-react";
 import { getSession } from "@/lib/auth";
 import type { User } from "@/lib/types";
 
+type PendingAction = { proposalId: string; type: string; summary: string };
+type ChatMessage = {
+  role: "user" | "assistant";
+  content: string;
+  actions?: PendingAction[];
+  actionStatus?: "idle" | "confirming" | "done" | "error";
+};
+
 export function ClarvexCopilot() {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
   const [user, setUser] = useState<User | null>(null);
-  const [messages, setMessages] = useState<Array<{ role: "user" | "assistant"; content: string }>>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
@@ -88,7 +96,8 @@ export function ClarvexCopilot() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Error al conectar con la IA.");
-      setMessages((prev) => [...prev, { role: "assistant", content: data.answer }]);
+      const actions: PendingAction[] | undefined = Array.isArray(data.pendingActions) && data.pendingActions.length > 0 ? data.pendingActions : undefined;
+      setMessages((prev) => [...prev, { role: "assistant", content: data.answer, actions, actionStatus: actions ? "idle" : undefined }]);
     } catch (err: any) {
       setMessages((prev) => [
         ...prev,
@@ -96,6 +105,26 @@ export function ClarvexCopilot() {
       ]);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function confirmAction(messageIndex: number, proposalId: string) {
+    setMessages((prev) => prev.map((msg, index) => (index === messageIndex ? { ...msg, actionStatus: "confirming" } : msg)));
+    try {
+      const res = await fetch("/api/ai/copilot/confirm", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ proposalId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "No se pudo ejecutar la acción.");
+      setMessages((prev) => [
+        ...prev.map((msg, index) => (index === messageIndex ? { ...msg, actionStatus: "done" as const } : msg)),
+        { role: "assistant", content: "✅ Listo, la acción se ejecutó y quedó registrada." },
+      ]);
+    } catch (err: any) {
+      setMessages((prev) => prev.map((msg, index) => (index === messageIndex ? { ...msg, actionStatus: "error" as const } : msg)));
+      setMessages((prev) => [...prev, { role: "assistant", content: `No se pudo confirmar: ${err.message}` }]);
     }
   }
 
@@ -168,6 +197,26 @@ export function ClarvexCopilot() {
                       }`}
                     >
                       {msg.content}
+                      {msg.actions && msg.actions.length > 0 && (
+                        <div className="mt-3 space-y-2 border-t border-white/10 pt-3">
+                          {msg.actions.map((action) => (
+                            <div key={action.proposalId} className="rounded-xl border border-[#00FF66]/20 bg-[#00FF66]/5 p-2.5">
+                              <p className="text-[11px] text-white/70 mb-2">{action.summary}</p>
+                              <button
+                                onClick={() => confirmAction(index, action.proposalId)}
+                                disabled={msg.actionStatus === "confirming" || msg.actionStatus === "done"}
+                                className="w-full rounded-lg bg-[#00FF66] px-3 py-2 text-xs font-black uppercase tracking-wider text-black transition active:scale-95 disabled:opacity-50"
+                              >
+                                {msg.actionStatus === "done"
+                                  ? "Confirmado ✓"
+                                  : msg.actionStatus === "confirming"
+                                    ? "Confirmando..."
+                                    : "Confirmar y publicar"}
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}

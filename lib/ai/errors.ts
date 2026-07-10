@@ -42,3 +42,14 @@ export class ToolInvocationError extends AiError {
     this.toolName = toolName;
   }
 }
+
+// Fallo controlado al confirmar/ejecutar una acción propuesta (Fase 3):
+// propuesta inexistente, ya procesada, expirada o no autorizada. Mapea a 4xx.
+export class ProposalError extends AiError {
+  readonly status: number;
+  constructor(message: string, status = 400) {
+    super(message);
+    this.name = "ProposalError";
+    this.status = status;
+  }
+}
