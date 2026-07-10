@@ -1,10 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { Prisma } from "@prisma/client";
 
 // Configurar variables de entorno requeridas por lib/prisma.ts antes de que sea cargado
-process.env.NODE_ENV = "test";
-process.env.ALLOW_INTEGRATION_TEST_DATABASE = "true";
-process.env.TEST_DATABASE_URL = "postgresql://clarvex:PASSWORD@localhost:5432/clarvex_test?schema=public";
+(process.env as any).NODE_ENV = "test";
+(process.env as any).ALLOW_INTEGRATION_TEST_DATABASE = "true";
+(process.env as any).TEST_DATABASE_URL = "postgresql://clarvex:PASSWORD@localhost:5432/clarvex_test?schema=public";
 
 // Configurar base de datos mock antes de cargar módulos de la aplicación
 const mockSummaryDb = new Map<string, any>();
@@ -26,7 +27,7 @@ const mockPrisma: any = {
         type: args.create.type,
         scopeKey: args.create.scopeKey,
         status: args.update.status || "PENDING",
-        content: existing?.content || null,
+        content: existing?.content || (args.update.content === Prisma.DbNull ? null : args.update.content) || null,
         metricsSnapshot: existing?.metricsSnapshot || null,
         sourceDataHash: existing?.sourceDataHash || null,
         errorMessage: null,
@@ -41,7 +42,7 @@ const mockPrisma: any = {
       const id = args.where.id;
       let record: any = null;
       let recordKey = "";
-      for (const [key, value] of mockSummaryDb.entries()) {
+      for (const [key, value] of Array.from(mockSummaryDb.entries())) {
         if (value.id === id) {
           record = value;
           recordKey = key;
@@ -52,6 +53,7 @@ const mockPrisma: any = {
       const updated = {
         ...record,
         ...args.data,
+        content: args.data.content === Prisma.DbNull ? null : args.data.content,
         updatedAt: new Date()
       };
       mockSummaryDb.set(recordKey, updated);
@@ -96,8 +98,8 @@ const mockPrisma: any = {
 (globalThis as any).prisma = mockPrisma;
 
 // Mockear variables de entorno para pruebas seguras
-process.env.NODE_ENV = "test";
-process.env.MOCK_EXTERNAL_SERVICES = "true";
+(process.env as any).NODE_ENV = "test";
+(process.env as any).MOCK_EXTERNAL_SERVICES = "true";
 
 test("Daily Summary Cache - Flujo de negocio completo", async (t) => {
   const { ClarvexIntelligence } = await import("../lib/clarvex-intelligence");
@@ -129,8 +131,9 @@ test("Daily Summary Cache - Flujo de negocio completo", async (t) => {
 
     assert.equal(result.status, "READY");
     assert.ok(result.content);
-    assert.equal(result.content.summary, "Cierre sólido de la tienda con buen desempeño general.");
-    assert.equal(result.content.positives[0], "Se superó la meta diaria por un 10%");
+    const content = result.content as any;
+    assert.equal(content.summary, "Cierre sólido de la tienda con buen desempeño general.");
+    assert.equal(content.positives[0], "Se superó la meta diaria por un 10%");
   });
 
   await t.test("3. Segunda solicitud devuelve el mismo registro guardado sin re-invocar Gemini", async () => {
@@ -149,7 +152,8 @@ test("Daily Summary Cache - Flujo de negocio completo", async (t) => {
 
     const secondCall = await ClarvexIntelligence.generateDailySummary(session, "2026-07-09");
     assert.equal(secondCall.status, "READY");
-    assert.equal(secondCall.content.summary, "Contenido de cache alterado");
+    const secondContent = secondCall.content as any;
+    assert.equal(secondContent?.summary, "Contenido de cache alterado");
   });
 
   await t.test("4. Caso sin datos del día anterior genera NO_DATA y no llama a Gemini", async () => {
