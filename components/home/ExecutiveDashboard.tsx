@@ -68,7 +68,7 @@ export function ExecutiveDashboard() {
   }, []);
 
   const handleRegenerate = async () => {
-    if (!window.confirm("¿Estás seguro de que deseas regenerar el resumen con IA para el día anterior? Esto consumirá cuota de Gemini.")) {
+    if (!window.confirm("¿Estás seguro de que deseas regenerar el resumen con IA para el día anterior? Esto consumirá cuota de IA.")) {
       return;
     }
     setIsRegenerating(true);

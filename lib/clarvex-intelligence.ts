@@ -6,11 +6,20 @@ import type { Session } from "@/lib/session";
 import { computeAchievements } from "@/lib/achievements";
 import { computeDailyStreak } from "@/lib/streaks";
 import { decodeSyncLogMessage } from "@/lib/data-source";
+import { resolveMonterreyDate } from "@/lib/cron-time";
 import { buildRetailMonths, selectRetailMonth } from "@/lib/kpi-period";
 import { mergeRdvWeeks } from "@/lib/rdv-week";
 import { z } from "zod";
 import crypto from "crypto";
 import { Prisma } from "@prisma/client";
+
+/** Rango UTC [inicio, fin) del día KPI (medianoche). Los KPIs se guardan en T00:00Z. */
+export function utcDayRange(dateStr: string): { start: Date; end: Date } {
+  const start = new Date(`${dateStr}T00:00:00.000Z`);
+  const end = new Date(start);
+  end.setUTCDate(end.getUTCDate() + 1);
+  return { start, end };
+}
 
 export const DailySummaryContentSchema = z.object({
   summary: z.string().min(1).max(1500),
@@ -669,15 +678,42 @@ Responde estrictamente en formato JSON utilizando el siguiente esquema:
   }
 
   /**
-   * Dashboard Ejecutivo IA - Executive store health, risks, anomalies, actions.
+   * Dashboard Ejecutivo IA - salud de tienda con datos acumulados HASTA AYER
+   * (nunca incluye el día en curso). Ranking solo entre asesores.
    */
   public static async getExecutiveHealth(session: Session) {
-    const [kpis, pendings, logs] = await Promise.all([
+    const todayInfo = resolveMonterreyDate();
+    const yesterday = new Date(todayInfo.utcDate);
+    yesterday.setUTCDate(yesterday.getUTCDate() - 1);
+    const yesterdayKey = yesterday.toISOString().slice(0, 10);
+    const { start: yesterdayStart, end: throughExclusive } = utcDayRange(yesterdayKey);
+
+    // Mes calendario del corte (hasta ayer). Si hay semanas RDV, preferir mes retail.
+    const monthStart = new Date(Date.UTC(yesterday.getUTCFullYear(), yesterday.getUTCMonth(), 1));
+    const weekRows = await prisma.kpi.findMany({
+      where: { storeId: session.storeId, weekStart: { not: null } },
+      distinct: ["weekStart"],
+      select: { weekStart: true, weekEnd: true },
+      orderBy: { weekStart: "asc" }
+    });
+    const retailMonths = buildRetailMonths(
+      weekRows
+        .filter((row): row is { weekStart: Date; weekEnd: Date } => Boolean(row.weekStart && row.weekEnd))
+        .map((row) => ({ weekStart: row.weekStart, weekEnd: row.weekEnd }))
+    );
+    const retailMonth = selectRetailMonth(retailMonths, yesterday);
+    const periodStart = retailMonth?.start ?? monthStart;
+    const periodLabel = retailMonth?.label ?? yesterday.toLocaleDateString("es-MX", { month: "long", year: "numeric", timeZone: "UTC" });
+
+    const [periodKpis, yesterdayKpis, pendings, logs] = await Promise.all([
       prisma.kpi.findMany({
-        where: { storeId: session.storeId },
-        orderBy: { date: "desc" },
-        take: 15,
+        where: { storeId: session.storeId, date: { gte: periodStart, lt: throughExclusive } },
         include: { user: { select: { name: true, role: true } } },
+        orderBy: { date: "asc" }
+      }),
+      prisma.kpi.findMany({
+        where: { storeId: session.storeId, date: { gte: yesterdayStart, lt: throughExclusive } },
+        include: { user: { select: { name: true, role: true } } }
       }),
       prisma.pending.findMany({
         where: { storeId: session.storeId, status: { in: ["PENDIENTE", "EN_PROCESO"] } },
@@ -689,23 +725,82 @@ Responde estrictamente en formato JSON utilizando el siguiente esquema:
       }),
     ]);
 
-    const kpiSummary = kpis.map((k) => ({
-      name: k.user.name,
-      role: k.user.role,
-      sales: Number(k.dailySales),
-      goal: Number(k.dailyGoal),
-      conversion: k.conversion ? Number(k.conversion) : 0,
-      upt: Number(k.upt),
-    }));
+    const sumRows = (rows: typeof periodKpis) => {
+      const traffic = rows.reduce((max, row) => Math.max(max, row.traffic ?? 0), 0);
+      const sales = rows.reduce((acc, row) => acc + Number(row.dailySales), 0);
+      const goal = rows.reduce((acc, row) => acc + Number(row.dailyGoal), 0);
+      const tickets = rows.reduce((acc, row) => acc + row.transactions, 0);
+      const pieces = rows.reduce((acc, row) => acc + row.pieces, 0);
+      return {
+        sales,
+        goal,
+        achievement: goal > 0 ? (sales / goal) * 100 : 0,
+        tickets,
+        pieces,
+        traffic,
+        upt: tickets > 0 ? pieces / tickets : 0,
+        conversion: traffic > 0 ? (tickets / traffic) * 100 : 0
+      };
+    };
+
+    const storePeriod = sumRows(periodKpis);
+    const storeYesterday = sumRows(yesterdayKpis);
+
+    // Ranking solo asesores (nunca gerente/subgerente: su columna personal no es comparable).
+    const advisorMap = new Map<string, { name: string; sales: number; goal: number; tickets: number; pieces: number; traffic: number }>();
+    for (const row of periodKpis) {
+      if (row.user.role !== "ASESOR") continue;
+      const current = advisorMap.get(row.userId) ?? { name: row.user.name, sales: 0, goal: 0, tickets: 0, pieces: 0, traffic: 0 };
+      current.sales += Number(row.dailySales);
+      current.goal += Number(row.dailyGoal);
+      current.tickets += row.transactions;
+      current.pieces += row.pieces;
+      current.traffic = Math.max(current.traffic, row.traffic ?? 0);
+      advisorMap.set(row.userId, current);
+    }
+    const advisors = Array.from(advisorMap.values())
+      .map((advisor) => ({
+        name: advisor.name,
+        sales: advisor.sales,
+        goal: advisor.goal,
+        achievement: advisor.goal > 0 ? (advisor.sales / advisor.goal) * 100 : 0,
+        upt: advisor.tickets > 0 ? advisor.pieces / advisor.tickets : 0,
+        conversion: advisor.traffic > 0 ? (advisor.tickets / advisor.traffic) * 100 : null
+      }))
+      .sort((a, b) => b.achievement - a.achievement);
+
+    const topAdvisor = advisors[0]
+      ? `${advisors[0].name} (${advisors[0].achievement.toFixed(1)}% de su meta del periodo)`
+      : "Sin asesores con datos hasta ayer";
+    const opportunityAdvisor = advisors.length
+      ? `${advisors[advisors.length - 1].name} (${advisors[advisors.length - 1].achievement.toFixed(1)}% de su meta del periodo)`
+      : "Sin asesores con datos hasta ayer";
 
     const tasks = pendings.map((t) => `${t.title} (${t.priority})`);
     const logsSummary = logs.map((l) => `${l.category}: ${l.description}`);
 
     const prompt = `
-Eres un auditor de operaciones retail senior. Tu tarea es evaluar la salud general de la tienda y generar sugerencias operativas directas.
+Eres un auditor de operaciones retail senior. Evalúa la salud de la tienda con datos CERRADOS hasta ayer (${yesterdayKey}). NO uses ni inventes el día de hoy.
 
-Resumen del rendimiento del equipo:
-${JSON.stringify(kpiSummary, null, 2)}
+Periodo analizado: ${periodLabel} (desde ${periodStart.toISOString().slice(0, 10)} hasta ${yesterdayKey} inclusive).
+
+MÉTRICAS DETERMINISTAS DE TIENDA (acumulado del periodo hasta ayer):
+- Venta: $${storePeriod.sales.toFixed(2)}
+- Meta: $${storePeriod.goal.toFixed(2)}
+- Alcance: ${storePeriod.achievement.toFixed(1)}%
+- UPT: ${storePeriod.upt.toFixed(2)}
+- Conversión: ${storePeriod.conversion.toFixed(1)}%
+- Tickets: ${storePeriod.tickets} | Piezas: ${storePeriod.pieces} | Tráfico: ${storePeriod.traffic}
+
+CIERRE DE AYER (${yesterdayKey}):
+- Venta: $${storeYesterday.sales.toFixed(2)} / Meta: $${storeYesterday.goal.toFixed(2)} (${storeYesterday.achievement.toFixed(1)}%)
+- UPT: ${storeYesterday.upt.toFixed(2)} | Conversión: ${storeYesterday.conversion.toFixed(1)}%
+
+ASESORES (solo rol ASESOR, acumulado del periodo hasta ayer; NO evalúes a GERENTE/SUBGERENTE como vendedores):
+${JSON.stringify(advisors, null, 2)}
+
+Destacado precalculado: ${topAdvisor}
+Oportunidad precalculada: ${opportunityAdvisor}
 
 Pendientes activos:
 ${tasks.join(", ") || "Ninguno"}
@@ -713,13 +808,19 @@ ${tasks.join(", ") || "Ninguno"}
 Últimas notas de bitácora:
 ${logsSummary.join("\n") || "Ninguna"}
 
+Reglas:
+1. Basa riesgos y acciones en las métricas deterministas y pendientes reales.
+2. En topAdvisor y opportunityAdvisor usa EXCLUSIVAMENTE asesores (ASESOR). Si no hay asesores, indícalo.
+3. No culpes a gerencia por "0 ventas personales".
+4. Sé concreto y operativo.
+
 Responde estrictamente en formato JSON utilizando el siguiente esquema:
 {
   "storeHealth": "VERDE | AMARILLO | ROJO (Semáforo de salud operativa)",
   "fortheleses": ["string (Fortaleza 1)", "string (Fortaleza 2)"],
   "risks": ["string (Riesgo 1)", "string (Riesgo 2)"],
-  "topAdvisor": "string (Nombre del asesor destacado y por qué)",
-  "opportunityAdvisor": "string (Nombre del asesor con mayor área de oportunidad y por qué)",
+  "topAdvisor": "string (Asesor destacado y por qué)",
+  "opportunityAdvisor": "string (Asesor con mayor área de oportunidad y por qué)",
   "priorities": ["string (Prioridad operativa 1)", "string (Prioridad operativa 2)"],
   "actions": ["string (Acción sugerida 1)", "string (Acción sugerida 2)"]
 }
@@ -819,7 +920,10 @@ Responde estrictamente en formato JSON utilizando el siguiente esquema:
    * Resumen Diario IA - Generates an executive daily report summarizing sales, KPIs, rankings, and pending tasks.
    */
   public static async generateDailySummary(session: Session, dateStr: string, forceRegenerate = false) {
+    // Clave de caché (mediodía) — se mantiene por compatibilidad con registros existentes.
     const summaryDate = new Date(`${dateStr}T12:00:00.000Z`);
+    // Los KPIs del RDV se guardan en medianoche UTC; hay que buscar por rango del día.
+    const { start: dayStart, end: dayEnd } = utcDayRange(dateStr);
 
     // 1. Intentar cargar el caché existente
     let summaryRecord = await prisma.aiDailySummary.findUnique({
@@ -854,8 +958,9 @@ Responde estrictamente en formato JSON utilizando el siguiente esquema:
         }
       }
 
-      // Si ya está listo o no hay datos, devolver
-      if (summaryRecord && (summaryRecord.status === "READY" || summaryRecord.status === "NO_DATA" || summaryRecord.status === "FAILED")) {
+      // READY/FAILED se sirven de caché. NO_DATA se reintenta: el sync del RDV
+      // puede haber llegado después (antes fallaba también por mismatch T12 vs T00).
+      if (summaryRecord && (summaryRecord.status === "READY" || summaryRecord.status === "FAILED")) {
         return summaryRecord;
       }
     }
@@ -912,10 +1017,10 @@ Responde estrictamente en formato JSON utilizando el siguiente esquema:
       }
     }
 
-    // 3. Obtener los datos del día anterior de PostgreSQL
+    // 3. Obtener los datos del día anterior de PostgreSQL (rango del día KPI)
     const [kpis, pendings] = await Promise.all([
       prisma.kpi.findMany({
-        where: { storeId: session.storeId, date: summaryDate },
+        where: { storeId: session.storeId, date: { gte: dayStart, lt: dayEnd } },
         include: { user: { select: { name: true, role: true } } },
       }),
       prisma.pending.findMany({
