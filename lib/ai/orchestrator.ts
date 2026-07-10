@@ -6,7 +6,7 @@ import { createProviderRouter } from "@/lib/ai/providers/provider-router";
 import { buildSystemPrompt } from "@/lib/ai/prompts/system";
 import { recordAiUsage } from "@/lib/ai/telemetry";
 import { executeTool, selectTools, toolSchemas } from "@/lib/ai/tools/registry";
-import type { ChatMessage, CopilotTurn, TokenUsage } from "@/lib/ai/types";
+import type { ChatMessage, CopilotTurn, PendingAction, TokenUsage } from "@/lib/ai/types";
 import type { Session } from "@/lib/session-token";
 
 export type CopilotInput = {
@@ -23,6 +23,14 @@ function addUsage(a: TokenUsage, b: TokenUsage | null): TokenUsage {
     completionTokens: a.completionTokens + b.completionTokens,
     totalTokens: a.totalTokens + b.totalTokens
   };
+}
+
+function isPendingAction(data: unknown): data is { proposalId: string; type: string; summary: string } {
+  return (
+    typeof data === "object" && data !== null &&
+    (data as Record<string, unknown>).requiresConfirmation === true &&
+    typeof (data as Record<string, unknown>).proposalId === "string"
+  );
 }
 
 function buildHistory(input: CopilotInput): ChatMessage[] {
@@ -54,6 +62,7 @@ export async function runCopilot(session: Session, input: CopilotInput): Promise
 
   let usage = EMPTY_USAGE;
   const toolInvocations: CopilotTurn["toolInvocations"] = [];
+  const pendingActions: PendingAction[] = [];
   let provider = "unknown";
   let answer: string | null = null;
   let iterations = 0;
@@ -77,6 +86,11 @@ export async function runCopilot(session: Session, input: CopilotInput): Promise
         for (const call of result.toolCalls) {
           const outcome = await executeTool(ctx, tools, call.name, call.arguments);
           toolInvocations.push({ name: call.name, ok: outcome.ok });
+          // Fase 3: una herramienta "propose..." devuelve una acción pendiente
+          // de confirmación (no ejecutada). Se recoge para que la UI la confirme.
+          if (outcome.ok && isPendingAction(outcome.data)) {
+            pendingActions.push({ proposalId: outcome.data.proposalId, type: outcome.data.type, summary: outcome.data.summary });
+          }
           conversation.push({
             role: "tool",
             toolCallId: call.id,
@@ -121,7 +135,7 @@ export async function runCopilot(session: Session, input: CopilotInput): Promise
       status: "success"
     });
 
-    return { answer: finalAnswer, usage, toolInvocations, model, modelTier: tier, provider, iterations };
+    return { answer: finalAnswer, usage, toolInvocations, pendingActions, model, modelTier: tier, provider, iterations };
   } catch (error) {
     await recordAiUsage({
       storeId: ctx.storeId,

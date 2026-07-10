@@ -74,10 +74,19 @@ export type ToolResult =
   | { ok: true; data: unknown }
   | { ok: false; error: string };
 
+// Acción propuesta por el Copilot (Fase 3) que requiere confirmación explícita
+// del usuario antes de ejecutarse. La UI la muestra con un botón de confirmar.
+export type PendingAction = {
+  proposalId: string;
+  type: string;
+  summary: string;
+};
+
 export type CopilotTurn = {
   answer: string;
   usage: TokenUsage;
   toolInvocations: Array<{ name: string; ok: boolean }>;
+  pendingActions: PendingAction[];
   model: string;
   modelTier: ModelTier;
   provider: string;

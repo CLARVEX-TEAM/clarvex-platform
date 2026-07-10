@@ -1,9 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { isApiError, parseJson, requireSession } from "@/lib/api";
-import { prisma } from "@/lib/prisma";
-import { createNotifications } from "@/lib/notifications";
-import { dispatchPushToUsers } from "@/lib/push";
+import { createAnnouncement } from "@/lib/services/announcement-service";
 import { validateProfilePhoto } from "@/lib/profile-photo";
 import { deleteFromR2, uploadToR2 } from "@/lib/r2";
 
@@ -49,36 +47,10 @@ export async function POST(request: Request) {
     body = parsed.data.body;
   }
 
-  const { announcement, advisorIds } = await prisma.$transaction(async (tx) => {
-    const created = await tx.announcement.create({
-      data: { storeId: session.storeId, authorId: session.userId, title, body, imageUrl },
-      include: { reads: true }
-    });
-    const advisors = await tx.user.findMany({ where: { storeId: session.storeId, role: "ASESOR", active: true }, select: { id: true } });
-    await createNotifications(tx, advisors.map((advisor) => ({
-      storeId: session.storeId,
-      userId: advisor.id,
-      type: "NEW_ANNOUNCEMENT" as const,
-      title: "Nuevo comunicado",
-      body: created.title
-    })));
-    return { announcement: created, advisorIds: advisors.map((advisor) => advisor.id) };
-  }).catch(async (error) => {
+  const announcement = await createAnnouncement(session, { title, body, imageUrl }).catch(async (error) => {
     if (imageUrl) deleteFromR2(imageUrl).catch(() => undefined);
     throw error;
   });
 
-  dispatchPushToUsers(advisorIds, { title: "Nuevo comunicado", body: announcement.title, tag: "comunicado", url: "/comunicados" }).catch(() => undefined);
-  return NextResponse.json({
-    announcement: {
-      id: announcement.id,
-      title: announcement.title,
-      body: announcement.body,
-      imageUrl: announcement.imageUrl ?? null,
-      authorId: announcement.authorId,
-      date: announcement.createdAt.toISOString().slice(0, 10),
-      readBy: [],
-      reactions: []
-    }
-  }, { status: 201 });
+  return NextResponse.json({ announcement }, { status: 201 });
 }

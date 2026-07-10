@@ -42,10 +42,10 @@ export const AI_CONFIG = {
     baseUrl: process.env.CLOUDFLARE_AI_BASE_URL ?? ""
   },
   // Fase operativa del Copilot: 1 = solo lectura, 2 = lectura + borradores,
-  // 3 = acciones con confirmación. Fase 2 es el default: sigue sin escribir en
-  // la BD de negocio (los borradores no se guardan; el usuario los publica).
-  // Controla qué herramientas expone el registro.
-  phase: (intEnv(process.env.AI_COPILOT_PHASE, 2) as CopilotPhase),
+  // 3 = acciones con confirmación (default). Las acciones NUNCA se ejecutan
+  // solas: la herramienta 'propose...' deja la acción pendiente y requiere una
+  // confirmación explícita del usuario por un endpoint aparte.
+  phase: (intEnv(process.env.AI_COPILOT_PHASE, 3) as CopilotPhase),
   // Tope de vueltas del ciclo de tool-calling (evita bucles y costo desbocado).
   maxToolIterations: intEnv(process.env.AI_MAX_TOOL_ITERATIONS, 5),
   requestTimeoutMs: intEnv(process.env.AI_REQUEST_TIMEOUT_MS, 30_000),

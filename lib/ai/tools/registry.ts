@@ -1,4 +1,5 @@
 import { AI_CONFIG } from "@/lib/ai/config";
+import { proposeCreateAnnouncementTool } from "@/lib/ai/tools/action/propose-create-announcement";
 import { prepareAnnouncementDraftTool } from "@/lib/ai/tools/draft/prepare-announcement-draft";
 import { prepareDailyPlanDraftTool } from "@/lib/ai/tools/draft/prepare-daily-plan-draft";
 import { preparePendingDraftTool } from "@/lib/ai/tools/draft/prepare-pending-draft";
@@ -21,7 +22,9 @@ const ALL_TOOLS: CopilotTool[] = [
   // Fase 2 — preparación de borradores (no escriben; solo reúnen contexto).
   prepareAnnouncementDraftTool as CopilotTool,
   prepareDailyPlanDraftTool as CopilotTool,
-  preparePendingDraftTool as CopilotTool
+  preparePendingDraftTool as CopilotTool,
+  // Fase 3 — acciones con confirmación (proponen; no ejecutan hasta confirmar).
+  proposeCreateAnnouncementTool as CopilotTool
 ];
 
 // Herramientas disponibles para este contexto: filtra por fase operativa y por
