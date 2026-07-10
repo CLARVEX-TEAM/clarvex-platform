@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildCommissionPerson } from "../lib/ai/tools/read/get-commissions";
+import { buildCommissionPerson } from "../lib/commission-read";
 import type { CommissionRule } from "../lib/types";
 
 const advisorRules: CommissionRule[] = [
@@ -16,7 +16,6 @@ const managerRules: CommissionRule[] = [
 ];
 
 test("buildCommissionPerson: asesor usa venta÷mínimo y bracket correcto", () => {
-  // Mínimo 10000 → con venta 11000 alcance 110% → bracket 1.91%
   const person = buildCommissionPerson(
     { userId: "a1", userName: "Waira", role: "ASESOR", sales: 11000, goal: 11500, commissionMinimum: 10000 },
     advisorRules,
@@ -32,7 +31,6 @@ test("buildCommissionPerson: asesor usa venta÷mínimo y bracket correcto", () =
 });
 
 test("buildCommissionPerson: sin mínimo sincronizado deriva meta÷1.15", () => {
-  // meta 11500 → mínimo derivado 10000
   const person = buildCommissionPerson(
     { userId: "a1", userName: "Waira", role: "ASESOR", sales: 10000, goal: 11500, commissionMinimum: null },
     advisorRules,

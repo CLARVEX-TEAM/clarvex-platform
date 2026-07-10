@@ -1,94 +1,27 @@
 import { z } from "zod";
-import { computeNextBracketGap, findCommissionRule, resolveCommissionMinimum } from "@/lib/commission";
-import { getAchievement } from "@/lib/kpi-view";
+import {
+  activeCommissionRulesSummary,
+  buildCommissionPerson,
+  pickClosestToNextBracket,
+  publicCommissionPerson
+} from "@/lib/commission-read";
 import { parsePeriodDate } from "@/lib/kpi-period";
 import { getKpiReport, type KpiReport } from "@/lib/services/kpi-service";
+import { resolveStoreTeammate } from "@/lib/ai/tools/resolve-teammate";
 import { defineTool, toolError, toolOk } from "@/lib/ai/tools/tool";
 import { toSession } from "@/lib/ai/tools/session-adapter";
-import type { CommissionRule, Role } from "@/lib/types";
+import type { Role } from "@/lib/types";
 
 const argsSchema = z.object({
+  /** Nombre o número de empleado (preferido). Nunca pedir UUID al usuario. */
+  advisor: z.string().min(1).optional(),
+  /** @deprecated Solo compatibilidad interna; preferir `advisor`. */
   userId: z.string().min(1).optional(),
   period: z.enum(["week", "month"]).optional(),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional()
 });
 
-type CommissionPerson = {
-  userId: string;
-  name: string;
-  role: Role;
-  sales: number;
-  goal: number;
-  minimum: number;
-  achievementVsMinimum: number;
-  commissionPercent: number;
-  commissionAmount: number;
-  hasMinimum: boolean;
-  nextBracket: ReturnType<typeof computeNextBracketGap>;
-};
-
-function round2(value: number) {
-  return Math.round(value * 100) / 100;
-}
-
-/** Misma lectura que la pestaña KPIs → Comisión (useKpiDerived). No recalcula reglas. */
-export function buildCommissionPerson(
-  item: {
-    userId: string;
-    userName: string;
-    role: Role;
-    sales: number;
-    goal: number;
-    commissionMinimum: number | null;
-  },
-  rules: CommissionRule[],
-  commissionRole: Role
-): CommissionPerson {
-  const minimum = resolveCommissionMinimum(item.commissionMinimum, item.goal);
-  const hasMinimum = minimum > 0;
-  const achievementVsMinimum = hasMinimum ? getAchievement(item.sales, minimum) : 0;
-  const activeRule = hasMinimum ? findCommissionRule(rules, commissionRole, achievementVsMinimum) : undefined;
-  const commissionPercent = activeRule?.commissionPercent ?? 0;
-  const commissionAmount = hasMinimum ? round2(item.sales * (commissionPercent / 100)) : 0;
-  const nextBracket = hasMinimum
-    ? computeNextBracketGap({ sales: item.sales, minimum, rules, role: commissionRole })
-    : null;
-
-  return {
-    userId: item.userId,
-    name: item.userName,
-    role: commissionRole,
-    sales: item.sales,
-    goal: item.goal,
-    minimum,
-    achievementVsMinimum: round2(achievementVsMinimum),
-    commissionPercent,
-    commissionAmount,
-    hasMinimum,
-    nextBracket
-  };
-}
-
-function activeRulesSummary(rules: CommissionRule[]) {
-  return rules
-    .filter((rule) => rule.active && rule.role)
-    .sort((a, b) => String(a.role).localeCompare(String(b.role)) || a.minAchievement - b.minAchievement)
-    .map((rule) => ({
-      role: rule.role as Role,
-      minAchievement: rule.minAchievement,
-      maxAchievement: rule.maxAchievement ?? null,
-      commissionPercent: rule.commissionPercent
-    }));
-}
-
-function pickClosest(team: CommissionPerson[]): CommissionPerson | null {
-  const candidates = team
-    .filter((person) => person.hasMinimum && person.nextBracket && !person.nextBracket.atTop)
-    .sort((a, b) => (a.nextBracket?.salesNeeded ?? Infinity) - (b.nextBracket?.salesNeeded ?? Infinity));
-  return candidates[0] ?? null;
-}
-
-function buildPayload(report: KpiReport, ctxRole: Role, userId?: string) {
+function buildPayload(report: KpiReport, ctxRole: Role, resolvedUserId?: string) {
   const rules = report.commissionRules;
   const periodMeta = {
     period: report.period,
@@ -96,7 +29,8 @@ function buildPayload(report: KpiReport, ctxRole: Role, userId?: string) {
     endDate: report.endDate,
     weekNumber: report.weekNumber,
     retailMonthLabel: report.retailMonthLabel,
-    note: "Alcance de comisión = venta ÷ mínimo (igual que pestaña KPIs → Comisión). La IA no recalcula."
+    note: "Mismos números que pestaña KPIs → Comisión (venta ÷ mínimo). Presenta en lista corta, no en tabla ancha.",
+    formatHint: "Para cada persona: Nombre — comisión $X (Y%) — alcance vs mínimo Z%. Evita tablas con muchas columnas."
   };
 
   if (ctxRole === "ASESOR") {
@@ -105,12 +39,11 @@ function buildPayload(report: KpiReport, ctxRole: Role, userId?: string) {
     return toolOk({
       ...periodMeta,
       scope: "own",
-      own,
-      activeRules: activeRulesSummary(rules).filter((rule) => rule.role === "ASESOR")
+      own: publicCommissionPerson(own),
+      activeRules: activeCommissionRulesSummary(rules).filter((rule) => rule.role === "ASESOR")
     });
   }
 
-  // Gerencia: comisión propia = tienda (venta/mínimo TOTALES) con su rol.
   if (ctxRole !== "GERENTE" && ctxRole !== "SUBGERENTE") {
     return toolError("Tu rol no tiene acceso a comisiones de ventas en el Copilot.");
   }
@@ -128,26 +61,27 @@ function buildPayload(report: KpiReport, ctxRole: Role, userId?: string) {
     .map((item) => buildCommissionPerson(item, rules, "ASESOR"))
     .sort((a, b) => b.commissionAmount - a.commissionAmount || b.achievementVsMinimum - a.achievementVsMinimum);
 
-  if (userId) {
-    const target = team.find((item) => item.userId === userId);
-    if (!target) return toolError("El colaborador no pertenece a tu tienda o no tiene datos en el periodo.");
+  if (resolvedUserId) {
+    const target = team.find((item) => item.userId === resolvedUserId);
+    if (!target) {
+      return toolError("Ese colaborador está en tu tienda pero no tiene datos de comisión en este periodo.");
+    }
     return toolOk({
       ...periodMeta,
       scope: "advisor",
-      advisor: target,
-      activeRules: activeRulesSummary(rules)
+      advisor: publicCommissionPerson(target),
+      activeRules: activeCommissionRulesSummary(rules).filter((rule) => rule.role === "ASESOR" || rule.role === ctxRole)
     });
   }
 
-  const closest = pickClosest(team);
+  const closest = pickClosestToNextBracket(team);
   return toolOk({
     ...periodMeta,
     scope: "team",
-    own,
-    team,
+    own: publicCommissionPerson(own),
+    team: team.map(publicCommissionPerson),
     closestToNextLevel: closest
       ? {
-          userId: closest.userId,
           name: closest.name,
           salesNeeded: closest.nextBracket?.salesNeeded ?? 0,
           currentPercent: closest.nextBracket?.currentPercent ?? closest.commissionPercent,
@@ -155,7 +89,7 @@ function buildPayload(report: KpiReport, ctxRole: Role, userId?: string) {
           achievementVsMinimum: closest.achievementVsMinimum
         }
       : null,
-    activeRules: activeRulesSummary(rules)
+    activeRules: activeCommissionRulesSummary(rules)
   });
 }
 
@@ -164,14 +98,17 @@ function buildPayload(report: KpiReport, ctxRole: Role, userId?: string) {
 export const getCommissionsTool = defineTool<z.infer<typeof argsSchema>>({
   name: "getCommissions",
   description:
-    "Devuelve comisiones de ventas del periodo (monto, %, alcance vs mínimo, reglas activas y cuánto falta al siguiente nivel). Úsala para 'mis comisiones', 'quién está más cerca de comisionar' o 'qué brackets/reglas tenemos'. Gerencia ve tienda + equipo; un asesor solo las suyas.",
+    "Devuelve comisiones de ventas del periodo (monto, %, alcance vs mínimo, reglas activas y cuánto falta al siguiente nivel). Para un asesor concreto pasa su NOMBRE o número de empleado en `advisor` (ej. 'Alonso' o '113642'). NUNCA pidas UUID. Gerencia ve tienda + equipo; un asesor solo las suyas.",
   phase: 1,
   roles: ["GERENTE", "SUBGERENTE", "ASESOR"],
   mutates: false,
   parameters: {
     type: "object",
     properties: {
-      userId: { type: "string", description: "ID del asesor a consultar (solo gerencia). Opcional." },
+      advisor: {
+        type: "string",
+        description: "Nombre (parcial o completo) o número de empleado del asesor. Ej: 'Alonso', 'Waira Popoca', '113642'. No uses UUID."
+      },
       period: { type: "string", enum: ["week", "month"], description: "Periodo retail. Por defecto 'month' (recibo de comisiones)." },
       date: { type: "string", description: "Fecha YYYY-MM-DD dentro del periodo. Opcional; por defecto hoy." }
     },
@@ -184,10 +121,25 @@ export const getCommissionsTool = defineTool<z.infer<typeof argsSchema>>({
     if (!selectedDate) return toolError("La fecha debe usar formato YYYY-MM-DD.");
 
     const report = await getKpiReport(toSession(ctx), { period, selectedDate });
-    // Asesor: siempre propias, ignorando userId del modelo.
     if (ctx.role === "ASESOR") {
       return buildPayload(report, ctx.role);
     }
-    return buildPayload(report, ctx.role, args.userId);
+
+    let resolvedUserId = args.userId;
+    const query = args.advisor?.trim();
+    if (query) {
+      const resolved = await resolveStoreTeammate(ctx.storeId, query);
+      if (resolved.status === "not_found") return toolError(resolved.error);
+      if (resolved.status === "ambiguous") {
+        return toolOk({
+          scope: "ambiguous",
+          message: "Hay varios colaboradores que coinciden. Pregunta al usuario cuál (solo con el nombre, sin pedir ID).",
+          candidates: resolved.candidates
+        });
+      }
+      resolvedUserId = resolved.user.id;
+    }
+
+    return buildPayload(report, ctx.role, resolvedUserId);
   }
 });
