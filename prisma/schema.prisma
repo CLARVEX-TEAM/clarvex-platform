@@ -1032,3 +1032,28 @@ model AiDailySummary {
   @@unique([storeId, summaryDate, type, scopeKey])
   @@index([storeId, summaryDate])
 }
+
+// Consumo de IA por petición del Copilot. Sin relaciones a Store/User a
+// propósito: es una bitácora desacoplada (append-only) para costos, cuotas y
+// observabilidad; nunca debe bloquear ni acoplar la operación principal.
+model AiUsageLog {
+  id               String   @id @default(cuid())
+  storeId          String
+  userId           String?
+  feature          String   // p.ej. "copilot"
+  provider         String   // p.ej. "groq", "cloudflare", "mock"
+  model            String
+  modelTier        String   // "fast" | "advanced"
+  promptTokens     Int      @default(0)
+  completionTokens Int      @default(0)
+  totalTokens      Int      @default(0)
+  toolCalls        Int      @default(0)
+  iterations       Int      @default(0)
+  latencyMs        Int      @default(0)
+  status           String   // "success" | "error"
+  errorMessage     String?
+  createdAt        DateTime @default(now())
+
+  @@index([storeId, createdAt])
+  @@index([userId, createdAt])
+}
