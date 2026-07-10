@@ -40,6 +40,9 @@ export type ProviderChatParams = {
   tools?: ProviderToolSchema[];
   temperature?: number;
   maxTokens?: number;
+  // Fuerza salida JSON (para features single-shot que hacen JSON.parse). El
+  // prompt debe mencionar "JSON" (requisito de la API compatible con OpenAI).
+  jsonMode?: boolean;
   signal?: AbortSignal;
 };
 

@@ -1,4 +1,6 @@
 import { prisma } from "@/lib/prisma";
+import { AI_CONFIG } from "@/lib/ai/config";
+import { createProviderRouter } from "@/lib/ai/providers/provider-router";
 import type { Session } from "@/lib/session";
 import { computeAchievements } from "@/lib/achievements";
 import { computeDailyStreak } from "@/lib/streaks";
@@ -19,14 +21,6 @@ export const DailySummaryContentSchema = z.object({
 export type DailySummaryContent = z.infer<typeof DailySummaryContentSchema>;
 
 export class ClarvexIntelligence {
-  private static getApiKey() {
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
-      throw new Error("La API Key de Gemini no está configurada.");
-    }
-    return apiKey;
-  }
-
   private static async callGemini(prompt: string, jsonMode = true): Promise<string> {
     if (process.env.NODE_ENV === "test" || process.env.MOCK_EXTERNAL_SERVICES === "true") {
       const p = prompt.toLowerCase();
@@ -71,29 +65,17 @@ export class ClarvexIntelligence {
       return jsonMode ? JSON.stringify({ message: "Respuesta mock de IA", success: true }) : "Texto mock de IA";
     }
 
-    const apiKey = this.getApiKey();
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
-
-    const response = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: {
-          responseMimeType: jsonMode ? "application/json" : "text/plain",
-          temperature: 0.7,
-        },
-      }),
+    // El transporte real ahora pasa por la abstracción de proveedor (Groq como
+    // principal, con fallback a Cloudflare). Se mantiene el nombre callGemini y
+    // el bloque mock de arriba por compatibilidad interna y con los tests.
+    const router = createProviderRouter();
+    const result = await router.chatComplete({
+      model: AI_CONFIG.models.advanced,
+      messages: [{ role: "user", content: prompt }],
+      temperature: 0.7,
+      jsonMode
     });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("[Gemini API Call Error]:", errorText);
-      throw new Error("Fallo al conectar con el servicio de Inteligencia Artificial.");
-    }
-
-    const payload = await response.json();
-    const text = payload.candidates?.[0]?.content?.parts?.[0]?.text;
+    const text = result.content;
     if (!text) {
       throw new Error("No se recibió respuesta válida del modelo de IA.");
     }

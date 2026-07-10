@@ -76,6 +76,7 @@ export async function openAiCompatibleChat(options: {
         model: params.model,
         messages: toOpenAiMessages(params.messages),
         ...(tools ? { tools, tool_choice: "auto" } : {}),
+        ...(params.jsonMode && !tools ? { response_format: { type: "json_object" } } : {}),
         temperature: params.temperature ?? 0.3,
         ...(params.maxTokens ? { max_tokens: params.maxTokens } : {})
       }),
