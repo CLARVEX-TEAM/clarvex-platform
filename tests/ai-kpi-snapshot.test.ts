@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildAiKpiSnapshot } from "../lib/clarvex-intelligence";
+import { buildAiKpiSnapshot } from "../lib/kpi-report";
 
 test("buildAiKpiSnapshot: no suma el tráfico duplicado por fila (conversión de tienda)", () => {
   const day = new Date("2026-07-09T00:00:00.000Z");

@@ -191,6 +191,43 @@ export function aggregateStoreTraffic(rows: Array<{ date: Date; traffic: number 
   return byDate.size ? Array.from(byDate.values()).reduce((total, traffic) => total + traffic, 0) : null;
 }
 
+/** Snapshot para IA alineado con la pestaña KPIs (tráfico por día, sin duplicar filas). */
+export function buildAiKpiSnapshot(
+  rows: Array<{
+    userId: string;
+    date: Date;
+    dailySales: unknown;
+    dailyGoal: unknown;
+    transactions: number;
+    pieces: number;
+    conversion: unknown;
+    traffic: number | null;
+    user: { name: string; role: Role; photoUrl: string | null };
+  }>
+) {
+  const normalized: RawKpi[] = rows.map((row) => ({
+    userId: row.userId,
+    date: row.date,
+    dailySales: row.dailySales,
+    dailyGoal: row.dailyGoal,
+    transactions: row.transactions,
+    pieces: row.pieces,
+    conversion: row.conversion,
+    traffic: row.traffic,
+    grossSales: null,
+    discountAmount: null,
+    discountLimit: null,
+    commissionAmount: 0,
+    commissionPercent: 0,
+    user: row.user
+  }));
+  const reports = aggregateKpis(normalized);
+  const traffic = aggregateStoreTraffic(normalized.map((row) => ({ date: row.date as Date, traffic: row.traffic })));
+  const store = aggregateStore(reports, traffic);
+  const advisors = reports.filter((row) => row.role === "ASESOR");
+  return { store, advisors, reports, traffic };
+}
+
 function goalSum(items: RawKpi[], useMonthlyGoal: boolean): number {
   if (useMonthlyGoal) {
     const monthly = items.map((item) => number(item.monthlyGoal)).find((v) => v > 0);

@@ -8,7 +8,7 @@ import { computeDailyStreak } from "@/lib/streaks";
 import { decodeSyncLogMessage } from "@/lib/data-source";
 import { resolveMonterreyDate } from "@/lib/cron-time";
 import { buildRetailMonths, selectRetailMonth } from "@/lib/kpi-period";
-import { aggregateKpis, aggregateStore, aggregateStoreTraffic, type RawKpi } from "@/lib/kpi-report";
+import { buildAiKpiSnapshot } from "@/lib/kpi-report";
 import { mergeRdvWeeks } from "@/lib/rdv-week";
 import { z } from "zod";
 import crypto from "crypto";
@@ -22,42 +22,7 @@ export function utcDayRange(dateStr: string): { start: Date; end: Date } {
   return { start, end };
 }
 
-type AiKpiRow = {
-  userId: string;
-  date: Date;
-  dailySales: unknown;
-  dailyGoal: unknown;
-  transactions: number;
-  pieces: number;
-  conversion: unknown;
-  traffic: number | null;
-  user: { name: string; role: "GERENTE" | "SUBGERENTE" | "ASESOR" | "REGIONAL"; photoUrl: string | null };
-};
-
-/** Métricas alineadas con la vista KPIs: tráfico de tienda por día (sin sumar filas duplicadas) y conversión de asesores = tickets / tráfico de sus días. */
-export function buildAiKpiSnapshot(rows: AiKpiRow[]) {
-  const normalized: RawKpi[] = rows.map((row) => ({
-    userId: row.userId,
-    date: row.date,
-    dailySales: row.dailySales,
-    dailyGoal: row.dailyGoal,
-    transactions: row.transactions,
-    pieces: row.pieces,
-    conversion: row.conversion,
-    traffic: row.traffic,
-    grossSales: null,
-    discountAmount: null,
-    discountLimit: null,
-    commissionAmount: 0,
-    commissionPercent: 0,
-    user: row.user
-  }));
-  const reports = aggregateKpis(normalized);
-  const traffic = aggregateStoreTraffic(normalized.map((row) => ({ date: row.date as Date, traffic: row.traffic })));
-  const store = aggregateStore(reports, traffic);
-  const advisors = reports.filter((row) => row.role === "ASESOR");
-  return { store, advisors, reports, traffic };
-}
+export { buildAiKpiSnapshot } from "@/lib/kpi-report";
 
 export const DailySummaryContentSchema = z.object({
   summary: z.string().min(1).max(1500),
