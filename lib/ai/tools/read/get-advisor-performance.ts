@@ -1,14 +1,15 @@
 import { z } from "zod";
 import { defineTool, toolError, toolOk } from "@/lib/ai/tools/tool";
 import { resolveStoreTeammate } from "@/lib/ai/tools/resolve-teammate";
+import { isStoreManager, managerOnlyAdvisorQueryError } from "@/lib/ai/tools/role-guards";
 import { toSession } from "@/lib/ai/tools/session-adapter";
 import { parsePeriodDate } from "@/lib/kpi-period";
 import { getKpiReport } from "@/lib/services/kpi-service";
 
 const argsSchema = z.object({
-  /** Nombre o número de empleado (preferido). */
+  /** Nombre o número de empleado (preferido). Solo gerencia. */
   advisor: z.string().min(1).optional(),
-  /** @deprecated Preferir `advisor`. */
+  /** @deprecated Preferir `advisor`. Solo gerencia. */
   userId: z.string().min(1).optional(),
   period: z.enum(["week", "month"]).optional(),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional()
@@ -47,7 +48,7 @@ function publicAdvisor(item: {
 export const getAdvisorPerformanceTool = defineTool<z.infer<typeof argsSchema>>({
   name: "getAdvisorPerformance",
   description:
-    "Devuelve el desempeño (ventas, meta, alcance, UPT, conversión, ranking) de un asesor o del equipo en el periodo (semana/mes retail). Para uno concreto pasa NOMBRE o número de empleado en `advisor` (ej. 'Alonso'). NUNCA pidas UUID. Sin advisor y con gerencia → ranking del equipo. Un asesor solo obtiene sus propios datos.",
+    "Devuelve el desempeño (ventas, meta, alcance, UPT, conversión, ranking) de un asesor o del equipo. El argumento `advisor` SOLO lo usa gerencia. Un asesor siempre recibe solo sus propios datos.",
   phase: 1,
   roles: "all",
   mutates: false,
@@ -56,7 +57,7 @@ export const getAdvisorPerformanceTool = defineTool<z.infer<typeof argsSchema>>(
     properties: {
       advisor: {
         type: "string",
-        description: "Nombre (parcial o completo) o número de empleado. Ej: 'Alonso', 'Jazmin Castro', '113642'. No uses UUID."
+        description: "SOLO gerencia. Nombre o número de empleado. Ej: 'Alonso', '113642'. Los asesores no deben enviar este campo."
       },
       period: { type: "string", enum: ["week", "month"], description: "Periodo retail. Por defecto 'week'." },
       date: { type: "string", description: "Fecha YYYY-MM-DD dentro del periodo. Opcional; por defecto hoy." }
@@ -72,11 +73,18 @@ export const getAdvisorPerformanceTool = defineTool<z.infer<typeof argsSchema>>(
     const report = await getKpiReport(toSession(ctx), { period, selectedDate });
 
     if (ctx.role === "ASESOR") {
+      if (args.advisor || args.userId) {
+        return toolError(managerOnlyAdvisorQueryError());
+      }
       return toolOk({
         period,
         scope: "own",
         advisor: report.own ? publicAdvisor(report.own) : null
       });
+    }
+
+    if (!isStoreManager(ctx.role)) {
+      return toolError(managerOnlyAdvisorQueryError());
     }
 
     let resolvedUserId = args.userId;

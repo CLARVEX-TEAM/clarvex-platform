@@ -176,13 +176,11 @@ test("CLARVEX Copilot — Fase 1 (solo lectura)", async (t) => {
     }
   });
 
-  await t.test("SEGURIDAD: un asesor no puede consultar el desempeño de otro (userId ignorado)", async () => {
+  await t.test("SEGURIDAD: un asesor no puede consultar el desempeño de otro (userId rechazado)", async () => {
     const result = await getAdvisorPerformanceTool.execute(advisorCtx, { userId: "adv-other", period: "week", date: "2026-07-10" });
-    assert.equal(result.ok, true);
-    if (result.ok) {
-      const data = result.data as { scope: string; advisor: { name: string } | null };
-      assert.equal(data.scope, "own");
-      assert.equal(data.advisor?.name, "Yo Mismo");
+    assert.equal(result.ok, false);
+    if (!result.ok) {
+      assert.match(result.error, /solo gerencia|solo puedes ver tu información/i);
     }
   });
 
@@ -207,12 +205,26 @@ test("CLARVEX Copilot — Fase 1 (solo lectura)", async (t) => {
     }
 
     const adv = await getCommissionsTool.execute(advisorCtx, { period: "month", date: "2026-07-10", advisor: "Alonso" });
-    assert.equal(adv.ok, true);
-    if (adv.ok) {
-      const data = adv.data as { scope: string; own: { name: string }; team?: unknown };
+    assert.equal(adv.ok, false);
+    if (!adv.ok) {
+      assert.match(adv.error, /solo gerencia|solo puedes ver tu información/i);
+    }
+
+    const advOwn = await getCommissionsTool.execute(advisorCtx, { period: "month", date: "2026-07-10" });
+    assert.equal(advOwn.ok, true);
+    if (advOwn.ok) {
+      const data = advOwn.data as { scope: string; own: { name: string }; team?: unknown };
       assert.equal(data.scope, "own");
       assert.equal(data.own.name, "Yo Mismo");
       assert.equal(data.team, undefined);
+    }
+  });
+
+  await t.test("SEGURIDAD: asesor no puede consultar desempeño de otro por nombre", async () => {
+    const result = await getAdvisorPerformanceTool.execute(advisorCtx, { advisor: "Alonso", period: "week", date: "2026-07-10" });
+    assert.equal(result.ok, false);
+    if (!result.ok) {
+      assert.match(result.error, /solo gerencia|solo puedes ver tu información/i);
     }
   });
 

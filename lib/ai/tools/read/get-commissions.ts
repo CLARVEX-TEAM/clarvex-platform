@@ -8,6 +8,7 @@ import {
 import { parsePeriodDate } from "@/lib/kpi-period";
 import { getKpiReport, type KpiReport } from "@/lib/services/kpi-service";
 import { resolveStoreTeammate } from "@/lib/ai/tools/resolve-teammate";
+import { isStoreManager, managerOnlyAdvisorQueryError } from "@/lib/ai/tools/role-guards";
 import { defineTool, toolError, toolOk } from "@/lib/ai/tools/tool";
 import { toSession } from "@/lib/ai/tools/session-adapter";
 import type { Role } from "@/lib/types";
@@ -98,7 +99,7 @@ function buildPayload(report: KpiReport, ctxRole: Role, resolvedUserId?: string)
 export const getCommissionsTool = defineTool<z.infer<typeof argsSchema>>({
   name: "getCommissions",
   description:
-    "Devuelve comisiones de ventas del periodo (monto, %, alcance vs mínimo, reglas activas y cuánto falta al siguiente nivel). Para un asesor concreto pasa su NOMBRE o número de empleado en `advisor` (ej. 'Alonso' o '113642'). NUNCA pidas UUID. Gerencia ve tienda + equipo; un asesor solo las suyas.",
+    "Devuelve comisiones de ventas del periodo (monto, %, alcance vs mínimo, reglas activas y cuánto falta al siguiente nivel). El argumento `advisor` (nombre o núm. empleado) SOLO lo usa gerencia para ver a un colaborador. Un asesor siempre recibe solo sus propias comisiones.",
   phase: 1,
   roles: ["GERENTE", "SUBGERENTE", "ASESOR"],
   mutates: false,
@@ -107,7 +108,7 @@ export const getCommissionsTool = defineTool<z.infer<typeof argsSchema>>({
     properties: {
       advisor: {
         type: "string",
-        description: "Nombre (parcial o completo) o número de empleado del asesor. Ej: 'Alonso', 'Waira Popoca', '113642'. No uses UUID."
+        description: "SOLO gerencia. Nombre o número de empleado del asesor. Ej: 'Alonso', '113642'. No uses UUID. Los asesores no deben enviar este campo."
       },
       period: { type: "string", enum: ["week", "month"], description: "Periodo retail. Por defecto 'month' (recibo de comisiones)." },
       date: { type: "string", description: "Fecha YYYY-MM-DD dentro del periodo. Opcional; por defecto hoy." }
@@ -122,7 +123,14 @@ export const getCommissionsTool = defineTool<z.infer<typeof argsSchema>>({
 
     const report = await getKpiReport(toSession(ctx), { period, selectedDate });
     if (ctx.role === "ASESOR") {
+      if (args.advisor || args.userId) {
+        return toolError(managerOnlyAdvisorQueryError());
+      }
       return buildPayload(report, ctx.role);
+    }
+
+    if (!isStoreManager(ctx.role)) {
+      return toolError(managerOnlyAdvisorQueryError());
     }
 
     let resolvedUserId = args.userId;
