@@ -87,7 +87,7 @@ const mockPrisma: any = {
           upt: 2.0,
           conversion: 20.0,
           ranking: 1,
-          user: { name: "Juan Asesor", role: "ASESOR" }
+          user: { name: "Juan Asesor", role: "ASESOR", photoUrl: null }
         }
       ];
     }
