@@ -223,6 +223,12 @@ test("CLARVEX Copilot — Fase 1 (solo lectura)", async (t) => {
     assert.equal(step1.toolCalls[0].name, "getCommissions");
   });
 
+  await t.test("getCommissions no se expone a REGIONAL", () => {
+    const regionalCtx = { ...managerCtx, role: "REGIONAL" as const, name: "Regional" };
+    const tools = selectTools(regionalCtx, 1);
+    assert.ok(!tools.some((tool) => tool.name === "getCommissions"));
+  });
+
   await t.test("getOpenPendings devuelve los pendientes de la tienda", async () => {
     const result = await getOpenPendingsTool.execute(managerCtx, {});
     assert.equal(result.ok, true);

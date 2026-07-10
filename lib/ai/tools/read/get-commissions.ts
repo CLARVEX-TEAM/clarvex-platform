@@ -111,6 +111,9 @@ function buildPayload(report: KpiReport, ctxRole: Role, userId?: string) {
   }
 
   // Gerencia: comisión propia = tienda (venta/mínimo TOTALES) con su rol.
+  if (ctxRole !== "GERENTE" && ctxRole !== "SUBGERENTE") {
+    return toolError("Tu rol no tiene acceso a comisiones de ventas en el Copilot.");
+  }
   const store = report.store;
   if (!store) return toolError("No hay datos de tienda para comisiones en este periodo.");
 
@@ -163,7 +166,7 @@ export const getCommissionsTool = defineTool<z.infer<typeof argsSchema>>({
   description:
     "Devuelve comisiones de ventas del periodo (monto, %, alcance vs mínimo, reglas activas y cuánto falta al siguiente nivel). Úsala para 'mis comisiones', 'quién está más cerca de comisionar' o 'qué brackets/reglas tenemos'. Gerencia ve tienda + equipo; un asesor solo las suyas.",
   phase: 1,
-  roles: "all",
+  roles: ["GERENTE", "SUBGERENTE", "ASESOR"],
   mutates: false,
   parameters: {
     type: "object",
