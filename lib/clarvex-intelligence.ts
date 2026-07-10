@@ -173,239 +173,6 @@ export class ClarvexIntelligence {
   }
 
   /**
-   * Clarvex Copilot - Conversational Assistant using actual DB records.
-   */
-  public static async askCopilot(session: Session, query: string): Promise<string> {
-    // 1. Gather all relevant context for this store/user
-    const now = new Date();
-    const todayStr = now.toISOString().slice(0, 10);
-
-    const isAdvisor = session.role === "ASESOR";
-    const ownKpiFilter = isAdvisor ? { userId: session.userId } : {};
-
-    // Query available weeks and sync log details first to establish the retail month range bounds
-    const [availableWeekRows, legacyWeekRows, latestKpiSource, pendings, schedules, announcements, commissionRules, user] = await Promise.all([
-      prisma.kpi.findMany({
-        where: { storeId: session.storeId, weekNumber: { not: null }, weekStart: { not: null }, weekEnd: { not: null } },
-        distinct: ["weekStart", "weekNumber"],
-        select: { weekNumber: true, weekStart: true, weekEnd: true },
-        orderBy: { weekStart: "desc" }
-      }),
-      prisma.kpi.findMany({
-        where: { storeId: session.storeId, OR: [{ weekNumber: null }, { weekStart: null }, { weekEnd: null }] },
-        distinct: ["date"],
-        select: { date: true },
-        orderBy: { date: "desc" }
-      }),
-      prisma.dataSource.findFirst({
-        where: { storeId: session.storeId, type: "KPIS" },
-        include: { syncLogs: { where: { status: "SUCCESS" }, orderBy: { createdAt: "desc" }, take: 1 } }
-      }),
-      prisma.pending.findMany({
-        where: { storeId: session.storeId, status: { in: ["PENDIENTE", "EN_PROCESO"] } },
-        orderBy: [{ priority: "desc" }, { dueDate: "asc" }],
-        take: 10,
-      }),
-      prisma.schedule.findMany({
-        where: { storeId: session.storeId, ...ownKpiFilter },
-        orderBy: { date: "asc" },
-        take: 20,
-        include: { user: { select: { name: true } } },
-      }),
-      prisma.announcement.findMany({
-        where: { storeId: session.storeId },
-        orderBy: { createdAt: "desc" },
-        take: 3,
-      }),
-      prisma.commissionRule.findMany({
-        where: { storeId: session.storeId, active: true },
-      }),
-      prisma.user.findUnique({
-        where: { id: session.userId },
-        select: { name: true, role: true },
-      }),
-    ]);
-
-    const persistedWeeks = availableWeekRows.flatMap((week) => week.weekNumber !== null && week.weekStart && week.weekEnd ? [{ weekNumber: week.weekNumber, weekStart: week.weekStart, weekEnd: week.weekEnd }] : []);
-    const latestDetails = latestKpiSource?.syncLogs[0] ? decodeSyncLogMessage(latestKpiSource.syncLogs[0].message).details : null;
-    
-    const syncedWeeks = (latestDetails && typeof latestDetails === "object" && "weeksDetected" in latestDetails && Array.isArray((latestDetails as any).weeksDetected))
-      ? (latestDetails as any).weeksDetected.map((week: any) => ({
-          weekNumber: week.weekNumber,
-          weekStart: new Date(`${week.weekStart}T00:00:00.000Z`),
-          weekEnd: new Date(`${week.weekEnd}T00:00:00.000Z`)
-        }))
-      : [];
-    
-    const availableWeeks = mergeRdvWeeks([...persistedWeeks, ...syncedWeeks], legacyWeekRows.map((row) => row.date))
-      .sort((left, right) => left.weekStart.getTime() - right.weekStart.getTime());
-    
-    const retailMonths = buildRetailMonths(availableWeeks);
-    const selectedRetailMonth = selectRetailMonth(retailMonths, now);
-
-    let start = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-    let end = now;
-    if (selectedRetailMonth) {
-      start = selectedRetailMonth.start;
-      end = selectedRetailMonth.end;
-    }
-
-    // Now query the filtered KPIs within the current retail month bounds
-    const kpis = await prisma.kpi.findMany({
-      where: { storeId: session.storeId, date: { gte: start, lte: end }, ...ownKpiFilter },
-      orderBy: { date: "desc" },
-      include: { user: { select: { name: true } } },
-    });
-
-    // 2. Build concise prompt
-    const kpiSummary = kpis.map((k) => ({
-      fecha: k.date.toISOString().slice(0, 10),
-      colaborador: k.user.name,
-      venta_dia: Number(k.dailySales),
-      meta_dia: Number(k.dailyGoal),
-      venta_mensual_acumulada: Number(k.monthlySales),
-      meta_mensual: Number(k.monthlyGoal),
-      conversion: k.conversion ? Number(k.conversion) : null,
-      upt: Number(k.upt),
-      comision_pesos: Number(k.commissionAmount),
-      comision_porcentaje: Number(k.commissionPercent),
-      ranking: k.ranking,
-    }));
-
-    const taskSummary = pendings.map((p) => ({
-      titulo: p.title,
-      prioridad: p.priority,
-      vence: p.dueDate.toISOString().slice(0, 10),
-    }));
-
-    const scheduleSummary = schedules.map((s) => ({
-      colaborador: s.user.name,
-      dia: s.day,
-      entrada: s.startTime ?? s.statusRaw ?? s.status,
-      zona: s.zone ?? "",
-    }));
-
-    const newsSummary = announcements.map((a) => ({
-      titulo: a.title,
-      cuerpo: a.body.slice(0, 100) + "...",
-    }));
-
-    const rulesSummary = commissionRules.map((r) => ({
-      rol: r.role ?? "Todos",
-      venta_minima: Number(r.minSales),
-      comision_porcentaje: Number(r.commissionPercent),
-      alcance_minimo: Number(r.minAchievement),
-    }));
-
-    // Manager commission calculations (since managers commission on store sales)
-    let managerCommissionText = "";
-    if (session.role === "GERENTE" || session.role === "SUBGERENTE") {
-      if (selectedRetailMonth) {
-        const monthKpis = await prisma.kpi.findMany({
-          where: { storeId: session.storeId, date: { gte: start, lte: end } },
-        });
-
-        const dailyTotals = new Map<string, { sales: number; goal: number }>();
-        for (const k of monthKpis) {
-          const key = k.date.toISOString().slice(0, 10);
-          const current = dailyTotals.get(key) || { sales: 0, goal: 0 };
-          dailyTotals.set(key, {
-            sales: current.sales + Number(k.dailySales),
-            goal: current.goal + Number(k.dailyGoal),
-          });
-        }
-
-        let storeSales = 0;
-        let storeGoal = 0;
-        dailyTotals.forEach((totals) => {
-          storeSales += totals.sales;
-          storeGoal += totals.goal;
-        });
-
-        let storeMinimum = storeGoal > 0 ? storeGoal / 1.15 : 0;
-        if (latestDetails && typeof latestDetails === "object" && "ttlsCommissionMinimum" in latestDetails) {
-          const min = (latestDetails as any).ttlsCommissionMinimum;
-          if (min && min > 0) storeMinimum = Number(min);
-        }
-
-        const achievement = storeMinimum > 0 ? (storeSales / storeMinimum) * 100 : 0;
-
-        const active = commissionRules
-          .filter((rule) => rule.active && rule.role === session.role)
-          .sort((a, b) => Number(a.minAchievement) - Number(b.minAchievement));
-        
-        let activePercent = 0;
-        for (const r of active) {
-          if (achievement >= Number(r.minAchievement) && (r.maxAchievement === null || r.maxAchievement === undefined || achievement <= Number(r.maxAchievement))) {
-            activePercent = Number(r.commissionPercent);
-            break;
-          }
-        }
-        
-        const amount = storeSales * (activePercent / 100);
-        const monthWeeks = availableWeeks.filter(w => w.weekStart >= start && w.weekEnd <= end);
-        const totalWeeks = monthWeeks.length || 4;
-        const weeksElapsed = monthWeeks.filter(w => w.weekStart <= now).length || 1;
-        
-        const projectedSales = Math.max(storeSales, (storeSales / weeksElapsed) * totalWeeks);
-        const projectedAmount = Math.max(amount, projectedSales * (activePercent / 100));
-
-        managerCommissionText = `
-INFORMACIÓN DE COMISIÓN DE GERENCIA (solo visible para ti al tener rol ${session.role}):
-- Venta acumulada de la tienda este mes: $${storeSales.toFixed(2)} pesos.
-- Meta mensual de la tienda: $${storeGoal.toFixed(2)} pesos.
-- Mínimo de comisión de la tienda: $${storeMinimum.toFixed(2)} pesos.
-- Alcance vs mínimo actual de la tienda: ${Math.round(achievement)}%.
-- Porcentaje de comisión correspondiente a tu rol (${session.role}) por este alcance: ${activePercent}%.
-- Comisión ganada acumulada (cifra real actual de tu rol): $${amount.toFixed(2)} pesos.
-- Comisión proyectada a fin de mes (a ritmo actual): $${projectedAmount.toFixed(2)} pesos (venta proyectada de $${projectedSales.toFixed(2)}).
-`;
-      }
-    }
-
-    const contextPrompt = `
-Eres Clarvex Copilot, el asistente inteligente de operaciones para tiendas retail.
-Tu usuario actual es: ${user?.name} (Rol: ${user?.role}).
-La fecha actual es: ${todayStr}.
-Solo debes usar la información real de la tienda provista a continuación. Jamás inventes datos, nombres ni números.
-Si no tienes la información para responder la pregunta del usuario, indícalo amablemente.
-
-REGLA DE SEGURIDAD CRÍTICA:
-- El usuario actual tiene el rol: ${user?.role}.
-- Si el rol del usuario es "ASESOR", la información provista en "KPIs recientes" YA ESTÁ filtrada para contener ÚNICAMENTE sus propios registros individuales de ventas y comisiones.
-- Si el rol es "ASESOR", bajo ninguna circunstancia debes mostrar o hacer referencia a ventas, metas, rankings o comisiones de otros compañeros de equipo. Si te preguntan sobre las ventas de la tienda, de otros asesores o comisiones grupales, responde cortésmente explicando que por políticas de seguridad solo tienes acceso a su información de rendimiento individual.
-
-INFORMACIÓN REAL DE LA TIENDA:
-- KPIs recientes (Ventas, Metas, Avance Mensual, Comisiones del colaborador, Rankings):
-${JSON.stringify(kpiSummary, null, 2)}
-
-${managerCommissionText}
-
-- Reglas de comisiones activas en la tienda:
-${JSON.stringify(rulesSummary, null, 2)}
-
-- Pendientes activos:
-${JSON.stringify(taskSummary, null, 2)}
-
-- Horarios y turnos de la semana:
-${JSON.stringify(scheduleSummary, null, 2)}
-
-- Últimos comunicados:
-${JSON.stringify(newsSummary, null, 2)}
-
-PREGUNTA DEL USUARIO:
-"${query}"
-
-INSTRUCCIONES DE FORMATO IMPORTANTES:
-- Responde en español de manera profesional, clara y directa.
-- Es MANDATORIO que uses saltos de línea dobles y listas con viñetas para estructurar la información.
-- NUNCA respondas en un solo párrafo largo y corrido. Separa los puntos con saltos de línea para que sea fácil de leer en pantallas móviles.
-`;
-
-    return this.callGemini(contextPrompt, false, { storeId: session.storeId, userId: session.userId, feature: "copilot-legacy" });
-  }
-
-  /**
    * Plan del Día IA - Customized Daily Plan with AI memory persistence to prevent repetition.
    */
   public static async generateDailyPlan(session: Session, userId: string, dateStr: string) {
@@ -661,64 +428,6 @@ Responde estrictamente en formato JSON utilizando el siguiente esquema:
     });
 
     return parsedResult;
-  }
-
-  /**
-   * Predict IA - Calculate likelihood of reaching monthly target, closing projection, and commissions.
-   */
-  public static async predictMetrics(session: Session) {
-    const [kpis, rules] = await Promise.all([
-      prisma.kpi.findMany({
-        where: { storeId: session.storeId },
-        orderBy: { date: "desc" },
-        take: 30,
-      }),
-      prisma.commissionRule.findMany({
-        where: { storeId: session.storeId },
-      }),
-    ]);
-
-    if (kpis.length === 0) {
-      return {
-        probabilityGoal: 50,
-        expectedCloseSales: 0,
-        salesRemaining: 0,
-        salesPerHourNeeded: 0,
-        probabilityCommission: 50,
-        details: "No hay suficientes KPIs históricos para realizar predicciones.",
-      };
-    }
-
-    const salesHistory = kpis.map((k) => ({
-      sales: Number(k.dailySales),
-      goal: Number(k.dailyGoal),
-      monthGoal: Number(k.monthlyGoal),
-      monthSales: Number(k.monthlySales),
-    }));
-
-    const prompt = `
-Eres un analista predictivo financiero de retail.
-Basándote en el historial de ventas recientes de la tienda, calcula las siguientes predicciones operativas.
-
-Historial de ventas (recientes):
-${JSON.stringify(salesHistory, null, 2)}
-
-Reglas de comisiones vigentes:
-${JSON.stringify(rules, null, 2)}
-
-Responde estrictamente en formato JSON utilizando el siguiente esquema:
-{
-  "probabilityGoal": 75 (Probabilidad de cumplir la meta mensual en porcentaje, entero entre 0 y 100),
-  "expectedCloseSales": 125000 (Venta esperada estimada acumulada al cierre de mes, en pesos),
-  "salesRemaining": 25000 (Venta faltante estimada para llegar a la meta mensual, en pesos),
-  "salesPerHourNeeded": 1800 (Venta promedio necesaria por hora en lo que resta del mes, en pesos),
-  "probabilityCommission": 80 (Probabilidad promedio de que el equipo comisione, entero entre 0 y 100),
-  "details": "string (Breve explicación del modelo predictivo y sus premisas, máx 250 caracteres)"
-}
-`;
-
-    const generatedText = await this.callGemini(prompt, true, { storeId: session.storeId, userId: session.userId, feature: "predict" });
-    return JSON.parse(generatedText);
   }
 
   /**
@@ -1194,52 +903,27 @@ JSON estricto:
    * Reportes IA - Generates daily, weekly, or monthly analytical performance reports.
    */
   public static async generateIaReport(session: Session, type: "DAILY" | "WEEKLY" | "MONTHLY", startStr: string, endStr: string) {
-    const start = new Date(`${startStr}T00:00:00.000Z`);
-    const end = new Date(`${endStr}T23:59:59.999Z`);
+    // Números 100% desde getKpiReport (misma fuente que la pestaña KPIs). La IA
+    // solo redacta el informe; no recalcula ventas, metas, alcances ni conversión.
+    const period = type === "MONTHLY" ? "month" : "week";
+    const dayOnly = type === "DAILY";
+    const selectedDate = new Date(`${endStr}T00:00:00.000Z`);
 
-    const [kpis, store] = await Promise.all([
-      prisma.kpi.findMany({
-        where: { storeId: session.storeId, date: { gte: start, lte: end } },
-        include: { user: { select: { name: true, role: true } } },
-      }),
+    const [report, store] = await Promise.all([
+      getKpiReportForAi(session, { period, selectedDate, dayOnly }),
       prisma.store.findUnique({ where: { id: session.storeId }, select: { name: true } }),
     ]);
-
-    const salesTotal = kpis.reduce((acc, k) => acc + Number(k.dailySales), 0);
-    const goalTotal = kpis.reduce((acc, k) => acc + Number(k.dailyGoal), 0);
-    const advisorPerformance = new Map<string, { name: string; sales: number; goal: number; count: number }>();
-
-    for (const k of kpis) {
-      const current = advisorPerformance.get(k.userId) || { name: k.user.name, sales: 0, goal: 0, count: 0 };
-      advisorPerformance.set(k.userId, {
-        name: k.user.name,
-        sales: current.sales + Number(k.dailySales),
-        goal: current.goal + Number(k.dailyGoal),
-        count: current.count + 1,
-      });
-    }
-
-    const performanceSummary: any[] = [];
-    advisorPerformance.forEach((v) => {
-      performanceSummary.push({
-        colaborador: v.name,
-        ventasAcumuladas: v.sales,
-        metaAcumulada: v.goal,
-        porcentajeCumplimiento: v.goal > 0 ? Math.round((v.sales / v.goal) * 100) : 100,
-        diasTrabajados: v.count,
-      });
-    });
+    const facts = kpiService.kpiFactsFromReport(report);
 
     const prompt = `
 Eres un consultor ejecutivo de retail de alto nivel. Analiza el desempeño del periodo indicado y genera un informe de rendimiento de negocio estructurado y profesional para la tienda "${store?.name}".
 
 Tipo de Reporte: ${type}
-Periodo: del ${startStr} al ${endStr}
-Venta total acumulada en tienda: $${salesTotal.toFixed(2)} pesos
-Meta total acumulada en tienda: $${goalTotal.toFixed(2)} pesos
-Rendimiento acumulado de los colaboradores en el periodo:
-${JSON.stringify(performanceSummary, null, 2)}
+Periodo solicitado: del ${startStr} al ${endStr}
 
+${renderKpiFactsBlock(`Datos del periodo (${type})`, facts)}
+
+Usa EXCLUSIVAMENTE los números anteriores (ya calculados, misma fuente que la pestaña KPIs). No recalcules ni inventes cifras.
 Escribe un reporte de negocio completo. Responde estrictamente en formato JSON utilizando el siguiente esquema:
 {
   "title": "string (Título formal del reporte)",
