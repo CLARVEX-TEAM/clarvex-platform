@@ -45,11 +45,17 @@ function pickTool(query: string, available: Set<string>): { name: string; args: 
     { match: /(pendiente|tarea|pend\b)/, name: "getOpenPendings", args: {} },
     { match: /(horario|turno|schedule)/, name: "getSchedules", args: {} },
     { match: /(compar|tendencia|\bvs\b|semana pasada|mes pasado)/, name: "comparePeriods", args: { period: "week" } },
-    { match: /(asesor|colaborador|equipo|ranking|desempeñ|rendimiento)/, name: "getAdvisorPerformance", args: { period: "week" } },
+    { match: /(asesor|colaborador|equipo|ranking|desempeñ|rendimiento|\ben\s+\w+)/, name: "getAdvisorPerformance", args: { period: "week" } },
     { match: /.*/, name: "getStoreDailyResults", args: {} }
   ];
   for (const candidate of candidates) {
-    if (candidate.match.test(query) && available.has(candidate.name)) return { name: candidate.name, args: candidate.args };
+    if (!candidate.match.test(query) || !available.has(candidate.name)) continue;
+    // Si menciona un nombre tras "en X" / "de X", pásalo como advisor.
+    const nameMatch = query.match(/\b(?:en|de|para)\s+([a-záéíóúñü]{3,})/i);
+    if (nameMatch && (candidate.name === "getCommissions" || candidate.name === "getAdvisorPerformance" || candidate.name === "getSchedules")) {
+      return { name: candidate.name, args: { ...candidate.args, advisor: nameMatch[1] } };
+    }
+    return { name: candidate.name, args: candidate.args };
   }
   // Fallback: primera herramienta disponible.
   const first = Array.from(available)[0];

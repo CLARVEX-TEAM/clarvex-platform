@@ -33,7 +33,7 @@ const reportRows = ["adv-self", "adv-other"].map((userId) => ({
   commissionAmount: 0,
   commissionPercent: 0,
   commissionMinimum: null,
-  user: { name: userId === "adv-self" ? "Yo Mismo" : "Otro Asesor", role: "ASESOR", photoUrl: null }
+  user: { name: userId === "adv-self" ? "Yo Mismo" : "Alonso Treviño", role: "ASESOR", photoUrl: null }
 }));
 
 const mockPrisma = {
@@ -64,7 +64,10 @@ const mockPrisma = {
   },
   schedule: { findMany: async () => [] },
   user: {
-    findMany: async () => [{ id: "adv-self", name: "Yo Mismo", role: "ASESOR", photoUrl: null }],
+    findMany: async () => [
+      { id: "adv-self", name: "Yo Mismo", employeeNumber: "95739", role: "ASESOR", photoUrl: null },
+      { id: "adv-other", name: "Alonso Treviño", employeeNumber: "113642", role: "ASESOR", photoUrl: null }
+    ],
     findFirst: async () => ({ id: "adv-self" })
   },
   pending: {
@@ -173,14 +176,11 @@ test("CLARVEX Copilot — Fase 1 (solo lectura)", async (t) => {
     }
   });
 
-  await t.test("SEGURIDAD: un asesor no puede consultar el desempeño de otro (userId ignorado)", async () => {
+  await t.test("SEGURIDAD: un asesor no puede consultar el desempeño de otro (userId rechazado)", async () => {
     const result = await getAdvisorPerformanceTool.execute(advisorCtx, { userId: "adv-other", period: "week", date: "2026-07-10" });
-    assert.equal(result.ok, true);
-    if (result.ok) {
-      const data = result.data as { scope: string; advisor: { userId: string } | null };
-      assert.equal(data.scope, "own");
-      // Nunca devuelve al otro asesor.
-      assert.notEqual(data.advisor?.userId, "adv-other");
+    assert.equal(result.ok, false);
+    if (!result.ok) {
+      assert.match(result.error, /solo gerencia|solo puedes ver tu información/i);
     }
   });
 
@@ -190,8 +190,8 @@ test("CLARVEX Copilot — Fase 1 (solo lectura)", async (t) => {
     if (mgr.ok) {
       const data = mgr.data as {
         scope: string;
-        own: { commissionPercent: number; commissionAmount: number; hasMinimum: boolean };
-        team: Array<{ userId: string; commissionAmount: number }>;
+        own: { commissionPercent: number; commissionAmount: number; hasMinimum: boolean; name: string };
+        team: Array<{ name: string; commissionAmount: number }>;
         activeRules: Array<{ role: string }>;
       };
       assert.equal(data.scope, "team");
@@ -199,15 +199,53 @@ test("CLARVEX Copilot — Fase 1 (solo lectura)", async (t) => {
       assert.ok(data.own.commissionPercent > 0);
       assert.ok(data.team.length >= 2);
       assert.ok(data.activeRules.some((rule) => rule.role === "ASESOR"));
+      // No filtrar IDs internos al modelo.
+      assert.equal("userId" in data.own, false);
+      assert.equal("userId" in (data.team[0] ?? {}), false);
     }
 
-    const adv = await getCommissionsTool.execute(advisorCtx, { period: "month", date: "2026-07-10", userId: "adv-other" });
-    assert.equal(adv.ok, true);
-    if (adv.ok) {
-      const data = adv.data as { scope: string; own: { userId: string }; team?: unknown };
+    const adv = await getCommissionsTool.execute(advisorCtx, { period: "month", date: "2026-07-10", advisor: "Alonso" });
+    assert.equal(adv.ok, false);
+    if (!adv.ok) {
+      assert.match(adv.error, /solo gerencia|solo puedes ver tu información/i);
+    }
+
+    const advOwn = await getCommissionsTool.execute(advisorCtx, { period: "month", date: "2026-07-10" });
+    assert.equal(advOwn.ok, true);
+    if (advOwn.ok) {
+      const data = advOwn.data as { scope: string; own: { name: string }; team?: unknown };
       assert.equal(data.scope, "own");
-      assert.equal(data.own.userId, "adv-self");
+      assert.equal(data.own.name, "Yo Mismo");
       assert.equal(data.team, undefined);
+    }
+  });
+
+  await t.test("SEGURIDAD: asesor no puede consultar desempeño de otro por nombre", async () => {
+    const result = await getAdvisorPerformanceTool.execute(advisorCtx, { advisor: "Alonso", period: "week", date: "2026-07-10" });
+    assert.equal(result.ok, false);
+    if (!result.ok) {
+      assert.match(result.error, /solo gerencia|solo puedes ver tu información/i);
+    }
+  });
+
+  await t.test("getCommissions resuelve asesor por nombre sin pedir ID", async () => {
+    const result = await getCommissionsTool.execute(managerCtx, { period: "month", date: "2026-07-10", advisor: "Alonso" });
+    assert.equal(result.ok, true);
+    if (result.ok) {
+      const data = result.data as { scope: string; advisor: { name: string; commissionPercent: number } };
+      assert.equal(data.scope, "advisor");
+      assert.equal(data.advisor.name, "Alonso Treviño");
+      assert.ok(data.advisor.commissionPercent > 0);
+    }
+  });
+
+  await t.test("getAdvisorPerformance resuelve por número de empleado", async () => {
+    const result = await getAdvisorPerformanceTool.execute(managerCtx, { period: "week", date: "2026-07-10", advisor: "113642" });
+    assert.equal(result.ok, true);
+    if (result.ok) {
+      const data = result.data as { scope: string; advisor: { name: string } };
+      assert.equal(data.scope, "advisor");
+      assert.equal(data.advisor.name, "Alonso Treviño");
     }
   });
 
@@ -221,6 +259,25 @@ test("CLARVEX Copilot — Fase 1 (solo lectura)", async (t) => {
     });
     assert.equal(step1.toolCalls.length, 1);
     assert.equal(step1.toolCalls[0].name, "getCommissions");
+  });
+
+  await t.test("MockProvider pasa advisor por nombre en 'comisiones de Alonso'", async () => {
+    const provider = new MockProvider();
+    const tools = toolSchemas(selectTools(managerCtx, 1));
+    const step1 = await provider.chatComplete({
+      model: "m",
+      messages: [{ role: "user", content: "comisiones de Alonso" }],
+      tools
+    });
+    assert.equal(step1.toolCalls[0].name, "getCommissions");
+    const args = JSON.parse(step1.toolCalls[0].arguments) as { advisor?: string };
+    assert.equal(args.advisor?.toLowerCase(), "alonso");
+  });
+
+  await t.test("getCommissions no se expone a REGIONAL", () => {
+    const regionalCtx = { ...managerCtx, role: "REGIONAL" as const, name: "Regional" };
+    const tools = selectTools(regionalCtx, 1);
+    assert.ok(!tools.some((tool) => tool.name === "getCommissions"));
   });
 
   await t.test("getOpenPendings devuelve los pendientes de la tienda", async () => {
