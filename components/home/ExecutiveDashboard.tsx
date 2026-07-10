@@ -41,6 +41,7 @@ interface ExecutiveData {
     actions: string[];
     kpiFacts?: {
       asOf: string;
+      dayAsOf?: string;
       month: KpiFactsBlock;
       week: KpiFactsBlock;
       day: KpiFactsBlock;
@@ -235,10 +236,11 @@ export function ExecutiveDashboard() {
         <div className="mt-4 rounded-[18px] border border-[#00FF66]/15 bg-[#00FF66]/[0.04] p-3 space-y-2.5">
           <div className="flex items-center justify-between gap-2">
             <p className="text-[10px] font-black uppercase tracking-wider text-[#00FF66]">
-              Datos KPIs · hasta {health.kpiFacts.asOf}
+              Datos KPIs · pestaña KPIs
             </p>
             <span className="text-[10px] text-white/40">
               Semana{health.kpiFacts.week.weekNumber ? ` ${health.kpiFacts.week.weekNumber}` : ""}
+              {health.kpiFacts.week.endDate ? ` · ${health.kpiFacts.week.endDate}` : ""}
             </span>
           </div>
           <div className="grid grid-cols-3 gap-2 text-center">

@@ -79,12 +79,20 @@ const mockPrisma = {
 
 test("getExecutiveHealth usa getKpiReport y no inventa conversión", async () => {
   const { ClarvexIntelligence, __setGetKpiReportForTests } = await import("../lib/clarvex-intelligence");
+  const todayKey = todayInfo.utcDate.toISOString().slice(0, 10);
+  const calls: Array<{ period: string; dayOnly?: boolean; asOfDate?: Date; selectedDate: Date }> = [];
   __setGetKpiReportForTests(async (_session, params) => {
+    calls.push({
+      period: params.period,
+      dayOnly: params.dayOnly,
+      asOfDate: params.asOfDate,
+      selectedDate: params.selectedDate
+    });
     const conversion = params.dayOnly ? 4.0 : params.period === "month" ? 3.8 : 3.4;
     const base = facts(params.period, conversion);
     return {
       ...base,
-      selectedDate: yesterdayKey,
+      selectedDate: params.dayOnly ? yesterdayKey : todayKey,
       availableWeeks: [],
       availableRetailMonths: [],
       workedDays: null,
@@ -182,12 +190,28 @@ test("getExecutiveHealth usa getKpiReport y no inventa conversión", async () =>
   assert.equal(result.kpiFacts.day.store?.conversion, 4.0);
   assert.equal(result.kpiFacts.week.team[0].name, "Waira");
   assert.equal(result.kpiFacts.week.team[0].conversion, 1.6);
+  assert.equal(result.kpiFacts.asOf, todayKey);
+  assert.equal(result.kpiFacts.dayAsOf, yesterdayKey);
+
+  const weekCall = calls.find((c) => c.period === "week" && !c.dayOnly);
+  const monthCall = calls.find((c) => c.period === "month");
+  const dayCall = calls.find((c) => c.dayOnly);
+  assert.ok(weekCall);
+  assert.ok(monthCall);
+  assert.ok(dayCall);
+  assert.equal(weekCall?.asOfDate, undefined);
+  assert.equal(monthCall?.asOfDate, undefined);
+  assert.equal(weekCall?.selectedDate.toISOString().slice(0, 10), todayKey);
+  assert.equal(monthCall?.selectedDate.toISOString().slice(0, 10), todayKey);
+  assert.equal(dayCall?.selectedDate.toISOString().slice(0, 10), yesterdayKey);
 
   const prompt = capturedPrompts.at(-1) ?? "";
   assert.match(prompt, /getKpiReport|pestaña KPIs/i);
   assert.match(prompt, /3\.4%/);
   assert.match(prompt, /PROHIBIDO recalcular/i);
+  assert.match(prompt, /semana\/mes retail completo|igual que Ranking/i);
   assert.doesNotMatch(prompt, /99999/);
+  assert.doesNotMatch(prompt, /hasta ayer inclusive/);
 
   (ClarvexIntelligence as unknown as { callGemini: typeof original }).callGemini = original;
   __setGetKpiReportForTests(null);

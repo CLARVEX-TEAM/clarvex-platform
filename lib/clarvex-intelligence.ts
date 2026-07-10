@@ -727,13 +727,17 @@ Responde estrictamente en formato JSON utilizando el siguiente esquema:
    */
   public static async getExecutiveHealth(session: Session) {
     const todayInfo = resolveMonterreyDate();
-    const yesterday = new Date(todayInfo.utcDate);
+    const today = todayInfo.utcDate;
+    const todayKey = today.toISOString().slice(0, 10);
+    const yesterday = new Date(today);
     yesterday.setUTCDate(yesterday.getUTCDate() - 1);
     const yesterdayKey = yesterday.toISOString().slice(0, 10);
 
+    // Semana/mes: misma llamada que /api/kpis (selectedDate=hoy, sin asOfDate).
+    // Día: solo ayer (el día de hoy suele ir en $0 y no aporta al resumen operativo).
     const [monthReport, weekReport, dayReport, pendings, logs] = await Promise.all([
-      getKpiReportForAi(session, { period: "month", selectedDate: yesterday, asOfDate: yesterday }),
-      getKpiReportForAi(session, { period: "week", selectedDate: yesterday, asOfDate: yesterday }),
+      getKpiReportForAi(session, { period: "month", selectedDate: today }),
+      getKpiReportForAi(session, { period: "week", selectedDate: today }),
       getKpiReportForAi(session, { period: "week", selectedDate: yesterday, dayOnly: true }),
       prisma.pending.findMany({
         where: { storeId: session.storeId, status: { in: ["PENDIENTE", "EN_PROCESO"] } },
@@ -752,10 +756,10 @@ Responde estrictamente en formato JSON utilizando el siguiente esquema:
     const advisors = weekFacts.team;
     const topAdvisor = advisors[0]
       ? `${advisors[0].name} (alcance ${formatPct(advisors[0].achievement)}, conv ${formatPct(advisors[0].conversion)})`
-      : "Sin asesores con datos hasta ayer";
+      : "Sin asesores con datos en la semana KPIs";
     const opportunityAdvisor = advisors.length
       ? `${advisors[advisors.length - 1].name} (alcance ${formatPct(advisors[advisors.length - 1].achievement)}, conv ${formatPct(advisors[advisors.length - 1].conversion)})`
-      : "Sin asesores con datos hasta ayer";
+      : "Sin asesores con datos en la semana KPIs";
 
     const tasks = pendings.map((t) => `${t.title} (${t.priority})`);
     const logsSummary = logs.map((l) => `${l.category}: ${l.description}`);
@@ -764,11 +768,12 @@ Responde estrictamente en formato JSON utilizando el siguiente esquema:
 Eres un auditor de operaciones retail. Redacta un diagnóstico CUALITATIVO.
 Los números YA vienen de la pestaña KPIs (getKpiReport). PROHIBIDO recalcular, inventar o redondear distinto.
 
-Corte: hasta ayer inclusive (${yesterdayKey}). No menciones el día de hoy.
+Semana y mes = mismos totales que la pestaña KPIs con fecha ${todayKey} (semana/mes retail completo, sin cortar a ayer).
+Día = solo ${yesterdayKey} (ayer). No inventes ventas del día de hoy.
 
-${renderKpiFactsBlock("MES retail hasta ayer", monthFacts)}
+${renderKpiFactsBlock("MES retail (igual que pestaña KPIs)", monthFacts)}
 
-${renderKpiFactsBlock("SEMANA retail hasta ayer (igual que Ranking KPIs)", weekFacts)}
+${renderKpiFactsBlock("SEMANA retail (igual que Ranking / pestaña KPIs)", weekFacts)}
 
 ${renderKpiFactsBlock(`DÍA ${yesterdayKey}`, dayFacts)}
 
@@ -812,7 +817,8 @@ Responde estrictamente en JSON:
       ...narrative,
       // Hechos numéricos para la UI (no pasan por el modelo).
       kpiFacts: {
-        asOf: yesterdayKey,
+        asOf: todayKey,
+        dayAsOf: yesterdayKey,
         month: monthFacts,
         week: weekFacts,
         day: dayFacts
