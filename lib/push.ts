@@ -1,13 +1,21 @@
 import webpush from "web-push";
 import { prisma } from "@/lib/prisma";
 
-webpush.setVapidDetails(
-  process.env.VAPID_SUBJECT ?? "mailto:admin@adrianluna.mx",
-  process.env.VAPID_PUBLIC_KEY!,
-  process.env.VAPID_PRIVATE_KEY!
-);
+// Solo configurar VAPID cuando hay claves reales. En CI/tests (y en cualquier
+// entorno sin VAPID) el import no debe tumbar el proceso: Phase 3 del Copilot
+// importa announcement-service → push, y sin este guard el suite falla con
+// "No key set vapidDetails.publicKey" al cargar el módulo.
+const vapidPublicKey = process.env.VAPID_PUBLIC_KEY?.trim() ?? "";
+const vapidPrivateKey = process.env.VAPID_PRIVATE_KEY?.trim() ?? "";
+if (vapidPublicKey && vapidPrivateKey) {
+  webpush.setVapidDetails(
+    process.env.VAPID_SUBJECT ?? "mailto:admin@adrianluna.mx",
+    vapidPublicKey,
+    vapidPrivateKey
+  );
+}
 
-export const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY ?? "";
+export const VAPID_PUBLIC_KEY = vapidPublicKey;
 
 export type PushPayload = { title: string; body: string; icon?: string; tag?: string; url?: string };
 
@@ -15,6 +23,10 @@ export async function dispatchPushToUsers(userIds: string[], payload: PushPayloa
   if (userIds.length === 0) return;
   if (process.env.NODE_ENV === "test" || process.env.MOCK_EXTERNAL_SERVICES === "true") {
     console.log(`[push mock] Dispatching notification to ${userIds.length} users: ${payload.title}`);
+    return;
+  }
+  if (!vapidPublicKey || !vapidPrivateKey) {
+    console.warn("[push] VAPID keys missing — skipping dispatch");
     return;
   }
   // Filtro central: un usuario desactivado no recibe push aunque el caller no
