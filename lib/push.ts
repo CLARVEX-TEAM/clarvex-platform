@@ -13,6 +13,10 @@ export type PushPayload = { title: string; body: string; icon?: string; tag?: st
 
 export async function dispatchPushToUsers(userIds: string[], payload: PushPayload) {
   if (userIds.length === 0) return;
+  if (process.env.NODE_ENV === "test" || process.env.MOCK_EXTERNAL_SERVICES === "true") {
+    console.log(`[push mock] Dispatching notification to ${userIds.length} users: ${payload.title}`);
+    return;
+  }
   // Filtro central: un usuario desactivado no recibe push aunque el caller no
   // haya filtrado su lista (cubre goles, resúmenes, comunicados, etc.).
   const subscriptions = await prisma.pushSubscription.findMany({

@@ -16,6 +16,41 @@ export class ClarvexIntelligence {
   }
 
   private static async callGemini(prompt: string, jsonMode = true): Promise<string> {
+    if (process.env.NODE_ENV === "test" || process.env.MOCK_EXTERNAL_SERVICES === "true") {
+      const p = prompt.toLowerCase();
+      if (p.includes("advisor") || p.includes("coaching") || p.includes("asesor")) {
+        return JSON.stringify({
+          techniques: ["Ofrecer producto adicional al cierre", "Escucha activa"],
+          productsToPush: "Playera Polo Test",
+          weakestKpi: { name: "UPT", details: "El promedio de unidades por ticket es bajo" },
+          coachingTip: "Sigue ofreciendo artículos complementarios en caja."
+        });
+      }
+      if (p.includes("plan") || p.includes("daily") || p.includes("diario")) {
+        return JSON.stringify({
+          summary: "Plan de ventas del día enfocado en UPT",
+          focus: "Promoción de accesorios",
+          actions: ["Ofrecer calcetines en cada compra de calzado", "Saludar al cliente en los primeros 10 segundos"]
+        });
+      }
+      if (p.includes("predict") || p.includes("projection") || p.includes("pronóstico")) {
+        return JSON.stringify({
+          probabilityGoal: 85.5,
+          expectedCloseSales: 120000,
+          salesPerHourNeeded: 1200,
+          details: "Pronóstico simulado en entorno de pruebas"
+        });
+      }
+      if (p.includes("executive") || p.includes("health") || p.includes("salud")) {
+        return JSON.stringify({
+          status: "EXCELLENT",
+          metrics: { UPT: 2.1, conversion: 15.2 },
+          insights: ["La tienda Test Norte mantiene un excelente desempeño de ventas."]
+        });
+      }
+      return jsonMode ? JSON.stringify({ message: "Respuesta mock de IA", success: true }) : "Texto mock de IA";
+    }
+
     const apiKey = this.getApiKey();
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
 

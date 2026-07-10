@@ -3,6 +3,27 @@
 // de tu aplicación en Mercado Pago). Si no está configurada, billingEnabled()
 // es false y los endpoints responden con un aviso claro.
 
+import fs from "node:fs";
+import path from "node:path";
+
+if (process.env.NODE_ENV === "test" || process.env.ALLOW_INTEGRATION_TEST_DATABASE === "true") {
+  const envTestPath = path.resolve(process.cwd(), ".env.test");
+  if (fs.existsSync(envTestPath)) {
+    const lines = fs.readFileSync(envTestPath, "utf-8").split(/\r?\n/);
+    for (const line of lines) {
+      const match = line.match(/^\s*([^#=\s]+)\s*=\s*(.*)$/);
+      if (match) {
+        const key = match[1];
+        let val = match[2].trim();
+        if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+          val = val.slice(1, -1);
+        }
+        process.env[key] = val;
+      }
+    }
+  }
+}
+
 const MP_API = "https://api.mercadopago.com";
 
 export function billingEnabled(): boolean {
@@ -27,6 +48,9 @@ export type CreatePreferenceInput = {
 
 /** Crea una preferencia de Checkout Pro y devuelve el link de pago (init_point). */
 export async function createPreference(input: CreatePreferenceInput): Promise<{ id: string; initPoint: string }> {
+  if (process.env.NODE_ENV === "test" || process.env.MOCK_EXTERNAL_SERVICES === "true") {
+    return { id: "pref-mock-id", initPoint: "https://www.mercadopago.com.mx/sandbox/checkout/init-mock" };
+  }
   const body = {
     items: [{
       id: `sub-${input.storeId}`,
@@ -70,6 +94,18 @@ export type MpPayment = {
 
 /** Consulta un pago por id para confirmar su estado real (no confiar en el webhook). */
 export async function getPayment(paymentId: string): Promise<MpPayment> {
+  if (process.env.NODE_ENV === "test" || process.env.MOCK_EXTERNAL_SERVICES === "true") {
+    return {
+      id: Number(paymentId) || 12345678,
+      status: "approved",
+      transaction_amount: 500,
+      currency_id: "MXN",
+      external_reference: "clarvex-demo-store",
+      payment_method_id: "visa",
+      payment_type_id: "credit_card",
+      date_approved: new Date().toISOString()
+    };
+  }
   const response = await fetch(`${MP_API}/v1/payments/${paymentId}`, {
     headers: { Authorization: `Bearer ${token()}` }
   });

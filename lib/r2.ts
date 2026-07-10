@@ -1,4 +1,24 @@
 import { DeleteObjectCommand, GetObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import fs from "node:fs";
+import path from "node:path";
+
+if (process.env.NODE_ENV === "test" || process.env.ALLOW_INTEGRATION_TEST_DATABASE === "true") {
+  const envTestPath = path.resolve(process.cwd(), ".env.test");
+  if (fs.existsSync(envTestPath)) {
+    const lines = fs.readFileSync(envTestPath, "utf-8").split(/\r?\n/);
+    for (const line of lines) {
+      const match = line.match(/^\s*([^#=\s]+)\s*=\s*(.*)$/);
+      if (match) {
+        const key = match[1];
+        let val = match[2].trim();
+        if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+          val = val.slice(1, -1);
+        }
+        process.env[key] = val;
+      }
+    }
+  }
+}
 
 function createClient() {
   const accountId = process.env.R2_ACCOUNT_ID;
@@ -21,6 +41,9 @@ function publicUrl(key: string) {
 }
 
 export async function uploadToR2(key: string, body: Uint8Array, contentType: string): Promise<string> {
+  if (process.env.NODE_ENV === "test" || process.env.MOCK_EXTERNAL_SERVICES === "true") {
+    return `http://localhost:3000/mock-r2/${key}`;
+  }
   const bucket = process.env.R2_BUCKET_NAME;
   if (!bucket) throw new Error("Configura R2_BUCKET_NAME en .env.local");
   await createClient().send(new PutObjectCommand({ Bucket: bucket, Key: key, Body: body, ContentType: contentType }));
@@ -36,6 +59,9 @@ export async function deleteFromR2(url: string): Promise<void> {
 }
 
 export async function deleteFromR2ByKey(key: string): Promise<void> {
+  if (process.env.NODE_ENV === "test" || process.env.MOCK_EXTERNAL_SERVICES === "true") {
+    return;
+  }
   if (!key) return;
   const bucket = process.env.R2_BUCKET_NAME;
   if (!bucket) return;
@@ -44,6 +70,9 @@ export async function deleteFromR2ByKey(key: string): Promise<void> {
 
 // Lee un objeto del bucket usando las credenciales (no requiere acceso público).
 export async function getFromR2(key: string): Promise<{ body: Uint8Array; contentType: string } | null> {
+  if (process.env.NODE_ENV === "test" || process.env.MOCK_EXTERNAL_SERVICES === "true") {
+    return { body: new Uint8Array([1, 2, 3]), contentType: "image/png" };
+  }
   const bucket = process.env.R2_BUCKET_NAME;
   if (!bucket) return null;
   try {

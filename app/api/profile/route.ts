@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { isApiError, parseJson, requireSession } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
+import { hashPin } from "@/lib/security";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -14,7 +15,8 @@ const schema = z.object({
   hoursOwed: z.number().min(-1000).max(1000).optional(), // solo gerencia
   vacationDays: z.number().min(-1000).max(1000).optional(), // solo gerencia
   paidDays: z.number().min(-1000).max(1000).optional(), // solo gerencia
-  active: z.boolean().optional() // solo gerencia, sobre otro integrante
+  active: z.boolean().optional(), // solo gerencia, sobre otro integrante
+  pin: z.string().regex(/^\d{4}$/, "El PIN debe tener 4 dígitos.").optional() // solo gerencia, reset PIN
 });
 
 function toDate(value: string | null | undefined): Date | null | undefined {
@@ -54,16 +56,17 @@ export async function PUT(request: Request) {
     targetUserId = target.id;
   }
 
-  const data: { birthDate?: Date | null; hireDate?: Date | null; hoursOwed?: number; vacationDays?: number; paidDays?: number; active?: boolean } = {};
+  const data: { birthDate?: Date | null; hireDate?: Date | null; hoursOwed?: number; vacationDays?: number; paidDays?: number; active?: boolean; pinHash?: string } = {};
   const birth = toDate(parsed.data.birthDate);
   const hire = toDate(parsed.data.hireDate);
   if (birth !== undefined) data.birthDate = birth;
   if (hire !== undefined) data.hireDate = hire;
-  // Solo gerencia puede ajustar los saldos (horas, vacaciones y pago de días).
+  // Solo gerencia puede ajustar los saldos (horas, vacaciones y pago de días) y PIN.
   if (session.role !== "ASESOR") {
     if (parsed.data.hoursOwed !== undefined) data.hoursOwed = parsed.data.hoursOwed;
     if (parsed.data.vacationDays !== undefined) data.vacationDays = parsed.data.vacationDays;
     if (parsed.data.paidDays !== undefined) data.paidDays = parsed.data.paidDays;
+    if (parsed.data.pin !== undefined) data.pinHash = await hashPin(parsed.data.pin);
     // Activar/desactivar cuenta: solo sobre otro integrante (nadie puede desactivarse a sí mismo).
     if (parsed.data.active !== undefined) {
       if (targetUserId === session.userId) return NextResponse.json({ error: "No puedes desactivar tu propia cuenta." }, { status: 400 });

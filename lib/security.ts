@@ -30,3 +30,18 @@ export function publicUser<T extends { id: string; name: string; employeeNumber:
     lastLoginAt: user.lastLoginAt?.toISOString() ?? null
   };
 }
+
+export function canSetupPin(callerSession: Session | null, targetStoreId: string) {
+  if (!callerSession) return false;
+  if (callerSession.platformAdmin) return true;
+  return callerSession.storeId === targetStoreId && (callerSession.role === "GERENTE" || callerSession.role === "SUBGERENTE");
+}
+
+export function canAccessAdvisorProfile(callerSession: Session | null, targetUserId: string, targetStoreId: string) {
+  if (!callerSession) return false;
+  if (callerSession.platformAdmin) return true;
+  if (callerSession.role === "ASESOR") {
+    return callerSession.userId === targetUserId;
+  }
+  return callerSession.storeId === targetStoreId;
+}

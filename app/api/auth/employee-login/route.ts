@@ -4,8 +4,8 @@ import { parseJson } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
 import { rateLimitAuth, rateLimitInspect } from "@/lib/rate-limit";
 import { clientIp } from "@/lib/request-ip";
-import { hashPin, publicUser, verifyPin } from "@/lib/security";
-import { createSessionToken, SESSION_COOKIE, sessionCookieOptions } from "@/lib/session";
+import { hashPin, publicUser, verifyPin, canSetupPin } from "@/lib/security";
+import { createSessionToken, SESSION_COOKIE, sessionCookieOptions, getServerSession } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
 
@@ -49,6 +49,13 @@ export async function POST(request: Request) {
 
   if (parsed.data.action === "setup") {
     if (user.pinHash) return NextResponse.json({ error: "Este usuario ya tiene un PIN configurado." }, { status: 409 });
+    
+    // El setup de PIN requiere autorización de un gerente/subgerente de la misma tienda (o admin de plataforma)
+    const session = await getServerSession();
+    if (!canSetupPin(session, user.storeId)) {
+      return NextResponse.json({ error: "No autorizado. El setup del PIN requiere autorización de un gerente o subgerente de la tienda." }, { status: 403 });
+    }
+    
     user.pinHash = await hashPin(parsed.data.pin);
   } else {
     if (!user.pinHash) return NextResponse.json({ error: "Debes crear tu PIN antes de iniciar sesion." }, { status: 409 });
