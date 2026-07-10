@@ -66,12 +66,19 @@ const mockPrisma: any = {
       if (args.where.storeId === "store-no-data") {
         return [];
       }
+      // El resumen diario debe consultar por rango [T00, T+1) — no por igualdad T12.
+      const dateFilter = args.where.date;
+      assert.equal(typeof dateFilter, "object");
+      assert.ok(dateFilter.gte instanceof Date);
+      assert.ok(dateFilter.lt instanceof Date);
+      assert.equal(dateFilter.gte.toISOString(), "2026-07-09T00:00:00.000Z");
+      assert.equal(dateFilter.lt.toISOString(), "2026-07-10T00:00:00.000Z");
       return [
         {
           id: "k-1",
           userId: "user-1",
           storeId: args.where.storeId,
-          date: args.where.date,
+          date: dateFilter.gte,
           dailySales: 15000,
           dailyGoal: 12000,
           transactions: 60,
@@ -162,6 +169,37 @@ test("Daily Summary Cache - Flujo de negocio completo", async (t) => {
 
     assert.equal(result.status, "NO_DATA");
     assert.equal(result.content, null);
+  });
+
+  await t.test("4b. NO_DATA no queda congelado: reintenta y puede pasar a READY si ya hay KPIs", async () => {
+    // Pre-carga un NO_DATA en caché (como el bug de T12 vs T00 en producción).
+    const key = "store-1:2026-07-09T12:00:00.000Z";
+    mockSummaryDb.set(key, {
+      id: "stale-no-data",
+      storeId: "store-1",
+      summaryDate: new Date("2026-07-09T12:00:00.000Z"),
+      type: "STORE_DAILY",
+      scopeKey: "STORE",
+      status: "NO_DATA",
+      content: null,
+      metricsSnapshot: {},
+      sourceDataHash: "",
+      errorMessage: null,
+      generatedAt: new Date(),
+      createdAt: new Date(),
+      updatedAt: new Date()
+    });
+
+    const result = await ClarvexIntelligence.generateDailySummary(session, "2026-07-09", false);
+    assert.equal(result.status, "READY");
+    assert.ok(result.content);
+  });
+
+  await t.test("4c. utcDayRange usa medianoche UTC (formato KPI)", async () => {
+    const { utcDayRange } = await import("../lib/clarvex-intelligence");
+    const range = utcDayRange("2026-07-09");
+    assert.equal(range.start.toISOString(), "2026-07-09T00:00:00.000Z");
+    assert.equal(range.end.toISOString(), "2026-07-10T00:00:00.000Z");
   });
 
   await t.test("5. Manejo seguro de fallos de Gemini registra FAILED en la BD", async () => {
