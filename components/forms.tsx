@@ -1,6 +1,7 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import type { HTMLMotionProps } from "framer-motion";
 import { CalendarDays, Check, ChevronDown, Plus, X } from "lucide-react";
@@ -128,8 +129,76 @@ export function AppSelect({
   wrapperClassName?: string;
 }) {
   const [open, setOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    return () => setMounted(false);
+  }, []);
+
   const selected = options.find((opt) => opt.value === value);
   const hasPhoto = options.some((opt) => opt.photoUrl !== undefined);
+
+  const modalContent = (
+    <AnimatePresence>
+      {open && (
+        <>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            onClick={() => setOpen(false)}
+            className="fixed inset-0 z-[999] bg-black/60 backdrop-blur-sm"
+          />
+          <motion.div
+            initial={{ y: "100%" }}
+            animate={{ y: 0 }}
+            exit={{ y: "100%" }}
+            transition={{ type: "spring", damping: 30, stiffness: 380 }}
+            className="fixed inset-x-0 bottom-0 z-[1000] rounded-t-[32px] bg-white dark:bg-[#1a2540] pb-10 shadow-2xl"
+          >
+            <div className="flex justify-center pt-3 pb-1">
+              <div className="h-1 w-10 rounded-full bg-slate-200 dark:bg-slate-700" />
+            </div>
+            <p className="px-5 py-3 text-[11px] font-bold uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
+              {label}
+            </p>
+            <div className="max-h-[55vh] overflow-y-auto px-3">
+              {options.map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => {
+                    onChange(opt.value);
+                    setOpen(false);
+                  }}
+                  className="flex min-h-[56px] w-full items-center gap-3 rounded-2xl px-3 text-left transition hover:bg-slate-50 dark:hover:bg-slate-800/60 active:scale-[0.99]"
+                >
+                  {opt.photoUrl !== undefined ? (
+                    <AvatarSmall name={opt.label} photoUrl={opt.photoUrl} size={44} />
+                  ) : null}
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-black text-ink">{opt.label}</p>
+                    {opt.description ? (
+                      <p className="text-xs text-slate-400 dark:text-slate-500">{opt.description}</p>
+                    ) : null}
+                  </div>
+                  {value === opt.value ? (
+                    <span className="grid size-6 shrink-0 place-items-center rounded-full bg-blue-500 text-white">
+                      <Check size={13} />
+                    </span>
+                  ) : (
+                    <span className="size-6 shrink-0 rounded-full border-2 border-slate-200 dark:border-slate-700" />
+                  )}
+                </button>
+              ))}
+            </div>
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>
+  );
 
   return (
     <>
@@ -160,61 +229,9 @@ export function AppSelect({
         </button>
       </div>
 
-      <AnimatePresence>
-        {open && (
-          <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              onClick={() => setOpen(false)}
-              className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm"
-            />
-            <motion.div
-              initial={{ y: "100%" }}
-              animate={{ y: 0 }}
-              exit={{ y: "100%" }}
-              transition={{ type: "spring", damping: 30, stiffness: 380 }}
-              className="fixed inset-x-0 bottom-0 z-50 rounded-t-[32px] bg-white dark:bg-[#1a2540] pb-10 shadow-2xl"
-            >
-              <div className="flex justify-center pt-3 pb-1">
-                <div className="h-1 w-10 rounded-full bg-slate-200 dark:bg-slate-700" />
-              </div>
-              <p className="px-5 py-3 text-[11px] font-bold uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
-                {label}
-              </p>
-              <div className="max-h-[55vh] overflow-y-auto px-3">
-                {options.map((opt) => (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    onClick={() => { onChange(opt.value); setOpen(false); }}
-                    className="flex min-h-[56px] w-full items-center gap-3 rounded-2xl px-3 text-left transition hover:bg-slate-50 dark:hover:bg-slate-800/60 active:scale-[0.99]"
-                  >
-                    {opt.photoUrl !== undefined ? (
-                      <AvatarSmall name={opt.label} photoUrl={opt.photoUrl} size={44} />
-                    ) : null}
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate font-black text-ink">{opt.label}</p>
-                      {opt.description ? (
-                        <p className="text-xs text-slate-400 dark:text-slate-500">{opt.description}</p>
-                      ) : null}
-                    </div>
-                    {value === opt.value ? (
-                      <span className="grid size-6 shrink-0 place-items-center rounded-full bg-blue-500 text-white">
-                        <Check size={13} />
-                      </span>
-                    ) : (
-                      <span className="size-6 shrink-0 rounded-full border-2 border-slate-200 dark:border-slate-700" />
-                    )}
-                  </button>
-                ))}
-              </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
+      {mounted && typeof document !== "undefined"
+        ? createPortal(modalContent, document.body)
+        : null}
     </>
   );
 }
