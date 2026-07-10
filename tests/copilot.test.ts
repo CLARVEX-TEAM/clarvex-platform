@@ -59,6 +59,7 @@ const mockPrisma = {
       { id: "p-1", title: "Revisar exhibición", description: "Antes de abrir", category: "COMERCIAL", priority: "ALTA", ownerId: "mgr-1", status: "PENDIENTE", dueDate: new Date("2026-07-10T00:00:00.000Z"), owner: { name: "Gerente" } }
     ]
   },
+  announcement: { findMany: async () => [] },
   aiUsageLog: {
     create: async (args: any) => {
       usageCreateCount++;
@@ -80,6 +81,7 @@ test("CLARVEX Copilot — Fase 1 (solo lectura)", async (t) => {
   const { getStoreDailyResultsTool } = await import("../lib/ai/tools/read/get-store-daily-results");
   const { getAdvisorPerformanceTool } = await import("../lib/ai/tools/read/get-advisor-performance");
   const { getOpenPendingsTool } = await import("../lib/ai/tools/read/get-open-pendings");
+  const { prepareAnnouncementDraftTool } = await import("../lib/ai/tools/draft/prepare-announcement-draft");
   const { runCopilot } = await import("../lib/ai/orchestrator");
 
   await t.test("Selección de modelo por reglas", () => {
@@ -149,6 +151,29 @@ test("CLARVEX Copilot — Fase 1 (solo lectura)", async (t) => {
       assert.equal(data.count, 1);
       assert.equal(data.pendings[0].title, "Revisar exhibición");
       assert.equal(data.pendings[0].owner, "Gerente");
+    }
+  });
+
+  await t.test("FASE 2: los borradores solo se exponen a gerencia (nunca a asesor)", () => {
+    const mgrTools = selectTools(managerCtx, 2);
+    const advTools = selectTools(advisorCtx, 2);
+    assert.equal(mgrTools.length, 8);
+    assert.ok(mgrTools.some((tool) => tool.name === "prepareAnnouncementDraft"));
+    // El asesor sigue con 5 herramientas de lectura: ningún borrador.
+    assert.equal(advTools.length, 5);
+    assert.ok(!advTools.some((tool) => tool.name.startsWith("prepare")));
+    // Ninguna herramienta de borrador escribe en la BD.
+    assert.ok(mgrTools.every((tool) => tool.mutates === false));
+  });
+
+  await t.test("FASE 2: prepareAnnouncementDraft entrega contexto real y se marca como borrador", async () => {
+    const result = await prepareAnnouncementDraftTool.execute(managerCtx, { topic: "Cierre de mes" });
+    assert.equal(result.ok, true);
+    if (result.ok) {
+      const data = result.data as { topic: string; isDraft: boolean; todayResults: unknown };
+      assert.equal(data.topic, "Cierre de mes");
+      assert.equal(data.isDraft, true);
+      assert.ok(data.todayResults);
     }
   });
 

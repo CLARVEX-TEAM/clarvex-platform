@@ -1,4 +1,7 @@
 import { AI_CONFIG } from "@/lib/ai/config";
+import { prepareAnnouncementDraftTool } from "@/lib/ai/tools/draft/prepare-announcement-draft";
+import { prepareDailyPlanDraftTool } from "@/lib/ai/tools/draft/prepare-daily-plan-draft";
+import { preparePendingDraftTool } from "@/lib/ai/tools/draft/prepare-pending-draft";
 import { comparePeriodsTool } from "@/lib/ai/tools/read/compare-periods";
 import { getAdvisorPerformanceTool } from "@/lib/ai/tools/read/get-advisor-performance";
 import { getOpenPendingsTool } from "@/lib/ai/tools/read/get-open-pendings";
@@ -9,11 +12,16 @@ import type { CopilotContext, ProviderToolSchema, ToolResult } from "@/lib/ai/ty
 
 // Todas las herramientas registradas. Añadir una = importarla aquí.
 const ALL_TOOLS: CopilotTool[] = [
+  // Fase 1 — solo lectura.
   getStoreDailyResultsTool as CopilotTool,
   getAdvisorPerformanceTool as CopilotTool,
   getOpenPendingsTool as CopilotTool,
   getSchedulesTool as CopilotTool,
-  comparePeriodsTool as CopilotTool
+  comparePeriodsTool as CopilotTool,
+  // Fase 2 — preparación de borradores (no escriben; solo reúnen contexto).
+  prepareAnnouncementDraftTool as CopilotTool,
+  prepareDailyPlanDraftTool as CopilotTool,
+  preparePendingDraftTool as CopilotTool
 ];
 
 // Herramientas disponibles para este contexto: filtra por fase operativa y por
