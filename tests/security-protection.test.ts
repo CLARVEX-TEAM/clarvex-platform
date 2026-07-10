@@ -3,6 +3,10 @@ import test from "node:test";
 import { assertSafeTestEnvironment, assertSafeDatabaseRecords } from "./helpers";
 import { PrismaClient } from "@prisma/client";
 
+// Define baseline environment variables for the safety tests in CI/environments where .env.test is not present
+process.env.ALLOW_INTEGRATION_TEST_DATABASE = "true";
+process.env.TEST_DATABASE_URL = "postgresql://localhost/clarvex_test";
+
 test("assertSafeTestEnvironment rechaza NODE_ENV != 'test'", () => {
   const origNodeEnv = process.env.NODE_ENV;
   (process.env as any).NODE_ENV = "production";
