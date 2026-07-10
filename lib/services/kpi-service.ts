@@ -14,9 +14,13 @@ import { buildWorkingScheduleKeys } from "@/lib/working-days";
 export type KpiReportParams = {
   period: KpiPeriod;
   selectedDate: Date;
+  /** Corta el fin del periodo (p.ej. "hasta ayer" sin incluir el día en curso). */
+  asOfDate?: Date;
+  /** Reporte de un solo día (selectedDate), con la misma lógica de horarios/agregación que KPIs. */
+  dayOnly?: boolean;
 };
 
-export async function getKpiReport(session: Session, { period, selectedDate }: KpiReportParams) {
+export async function getKpiReport(session: Session, { period, selectedDate, asOfDate, dayOnly = false }: KpiReportParams) {
   const manager = session.role === "GERENTE" || session.role === "SUBGERENTE";
   const userFilter = manager ? {} : { userId: session.userId };
   const [availableWeekRows, legacyWeekRows, latestKpiSource, discountSource] = await Promise.all([
@@ -54,8 +58,15 @@ export async function getKpiReport(session: Session, { period, selectedDate }: K
   const selectedWeek = period === "week" ? selectRdvWeek(availableWeeks, selectedDate) : null;
   const retailMonths = buildRetailMonths(availableWeeks);
   const selectedRetailMonth = selectRetailMonth(retailMonths, selectedDate);
-  const start = selectedWeek?.weekStart ?? selectedRetailMonth?.start ?? selectedDate;
-  const end = selectedWeek?.weekEnd ?? selectedRetailMonth?.end ?? selectedDate;
+  let start = selectedWeek?.weekStart ?? selectedRetailMonth?.start ?? selectedDate;
+  let end = selectedWeek?.weekEnd ?? selectedRetailMonth?.end ?? selectedDate;
+  if (dayOnly) {
+    const day = new Date(Date.UTC(selectedDate.getUTCFullYear(), selectedDate.getUTCMonth(), selectedDate.getUTCDate()));
+    start = day;
+    end = day;
+  } else if (asOfDate && asOfDate.getTime() < end.getTime()) {
+    end = new Date(Date.UTC(asOfDate.getUTCFullYear(), asOfDate.getUTCMonth(), asOfDate.getUTCDate()));
+  }
 
   const [allRows, rules, latestDiscountAnchor] = await Promise.all([
     prisma.kpi.findMany({
@@ -158,6 +169,50 @@ export async function getKpiReport(session: Session, { period, selectedDate }: K
 }
 
 export type KpiReport = Awaited<ReturnType<typeof getKpiReport>>;
+
+/** Hechos numéricos listos para IA/UI — salen de getKpiReport, sin recalcular. */
+export function kpiFactsFromReport(report: KpiReport) {
+  const store = report.store;
+  return {
+    period: report.period,
+    startDate: report.startDate,
+    endDate: report.endDate,
+    weekNumber: report.weekNumber,
+    retailMonthLabel: report.retailMonthLabel,
+    store: store
+      ? {
+          sales: store.sales,
+          goal: store.goal,
+          achievement: store.achievement,
+          transactions: store.transactions,
+          pieces: store.pieces,
+          traffic: store.traffic,
+          upt: store.upt,
+          aur: store.aur,
+          ept: store.ept,
+          conversion: store.conversion
+        }
+      : null,
+    team: report.team.map((item) => ({
+      userId: item.userId,
+      name: item.userName,
+      role: item.role,
+      sales: item.sales,
+      goal: item.goal,
+      achievement: item.achievement,
+      transactions: item.transactions,
+      pieces: item.pieces,
+      traffic: item.traffic,
+      upt: item.upt,
+      aur: item.aur,
+      ept: item.ept,
+      conversion: item.conversion,
+      ranking: item.ranking
+    }))
+  };
+}
+
+export type KpiFacts = ReturnType<typeof kpiFactsFromReport>;
 
 // Resultados del DÍA (hoy por defecto) para la tienda (gerencia) o el propio
 // asesor. Reutiliza el constructor del dashboard para calcular la conversión.

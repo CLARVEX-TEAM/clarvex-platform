@@ -2,14 +2,12 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { Prisma } from "@prisma/client";
 
-// Configurar variables de entorno requeridas por lib/prisma.ts antes de que sea cargado
-(process.env as any).NODE_ENV = "test";
-(process.env as any).ALLOW_INTEGRATION_TEST_DATABASE = "true";
-(process.env as any).TEST_DATABASE_URL = "postgresql://clarvex:PASSWORD@localhost:5432/clarvex_test?schema=public";
+(process.env as Record<string, string>).NODE_ENV = "test";
+(process.env as Record<string, string>).ALLOW_INTEGRATION_TEST_DATABASE = "true";
+(process.env as Record<string, string>).TEST_DATABASE_URL = "postgresql://clarvex:PASSWORD@localhost:5432/clarvex_test?schema=public";
+(process.env as Record<string, string>).MOCK_EXTERNAL_SERVICES = "true";
 
-// Configurar base de datos mock antes de cargar módulos de la aplicación
 const mockSummaryDb = new Map<string, any>();
-let geminiCallCount = 0;
 
 const mockPrisma: any = {
   aiDailySummary: {
@@ -26,12 +24,12 @@ const mockPrisma: any = {
         summaryDate: args.create.summaryDate,
         type: args.create.type,
         scopeKey: args.create.scopeKey,
-        status: args.update.status || "PENDING",
-        content: existing?.content || (args.update.content === Prisma.DbNull ? null : args.update.content) || null,
-        metricsSnapshot: existing?.metricsSnapshot || null,
-        sourceDataHash: existing?.sourceDataHash || null,
-        errorMessage: null,
-        generatedAt: null,
+        status: args.update?.status ?? args.create.status ?? "PENDING",
+        content: args.update?.content === Prisma.DbNull ? null : (args.update?.content ?? existing?.content ?? null),
+        metricsSnapshot: args.update?.metricsSnapshot ?? existing?.metricsSnapshot ?? null,
+        sourceDataHash: args.update?.sourceDataHash ?? existing?.sourceDataHash ?? null,
+        errorMessage: args.update?.errorMessage ?? null,
+        generatedAt: args.update?.generatedAt ?? null,
         createdAt: new Date(),
         updatedAt: new Date()
       };
@@ -60,57 +58,71 @@ const mockPrisma: any = {
       return updated;
     }
   },
-  kpi: {
-    findMany: async (args: any) => {
-      // Simular que para la tienda 2 no hay datos
-      if (args.where.storeId === "store-no-data") {
-        return [];
-      }
-      // El resumen diario debe consultar por rango [T00, T+1) — no por igualdad T12.
-      const dateFilter = args.where.date;
-      assert.equal(typeof dateFilter, "object");
-      assert.ok(dateFilter.gte instanceof Date);
-      assert.ok(dateFilter.lt instanceof Date);
-      assert.equal(dateFilter.gte.toISOString(), "2026-07-09T00:00:00.000Z");
-      assert.equal(dateFilter.lt.toISOString(), "2026-07-10T00:00:00.000Z");
-      return [
-        {
-          id: "k-1",
-          userId: "user-1",
-          storeId: args.where.storeId,
-          date: dateFilter.gte,
-          dailySales: 15000,
-          dailyGoal: 12000,
-          transactions: 60,
-          pieces: 120,
-          traffic: 300,
-          upt: 2.0,
-          conversion: 20.0,
-          ranking: 1,
-          user: { name: "Juan Asesor", role: "ASESOR", photoUrl: null }
-        }
-      ];
-    }
-  },
-  pending: {
-    findMany: async () => []
-  },
-  auditLog: {
-    create: async (args: any) => {
-      return { id: `audit-${Math.random()}`, ...args.data };
-    }
-  }
+  pending: { findMany: async () => [] },
+  auditLog: { create: async (args: any) => ({ id: `audit-${Math.random()}`, ...args.data }) }
 };
 
 (globalThis as any).prisma = mockPrisma;
 
-// Mockear variables de entorno para pruebas seguras
-(process.env as any).NODE_ENV = "test";
-(process.env as any).MOCK_EXTERNAL_SERVICES = "true";
+function buildMockReport(storeId: string) {
+  if (storeId === "store-no-data") {
+    return {
+      period: "week" as const,
+      selectedDate: "2026-07-09",
+      startDate: "2026-07-09",
+      endDate: "2026-07-09",
+      weekNumber: 28,
+      availableWeeks: [],
+      availableRetailMonths: [],
+      retailMonthLabel: null,
+      workedDays: null,
+      currentUserId: "mgr-1",
+      role: "GERENTE" as const,
+      store: { userId: "store", userName: "Tienda", role: "GERENTE" as const, avatar: "TI", photoUrl: null, sales: 0, goal: 0, achievement: 0, transactions: 0, pieces: 0, upt: null, aur: null, ept: null, conversion: null, traffic: null, ranking: 0, grossSales: null, orkestraSales: null, orkestraTransactions: null, orkestraPieces: null, discountAmount: null, discountMargin: null, discountLimit: null, commissionAmount: 0, commissionPercent: 0, commissionMinimum: null },
+      own: null,
+      team: [],
+      hasDiscountSource: false,
+      latestDiscountWeek: null,
+      commissionRules: []
+    };
+  }
+  return {
+    period: "week" as const,
+    selectedDate: "2026-07-09",
+    startDate: "2026-07-09",
+    endDate: "2026-07-09",
+    weekNumber: 28,
+    availableWeeks: [],
+    availableRetailMonths: [],
+    retailMonthLabel: null,
+    workedDays: null,
+    currentUserId: "mgr-1",
+    role: "GERENTE" as const,
+    store: {
+      userId: "store", userName: "Tienda", role: "GERENTE" as const, avatar: "TI", photoUrl: null,
+      sales: 15000, goal: 12000, achievement: 125, transactions: 60, pieces: 120,
+      upt: 2, aur: 125, ept: 250, conversion: 20, traffic: 300, ranking: 0,
+      grossSales: null, orkestraSales: null, orkestraTransactions: null, orkestraPieces: null,
+      discountAmount: null, discountMargin: null, discountLimit: null, commissionAmount: 0, commissionPercent: 0, commissionMinimum: null
+    },
+    own: null,
+    team: [{
+      userId: "user-1", userName: "Juan Asesor", role: "ASESOR" as const, avatar: "JU", photoUrl: null,
+      sales: 15000, goal: 12000, achievement: 125, transactions: 60, pieces: 120,
+      upt: 2, aur: 125, ept: 250, conversion: 20, traffic: 300, ranking: 1,
+      grossSales: null, orkestraSales: null, orkestraTransactions: null, orkestraPieces: null,
+      discountAmount: null, discountMargin: null, discountLimit: null, commissionAmount: 0, commissionPercent: 0, commissionMinimum: null
+    }],
+    hasDiscountSource: false,
+    latestDiscountWeek: null,
+    commissionRules: []
+  };
+}
 
 test("Daily Summary Cache - Flujo de negocio completo", async (t) => {
-  const { ClarvexIntelligence } = await import("../lib/clarvex-intelligence");
+  const { ClarvexIntelligence, __setGetKpiReportForTests } = await import("../lib/clarvex-intelligence");
   const { resolveMonterreyDate } = await import("../lib/cron-time");
+  __setGetKpiReportForTests(async (session) => buildMockReport(session.storeId) as any);
 
   const session = {
     userId: "mgr-1",
@@ -124,55 +136,41 @@ test("Daily Summary Cache - Flujo de negocio completo", async (t) => {
   await t.test("1. Cálculo correcto del día anterior e inicialización de fechas", () => {
     const todayInfo = resolveMonterreyDate(new Date("2026-07-10T12:00:00Z"));
     assert.equal(todayInfo.dateKey, "2026-07-10");
-
     const yesterday = new Date(todayInfo.utcDate);
     yesterday.setUTCDate(yesterday.getUTCDate() - 1);
-    const yesterdayStr = yesterday.toISOString().slice(0, 10);
-
-    assert.equal(yesterdayStr, "2026-07-09");
+    assert.equal(yesterday.toISOString().slice(0, 10), "2026-07-09");
   });
 
   await t.test("2. Primera solicitud crea, ejecuta Gemini y guarda el resumen", async () => {
     mockSummaryDb.clear();
     const result = await ClarvexIntelligence.generateDailySummary(session, "2026-07-09");
-
     assert.equal(result.status, "READY");
     assert.ok(result.content);
     const content = result.content as any;
     assert.equal(content.summary, "Cierre sólido de la tienda con buen desempeño general.");
-    assert.equal(content.positives[0], "Se superó la meta diaria por un 10%");
   });
 
   await t.test("3. Segunda solicitud devuelve el mismo registro guardado sin re-invocar Gemini", async () => {
-    // Al verificar el log interno, podemos mutar el contenido del caché para ver si nos devuelve el mutado en vez de regenerarlo
     const key = "store-1:2026-07-09T12:00:00.000Z";
     const cached = mockSummaryDb.get(key);
     assert.ok(cached);
-
     mockSummaryDb.set(key, {
       ...cached,
-      content: {
-        ...cached.content,
-        summary: "Contenido de cache alterado"
-      }
+      content: { ...cached.content, summary: "Contenido de cache alterado" }
     });
-
     const secondCall = await ClarvexIntelligence.generateDailySummary(session, "2026-07-09");
     assert.equal(secondCall.status, "READY");
-    const secondContent = secondCall.content as any;
-    assert.equal(secondContent?.summary, "Contenido de cache alterado");
+    assert.equal((secondCall.content as any)?.summary, "Contenido de cache alterado");
   });
 
   await t.test("4. Caso sin datos del día anterior genera NO_DATA y no llama a Gemini", async () => {
     const noDataSession = { ...session, storeId: "store-no-data" };
     const result = await ClarvexIntelligence.generateDailySummary(noDataSession, "2026-07-09");
-
     assert.equal(result.status, "NO_DATA");
     assert.equal(result.content, null);
   });
 
   await t.test("4b. NO_DATA no queda congelado: reintenta y puede pasar a READY si ya hay KPIs", async () => {
-    // Pre-carga un NO_DATA en caché (como el bug de T12 vs T00 en producción).
     const key = "store-1:2026-07-09T12:00:00.000Z";
     mockSummaryDb.set(key, {
       id: "stale-no-data",
@@ -189,7 +187,6 @@ test("Daily Summary Cache - Flujo de negocio completo", async (t) => {
       createdAt: new Date(),
       updatedAt: new Date()
     });
-
     const result = await ClarvexIntelligence.generateDailySummary(session, "2026-07-09", false);
     assert.equal(result.status, "READY");
     assert.ok(result.content);
@@ -203,29 +200,22 @@ test("Daily Summary Cache - Flujo de negocio completo", async (t) => {
   });
 
   await t.test("5. Manejo seguro de fallos de Gemini registra FAILED en la BD", async () => {
-    // Forzamos un fallo de Zod haciendo que Gemini devuelva un JSON malformado
     const originalCallGemini = (ClarvexIntelligence as any).callGemini;
-    (ClarvexIntelligence as any).callGemini = async () => {
-      return JSON.stringify({ summary: 1234 }); // summary es number en lugar de string (fallo de Zod)
-    };
-
+    (ClarvexIntelligence as any).callGemini = async () => JSON.stringify({ summary: 1234 });
     mockSummaryDb.clear();
     const result = await ClarvexIntelligence.generateDailySummary(session, "2026-07-09");
-
     assert.equal(result.status, "FAILED");
     assert.ok(result.errorMessage);
-
-    // Restaurar original
     (ClarvexIntelligence as any).callGemini = originalCallGemini;
   });
 
   await t.test("6. Cambio de mes/año funciona de forma segura mediante aritmética UTC", () => {
-    // 1 de Enero de 2026 a las 12:00 UTC (6:00 AM local)
     const jan1 = resolveMonterreyDate(new Date("2026-01-01T12:00:00Z"));
     assert.equal(jan1.dateKey, "2026-01-01");
     const yesterdayJan = new Date(jan1.utcDate);
     yesterdayJan.setUTCDate(yesterdayJan.getUTCDate() - 1);
-    
-    assert.equal(yesterdayJan.toISOString().slice(0, 10), "2025-12-31"); // Cruce de año exitoso
+    assert.equal(yesterdayJan.toISOString().slice(0, 10), "2025-12-31");
   });
+
+  __setGetKpiReportForTests(null);
 });

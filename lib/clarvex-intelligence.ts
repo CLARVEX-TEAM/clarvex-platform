@@ -8,7 +8,8 @@ import { computeDailyStreak } from "@/lib/streaks";
 import { decodeSyncLogMessage } from "@/lib/data-source";
 import { resolveMonterreyDate } from "@/lib/cron-time";
 import { buildRetailMonths, selectRetailMonth } from "@/lib/kpi-period";
-import { buildAiKpiSnapshot } from "@/lib/kpi-report";
+import * as kpiService from "@/lib/services/kpi-service";
+import type { KpiFacts } from "@/lib/services/kpi-service";
 import { mergeRdvWeeks } from "@/lib/rdv-week";
 import { z } from "zod";
 import crypto from "crypto";
@@ -23,6 +24,46 @@ export function utcDayRange(dateStr: string): { start: Date; end: Date } {
 }
 
 export { buildAiKpiSnapshot } from "@/lib/kpi-report";
+
+type GetKpiReportFn = typeof kpiService.getKpiReport;
+let getKpiReportForAi: GetKpiReportFn = (...args) => kpiService.getKpiReport(...args);
+
+/** Solo tests: inyecta getKpiReport (misma fuente que la pestaña KPIs). */
+export function __setGetKpiReportForTests(fn: GetKpiReportFn | null) {
+  getKpiReportForAi = fn ? fn : (...args) => kpiService.getKpiReport(...args);
+}
+
+function formatPct(value: number | null | undefined) {
+  return value === null || value === undefined ? "—" : `${value.toFixed(1)}%`;
+}
+
+function formatMoney(value: number | null | undefined) {
+  return value === null || value === undefined ? "—" : `$${value.toFixed(2)}`;
+}
+
+function formatNum(value: number | null | undefined, digits = 2) {
+  return value === null || value === undefined ? "—" : value.toFixed(digits);
+}
+
+/** Bloque de hechos KPIs para el prompt: la IA solo copia, no calcula. */
+function renderKpiFactsBlock(label: string, facts: KpiFacts) {
+  const store = facts.store;
+  const teamLines = facts.team.map((item, index) =>
+    `${index + 1}. ${item.name} | venta ${formatMoney(item.sales)} | meta ${formatMoney(item.goal)} | alcance ${formatPct(item.achievement)} | conv ${formatPct(item.conversion)} | UPT ${formatNum(item.upt)} | tickets ${item.transactions} | tráfico ${item.traffic ?? "—"}`
+  );
+  return `
+### ${label}
+Periodo: ${facts.startDate} → ${facts.endDate}${facts.weekNumber ? ` (semana ${facts.weekNumber})` : ""}${facts.retailMonthLabel ? ` | ${facts.retailMonthLabel}` : ""}
+TIENDA:
+- Venta: ${formatMoney(store?.sales)} | Meta: ${formatMoney(store?.goal)} | Alcance: ${formatPct(store?.achievement)}
+- UPT: ${formatNum(store?.upt)} | AUR: ${formatMoney(store?.aur)} | EPT: ${formatMoney(store?.ept)}
+- Tickets: ${store?.transactions ?? "—"} | Piezas: ${store?.pieces ?? "—"} | Tráfico: ${store?.traffic ?? "—"}
+- Conversión tienda: ${formatPct(store?.conversion)}
+
+ASESORES (ranking KPIs, ya calculado):
+${teamLines.join("\n") || "(sin asesores)"}
+`.trim();
+}
 
 export const DailySummaryContentSchema = z.object({
   summary: z.string().min(1).max(1500),
@@ -681,43 +722,19 @@ Responde estrictamente en formato JSON utilizando el siguiente esquema:
   }
 
   /**
-   * Dashboard Ejecutivo IA - salud de tienda con datos acumulados HASTA AYER
-   * (nunca incluye el día en curso). Ranking solo entre asesores.
+   * Dashboard Ejecutivo IA — números 100% desde getKpiReport (misma fuente que
+   * la pestaña KPIs). La IA solo narra; no calcula conversión ni alcances.
    */
   public static async getExecutiveHealth(session: Session) {
     const todayInfo = resolveMonterreyDate();
     const yesterday = new Date(todayInfo.utcDate);
     yesterday.setUTCDate(yesterday.getUTCDate() - 1);
     const yesterdayKey = yesterday.toISOString().slice(0, 10);
-    const { start: yesterdayStart, end: throughExclusive } = utcDayRange(yesterdayKey);
 
-    // Mes calendario del corte (hasta ayer). Si hay semanas RDV, preferir mes retail.
-    const monthStart = new Date(Date.UTC(yesterday.getUTCFullYear(), yesterday.getUTCMonth(), 1));
-    const weekRows = await prisma.kpi.findMany({
-      where: { storeId: session.storeId, weekStart: { not: null } },
-      distinct: ["weekStart"],
-      select: { weekStart: true, weekEnd: true },
-      orderBy: { weekStart: "asc" }
-    });
-    const retailMonths = buildRetailMonths(
-      weekRows
-        .filter((row): row is { weekStart: Date; weekEnd: Date } => Boolean(row.weekStart && row.weekEnd))
-        .map((row) => ({ weekStart: row.weekStart, weekEnd: row.weekEnd }))
-    );
-    const retailMonth = selectRetailMonth(retailMonths, yesterday);
-    const periodStart = retailMonth?.start ?? monthStart;
-    const periodLabel = retailMonth?.label ?? yesterday.toLocaleDateString("es-MX", { month: "long", year: "numeric", timeZone: "UTC" });
-
-    const [periodKpis, yesterdayKpis, pendings, logs] = await Promise.all([
-      prisma.kpi.findMany({
-        where: { storeId: session.storeId, date: { gte: periodStart, lt: throughExclusive } },
-        include: { user: { select: { name: true, role: true, photoUrl: true } } },
-        orderBy: { date: "asc" }
-      }),
-      prisma.kpi.findMany({
-        where: { storeId: session.storeId, date: { gte: yesterdayStart, lt: throughExclusive } },
-        include: { user: { select: { name: true, role: true, photoUrl: true } } }
-      }),
+    const [monthReport, weekReport, dayReport, pendings, logs] = await Promise.all([
+      getKpiReportForAi(session, { period: "month", selectedDate: yesterday, asOfDate: yesterday }),
+      getKpiReportForAi(session, { period: "week", selectedDate: yesterday, asOfDate: yesterday }),
+      getKpiReportForAi(session, { period: "week", selectedDate: yesterday, dayOnly: true }),
       prisma.pending.findMany({
         where: { storeId: session.storeId, status: { in: ["PENDIENTE", "EN_PROCESO"] } },
       }),
@@ -728,99 +745,79 @@ Responde estrictamente en formato JSON utilizando el siguiente esquema:
       }),
     ]);
 
-    const sumRows = (rows: typeof periodKpis) => {
-      const snapshot = buildAiKpiSnapshot(rows);
-      const store = snapshot.store;
-      if (!store) {
-        return { sales: 0, goal: 0, achievement: 0, tickets: 0, pieces: 0, traffic: 0, upt: 0, conversion: 0 };
-      }
-      return {
-        sales: store.sales,
-        goal: store.goal,
-        achievement: store.achievement,
-        tickets: store.transactions,
-        pieces: store.pieces,
-        traffic: store.traffic ?? 0,
-        upt: store.upt ?? 0,
-        conversion: store.conversion ?? 0
-      };
-    };
+    const monthFacts = kpiService.kpiFactsFromReport(monthReport);
+    const weekFacts = kpiService.kpiFactsFromReport(weekReport);
+    const dayFacts = kpiService.kpiFactsFromReport(dayReport);
 
-    const storePeriod = sumRows(periodKpis);
-    const storeYesterday = sumRows(yesterdayKpis);
-
-    // Ranking solo asesores — misma conversión que la pestaña KPIs (aggregateKpis).
-    const advisors = buildAiKpiSnapshot(periodKpis).advisors
-      .map((advisor) => ({
-        name: advisor.userName,
-        sales: advisor.sales,
-        goal: advisor.goal,
-        achievement: advisor.achievement,
-        upt: advisor.upt,
-        conversion: advisor.conversion
-      }))
-      .sort((a, b) => b.achievement - a.achievement);
-
+    const advisors = weekFacts.team;
     const topAdvisor = advisors[0]
-      ? `${advisors[0].name} (${advisors[0].achievement.toFixed(1)}% de su meta del periodo)`
+      ? `${advisors[0].name} (alcance ${formatPct(advisors[0].achievement)}, conv ${formatPct(advisors[0].conversion)})`
       : "Sin asesores con datos hasta ayer";
     const opportunityAdvisor = advisors.length
-      ? `${advisors[advisors.length - 1].name} (${advisors[advisors.length - 1].achievement.toFixed(1)}% de su meta del periodo)`
+      ? `${advisors[advisors.length - 1].name} (alcance ${formatPct(advisors[advisors.length - 1].achievement)}, conv ${formatPct(advisors[advisors.length - 1].conversion)})`
       : "Sin asesores con datos hasta ayer";
 
     const tasks = pendings.map((t) => `${t.title} (${t.priority})`);
     const logsSummary = logs.map((l) => `${l.category}: ${l.description}`);
 
     const prompt = `
-Eres un auditor de operaciones retail senior. Evalúa la salud de la tienda con datos CERRADOS hasta ayer (${yesterdayKey}). NO uses ni inventes el día de hoy.
+Eres un auditor de operaciones retail. Redacta un diagnóstico CUALITATIVO.
+Los números YA vienen de la pestaña KPIs (getKpiReport). PROHIBIDO recalcular, inventar o redondear distinto.
 
-Periodo analizado: ${periodLabel} (desde ${periodStart.toISOString().slice(0, 10)} hasta ${yesterdayKey} inclusive).
+Corte: hasta ayer inclusive (${yesterdayKey}). No menciones el día de hoy.
 
-MÉTRICAS DETERMINISTAS DE TIENDA (acumulado del periodo hasta ayer):
-- Venta: $${storePeriod.sales.toFixed(2)}
-- Meta: $${storePeriod.goal.toFixed(2)}
-- Alcance: ${storePeriod.achievement.toFixed(1)}%
-- UPT: ${storePeriod.upt.toFixed(2)}
-- Conversión: ${storePeriod.conversion.toFixed(1)}%
-- Tickets: ${storePeriod.tickets} | Piezas: ${storePeriod.pieces} | Tráfico: ${storePeriod.traffic}
+${renderKpiFactsBlock("MES retail hasta ayer", monthFacts)}
 
-CIERRE DE AYER (${yesterdayKey}):
-- Venta: $${storeYesterday.sales.toFixed(2)} / Meta: $${storeYesterday.goal.toFixed(2)} (${storeYesterday.achievement.toFixed(1)}%)
-- UPT: ${storeYesterday.upt.toFixed(2)} | Conversión: ${storeYesterday.conversion.toFixed(1)}%
+${renderKpiFactsBlock("SEMANA retail hasta ayer (igual que Ranking KPIs)", weekFacts)}
 
-ASESORES (solo rol ASESOR; conversión = tickets del asesor / tráfico de tienda en sus días, igual que KPIs):
-${JSON.stringify(advisors, null, 2)}
+${renderKpiFactsBlock(`DÍA ${yesterdayKey}`, dayFacts)}
 
-Destacado precalculado: ${topAdvisor}
-Oportunidad precalculada: ${opportunityAdvisor}
+Destacado precalculado (semana): ${topAdvisor}
+Oportunidad precalculada (semana): ${opportunityAdvisor}
 
-Pendientes activos:
-${tasks.join(", ") || "Ninguno"}
-
-Últimas notas de bitácora:
+Pendientes activos: ${tasks.join(", ") || "Ninguno"}
+Bitácora reciente:
 ${logsSummary.join("\n") || "Ninguna"}
 
-Reglas:
-1. Basa riesgos y acciones en las métricas deterministas y pendientes reales.
-2. En topAdvisor y opportunityAdvisor usa EXCLUSIVAMENTE asesores (ASESOR). Si no hay asesores, indícalo.
-3. No culpes a gerencia por "0 ventas personales".
-4. Copia EXACTAMENTE los % de conversión deterministas (tienda y asesores); no recalcules ni inventes otros.
-5. Sé concreto y operativo.
+Reglas estrictas:
+1. Si citas un %, venta, UPT o conversión, cópialo EXACTO del bloque de hechos.
+2. topAdvisor y opportunityAdvisor: solo asesores del ranking semanal de arriba.
+3. No culpes a gerencia por ventas personales en 0.
+4. Prioriza acciones concretas ligadas a pendientes y a la conversión/alcance de la semana.
 
-Responde estrictamente en formato JSON utilizando el siguiente esquema:
+Responde estrictamente en JSON:
 {
-  "storeHealth": "VERDE | AMARILLO | ROJO (Semáforo de salud operativa)",
-  "fortheleses": ["string (Fortaleza 1)", "string (Fortaleza 2)"],
-  "risks": ["string (Riesgo 1)", "string (Riesgo 2)"],
-  "topAdvisor": "string (Asesor destacado y por qué)",
-  "opportunityAdvisor": "string (Asesor con mayor área de oportunidad y por qué)",
-  "priorities": ["string (Prioridad operativa 1)", "string (Prioridad operativa 2)"],
-  "actions": ["string (Acción sugerida 1)", "string (Acción sugerida 2)"]
+  "storeHealth": "VERDE | AMARILLO | ROJO",
+  "fortheleses": ["string", "string"],
+  "risks": ["string", "string"],
+  "topAdvisor": "string",
+  "opportunityAdvisor": "string",
+  "priorities": ["string", "string"],
+  "actions": ["string", "string"]
 }
 `;
 
     const generatedText = await this.callGemini(prompt, true, { storeId: session.storeId, userId: session.userId, feature: "executive" });
-    return JSON.parse(generatedText);
+    const narrative = JSON.parse(generatedText) as {
+      storeHealth: string;
+      fortheleses: string[];
+      risks: string[];
+      topAdvisor: string;
+      opportunityAdvisor: string;
+      priorities: string[];
+      actions: string[];
+    };
+
+    return {
+      ...narrative,
+      // Hechos numéricos para la UI (no pasan por el modelo).
+      kpiFacts: {
+        asOf: yesterdayKey,
+        month: monthFacts,
+        week: weekFacts,
+        day: dayFacts
+      }
+    };
   }
 
   /**
@@ -915,8 +912,6 @@ Responde estrictamente en formato JSON utilizando el siguiente esquema:
   public static async generateDailySummary(session: Session, dateStr: string, forceRegenerate = false) {
     // Clave de caché (mediodía) — se mantiene por compatibilidad con registros existentes.
     const summaryDate = new Date(`${dateStr}T12:00:00.000Z`);
-    // Los KPIs del RDV se guardan en medianoche UTC; hay que buscar por rango del día.
-    const { start: dayStart, end: dayEnd } = utcDayRange(dateStr);
 
     // 1. Intentar cargar el caché existente
     let summaryRecord = await prisma.aiDailySummary.findUnique({
@@ -954,21 +949,18 @@ Responde estrictamente en formato JSON utilizando el siguiente esquema:
       if (summaryRecord?.status === "FAILED") return summaryRecord;
     }
 
-    // 2. Cargar KPIs del día ANTES del candado — permite reutilizar READY si el hash sigue igual.
-    const [kpis, pendings] = await Promise.all([
-      prisma.kpi.findMany({
-        where: { storeId: session.storeId, date: { gte: dayStart, lt: dayEnd } },
-        include: { user: { select: { name: true, role: true, photoUrl: true } } },
-      }),
-      prisma.pending.findMany({
-        where: { storeId: session.storeId },
-      }),
+    // 2. Fuente de verdad = getKpiReport (misma que pestaña KPIs), día exacto.
+    const dayUtc = new Date(`${dateStr}T00:00:00.000Z`);
+    const [dayReport, pendings] = await Promise.all([
+      getKpiReportForAi(session, { period: "week", selectedDate: dayUtc, dayOnly: true }),
+      prisma.pending.findMany({ where: { storeId: session.storeId } })
     ]);
+    const dayFacts = kpiService.kpiFactsFromReport(dayReport);
+    const store = dayFacts.store;
+    const salesTotal = store?.sales ?? 0;
+    const goalTotal = store?.goal ?? 0;
 
-    const salesProbe = kpis.reduce((acc, k) => acc + Number(k.dailySales), 0);
-    const goalProbe = kpis.reduce((acc, k) => acc + Number(k.dailyGoal), 0);
-
-    if (kpis.length === 0 || (salesProbe === 0 && goalProbe === 0)) {
+    if (!store || (salesTotal === 0 && goalTotal === 0)) {
       summaryRecord = await prisma.aiDailySummary.upsert({
         where: {
           storeId_summaryDate_type_scopeKey: {
@@ -1000,24 +992,19 @@ Responde estrictamente en formato JSON utilizando el siguiente esquema:
       return summaryRecord;
     }
 
-    // 3. Cálculos deterministas — misma lógica que la pestaña KPIs
-    // (tráfico de tienda por día, sin sumar el valor duplicado en cada fila).
-    const snapshot = buildAiKpiSnapshot(kpis);
-    const store = snapshot.store;
-    const salesTotal = store?.sales ?? 0;
-    const goalTotal = store?.goal ?? 0;
-    const ticketsTotal = store?.transactions ?? 0;
-    const piecesTotal = store?.pieces ?? 0;
-    const trafficTotal = store?.traffic ?? 0;
-    const storeReach = store?.achievement ?? 0;
+    // 3. Hechos KPIs — la IA no calcula nada de esto.
+    const ticketsTotal = store.transactions;
+    const piecesTotal = store.pieces;
+    const trafficTotal = store.traffic ?? 0;
+    const storeReach = store.achievement;
     const storeDiff = salesTotal - goalTotal;
-    const storeUpt = store?.upt ?? 0;
-    const storeAur = store?.aur ?? 0;
-    const storeEpt = store?.ept ?? 0;
-    const storeConversion = store?.conversion ?? 0;
+    const storeUpt = store.upt ?? 0;
+    const storeAur = store.aur ?? 0;
+    const storeEpt = store.ept ?? 0;
+    const storeConversion = store.conversion ?? 0;
 
-    const advisors = snapshot.advisors.map((advisor) => ({
-      name: advisor.userName,
+    const advisors = dayFacts.team.map((advisor) => ({
+      name: advisor.name,
       role: advisor.role,
       sales: advisor.sales,
       goal: advisor.goal,
@@ -1027,15 +1014,18 @@ Responde estrictamente en formato JSON utilizando el siguiente esquema:
       ranking: advisor.ranking
     }));
 
-    const sortedAdvisors = [...advisors].sort((a, b) => b.achievement - a.achievement);
-    const topAdvisor = sortedAdvisors[0] ? `${sortedAdvisors[0].name} (${sortedAdvisors[0].achievement.toFixed(1)}% meta)` : "Ninguno";
-    const opportunityAdvisor = sortedAdvisors.length
-      ? `${sortedAdvisors[sortedAdvisors.length - 1].name} (${sortedAdvisors[sortedAdvisors.length - 1].achievement.toFixed(1)}% meta)`
+    const topAdvisor = advisors[0]
+      ? `${advisors[0].name} (alcance ${formatPct(advisors[0].achievement)}, conv ${formatPct(advisors[0].conversion)})`
+      : "Ninguno";
+    const opportunityAdvisor = advisors.length
+      ? `${advisors[advisors.length - 1].name} (alcance ${formatPct(advisors[advisors.length - 1].achievement)}, conv ${formatPct(advisors[advisors.length - 1].conversion)})`
       : "Ninguno";
 
     const pendingList = pendings.map((p) => `${p.title} (Estado: ${p.status}, Prioridad: ${p.priority})`);
 
     const metricsSnapshot = {
+      source: "getKpiReport",
+      kpiFacts: dayFacts,
       storeSales: salesTotal,
       storeGoal: goalTotal,
       storeReach,
@@ -1052,9 +1042,10 @@ Responde estrictamente en formato JSON utilizando el siguiente esquema:
     };
 
     const normalizedSnapshotStr = JSON.stringify({
+      source: "getKpiReport/v1",
       storeSales: Number(salesTotal).toFixed(2),
       storeGoal: Number(goalTotal).toFixed(2),
-      storeConversion: Number(storeConversion).toFixed(2),
+      storeConversion: storeConversion === null || storeConversion === undefined ? null : Number(storeConversion).toFixed(2),
       storeTraffic: Number(trafficTotal),
       topAdvisor,
       opportunityAdvisor,
@@ -1062,7 +1053,7 @@ Responde estrictamente en formato JSON utilizando el siguiente esquema:
         name: a.name,
         sales: a.sales.toFixed(2),
         goal: a.goal.toFixed(2),
-        conversion: a.conversion === null ? null : Number(a.conversion).toFixed(2)
+        conversion: a.conversion === null || a.conversion === undefined ? null : Number(a.conversion).toFixed(2)
       }))
     });
     const sourceDataHash = crypto.createHash("sha256").update(normalizedSnapshotStr).digest("hex");
@@ -1123,45 +1114,28 @@ Responde estrictamente en formato JSON utilizando el siguiente esquema:
       throw err;
     }
 
-    // Prompt adaptado para Gemini
     const prompt = `
-Eres un gerente regional y analista operativo de retail para la cadena Clarvex. Analiza el rendimiento del día anterior y redacta el resumen diario.
+Eres un gerente regional de Clarvex. Redacta el resumen del día ${dateStr}.
+TODOS los números salen de getKpiReport (pestaña KPIs). PROHIBIDO recalcular o inventar %.
 
-Fecha analizada: ${dateStr}
+${renderKpiFactsBlock(`DÍA ${dateStr}`, dayFacts)}
 
-MÉTRICAS DE LA TIENDA YA CALCULADAS (DETERMINISTAS):
-- Venta total: $${salesTotal.toFixed(2)} pesos
-- Meta total: $${goalTotal.toFixed(2)} pesos
-- Alcance de meta de tienda: ${storeReach.toFixed(1)}%
-- Diferencia vs meta: $${storeDiff.toFixed(2)} pesos (${storeDiff >= 0 ? 'excedente' : 'faltante'})
-- UPT (Unidades por ticket) promedio de tienda: ${storeUpt.toFixed(2)}
-- AUR (Precio promedio por unidad): $${storeAur.toFixed(2)}
-- EPT (Venta promedio por ticket): $${storeEpt.toFixed(2)}
-- Tráfico de tienda del día: ${trafficTotal}
-- Conversión de tráfico de tienda: ${storeConversion.toFixed(1)}%  (tickets de tienda / tráfico; NO inventes otro %)
+Destacado: ${topAdvisor}
+Oportunidad: ${opportunityAdvisor}
+Pendientes: ${JSON.stringify(pendingList)}
 
-RENDIMIENTO DE ASESORES (solo ASESOR; conversión = sus tickets / tráfico de tienda de ese día, igual que KPIs):
-${JSON.stringify(advisors, null, 2)}
+Instrucciones:
+1. Narra el día con tono ejecutivo (3-5 oraciones en summary).
+2. positives / negatives / actionPlanTomorrow: concretos.
+3. Si mencionas conversión, alcance, UPT o montos, cópialos EXACTOS del bloque de hechos.
+4. Solo asesores en ranking; no trates a gerencia como vendedor de piso.
 
-Colaborador más destacado: ${topAdvisor}
-Colaborador con mayor oportunidad: ${opportunityAdvisor}
-
-PENDIENTES ACTUALES DE LA TIENDA:
-${JSON.stringify(pendingList, null, 2)}
-
-Instrucciones de redacción:
-1. Redacta un resumen analizando el desempeño, explicando los motivos detrás de las métricas (UPT, conversión, AUR) y destacando hitos y problemas del día anterior.
-2. Identifica puntos positivos (Éxitos) y puntos negativos/áreas de oportunidad (Puntos a cuidar).
-3. Diseña un plan de acción sugerido para hoy (Estrategia).
-4. No realices cálculos numéricos tú mismo; copia EXACTAMENTE los % y montos deterministas de arriba (en especial conversión de tienda y por asesor).
-5. No evalúes a GERENTE/SUBGERENTE como si fueran asesores de piso.
-
-Responde estrictamente en formato JSON utilizando el siguiente esquema:
+JSON estricto:
 {
-  "summary": "string (Resumen general del desempeño del día analizado, tono ejecutivo profesional, entre 3 y 5 oraciones)",
-  "positives": ["string (Mínimo 1, máximo 3 puntos positivos destacados)"],
-  "negatives": ["string (Mínimo 1, máximo 3 áreas de oportunidad)"],
-  "actionPlanTomorrow": ["string (Mínimo 2, máximo 4 acciones concretas sugeridas para la operación de hoy en base al desempeño previo)"]
+  "summary": "string",
+  "positives": ["string"],
+  "negatives": ["string"],
+  "actionPlanTomorrow": ["string"]
 }
 `;
 

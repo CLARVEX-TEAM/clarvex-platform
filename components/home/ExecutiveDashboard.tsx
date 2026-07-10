@@ -7,6 +7,29 @@ import { Badge } from "@/components/ui/StatusBadge";
 import { money } from "@/lib/format";
 import { getSession } from "@/lib/auth";
 
+interface KpiFactsBlock {
+  startDate: string;
+  endDate: string;
+  weekNumber: number | null;
+  retailMonthLabel: string | null;
+  store: {
+    sales: number;
+    goal: number;
+    achievement: number;
+    conversion: number | null;
+    upt: number | null;
+    traffic: number | null;
+    transactions: number;
+  } | null;
+  team: Array<{
+    name: string;
+    achievement: number;
+    conversion: number | null;
+    sales: number;
+    ranking: number;
+  }>;
+}
+
 interface ExecutiveData {
   health: {
     storeHealth: "VERDE" | "AMARILLO" | "ROJO";
@@ -16,6 +39,12 @@ interface ExecutiveData {
     opportunityAdvisor: string;
     priorities: string[];
     actions: string[];
+    kpiFacts?: {
+      asOf: string;
+      month: KpiFactsBlock;
+      week: KpiFactsBlock;
+      day: KpiFactsBlock;
+    };
   };
   predictions: {
     probabilityGoal: number;
@@ -200,6 +229,58 @@ export function ExecutiveDashboard() {
           </p>
         </div>
       </div>
+
+      {/* Datos KPIs (fuente de verdad — no los calcula la IA) */}
+      {health.kpiFacts?.week && (
+        <div className="mt-4 rounded-[18px] border border-[#00FF66]/15 bg-[#00FF66]/[0.04] p-3 space-y-2.5">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-[10px] font-black uppercase tracking-wider text-[#00FF66]">
+              Datos KPIs · hasta {health.kpiFacts.asOf}
+            </p>
+            <span className="text-[10px] text-white/40">
+              Semana{health.kpiFacts.week.weekNumber ? ` ${health.kpiFacts.week.weekNumber}` : ""}
+            </span>
+          </div>
+          <div className="grid grid-cols-3 gap-2 text-center">
+            <div className="rounded-xl bg-black/20 p-2">
+              <p className="text-[9px] text-white/40 uppercase">Alcance</p>
+              <p className="text-sm font-black text-white">
+                {health.kpiFacts.week.store ? `${health.kpiFacts.week.store.achievement.toFixed(1)}%` : "—"}
+              </p>
+            </div>
+            <div className="rounded-xl bg-black/20 p-2">
+              <p className="text-[9px] text-white/40 uppercase">Conversión</p>
+              <p className="text-sm font-black text-white">
+                {health.kpiFacts.week.store?.conversion != null ? `${health.kpiFacts.week.store.conversion.toFixed(1)}%` : "—"}
+              </p>
+            </div>
+            <div className="rounded-xl bg-black/20 p-2">
+              <p className="text-[9px] text-white/40 uppercase">UPT</p>
+              <p className="text-sm font-black text-white">
+                {health.kpiFacts.week.store?.upt != null ? health.kpiFacts.week.store.upt.toFixed(2) : "—"}
+              </p>
+            </div>
+          </div>
+          {health.kpiFacts.week.team.length > 0 && (
+            <ul className="space-y-1.5 pt-1 border-t border-white/5">
+              {health.kpiFacts.week.team.slice(0, 5).map((advisor) => (
+                <li key={advisor.name} className="flex items-center justify-between gap-2 text-[11px]">
+                  <span className="text-white/80 truncate">
+                    <span className="text-white/40 mr-1">#{advisor.ranking}</span>
+                    {advisor.name}
+                  </span>
+                  <span className="shrink-0 text-white/50">
+                    {advisor.achievement.toFixed(0)}% · conv {advisor.conversion != null ? `${advisor.conversion.toFixed(1)}%` : "—"}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+          <p className="text-[9px] text-white/30 leading-snug">
+            Mismos números que la pestaña KPIs. La IA solo interpreta; no recalcula.
+          </p>
+        </div>
+      )}
 
       {/* Bullet Insights */}
       <div className="mt-4 space-y-3 text-xs text-white/80">
