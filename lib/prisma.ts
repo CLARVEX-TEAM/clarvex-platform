@@ -3,7 +3,14 @@ import { PrismaClient } from "@prisma/client";
 import fs from "node:fs";
 import path from "node:path";
 
-if (process.env.NODE_ENV === "test" || process.env.ALLOW_INTEGRATION_TEST_DATABASE === "true") {
+const isTestEnvironment = process.env.NODE_ENV === "test";
+const integrationTestsAllowed = process.env.ALLOW_INTEGRATION_TEST_DATABASE === "true";
+
+if (isTestEnvironment !== integrationTestsAllowed) {
+  throw new Error("Configuracion de pruebas inconsistente: NODE_ENV=test y ALLOW_INTEGRATION_TEST_DATABASE=true deben activarse juntos.");
+}
+
+if (isTestEnvironment && integrationTestsAllowed) {
   const envTestPath = path.resolve(process.cwd(), ".env.test");
   if (fs.existsSync(envTestPath)) {
     const lines = fs.readFileSync(envTestPath, "utf-8").split(/\r?\n/);
