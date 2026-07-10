@@ -28,7 +28,7 @@ const periodRows = [
     traffic: 200,
     upt: 2,
     conversion: 20,
-    user: { name: "Waira", role: "ASESOR" as const }
+    user: { name: "Waira", role: "ASESOR" as const, photoUrl: null }
   },
   {
     userId: "adv-2",
@@ -40,7 +40,7 @@ const periodRows = [
     traffic: 200,
     upt: 1.5,
     conversion: 10,
-    user: { name: "Jazmin", role: "ASESOR" as const }
+    user: { name: "Jazmin", role: "ASESOR" as const, photoUrl: null }
   },
   {
     userId: "mgr-1",
@@ -52,7 +52,7 @@ const periodRows = [
     traffic: 200,
     upt: 0,
     conversion: 0,
-    user: { name: "Jesus Subgerente", role: "SUBGERENTE" as const }
+    user: { name: "Jesus Subgerente", role: "SUBGERENTE" as const, photoUrl: null }
   },
   // Hoy no debe entrar al análisis (corte = ayer).
   {
@@ -65,7 +65,7 @@ const periodRows = [
     traffic: 500,
     upt: 2,
     conversion: 20,
-    user: { name: "Waira", role: "ASESOR" as const }
+    user: { name: "Waira", role: "ASESOR" as const, photoUrl: null }
   }
 ];
 
@@ -123,11 +123,12 @@ test("getExecutiveHealth corta en ayer y no marca gerencia como oportunidad", as
 
   const prompt = capturedPrompts.at(-1) ?? "";
   assert.match(prompt, /hasta ayer/i);
-  assert.match(prompt, /solo rol ASESOR/i);
+  assert.match(prompt, /solo rol ASESOR|EXCLUSIVAMENTE asesores/i);
   assert.doesNotMatch(prompt, /99999/);
-  assert.match(prompt, /NO evalúes a GERENTE\/SUBGERENTE/);
+  assert.match(prompt, /NO culpes a gerencia|0 ventas personales/i);
   assert.match(prompt, /Waira/);
   assert.match(prompt, /Jazmin/);
+  assert.match(prompt, /conversión deterministas/i);
 
   (ClarvexIntelligence as unknown as { callGemini: typeof original }).callGemini = original;
 });

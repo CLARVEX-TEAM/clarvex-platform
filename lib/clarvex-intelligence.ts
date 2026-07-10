@@ -8,6 +8,7 @@ import { computeDailyStreak } from "@/lib/streaks";
 import { decodeSyncLogMessage } from "@/lib/data-source";
 import { resolveMonterreyDate } from "@/lib/cron-time";
 import { buildRetailMonths, selectRetailMonth } from "@/lib/kpi-period";
+import { aggregateKpis, aggregateStore, aggregateStoreTraffic, type RawKpi } from "@/lib/kpi-report";
 import { mergeRdvWeeks } from "@/lib/rdv-week";
 import { z } from "zod";
 import crypto from "crypto";
@@ -19,6 +20,43 @@ export function utcDayRange(dateStr: string): { start: Date; end: Date } {
   const end = new Date(start);
   end.setUTCDate(end.getUTCDate() + 1);
   return { start, end };
+}
+
+type AiKpiRow = {
+  userId: string;
+  date: Date;
+  dailySales: unknown;
+  dailyGoal: unknown;
+  transactions: number;
+  pieces: number;
+  conversion: unknown;
+  traffic: number | null;
+  user: { name: string; role: "GERENTE" | "SUBGERENTE" | "ASESOR" | "REGIONAL"; photoUrl: string | null };
+};
+
+/** Métricas alineadas con la vista KPIs: tráfico de tienda por día (sin sumar filas duplicadas) y conversión de asesores = tickets / tráfico de sus días. */
+export function buildAiKpiSnapshot(rows: AiKpiRow[]) {
+  const normalized: RawKpi[] = rows.map((row) => ({
+    userId: row.userId,
+    date: row.date,
+    dailySales: row.dailySales,
+    dailyGoal: row.dailyGoal,
+    transactions: row.transactions,
+    pieces: row.pieces,
+    conversion: row.conversion,
+    traffic: row.traffic,
+    grossSales: null,
+    discountAmount: null,
+    discountLimit: null,
+    commissionAmount: 0,
+    commissionPercent: 0,
+    user: row.user
+  }));
+  const reports = aggregateKpis(normalized);
+  const traffic = aggregateStoreTraffic(normalized.map((row) => ({ date: row.date as Date, traffic: row.traffic })));
+  const store = aggregateStore(reports, traffic);
+  const advisors = reports.filter((row) => row.role === "ASESOR");
+  return { store, advisors, reports, traffic };
 }
 
 export const DailySummaryContentSchema = z.object({
@@ -708,12 +746,12 @@ Responde estrictamente en formato JSON utilizando el siguiente esquema:
     const [periodKpis, yesterdayKpis, pendings, logs] = await Promise.all([
       prisma.kpi.findMany({
         where: { storeId: session.storeId, date: { gte: periodStart, lt: throughExclusive } },
-        include: { user: { select: { name: true, role: true } } },
+        include: { user: { select: { name: true, role: true, photoUrl: true } } },
         orderBy: { date: "asc" }
       }),
       prisma.kpi.findMany({
         where: { storeId: session.storeId, date: { gte: yesterdayStart, lt: throughExclusive } },
-        include: { user: { select: { name: true, role: true } } }
+        include: { user: { select: { name: true, role: true, photoUrl: true } } }
       }),
       prisma.pending.findMany({
         where: { storeId: session.storeId, status: { in: ["PENDIENTE", "EN_PROCESO"] } },
@@ -726,46 +764,35 @@ Responde estrictamente en formato JSON utilizando el siguiente esquema:
     ]);
 
     const sumRows = (rows: typeof periodKpis) => {
-      const traffic = rows.reduce((max, row) => Math.max(max, row.traffic ?? 0), 0);
-      const sales = rows.reduce((acc, row) => acc + Number(row.dailySales), 0);
-      const goal = rows.reduce((acc, row) => acc + Number(row.dailyGoal), 0);
-      const tickets = rows.reduce((acc, row) => acc + row.transactions, 0);
-      const pieces = rows.reduce((acc, row) => acc + row.pieces, 0);
+      const snapshot = buildAiKpiSnapshot(rows);
+      const store = snapshot.store;
+      if (!store) {
+        return { sales: 0, goal: 0, achievement: 0, tickets: 0, pieces: 0, traffic: 0, upt: 0, conversion: 0 };
+      }
       return {
-        sales,
-        goal,
-        achievement: goal > 0 ? (sales / goal) * 100 : 0,
-        tickets,
-        pieces,
-        traffic,
-        upt: tickets > 0 ? pieces / tickets : 0,
-        conversion: traffic > 0 ? (tickets / traffic) * 100 : 0
+        sales: store.sales,
+        goal: store.goal,
+        achievement: store.achievement,
+        tickets: store.transactions,
+        pieces: store.pieces,
+        traffic: store.traffic ?? 0,
+        upt: store.upt ?? 0,
+        conversion: store.conversion ?? 0
       };
     };
 
     const storePeriod = sumRows(periodKpis);
     const storeYesterday = sumRows(yesterdayKpis);
 
-    // Ranking solo asesores (nunca gerente/subgerente: su columna personal no es comparable).
-    const advisorMap = new Map<string, { name: string; sales: number; goal: number; tickets: number; pieces: number; traffic: number }>();
-    for (const row of periodKpis) {
-      if (row.user.role !== "ASESOR") continue;
-      const current = advisorMap.get(row.userId) ?? { name: row.user.name, sales: 0, goal: 0, tickets: 0, pieces: 0, traffic: 0 };
-      current.sales += Number(row.dailySales);
-      current.goal += Number(row.dailyGoal);
-      current.tickets += row.transactions;
-      current.pieces += row.pieces;
-      current.traffic = Math.max(current.traffic, row.traffic ?? 0);
-      advisorMap.set(row.userId, current);
-    }
-    const advisors = Array.from(advisorMap.values())
+    // Ranking solo asesores — misma conversión que la pestaña KPIs (aggregateKpis).
+    const advisors = buildAiKpiSnapshot(periodKpis).advisors
       .map((advisor) => ({
-        name: advisor.name,
+        name: advisor.userName,
         sales: advisor.sales,
         goal: advisor.goal,
-        achievement: advisor.goal > 0 ? (advisor.sales / advisor.goal) * 100 : 0,
-        upt: advisor.tickets > 0 ? advisor.pieces / advisor.tickets : 0,
-        conversion: advisor.traffic > 0 ? (advisor.tickets / advisor.traffic) * 100 : null
+        achievement: advisor.achievement,
+        upt: advisor.upt,
+        conversion: advisor.conversion
       }))
       .sort((a, b) => b.achievement - a.achievement);
 
@@ -796,7 +823,7 @@ CIERRE DE AYER (${yesterdayKey}):
 - Venta: $${storeYesterday.sales.toFixed(2)} / Meta: $${storeYesterday.goal.toFixed(2)} (${storeYesterday.achievement.toFixed(1)}%)
 - UPT: ${storeYesterday.upt.toFixed(2)} | Conversión: ${storeYesterday.conversion.toFixed(1)}%
 
-ASESORES (solo rol ASESOR, acumulado del periodo hasta ayer; NO evalúes a GERENTE/SUBGERENTE como vendedores):
+ASESORES (solo rol ASESOR; conversión = tickets del asesor / tráfico de tienda en sus días, igual que KPIs):
 ${JSON.stringify(advisors, null, 2)}
 
 Destacado precalculado: ${topAdvisor}
@@ -812,7 +839,8 @@ Reglas:
 1. Basa riesgos y acciones en las métricas deterministas y pendientes reales.
 2. En topAdvisor y opportunityAdvisor usa EXCLUSIVAMENTE asesores (ASESOR). Si no hay asesores, indícalo.
 3. No culpes a gerencia por "0 ventas personales".
-4. Sé concreto y operativo.
+4. Copia EXACTAMENTE los % de conversión deterministas (tienda y asesores); no recalcules ni inventes otros.
+5. Sé concreto y operativo.
 
 Responde estrictamente en formato JSON utilizando el siguiente esquema:
 {
@@ -938,7 +966,6 @@ Responde estrictamente en formato JSON utilizando el siguiente esquema:
     });
 
     if (summaryRecord && !forceRegenerate) {
-      // Si está en proceso, esperar brevemente a que el otro hilo finalice
       if (summaryRecord.status === "PENDING") {
         for (let i = 0; i < 10; i++) {
           await new Promise((resolve) => setTimeout(resolve, 500));
@@ -952,21 +979,138 @@ Responde estrictamente en formato JSON utilizando el siguiente esquema:
               }
             }
           });
-          if (summaryRecord && summaryRecord.status !== "PENDING") {
-            break;
-          }
+          if (summaryRecord && summaryRecord.status !== "PENDING") break;
         }
       }
 
-      // READY/FAILED se sirven de caché. NO_DATA se reintenta: el sync del RDV
-      // puede haber llegado después (antes fallaba también por mismatch T12 vs T00).
-      if (summaryRecord && (summaryRecord.status === "READY" || summaryRecord.status === "FAILED")) {
-        return summaryRecord;
-      }
+      // FAILED se sirve de caché hasta regeneración manual.
+      // READY se valida más abajo con sourceDataHash (corrige conversiones viejas).
+      // NO_DATA se reintenta: el sync del RDV puede haber llegado después.
+      if (summaryRecord?.status === "FAILED") return summaryRecord;
     }
 
-    // 2. Adquirir el bloqueo/crear registro como PENDING
-    let lockAcquired = false;
+    // 2. Cargar KPIs del día ANTES del candado — permite reutilizar READY si el hash sigue igual.
+    const [kpis, pendings] = await Promise.all([
+      prisma.kpi.findMany({
+        where: { storeId: session.storeId, date: { gte: dayStart, lt: dayEnd } },
+        include: { user: { select: { name: true, role: true, photoUrl: true } } },
+      }),
+      prisma.pending.findMany({
+        where: { storeId: session.storeId },
+      }),
+    ]);
+
+    const salesProbe = kpis.reduce((acc, k) => acc + Number(k.dailySales), 0);
+    const goalProbe = kpis.reduce((acc, k) => acc + Number(k.dailyGoal), 0);
+
+    if (kpis.length === 0 || (salesProbe === 0 && goalProbe === 0)) {
+      summaryRecord = await prisma.aiDailySummary.upsert({
+        where: {
+          storeId_summaryDate_type_scopeKey: {
+            storeId: session.storeId,
+            summaryDate,
+            type: "STORE_DAILY",
+            scopeKey: "STORE"
+          }
+        },
+        update: {
+          status: "NO_DATA",
+          content: Prisma.DbNull,
+          metricsSnapshot: {},
+          sourceDataHash: "",
+          errorMessage: null,
+          generatedAt: new Date()
+        },
+        create: {
+          storeId: session.storeId,
+          summaryDate,
+          type: "STORE_DAILY",
+          scopeKey: "STORE",
+          status: "NO_DATA",
+          metricsSnapshot: {},
+          sourceDataHash: "",
+          generatedAt: new Date()
+        }
+      });
+      return summaryRecord;
+    }
+
+    // 3. Cálculos deterministas — misma lógica que la pestaña KPIs
+    // (tráfico de tienda por día, sin sumar el valor duplicado en cada fila).
+    const snapshot = buildAiKpiSnapshot(kpis);
+    const store = snapshot.store;
+    const salesTotal = store?.sales ?? 0;
+    const goalTotal = store?.goal ?? 0;
+    const ticketsTotal = store?.transactions ?? 0;
+    const piecesTotal = store?.pieces ?? 0;
+    const trafficTotal = store?.traffic ?? 0;
+    const storeReach = store?.achievement ?? 0;
+    const storeDiff = salesTotal - goalTotal;
+    const storeUpt = store?.upt ?? 0;
+    const storeAur = store?.aur ?? 0;
+    const storeEpt = store?.ept ?? 0;
+    const storeConversion = store?.conversion ?? 0;
+
+    const advisors = snapshot.advisors.map((advisor) => ({
+      name: advisor.userName,
+      role: advisor.role,
+      sales: advisor.sales,
+      goal: advisor.goal,
+      achievement: advisor.achievement,
+      upt: advisor.upt,
+      conversion: advisor.conversion,
+      ranking: advisor.ranking
+    }));
+
+    const sortedAdvisors = [...advisors].sort((a, b) => b.achievement - a.achievement);
+    const topAdvisor = sortedAdvisors[0] ? `${sortedAdvisors[0].name} (${sortedAdvisors[0].achievement.toFixed(1)}% meta)` : "Ninguno";
+    const opportunityAdvisor = sortedAdvisors.length
+      ? `${sortedAdvisors[sortedAdvisors.length - 1].name} (${sortedAdvisors[sortedAdvisors.length - 1].achievement.toFixed(1)}% meta)`
+      : "Ninguno";
+
+    const pendingList = pendings.map((p) => `${p.title} (Estado: ${p.status}, Prioridad: ${p.priority})`);
+
+    const metricsSnapshot = {
+      storeSales: salesTotal,
+      storeGoal: goalTotal,
+      storeReach,
+      storeDiff,
+      storeUpt,
+      storeAur,
+      storeEpt,
+      storeConversion,
+      storeTraffic: trafficTotal,
+      topAdvisor,
+      opportunityAdvisor,
+      advisors,
+      pendingCount: pendingList.length
+    };
+
+    const normalizedSnapshotStr = JSON.stringify({
+      storeSales: Number(salesTotal).toFixed(2),
+      storeGoal: Number(goalTotal).toFixed(2),
+      storeConversion: Number(storeConversion).toFixed(2),
+      storeTraffic: Number(trafficTotal),
+      topAdvisor,
+      opportunityAdvisor,
+      advisors: advisors.map((a) => ({
+        name: a.name,
+        sales: a.sales.toFixed(2),
+        goal: a.goal.toFixed(2),
+        conversion: a.conversion === null ? null : Number(a.conversion).toFixed(2)
+      }))
+    });
+    const sourceDataHash = crypto.createHash("sha256").update(normalizedSnapshotStr).digest("hex");
+
+    if (
+      !forceRegenerate &&
+      summaryRecord?.status === "READY" &&
+      summaryRecord.sourceDataHash === sourceDataHash
+    ) {
+      return summaryRecord;
+    }
+
+    // 4. Adquirir el bloqueo / marcar PENDING antes de llamar a la IA
     try {
       summaryRecord = await prisma.aiDailySummary.upsert({
         where: {
@@ -991,10 +1135,8 @@ Responde estrictamente en formato JSON utilizando el siguiente esquema:
           status: "PENDING"
         }
       });
-      lockAcquired = true;
     } catch (err: any) {
       if (err.code === "P2002") {
-        // Concurrencia: esperar que termine el otro hilo
         for (let i = 0; i < 10; i++) {
           await new Promise((resolve) => setTimeout(resolve, 500));
           summaryRecord = await prisma.aiDailySummary.findUnique({
@@ -1012,93 +1154,9 @@ Responde estrictamente en formato JSON utilizando el siguiente esquema:
           }
         }
         throw new Error("El resumen está siendo generado por otro proceso. Intente de nuevo.");
-      } else {
-        throw err;
       }
+      throw err;
     }
-
-    // 3. Obtener los datos del día anterior de PostgreSQL (rango del día KPI)
-    const [kpis, pendings] = await Promise.all([
-      prisma.kpi.findMany({
-        where: { storeId: session.storeId, date: { gte: dayStart, lt: dayEnd } },
-        include: { user: { select: { name: true, role: true } } },
-      }),
-      prisma.pending.findMany({
-        where: { storeId: session.storeId },
-      }),
-    ]);
-
-    const salesTotal = kpis.reduce((acc, k) => acc + Number(k.dailySales), 0);
-    const goalTotal = kpis.reduce((acc, k) => acc + Number(k.dailyGoal), 0);
-
-    // 4. Si no hay datos, marcar como NO_DATA y no llamar a Gemini
-    if (kpis.length === 0 || (salesTotal === 0 && goalTotal === 0)) {
-      return await prisma.aiDailySummary.update({
-        where: { id: summaryRecord.id },
-        data: {
-          status: "NO_DATA",
-          content: Prisma.DbNull,
-          metricsSnapshot: {},
-          sourceDataHash: "",
-          generatedAt: new Date()
-        }
-      });
-    }
-
-    // 5. Cálculos deterministas
-    const ticketsTotal = kpis.reduce((acc, k) => acc + k.transactions, 0);
-    const piecesTotal = kpis.reduce((acc, k) => acc + k.pieces, 0);
-    const trafficTotal = kpis.reduce((acc, k) => acc + (k.traffic ?? 0), 0);
-
-    const storeReach = goalTotal > 0 ? (salesTotal / goalTotal) * 100 : 0;
-    const storeDiff = salesTotal - goalTotal;
-    const storeUpt = ticketsTotal > 0 ? piecesTotal / ticketsTotal : 0;
-    const storeAur = piecesTotal > 0 ? salesTotal / piecesTotal : 0;
-    const storeEpt = ticketsTotal > 0 ? salesTotal / ticketsTotal : 0;
-    const storeConversion = trafficTotal > 0 ? (ticketsTotal / trafficTotal) * 100 : 0;
-
-    const advisors = kpis.map((k) => ({
-      name: k.user.name,
-      role: k.user.role,
-      sales: Number(k.dailySales),
-      goal: Number(k.dailyGoal),
-      achievement: Number(k.dailyGoal) > 0 ? (Number(k.dailySales) / Number(k.dailyGoal)) * 100 : 0,
-      upt: Number(k.upt),
-      conversion: k.conversion ? Number(k.conversion) : null,
-      ranking: k.ranking,
-    }));
-
-    const sortedAdvisors = [...advisors].sort((a, b) => b.achievement - a.achievement);
-    const topAdvisor = sortedAdvisors[0] ? `${sortedAdvisors[0].name} (${sortedAdvisors[0].achievement.toFixed(1)}% meta)` : "Ninguno";
-    const opportunityAdvisor = sortedAdvisors[sortedAdvisors.length - 1]
-      ? `${sortedAdvisors[sortedAdvisors.length - 1].name} (${sortedAdvisors[sortedAdvisors.length - 1].achievement.toFixed(1)}% meta)`
-      : "Ninguno";
-
-    const pendingList = pendings.map((p) => `${p.title} (Estado: ${p.status}, Prioridad: ${p.priority})`);
-
-    const metricsSnapshot = {
-      storeSales: salesTotal,
-      storeGoal: goalTotal,
-      storeReach,
-      storeDiff,
-      storeUpt,
-      storeAur,
-      storeEpt,
-      storeConversion,
-      topAdvisor,
-      opportunityAdvisor,
-      advisors,
-      pendingCount: pendingList.length
-    };
-
-    const normalizedSnapshotStr = JSON.stringify({
-      storeSales: Number(salesTotal).toFixed(2),
-      storeGoal: Number(goalTotal).toFixed(2),
-      topAdvisor,
-      opportunityAdvisor,
-      advisors: advisors.map((a) => ({ name: a.name, sales: a.sales.toFixed(2), goal: a.goal.toFixed(2) }))
-    });
-    const sourceDataHash = crypto.createHash("sha256").update(normalizedSnapshotStr).digest("hex");
 
     // Prompt adaptado para Gemini
     const prompt = `
@@ -1114,9 +1172,10 @@ MÉTRICAS DE LA TIENDA YA CALCULADAS (DETERMINISTAS):
 - UPT (Unidades por ticket) promedio de tienda: ${storeUpt.toFixed(2)}
 - AUR (Precio promedio por unidad): $${storeAur.toFixed(2)}
 - EPT (Venta promedio por ticket): $${storeEpt.toFixed(2)}
-- Conversión de tráfico promedio de tienda: ${storeConversion.toFixed(1)}%
+- Tráfico de tienda del día: ${trafficTotal}
+- Conversión de tráfico de tienda: ${storeConversion.toFixed(1)}%  (tickets de tienda / tráfico; NO inventes otro %)
 
-RENDIMIENTO DE COLABORADORES:
+RENDIMIENTO DE ASESORES (solo ASESOR; conversión = sus tickets / tráfico de tienda de ese día, igual que KPIs):
 ${JSON.stringify(advisors, null, 2)}
 
 Colaborador más destacado: ${topAdvisor}
@@ -1129,7 +1188,8 @@ Instrucciones de redacción:
 1. Redacta un resumen analizando el desempeño, explicando los motivos detrás de las métricas (UPT, conversión, AUR) y destacando hitos y problemas del día anterior.
 2. Identifica puntos positivos (Éxitos) y puntos negativos/áreas de oportunidad (Puntos a cuidar).
 3. Diseña un plan de acción sugerido para hoy (Estrategia).
-4. No realices cálculos numéricos tú mismo; básate exclusivamente en los datos deterministas proporcionados.
+4. No realices cálculos numéricos tú mismo; copia EXACTAMENTE los % y montos deterministas de arriba (en especial conversión de tienda y por asesor).
+5. No evalúes a GERENTE/SUBGERENTE como si fueran asesores de piso.
 
 Responde estrictamente en formato JSON utilizando el siguiente esquema:
 {
@@ -1140,7 +1200,7 @@ Responde estrictamente en formato JSON utilizando el siguiente esquema:
 }
 `;
 
-    // 6. Invocar y Validar respuesta
+    // 5. Invocar y Validar respuesta
     let attempt = 0;
     let validatedContent: DailySummaryContent | null = null;
     let geminiErrorMsg = "";
@@ -1171,18 +1231,18 @@ Responde estrictamente en formato JSON utilizando el siguiente esquema:
           generatedAt: new Date()
         }
       });
-    } else {
-      return await prisma.aiDailySummary.update({
-        where: { id: summaryRecord.id },
-        data: {
-          status: "FAILED",
-          errorMessage: geminiErrorMsg || "Error al validar la estructura JSON de la respuesta de Gemini.",
-          metricsSnapshot: metricsSnapshot as any,
-          sourceDataHash,
-          generatedAt: new Date()
-        }
-      });
     }
+
+    return await prisma.aiDailySummary.update({
+      where: { id: summaryRecord.id },
+      data: {
+        status: "FAILED",
+        errorMessage: geminiErrorMsg || "Error al validar la estructura JSON de la respuesta de Gemini.",
+        metricsSnapshot: metricsSnapshot as any,
+        sourceDataHash,
+        generatedAt: new Date()
+      }
+    });
   }
 
   /**
