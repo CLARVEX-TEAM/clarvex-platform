@@ -64,6 +64,8 @@ export type CopilotContext = {
   name: string;
   platformAdmin: boolean;
   // Fecha/zona de referencia para resolver "hoy", "esta semana", etc.
+  /** YYYY-MM-DD en zona de tienda (America/Monterrey). */
+  todayKey: string;
   now: Date;
   timeZone: string;
 };

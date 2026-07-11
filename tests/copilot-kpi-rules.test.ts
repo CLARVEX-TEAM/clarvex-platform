@@ -20,7 +20,8 @@ test("buildSystemPrompt incluye reglas KPI completas", () => {
     role: "GERENTE",
     name: "Gerente",
     platformAdmin: false,
-    now: new Date("2026-07-10T12:00:00.000Z"),
+    todayKey: "2026-07-10",
+    now: new Date("2026-07-10T00:00:00.000Z"),
     timeZone: "America/Mexico_City"
   }, 3);
   assert.match(prompt, /getKpiReport/);
