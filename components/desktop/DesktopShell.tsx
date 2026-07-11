@@ -118,9 +118,9 @@ function resolveSection(pathname: string) {
 }
 
 // Sesión desbloqueada cacheada a nivel de módulo. Sobrevive a la navegación
-// entre páginas del escritorio (mismo contexto JS, aunque el layout se remonte)
-// pero se reinicia al recargar o abrir de nuevo (contexto JS nuevo). Así el PIN
-// se pide al abrir/recargar, NO al cambiar de pestaña dentro del escritorio.
+// entre páginas del escritorio (mismo contexto JS). sessionStorage
+// (desktop_unlocked) restaura el desbloqueo si el módulo se reinicia pero la
+// pestaña sigue abierta (p. ej. al volver desde /admin o recargar el chunk).
 let unlockedSession: User | null = null;
 
 export function DesktopShell({ children }: { children: React.ReactNode }) {
@@ -131,31 +131,42 @@ export function DesktopShell({ children }: { children: React.ReactNode }) {
   const [checking, setChecking] = useState(unlockedSession === null);
   const [unlocked, setUnlocked] = useState(unlockedSession !== null);
 
-  // Guard de tamaño + bloqueo diario. El escritorio se bloquea en cada apertura
-  // y pide PIN (login estilo Netflix). Solo se omite justo tras un login explícito
-  // en /login (token de un solo uso) o si ya se desbloqueó en esta sesión de pestaña.
+  // Guard de tamaño + bloqueo diario. El escritorio pide PIN al abrir una pestaña
+  // nueva (sin desktop_unlocked en sessionStorage). Dentro de la misma pestaña se
+  // restaura el desbloqueo vía sessionStorage + cookie válida — así no vuelve a
+  // pedir PIN al navegar entre secciones ni al salir y volver a /escritorio.
   useEffect(() => {
-    if (unlockedSession) return; // ya desbloqueado en esta sesión: no re-bloquear al navegar
+    if (unlockedSession) return; // ya desbloqueado en memoria: no re-bloquear al navegar
     if (typeof window !== "undefined" && window.innerWidth < DESKTOP_MIN_WIDTH) {
       router.replace("/manager");
       return;
     }
-    if (consumeDesktopFreshLogin()) {
-      getSession().then((session) => {
-        if (session && session.role !== "ASESOR") {
-          unlockedSession = session;
-          setUser(session);
-          setUnlocked(true);
-          sessionStorage.setItem("desktop_unlocked", "true");
-          window.dispatchEvent(new Event("desktop-lock-change"));
-        }
-        setChecking(false);
-      });
-    } else {
-      sessionStorage.removeItem("desktop_unlocked");
+
+    function applyUnlock(session: User) {
+      unlockedSession = session;
+      setUser(session);
+      setUnlocked(true);
+      sessionStorage.setItem("desktop_unlocked", "true");
       window.dispatchEvent(new Event("desktop-lock-change"));
+    }
+
+    function finishCheck(session: User | null) {
+      if (session && session.role !== "ASESOR") {
+        applyUnlock(session);
+      } else {
+        sessionStorage.removeItem("desktop_unlocked");
+        window.dispatchEvent(new Event("desktop-lock-change"));
+      }
       setChecking(false);
     }
+
+    if (consumeDesktopFreshLogin() || sessionStorage.getItem("desktop_unlocked") === "true") {
+      getSession().then(finishCheck);
+      return;
+    }
+
+    window.dispatchEvent(new Event("desktop-lock-change"));
+    setChecking(false);
   }, [router]);
 
   function handleUnlock(unlockedUser: User) {

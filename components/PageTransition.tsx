@@ -3,6 +3,13 @@
 import { usePathname } from "next/navigation";
 import { motion, useReducedMotion } from "framer-motion";
 
+function transitionKey(pathname: string) {
+  // Una sola key para todo /escritorio/* evita desmontar DesktopShell en cada
+  // clic del menú lateral (antes pedía PIN otra vez al perder unlockedSession).
+  if (pathname === "/escritorio" || pathname.startsWith("/escritorio/")) return "/escritorio";
+  return pathname;
+}
+
 export function PageTransition({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const reduce = useReducedMotion();
@@ -15,7 +22,7 @@ export function PageTransition({ children }: { children: React.ReactNode }) {
   // rompe el position:fixed de la barra de navegación).
   return (
     <motion.div
-      key={pathname}
+      key={transitionKey(pathname ?? "")}
       initial={reduce ? false : { opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.26, ease: [0.22, 1, 0.36, 1] }}
