@@ -8,6 +8,9 @@ import {
   buildMiddayManagerSummary,
   buildMorningAdvisorMessage,
   buildMorningManagerSummary,
+  buildPendingOverdueManagersSummary,
+  buildWeekGoal100Message,
+  buildWeekGoal80Message,
   buildWeeklyAdvisorMessage,
   buildWeeklyManagerSummary,
   firstName,
@@ -219,4 +222,39 @@ test("resumen matutino de gerencia calcula alcance semanal y faltante", () => {
   assert.match(summary.body, /Alcance semanal: 80%/);
   assert.match(summary.body, /Faltante para meta semanal: \$20,000/);
   assert.match(summary.body, /Equipo activo hoy: 4 asesores/);
+});
+
+test("alerta de meta semanal al 80% incluye venta, meta y faltante", () => {
+  const message = buildWeekGoal80Message({
+    weekLabel: "25 (2026-06-29 → 2026-07-05)",
+    sales: 80000,
+    goal: 100000
+  });
+  assert.equal(message.title, "Meta semanal al 80%");
+  assert.match(message.body, /80%/);
+  assert.match(message.body, /\$80,000/);
+  assert.match(message.body, /\$20,000/);
+});
+
+test("celebracion de meta semanal al 100%", () => {
+  const message = buildWeekGoal100Message({
+    weekLabel: "25",
+    sales: 105000,
+    goal: 100000
+  });
+  assert.match(message.title, /Meta semanal cumplida/);
+  assert.match(message.body, /META SEMANAL ALCANZADA/);
+  assert.match(message.body, /105%/);
+});
+
+test("digest de pendientes vencidos para gerencia lista responsables", () => {
+  const message = buildPendingOverdueManagersSummary({
+    overdue: [
+      { title: "Inventario cíclico", ownerName: "CARLOS MENDEZ", daysOverdue: 2 },
+      { title: "Rotación vitrinas", ownerName: "ANA LOPEZ", daysOverdue: 1 }
+    ]
+  });
+  assert.equal(message.title, "2 pendientes vencidos en la tienda");
+  assert.match(message.body, /Inventario cíclico — CARLOS \(vencido hace 2 días\)/);
+  assert.match(message.body, /Rotación vitrinas — ANA \(vencido hace 1 día\)/);
 });
