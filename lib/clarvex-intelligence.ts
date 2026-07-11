@@ -121,7 +121,7 @@ export class ClarvexIntelligence {
           details: "Pronóstico simulado en entorno de pruebas"
         });
       }
-      if (p.includes("strategicrecommendations") || p.includes("informe de rendimiento")) {
+      if (p.includes("strategicrecommendations") || p.includes("informe") && p.includes("retail")) {
         return JSON.stringify({
           title: "Reporte semanal de desempeño",
           executiveSummary: "La tienda mantiene ritmo comercial estable en el periodo.",
@@ -958,25 +958,17 @@ JSON estricto:
     ]);
     const facts = kpiService.kpiFactsFromReport(report);
 
-    const prompt = `
-Eres un consultor ejecutivo de retail de alto nivel. Analiza el desempeño del periodo indicado y genera un informe de rendimiento de negocio estructurado y profesional para la tienda "${store?.name}".
+    const periodLabel = type === "WEEKLY" ? "semanal" : type === "MONTHLY" ? "mensual" : "diario";
+    const prompt = `Genera un informe ${periodLabel} de retail para la tienda "${store?.name ?? "Tienda"}" (${startStr} a ${endStr}).
 
-Tipo de Reporte: ${type}
-Periodo solicitado: del ${startStr} al ${endStr}
+DATOS (no recalcules; cita solo estos números):
+${renderKpiFactsBlock(`Periodo ${type}`, facts)}
 
-${renderKpiFactsBlock(`Datos del periodo (${type})`, facts)}
+Devuelve un JSON con exactamente estas claves en español:
+title, executiveSummary, performanceAnalysis, strengths (array de 2-4 strings), weaknesses (array de 2-4 strings), strategicRecommendations (array de 2-4 strings).
 
-Usa EXCLUSIVAMENTE los números anteriores (ya calculados, misma fuente que la pestaña KPIs). No recalcules ni inventes cifras.
-Escribe un reporte de negocio completo. Responde estrictamente en formato JSON utilizando el siguiente esquema:
-{
-  "title": "string (Título formal del reporte)",
-  "executiveSummary": "string (Resumen ejecutivo del desempeño general y financiero del periodo)",
-  "performanceAnalysis": "string (Análisis de la productividad del equipo y comportamiento de los KPIs)",
-  "strengths": ["string", "string"],
-  "weaknesses": ["string", "string"],
-  "strategicRecommendations": ["string (Acciones estratégicas clave a mediano plazo para impulsar ventas, conversión y eficiencia)"]
-}
-`;
+Ejemplo de forma (no copies el texto, solo la estructura):
+{"title":"...","executiveSummary":"...","performanceAnalysis":"...","strengths":["..."],"weaknesses":["..."],"strategicRecommendations":["..."]}`;
     const generatedText = await this.callGemini(prompt, true, { storeId: session.storeId, userId: session.userId, feature: "report" });
     const parsed = parseModelJson(generatedText);
     const validated = IaReportContentSchema.safeParse(parsed);
