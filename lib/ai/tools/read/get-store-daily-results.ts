@@ -12,7 +12,8 @@ const argsSchema = z.object({
 // Para gerencia = tienda completa; para asesor = sus propios números.
 export const getStoreDailyResultsTool = defineTool<z.infer<typeof argsSchema>>({
   name: "getStoreDailyResults",
-  description: "Devuelve los resultados del día (ventas, meta, alcance %, tickets, piezas, tráfico y conversión). Para gerente/subgerente representa a toda la tienda; para asesor, solo sus propios resultados. Úsala para '¿cómo vamos hoy?' o '¿cómo voy hoy?'.",
+  description:
+    "SOLO resultados del DÍA (hoy o fecha dada): ventas, meta diaria, alcance %, tickets, piezas, tráfico y conversión. NO es semana ni mes retail — para meta del periodo usa getStorePerformance.",
   phase: 1,
   roles: "all",
   mutates: false,
@@ -32,6 +33,11 @@ export const getStoreDailyResultsTool = defineTool<z.infer<typeof argsSchema>>({
       dateKey = periodDateKey(parsed);
     }
     const result = await getStoreDailyResults(toSession(ctx), dateKey);
-    return toolOk(result);
+    return toolOk({
+      ...result,
+      period: "day",
+      periodLabel: `Día ${result.date}`,
+      calendarNote: "Solo un día calendario. Para semana/mes retail (RDV) usa getStorePerformance."
+    });
   }
 });

@@ -1,4 +1,5 @@
 import type { KpiPeriod } from "@/lib/kpi-period";
+import { kpiPeriodMeta } from "@/lib/ai/tools/shared/kpi-period-meta";
 import type { KpiReportItem } from "@/lib/kpi-report";
 import { getKpiReport } from "@/lib/services/kpi-service";
 import type { Session } from "@/lib/session-token";
@@ -37,18 +38,15 @@ export async function comparePeriods(session: Session, { period, currentDate, pr
   return {
     period,
     scope: manager ? "store" : "own",
+    calendarNote: "Comparación entre periodos RETAIL RDV (no meses naturales).",
     current: {
-      label: current.retailMonthLabel ?? `Semana ${current.weekNumber ?? "?"}`,
-      startDate: current.startDate,
-      endDate: current.endDate,
+      ...kpiPeriodMeta(current),
       sales: currentSales,
       goal: currentGoal,
       achievement: currentScope?.achievement ?? 0
     },
     previous: {
-      label: previous.retailMonthLabel ?? `Semana ${previous.weekNumber ?? "?"}`,
-      startDate: previous.startDate,
-      endDate: previous.endDate,
+      ...kpiPeriodMeta(previous),
       sales: previousSales,
       goal: previousGoal,
       achievement: previousScope?.achievement ?? 0

@@ -1,4 +1,5 @@
 import type { CopilotContext } from "@/lib/ai/types";
+import { COPILOT_KPI_RULES } from "@/lib/ai/kpi-source-reference";
 import { periodDateKey } from "@/lib/kpi-period";
 
 // Construye el system prompt del Copilot según rol y fase. Refuerza (en lenguaje
@@ -47,14 +48,12 @@ export function buildSystemPrompt(ctx: CopilotContext, phase: number): string {
     "PRINCIPIOS:",
     "- Responde SIEMPRE en español, claro, breve y orientado a la acción.",
     "- Usa ÚNICAMENTE los datos devueltos por las herramientas. Jamás inventes números, nombres, fechas ni tendencias.",
-    "- No calcules KPIs ni comisiones por tu cuenta: las herramientas ya entregan los valores; cítalos tal cual.",
-    "- Para cuánto falta para la meta de tienda, alcance semanal/mensual o cumplimiento del periodo, usa getStorePerformance (mismos números que pestaña KPIs → Cumplimiento). Por defecto periodo 'week' salvo que el usuario diga mes/mensual.",
-    "- getStoreDailyResults es SOLO para el DÍA (hoy): no la uses para meta semanal/mensual ni faltante del periodo.",
-    "- Para comisiones de ventas, brackets o 'quién está más cerca de comisionar', usa getCommissions (misma lógica que la pestaña KPIs → Comisión).",
     "- En móvil: presenta comisiones y rankings en lista corta (nombre — $comisión — % — alcance vs mínimo). Evita tablas anchas con muchas columnas.",
     "- Mantén el contexto del hilo: si hablaban de comisiones y gerencia dice «en Alonso», consulta comisiones de Alonso (no reinicies pidiendo qué quiere hacer).",
     "- Si te falta un dato, llama a la herramienta adecuada. Si aun así no lo tienes, dilo con honestidad.",
     "- Cuando una herramienta devuelva un error, explícalo de forma sencilla y sugiere una alternativa.",
+    "",
+    COPILOT_KPI_RULES,
     "",
     "SEGURIDAD:",
     `- ${roleRules}`,
