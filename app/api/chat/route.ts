@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "@/lib/session";
+import { requireSession, isApiError } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
 import { isOnline, touchPresence } from "@/lib/chat";
 
@@ -7,8 +7,8 @@ export const dynamic = "force-dynamic";
 
 // GET — lista de rooms del usuario con último mensaje y no leídos
 export async function GET() {
-  const session = await getServerSession();
-  if (!session) return NextResponse.json({ error: "Sesión requerida." }, { status: 401 });
+  const session = await requireSession();
+  if (isApiError(session)) return session;
 
   // Asegurar que el usuario esté en el room "Todos" de la tienda
   await ensureGroupRoom(session.storeId, session.userId);
@@ -109,8 +109,8 @@ export async function GET() {
 
 // POST — crear o recuperar un room directo
 export async function POST(request: Request) {
-  const session = await getServerSession();
-  if (!session) return NextResponse.json({ error: "Sesión requerida." }, { status: 401 });
+  const session = await requireSession();
+  if (isApiError(session)) return session;
 
   const body = await request.json() as { targetUserId?: string };
   const { targetUserId } = body;

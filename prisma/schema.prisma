@@ -120,6 +120,8 @@ model User {
   platformAdmin         Boolean                @default(false)
   failedPinAttempts     Int                    @default(0)
   pinLockedUntil        DateTime?
+  pinLockoutCount       Int                    @default(0)
+  sessionVersion        Int                    @default(0)
   termsAcceptedAt       DateTime?
   termsAcceptedVersion  String?
   authoredAnnouncements Announcement[]

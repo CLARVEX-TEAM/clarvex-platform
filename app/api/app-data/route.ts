@@ -55,7 +55,19 @@ export async function GET(request: Request) {
 
 
   return NextResponse.json({
-    users: users.map((user) => ({ id: user.id, name: user.name, employeeNumber: user.employeeNumber, role: user.role, avatar: user.name.slice(0, 2).toUpperCase(), photoUrl: user.photoUrl, biometricEnabled: user.biometricEnabled, lastLoginAt: user.lastLoginAt?.toISOString() ?? null, birthDate: user.birthDate ? user.birthDate.toISOString().slice(0, 10) : null, hireDate: user.hireDate ? user.hireDate.toISOString().slice(0, 10) : null, hoursOwed: user.hoursOwed, vacationDays: user.vacationDays, paidDays: user.paidDays, active: user.active })),
+    // Los saldos de RH (horas, vacaciones, días pagados) son sensibles: solo los
+    // ve gerencia o el propio colaborador. Cumpleaños y aniversario (birthDate/
+    // hireDate) sí son visibles para todo el equipo (celebraciones).
+    users: users.map((user) => {
+      const canSeeBalances = manager || user.id === session.userId;
+      return {
+        id: user.id, name: user.name, employeeNumber: user.employeeNumber, role: user.role, avatar: user.name.slice(0, 2).toUpperCase(), photoUrl: user.photoUrl, biometricEnabled: user.biometricEnabled, lastLoginAt: user.lastLoginAt?.toISOString() ?? null,
+        birthDate: user.birthDate ? user.birthDate.toISOString().slice(0, 10) : null,
+        hireDate: user.hireDate ? user.hireDate.toISOString().slice(0, 10) : null,
+        ...(canSeeBalances ? { hoursOwed: user.hoursOwed, vacationDays: user.vacationDays, paidDays: user.paidDays } : {}),
+        active: user.active
+      };
+    }),
     kpis: kpis.map((kpi) => ({ userId: kpi.userId, date: kpi.date.toISOString().slice(0, 10), dailySales: Number(kpi.dailySales), monthlySales: Number(kpi.monthlySales), dailyGoal: Number(kpi.dailyGoal), monthlyGoal: Number(kpi.monthlyGoal), avgTicket: Number(kpi.avgTicket), upt: Number(kpi.upt), conversion: kpi.conversion === null ? null : Number(kpi.conversion), traffic: kpi.traffic, pieces: kpi.pieces, transactions: kpi.transactions, ranking: kpi.ranking, grossSales: kpi.grossSales === null ? null : Number(kpi.grossSales), discountAmount: kpi.discountAmount === null ? null : Number(kpi.discountAmount), discountMargin: kpi.discountMargin === null ? null : Number(kpi.discountMargin), discountLimit: kpi.discountLimit === null ? null : Number(kpi.discountLimit), commissionAmount: Number(kpi.commissionAmount), commissionPercent: Number(kpi.commissionPercent) })),
     dashboardDaily,
     plans: plans.map((plan) => ({ id: plan.id, userId: plan.userId, date: plan.date.toISOString().slice(0, 10), dailyGoal: Number(plan.dailyGoal), focus: plan.focus, message: plan.message, published: plan.publishedAt !== null, activities: plan.activities.map((activity) => ({ id: activity.id, title: activity.title, completed: activity.completed, autoKey: activity.autoKey })) })),

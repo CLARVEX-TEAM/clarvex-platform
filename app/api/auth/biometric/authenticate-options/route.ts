@@ -4,6 +4,8 @@ import { generateAuthenticationOptions } from "@simplewebauthn/server";
 import type { AuthenticatorTransportFuture } from "@simplewebauthn/server";
 import { parseJson } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
+import { rateLimitAuth } from "@/lib/rate-limit";
+import { clientIp } from "@/lib/request-ip";
 import { RP_ID } from "@/lib/webauthn";
 
 export const dynamic = "force-dynamic";
@@ -12,6 +14,11 @@ export const runtime = "nodejs";
 const inputSchema = z.object({ employeeNumber: z.string().trim().min(1).max(30) });
 
 export async function POST(request: Request) {
+  const rateLimit = rateLimitAuth(clientIp(request.headers));
+  if (!rateLimit.allowed) {
+    return NextResponse.json({ error: "Demasiados intentos. Intenta de nuevo en un momento." }, { status: 429, headers: { "Retry-After": String(rateLimit.retryAfterSeconds) } });
+  }
+
   const parsed = await parseJson(request, inputSchema);
   if ("response" in parsed) return parsed.response;
 
@@ -23,7 +30,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Biometria no disponible para este usuario." }, { status: 404 });
   }
 
-  await prisma.webAuthnChallenge.deleteMany({ where: { expiresAt: { lt: new Date() } } });
+  // Un solo desafío activo por usuario: limpia expirados y los previos de este
+  // usuario antes de emitir uno nuevo (reduce la ventana de replay).
+  await prisma.webAuthnChallenge.deleteMany({ where: { OR: [{ expiresAt: { lt: new Date() } }, { userId: user.id }] } });
 
   const options = await generateAuthenticationOptions({
     rpID: RP_ID,
@@ -31,7 +40,7 @@ export async function POST(request: Request) {
       id: c.credentialId,
       transports: c.transports ? (JSON.parse(c.transports) as AuthenticatorTransportFuture[]) : undefined
     })),
-    userVerification: "preferred"
+    userVerification: "required"
   });
 
   await prisma.webAuthnChallenge.create({

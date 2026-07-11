@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "@/lib/session";
+import { requireSession, isApiError } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -10,8 +10,8 @@ export const dynamic = "force-dynamic";
 //   - Reacción distinta → la reemplaza.
 export async function POST(request: Request, { params }: { params: Promise<{ id: string; messageId: string }> }) {
   const { id, messageId } = await params;
-  const session = await getServerSession();
-  if (!session) return NextResponse.json({ error: "Sesión requerida." }, { status: 401 });
+  const session = await requireSession();
+  if (isApiError(session)) return session;
 
   const member = await prisma.chatMember.findUnique({
     where: { roomId_userId: { roomId: id, userId: session.userId } }

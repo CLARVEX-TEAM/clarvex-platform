@@ -4,6 +4,8 @@ import { verifyAuthenticationResponse } from "@simplewebauthn/server";
 import type { AuthenticationResponseJSON, AuthenticatorTransportFuture } from "@simplewebauthn/server";
 import { parseJson } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
+import { rateLimitAuth } from "@/lib/rate-limit";
+import { clientIp } from "@/lib/request-ip";
 import { publicUser } from "@/lib/security";
 import { createSessionToken, SESSION_COOKIE, sessionCookieOptions } from "@/lib/session";
 import { ORIGIN, RP_ID } from "@/lib/webauthn";
@@ -17,6 +19,11 @@ const inputSchema = z.object({
 });
 
 export async function POST(request: Request) {
+  const rateLimit = rateLimitAuth(clientIp(request.headers));
+  if (!rateLimit.allowed) {
+    return NextResponse.json({ error: "Demasiados intentos. Intenta de nuevo en un momento." }, { status: 429, headers: { "Retry-After": String(rateLimit.retryAfterSeconds) } });
+  }
+
   const parsed = await parseJson(request, inputSchema);
   if ("response" in parsed) return parsed.response;
 
@@ -50,7 +57,7 @@ export async function POST(request: Request) {
         counter: Number(credential.counter),
         transports: credential.transports ? (JSON.parse(credential.transports) as AuthenticatorTransportFuture[]) : undefined
       },
-      requireUserVerification: false
+      requireUserVerification: true
     });
   } catch (cause) {
     return NextResponse.json({ error: cause instanceof Error ? cause.message : "Autenticacion fallida." }, { status: 401 });
@@ -66,7 +73,7 @@ export async function POST(request: Request) {
 
   // La biometría es prueba fuerte de identidad (no forzable por fuerza bruta):
   // un login exitoso reinicia el contador y limpia el bloqueo de PIN del dueño.
-  const updated = await prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date(), failedPinAttempts: 0, pinLockedUntil: null } });
+  const updated = await prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date(), failedPinAttempts: 0, pinLockedUntil: null, pinLockoutCount: 0 } });
   const token = await createSessionToken(updated);
   const res = NextResponse.json({ user: publicUser(updated) });
   res.cookies.set(SESSION_COOKIE, token, sessionCookieOptions);

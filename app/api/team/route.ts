@@ -23,6 +23,12 @@ export async function POST(request: Request) {
   if ("response" in parsed) return parsed.response;
   const { name, employeeNumber, role, pin } = parsed.data;
 
+  // Jerarquía de roles: solo un GERENTE (o admin de plataforma) puede crear otro
+  // GERENTE. Evita que un SUBGERENTE escale privilegios creando gerencia.
+  if (role === "GERENTE" && session.role !== "GERENTE" && !session.platformAdmin) {
+    return NextResponse.json({ error: "Solo un gerente puede crear otro gerente." }, { status: 403 });
+  }
+
   const email = `${employeeNumber}@clarvex.local`;
   const conflict = await prisma.user.findFirst({
     where: { OR: [{ employeeNumber }, { email }, { employeeNumberAliases: { some: { employeeNumber } } }] },

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "@/lib/session";
+import { requireSession, isApiError } from "@/lib/api";
 
 export const dynamic = "force-dynamic";
 
@@ -44,8 +44,8 @@ function pickPreview(file: KlipyFile): string {
 }
 
 export async function GET(request: Request) {
-  const session = await getServerSession();
-  if (!session) return NextResponse.json({ error: "Sesión requerida." }, { status: 401 });
+  const session = await requireSession();
+  if (isApiError(session)) return session;
 
   const key = process.env.KLIPY_API_KEY;
   if (!key) {

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "@/lib/session";
+import { requireSession, isApiError } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
 import { getFromR2 } from "@/lib/r2";
 
@@ -10,8 +10,8 @@ export const runtime = "nodejs";
 // credenciales del servidor (no depende del acceso público del bucket).
 // Solo los miembros del room pueden verla.
 export async function GET(request: Request) {
-  const session = await getServerSession();
-  if (!session) return NextResponse.json({ error: "Sesión requerida." }, { status: 401 });
+  const session = await requireSession();
+  if (isApiError(session)) return session;
 
   const key = new URL(request.url).searchParams.get("k") ?? "";
   const parts = key.split("/");

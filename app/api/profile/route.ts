@@ -74,6 +74,12 @@ export async function PUT(request: Request) {
     }
   }
 
-  const user = await prisma.user.update({ where: { id: targetUserId }, data, select: { birthDate: true, hireDate: true, hoursOwed: true, vacationDays: true, paidDays: true } });
+  // Cambiar el PIN invalida las sesiones previas del usuario (sube sessionVersion).
+  const pinChanged = data.pinHash !== undefined;
+  const user = await prisma.user.update({
+    where: { id: targetUserId },
+    data: { ...data, ...(pinChanged ? { sessionVersion: { increment: 1 } } : {}) },
+    select: { birthDate: true, hireDate: true, hoursOwed: true, vacationDays: true, paidDays: true }
+  });
   return NextResponse.json(serialize(user));
 }

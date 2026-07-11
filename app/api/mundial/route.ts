@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "@/lib/session";
+import { requireSession, isApiError } from "@/lib/api";
 import { BRACKET_ROUNDS, getBracketFixtures, type BracketMatch } from "@/lib/football-api";
 
 export const dynamic = "force-dynamic";
@@ -15,8 +15,8 @@ let cache: { at: number; rounds: Array<{ name: string; matches: BracketMatch[] }
 const CACHE_MS = 60_000;
 
 export async function GET() {
-  const session = await getServerSession();
-  if (!session) return NextResponse.json({ error: "Sesión requerida." }, { status: 401 });
+  const session = await requireSession();
+  if (isApiError(session)) return session;
 
   if (cache && Date.now() - cache.at < CACHE_MS) {
     return NextResponse.json({ rounds: cache.rounds, cached: true });

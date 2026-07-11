@@ -1,17 +1,34 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "@/lib/session";
+import { requireSession, isApiError } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
 import { headersAllowEmbed, normalizeStreamUrl } from "@/lib/stream-url";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
+// Bloquea hosts privados/loopback/link-local (incl. metadata 169.254.169.254)
+// para que el fetch del servidor no se use como SSRF hacia la red interna.
+function isPrivateHost(hostname: string): boolean {
+  const h = hostname.toLowerCase().replace(/^\[|\]$/g, "");
+  if (h === "localhost" || h.endsWith(".localhost") || h === "::1" || h === "0.0.0.0") return true;
+  const m = h.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+  if (m) {
+    const a = Number(m[1]);
+    const b = Number(m[2]);
+    if (a === 0 || a === 10 || a === 127) return true;
+    if (a === 169 && b === 254) return true;
+    if (a === 172 && b >= 16 && b <= 31) return true;
+    if (a === 192 && b === 168) return true;
+  }
+  return false;
+}
+
 // GET /api/match/stream-check?id=… — verifica del lado del servidor si el
 // enlace de transmisión permite mostrarse en un iframe (X-Frame-Options/CSP).
 // El navegador no puede leer esos headers por CORS; el servidor sí.
 export async function GET(request: Request) {
-  const session = await getServerSession();
-  if (!session) return NextResponse.json({ error: "Sesión requerida." }, { status: 401 });
+  const session = await requireSession();
+  if (isApiError(session)) return session;
 
   const id = new URL(request.url).searchParams.get("id");
   if (!id) return NextResponse.json({ error: "Falta el partido." }, { status: 400 });
@@ -19,6 +36,19 @@ export async function GET(request: Request) {
   const match = await prisma.matchEvent.findUnique({ where: { id }, select: { streamUrl: true } });
   if (!match?.streamUrl) return NextResponse.json({ embeddable: false, reason: "sin-enlace" });
   const target = normalizeStreamUrl(match.streamUrl);
+
+  // Solo http(s) hacia hosts públicos: evita SSRF a la red interna.
+  try {
+    const parsedTarget = new URL(target);
+    if (parsedTarget.protocol !== "http:" && parsedTarget.protocol !== "https:") {
+      return NextResponse.json({ embeddable: false, reason: "protocolo-no-permitido" });
+    }
+    if (isPrivateHost(parsedTarget.hostname)) {
+      return NextResponse.json({ embeddable: false, reason: "host-no-permitido" });
+    }
+  } catch {
+    return NextResponse.json({ embeddable: false, reason: "url-invalida" });
+  }
 
   // Los embeds de YouTube siempre permiten iframe; no hace falta consultar.
   if (/^https:\/\/www\.youtube(-nocookie)?\.com\/embed\//.test(target)) {
