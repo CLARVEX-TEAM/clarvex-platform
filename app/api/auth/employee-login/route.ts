@@ -11,14 +11,16 @@ export const dynamic = "force-dynamic";
 
 const inputSchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("inspect"), employeeNumber: z.string().trim().min(1).max(30) }),
-  z.object({ action: z.literal("login"), employeeNumber: z.string().trim().min(1).max(30), pin: z.string().regex(/^\d{4}$/, "El PIN debe tener 4 digitos.") }),
-  z.object({ action: z.literal("setup"), employeeNumber: z.string().trim().min(1).max(30), pin: z.string().regex(/^\d{4}$/, "El PIN debe tener 4 digitos.") })
+  z.object({ action: z.literal("login"), employeeNumber: z.string().trim().min(1).max(30), pin: z.string().regex(/^\d{4,6}$/, "El PIN debe tener de 4 a 6 digitos.") }),
+  z.object({ action: z.literal("setup"), employeeNumber: z.string().trim().min(1).max(30), pin: z.string().regex(/^\d{4,6}$/, "El PIN debe tener de 4 a 6 digitos.") })
 ]);
 
 // Bloqueo por cuenta: complementa el rate limit por IP (que un atacante puede
 // esquivar rotando IPs). Tras 5 PINs errados, la cuenta espera 15 min.
 const MAX_PIN_ATTEMPTS = 5;
 const PIN_LOCK_MS = 15 * 60 * 1000;
+// Backoff exponencial: cada bloqueo consecutivo dura el doble, con tope de 24 h.
+const MAX_PIN_LOCK_MS = 24 * 60 * 60 * 1000;
 
 export async function POST(request: Request) {
   const ip = clientIp(request.headers);
@@ -68,21 +70,28 @@ export async function POST(request: Request) {
       );
     }
     if (!(await verifyPin(parsed.data.pin, user.pinHash))) {
-      // PIN incorrecto: cuenta el fallo y bloquea al llegar al máximo.
+      // PIN incorrecto: cuenta el fallo y bloquea al llegar al máximo, con
+      // backoff exponencial según bloqueos consecutivos previos.
       const attempts = user.failedPinAttempts + 1;
       const lock = attempts >= MAX_PIN_ATTEMPTS;
-      await prisma.user.update({
-        where: { id: user.id },
-        data: { failedPinAttempts: lock ? 0 : attempts, pinLockedUntil: lock ? new Date(Date.now() + PIN_LOCK_MS) : user.pinLockedUntil }
-      });
+      if (lock) {
+        const lockoutCount = user.pinLockoutCount + 1;
+        const lockMs = Math.min(PIN_LOCK_MS * 2 ** (lockoutCount - 1), MAX_PIN_LOCK_MS);
+        await prisma.user.update({
+          where: { id: user.id },
+          data: { failedPinAttempts: 0, pinLockedUntil: new Date(Date.now() + lockMs), pinLockoutCount: lockoutCount }
+        });
+      } else {
+        await prisma.user.update({ where: { id: user.id }, data: { failedPinAttempts: attempts } });
+      }
       return NextResponse.json({ error: "Credenciales invalidas." }, { status: 401 });
     }
   }
 
   const updated = await prisma.user.update({
     where: { id: user.id },
-    // Login/registro exitoso: reinicia el contador y limpia el bloqueo.
-    data: { pinHash: user.pinHash, lastLoginAt: new Date(), failedPinAttempts: 0, pinLockedUntil: null }
+    // Login/registro exitoso: reinicia el contador y limpia el bloqueo (incl. backoff).
+    data: { pinHash: user.pinHash, lastLoginAt: new Date(), failedPinAttempts: 0, pinLockedUntil: null, pinLockoutCount: 0 }
   });
   const token = await createSessionToken(updated);
   const response = NextResponse.json({ user: publicUser(updated) });

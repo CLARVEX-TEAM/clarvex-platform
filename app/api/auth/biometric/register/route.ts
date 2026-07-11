@@ -32,7 +32,7 @@ export async function POST(request: Request) {
       expectedChallenge: challenge.challenge,
       expectedOrigin: ORIGIN,
       expectedRPID: RP_ID,
-      requireUserVerification: false
+      requireUserVerification: true
     });
   } catch (cause) {
     return NextResponse.json({ error: cause instanceof Error ? cause.message : "Verificacion fallida." }, { status: 400 });

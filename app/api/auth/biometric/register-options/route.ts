@@ -28,7 +28,7 @@ export async function GET() {
     attestationType: "none",
     authenticatorSelection: {
       authenticatorAttachment: "platform",
-      userVerification: "preferred",
+      userVerification: "required",
       residentKey: "preferred"
     },
     excludeCredentials: existingCredentials.map((c) => ({ id: c.credentialId })),

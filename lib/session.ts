@@ -20,10 +20,15 @@ export async function getServerSession() {
       name: true,
       storeId: true,
       platformAdmin: true,
+      sessionVersion: true,
       store: { select: { billingExempt: true, subscriptionPaidUntil: true } }
     }
   });
   if (!user?.active) return null;
+  // Revocación por versión: tras logout o cambio de PIN se incrementa
+  // sessionVersion, invalidando de inmediato los tokens emitidos antes (aunque
+  // no hayan expirado). Tokens viejos sin el claim se tratan como versión 0.
+  if ((session.sessionVersion ?? 0) !== user.sessionVersion) return null;
   // El rol, el nombre, la tienda y el permiso de administrador se re-leen de la BD:
   // de esta forma aplican de inmediato sin obligar a re-login (el JWT podría estar viejo).
   session.role = user.role;

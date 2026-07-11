@@ -14,6 +14,12 @@ export async function GET() {
 }
 
 export async function DELETE() {
+  // Invalida el token actual (y otras sesiones del usuario) subiendo
+  // sessionVersion: un token robado deja de servir tras el logout.
+  const session = await getServerSession();
+  if (session) {
+    await prisma.user.update({ where: { id: session.userId }, data: { sessionVersion: { increment: 1 } } }).catch(() => undefined);
+  }
   const response = NextResponse.json({ ok: true });
   response.cookies.set(SESSION_COOKIE, "", { ...sessionCookieOptions, maxAge: 0 });
   return response;
