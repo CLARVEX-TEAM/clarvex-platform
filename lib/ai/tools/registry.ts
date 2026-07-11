@@ -9,6 +9,7 @@ import { getCommissionsTool } from "@/lib/ai/tools/read/get-commissions";
 import { getOpenPendingsTool } from "@/lib/ai/tools/read/get-open-pendings";
 import { getSchedulesTool } from "@/lib/ai/tools/read/get-schedules";
 import { getStoreDailyResultsTool } from "@/lib/ai/tools/read/get-store-daily-results";
+import { getStorePerformanceTool } from "@/lib/ai/tools/read/get-store-performance";
 import { toolAllowsRole, type CopilotTool } from "@/lib/ai/tools/tool";
 import type { CopilotContext, ProviderToolSchema, ToolResult } from "@/lib/ai/types";
 
@@ -16,6 +17,7 @@ import type { CopilotContext, ProviderToolSchema, ToolResult } from "@/lib/ai/ty
 const ALL_TOOLS: CopilotTool[] = [
   // Fase 1 — solo lectura.
   getStoreDailyResultsTool as CopilotTool,
+  getStorePerformanceTool as CopilotTool,
   getAdvisorPerformanceTool as CopilotTool,
   getCommissionsTool as CopilotTool,
   getOpenPendingsTool as CopilotTool,

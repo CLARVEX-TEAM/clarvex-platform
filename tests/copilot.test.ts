@@ -119,6 +119,7 @@ test("CLARVEX Copilot — Fase 1 (solo lectura)", async (t) => {
   const { selectTools, toolSchemas, executeTool } = await import("../lib/ai/tools/registry");
   const { MockProvider } = await import("../lib/ai/providers/mock-provider");
   const { getStoreDailyResultsTool } = await import("../lib/ai/tools/read/get-store-daily-results");
+  const { getStorePerformanceTool } = await import("../lib/ai/tools/read/get-store-performance");
   const { getAdvisorPerformanceTool } = await import("../lib/ai/tools/read/get-advisor-performance");
   const { getCommissionsTool } = await import("../lib/ai/tools/read/get-commissions");
   const { getOpenPendingsTool } = await import("../lib/ai/tools/read/get-open-pendings");
@@ -135,13 +136,14 @@ test("CLARVEX Copilot — Fase 1 (solo lectura)", async (t) => {
     assert.equal(modelForTier("advanced"), "openai/gpt-oss-120b");
   });
 
-  await t.test("El registro expone 6 herramientas de lectura (ninguna mutante)", () => {
+  await t.test("El registro expone 7 herramientas de lectura (ninguna mutante)", () => {
     const tools = selectTools(advisorCtx, 1);
-    assert.equal(tools.length, 6);
+    assert.equal(tools.length, 7);
     assert.ok(tools.every((tool) => tool.mutates === false));
     const schemas = toolSchemas(tools);
     assert.ok(schemas.every((schema) => typeof schema.name === "string" && typeof schema.parameters === "object"));
     assert.ok(schemas.some((schema) => schema.name === "getStoreDailyResults"));
+    assert.ok(schemas.some((schema) => schema.name === "getStorePerformance"));
     assert.ok(schemas.some((schema) => schema.name === "getCommissions"));
   });
 
@@ -162,6 +164,38 @@ test("CLARVEX Copilot — Fase 1 (solo lectura)", async (t) => {
     const step2 = await provider.chatComplete({ model: "m", messages: [{ role: "tool", toolCallId: "1", name: "getStoreDailyResults", content: JSON.stringify({ sales: 15000, goal: 12000 }) }], tools });
     assert.equal(step2.toolCalls.length, 0);
     assert.ok(step2.content && step2.content.includes("$"));
+  });
+
+  await t.test("getStorePerformance devuelve faltante del periodo (misma lógica que KPIs)", async () => {
+    const result = await getStorePerformanceTool.execute(managerCtx, { period: "week", date: "2026-07-10" });
+    assert.equal(result.ok, true);
+    if (result.ok) {
+      const data = result.data as {
+        scope: string;
+        period: string;
+        performance: { sales: number; goal: number; remainingToGoal: number; achievement: number };
+      };
+      assert.equal(data.scope, "store");
+      assert.equal(data.period, "week");
+      assert.ok(data.performance.goal >= data.performance.sales);
+      assert.equal(
+        data.performance.remainingToGoal,
+        Math.round(Math.max(data.performance.goal - data.performance.sales, 0) * 100) / 100
+      );
+      assert.ok(data.performance.achievement > 0);
+    }
+  });
+
+  await t.test("MockProvider enruta preguntas de faltante a getStorePerformance", async () => {
+    const provider = new MockProvider();
+    const tools = toolSchemas(selectTools(managerCtx, 1));
+    const step1 = await provider.chatComplete({
+      model: "m",
+      messages: [{ role: "user", content: "cuanto le falta a la tienda para llegar al 100% de su meta" }],
+      tools
+    });
+    assert.equal(step1.toolCalls.length, 1);
+    assert.equal(step1.toolCalls[0].name, "getStorePerformance");
   });
 
   await t.test("getStoreDailyResults calcula alcance del día (gerencia = tienda)", async () => {
@@ -294,10 +328,10 @@ test("CLARVEX Copilot — Fase 1 (solo lectura)", async (t) => {
   await t.test("FASE 2: los borradores solo se exponen a gerencia (nunca a asesor)", () => {
     const mgrTools = selectTools(managerCtx, 2);
     const advTools = selectTools(advisorCtx, 2);
-    assert.equal(mgrTools.length, 9);
+    assert.equal(mgrTools.length, 10);
     assert.ok(mgrTools.some((tool) => tool.name === "prepareAnnouncementDraft"));
-    // El asesor sigue con 6 herramientas de lectura: ningún borrador.
-    assert.equal(advTools.length, 6);
+    // El asesor sigue con 7 herramientas de lectura: ningún borrador.
+    assert.equal(advTools.length, 7);
     assert.ok(!advTools.some((tool) => tool.name.startsWith("prepare")));
     // Ninguna herramienta de borrador escribe en la BD.
     assert.ok(mgrTools.every((tool) => tool.mutates === false));

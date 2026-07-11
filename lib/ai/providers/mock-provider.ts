@@ -46,6 +46,7 @@ function pickTool(query: string, available: Set<string>): { name: string; args: 
     { match: /(pendiente|tarea|pend\b)/, name: "getOpenPendings", args: {} },
     { match: /(horario|turno|schedule)/, name: "getSchedules", args: {} },
     { match: /(compar|tendencia|\bvs\b|semana pasada|mes pasado)/, name: "comparePeriods", args: { period: "week" } },
+    { match: /(falta|faltan|cumplim|alcance|100\s*%|llevamos|meta\s+semanal|meta\s+mensual)/, name: "getStorePerformance", args: { period: "week" } },
     { match: /(asesor|colaborador|equipo|ranking|desempeñ|rendimiento|\ben\s+\w+)/, name: "getAdvisorPerformance", args: { period: "week" } },
     { match: /.*/, name: "getStoreDailyResults", args: {} }
   ];
@@ -77,6 +78,17 @@ function mockAnswerFromTool(name: string, content: string): string {
 
   const record = (data ?? {}) as Record<string, unknown>;
 
+  if (name === "getStorePerformance") {
+    const perf = (record.performance ?? record) as { sales?: number; goal?: number; achievement?: number; remainingToGoal?: number };
+    const sales = num(perf.sales);
+    const goal = num(perf.goal);
+    const remaining = num(perf.remainingToGoal);
+    const achievement = num(perf.achievement) || (goal > 0 ? Math.round((sales / goal) * 100) : 0);
+    if (remaining > 0) {
+      return `Faltan $${remaining.toLocaleString("es-MX")} para alcanzar el 100% de la meta del periodo (${achievement}% de alcance: $${sales.toLocaleString("es-MX")} de $${goal.toLocaleString("es-MX")}).`;
+    }
+    return `Meta cumplida: $${sales.toLocaleString("es-MX")} sobre meta de $${goal.toLocaleString("es-MX")} (${achievement}% de alcance).`;
+  }
   if (name === "getStoreDailyResults" || name === "getAdvisorPerformance") {
     const sales = num(record.sales ?? record.dailySales);
     const goal = num(record.goal ?? record.dailyGoal);
