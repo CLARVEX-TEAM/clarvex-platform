@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { isApiError, parseJson, requireSession } from "@/lib/api";
+import { toUserFacingCopilotError } from "@/lib/ai/errors";
 import { runCopilot } from "@/lib/ai/orchestrator";
 
 export const dynamic = "force-dynamic";
@@ -37,9 +38,10 @@ export async function POST(request: Request) {
     );
   } catch (error) {
     console.error("[Copilot Route Error]:", error);
+    const facing = toUserFacingCopilotError(error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Error al procesar la respuesta del copiloto." },
-      { status: 500 }
+      { error: facing.message, retryable: facing.retryable },
+      { status: facing.status }
     );
   }
 }

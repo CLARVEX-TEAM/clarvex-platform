@@ -7,7 +7,8 @@ const ADVANCED_PATTERN = /(compar|tendenc|proyec|pron[óo]stic|reporte|an[áa]li
 
 export function selectModelTier(latestUserMessage: string): ModelTier {
   if (latestUserMessage.length > 320) return "advanced";
-  return ADVANCED_PATTERN.test(latestUserMessage) ? "advanced" : "fast";
+  if (ADVANCED_PATTERN.test(latestUserMessage)) return "advanced";
+  return "fast";
 }
 
 export function modelForTier(tier: ModelTier): string {

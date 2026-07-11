@@ -6,6 +6,19 @@ import { MockProvider } from "@/lib/ai/providers/mock-provider";
 import type { LLMProvider } from "@/lib/ai/providers/provider";
 import type { ProviderChatParams, ProviderChatResult } from "@/lib/ai/types";
 
+const MAX_SAME_PROVIDER_ATTEMPTS = 3;
+const DEFAULT_RETRY_MS = 2_000;
+const MAX_RETRY_MS = 15_000;
+
+function sleep(ms: number) {
+  return new Promise<void>((resolve) => setTimeout(resolve, ms));
+}
+
+function retryDelayMs(error: ProviderError, attempt: number) {
+  const hinted = error.retryAfterMs ?? DEFAULT_RETRY_MS * (attempt + 1);
+  return Math.min(Math.max(hinted, 500), MAX_RETRY_MS);
+}
+
 // Registro de proveedores conocidos. Añadir uno nuevo = registrar aquí; el
 // resto del código no cambia.
 function buildProvider(name: string): LLMProvider | null {
@@ -22,7 +35,7 @@ function buildProvider(name: string): LLMProvider | null {
 }
 
 // Enruta la petición al proveedor principal y, ante fallos recuperables
-// (429/5xx/timeout), recorre la cadena de respaldo (paso 9 del orquestador).
+// (429/5xx/timeout), reintenta y recorre la cadena de respaldo.
 export class ProviderRouter {
   private readonly chain: LLMProvider[];
 
@@ -57,14 +70,26 @@ export class ProviderRouter {
     let lastError: unknown = null;
     for (let index = 0; index < this.chain.length; index++) {
       const provider = this.chain[index];
-      try {
-        return await provider.chatComplete(params);
-      } catch (error) {
-        lastError = error;
-        const retryable = error instanceof ProviderError ? error.retryable : false;
-        const hasNext = index < this.chain.length - 1;
-        if (!retryable || !hasNext) throw error;
-        console.warn(`[ai] Proveedor "${provider.name}" falló (${String(error)}); intentando respaldo.`);
+      for (let attempt = 0; attempt < MAX_SAME_PROVIDER_ATTEMPTS; attempt++) {
+        try {
+          return await provider.chatComplete(params);
+        } catch (error) {
+          lastError = error;
+          const providerError = error instanceof ProviderError ? error : null;
+          const canRetrySame = providerError?.status === 429 && attempt < MAX_SAME_PROVIDER_ATTEMPTS - 1;
+          if (canRetrySame && providerError) {
+            const waitMs = retryDelayMs(providerError, attempt);
+            console.warn(`[ai] Proveedor "${provider.name}" en rate limit; reintento en ${waitMs}ms.`);
+            await sleep(waitMs);
+            continue;
+          }
+
+          const retryable = providerError?.retryable ?? false;
+          const hasNext = index < this.chain.length - 1;
+          if (!retryable || !hasNext) throw error;
+          console.warn(`[ai] Proveedor "${provider.name}" falló (${String(error)}); intentando respaldo.`);
+          break;
+        }
       }
     }
 

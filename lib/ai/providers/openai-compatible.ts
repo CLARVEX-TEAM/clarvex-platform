@@ -5,6 +5,20 @@ import type { ChatMessage, ProviderChatParams, ProviderChatResult, ProviderToolC
 // (Groq y Cloudflare Workers AI lo son). Traduce nuestro contrato neutral al
 // formato /chat/completions y de vuelta.
 
+function parseRetryAfterMs(response: Response, message: string): number | undefined {
+  const header = response.headers.get("retry-after");
+  if (header) {
+    const seconds = Number(header);
+    if (Number.isFinite(seconds) && seconds > 0) return Math.ceil(seconds * 1000);
+  }
+  const match = message.match(/try again in ([\d.]+)s/i);
+  if (match) {
+    const seconds = Number(match[1]);
+    if (Number.isFinite(seconds) && seconds > 0) return Math.ceil(seconds * 1000);
+  }
+  return undefined;
+}
+
 type OpenAiToolCall = {
   id?: string;
   function?: { name?: string; arguments?: string };
@@ -98,7 +112,11 @@ export async function openAiCompatibleChat(options: {
   }
 
   if (!response.ok) {
-    throw new ProviderError(providerName, payload.error?.message ?? `El proveedor de IA respondió ${response.status}.`, { status: response.status });
+    const message = payload.error?.message ?? `El proveedor de IA respondió ${response.status}.`;
+    throw new ProviderError(providerName, message, {
+      status: response.status,
+      retryAfterMs: response.status === 429 ? parseRetryAfterMs(response, message) : undefined
+    });
   }
 
   const choice = payload.choices?.[0];

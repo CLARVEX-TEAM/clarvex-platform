@@ -1,5 +1,6 @@
 import { AI_CONFIG } from "@/lib/ai/config";
 import { buildCopilotContext } from "@/lib/ai/context";
+import { synthesizeFallbackAnswer } from "@/lib/ai/fallback-answers";
 import { clampAnswer, assertReadOnlyForPhase } from "@/lib/ai/guardrails";
 import { modelForTier, selectModelTier } from "@/lib/ai/models";
 import { createProviderRouter } from "@/lib/ai/providers/provider-router";
@@ -137,6 +138,30 @@ export async function runCopilot(session: Session, input: CopilotInput): Promise
 
     return { answer: finalAnswer, usage, toolInvocations, pendingActions, model, modelTier: tier, provider, iterations };
   } catch (error) {
+    const toolMessages = conversation
+      .filter((message): message is Extract<ChatMessage, { role: "tool" }> => message.role === "tool")
+      .map((message) => ({ name: message.name, content: message.content }));
+    const fallbackAnswer = synthesizeFallbackAnswer(toolMessages);
+
+    if (fallbackAnswer) {
+      const finalAnswer = clampAnswer(fallbackAnswer);
+      await recordAiUsage({
+        storeId: ctx.storeId,
+        userId: ctx.userId,
+        feature: "copilot",
+        provider: "kpi-fallback",
+        model,
+        modelTier: tier,
+        usage,
+        toolCalls: toolInvocations.length,
+        iterations,
+        latencyMs: Date.now() - startedAt,
+        status: "success",
+        errorMessage: error instanceof Error ? error.message.slice(0, 200) : null
+      });
+      return { answer: finalAnswer, usage, toolInvocations, pendingActions, model, modelTier: tier, provider: "kpi-fallback", iterations };
+    }
+
     await recordAiUsage({
       storeId: ctx.storeId,
       userId: ctx.userId,
