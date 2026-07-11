@@ -598,6 +598,16 @@ model DailyNotificationLog {
 }
 
 // Dedup de alertas proactivas por tienda, usuario, periodo y tipo (p.ej. meta semanal 80%).
+// Contador de rate limiting compartido entre instancias (fixed window). Sustituye
+// al Map en memoria para que el límite funcione bajo PM2 cluster / multi-proceso.
+model RateLimitCounter {
+  key     String   @id
+  count   Int      @default(0)
+  resetAt DateTime
+
+  @@index([resetAt])
+}
+
 model RetailAlertLog {
   id        String   @id @default(cuid())
   storeId   String

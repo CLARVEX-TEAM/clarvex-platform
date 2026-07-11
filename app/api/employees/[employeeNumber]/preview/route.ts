@@ -12,7 +12,7 @@ export async function GET(
   { params }: { params: Promise<{ employeeNumber: string }> }
 ) {
   const headersList = await headers();
-  const rateLimit = rateLimitPreview(clientIp(headersList));
+  const rateLimit = await rateLimitPreview(clientIp(headersList));
   if (!rateLimit.allowed) {
     return NextResponse.json(
       { error: "Demasiadas solicitudes. Intenta en un minuto." },
