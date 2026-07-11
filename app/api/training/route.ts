@@ -71,7 +71,8 @@ export async function POST(request: Request) {
   let fileName: string | null = null;
   if (file) {
     const bytes = new Uint8Array(await file.arrayBuffer());
-    if (file.type === "application/pdf" || isPdf(bytes)) {
+    // Exigir firma %PDF real (no confiar solo en el Content-Type declarado).
+    if (isPdf(bytes)) {
       if (bytes.byteLength > MAX_PDF_BYTES) return NextResponse.json({ error: "El PDF debe pesar menos de 10 MB." }, { status: 400 });
       try {
         const key = `training/${session.userId}-${Date.now()}-${crypto.randomUUID()}.pdf`;

@@ -20,9 +20,16 @@ export type Session = JWTPayload & {
   storeSuspended?: boolean;
 };
 
+let warnedShortSecret = false;
 function secret() {
   const value = process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET;
   if (!value) throw new Error("AUTH_SECRET o NEXTAUTH_SECRET es obligatorio.");
+  // Un secreto corto debilita la firma HS256. No se rompe el arranque (para no
+  // tumbar despliegues existentes), pero se advierte una vez.
+  if (value.length < 32 && !warnedShortSecret) {
+    warnedShortSecret = true;
+    console.warn("[auth] AUTH_SECRET es corto (<32 caracteres). Usa al menos 32 (openssl rand -base64 32).");
+  }
   return new TextEncoder().encode(value);
 }
 
