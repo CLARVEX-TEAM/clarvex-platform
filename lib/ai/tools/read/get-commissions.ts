@@ -11,7 +11,7 @@ import { resolveStoreTeammate } from "@/lib/ai/tools/resolve-teammate";
 import { isStoreManager, managerOnlyAdvisorQueryError } from "@/lib/ai/tools/role-guards";
 import { defineTool, toolError, toolOk } from "@/lib/ai/tools/tool";
 import { toSession } from "@/lib/ai/tools/session-adapter";
-import { kpiPeriodMeta } from "@/lib/ai/tools/shared/kpi-period-meta";
+import { kpiPeriodMeta } from "@/lib/services/kpi-period-meta";
 import type { Role } from "@/lib/types";
 
 const argsSchema = z.object({
