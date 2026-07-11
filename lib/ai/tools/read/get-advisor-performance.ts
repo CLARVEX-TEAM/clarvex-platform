@@ -3,7 +3,7 @@ import { defineTool, toolError, toolOk } from "@/lib/ai/tools/tool";
 import { resolveStoreTeammate } from "@/lib/ai/tools/resolve-teammate";
 import { isStoreManager, managerOnlyAdvisorQueryError } from "@/lib/ai/tools/role-guards";
 import { toSession } from "@/lib/ai/tools/session-adapter";
-import { kpiPerformanceFields, kpiPeriodMeta } from "@/lib/ai/tools/shared/kpi-period-meta";
+import { kpiPerformanceFields, kpiPeriodMeta } from "@/lib/services/kpi-period-meta";
 import { parsePeriodDate } from "@/lib/kpi-period";
 import { getKpiReport } from "@/lib/services/kpi-service";
 

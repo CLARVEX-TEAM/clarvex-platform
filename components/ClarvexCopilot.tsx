@@ -137,7 +137,11 @@ export function ClarvexCopilot() {
     }
   }
 
-  /** Si el modelo solo entregó borrador (sin propose), gerencia puede publicarlo desde aquí. */
+  /**
+   * Si el modelo solo entregó borrador (sin propose), gerencia PREPARA la
+   * publicación aquí. Fase 3 = dos pasos: este botón solo PROPONE (registra la
+   * acción pendiente); publicar requiere confirmar en el botón que aparece.
+   */
   async function publishDraftFromMessage(messageIndex: number, content: string) {
     const draft = parseAnnouncementDraft(content);
     if (!draft) {
@@ -156,26 +160,16 @@ export function ClarvexCopilot() {
       if (!proposeRes.ok) throw new Error(proposeData.error || "No se pudo preparar la publicación.");
 
       const pending = proposeData.pendingAction as PendingAction;
-      const confirmRes = await fetch("/api/ai/copilot/confirm", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ proposalId: pending.proposalId }),
-      });
-      const confirmData = await confirmRes.json();
-      if (!confirmRes.ok) throw new Error(confirmData.error || "No se pudo publicar.");
-
-      setMessages((prev) => [
-        ...prev.map((msg, index) => (
-          index === messageIndex
-            ? { ...msg, draftPublishStatus: "done" as const, actions: [pending], actionStatus: "done" as const }
-            : msg
-        )),
-        { role: "assistant", content: `✅ Comunicado publicado: «${draft.title}».` },
-      ]);
+      // NO se publica aún: se muestra el paso de confirmación explícito.
+      setMessages((prev) => prev.map((msg, index) => (
+        index === messageIndex
+          ? { ...msg, draftPublishStatus: "done" as const, actions: [pending], actionStatus: "idle" as const }
+          : msg
+      )));
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Error desconocido";
       setMessages((prev) => prev.map((msg, index) => (index === messageIndex ? { ...msg, draftPublishStatus: "error" as const } : msg)));
-      setMessages((prev) => [...prev, { role: "assistant", content: `No se pudo publicar: ${message}` }]);
+      setMessages((prev) => [...prev, { role: "assistant", content: `No se pudo preparar la publicación: ${message}` }]);
     }
   }
 
@@ -284,7 +278,7 @@ export function ClarvexCopilot() {
                                 disabled={msg.draftPublishStatus === "proposing"}
                                 className="w-full rounded-lg bg-[#00FF66] px-3 py-2 text-xs font-black uppercase tracking-wider text-black transition active:scale-95 disabled:opacity-50"
                               >
-                                {msg.draftPublishStatus === "proposing" ? "Publicando..." : "Publicar comunicado"}
+                                {msg.draftPublishStatus === "proposing" ? "Preparando..." : "Preparar publicación"}
                               </button>
                             </div>
                           </div>

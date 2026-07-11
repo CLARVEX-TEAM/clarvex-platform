@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { COPILOT_KPI_RULES } from "../lib/ai/kpi-source-reference";
 import { buildSystemPrompt } from "../lib/ai/prompts/system";
-import { kpiPeriodMeta } from "../lib/ai/tools/shared/kpi-period-meta";
+import { kpiPeriodMeta } from "../lib/services/kpi-period-meta";
 
 test("Copilot KPI rules — retail calendar and no manual calculation", () => {
   assert.match(COPILOT_KPI_RULES, /RETAIL/);

@@ -10,13 +10,11 @@ const argsSchema = z.object({
   previousDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional()
 });
 
-const DAY_MS = 24 * 60 * 60 * 1000;
-
 // Compara dos periodos (semana vs semana o mes vs mes) y devuelve variaciones.
 // El scope depende del rol: tienda para gerencia, propio para asesor.
 export const comparePeriodsTool = defineTool<z.infer<typeof argsSchema>>({
   name: "comparePeriods",
-  description: "Compara dos periodos RETAIL RDV (semana vs semana o mes retail vs mes retail anterior). Devuelve ventas, metas y alcance ya calculados — no calcules variaciones por tu cuenta.",
+  description: "Compara dos periodos RETAIL RDV (semana vs semana o mes retail vs mes retail anterior). Por defecto compara el periodo actual contra el RETAIL inmediatamente anterior (no 7/30 días naturales). Devuelve ventas, metas y alcance ya calculados — no calcules variaciones por tu cuenta.",
   phase: 1,
   roles: "all",
   mutates: false,
@@ -25,7 +23,7 @@ export const comparePeriodsTool = defineTool<z.infer<typeof argsSchema>>({
     properties: {
       period: { type: "string", enum: ["week", "month"], description: "Tipo de periodo. Por defecto 'week'." },
       currentDate: { type: "string", description: "Fecha del periodo actual (YYYY-MM-DD). Opcional; por defecto hoy." },
-      previousDate: { type: "string", description: "Fecha del periodo anterior (YYYY-MM-DD). Opcional; por defecto una semana/mes antes." }
+      previousDate: { type: "string", description: "Fecha dentro del periodo anterior (YYYY-MM-DD). Opcional; por defecto la semana/mes RETAIL previo." }
     },
     additionalProperties: false
   },
@@ -35,14 +33,14 @@ export const comparePeriodsTool = defineTool<z.infer<typeof argsSchema>>({
     const currentDate = args.currentDate ? parsePeriodDate(args.currentDate) : parsePeriodDate(null, ctx.now);
     if (!currentDate) return toolError("currentDate debe usar formato YYYY-MM-DD.");
 
-    let previousDate: Date | null;
+    // Si no se indica previousDate, el servicio resuelve el periodo RETAIL
+    // anterior desde el calendario RDV (no días de calendario).
+    let previousDate: Date | undefined;
     if (args.previousDate) {
-      previousDate = parsePeriodDate(args.previousDate);
-    } else {
-      const backDays = period === "month" ? 30 : 7;
-      previousDate = new Date(currentDate.getTime() - backDays * DAY_MS);
+      const parsed = parsePeriodDate(args.previousDate);
+      if (!parsed) return toolError("previousDate debe usar formato YYYY-MM-DD.");
+      previousDate = parsed;
     }
-    if (!previousDate) return toolError("previousDate debe usar formato YYYY-MM-DD.");
 
     const result = await comparePeriods(toSession(ctx), { period, currentDate, previousDate });
     return toolOk(result);

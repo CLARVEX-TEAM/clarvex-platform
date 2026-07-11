@@ -159,6 +159,7 @@ model User {
   aiMemories             AiMemory[]
   aiPlanHistories        AiPlanHistory[]
   aiRecommendations      AiRecommendationHistory[]
+  retailAlertLogs        RetailAlertLog[]
 }
 
 model TrainingResource {
@@ -606,9 +607,11 @@ model RetailAlertLog {
   alertType String
   createdAt DateTime @default(now())
   store     Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([storeId, userId, periodKey, alertType])
   @@index([storeId, periodKey])
+  @@index([userId])
 }
 
 model Survey {

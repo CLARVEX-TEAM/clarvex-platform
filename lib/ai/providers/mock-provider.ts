@@ -83,7 +83,8 @@ function mockAnswerFromTool(name: string, content: string): string {
     const sales = num(perf.sales);
     const goal = num(perf.goal);
     const remaining = num(perf.remainingToGoal);
-    const achievement = num(perf.achievement) || (goal > 0 ? Math.round((sales / goal) * 100) : 0);
+    // Usa el alcance YA calculado por la herramienta (no recalcular en el mock).
+    const achievement = num(perf.achievement);
     if (remaining > 0) {
       return `Faltan $${remaining.toLocaleString("es-MX")} para alcanzar el 100% de la meta del periodo (${achievement}% de alcance: $${sales.toLocaleString("es-MX")} de $${goal.toLocaleString("es-MX")}).`;
     }
@@ -92,7 +93,8 @@ function mockAnswerFromTool(name: string, content: string): string {
   if (name === "getStoreDailyResults" || name === "getAdvisorPerformance") {
     const sales = num(record.sales ?? record.dailySales);
     const goal = num(record.goal ?? record.dailyGoal);
-    const achievement = goal > 0 ? Math.round((sales / goal) * 100) : num(record.achievement);
+    // Usa el alcance YA calculado por la herramienta (no recalcular en el mock).
+    const achievement = num(record.achievement);
     return `Hoy la venta es de $${sales.toLocaleString("es-MX")} sobre una meta de $${goal.toLocaleString("es-MX")} (${achievement}% de alcance).`;
   }
   if (name === "getOpenPendings") {
