@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { isApiError, requireSession } from "@/lib/api";
 import { clearPresence, heartbeat, listPresence } from "@/lib/conteo-presence";
+import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -8,10 +9,18 @@ export const runtime = "nodejs";
 // Presencia en vivo del conteo: quién está capturando qué marbete.
 // GET → lista (sin uno mismo). POST { tagNumber } → heartbeat. DELETE → salir.
 
+// Aísla por tienda: el conteo debe pertenecer a la tienda de la sesión antes de
+// leer/escribir su presencia (evita fisgonear conteos de otras tiendas).
+async function countInStore(id: string, storeId: string) {
+  const count = await prisma.cycleCount.findFirst({ where: { id, storeId }, select: { id: true } });
+  return count !== null;
+}
+
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const session = await requireSession();
   if (isApiError(session)) return session;
+  if (!(await countInStore(id, session.storeId))) return NextResponse.json({ error: "Conteo no encontrado." }, { status: 404 });
   return NextResponse.json({ present: listPresence(id, session.userId) }, { headers: { "Cache-Control": "no-store" } });
 }
 
@@ -19,6 +28,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const { id } = await params;
   const session = await requireSession();
   if (isApiError(session)) return session;
+  if (!(await countInStore(id, session.storeId))) return NextResponse.json({ error: "Conteo no encontrado." }, { status: 404 });
   const body = (await request.json().catch(() => ({}))) as { tagNumber?: number };
   const tagNumber = Number(body?.tagNumber);
   if (!Number.isFinite(tagNumber)) return NextResponse.json({ error: "tagNumber inválido." }, { status: 400 });
@@ -30,6 +40,7 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
   const { id } = await params;
   const session = await requireSession();
   if (isApiError(session)) return session;
+  if (!(await countInStore(id, session.storeId))) return NextResponse.json({ error: "Conteo no encontrado." }, { status: 404 });
   clearPresence(id, session.userId);
   return NextResponse.json({ ok: true });
 }

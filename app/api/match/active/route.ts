@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "@/lib/session";
+import { requireSession, isApiError } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
 import { matchPhase, POST_WINDOW_MS, UPCOMING_WINDOW_MS, serializeMatch } from "@/lib/match";
 import { syncLinkedMatch } from "@/lib/match-sync";
@@ -15,8 +15,8 @@ let lastLazySyncAt = 0;
 // GET — el partido relevante ahora mismo: uno EN VIVO, dentro de su ventana, o
 // el próximo programado dentro de 48 h. Devuelve null si no hay nada.
 export async function GET() {
-  const session = await getServerSession();
-  if (!session) return NextResponse.json({ error: "Sesión requerida." }, { status: 401 });
+  const session = await requireSession();
+  if (isApiError(session)) return session;
 
   const now = Date.now();
   const match = await prisma.matchEvent.findFirst({

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "@/lib/session";
+import { requireSession, isApiError } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
 import { dispatchPushToUsers } from "@/lib/push";
 import { isOnline, resolveReplyTo, serializeChatMessage, touchPresence } from "@/lib/chat";
@@ -42,8 +42,8 @@ async function loadRoom(id: string, selfId: string) {
 // GET — mensajes del room + marca entregados/leídos + presencia
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const session = await getServerSession();
-  if (!session) return NextResponse.json({ error: "Sesión requerida." }, { status: 401 });
+  const session = await requireSession();
+  if (isApiError(session)) return session;
 
   const member = await prisma.chatMember.findUnique({
     where: { roomId_userId: { roomId: id, userId: session.userId } }
@@ -97,8 +97,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 // POST — enviar mensaje de texto
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const session = await getServerSession();
-  if (!session) return NextResponse.json({ error: "Sesión requerida." }, { status: 401 });
+  const session = await requireSession();
+  if (isApiError(session)) return session;
 
   const member = await prisma.chatMember.findUnique({
     where: { roomId_userId: { roomId: id, userId: session.userId } }

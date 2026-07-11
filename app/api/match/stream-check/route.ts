@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "@/lib/session";
+import { requireSession, isApiError } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
 import { headersAllowEmbed, normalizeStreamUrl } from "@/lib/stream-url";
 
@@ -10,8 +10,8 @@ export const runtime = "nodejs";
 // enlace de transmisión permite mostrarse en un iframe (X-Frame-Options/CSP).
 // El navegador no puede leer esos headers por CORS; el servidor sí.
 export async function GET(request: Request) {
-  const session = await getServerSession();
-  if (!session) return NextResponse.json({ error: "Sesión requerida." }, { status: 401 });
+  const session = await requireSession();
+  if (isApiError(session)) return session;
 
   const id = new URL(request.url).searchParams.get("id");
   if (!id) return NextResponse.json({ error: "Falta el partido." }, { status: 400 });
