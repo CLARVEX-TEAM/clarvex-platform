@@ -3,6 +3,7 @@ import { defineTool, toolError, toolOk } from "@/lib/ai/tools/tool";
 import { resolveStoreTeammate } from "@/lib/ai/tools/resolve-teammate";
 import { isStoreManager, managerOnlyAdvisorQueryError } from "@/lib/ai/tools/role-guards";
 import { toSession } from "@/lib/ai/tools/session-adapter";
+import { kpiPerformanceFields, kpiPeriodMeta } from "@/lib/ai/tools/shared/kpi-period-meta";
 import { parsePeriodDate } from "@/lib/kpi-period";
 import { getKpiReport } from "@/lib/services/kpi-service";
 
@@ -28,17 +29,19 @@ function publicAdvisor(item: {
   transactions: number;
   pieces: number;
 }) {
+  const perf = kpiPerformanceFields(item);
   return {
     name: item.userName,
     role: item.role,
-    sales: item.sales,
-    goal: item.goal,
-    achievement: item.achievement,
+    sales: perf.sales,
+    goal: perf.goal,
+    achievement: perf.achievement,
+    remainingToGoal: perf.remainingToGoal,
     ranking: item.ranking,
-    upt: item.upt,
-    conversion: item.conversion,
-    transactions: item.transactions,
-    pieces: item.pieces
+    upt: perf.upt,
+    conversion: perf.conversion,
+    transactions: perf.transactions,
+    pieces: perf.pieces
   };
 }
 
@@ -48,7 +51,7 @@ function publicAdvisor(item: {
 export const getAdvisorPerformanceTool = defineTool<z.infer<typeof argsSchema>>({
   name: "getAdvisorPerformance",
   description:
-    "Devuelve el desempeño (ventas, meta, alcance, UPT, conversión, ranking) de un asesor o del equipo. NO uses esta herramienta para totales de tienda ni 'cuánto falta para la meta' — usa getStorePerformance. El argumento `advisor` SOLO lo usa gerencia. Un asesor siempre recibe solo sus propios datos.",
+    "Desempeño por ASESOR o ranking del equipo en periodo RETAIL (semana/mes RDV). Incluye ventas, meta, alcance, remainingToGoal, UPT y conversión. NO uses para totales de TIENDA ni faltante global — usa getStorePerformance. advisor solo gerencia.",
   phase: 1,
   roles: "all",
   mutates: false,
@@ -59,7 +62,7 @@ export const getAdvisorPerformanceTool = defineTool<z.infer<typeof argsSchema>>(
         type: "string",
         description: "SOLO gerencia. Nombre o número de empleado. Ej: 'Alonso', '113642'. Los asesores no deben enviar este campo."
       },
-      period: { type: "string", enum: ["week", "month"], description: "Periodo retail. Por defecto 'week'." },
+      period: { type: "string", enum: ["week", "month"], description: "Periodo RETAIL RDV. Por defecto 'week'." },
       date: { type: "string", description: "Fecha YYYY-MM-DD dentro del periodo. Opcional; por defecto hoy." }
     },
     additionalProperties: false
@@ -71,13 +74,14 @@ export const getAdvisorPerformanceTool = defineTool<z.infer<typeof argsSchema>>(
     if (!selectedDate) return toolError("La fecha debe usar formato YYYY-MM-DD.");
 
     const report = await getKpiReport(toSession(ctx), { period, selectedDate });
+    const periodMeta = kpiPeriodMeta(report);
 
     if (ctx.role === "ASESOR") {
       if (args.advisor || args.userId) {
         return toolError(managerOnlyAdvisorQueryError());
       }
       return toolOk({
-        period,
+        ...periodMeta,
         scope: "own",
         advisor: report.own ? publicAdvisor(report.own) : null
       });
@@ -104,18 +108,9 @@ export const getAdvisorPerformanceTool = defineTool<z.infer<typeof argsSchema>>(
 
     if (!resolvedUserId) {
       return toolOk({
-        period,
+        ...periodMeta,
         scope: "team",
-        team: report.team.map((item) => ({
-          name: item.userName,
-          role: item.role,
-          sales: item.sales,
-          goal: item.goal,
-          achievement: item.achievement,
-          ranking: item.ranking,
-          upt: item.upt,
-          conversion: item.conversion
-        }))
+        team: report.team.map((item) => publicAdvisor(item))
       });
     }
 
@@ -124,6 +119,6 @@ export const getAdvisorPerformanceTool = defineTool<z.infer<typeof argsSchema>>(
     if (!target) {
       return toolError("Ese colaborador está en tu tienda pero no tiene datos de desempeño en este periodo.");
     }
-    return toolOk({ period, scope: "advisor", advisor: publicAdvisor(target) });
+    return toolOk({ ...periodMeta, scope: "advisor", advisor: publicAdvisor(target) });
   }
 });

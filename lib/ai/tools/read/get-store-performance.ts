@@ -2,6 +2,7 @@ import { z } from "zod";
 import { defineTool, toolError, toolOk } from "@/lib/ai/tools/tool";
 import { isStoreManager } from "@/lib/ai/tools/role-guards";
 import { toSession } from "@/lib/ai/tools/session-adapter";
+import { kpiPerformanceFields, kpiPeriodMeta } from "@/lib/ai/tools/shared/kpi-period-meta";
 import { parsePeriodDate } from "@/lib/kpi-period";
 import { getKpiReport } from "@/lib/services/kpi-service";
 
@@ -10,47 +11,24 @@ const argsSchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional()
 });
 
-function periodPerformance(kpi: {
-  sales: number;
-  goal: number;
-  achievement: number;
-  transactions: number;
-  pieces: number;
-  upt: number | null;
-  conversion: number | null;
-  traffic: number | null;
-}) {
-  const remainingToGoal = Math.round(Math.max(kpi.goal - kpi.sales, 0) * 100) / 100;
-  const surpassedBy = Math.round(Math.max(kpi.sales - kpi.goal, 0) * 100) / 100;
-  return {
-    sales: kpi.sales,
-    goal: kpi.goal,
-    achievement: kpi.achievement,
-    remainingToGoal,
-    surpassedBy,
-    atOrAboveGoal: kpi.sales >= kpi.goal,
-    transactions: kpi.transactions,
-    pieces: kpi.pieces,
-    upt: kpi.upt,
-    conversion: kpi.conversion,
-    traffic: kpi.traffic
-  };
-}
-
 // Totales del periodo retail (semana/mes): venta, meta, alcance y faltante.
 // Misma fuente que la pestaña KPIs → Cumplimiento semanal/mensual.
 export const getStorePerformanceTool = defineTool<z.infer<typeof argsSchema>>({
   name: "getStorePerformance",
   description:
-    "Devuelve ventas, meta, alcance % y cuánto falta (remainingToGoal) o sobra para el 100% del periodo retail (semana o mes). Gerencia = totales de TIENDA (idénticos a pestaña KPIs → Cumplimiento). Asesor = sus propios totales del periodo. Úsala para 'cuánto falta para la meta', 'cuánto llevamos de la meta semanal/mensual' o alcance del periodo. NO uses getStoreDailyResults para eso (esa herramienta es solo del DÍA). Por defecto periodo 'week' salvo que el usuario diga mes/mensual.",
+    "OBLIGATORIA para meta del periodo, alcance % y cuánto falta (remainingToGoal). Devuelve totales RETAIL de tienda (gerencia) o propios (asesor). Mismos números que pestaña KPIs → Cumplimiento. period='week' por defecto (NO uses mes natural). NO uses getStoreDailyResults (solo es del DÍA).",
   phase: 1,
   roles: "all",
   mutates: false,
   parameters: {
     type: "object",
     properties: {
-      period: { type: "string", enum: ["week", "month"], description: "Periodo retail. Por defecto 'week' (igual que la pestaña KPIs al abrir)." },
-      date: { type: "string", description: "Fecha YYYY-MM-DD dentro del periodo. Opcional; por defecto hoy." }
+      period: {
+        type: "string",
+        enum: ["week", "month"],
+        description: "Periodo RETAIL RDV. Por defecto 'week' (vista Semana en KPIs). 'month' solo si el usuario pide mes/mensual."
+      },
+      date: { type: "string", description: "Fecha YYYY-MM-DD dentro del periodo retail. Opcional; por defecto hoy." }
     },
     additionalProperties: false
   },
@@ -62,12 +40,8 @@ export const getStorePerformanceTool = defineTool<z.infer<typeof argsSchema>>({
 
     const report = await getKpiReport(toSession(ctx), { period, selectedDate });
     const periodMeta = {
-      period: report.period,
-      startDate: report.startDate,
-      endDate: report.endDate,
-      weekNumber: report.weekNumber,
-      retailMonthLabel: report.retailMonthLabel,
-      note: "Mismos números que pestaña KPIs (Cumplimiento). remainingToGoal = meta − venta cuando venta < meta."
+      ...kpiPeriodMeta(report),
+      formulasNote: "No recalcules: achievement, remainingToGoal, upt y conversion ya vienen calculados."
     };
 
     if (ctx.role === "ASESOR") {
@@ -75,7 +49,7 @@ export const getStorePerformanceTool = defineTool<z.infer<typeof argsSchema>>({
       return toolOk({
         ...periodMeta,
         scope: "own",
-        performance: periodPerformance(report.own)
+        performance: kpiPerformanceFields(report.own)
       });
     }
 
@@ -90,7 +64,7 @@ export const getStorePerformanceTool = defineTool<z.infer<typeof argsSchema>>({
     return toolOk({
       ...periodMeta,
       scope: "store",
-      performance: periodPerformance(report.store)
+      performance: kpiPerformanceFields(report.store)
     });
   }
 });

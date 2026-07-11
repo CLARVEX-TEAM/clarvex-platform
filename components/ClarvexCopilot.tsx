@@ -3,10 +3,11 @@
 import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { Bot, Send, Sparkles, X } from "lucide-react";
+import { Send, X } from "lucide-react";
 import { parseAnnouncementDraft } from "@/lib/ai/announcement-draft";
 import { getSession } from "@/lib/auth";
 import type { User } from "@/lib/types";
+import { CopilotAvatar } from "@/components/CopilotAvatar";
 
 type PendingAction = { proposalId: string; type: string; summary: string };
 type ChatMessage = {
@@ -64,7 +65,7 @@ export function ClarvexCopilot() {
             return [
               {
                 role: "assistant",
-                content: `¡Hola, ${session.name}! Soy Clarvex Copilot. Estoy conectado en tiempo real a los KPIs, pendientes y horarios de tu tienda. ¿En qué te puedo ayudar hoy?`,
+                content: `¡Hola, ${session.name}! Soy Clarvex Copilot. Consulto en tiempo real los KPIs retail de tu tienda (semana/mes RDV, mismos números que la pestaña KPIs). ¿En qué te puedo ayudar?`,
               },
             ];
           }
@@ -178,7 +179,7 @@ export function ClarvexCopilot() {
 
   const quickPrompts = [
     { label: "¿Cómo voy hoy?", prompt: "¿Cómo voy con mis KPIs de hoy?" },
-    { label: "¿Cómo va mi tienda?", prompt: "¿Cuál es el avance general de venta de mi tienda hoy?" },
+    { label: "Faltante semanal", prompt: "¿Cuánto le falta a la tienda para llegar al 100% de su meta semanal?" },
     { label: "Mis pendientes", prompt: "Resume mis tareas pendientes prioritarias" },
     { label: "Comisiones", prompt: "¿Quién está más cerca de comisionar o qué comisiones tenemos activas?" },
   ];
@@ -190,11 +191,13 @@ export function ClarvexCopilot() {
       <div className="fixed bottom-20 right-4 z-50">
         <motion.button
           onClick={() => setIsOpen(true)}
-          className="flex h-14 w-14 items-center justify-center rounded-full border border-[#00FF66]/30 bg-[#0A0A0A] text-[#00FF66] shadow-[0_0_20px_rgba(0,255,102,0.2)] backdrop-blur-xl transition-all hover:scale-105 hover:border-[#00FF66]/60 active:scale-95"
+          aria-label="Abrir Clarvex Copilot"
+          className="relative flex h-14 w-14 items-center justify-center rounded-full border border-[#00FF66]/25 bg-[#0A0A0A]/95 shadow-[0_0_24px_rgba(0,255,102,0.22)] backdrop-blur-xl transition-all hover:scale-105 hover:border-[#00FF66]/50 hover:shadow-[0_0_32px_rgba(0,255,102,0.35)] active:scale-95"
           whileHover={{ y: -2 }}
           whileTap={{ scale: 0.95 }}
         >
-          <Sparkles className="h-6 w-6 animate-pulse" />
+          <span className="absolute inset-0 rounded-full bg-[#00FF66]/5" />
+          <CopilotAvatar size={44} pulse />
         </motion.button>
       </div>
 
@@ -212,8 +215,8 @@ export function ClarvexCopilot() {
             >
               <div className="flex items-center justify-between border-b border-white/10 p-4 bg-gradient-to-r from-[#0A0A0A] to-[#121212]">
                 <div className="flex items-center space-x-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#00FF66]/10 text-[#00FF66] border border-[#00FF66]/20">
-                    <Bot className="h-5 w-5" />
+                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-[#00FF66]/20 bg-[#00FF66]/5 shadow-[0_0_20px_rgba(0,255,102,0.12)]">
+                    <CopilotAvatar size={36} />
                   </div>
                   <div>
                     <h3 className="font-semibold text-white">Clarvex Copilot</h3>

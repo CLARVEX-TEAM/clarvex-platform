@@ -11,6 +11,7 @@ import { resolveStoreTeammate } from "@/lib/ai/tools/resolve-teammate";
 import { isStoreManager, managerOnlyAdvisorQueryError } from "@/lib/ai/tools/role-guards";
 import { defineTool, toolError, toolOk } from "@/lib/ai/tools/tool";
 import { toSession } from "@/lib/ai/tools/session-adapter";
+import { kpiPeriodMeta } from "@/lib/ai/tools/shared/kpi-period-meta";
 import type { Role } from "@/lib/types";
 
 const argsSchema = z.object({
@@ -25,12 +26,8 @@ const argsSchema = z.object({
 function buildPayload(report: KpiReport, ctxRole: Role, resolvedUserId?: string) {
   const rules = report.commissionRules;
   const periodMeta = {
-    period: report.period,
-    startDate: report.startDate,
-    endDate: report.endDate,
-    weekNumber: report.weekNumber,
-    retailMonthLabel: report.retailMonthLabel,
-    note: "Mismos números que pestaña KPIs → Comisión (venta ÷ mínimo). Presenta en lista corta, no en tabla ancha.",
+    ...kpiPeriodMeta(report),
+    note: "Mismos números que pestaña KPIs → Comisión. Alcance comisión = venta ÷ mínimo (NO venta÷meta).",
     formatHint: "Para cada persona: Nombre — comisión $X (Y%) — alcance vs mínimo Z%. Evita tablas con muchas columnas."
   };
 
@@ -99,7 +96,7 @@ function buildPayload(report: KpiReport, ctxRole: Role, resolvedUserId?: string)
 export const getCommissionsTool = defineTool<z.infer<typeof argsSchema>>({
   name: "getCommissions",
   description:
-    "Devuelve comisiones de ventas del periodo (monto, %, alcance vs mínimo, reglas activas y cuánto falta al siguiente nivel). El argumento `advisor` (nombre o núm. empleado) SOLO lo usa gerencia para ver a un colaborador. Un asesor siempre recibe solo sus propias comisiones.",
+    "Comisiones del periodo RETAIL RDV (monto, %, alcance vs mínimo, brackets). Alcance comisión = venta÷mínimo (NO meta). advisor solo gerencia.",
   phase: 1,
   roles: ["GERENTE", "SUBGERENTE", "ASESOR"],
   mutates: false,

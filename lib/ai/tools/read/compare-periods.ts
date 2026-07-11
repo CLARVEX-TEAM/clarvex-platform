@@ -16,7 +16,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 // El scope depende del rol: tienda para gerencia, propio para asesor.
 export const comparePeriodsTool = defineTool<z.infer<typeof argsSchema>>({
   name: "comparePeriods",
-  description: "Compara el desempeño entre dos periodos retail (por defecto el actual vs el anterior) y devuelve las variaciones de ventas, meta y alcance. Úsala para 'compara esta semana con la pasada' o tendencias.",
+  description: "Compara dos periodos RETAIL RDV (semana vs semana o mes retail vs mes retail anterior). Devuelve ventas, metas y alcance ya calculados — no calcules variaciones por tu cuenta.",
   phase: 1,
   roles: "all",
   mutates: false,
