@@ -1,5 +1,6 @@
 import { ProviderError } from "@/lib/ai/errors";
 import type { ChatMessage, ProviderChatParams, ProviderChatResult, ProviderToolCall } from "@/lib/ai/types";
+import { isJsonGenerationFailure } from "@/lib/ai/parse-model-json";
 
 // Transporte compartido para proveedores compatibles con la API de OpenAI
 // (Groq y Cloudflare Workers AI lo son). Traduce nuestro contrato neutral al
@@ -113,9 +114,11 @@ export async function openAiCompatibleChat(options: {
 
   if (!response.ok) {
     const message = payload.error?.message ?? `El proveedor de IA respondió ${response.status}.`;
+    const jsonFailure = response.status === 400 && isJsonGenerationFailure(message);
     throw new ProviderError(providerName, message, {
       status: response.status,
-      retryAfterMs: response.status === 429 ? parseRetryAfterMs(response, message) : undefined
+      retryAfterMs: response.status === 429 ? parseRetryAfterMs(response, message) : undefined,
+      retryable: response.status === 429 || response.status >= 500 || jsonFailure
     });
   }
 

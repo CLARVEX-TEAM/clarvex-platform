@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { AI_CONFIG } from "@/lib/ai/config";
 import { createProviderRouter } from "@/lib/ai/providers/provider-router";
+import { isJsonGenerationFailure, parseModelJson } from "@/lib/ai/parse-model-json";
 import { recordAiUsage } from "@/lib/ai/telemetry";
 import type { Session } from "@/lib/session";
 import { computeAchievements } from "@/lib/achievements";
@@ -74,6 +75,17 @@ export const DailySummaryContentSchema = z.object({
 
 export type DailySummaryContent = z.infer<typeof DailySummaryContentSchema>;
 
+export const IaReportContentSchema = z.object({
+  title: z.string().min(1),
+  executiveSummary: z.string().min(1),
+  performanceAnalysis: z.string().min(1),
+  strengths: z.array(z.string()).min(1),
+  weaknesses: z.array(z.string()).min(1),
+  strategicRecommendations: z.array(z.string()).min(1)
+});
+
+export type IaReportContent = z.infer<typeof IaReportContentSchema>;
+
 export class ClarvexIntelligence {
   private static async callGemini(prompt: string, jsonMode = true, usageMeta?: { storeId: string; userId?: string | null; feature: string }): Promise<string> {
     if (process.env.NODE_ENV === "test" || process.env.MOCK_EXTERNAL_SERVICES === "true") {
@@ -109,11 +121,25 @@ export class ClarvexIntelligence {
           details: "Pronóstico simulado en entorno de pruebas"
         });
       }
-      if (p.includes("executive") || p.includes("health") || p.includes("salud")) {
+      if (p.includes("strategicrecommendations") || p.includes("informe de rendimiento")) {
         return JSON.stringify({
-          status: "EXCELLENT",
-          metrics: { UPT: 2.1, conversion: 15.2 },
-          insights: ["La tienda Test Norte mantiene un excelente desempeño de ventas."]
+          title: "Reporte semanal de desempeño",
+          executiveSummary: "La tienda mantiene ritmo comercial estable en el periodo.",
+          performanceAnalysis: "El equipo cumple metas parciales con oportunidad en conversión.",
+          strengths: ["Buen ticket promedio", "Ranking equilibrado"],
+          weaknesses: ["Conversión por debajo del objetivo"],
+          strategicRecommendations: ["Reforzar cierre en piso", "Coaching en UPT"]
+        });
+      }
+      if (p.includes("storehealth") || p.includes("fortheleses")) {
+        return JSON.stringify({
+          storeHealth: "VERDE",
+          fortheleses: ["Buen alcance semanal"],
+          risks: ["Conversión mejorable"],
+          topAdvisor: "Ana",
+          opportunityAdvisor: "Luis",
+          priorities: ["Cerrar pendientes"],
+          actions: ["Coaching UPT"]
         });
       }
       return jsonMode ? JSON.stringify({ message: "Respuesta mock de IA", success: true }) : "Texto mock de IA";
@@ -124,13 +150,30 @@ export class ClarvexIntelligence {
     // el bloque mock de arriba por compatibilidad interna y con los tests.
     const startedAt = Date.now();
     const router = createProviderRouter();
-    try {
-      const result = await router.chatComplete({
+
+    const runChat = (useJsonMode: boolean) =>
+      router.chatComplete({
         model: AI_CONFIG.models.advanced,
-        messages: [{ role: "user", content: prompt }],
-        temperature: 0.7,
-        jsonMode
+        messages: useJsonMode
+          ? [
+              { role: "system", content: "Responde únicamente con un objeto JSON válido. Sin markdown ni texto fuera del JSON." },
+              { role: "user", content: prompt }
+            ]
+          : [{ role: "user", content: `${prompt}\n\nResponde SOLO con el objeto JSON solicitado, sin texto adicional.` }],
+        temperature: useJsonMode ? 0.4 : 0.5,
+        jsonMode: useJsonMode && jsonMode
       });
+
+    try {
+      let result;
+      try {
+        result = await runChat(true);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        if (!jsonMode || !isJsonGenerationFailure(message)) throw error;
+        result = await runChat(false);
+      }
+
       const text = result.content;
       if (!text) {
         throw new Error("No se recibió respuesta válida del modelo de IA.");
@@ -935,7 +978,12 @@ Escribe un reporte de negocio completo. Responde estrictamente en formato JSON u
 }
 `;
     const generatedText = await this.callGemini(prompt, true, { storeId: session.storeId, userId: session.userId, feature: "report" });
-    return JSON.parse(generatedText);
+    const parsed = parseModelJson(generatedText);
+    const validated = IaReportContentSchema.safeParse(parsed);
+    if (!validated.success) {
+      throw new Error("El modelo devolvió un reporte incompleto. Intenta de nuevo.");
+    }
+    return validated.data;
   }
 
   /**
