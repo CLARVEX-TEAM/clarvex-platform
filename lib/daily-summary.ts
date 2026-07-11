@@ -373,3 +373,68 @@ export function buildWeeklyManagerSummary(input: WeeklyManagerInput): { title: s
   ].join("\n");
   return { title: "Resumen semanal", body };
 }
+
+// ---------------------------------------------------------------------------
+// Meta semanal de tienda — hitos 80% y 100% (WEEK_GOAL)
+// ---------------------------------------------------------------------------
+
+/** Alerta proactiva cuando la tienda cruza el 80% de su meta semanal. */
+export function buildWeekGoal80Message(input: {
+  weekLabel: string;
+  sales: number;
+  goal: number;
+}): { title: string; body: string } {
+  const achievement = input.goal > 0 ? Math.round((input.sales / input.goal) * 100) : 0;
+  const remaining = formatMxn(Math.max(input.goal - input.sales, 0));
+  const body = [
+    `🔥 ¡La tienda va fuerte esta semana!`,
+    ``,
+    `Semana ${input.weekLabel}`,
+    `Venta acumulada: ${formatMxn(input.sales)} de ${formatMxn(input.goal)} (${achievement}%)`,
+    `Faltan ${remaining} para cerrar la meta semanal.`,
+    ``,
+    `El equipo está en ritmo — sigamos empujando para el cierre. 💪`
+  ].join("\n");
+  return { title: "Meta semanal al 80%", body };
+}
+
+/** Celebración cuando la tienda alcanza el 100% de su meta semanal. */
+export function buildWeekGoal100Message(input: {
+  weekLabel: string;
+  sales: number;
+  goal: number;
+}): { title: string; body: string } {
+  const achievement = input.goal > 0 ? Math.round((input.sales / input.goal) * 100) : 0;
+  const body = [
+    `🎉 ¡META SEMANAL ALCANZADA!`,
+    ``,
+    `Semana ${input.weekLabel}`,
+    `Venta de tienda: ${formatMxn(input.sales)} de ${formatMxn(input.goal)} (${achievement}%)`,
+    ``,
+    `Felicitaciones al equipo — sigan sumando para superar la meta. 🏆`
+  ].join("\n");
+  return { title: "🎉 Meta semanal cumplida", body };
+}
+
+// ---------------------------------------------------------------------------
+// Pendientes vencidos — digest para gerencia (PENDING_OVERDUE_MGR)
+// ---------------------------------------------------------------------------
+
+/** Resumen de pendientes vencidos en la tienda para gerente/subgerente. */
+export function buildPendingOverdueManagersSummary(input: {
+  overdue: Array<{ title: string; ownerName: string; daysOverdue: number }>;
+}): { title: string; body: string } {
+  const count = input.overdue.length;
+  const lines = [
+    `⛔ Pendientes vencidos en la tienda (${count})`,
+    ``
+  ];
+  for (const item of input.overdue) {
+    const owner = firstName(item.ownerName);
+    const days = item.daysOverdue === 1 ? "1 día" : `${item.daysOverdue} días`;
+    lines.push(`• ${item.title} — ${owner} (vencido hace ${days})`);
+  }
+  lines.push(``, `Revisa y da seguimiento con el equipo.`);
+  const title = count === 1 ? "1 pendiente vencido en la tienda" : `${count} pendientes vencidos en la tienda`;
+  return { title, body: lines.join("\n") };
+}
