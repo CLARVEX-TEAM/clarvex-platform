@@ -41,6 +41,7 @@ export class MockProvider implements LLMProvider {
 
 function pickTool(query: string, available: Set<string>): { name: string; args: Record<string, unknown> } | null {
   const candidates: Array<{ match: RegExp; name: string; args: Record<string, unknown> }> = [
+    { match: /(comunicado|publicar|anunciar|cup[oó]n|descuento)/, name: "proposeCreateAnnouncement", args: { title: "Comunicado del equipo", body: "Detalle del comunicado para el equipo." } },
     { match: /(comision|comisión|bracket|recibo)/, name: "getCommissions", args: { period: "month" } },
     { match: /(pendiente|tarea|pend\b)/, name: "getOpenPendings", args: {} },
     { match: /(horario|turno|schedule)/, name: "getSchedules", args: {} },
@@ -106,6 +107,9 @@ function mockAnswerFromTool(name: string, content: string): string {
       return `Comisión de tienda: $${amount.toLocaleString("es-MX")} (${percent}%). Hay ${team.length} asesor(es) con datos de comisión en el periodo.`;
     }
     return `Tu comisión estimada es $${amount.toLocaleString("es-MX")} al ${percent}%.`;
+  }
+  if (name === "proposeCreateAnnouncement") {
+    return "Dejé el comunicado listo para confirmar. Pulsa «Confirmar y publicar» para enviarlo al equipo.";
   }
   return `Datos obtenidos correctamente de la herramienta ${name}.`;
 }

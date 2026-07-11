@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { Bot, MessageSquare, Send, Sparkles, X } from "lucide-react";
+import { Bot, Send, Sparkles, X } from "lucide-react";
+import { parseAnnouncementDraft } from "@/lib/ai/announcement-draft";
 import { getSession } from "@/lib/auth";
 import type { User } from "@/lib/types";
 
@@ -13,7 +14,12 @@ type ChatMessage = {
   content: string;
   actions?: PendingAction[];
   actionStatus?: "idle" | "confirming" | "done" | "error";
+  draftPublishStatus?: "idle" | "proposing" | "done" | "error";
 };
+
+function canManageAnnouncements(role: string | undefined) {
+  return role === "GERENTE" || role === "SUBGERENTE";
+}
 
 export function ClarvexCopilot() {
   const pathname = usePathname();
@@ -34,7 +40,6 @@ export function ClarvexCopilot() {
   }, []);
 
   useEffect(() => {
-    // Hidden on login screen
     if (pathname === "/login") {
       setUser(null);
       setMessages([]);
@@ -42,7 +47,6 @@ export function ClarvexCopilot() {
       return;
     }
 
-    // Hidden on desktop routes if screen is locked
     const isDesktop = pathname.startsWith("/escritorio");
     const isDesktopUnlocked = typeof window !== "undefined" && sessionStorage.getItem("desktop_unlocked") === "true";
     if (isDesktop && !isDesktopUnlocked) {
@@ -98,10 +102,11 @@ export function ClarvexCopilot() {
       if (!res.ok) throw new Error(data.error || "Error al conectar con la IA.");
       const actions: PendingAction[] | undefined = Array.isArray(data.pendingActions) && data.pendingActions.length > 0 ? data.pendingActions : undefined;
       setMessages((prev) => [...prev, { role: "assistant", content: data.answer, actions, actionStatus: actions ? "idle" : undefined }]);
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Error desconocido";
       setMessages((prev) => [
         ...prev,
-        { role: "assistant", content: `Lo siento, ocurrió un error: ${err.message}` },
+        { role: "assistant", content: `Lo siento, ocurrió un error: ${message}` },
       ]);
     } finally {
       setLoading(false);
@@ -120,11 +125,54 @@ export function ClarvexCopilot() {
       if (!res.ok) throw new Error(data.error || "No se pudo ejecutar la acción.");
       setMessages((prev) => [
         ...prev.map((msg, index) => (index === messageIndex ? { ...msg, actionStatus: "done" as const } : msg)),
-        { role: "assistant", content: "✅ Listo, la acción se ejecutó y quedó registrada." },
+        { role: "assistant", content: "✅ Listo, el comunicado se publicó y quedó registrado." },
       ]);
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Error desconocido";
       setMessages((prev) => prev.map((msg, index) => (index === messageIndex ? { ...msg, actionStatus: "error" as const } : msg)));
-      setMessages((prev) => [...prev, { role: "assistant", content: `No se pudo confirmar: ${err.message}` }]);
+      setMessages((prev) => [...prev, { role: "assistant", content: `No se pudo confirmar: ${message}` }]);
+    }
+  }
+
+  /** Si el modelo solo entregó borrador (sin propose), gerencia puede publicarlo desde aquí. */
+  async function publishDraftFromMessage(messageIndex: number, content: string) {
+    const draft = parseAnnouncementDraft(content);
+    if (!draft) {
+      setMessages((prev) => [...prev, { role: "assistant", content: "No pude leer título y cuerpo del borrador. Pídeme: «Publícalo» o genera de nuevo el comunicado." }]);
+      return;
+    }
+
+    setMessages((prev) => prev.map((msg, index) => (index === messageIndex ? { ...msg, draftPublishStatus: "proposing" } : msg)));
+    try {
+      const proposeRes = await fetch("/api/ai/copilot/propose-announcement", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(draft),
+      });
+      const proposeData = await proposeRes.json();
+      if (!proposeRes.ok) throw new Error(proposeData.error || "No se pudo preparar la publicación.");
+
+      const pending = proposeData.pendingAction as PendingAction;
+      const confirmRes = await fetch("/api/ai/copilot/confirm", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ proposalId: pending.proposalId }),
+      });
+      const confirmData = await confirmRes.json();
+      if (!confirmRes.ok) throw new Error(confirmData.error || "No se pudo publicar.");
+
+      setMessages((prev) => [
+        ...prev.map((msg, index) => (
+          index === messageIndex
+            ? { ...msg, draftPublishStatus: "done" as const, actions: [pending], actionStatus: "done" as const }
+            : msg
+        )),
+        { role: "assistant", content: `✅ Comunicado publicado: «${draft.title}».` },
+      ]);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Error desconocido";
+      setMessages((prev) => prev.map((msg, index) => (index === messageIndex ? { ...msg, draftPublishStatus: "error" as const } : msg)));
+      setMessages((prev) => [...prev, { role: "assistant", content: `No se pudo publicar: ${message}` }]);
     }
   }
 
@@ -135,9 +183,10 @@ export function ClarvexCopilot() {
     { label: "Comisiones", prompt: "¿Quién está más cerca de comisionar o qué comisiones tenemos activas?" },
   ];
 
+  const isManager = canManageAnnouncements(user.role);
+
   return (
     <>
-      {/* Floating Action Button */}
       <div className="fixed bottom-20 right-4 z-50">
         <motion.button
           onClick={() => setIsOpen(true)}
@@ -149,11 +198,9 @@ export function ClarvexCopilot() {
         </motion.button>
       </div>
 
-      {/* Chat Panel / Modal */}
       <AnimatePresence>
         {isOpen && (
           <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm p-4 sm:items-center">
-            {/* Click outside to close */}
             <div className="absolute inset-0" onClick={() => setIsOpen(false)} />
 
             <motion.div
@@ -163,7 +210,6 @@ export function ClarvexCopilot() {
               transition={{ type: "spring", damping: 25, stiffness: 220 }}
               className="relative flex h-[80vh] w-full max-w-lg flex-col rounded-[28px] border border-white/10 bg-[#0A0A0A] shadow-2xl overflow-hidden"
             >
-              {/* Header */}
               <div className="flex items-center justify-between border-b border-white/10 p-4 bg-gradient-to-r from-[#0A0A0A] to-[#121212]">
                 <div className="flex items-center space-x-3">
                   <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#00FF66]/10 text-[#00FF66] border border-[#00FF66]/20">
@@ -182,44 +228,66 @@ export function ClarvexCopilot() {
                 </button>
               </div>
 
-              {/* Chat Body */}
               <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin">
-                {messages.map((msg, index) => (
-                  <div
-                    key={index}
-                    className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
-                  >
+                {messages.map((msg, index) => {
+                  const draft = msg.role === "assistant" && (!msg.actions || msg.actions.length === 0)
+                    ? parseAnnouncementDraft(msg.content)
+                    : null;
+                  const showDraftPublish = Boolean(isManager && draft && msg.draftPublishStatus !== "done");
+
+                  return (
                     <div
-                      className={`max-w-[85%] rounded-[20px] px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap ${
-                        msg.role === "user"
-                          ? "bg-[#00FF66]/10 text-white border border-[#00FF66]/20 rounded-tr-none"
-                          : "bg-white/5 text-white/90 border border-white/5 rounded-tl-none"
-                      }`}
+                      key={index}
+                      className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
                     >
-                      {msg.content}
-                      {msg.actions && msg.actions.length > 0 && (
-                        <div className="mt-3 space-y-2 border-t border-white/10 pt-3">
-                          {msg.actions.map((action) => (
-                            <div key={action.proposalId} className="rounded-xl border border-[#00FF66]/20 bg-[#00FF66]/5 p-2.5">
-                              <p className="text-[11px] text-white/70 mb-2">{action.summary}</p>
+                      <div
+                        className={`max-w-[85%] rounded-[20px] px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap ${
+                          msg.role === "user"
+                            ? "bg-[#00FF66]/10 text-white border border-[#00FF66]/20 rounded-tr-none"
+                            : "bg-white/5 text-white/90 border border-white/5 rounded-tl-none"
+                        }`}
+                      >
+                        {msg.content}
+                        {msg.actions && msg.actions.length > 0 && (
+                          <div className="mt-3 space-y-2 border-t border-white/10 pt-3">
+                            {msg.actions.map((action) => (
+                              <div key={action.proposalId} className="rounded-xl border border-[#00FF66]/20 bg-[#00FF66]/5 p-2.5">
+                                <p className="text-[11px] text-white/70 mb-2">{action.summary}</p>
+                                <button
+                                  onClick={() => confirmAction(index, action.proposalId)}
+                                  disabled={msg.actionStatus === "confirming" || msg.actionStatus === "done"}
+                                  className="w-full rounded-lg bg-[#00FF66] px-3 py-2 text-xs font-black uppercase tracking-wider text-black transition active:scale-95 disabled:opacity-50"
+                                >
+                                  {msg.actionStatus === "done"
+                                    ? "Publicado ✓"
+                                    : msg.actionStatus === "confirming"
+                                      ? "Publicando..."
+                                      : "Confirmar y publicar"}
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        {showDraftPublish && (
+                          <div className="mt-3 space-y-2 border-t border-white/10 pt-3">
+                            <div className="rounded-xl border border-[#00FF66]/20 bg-[#00FF66]/5 p-2.5">
+                              <p className="text-[11px] text-white/70 mb-2">
+                                Borrador listo{draft ? `: «${draft.title}»` : ""}. ¿Lo publicamos al equipo?
+                              </p>
                               <button
-                                onClick={() => confirmAction(index, action.proposalId)}
-                                disabled={msg.actionStatus === "confirming" || msg.actionStatus === "done"}
+                                onClick={() => publishDraftFromMessage(index, msg.content)}
+                                disabled={msg.draftPublishStatus === "proposing"}
                                 className="w-full rounded-lg bg-[#00FF66] px-3 py-2 text-xs font-black uppercase tracking-wider text-black transition active:scale-95 disabled:opacity-50"
                               >
-                                {msg.actionStatus === "done"
-                                  ? "Confirmado ✓"
-                                  : msg.actionStatus === "confirming"
-                                    ? "Confirmando..."
-                                    : "Confirmar y publicar"}
+                                {msg.draftPublishStatus === "proposing" ? "Publicando..." : "Publicar comunicado"}
                               </button>
                             </div>
-                          ))}
-                        </div>
-                      )}
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
 
                 {loading && (
                   <div className="flex justify-start">
@@ -233,7 +301,6 @@ export function ClarvexCopilot() {
                 <div ref={messagesEndRef} />
               </div>
 
-              {/* Quick Prompt Suggester */}
               {messages.length <= 2 && (
                 <div className="px-4 py-2 flex flex-wrap gap-2 border-t border-white/5 bg-[#0d0d0d]">
                   {quickPrompts.map((qp, index) => (
@@ -248,7 +315,6 @@ export function ClarvexCopilot() {
                 </div>
               )}
 
-              {/* Form Input */}
               <form
                 onSubmit={(e) => {
                   e.preventDefault();

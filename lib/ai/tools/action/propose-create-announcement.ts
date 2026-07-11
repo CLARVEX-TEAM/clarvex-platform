@@ -12,7 +12,7 @@ const argsSchema = z.object({
 // confirmarla (endpoint aparte) para que el backend la ejecute y la audite.
 export const proposeCreateAnnouncementTool = defineTool<z.infer<typeof argsSchema>>({
   name: "proposeCreateAnnouncement",
-  description: "PROPONE la creación de un comunicado con el título y cuerpo indicados. NO lo publica: deja la acción pendiente de confirmación explícita del usuario. Úsala solo cuando el usuario pida crear/publicar un comunicado. Tras llamarla, informa al usuario que debe confirmar para publicarlo.",
+  description: "PROPONE la creación de un comunicado (title + body) y habilita el botón «Confirmar y publicar» en la app. Úsala cuando el usuario pida generar, crear, redactar, anunciar o publicar un comunicado. NO lo publica sola: deja la acción pendiente de confirmación. Si ya tienes título y cuerpo, llámala de inmediato.",
   phase: 3,
   roles: ["GERENTE", "SUBGERENTE"],
   mutates: true,

@@ -13,7 +13,7 @@ const argsSchema = z.object({
 // revisa y lo publica desde la pantalla de Comunicados.
 export const prepareAnnouncementDraftTool = defineTool<z.infer<typeof argsSchema>>({
   name: "prepareAnnouncementDraft",
-  description: "Reúne el contexto de la tienda (resultados del día, pendientes y comunicados recientes) para que redactes un BORRADOR de comunicado sobre el tema indicado. No publica nada; el usuario lo revisará y publicará manualmente. Devuelve el borrador con un título y un cuerpo claros.",
+  description: "Reúne contexto de la tienda para redactar un BORRADOR de comunicado. No publica ni muestra el botón de confirmar. Si el usuario quiere generar/crear/publicar el comunicado, DESPUÉS debes llamar a proposeCreateAnnouncement con el título y cuerpo finales.",
   phase: 2,
   roles: ["GERENTE", "SUBGERENTE"],
   mutates: false,

@@ -33,8 +33,10 @@ export function buildSystemPrompt(ctx: CopilotContext, phase: number): string {
       : [
           "Estás en modo LECTURA + BORRADORES + ACCIONES CON CONFIRMACIÓN. Además de consultar y redactar, puedes PROPONER acciones que modifican datos (p.ej. crear un comunicado) con las herramientas 'propose...'.",
           "Reglas de acciones:",
+          "- Cuando el usuario pida GENERAR, CREAR, REDACTAR o PUBLICAR un comunicado, DEBES llamar a proposeCreateAnnouncement con title y body. NO te quedes solo en prepareAnnouncementDraft: sin proposeCreateAnnouncement NO aparece el botón de confirmar.",
+          "- Flujo correcto de comunicado: (opcional) prepareAnnouncementDraft para contexto → redacta título/cuerpo → proposeCreateAnnouncement con ese título y cuerpo → dile al usuario que pulse «Confirmar y publicar».",
           "- Una herramienta 'propose...' NO ejecuta nada: deja la acción pendiente de confirmación.",
-          "- Tras proponer, informa al usuario en una frase qué preparaste y pídele que lo CONFIRME para ejecutarlo. NUNCA afirmes que ya se publicó o creó.",
+          "- Tras proponer, informa al usuario en una frase qué preparaste y pídele que lo CONFIRME con el botón. NUNCA afirmes que ya se publicó o creó.",
           "- No inventes datos; usa el contexto real. Si el usuario no pidió una acción, no propongas ninguna."
         ].join("\n");
 
