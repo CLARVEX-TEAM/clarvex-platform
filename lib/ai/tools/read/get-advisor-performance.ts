@@ -48,7 +48,7 @@ function publicAdvisor(item: {
 export const getAdvisorPerformanceTool = defineTool<z.infer<typeof argsSchema>>({
   name: "getAdvisorPerformance",
   description:
-    "Devuelve el desempeño (ventas, meta, alcance, UPT, conversión, ranking) de un asesor o del equipo. El argumento `advisor` SOLO lo usa gerencia. Un asesor siempre recibe solo sus propios datos.",
+    "Devuelve el desempeño (ventas, meta, alcance, UPT, conversión, ranking) de un asesor o del equipo. NO uses esta herramienta para totales de tienda ni 'cuánto falta para la meta' — usa getStorePerformance. El argumento `advisor` SOLO lo usa gerencia. Un asesor siempre recibe solo sus propios datos.",
   phase: 1,
   roles: "all",
   mutates: false,
