@@ -19,7 +19,7 @@ const inputSchema = z.object({
 });
 
 export async function POST(request: Request) {
-  const rateLimit = rateLimitAuth(clientIp(request.headers));
+  const rateLimit = await rateLimitAuth(clientIp(request.headers));
   if (!rateLimit.allowed) {
     return NextResponse.json({ error: "Demasiados intentos. Intenta de nuevo en un momento." }, { status: 429, headers: { "Retry-After": String(rateLimit.retryAfterSeconds) } });
   }

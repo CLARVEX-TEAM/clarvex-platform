@@ -28,7 +28,7 @@ export async function POST(request: Request) {
   if ("response" in parsed) return parsed.response;
 
   const isInspect = parsed.data.action === "inspect";
-  const rateLimit = isInspect ? rateLimitInspect(ip) : rateLimitAuth(ip);
+  const rateLimit = await (isInspect ? rateLimitInspect(ip) : rateLimitAuth(ip));
   if (!rateLimit.allowed) {
     return NextResponse.json(
       { error: "Demasiados intentos. Intenta de nuevo en un momento." },
