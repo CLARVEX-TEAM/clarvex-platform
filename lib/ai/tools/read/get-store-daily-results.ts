@@ -32,7 +32,7 @@ export const getStoreDailyResultsTool = defineTool<z.infer<typeof argsSchema>>({
       if (!parsed) return toolError("La fecha debe usar formato YYYY-MM-DD.");
       dateKey = periodDateKey(parsed);
     }
-    const result = await getStoreDailyResults(toSession(ctx), dateKey);
+    const result = await getStoreDailyResults(toSession(ctx), dateKey ?? ctx.todayKey);
     return toolOk({
       ...result,
       period: "day",

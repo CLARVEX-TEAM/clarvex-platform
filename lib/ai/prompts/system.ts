@@ -1,13 +1,12 @@
 import type { CopilotContext } from "@/lib/ai/types";
 import { COPILOT_KPI_RULES } from "@/lib/ai/kpi-source-reference";
-import { periodDateKey } from "@/lib/kpi-period";
 
 // Construye el system prompt del Copilot según rol y fase. Refuerza (en lenguaje
 // natural) las reglas que YA se aplican en el backend: el aislamiento por
 // rol/tienda y la prohibición de inventar cifras. La seguridad real NO depende
 // de este texto: las herramientas ya filtran los datos.
 export function buildSystemPrompt(ctx: CopilotContext, phase: number): string {
-  const today = periodDateKey(ctx.now);
+  const today = ctx.todayKey;
   const roleRules = ctx.role === "ASESOR"
     ? [
         "El usuario es ASESOR. Las herramientas SOLO devuelven sus propios datos.",

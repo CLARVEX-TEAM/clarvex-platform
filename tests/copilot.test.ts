@@ -110,7 +110,7 @@ const mockPrisma = {
 
 (globalThis as any).prisma = mockPrisma;
 
-const managerCtx = { userId: "mgr-1", storeId: "store-1", role: "GERENTE" as const, name: "Gerente", platformAdmin: false, now: new Date("2026-07-10T12:00:00.000Z"), timeZone: "America/Mexico_City" };
+const managerCtx = { userId: "mgr-1", storeId: "store-1", role: "GERENTE" as const, name: "Gerente", platformAdmin: false, todayKey: "2026-07-10", now: new Date("2026-07-10T00:00:00.000Z"), timeZone: "America/Mexico_City" };
 const advisorCtx = { ...managerCtx, userId: "adv-self", role: "ASESOR" as const, name: "Asesor" };
 const managerSession = { userId: "mgr-1", storeId: "store-1", role: "GERENTE" as const, name: "Gerente", employeeNumber: "TEST-GER-1", platformAdmin: false };
 

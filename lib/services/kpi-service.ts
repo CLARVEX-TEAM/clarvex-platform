@@ -1,4 +1,4 @@
-import { buildUserDashboardKpi, dashboardDateKey, dashboardDateRange } from "@/lib/dashboard-kpi";
+import { buildUserDashboardKpi, dashboardDateKey, dashboardDateRange, type DashboardKpiRow } from "@/lib/dashboard-kpi";
 import { decodeSyncLogMessage, type KpiSyncMetrics } from "@/lib/data-source";
 import { aggregateKpis, aggregateStore, aggregateStoreTraffic } from "@/lib/kpi-report";
 import { buildRetailMonths, periodDateKey, selectRetailMonth, selectRdvWeek, type KpiPeriod } from "@/lib/kpi-period";
@@ -218,7 +218,7 @@ export type KpiFacts = ReturnType<typeof kpiFactsFromReport>;
 // asesor. Reutiliza el constructor del dashboard para calcular la conversión.
 export async function getStoreDailyResults(session: Session, dateKeyStr?: string) {
   const manager = session.role === "GERENTE" || session.role === "SUBGERENTE";
-  const key = dateKeyStr ?? dashboardDateKey(new Date());
+  const key = dateKeyStr ?? dashboardDateKey(new Date(), "America/Monterrey");
   const { start, end } = dashboardDateRange(key);
   const rows = await prisma.kpi.findMany({
     where: { storeId: session.storeId, ...(manager ? {} : { userId: session.userId }), date: { gte: start, lt: end } },
