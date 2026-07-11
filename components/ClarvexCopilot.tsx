@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Send, X } from "lucide-react";
 import { parseAnnouncementDraft } from "@/lib/ai/announcement-draft";
+import { toCopilotApiMessages } from "@/lib/ai/copilot-messages";
 import { getSession } from "@/lib/auth";
 import type { User } from "@/lib/types";
 import { CopilotAvatar } from "@/components/CopilotAvatar";
@@ -90,14 +91,15 @@ export function ClarvexCopilot() {
     if (!text.trim() || loading) return;
     const userQuery = text.trim();
     setInput("");
-    setMessages((prev) => [...prev, { role: "user", content: userQuery }]);
+    const nextMessages: ChatMessage[] = [...messages, { role: "user", content: userQuery }];
+    setMessages(nextMessages);
     setLoading(true);
 
     try {
       const res = await fetch("/api/ai/copilot", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: userQuery }),
+        body: JSON.stringify({ messages: toCopilotApiMessages(nextMessages) }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Error al conectar con la IA.");
