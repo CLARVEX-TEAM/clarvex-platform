@@ -45,6 +45,23 @@ model Store {
   aiRecommendations      AiRecommendationHistory[]
   aiDailySummaries       AiDailySummary[]
   retailAlertLogs        RetailAlertLog[]
+  powerBiConnection      StorePowerBiConnection?
+}
+
+model StorePowerBiConnection {
+  id                    String   @id @default(cuid())
+  storeId               String   @unique
+  msAccountEmail        String?
+  encryptedRefreshToken String
+  exportUrl             String
+  exportPayloadTemplate Json
+  connectedByUserId     String?
+  connectedAt           DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  store                 Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  connectedBy           User?    @relation("PowerBiConnectedBy", fields: [connectedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([connectedByUserId])
 }
 
 model StoreFixture {
@@ -160,6 +177,7 @@ model User {
   aiPlanHistories        AiPlanHistory[]
   aiRecommendations      AiRecommendationHistory[]
   retailAlertLogs        RetailAlertLog[]
+  powerBiConnections     StorePowerBiConnection[] @relation("PowerBiConnectedBy")
 }
 
 model TrainingResource {
