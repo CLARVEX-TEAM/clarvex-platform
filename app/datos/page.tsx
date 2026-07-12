@@ -33,6 +33,7 @@ import {
   type SheetSummary
 } from "@/lib/data-source";
 import { AppFrame, AppHeader, Badge, BottomNav, Button, Card } from "@/components/ui";
+import { PowerBiConnectionCard } from "@/components/PowerBiConnectionCard";
 
 const modules: Record<DataSourceType, { label: string; icon: typeof CalendarDays; description: string }> = {
   HORARIOS: { label: "Horarios", icon: CalendarDays, description: "Turnos, descansos y zonas." },
@@ -217,6 +218,8 @@ export default function DataCenterPage() {
             Vincular fuente
           </Button>
         </section>
+
+        <PowerBiConnectionCard className="mt-3" onMessage={setMessage} />
 
         {message ? <p className="mt-3 rounded-2xl border border-line bg-blue-50 px-3 py-2 text-[13px] font-semibold text-ink/75">{message}</p> : null}
 
