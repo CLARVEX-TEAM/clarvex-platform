@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ClipboardPaste, Link2, RefreshCw, Terminal, Unplug, Wifi } from "lucide-react";
+import { ClipboardPaste, Download, Link2, RefreshCw, Terminal, Unplug, Wifi } from "lucide-react";
 import { Button, Card } from "@/components/ui";
 
 type PowerBiAuthMode = "OAUTH" | "DEVTOOLS";
@@ -39,6 +39,7 @@ export function PowerBiConnectionCard({ onMessage, className }: PowerBiConnectio
   const [showDevTools, setShowDevTools] = useState(false);
   const [fetchSource, setFetchSource] = useState("");
   const [savingDevTools, setSavingDevTools] = useState(false);
+  const [syncing, setSyncing] = useState(false);
 
   async function fetchStatus() {
     setLoading(true);
@@ -122,6 +123,21 @@ export function PowerBiConnectionCard({ onMessage, className }: PowerBiConnectio
     }
   }
 
+  async function syncKpis() {
+    setSyncing(true);
+    onMessage?.("Exportando Power BI y sincronizando KPIs de hoy...");
+    try {
+      const response = await fetch("/api/integrations/power-bi/sync", { method: "POST" });
+      const payload = await response.json() as { message?: string; error?: string };
+      if (!response.ok) throw new Error(payload.error ?? "No se pudo sincronizar KPIs desde Power BI.");
+      onMessage?.(payload.message ?? "KPIs sincronizados desde Power BI.");
+    } catch (error) {
+      onMessage?.(error instanceof Error ? error.message : "No se pudo sincronizar KPIs desde Power BI.");
+    } finally {
+      setSyncing(false);
+    }
+  }
+
   async function testExport() {
     setTesting(true);
     onMessage?.("Probando exportación de Power BI...");
@@ -165,7 +181,7 @@ export function PowerBiConnectionCard({ onMessage, className }: PowerBiConnectio
           <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-volt">Experimental</p>
           <h3 className="mt-1 text-lg font-black tracking-[-0.02em] text-ink">Power BI en vivo</h3>
           <p className="mt-1 text-[12px] leading-5 text-muted">
-            Conecta con Microsoft o pega el fetch de DevTools para exportar ventas del reporte corporativo.
+            Conecta con Microsoft o pega el fetch de DevTools para exportar ventas y rellenar KPIs del día.
           </p>
           {loading ? (
             <p className="mt-2 text-[12px] text-muted">Consultando estado...</p>
@@ -200,6 +216,15 @@ export function PowerBiConnectionCard({ onMessage, className }: PowerBiConnectio
       <div className="mt-4 flex flex-wrap gap-2">
         {status?.connected ? (
           <>
+            <Button
+              type="button"
+              variant="primary"
+              icon={<Download size={16} />}
+              disabled={syncing || (connectedViaDevTools && status.accessTokenExpired)}
+              onClick={() => void syncKpis()}
+            >
+              {syncing ? "Sincronizando..." : "Sincronizar KPIs hoy"}
+            </Button>
             <Button
               type="button"
               variant="glass"
