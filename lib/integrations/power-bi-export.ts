@@ -119,33 +119,11 @@ export async function exportPowerBI(
   return buffer;
 }
 
-/**
- * Aplica filtros/columnas/orden sobre una plantilla de payload exportada desde DevTools.
- * Modifica copia — no muta el original.
- */
-export function patchExportPayload<T extends Record<string, unknown>>(
-  template: T,
-  patch: {
-    artifactId?: string;
-    modelId?: string;
-    filtersDescription?: unknown;
-    columns?: unknown;
-    ordering?: unknown;
-    exportDataCommand?: unknown;
-    executeSemanticQueryRequest?: unknown;
-  }
-): T {
-  const next = structuredClone(template) as Record<string, unknown>;
-
-  if (patch.artifactId !== undefined) next.artifactId = patch.artifactId;
-  if (patch.modelId !== undefined) next.modelId = patch.modelId;
-  if (patch.filtersDescription !== undefined) next.FiltersDescription = patch.filtersDescription;
-  if (patch.columns !== undefined) next.Columns = patch.columns;
-  if (patch.ordering !== undefined) next.Ordering = patch.ordering;
-  if (patch.exportDataCommand !== undefined) next.ExportDataCommand = patch.exportDataCommand;
-  if (patch.executeSemanticQueryRequest !== undefined) {
-    next.executeSemanticQueryRequest = patch.executeSemanticQueryRequest;
-  }
-
-  return next as T;
-}
+export {
+  patchExportPayload,
+  patchRetailCalendarFilters,
+  findExportDataCommand,
+  findSemanticQuery,
+  summarizeExportPayload
+} from "@/lib/integrations/power-bi-payload";
+export type { PowerBiCalendarFilter, PowerBiExportPatch } from "@/lib/integrations/power-bi-payload";

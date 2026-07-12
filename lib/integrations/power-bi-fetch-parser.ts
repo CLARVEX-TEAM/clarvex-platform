@@ -169,7 +169,9 @@ export function analyzeDevToolsFetch(source: string): FetchAnalysis {
   const notes: string[] = [
     "Bearer token: dinámico, caduca (típicamente ~60–90 min). No persistir.",
     "artifactId / modelId: estables por visual/dataset; cambian si cambias de reporte.",
-    "executeSemanticQueryRequest / ExportDataCommand / FiltersDescription / Columns / Ordering: modificables para otras exportaciones del mismo modelo.",
+    "executeSemanticQueryRequest.queries[0].Query.Commands: SemanticQueryDataShapeCommand (Where/Select) + ExportDataCommand (Columns/Ordering/FiltersDescription).",
+    "activityid / requestid: UUIDs de correlación por petición; normalmente opcionales sin Bearer.",
+    "x-powerbi-hostenv: metadata del cliente web; no requerido en servidor.",
     "Headers sec-* , referer, origin, cookie: eliminables si usas Bearer en servidor."
   ];
 

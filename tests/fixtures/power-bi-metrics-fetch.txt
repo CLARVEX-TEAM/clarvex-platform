@@ -1,0 +1,23 @@
+fetch("https://wabi-south-central-us-redirect.analysis.windows.net/export/xlsx", {
+  "headers": {
+    "accept": "application/json, text/plain, */*",
+    "accept-language": "es-419,es;q=0.9,es-ES;q=0.8,en;q=0.7,en-GB;q=0.6,en-US;q=0.5,es-MX;q=0.4",
+    "activityid": "5b10d71c-4b0b-42b6-88ca-fb9b18e1b786",
+    "authorization": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.REDACTED",
+    "cache-control": "no-cache",
+    "content-type": "application/json;charset=UTF-8",
+    "pragma": "no-cache",
+    "priority": "u=1, i",
+    "requestid": "0ab6b1bf-2754-3997-b0b0-45975d379be8",
+    "sec-ch-ua": "\"Not;A=Brand\";v=\"8\", \"Chromium\";v=\"150\", \"Microsoft Edge\";v=\"150\"",
+    "sec-ch-ua-mobile": "?0",
+    "sec-ch-ua-platform": "\"Windows\"",
+    "sec-fetch-dest": "empty",
+    "sec-fetch-mode": "cors",
+    "sec-fetch-site": "cross-site",
+    "x-powerbi-hostenv": "Power BI Web App",
+    "Referer": "https://app.powerbi.com/"
+  },
+  "body": "{\"exportDataType\":0,\"executeSemanticQueryRequest\":{\"version\":\"1.0.0\",\"queries\":[{\"Query\":{\"Commands\":[{\"SemanticQueryDataShapeCommand\":{\"Query\":{\"Version\":2,\"From\":[{\"Name\":\"0\",\"Entity\":\"01 METRICAS\",\"Type\":0},{\"Name\":\"f\",\"Entity\":\"FACT\",\"Type\":0},{\"Name\":\"c\",\"Entity\":\"CALENDAR\",\"Type\":0}],\"Select\":[{\"Measure\":{\"Expression\":{\"SourceRef\":{\"Source\":\"0\"}},\"Property\":\"SALES\"},\"Name\":\"01 METRICAS.SALES\"},{\"Measure\":{\"Expression\":{\"SourceRef\":{\"Source\":\"0\"}},\"Property\":\"TRANSACTION\"},\"Name\":\"01 METRICAS.TRANSACTION\"},{\"Measure\":{\"Expression\":{\"SourceRef\":{\"Source\":\"0\"}},\"Property\":\"% CONV EMP\"},\"Name\":\"01 METRICAS.% CONV EMP\"},{\"Measure\":{\"Expression\":{\"SourceRef\":{\"Source\":\"0\"}},\"Property\":\"AUR\"},\"Name\":\"01 METRICAS.AUR\"},{\"Measure\":{\"Expression\":{\"SourceRef\":{\"Source\":\"0\"}},\"Property\":\"EPT\"},\"Name\":\"01 METRICAS.EPT\"},{\"Measure\":{\"Expression\":{\"SourceRef\":{\"Source\":\"0\"}},\"Property\":\"UPT\"},\"Name\":\"01 METRICAS.UPT\"},{\"Column\":{\"Expression\":{\"SourceRef\":{\"Source\":\"f\"}},\"Property\":\"EMPLOYEE\"},\"Name\":\"FACT.EMPLOYEE\",\"NativeReferenceName\":\"EMPLOYEE\"},{\"Measure\":{\"Expression\":{\"SourceRef\":{\"Source\":\"0\"}},\"Property\":\"QUANTITY\"},\"Name\":\"01 METRICAS.QUANTITY\",\"NativeReferenceName\":\"QUANTITY\"}],\"Where\":[{\"Condition\":{\"In\":{\"Expressions\":[{\"Column\":{\"Expression\":{\"SourceRef\":{\"Source\":\"c\"}},\"Property\":\"DAY\"}}],\"Values\":[[{\"Literal\":{\"Value\":\"11L\"}}]]}}},{\"Condition\":{\"In\":{\"Expressions\":[{\"Column\":{\"Expression\":{\"SourceRef\":{\"Source\":\"c\"}},\"Property\":\"MONTH R\"}}],\"Values\":[[{\"Literal\":{\"Value\":\"7L\"}}]]}}},{\"Condition\":{\"In\":{\"Expressions\":[{\"Column\":{\"Expression\":{\"SourceRef\":{\"Source\":\"c\"}},\"Property\":\"YEAR R\"}}],\"Values\":[[{\"Literal\":{\"Value\":\"2026L\"}}]]}}}],\"OrderBy\":[{\"Direction\":2,\"Expression\":{\"Measure\":{\"Expression\":{\"SourceRef\":{\"Source\":\"0\"}},\"Property\":\"UPT\"}}}]},\"Binding\":{\"Primary\":{\"Groupings\":[{\"Projections\":[6,7,0,1,2,3,4,5],\"Subtotal\":0}]},\"DataReduction\":{\"Primary\":{\"Top\":{\"Count\":1000000}},\"Secondary\":{\"Top\":{\"Count\":100}}},\"Version\":1}}},{\"ExportDataCommand\":{\"Columns\":[{\"QueryName\":\"01 METRICAS.SALES\",\"Name\":\"SALES\"},{\"QueryName\":\"01 METRICAS.TRANSACTION\",\"Name\":\"TRANSACTION\"},{\"QueryName\":\"01 METRICAS.% CONV EMP\",\"Name\":\"% CONV EMP\"},{\"QueryName\":\"01 METRICAS.AUR\",\"Name\":\"AUR\"},{\"QueryName\":\"01 METRICAS.EPT\",\"Name\":\"EPT\"},{\"QueryName\":\"01 METRICAS.UPT\",\"Name\":\"UPT\"},{\"QueryName\":\"FACT.EMPLOYEE\",\"Name\":\"EMPLOYEE\"},{\"QueryName\":\"01 METRICAS.QUANTITY\",\"Name\":\"QUANTITY\"}],\"Ordering\":[6,7,0,1,2,3,4,5],\"FiltersDescription\":\"Filtros aplicados: \\nDAY es 11\\nMONTH R es 7\\nYEAR R es 2026\"}}]}}],\"cancelQueries\":[],\"modelId\":6410841,\"userPreferredLocale\":\"es-419\"},\"artifactId\":6844699}",
+  "method": "POST"
+});
