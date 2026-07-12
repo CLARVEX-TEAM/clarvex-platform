@@ -43,12 +43,12 @@ test("caso F cuando venta es 0 aunque el alcance calculado fuera alto", () => {
   assert.match(message.body, /no se registraron ventas a tu nombre/);
 });
 
-test("formatea venta y diferencia como pesos sin decimales y redondea alcance", () => {
+test("formatea venta y diferencia como pesos con dos decimales y redondea alcance", () => {
   const message = buildAdvisorMessage({ name: "Carlos", sales: 8000, goal: 10000 });
   assert.equal(message.case, "C");
   assert.equal(message.achievement, 80);
-  assert.match(message.body, /\$8,000/);
-  assert.match(message.body, /\$2,000/); // diferencia para llegar al 100%
+  assert.match(message.body, /\$8,000\.00/);
+  assert.match(message.body, /\$2,000\.00/); // diferencia para llegar al 100%
 });
 
 test("resumen de cierre de gerencia calcula alcance de tienda y conteos", () => {
@@ -104,9 +104,9 @@ test("mensaje matutino muestra meta del día, acumulado y faltante", () => {
     weekday: 3
   });
   assert.match(message.body, /¡Buenos días Marta!/);
-  assert.match(message.body, /Tu meta de hoy es \$5,000/);
-  assert.match(message.body, /Llevas acumulado esta semana \$30,000/);
-  assert.match(message.body, /Te faltan \$20,000 para cumplir tu meta semanal/);
+  assert.match(message.body, /Tu meta de hoy es \$5,000\.00/);
+  assert.match(message.body, /Llevas acumulado esta semana \$30,000\.00/);
+  assert.match(message.body, /Te faltan \$20,000\.00 para cumplir tu meta semanal/);
 });
 
 test("mensaje matutino felicita cuando ya se cumplio la meta semanal", () => {
@@ -139,14 +139,14 @@ test("celebracion instantanea felicita al cruzar la meta del dia", () => {
   const message = buildGoalReachedMessage({ name: "Waira Popoca", sales: 22500, goal: 22000 });
   assert.match(message.title, /Meta alcanzada/);
   assert.match(message.body, /¡FELICIDADES Waira!/);
-  assert.match(message.body, /\$22,500 \(102%\)/);
+  assert.match(message.body, /\$22,500\.00 \(102%\)/);
 });
 
 test("empujon de media jornada muestra avance y faltante", () => {
   const message = buildMiddayAdvisorMessage({ name: "Jazmin Castro", sales: 6000, goal: 20000 });
   assert.match(message.body, /¡Vamos Jazmin!/);
-  assert.match(message.body, /llevas \$6,000 \(30% de tu meta de hoy\)/);
-  assert.match(message.body, /Te faltan \$14,000/);
+  assert.match(message.body, /llevas \$6,000\.00 \(30% de tu meta de hoy\)/);
+  assert.match(message.body, /Te faltan \$14,000\.00/);
 });
 
 test("resumen de media jornada lista atrasados o confirma ritmo", () => {
@@ -159,7 +159,7 @@ test("resumen de media jornada lista atrasados o confirma ritmo", () => {
   });
   assert.match(conAtrasados.body, /Media jornada — 13 de junio/);
   assert.match(conAtrasados.body, /atrasados \(< 50%\)/);
-  assert.match(conAtrasados.body, /• Jazmin: \$6,000 \(30%\)/);
+  assert.match(conAtrasados.body, /• Jazmin: \$6,000\.00 \(30%\)/);
 
   const sinAtrasados = buildMiddayManagerSummary({ dateLabel: "13 de junio", storeSales: 90000, storeGoal: 100000, thresholdPct: 50, behind: [] });
   assert.match(sinAtrasados.body, /Todo el equipo va en ritmo \(≥ 50%\)/);
@@ -182,7 +182,7 @@ test("el #1 con venta recibe felicitacion de lider de la semana", () => {
 test("mensaje semanal de un asesor no-lider muestra venta, alcance, ranking y comparativo", () => {
   const message = buildWeeklyAdvisorMessage({ name: "Waira Popoca", sales: 48000, goal: 50000, rank: 2, prevSales: 45000 });
   assert.match(message.body, /Cierre de semana, Waira/);
-  assert.match(message.body, /Vendiste \$48,000 de tu meta \$50,000 \(96%\)/);
+  assert.match(message.body, /Vendiste \$48,000\.00 de tu meta \$50,000\.00 \(96%\)/);
   assert.match(message.body, /lugar #2 del equipo/);
   assert.match(message.body, /vs la semana pasada/);
 });
@@ -202,10 +202,10 @@ test("resumen semanal de gerencia incluye Top del equipo y comparativo", () => {
     top: [{ name: "Alonso Treviño", sales: 51970 }, { name: "Waira Popoca", sales: 48575 }]
   });
   assert.match(summary.body, /Resumen semanal — 7 jun - 13 jun/);
-  assert.match(summary.body, /Venta de tienda: \$140,686 de \$280,000 \(50%\)/);
-  assert.match(summary.body, /🏆 Líder de la semana: Alonso — \$51,970/);
-  assert.match(summary.body, /1\. Alonso — \$51,970/);
-  assert.match(summary.body, /2\. Waira — \$48,575/);
+  assert.match(summary.body, /Venta de tienda: \$140,686\.00 de \$280,000\.00 \(50%\)/);
+  assert.match(summary.body, /🏆 Líder de la semana: Alonso — \$51,970\.00/);
+  assert.match(summary.body, /1\. Alonso — \$51,970\.00/);
+  assert.match(summary.body, /2\. Waira — \$48,575\.00/);
 });
 
 test("resumen matutino de gerencia calcula alcance semanal y faltante", () => {

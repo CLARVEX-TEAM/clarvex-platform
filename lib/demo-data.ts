@@ -91,7 +91,12 @@ export const schedules: ScheduleShift[] = [
 export const advisors = users.filter((user) => user.role === "ASESOR");
 
 export function money(value: number) {
-  return new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN", maximumFractionDigits: 0 }).format(value);
+  return new Intl.NumberFormat("es-MX", {
+    style: "currency",
+    currency: "MXN",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  }).format(value);
 }
 
 export function completion(current: number, goal: number) {

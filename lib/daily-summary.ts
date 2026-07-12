@@ -6,12 +6,13 @@ export type DailySummaryCase = "A" | "B" | "C" | "D" | "E" | "F";
 const currencyFormatter = new Intl.NumberFormat("es-MX", {
   style: "currency",
   currency: "MXN",
-  maximumFractionDigits: 0
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2
 });
 
-/** Formatea un monto como pesos mexicanos sin decimales (ej: $12,345). */
+/** Formatea un monto como pesos mexicanos con dos decimales (ej: $12,345.45). */
 export function formatMxn(value: number): string {
-  return currencyFormatter.format(Math.round(value));
+  return currencyFormatter.format(value);
 }
 
 /** Devuelve solo el primer nombre (ej: "WAIRA ZITLALI POPOCA" -> "WAIRA"). */
