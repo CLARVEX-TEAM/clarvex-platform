@@ -8,8 +8,8 @@ import { PowerBiExportError } from "@/lib/integrations/power-bi-errors";
 
 export const dynamic = "force-dynamic";
 
-const SUCCESS_REDIRECT = "/escritorio/datos?powerbi=connected";
-const ERROR_REDIRECT = "/escritorio/datos?powerbi=error";
+const SUCCESS_REDIRECT = "/datos?powerbi=connected";
+const ERROR_REDIRECT = "/datos?powerbi=error";
 
 export async function GET(request: Request) {
   const url = new URL(request.url);

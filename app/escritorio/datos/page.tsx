@@ -16,8 +16,6 @@ import {
   Share2,
   Tags,
   Target,
-  Unplug,
-  Wifi,
   X
 } from "lucide-react";
 import {
@@ -31,6 +29,7 @@ import {
   type SheetSummary
 } from "@/lib/data-source";
 import { Badge, Button, Card } from "@/components/ui";
+import { PowerBiConnectionCard } from "@/components/PowerBiConnectionCard";
 
 const modules: Record<DataSourceType, { label: string; icon: typeof CalendarDays; description: string }> = {
   HORARIOS: { label: "Horarios", icon: CalendarDays, description: "Turnos, descansos y zonas." },
@@ -46,14 +45,6 @@ const providers: Array<{ value: DataSourceProvider; label: string; icon: typeof 
   { value: "EXCEL", label: "Excel", icon: FileSpreadsheet },
   { value: "SHAREPOINT", label: "SharePoint", icon: Share2 }
 ];
-
-type PowerBiStatus = {
-  configuredOnServer: boolean;
-  connected: boolean;
-  accountEmail: string | null;
-  connectedAt: string | null;
-  exportUrl: string;
-};
 
 type ConfigState = {
   type: DataSourceType;
@@ -73,11 +64,6 @@ const frequencies: Array<{ value: DataSourceFrequency; label: string; detail: st
 export default function EscritorioDatos() {
   const [sources, setSources] = useState<DataSourceRecord[]>([]);
   const [loading, setLoading] = useState(true);
-  const [powerBiStatus, setPowerBiStatus] = useState<PowerBiStatus | null>(null);
-  const [powerBiLoading, setPowerBiLoading] = useState(true);
-  const [powerBiConnecting, setPowerBiConnecting] = useState(false);
-  const [powerBiTesting, setPowerBiTesting] = useState(false);
-  const [powerBiDisconnecting, setPowerBiDisconnecting] = useState(false);
   const [config, setConfig] = useState<ConfigState | null>(null);
   const [saving, setSaving] = useState(false);
   const [syncingId, setSyncingId] = useState<string | null>(null);
@@ -88,16 +74,6 @@ export default function EscritorioDatos() {
 
   useEffect(() => {
     void fetchSources();
-    void fetchPowerBiStatus();
-
-    const params = new URLSearchParams(window.location.search);
-    const result = params.get("powerbi");
-    if (result === "connected") {
-      setMessage("Power BI conectado correctamente con Microsoft.");
-    } else if (result === "error") {
-      const reason = params.get("reason");
-      setMessage(reason ? `No se pudo conectar Power BI: ${decodeURIComponent(reason)}` : "No se pudo conectar Power BI.");
-    }
   }, []);
 
   useEffect(() => {
@@ -113,69 +89,6 @@ export default function EscritorioDatos() {
       window.removeEventListener("keydown", closeOnEscape);
     };
   }, [config, saving]);
-
-  async function fetchPowerBiStatus() {
-    setPowerBiLoading(true);
-    try {
-      const response = await fetch("/api/integrations/power-bi/status", { cache: "no-store" });
-      if (!response.ok) throw new Error("No se pudo consultar Power BI.");
-      const payload = await response.json() as { status: PowerBiStatus };
-      setPowerBiStatus(payload.status);
-    } catch {
-      setPowerBiStatus(null);
-    } finally {
-      setPowerBiLoading(false);
-    }
-  }
-
-  async function connectPowerBi() {
-    setPowerBiConnecting(true);
-    setMessage("");
-    try {
-      const response = await fetch("/api/integrations/power-bi/connect", { cache: "no-store" });
-      const payload = await response.json() as { url?: string; error?: string };
-      if (!response.ok || !payload.url) {
-        throw new Error(payload.error ?? "No se pudo iniciar login con Microsoft.");
-      }
-      window.location.href = payload.url;
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "No se pudo conectar Power BI.");
-      setPowerBiConnecting(false);
-    }
-  }
-
-  async function testPowerBi() {
-    setPowerBiTesting(true);
-    setMessage("Probando exportación de Power BI...");
-    try {
-      const response = await fetch("/api/integrations/power-bi/test", { method: "POST" });
-      const payload = await response.json() as { message?: string; error?: string };
-      if (!response.ok) throw new Error(payload.error ?? "La prueba de Power BI falló.");
-      setMessage(payload.message ?? "Power BI respondió correctamente.");
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "La prueba de Power BI falló.");
-    } finally {
-      setPowerBiTesting(false);
-    }
-  }
-
-  async function disconnectPowerBi() {
-    setPowerBiDisconnecting(true);
-    setMessage("");
-    try {
-      const response = await fetch("/api/integrations/power-bi/disconnect", { method: "DELETE" });
-      if (!response.ok) {
-        const payload = await response.json() as { error?: string };
-        throw new Error(payload.error ?? "No se pudo desconectar Power BI.");
-      }
-      await fetchPowerBiStatus();
-      setMessage("Power BI desconectado.");
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "No se pudo desconectar Power BI.");
-    } finally {
-      setPowerBiDisconnecting(false);
-    }
-  }
 
   async function fetchSources() {
     setLoading(true);
@@ -290,70 +203,7 @@ export default function EscritorioDatos() {
         </div>
       </section>
 
-      <Card className="border-volt/20 p-4">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-volt">Experimental</p>
-            <h3 className="mt-1 text-lg font-black tracking-[-0.02em] text-ink">Power BI en vivo</h3>
-            <p className="mt-1 text-[12px] leading-5 text-muted">
-              Conecta tu cuenta Microsoft para exportar ventas del día sin copiar tokens desde DevTools.
-            </p>
-            {powerBiLoading ? (
-              <p className="mt-2 text-[12px] text-muted">Consultando estado...</p>
-            ) : powerBiStatus?.connected ? (
-              <div className="mt-2 space-y-1 text-[12px]">
-                <p className="font-semibold text-ink">
-                  Conectado {powerBiStatus.accountEmail ? `como ${powerBiStatus.accountEmail}` : "con Microsoft"}
-                </p>
-                <p className="text-muted">Desde {formatDate(powerBiStatus.connectedAt)}</p>
-              </div>
-            ) : powerBiStatus?.configuredOnServer ? (
-              <p className="mt-2 text-[12px] font-semibold text-amber-700 dark:text-amber-300">Sin conectar</p>
-            ) : (
-              <p className="mt-2 text-[12px] font-semibold text-amber-700 dark:text-amber-300">
-                OAuth no configurado en el servidor
-              </p>
-            )}
-          </div>
-          <span className="grid size-10 shrink-0 place-items-center rounded-[16px] border border-line bg-blue-50 text-volt dark:bg-blue-950/40">
-            <Wifi size={18} />
-          </span>
-        </div>
-        <div className="mt-4 flex flex-wrap gap-2">
-          {!powerBiStatus?.connected ? (
-            <Button
-              type="button"
-              variant="primary"
-              icon={<Link2 size={16} />}
-              disabled={powerBiConnecting || !powerBiStatus?.configuredOnServer}
-              onClick={() => void connectPowerBi()}
-            >
-              {powerBiConnecting ? "Redirigiendo..." : "Conectar con Microsoft"}
-            </Button>
-          ) : (
-            <>
-              <Button
-                type="button"
-                variant="glass"
-                icon={<RefreshCw size={16} />}
-                disabled={powerBiTesting}
-                onClick={() => void testPowerBi()}
-              >
-                {powerBiTesting ? "Probando..." : "Probar exportación"}
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                icon={<Unplug size={16} />}
-                disabled={powerBiDisconnecting}
-                onClick={() => void disconnectPowerBi()}
-              >
-                Desconectar
-              </Button>
-            </>
-          )}
-        </div>
-      </Card>
+      <PowerBiConnectionCard onMessage={setMessage} />
 
       {message ? <p className="rounded-2xl border border-line bg-blue-50 px-3 py-2 text-[13px] font-semibold text-ink/75 dark:bg-blue-950/30">{message}</p> : null}
 
