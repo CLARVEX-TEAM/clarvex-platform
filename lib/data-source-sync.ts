@@ -2,7 +2,6 @@ import type { DataSource } from "@prisma/client";
 import { encodeSyncLogMessage, getNextSyncAt, serializeDataSource, type DiscountSyncMetrics, type KpiSyncMetrics, type ScheduleSyncMetrics } from "@/lib/data-source";
 import { downloadExcelWorkbook, summarizeWorkbook } from "@/lib/excel-proxy";
 import { buildUserByEmployeeNumber } from "@/lib/employee-match";
-import { shouldRdvSkipKpiUpdate } from "@/lib/kpi-import-source";
 import { parseKpiWorkbook } from "@/lib/kpi-parser";
 import { parsePosDiscountWorkbook } from "@/lib/pos-discount-parser";
 import { prisma } from "@/lib/prisma";
@@ -144,14 +143,12 @@ async function importKpis(workbook: Parameters<typeof parseKpiWorkbook>[0], stor
   const existing = userIds.length > 0 && dates.length > 0
     ? await prisma.kpi.findMany({
         where: { storeId, userId: { in: userIds }, date: { in: dates } },
-        select: { userId: true, date: true, importSource: true }
+        select: { userId: true, date: true }
       })
     : [];
-  const existingByKey = new Map(existing.map((kpi) => [`${kpi.userId}:${kpi.date.toISOString()}`, kpi]));
   const existingKeys = new Set(existing.map((kpi) => `${kpi.userId}:${kpi.date.toISOString()}`));
   let recordsCreated = 0;
   let recordsUpdated = 0;
-  let recordsSkippedPowerBiBridge = 0;
   const errors: string[] = [];
   const importStartedAt = Date.now();
 
@@ -168,30 +165,14 @@ async function importKpis(workbook: Parameters<typeof parseKpiWorkbook>[0], stor
         errors.push(...pendingRecords.map((pending) => (
           `Empleado ${pending.employeeNumber}, fecha ${pending.date.toISOString().slice(0, 10)}: tiempo maximo de importacion excedido.`
         )));
-        return buildKpiMetrics(
-          parsed,
-          users.length,
-          matchedRecords.length,
-          recordsCreated,
-          recordsUpdated,
-          employeesNotFound,
-          errors,
-          recordsSkippedPowerBiBridge
-        );
+        return buildKpiMetrics(parsed, users.length, matchedRecords.length, recordsCreated, recordsUpdated, employeesNotFound, errors);
       }
 
       const key = `${record.userId}:${record.date.toISOString()}`;
-      const previous = existingByKey.get(key);
-      if (previous && shouldRdvSkipKpiUpdate({ importSource: previous.importSource, date: record.date })) {
-        recordsSkippedPowerBiBridge += 1;
-        continue;
-      }
-
       try {
         await prisma.kpi.upsert({
           where: { userId_date: { userId: record.userId, date: record.date } },
           update: {
-            importSource: "RDV",
             weekNumber: record.weekNumber,
             weekStart: record.weekStart,
             weekEnd: record.weekEnd,
@@ -215,7 +196,6 @@ async function importKpis(workbook: Parameters<typeof parseKpiWorkbook>[0], stor
             userId: record.userId,
             storeId,
             date: record.date,
-            importSource: "RDV",
             weekNumber: record.weekNumber,
             weekStart: record.weekStart,
             weekEnd: record.weekEnd,
@@ -250,16 +230,7 @@ async function importKpis(workbook: Parameters<typeof parseKpiWorkbook>[0], stor
     }
   }
 
-  return buildKpiMetrics(
-    parsed,
-    users.length,
-    matchedRecords.length,
-    recordsCreated,
-    recordsUpdated,
-    employeesNotFound,
-    errors,
-    recordsSkippedPowerBiBridge
-  );
+  return buildKpiMetrics(parsed, users.length, matchedRecords.length, recordsCreated, recordsUpdated, employeesNotFound, errors);
 }
 
 function logParsedKpiWeeks(parsed: ReturnType<typeof parseKpiWorkbook>) {
@@ -327,8 +298,7 @@ function buildKpiMetrics(
   recordsCreated: number,
   recordsUpdated: number,
   employeesNotFound: string[],
-  errors: string[],
-  recordsSkippedPowerBiBridge = 0
+  errors: string[]
 ): KpiSyncMetrics {
   // Nombre de cada número de empleado del RDV (para mostrar los no encontrados
   // con nombre, no solo el número).
@@ -354,7 +324,6 @@ function buildKpiMetrics(
     recordsProcessed,
     recordsCreated,
     recordsUpdated,
-    recordsSkippedPowerBiBridge,
     employeesNotFound,
     errors,
     crmTransactionsProcessed: parsed.crmTransactionsTotal,

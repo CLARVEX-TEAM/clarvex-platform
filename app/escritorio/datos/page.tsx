@@ -30,8 +30,6 @@ import {
   type SheetSummary
 } from "@/lib/data-source";
 import { Badge, Button, Card } from "@/components/ui";
-import { PowerBiConnectionCard } from "@/components/PowerBiConnectionCard";
-
 const modules: Record<DataSourceType, { label: string; icon: typeof CalendarDays; description: string }> = {
   HORARIOS: { label: "Horarios", icon: CalendarDays, description: "Turnos, descansos y zonas." },
   KPIS: { label: "KPIs", icon: Gauge, description: "Venta, conversion y productividad." },
@@ -203,8 +201,6 @@ export default function EscritorioDatos() {
           </Button>
         </div>
       </section>
-
-      <PowerBiConnectionCard onMessage={setMessage} />
 
       {message ? <p className="rounded-2xl border border-line bg-blue-50 px-3 py-2 text-[13px] font-semibold text-ink/75 dark:bg-blue-950/30">{message}</p> : null}
 
