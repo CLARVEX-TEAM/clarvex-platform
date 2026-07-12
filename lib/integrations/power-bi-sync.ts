@@ -1,6 +1,6 @@
-import { retailTodayUtc } from "@/lib/ai/context";
 import { matchTeammatesByQuery } from "@/lib/ai/tools/person-query";
 import { buildUserByEmployeeNumber } from "@/lib/employee-match";
+import { calendarFilterToDate, resolveRetailCalendarFilter } from "@/lib/integrations/power-bi-calendar";
 import { getPowerBiAccessTokenForStore } from "@/lib/integrations/power-bi-auth";
 import { exportPowerBI } from "@/lib/integrations/power-bi-export";
 import { PowerBiExportError } from "@/lib/integrations/power-bi-errors";
@@ -9,8 +9,7 @@ import {
   type PowerBiKpiRow
 } from "@/lib/integrations/power-bi-kpi-parser";
 import {
-  patchRetailCalendarFilters,
-  type PowerBiCalendarFilter
+  patchRetailCalendarFilters
 } from "@/lib/integrations/power-bi-payload";
 import { reconstructRdvWeek } from "@/lib/rdv-week";
 import { read as readSpreadsheet } from "@/lib/spreadsheet";
@@ -35,25 +34,6 @@ export type PowerBiSyncResult =
   | { ok: false; error: string };
 
 const KPI_BATCH_SIZE = 25;
-
-export function resolveRetailCalendarFilter(
-  filter?: Partial<PowerBiCalendarFilter>,
-  now = new Date()
-): PowerBiCalendarFilter {
-  if (filter?.day && filter.month && filter.year) {
-    return { day: filter.day, month: filter.month, year: filter.year };
-  }
-  const today = retailTodayUtc(now);
-  return {
-    day: today.getUTCDate(),
-    month: today.getUTCMonth() + 1,
-    year: today.getUTCFullYear()
-  };
-}
-
-function calendarFilterToDate(filter: PowerBiCalendarFilter): Date {
-  return new Date(Date.UTC(filter.year, filter.month - 1, filter.day));
-}
 
 type MatchedPowerBiEmployee = PowerBiKpiRow & {
   userId: string;

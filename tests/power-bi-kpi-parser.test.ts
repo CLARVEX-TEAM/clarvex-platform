@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { parsePowerBiKpiWorkbook } from "../lib/integrations/power-bi-kpi-parser";
-import { resolveRetailCalendarFilter } from "../lib/integrations/power-bi-sync";
+import { resolveRetailCalendarFilter } from "../lib/integrations/power-bi-calendar";
 import * as XLSX from "../lib/spreadsheet";
 
 function buildWorkbook(rows: unknown[][]) {
