@@ -41,6 +41,7 @@ export type KpiSyncMetrics = {
   recordsProcessed: number;
   recordsCreated: number;
   recordsUpdated: number;
+  recordsSkippedPowerBiBridge?: number;
   employeesNotFound: string[];
   // Nombre por número de empleado (del RDV) para los no encontrados, para
   // mostrarlos con nombre en el Centro de Datos. Opcional (logs viejos no lo traen).

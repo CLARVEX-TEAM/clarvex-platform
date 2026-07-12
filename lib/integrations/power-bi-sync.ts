@@ -208,6 +208,7 @@ export async function syncPowerBiKpis(
           await prisma.kpi.upsert({
             where: { userId_date: { userId: record.userId, date: syncDate } },
             update: {
+              importSource: "POWER_BI",
               dailySales: record.dailySales,
               transactions: record.transactions,
               pieces: record.pieces,
@@ -222,6 +223,7 @@ export async function syncPowerBiKpis(
               userId: record.userId,
               storeId,
               date: syncDate,
+              importSource: "POWER_BI",
               weekNumber: record.weekNumber,
               weekStart: record.weekStart,
               weekEnd: record.weekEnd,
@@ -273,10 +275,11 @@ export async function syncPowerBiKpis(
       ? ` ${employeesNotFound.length} colaborador(es) sin match en Clarvex.`
       : "";
     const errorSuffix = errors.length > 0 ? ` ${errors.length} error(es).` : "";
+    const bridgeSuffix = " El RDV de hoy no sobrescribirá estos datos.";
 
     return {
       ok: true,
-      message: `KPIs sincronizados para ${filter.day}/${filter.month}/${filter.year}: ${recordsCreated} creados, ${recordsUpdated} actualizados.${unmatchedSuffix}${errorSuffix}`,
+      message: `KPIs sincronizados para ${filter.day}/${filter.month}/${filter.year}: ${recordsCreated} creados, ${recordsUpdated} actualizados.${unmatchedSuffix}${errorSuffix}${bridgeSuffix}`,
       metrics,
       bytes: buffer.length
     };

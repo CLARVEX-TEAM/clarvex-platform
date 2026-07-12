@@ -178,10 +178,10 @@ export function PowerBiConnectionCard({ onMessage, className }: PowerBiConnectio
     <Card className={`border-volt/20 p-4 ${className ?? ""}`}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-volt">Experimental</p>
+          <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-volt">Puente temporal</p>
           <h3 className="mt-1 text-lg font-black tracking-[-0.02em] text-ink">Power BI en vivo</h3>
           <p className="mt-1 text-[12px] leading-5 text-muted">
-            Conecta con Microsoft o pega el fetch de DevTools para exportar ventas y rellenar KPIs del día.
+            Opcional: rellena KPIs del día mientras el RDV no esté actualizado. El RDV cada hora no pisa los datos de hoy importados aquí.
           </p>
           {loading ? (
             <p className="mt-2 text-[12px] text-muted">Consultando estado...</p>
