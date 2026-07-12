@@ -302,11 +302,17 @@ model EmployeeNumberAlias {
   @@index([userId])
 }
 
+enum KpiImportSource {
+  RDV
+  POWER_BI
+}
+
 model Kpi {
-  id                   String    @id @default(cuid())
+  id                   String           @id @default(cuid())
   userId               String
   storeId              String
   date                 DateTime
+  importSource         KpiImportSource  @default(RDV)
   dailySales           Decimal   @db.Decimal(12, 2)
   monthlySales         Decimal   @db.Decimal(12, 2)
   dailyGoal            Decimal   @db.Decimal(12, 2)

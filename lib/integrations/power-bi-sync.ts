@@ -1,6 +1,6 @@
-import { retailTodayUtc } from "@/lib/ai/context";
 import { matchTeammatesByQuery } from "@/lib/ai/tools/person-query";
 import { buildUserByEmployeeNumber } from "@/lib/employee-match";
+import { calendarFilterToDate, resolveRetailCalendarFilter } from "@/lib/integrations/power-bi-calendar";
 import { getPowerBiAccessTokenForStore } from "@/lib/integrations/power-bi-auth";
 import { exportPowerBI } from "@/lib/integrations/power-bi-export";
 import { PowerBiExportError } from "@/lib/integrations/power-bi-errors";
@@ -35,25 +35,6 @@ export type PowerBiSyncResult =
   | { ok: false; error: string };
 
 const KPI_BATCH_SIZE = 25;
-
-export function resolveRetailCalendarFilter(
-  filter?: Partial<PowerBiCalendarFilter>,
-  now = new Date()
-): PowerBiCalendarFilter {
-  if (filter?.day && filter.month && filter.year) {
-    return { day: filter.day, month: filter.month, year: filter.year };
-  }
-  const today = retailTodayUtc(now);
-  return {
-    day: today.getUTCDate(),
-    month: today.getUTCMonth() + 1,
-    year: today.getUTCFullYear()
-  };
-}
-
-function calendarFilterToDate(filter: PowerBiCalendarFilter): Date {
-  return new Date(Date.UTC(filter.year, filter.month - 1, filter.day));
-}
 
 type MatchedPowerBiEmployee = PowerBiKpiRow & {
   userId: string;
@@ -208,6 +189,7 @@ export async function syncPowerBiKpis(
           await prisma.kpi.upsert({
             where: { userId_date: { userId: record.userId, date: syncDate } },
             update: {
+              importSource: "POWER_BI",
               dailySales: record.dailySales,
               transactions: record.transactions,
               pieces: record.pieces,
@@ -222,6 +204,7 @@ export async function syncPowerBiKpis(
               userId: record.userId,
               storeId,
               date: syncDate,
+              importSource: "POWER_BI",
               weekNumber: record.weekNumber,
               weekStart: record.weekStart,
               weekEnd: record.weekEnd,
@@ -273,10 +256,11 @@ export async function syncPowerBiKpis(
       ? ` ${employeesNotFound.length} colaborador(es) sin match en Clarvex.`
       : "";
     const errorSuffix = errors.length > 0 ? ` ${errors.length} error(es).` : "";
+    const bridgeSuffix = " El RDV de hoy no sobrescribirá estos datos.";
 
     return {
       ok: true,
-      message: `KPIs sincronizados para ${filter.day}/${filter.month}/${filter.year}: ${recordsCreated} creados, ${recordsUpdated} actualizados.${unmatchedSuffix}${errorSuffix}`,
+      message: `KPIs sincronizados para ${filter.day}/${filter.month}/${filter.year}: ${recordsCreated} creados, ${recordsUpdated} actualizados.${unmatchedSuffix}${errorSuffix}${bridgeSuffix}`,
       metrics,
       bytes: buffer.length
     };
