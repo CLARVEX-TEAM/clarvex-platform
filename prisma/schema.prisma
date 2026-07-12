@@ -45,31 +45,6 @@ model Store {
   aiRecommendations      AiRecommendationHistory[]
   aiDailySummaries       AiDailySummary[]
   retailAlertLogs        RetailAlertLog[]
-  powerBiConnection      StorePowerBiConnection?
-}
-
-enum PowerBiAuthMode {
-  OAUTH
-  DEVTOOLS
-}
-
-model StorePowerBiConnection {
-  id                    String          @id @default(cuid())
-  storeId               String          @unique
-  authMode              PowerBiAuthMode @default(OAUTH)
-  msAccountEmail        String?
-  encryptedRefreshToken String?
-  encryptedAccessToken  String?
-  accessTokenExpiresAt  DateTime?
-  exportUrl             String
-  exportPayloadTemplate Json
-  connectedByUserId     String?
-  connectedAt           DateTime        @default(now())
-  updatedAt             DateTime        @updatedAt
-  store                 Store           @relation(fields: [storeId], references: [id], onDelete: Cascade)
-  connectedBy           User?           @relation("PowerBiConnectedBy", fields: [connectedByUserId], references: [id], onDelete: SetNull)
-
-  @@index([connectedByUserId])
 }
 
 model StoreFixture {
@@ -185,7 +160,6 @@ model User {
   aiPlanHistories        AiPlanHistory[]
   aiRecommendations      AiRecommendationHistory[]
   retailAlertLogs        RetailAlertLog[]
-  powerBiConnections     StorePowerBiConnection[] @relation("PowerBiConnectedBy")
 }
 
 model TrainingResource {
@@ -302,17 +276,11 @@ model EmployeeNumberAlias {
   @@index([userId])
 }
 
-enum KpiImportSource {
-  RDV
-  POWER_BI
-}
-
 model Kpi {
-  id                   String           @id @default(cuid())
+  id                   String    @id @default(cuid())
   userId               String
   storeId              String
   date                 DateTime
-  importSource         KpiImportSource  @default(RDV)
   dailySales           Decimal   @db.Decimal(12, 2)
   monthlySales         Decimal   @db.Decimal(12, 2)
   dailyGoal            Decimal   @db.Decimal(12, 2)
