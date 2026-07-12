@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
-import { analyzeDevToolsFetch, parseDevToolsFetch } from "../lib/integrations/power-bi-fetch-parser";
+import { analyzeDevToolsFetch, decodeJwtExpiresAt, parseDevToolsConnection, parseDevToolsFetch } from "../lib/integrations/power-bi-fetch-parser";
 import {
   exportPowerBI,
   patchExportPayload,
@@ -41,6 +41,23 @@ test("analyzeDevToolsFetch conserva solo headers imprescindibles", () => {
   assert.ok(analysis.removedHeaders.includes("sec-fetch-mode"));
   assert.equal(analysis.reusableWithUrlTokenPayload, true);
   assert.ok(analysis.dynamicFields.some((field) => /artifactId|executeSemanticQueryRequest/i.test(field)));
+});
+
+test("parseDevToolsConnection extrae token, url y payload del fetch", () => {
+  const source = readFileSync(REAL_FETCH_PATH, "utf8");
+  const connection = parseDevToolsConnection(source);
+  assert.match(connection.bearerToken, /^Bearer /);
+  assert.match(connection.exportUrl, /export\/xlsx/);
+  assert.equal((connection.exportPayloadTemplate as { artifactId: number }).artifactId, 6844699);
+});
+
+test("decodeJwtExpiresAt lee exp de un JWT", () => {
+  const exp = Math.floor(Date.now() / 1000) + 3600;
+  const payload = Buffer.from(JSON.stringify({ exp, upn: "demo@grupoaxo.com" })).toString("base64url");
+  const token = `Bearer header.${payload}.signature`;
+  const expiresAt = decodeJwtExpiresAt(token);
+  assert.ok(expiresAt instanceof Date);
+  assert.equal(expiresAt?.getTime(), exp * 1000);
 });
 
 test("fetch real de métricas: headers mínimos y payload anidado", () => {
