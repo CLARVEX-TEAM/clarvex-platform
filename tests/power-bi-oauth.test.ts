@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createPowerBiOAuthState, verifyPowerBiOAuthState } from "../lib/integrations/power-bi-auth";
+import { createPowerBiOAuthState, verifyPowerBiOAuthState } from "../lib/integrations/power-bi-oauth-client";
 import {
   decryptPowerBiSecret,
   encryptPowerBiSecret
