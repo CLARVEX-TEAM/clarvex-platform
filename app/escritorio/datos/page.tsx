@@ -16,6 +16,7 @@ import {
   Share2,
   Tags,
   Target,
+  Wifi,
   X
 } from "lucide-react";
 import {
