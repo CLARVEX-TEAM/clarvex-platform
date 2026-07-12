@@ -9,7 +9,8 @@ import {
   type PowerBiKpiRow
 } from "@/lib/integrations/power-bi-kpi-parser";
 import {
-  patchRetailCalendarFilters
+  patchRetailCalendarFilters,
+  type PowerBiCalendarFilter
 } from "@/lib/integrations/power-bi-payload";
 import { reconstructRdvWeek } from "@/lib/rdv-week";
 import { read as readSpreadsheet } from "@/lib/spreadsheet";
