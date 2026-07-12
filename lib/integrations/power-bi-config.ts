@@ -38,6 +38,10 @@ export function isPowerBiOAuthConfigured(): boolean {
   );
 }
 
+export function isPowerBiTokenStorageConfigured(): boolean {
+  return Boolean(process.env.POWER_BI_TOKEN_ENCRYPTION_KEY?.trim());
+}
+
 /** Origen público de la app (post-login OAuth). Evita localhost detrás de proxy. */
 export function getPowerBiPublicOrigin(): string {
   const redirectUri = process.env.POWER_BI_REDIRECT_URI?.trim();

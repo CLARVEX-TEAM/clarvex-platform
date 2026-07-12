@@ -204,3 +204,80 @@ export function minimalExportHeaders(bearerToken: string): Record<string, string
     accept: "application/json, application/octet-stream, */*"
   };
 }
+
+function normalizeBearerToken(raw: string): string {
+  const token = raw.trim();
+  if (!token) throw new Error("Bearer token vacío.");
+  return token.startsWith("Bearer ") ? token : `Bearer ${token}`;
+}
+
+/** Extrae Authorization de un fetch copiado desde DevTools. */
+export function extractBearerTokenFromFetch(source: string): string {
+  const parsed = parseDevToolsFetch(source);
+  const auth = parsed.headers.authorization;
+  if (!auth) {
+    throw new Error("No se encontró header Authorization en el fetch pegado.");
+  }
+  return normalizeBearerToken(auth);
+}
+
+type JwtPayload = {
+  exp?: number;
+  upn?: string;
+  preferred_username?: string;
+  unique_name?: string;
+};
+
+function decodeJwtPayload(bearerToken: string): JwtPayload | null {
+  const token = bearerToken.replace(/^Bearer\s+/i, "").trim();
+  const parts = token.split(".");
+  if (parts.length < 2) return null;
+  try {
+    const normalized = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+    const padded = normalized + "=".repeat((4 - (normalized.length % 4)) % 4);
+    return JSON.parse(Buffer.from(padded, "base64").toString("utf8")) as JwtPayload;
+  } catch {
+    return null;
+  }
+}
+
+/** Fecha de expiración del JWT (típicamente ~60–90 min en Power BI). */
+export function decodeJwtExpiresAt(bearerToken: string): Date | null {
+  const payload = decodeJwtPayload(bearerToken);
+  if (!payload || typeof payload.exp !== "number") return null;
+  return new Date(payload.exp * 1000);
+}
+
+/** Cuenta Microsoft asociada al token, si viene en el JWT. */
+export function decodeJwtAccountEmail(bearerToken: string): string | null {
+  const payload = decodeJwtPayload(bearerToken);
+  if (!payload) return null;
+  const email = payload.upn ?? payload.preferred_username ?? payload.unique_name;
+  return typeof email === "string" && email.includes("@") ? email : null;
+}
+
+export type DevToolsConnectionInput = {
+  bearerToken: string;
+  exportUrl: string;
+  exportPayloadTemplate: Record<string, unknown>;
+};
+
+/** Parsea un fetch de DevTools en credenciales reutilizables en servidor. */
+export function parseDevToolsConnection(source: string): DevToolsConnectionInput {
+  const parsed = parseDevToolsFetch(source);
+  if (parsed.method !== "POST") {
+    throw new Error("El fetch debe ser POST hacia export/xlsx.");
+  }
+  if (!parsed.url.includes("/export/xlsx")) {
+    throw new Error("La URL del fetch no parece una exportación Power BI (/export/xlsx).");
+  }
+  if (!parsed.body || typeof parsed.body !== "object" || Array.isArray(parsed.body)) {
+    throw new Error("El body del fetch debe ser un objeto JSON.");
+  }
+
+  return {
+    bearerToken: extractBearerTokenFromFetch(source),
+    exportUrl: parsed.url,
+    exportPayloadTemplate: parsed.body as Record<string, unknown>
+  };
+}

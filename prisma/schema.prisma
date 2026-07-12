@@ -48,18 +48,26 @@ model Store {
   powerBiConnection      StorePowerBiConnection?
 }
 
+enum PowerBiAuthMode {
+  OAUTH
+  DEVTOOLS
+}
+
 model StorePowerBiConnection {
-  id                    String   @id @default(cuid())
-  storeId               String   @unique
+  id                    String          @id @default(cuid())
+  storeId               String          @unique
+  authMode              PowerBiAuthMode @default(OAUTH)
   msAccountEmail        String?
-  encryptedRefreshToken String
+  encryptedRefreshToken String?
+  encryptedAccessToken  String?
+  accessTokenExpiresAt  DateTime?
   exportUrl             String
   exportPayloadTemplate Json
   connectedByUserId     String?
-  connectedAt           DateTime @default(now())
-  updatedAt             DateTime @updatedAt
-  store                 Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
-  connectedBy           User?    @relation("PowerBiConnectedBy", fields: [connectedByUserId], references: [id], onDelete: SetNull)
+  connectedAt           DateTime        @default(now())
+  updatedAt             DateTime        @updatedAt
+  store                 Store           @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  connectedBy           User?           @relation("PowerBiConnectedBy", fields: [connectedByUserId], references: [id], onDelete: SetNull)
 
   @@index([connectedByUserId])
 }
