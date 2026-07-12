@@ -37,3 +37,18 @@ export function isPowerBiOAuthConfigured(): boolean {
     getPowerBiOAuthConfig() !== null && Boolean(process.env.POWER_BI_TOKEN_ENCRYPTION_KEY?.trim())
   );
 }
+
+/** Origen público de la app (post-login OAuth). Evita localhost detrás de proxy. */
+export function getPowerBiPublicOrigin(): string {
+  const redirectUri = process.env.POWER_BI_REDIRECT_URI?.trim();
+  if (redirectUri) {
+    try {
+      return new URL(redirectUri).origin;
+    } catch {
+      // ignore invalid URL
+    }
+  }
+  const webauthnOrigin = process.env.WEBAUTHN_ORIGIN?.trim();
+  if (webauthnOrigin) return webauthnOrigin;
+  return "https://app.adrianluna.mx";
+}

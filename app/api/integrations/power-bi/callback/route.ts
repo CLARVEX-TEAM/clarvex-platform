@@ -5,11 +5,16 @@ import {
   verifyPowerBiOAuthState
 } from "@/lib/integrations/power-bi-auth";
 import { PowerBiExportError } from "@/lib/integrations/power-bi-errors";
+import { getPowerBiPublicOrigin } from "@/lib/integrations/power-bi-config";
 
 export const dynamic = "force-dynamic";
 
 const SUCCESS_REDIRECT = "/datos?powerbi=connected";
 const ERROR_REDIRECT = "/datos?powerbi=error";
+
+function redirectTo(path: string) {
+  return NextResponse.redirect(new URL(path, getPowerBiPublicOrigin()));
+}
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
@@ -18,11 +23,11 @@ export async function GET(request: Request) {
   const oauthError = url.searchParams.get("error_description") ?? url.searchParams.get("error");
 
   if (oauthError) {
-    return NextResponse.redirect(new URL(`${ERROR_REDIRECT}&reason=${encodeURIComponent(oauthError)}`, url.origin));
+    return redirectTo(`${ERROR_REDIRECT}&reason=${encodeURIComponent(oauthError)}`);
   }
 
   if (!code || !state) {
-    return NextResponse.redirect(new URL(`${ERROR_REDIRECT}&reason=missing_code`, url.origin));
+    return redirectTo(`${ERROR_REDIRECT}&reason=missing_code`);
   }
 
   try {
@@ -34,9 +39,9 @@ export async function GET(request: Request) {
       refreshToken: tokens.refreshToken,
       accountEmail: tokens.accountEmail
     });
-    return NextResponse.redirect(new URL(SUCCESS_REDIRECT, url.origin));
+    return redirectTo(SUCCESS_REDIRECT);
   } catch (error) {
     const reason = error instanceof PowerBiExportError ? error.message : "oauth_failed";
-    return NextResponse.redirect(new URL(`${ERROR_REDIRECT}&reason=${encodeURIComponent(reason)}`, url.origin));
+    return redirectTo(`${ERROR_REDIRECT}&reason=${encodeURIComponent(reason)}`);
   }
 }
