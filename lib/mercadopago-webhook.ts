@@ -1,13 +1,19 @@
 import crypto from "node:crypto";
 
+type MpWebhookEnv = {
+  secret?: string;
+  nodeEnv?: string;
+};
+
 // Verificación de firma de Mercado Pago (defensa en profundidad; la fuente de
 // verdad sigue siendo el re-fetch del pago). Manifest:
 // id:<data.id>;request-id:<x-request-id>;ts:<ts>;
 // En producción el secreto es obligatorio (fail-closed).
-export function verifyMpSignature(request: Request, dataId: string): boolean {
-  const secret = process.env.MERCADOPAGO_WEBHOOK_SECRET;
+export function verifyMpSignature(request: Request, dataId: string, env: MpWebhookEnv = {}): boolean {
+  const secret = env.secret ?? process.env.MERCADOPAGO_WEBHOOK_SECRET;
+  const nodeEnv = env.nodeEnv ?? process.env.NODE_ENV;
   if (!secret) {
-    if (process.env.NODE_ENV === "production") return false;
+    if (nodeEnv === "production") return false;
     return true; // solo en desarrollo/local sin secreto configurado
   }
   const signature = request.headers.get("x-signature") ?? "";

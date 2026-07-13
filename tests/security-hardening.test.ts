@@ -38,35 +38,22 @@ test("requireCron rechaza sin secreto o con Bearer inválido", () => {
 });
 
 test("verifyMpSignature falla cerrado en producción sin secreto", () => {
-  const prevSecret = process.env.MERCADOPAGO_WEBHOOK_SECRET;
-  const prevEnv = process.env.NODE_ENV;
-  try {
-    delete process.env.MERCADOPAGO_WEBHOOK_SECRET;
-    process.env.NODE_ENV = "production";
-    const req = new Request("http://localhost/api/webhooks/mercadopago");
-    assert.equal(verifyMpSignature(req, "123"), false);
+  const req = new Request("http://localhost/api/webhooks/mercadopago");
+  assert.equal(verifyMpSignature(req, "123", { secret: undefined, nodeEnv: "production" }), false);
+  assert.equal(verifyMpSignature(req, "123", { secret: undefined, nodeEnv: "development" }), true);
 
-    process.env.NODE_ENV = "development";
-    assert.equal(verifyMpSignature(req, "123"), true);
-
-    process.env.MERCADOPAGO_WEBHOOK_SECRET = "whsec-test";
-    process.env.NODE_ENV = "production";
-    const ts = "1710000000";
-    const requestId = "req-1";
-    const dataId = "pay-9";
-    const manifest = `id:${dataId};request-id:${requestId};ts:${ts};`;
-    const v1 = crypto.createHmac("sha256", "whsec-test").update(manifest).digest("hex");
-    const signed = new Request("http://localhost/api/webhooks/mercadopago", {
-      headers: {
-        "x-request-id": requestId,
-        "x-signature": `ts=${ts},v1=${v1}`
-      }
-    });
-    assert.equal(verifyMpSignature(signed, dataId), true);
-    assert.equal(verifyMpSignature(signed, "other"), false);
-  } finally {
-    if (prevSecret === undefined) delete process.env.MERCADOPAGO_WEBHOOK_SECRET;
-    else process.env.MERCADOPAGO_WEBHOOK_SECRET = prevSecret;
-    process.env.NODE_ENV = prevEnv;
-  }
+  const ts = "1710000000";
+  const requestId = "req-1";
+  const dataId = "pay-9";
+  const secret = "whsec-test";
+  const manifest = `id:${dataId};request-id:${requestId};ts:${ts};`;
+  const v1 = crypto.createHmac("sha256", secret).update(manifest).digest("hex");
+  const signed = new Request("http://localhost/api/webhooks/mercadopago", {
+    headers: {
+      "x-request-id": requestId,
+      "x-signature": `ts=${ts},v1=${v1}`
+    }
+  });
+  assert.equal(verifyMpSignature(signed, dataId, { secret, nodeEnv: "production" }), true);
+  assert.equal(verifyMpSignature(signed, "other", { secret, nodeEnv: "production" }), false);
 });

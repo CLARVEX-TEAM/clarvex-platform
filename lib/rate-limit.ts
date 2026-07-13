@@ -23,7 +23,7 @@ function checkMemory(key: string, max: number, windowMs: number, now: number): R
   entry.count += 1;
   // Limpieza oportunista.
   if (Math.random() < 0.02) {
-    for (const [k, v] of memoryBuckets) {
+    for (const [k, v] of Array.from(memoryBuckets.entries())) {
       if (v.resetAt < now) memoryBuckets.delete(k);
     }
   }
