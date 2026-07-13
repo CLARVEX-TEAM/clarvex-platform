@@ -73,7 +73,15 @@ export async function verifySessionToken(token: string): Promise<Session | null>
 export const sessionCookieOptions = {
   httpOnly: true,
   secure: process.env.NODE_ENV === "production",
-  sameSite: "strict" as const,
+  // NO subir a "strict": rompe la PWA. Al abrir la app desde el ícono del
+  // launcher (arranque en frío), Android trata esa primera navegación como
+  // iniciada desde fuera del sitio y NO manda las cookies Strict — el usuario
+  // acababa en /login cada vez que cerraba la app desde recientes.
+  //
+  // "lax" sigue cubriendo el CSRF que importa: no se envía en peticiones
+  // cross-site que cambian estado (POST/PUT/DELETE). Strict solo añadía
+  // protección en navegaciones GET de nivel superior, que aquí son de lectura.
+  sameSite: "lax" as const,
   path: "/",
   maxAge: SESSION_TTL_SECONDS
 };
