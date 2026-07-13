@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { isApiError, requireSession } from "@/lib/api";
 import { buildUserDashboardKpi, dashboardDateKey, dashboardDateRange } from "@/lib/dashboard-kpi";
 import { prisma } from "@/lib/prisma";
+import { signR2Url } from "@/lib/r2";
 
 export const dynamic = "force-dynamic";
 
@@ -53,6 +54,14 @@ export async function GET(request: Request) {
   };
   const dashboardDaily = buildUserDashboardKpi(dashboardDate, dashboardRow);
 
+  // Evidencias, bitácora y comunicados se sirven con URL firmada de corta vida:
+  // el bucket de R2 no expone estos objetos públicamente. La firma es local (no
+  // hace red), así que no añade latencia perceptible.
+  const [signedEvidenceUrls, signedLogEvidence, signedAnnouncementImages] = await Promise.all([
+    Promise.all(evidences.map((evidence) => signR2Url(evidence.url))),
+    Promise.all(logEntries.map((entry) => signR2Url(entry.evidenceUrl))),
+    Promise.all(announcements.map((announcement) => signR2Url(announcement.imageUrl)))
+  ]);
 
   return NextResponse.json({
     // Los saldos de RH (horas, vacaciones, días pagados) son sensibles: solo los
@@ -72,10 +81,10 @@ export async function GET(request: Request) {
     dashboardDaily,
     plans: plans.map((plan) => ({ id: plan.id, userId: plan.userId, date: plan.date.toISOString().slice(0, 10), dailyGoal: Number(plan.dailyGoal), focus: plan.focus, message: plan.message, published: plan.publishedAt !== null, activities: plan.activities.map((activity) => ({ id: activity.id, title: activity.title, completed: activity.completed, autoKey: activity.autoKey })) })),
     pendings: pendings.map((pending) => ({ id: pending.id, title: pending.title, description: pending.description, category: lower(pending.category), priority: lower(pending.priority), ownerId: pending.ownerId, status: lower(pending.status), dueDate: pending.dueDate.toISOString().slice(0, 10) })),
-    logEntries: logEntries.map((entry) => ({ id: entry.id, date: entry.createdAt.toISOString(), authorId: entry.authorId, category: entry.category, description: entry.description, evidenceUrl: entry.evidenceUrl })),
-    announcements: announcements.map((announcement) => ({ id: announcement.id, title: announcement.title, body: announcement.body, imageUrl: announcement.imageUrl ?? null, authorId: announcement.authorId, date: announcement.createdAt.toISOString().slice(0, 10), readBy: announcement.reads.map((read) => read.userId), reactions: announcement.reactions.map((reaction) => ({ emoji: reaction.emoji, userId: reaction.userId })) })),
+    logEntries: logEntries.map((entry, index) => ({ id: entry.id, date: entry.createdAt.toISOString(), authorId: entry.authorId, category: entry.category, description: entry.description, evidenceUrl: signedLogEvidence[index] })),
+    announcements: announcements.map((announcement, index) => ({ id: announcement.id, title: announcement.title, body: announcement.body, imageUrl: signedAnnouncementImages[index], authorId: announcement.authorId, date: announcement.createdAt.toISOString().slice(0, 10), readBy: announcement.reads.map((read) => read.userId), reactions: announcement.reactions.map((reaction) => ({ emoji: reaction.emoji, userId: reaction.userId })) })),
     schedules: schedules.map((shift) => ({ id: shift.id, userId: shift.userId, day: shift.day, start: shift.startTime ?? shift.statusRaw ?? shift.status, end: shift.endTime ?? "", zone: shift.zone ?? "" })),
-    evidences: evidences.map((evidence) => ({ id: evidence.id, storeId: evidence.storeId, uploadedById: evidence.uploadedById, pendingId: evidence.pendingId, logEntryId: evidence.logEntryId, taskId: evidence.taskId, url: evidence.url, fileName: evidence.fileName, mimeType: evidence.mimeType, note: evidence.note, createdAt: evidence.createdAt.toISOString() })),
+    evidences: evidences.map((evidence, index) => ({ id: evidence.id, storeId: evidence.storeId, uploadedById: evidence.uploadedById, pendingId: evidence.pendingId, logEntryId: evidence.logEntryId, taskId: evidence.taskId, url: signedEvidenceUrls[index] ?? evidence.url, fileName: evidence.fileName, mimeType: evidence.mimeType, note: evidence.note, createdAt: evidence.createdAt.toISOString() })),
     commissionRules: commissionRules.map((rule) => ({ id: rule.id, storeId: rule.storeId, role: rule.role, minSales: Number(rule.minSales), maxSales: rule.maxSales === null ? null : Number(rule.maxSales), minAchievement: Number(rule.minAchievement), maxAchievement: rule.maxAchievement === null ? null : Number(rule.maxAchievement), commissionPercent: Number(rule.commissionPercent), active: rule.active }))
   }, { headers: { "Cache-Control": "private, no-store" } });
 }

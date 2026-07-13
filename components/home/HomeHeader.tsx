@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { Bell, LogOut } from "lucide-react";
+import { photoSrc } from "@/lib/photo-src";
 import type { Role } from "@/lib/types";
 import { timeGreeting } from "@/lib/greeting";
 
@@ -49,8 +50,8 @@ export function HomeHeader({ name, role, photoUrl, storeName, lastUpdated, onLog
               className="relative size-12 overflow-hidden rounded-full"
               style={{ boxShadow: "0 0 0 2px rgba(37,99,235,0.18), 0 0 0 4px rgba(37,99,235,0.07), 0 4px 14px rgba(37,99,235,0.16)" }}
             >
-              {photoUrl ? (
-                <Image src={photoUrl} alt={name} fill sizes="48px" className="object-cover" />
+              {photoSrc(photoUrl) ? (
+                <Image src={photoSrc(photoUrl)!} alt={name} fill sizes="48px" className="object-cover" unoptimized />
               ) : (
                 <span className="grid size-full place-items-center rounded-full bg-[#2563EB] text-base font-black text-white">
                   {firstName.slice(0, 2).toUpperCase()}

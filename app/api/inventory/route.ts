@@ -6,7 +6,7 @@ import { createNotifications } from "@/lib/notifications";
 import { dispatchPushToUsers } from "@/lib/push";
 import { firstName } from "@/lib/daily-summary";
 import { prisma } from "@/lib/prisma";
-import { deleteFromR2, uploadToR2 } from "@/lib/r2";
+import { deleteFromR2, signR2Url, uploadToR2 } from "@/lib/r2";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -24,13 +24,16 @@ type ReportWithUsers = {
   resolvedBy: { name: string } | null;
 };
 
-function serialize(report: ReportWithUsers) {
+// La foto del PRODUCTO vive en R2 y se sirve firmada (el bucket es privado).
+// La foto del REPORTERO es una foto de perfil: se deja tal cual y el cliente la
+// resuelve contra el proxy autenticado (lib/photo-src).
+async function serialize(report: ReportWithUsers) {
   return {
     id: report.id,
     productName: report.productName,
     category: report.category,
     note: report.note,
-    photoUrl: report.photoUrl,
+    photoUrl: await signR2Url(report.photoUrl),
     status: report.status,
     createdAt: report.createdAt.toISOString(),
     resolvedAt: report.resolvedAt?.toISOString() ?? null,
@@ -48,7 +51,7 @@ export async function GET() {
     // Abiertos primero, luego por fecha (recientes arriba).
     orderBy: [{ status: "asc" }, { createdAt: "desc" }]
   });
-  return NextResponse.json({ reports: reports.map(serialize) }, { headers: { "Cache-Control": "private, no-store" } });
+  return NextResponse.json({ reports: await Promise.all(reports.map(serialize)) }, { headers: { "Cache-Control": "private, no-store" } });
 }
 
 export async function POST(request: Request) {
@@ -95,7 +98,7 @@ export async function POST(request: Request) {
       dispatchPushToUsers(managerIds, { title, body, tag: "inventario", url: "/faltantes" }).catch(() => undefined);
     }
 
-    return NextResponse.json({ report: serialize(report) }, { status: 201 });
+    return NextResponse.json({ report: await serialize(report) }, { status: 201 });
   } catch (error) {
     if (photoUrl) await deleteFromR2(photoUrl).catch(() => undefined);
     return NextResponse.json({ error: "No se pudo guardar el reporte." }, { status: 500 });

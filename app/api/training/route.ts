@@ -5,7 +5,7 @@ import { validateEvidenceImage } from "@/lib/evidence";
 import { prisma } from "@/lib/prisma";
 import { createNotifications } from "@/lib/notifications";
 import { dispatchPushToUsers } from "@/lib/push";
-import { deleteFromR2, uploadToR2 } from "@/lib/r2";
+import { deleteFromR2, signR2Url, uploadToR2 } from "@/lib/r2";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -30,15 +30,19 @@ export async function GET() {
     prisma.user.count({ where: { storeId: session.storeId, role: "ASESOR", active: true } })
   ]);
 
+  // fileUrl vive en R2 (bucket privado) → se firma. linkUrl es un enlace externo:
+  // signR2Url lo devuelve intacto al no reconocerlo como objeto del bucket.
+  const signedFileUrls = await Promise.all(resources.map((resource) => signR2Url(resource.fileUrl)));
+
   return NextResponse.json({
     advisorCount,
-    resources: resources.map((resource) => ({
+    resources: resources.map((resource, index) => ({
       id: resource.id,
       title: resource.title,
       description: resource.description,
       category: resource.category,
       linkUrl: resource.linkUrl,
-      fileUrl: resource.fileUrl,
+      fileUrl: signedFileUrls[index],
       fileName: resource.fileName,
       author: resource.author.name,
       createdAt: resource.createdAt.toISOString(),

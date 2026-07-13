@@ -42,12 +42,20 @@ const nextConfig = {
         hostname: "pub-650b73e1731f47a3b905fb9c615cb596.r2.dev",
         pathname: "/**",
       },
+      // Endpoint S3 de R2: destino de las URLs firmadas (evidencias, comunicados,
+      // capacitación, fotos de producto). Sin esto next/image las rechaza.
+      {
+        protocol: "https",
+        hostname: "*.r2.cloudflarestorage.com",
+        pathname: "/**",
+      },
     ],
   },
 
   async headers() {
     // a.espncdn.com: escudos. Klipy CDN: GIFs del chat (hosts allowlisted en servidor).
-    const imgSrc = ["'self'", "data:", "blob:", r2Domain, "https://a.espncdn.com", "https://*.klipy.com", "https://klipy.com"].filter(Boolean).join(" ");
+    // *.r2.cloudflarestorage.com: URLs firmadas de R2 (bucket privado).
+    const imgSrc = ["'self'", "data:", "blob:", r2Domain, "https://*.r2.cloudflarestorage.com", "https://a.espncdn.com", "https://*.klipy.com", "https://klipy.com"].filter(Boolean).join(" ");
     // 'unsafe-inline' es necesario para el runtime de Next.js sin nonces en layout;
     // 'unsafe-eval' solo en desarrollo (HMR).
     const scriptSrc = ["'self'", "'unsafe-inline'", process.env.NODE_ENV === "development" ? "'unsafe-eval'" : ""].filter(Boolean).join(" ");

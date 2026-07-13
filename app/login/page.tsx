@@ -17,7 +17,7 @@ import {
 } from "@/lib/auth";
 import type { User } from "@/lib/types";
 import { useTheme } from "@/components/ThemeProvider";
-import { markDesktopFreshLogin, saveProfile } from "@/lib/desktop-profiles";
+import { markDesktopFreshLogin, saveProfileWithAvatar } from "@/lib/desktop-profiles";
 
 import { EmployeeStep } from "./EmployeeStep";
 import { GreetingStep } from "./GreetingStep";
@@ -117,7 +117,7 @@ export default function LoginPage() {
     setError("");
     try {
       const result = await loginWithPin(employeeNumber, pinValue);
-      saveProfile(result.user);
+      await saveProfileWithAvatar(result.user);
       markDesktopFreshLogin();
       router.replace(result.user.role === "ASESOR" ? "/advisor" : "/manager");
       router.refresh();
@@ -231,7 +231,7 @@ export default function LoginPage() {
       const options = await getBiometricAuthOptions(employeeNumber);
       const authentication = await startAuthentication({ optionsJSON: options });
       const result = await authenticateBiometric(employeeNumber, authentication);
-      saveProfile(result.user);
+      await saveProfileWithAvatar(result.user);
       markDesktopFreshLogin();
       router.replace(result.user.role === "ASESOR" ? "/advisor" : "/manager");
       router.refresh();
@@ -330,8 +330,8 @@ export default function LoginPage() {
               error={error}
               isDark={isDark}
               card={card}
-              onEnter={() => {
-                if (user) saveProfile(user);
+              onEnter={async () => {
+                if (user) await saveProfileWithAvatar(user);
                 markDesktopFreshLogin();
                 router.replace(destination);
                 router.refresh();

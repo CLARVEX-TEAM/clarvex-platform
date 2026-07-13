@@ -9,7 +9,7 @@ import { inspectEmployee, loginWithPin } from "@/lib/auth";
 import {
   getSavedProfiles,
   removeProfile,
-  saveProfile,
+  saveProfileWithAvatar,
   type SavedProfile
 } from "@/lib/desktop-profiles";
 import type { User } from "@/lib/types";
@@ -135,7 +135,7 @@ export function DesktopLock({ onUnlock }: { onUnlock: (user: User) => void }) {
     setBusy(true);
     try {
       const { user } = await loginWithPin(employeeNumber, next);
-      saveProfile(user);
+      await saveProfileWithAvatar(user);
       onUnlock(user);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "PIN incorrecto.");

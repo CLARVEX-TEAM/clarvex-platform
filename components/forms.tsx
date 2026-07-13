@@ -6,6 +6,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import type { HTMLMotionProps } from "framer-motion";
 import { CalendarDays, Check, ChevronDown, Plus, X } from "lucide-react";
 import Image from "next/image";
+import { photoSrc } from "@/lib/photo-src";
 import { cn } from "@/lib/utils";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -461,13 +462,14 @@ export function AppButton({
 // ─── AvatarSmall (internal helper) ───────────────────────────────────────────
 
 function AvatarSmall({ name, photoUrl, size = 36 }: { name: string; photoUrl?: string | null; size?: number }) {
-  if (photoUrl) {
+  const src = photoSrc(photoUrl);
+  if (src) {
     return (
       <span
         className="relative shrink-0 overflow-hidden rounded-full"
         style={{ width: size, height: size }}
       >
-        <Image src={photoUrl} alt={name} fill sizes="48px" className="object-cover" />
+        <Image src={src} alt={name} fill sizes="48px" className="object-cover" unoptimized />
       </span>
     );
   }

@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { photoSrc } from "@/lib/photo-src";
 import { cn } from "@/lib/utils";
 
 export function ProfileAvatar({
@@ -15,16 +16,17 @@ export function ProfileAvatar({
   className?: string;
 }) {
   const initials = name.slice(0, 2).toUpperCase();
+  const src = photoSrc(photoUrl);
   const sizes = {
     sm: "size-10 rounded-2xl text-sm",
     md: "size-12 rounded-[1.15rem] text-base",
     lg: "size-20 rounded-[1.55rem] text-2xl"
   };
 
-  if (photoUrl) {
+  if (src) {
     return (
       <span className={cn("relative block shrink-0 overflow-hidden ring-1 ring-black/5 dark:ring-white/10", sizes[size], className)}>
-        <Image src={photoUrl} alt={name} fill sizes="80px" className="object-cover" />
+        <Image src={src} alt={name} fill sizes="80px" className="object-cover" unoptimized />
       </span>
     );
   }

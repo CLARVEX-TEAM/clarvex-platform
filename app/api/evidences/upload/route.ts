@@ -5,7 +5,7 @@ import { authorizeResource, parseResourceTarget, targetWhere, validateEvidenceIm
 import { createNotifications } from "@/lib/notifications";
 import { dispatchPushToUsers } from "@/lib/push";
 import { prisma } from "@/lib/prisma";
-import { deleteFromR2, uploadToR2 } from "@/lib/r2";
+import { deleteFromR2, signR2Url, uploadToR2 } from "@/lib/r2";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -113,7 +113,11 @@ export async function POST(request: Request) {
     const evidenceUrl = resource.kind === "announcement" ? "/comunicados" : resource.kind === "task" ? "/plan" : resource.kind === "logEntry" ? "/bitacora" : "/pendientes";
     dispatchPushToUsers(result.recipientList, { title: "📎 Nueva evidencia", body: `${session.name} subió evidencia en "${resource.title}"`, tag: "evidencia", url: evidenceUrl }).catch(() => undefined);
 
-    return NextResponse.json({ evidences: result.created.map(serializeEvidence) }, { status: 201 });
+    // Se devuelve firmada para que la UI la pinte al instante sin recargar.
+    const signedUrls = await Promise.all(result.created.map((evidence) => signR2Url(evidence.url)));
+    return NextResponse.json({
+      evidences: result.created.map((evidence, index) => ({ ...serializeEvidence(evidence), url: signedUrls[index] ?? evidence.url }))
+    }, { status: 201 });
   } catch (error) {
     await Promise.allSettled(uploaded.map(({ url }) => deleteFromR2(url)));
     return NextResponse.json({ error: "No se pudo guardar la evidencia." }, { status: 500 });

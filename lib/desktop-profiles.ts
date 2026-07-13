@@ -1,3 +1,4 @@
+import { photoSrc } from "@/lib/photo-src";
 import type { User } from "@/lib/types";
 
 // Perfiles guardados en el dispositivo (estilo Netflix) para el inicio de sesión
@@ -14,6 +15,43 @@ export type SavedProfile = {
 const PROFILES_KEY = "clarvex.desktop.profiles";
 const FRESH_KEY = "clarvex.desktop.fresh";
 const MAX_PROFILES = 8;
+const AVATAR_PX = 96;
+
+/**
+ * Descarga la foto y la guarda como data URL miniatura (96px).
+ *
+ * El lock de escritorio pinta las tarjetas SIN sesión, así que no puede leer del
+ * proxy autenticado ni de una URL firmada (que expiraría). Congelar una
+ * miniatura en el dispositivo resuelve las tres cosas: funciona sin sesión, no
+ * caduca, y no depende de que el bucket sea público.
+ *
+ * Se reduce a 96px para no reventar la cuota de localStorage (~5 MB): una foto
+ * de 5 MB queda en unos pocos KB.
+ */
+export async function captureAvatarDataUrl(src: string | null | undefined): Promise<string | null> {
+  if (!src || typeof window === "undefined") return null;
+  if (src.startsWith("data:")) return src;
+  try {
+    const response = await fetch(src, { credentials: "same-origin" });
+    if (!response.ok) return null;
+    const blob = await response.blob();
+    const bitmap = await createImageBitmap(blob);
+    const canvas = document.createElement("canvas");
+    canvas.width = AVATAR_PX;
+    canvas.height = AVATAR_PX;
+    const context = canvas.getContext("2d");
+    if (!context) return null;
+    // Recorte cuadrado centrado, igual que el object-cover del avatar.
+    const side = Math.min(bitmap.width, bitmap.height);
+    const sx = (bitmap.width - side) / 2;
+    const sy = (bitmap.height - side) / 2;
+    context.drawImage(bitmap, sx, sy, side, side, 0, 0, AVATAR_PX, AVATAR_PX);
+    bitmap.close();
+    return canvas.toDataURL("image/jpeg", 0.8);
+  } catch {
+    return null; // sin foto cacheada: la tarjeta cae a las iniciales
+  }
+}
 
 export function getSavedProfiles(): SavedProfile[] {
   if (typeof window === "undefined") return [];
@@ -28,14 +66,15 @@ export function getSavedProfiles(): SavedProfile[] {
 }
 
 export function saveProfile(
-  user: Pick<User, "employeeNumber" | "name" | "role" | "photoUrl" | "storeName">
+  user: Pick<User, "employeeNumber" | "name" | "role" | "photoUrl" | "storeName">,
+  avatarDataUrl?: string | null
 ) {
   if (typeof window === "undefined" || !user.employeeNumber) return;
   const profile: SavedProfile = {
     employeeNumber: user.employeeNumber,
     name: user.name,
     role: user.role,
-    photoUrl: user.photoUrl ?? null,
+    photoUrl: avatarDataUrl ?? user.photoUrl ?? null,
     storeName: user.storeName ?? null
   };
   const others = getSavedProfiles().filter((p) => p.employeeNumber !== profile.employeeNumber);
@@ -45,6 +84,18 @@ export function saveProfile(
   } catch {
     /* almacenamiento lleno o bloqueado: ignorar */
   }
+}
+
+/**
+ * Guarda el perfil congelando además una miniatura de la foto. Se llama justo
+ * después de iniciar sesión, que es el único momento en que se puede leer la
+ * foto del proxy autenticado.
+ */
+export async function saveProfileWithAvatar(
+  user: Pick<User, "employeeNumber" | "name" | "role" | "photoUrl" | "storeName">
+) {
+  const avatar = await captureAvatarDataUrl(photoSrc(user.photoUrl));
+  saveProfile(user, avatar);
 }
 
 export function removeProfile(employeeNumber: string) {

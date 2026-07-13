@@ -6,7 +6,7 @@ import { CHECKLIST_ITEMS, findChecklistItem } from "@/lib/checklist";
 import { resolveMonterreyDate } from "@/lib/cron-time";
 import { prisma } from "@/lib/prisma";
 import { validateProfilePhoto } from "@/lib/profile-photo";
-import { uploadToR2 } from "@/lib/r2";
+import { signR2Url, uploadToR2 } from "@/lib/r2";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -19,8 +19,12 @@ function resolveDate(value: string | null): string {
 
 type EntryRow = { itemKey: string; completed: boolean; note: string | null; evidenceUrl: string | null; completedBy: string | null; completedAt: Date | null };
 
-function serialize(date: string, entries: EntryRow[]) {
+async function serialize(date: string, entries: EntryRow[]) {
   const byKey = new Map(entries.map((entry) => [entry.itemKey, entry]));
+  // Las evidencias del checklist viven en R2 (bucket privado) → URL firmada.
+  const signed = new Map(
+    await Promise.all(entries.map(async (entry) => [entry.itemKey, await signR2Url(entry.evidenceUrl)] as const))
+  );
   return {
     date,
     items: CHECKLIST_ITEMS.map((def) => {
@@ -31,7 +35,7 @@ function serialize(date: string, entries: EntryRow[]) {
         section: def.section,
         completed: entry?.completed ?? false,
         note: entry?.note ?? null,
-        evidenceUrl: entry?.evidenceUrl ?? null,
+        evidenceUrl: signed.get(def.key) ?? null,
         completedBy: entry?.completedBy ?? null,
         completedAt: entry?.completedAt?.toISOString() ?? null
       };
@@ -48,7 +52,7 @@ export async function GET(request: Request) {
     where: { storeId: session.storeId, date },
     select: { itemKey: true, completed: true, note: true, evidenceUrl: true, completedBy: true, completedAt: true }
   });
-  return NextResponse.json(serialize(date, entries));
+  return NextResponse.json(await serialize(date, entries));
 }
 
 const jsonSchema = z.object({
@@ -123,5 +127,5 @@ export async function POST(request: Request) {
     where: { storeId: session.storeId, date },
     select: { itemKey: true, completed: true, note: true, evidenceUrl: true, completedBy: true, completedAt: true }
   });
-  return NextResponse.json(serialize(date, entries));
+  return NextResponse.json(await serialize(date, entries));
 }

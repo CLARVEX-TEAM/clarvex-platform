@@ -1,4 +1,5 @@
 import { DeleteObjectCommand, GetObjectCommand, HeadBucketCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import fs from "node:fs";
 import path from "node:path";
 
@@ -66,6 +67,78 @@ export async function deleteFromR2ByKey(key: string): Promise<void> {
   const bucket = process.env.R2_BUCKET_NAME;
   if (!bucket) return;
   await createClient().send(new DeleteObjectCommand({ Bucket: bucket, Key: key })).catch(() => undefined);
+}
+
+/**
+ * Extrae la llave de R2 a partir de una URL pública guardada en la BD.
+ *
+ * Históricamente se guardó la URL pública completa (`https://pub-xxx.r2.dev/<key>`)
+ * en vez de la llave. Este helper permite servir esos registros vía proxy o URL
+ * firmada SIN migrar la base de datos.
+ *
+ * Devuelve null si la URL no es de R2 (enlaces externos, data: URIs, o rutas ya
+ * convertidas a proxy) — el llamador debe dejarlas pasar tal cual.
+ */
+export function keyFromR2Url(url: string | null | undefined): string | null {
+  if (!url) return null;
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return null; // rutas relativas (/api/...) o valores basura
+  }
+  if (parsed.protocol !== "https:") return null;
+  const publicHost = (() => {
+    const base = process.env.R2_PUBLIC_URL;
+    if (!base) return "";
+    try {
+      return new URL(base).hostname;
+    } catch {
+      return "";
+    }
+  })();
+  // Solo el dominio público del bucket. Las URLs ya firmadas apuntan al endpoint
+  // S3 (<account>.r2.cloudflarestorage.com) y NO deben volver a firmarse.
+  const isPublic = parsed.hostname === publicHost || parsed.hostname.endsWith(".r2.dev");
+  if (!isPublic) return null;
+  const key = decodeURIComponent(parsed.pathname).replace(/^\/+/, "");
+  if (!key || key.includes("..")) return null;
+  return key;
+}
+
+/**
+ * Vida de una URL firmada: 1 hora.
+ *
+ * `app-data` se refresca cada 5 min (y al volver a la pestaña), así que las
+ * evidencias nunca alcanzan a caducar. Pero pantallas sin polling —capacitación,
+ * por ejemplo— pintan el enlace una sola vez: con una ventana corta, abrir un PDF
+ * un rato después daría 403. Una hora cubre esos casos sin dejar de ser temporal.
+ */
+export const SIGNED_URL_TTL_SECONDS = 60 * 60;
+
+/**
+ * URL firmada de lectura para un objeto de R2. Recibe la URL pública guardada en
+ * la BD (o una llave) y devuelve un enlace temporal servido directo por
+ * Cloudflare — sin pasar por el VPS.
+ *
+ * Fail-soft: si no se puede firmar, devuelve el valor original para no romper la
+ * pantalla (mientras el bucket siga público, la URL vieja aún funciona).
+ */
+export async function signR2Url(urlOrKey: string | null | undefined, ttlSeconds = SIGNED_URL_TTL_SECONDS): Promise<string | null> {
+  if (!urlOrKey) return null;
+  if (process.env.NODE_ENV === "test" || process.env.MOCK_EXTERNAL_SERVICES === "true") {
+    return urlOrKey;
+  }
+  const bucket = process.env.R2_BUCKET_NAME;
+  if (!bucket) return urlOrKey;
+  // Acepta tanto una URL pública guardada como una llave suelta.
+  const key = keyFromR2Url(urlOrKey) ?? (urlOrKey.startsWith("http") ? null : urlOrKey);
+  if (!key) return urlOrKey; // enlace externo o ya firmado: se deja intacto
+  try {
+    return await getSignedUrl(createClient(), new GetObjectCommand({ Bucket: bucket, Key: key }), { expiresIn: ttlSeconds });
+  } catch {
+    return urlOrKey;
+  }
 }
 
 // Verifica conectividad y credenciales contra R2 (HeadBucket, sin descargar
