@@ -21,6 +21,9 @@ export type ScheduleSyncMetrics = {
   recordsProcessed: number;
   recordsCreated: number;
   recordsUpdated: number;
+  // Turnos que existían en la BD pero ya NO están en el archivo (celda vaciada
+  // al reasignar un horario). Opcional: los logs anteriores no lo traen.
+  recordsDeleted?: number;
   errors: string[];
   employeesNotFound: string[];
   unknownValues: Record<string, number>;

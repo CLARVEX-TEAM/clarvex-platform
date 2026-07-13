@@ -6,6 +6,7 @@ import { parseKpiWorkbook } from "@/lib/kpi-parser";
 import { parsePosDiscountWorkbook } from "@/lib/pos-discount-parser";
 import { prisma } from "@/lib/prisma";
 import { parseScheduleWorkbook } from "@/lib/schedule-parser";
+import { findStaleScheduleIds, scheduleScopeDates } from "@/lib/schedule-sync-diff";
 import { syncLog } from "@/lib/sync-log";
 
 const SCHEDULE_BATCH_SIZE = 25;
@@ -396,7 +397,9 @@ async function importSchedules(workbook: Parameters<typeof parseScheduleWorkbook
         errors.push(...pendingRecords.map((pending) => (
           `Empleado ${pending.employeeNumber}, fecha ${pending.date.toISOString().slice(0, 10)}: tiempo maximo de importacion excedido.`
         )));
-        return buildScheduleMetrics(parsed, users.length, matchedRecords.length, recordsCreated, recordsUpdated, errors, employeesNotFound);
+        // Importación abortada por tiempo: NO se borran turnos obsoletos, porque
+        // la hoja no se procesó completa y podríamos borrar lo que no toca.
+        return buildScheduleMetrics(parsed, users.length, matchedRecords.length, recordsCreated, recordsUpdated, 0, errors, employeesNotFound);
       }
 
       const existingKey = `${record.userId}:${record.date.toISOString()}`;
@@ -431,7 +434,37 @@ async function importSchedules(workbook: Parameters<typeof parseScheduleWorkbook
     }
   }
 
-  return buildScheduleMetrics(parsed, users.length, matchedRecords.length, recordsCreated, recordsUpdated, errors, employeesNotFound);
+  // El archivo es la fuente de verdad: si un turno estaba en la BD y ya NO está
+  // en la hoja (se vació la celda al reasignar el horario a otra persona), hay
+  // que BORRARLO. El upsert de arriba solo crea y actualiza, así que sin esto el
+  // turno viejo sobrevivía y aparecían dos personas laborando el mismo día.
+  //
+  // Alcance acotado a propósito: solo empleados presentes en el archivo y solo
+  // fechas presentes en el archivo. Nunca se tocan otras semanas ni gente que no
+  // venga en la hoja.
+  const recordsDeleted = await deleteStaleSchedules(storeId, users.map((user) => user.id), matchedRecords);
+
+  return buildScheduleMetrics(parsed, users.length, matchedRecords.length, recordsCreated, recordsUpdated, recordsDeleted, errors, employeesNotFound);
+}
+
+async function deleteStaleSchedules(
+  storeId: string,
+  scopeUserIds: string[],
+  matchedRecords: Array<{ userId: string; date: Date }>
+): Promise<number> {
+  const scopeDates = scheduleScopeDates(matchedRecords);
+  if (scopeUserIds.length === 0 || scopeDates.length === 0) return 0;
+
+  const existing = await prisma.schedule.findMany({
+    where: { storeId, userId: { in: scopeUserIds }, date: { in: scopeDates } },
+    select: { id: true, userId: true, date: true }
+  });
+  const staleIds = findStaleScheduleIds(existing, matchedRecords);
+  if (staleIds.length === 0) return 0;
+
+  await prisma.schedule.deleteMany({ where: { id: { in: staleIds } } });
+  syncLog("[SCHEDULE-SYNC] Turnos obsoletos eliminados:", staleIds.length);
+  return staleIds.length;
 }
 
 function buildScheduleMetrics(
@@ -440,6 +473,7 @@ function buildScheduleMetrics(
   recordsProcessed: number,
   recordsCreated: number,
   recordsUpdated: number,
+  recordsDeleted: number,
   errors: string[],
   employeesNotFound: string[]
 ): ScheduleSyncMetrics {
@@ -449,6 +483,7 @@ function buildScheduleMetrics(
     recordsProcessed,
     recordsCreated,
     recordsUpdated,
+    recordsDeleted,
     errors,
     employeesNotFound,
     unknownValues: parsed.unknownValues
