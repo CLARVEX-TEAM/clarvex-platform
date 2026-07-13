@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { proposeCreateAnnouncement } from "@/lib/ai/actions";
 import { buildCopilotContext } from "@/lib/ai/context";
-import { isApiError, parseJson, requireSession } from "@/lib/api";
+import { enforceAiRateLimit, isApiError, parseJson, requireSession } from "@/lib/api";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +17,8 @@ const inputSchema = z.object({
 export async function POST(request: Request) {
   const session = await requireSession(["GERENTE", "SUBGERENTE"]);
   if (isApiError(session)) return session;
+  const limited = await enforceAiRateLimit(session.userId);
+  if (limited) return limited;
 
   const parsed = await parseJson(request, inputSchema);
   if ("response" in parsed) return parsed.response;

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { isApiError, parseJson, requireSession } from "@/lib/api";
+import { enforceAiRateLimit, isApiError, parseJson, requireSession } from "@/lib/api";
 import { toUserFacingCopilotError } from "@/lib/ai/errors";
 import { runCopilot } from "@/lib/ai/orchestrator";
 
@@ -22,6 +22,8 @@ const inputSchema = z
 export async function POST(request: Request) {
   const session = await requireSession();
   if (isApiError(session)) return session;
+  const limited = await enforceAiRateLimit(session.userId);
+  if (limited) return limited;
 
   const parsed = await parseJson(request, inputSchema);
   if ("response" in parsed) return parsed.response;

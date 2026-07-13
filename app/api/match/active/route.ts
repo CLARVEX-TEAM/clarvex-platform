@@ -45,6 +45,6 @@ export async function GET() {
 
   return NextResponse.json({
     match: match ? serializeMatch(match) : null,
-    canManage: session.role === "GERENTE" || session.role === "SUBGERENTE"
+    canManage: session.platformAdmin === true
   });
 }

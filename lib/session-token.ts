@@ -24,11 +24,16 @@ let warnedShortSecret = false;
 function secret() {
   const value = process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET;
   if (!value) throw new Error("AUTH_SECRET o NEXTAUTH_SECRET es obligatorio.");
-  // Un secreto corto debilita la firma HS256. No se rompe el arranque (para no
-  // tumbar despliegues existentes), pero se advierte una vez.
-  if (value.length < 32 && !warnedShortSecret) {
-    warnedShortSecret = true;
-    console.warn("[auth] AUTH_SECRET es corto (<32 caracteres). Usa al menos 32 (openssl rand -base64 32).");
+  // Un secreto corto debilita la firma HS256. En producción se rechaza; en
+  // desarrollo solo se advierte una vez para no romper entornos locales viejos.
+  if (value.length < 32) {
+    if (process.env.NODE_ENV === "production") {
+      throw new Error("AUTH_SECRET debe tener al menos 32 caracteres en producción (openssl rand -base64 32).");
+    }
+    if (!warnedShortSecret) {
+      warnedShortSecret = true;
+      console.warn("[auth] AUTH_SECRET es corto (<32 caracteres). Usa al menos 32 (openssl rand -base64 32).");
+    }
   }
   return new TextEncoder().encode(value);
 }

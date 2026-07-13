@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireSession, isApiError } from "@/lib/api";
+import { rateLimitGifs } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
@@ -47,6 +48,14 @@ export async function GET(request: Request) {
   const session = await requireSession();
   if (isApiError(session)) return session;
 
+  const limited = await rateLimitGifs(session.userId);
+  if (!limited.allowed) {
+    return NextResponse.json(
+      { error: "Demasiadas búsquedas de GIFs. Intenta en un momento." },
+      { status: 429, headers: { "Retry-After": String(limited.retryAfterSeconds) } }
+    );
+  }
+
   const key = process.env.KLIPY_API_KEY;
   if (!key) {
     return NextResponse.json(
@@ -58,7 +67,8 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const q = searchParams.get("q") ?? "celebration";
 
-  // La API key va en la ruta; customer_id identifica al usuario final (recomendado por Klipy).
+  // Klipy designs keys as path-based / not secret-grade; keep key in path (API requires it).
+  // Do not log the full URL with the key.
   const url =
     `https://api.klipy.com/api/v1/${key}/gifs/search` +
     `?q=${encodeURIComponent(q)}&per_page=18&customer_id=${encodeURIComponent(session.userId)}`;

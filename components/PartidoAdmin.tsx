@@ -17,6 +17,7 @@ export function PartidoAdminView({ desktop = false }: { desktop?: boolean }) {
   const router = useRouter();
   const [session, setSession] = useState<User | null>(null);
   const [matches, setMatches] = useState<SerializedMatch[]>([]);
+  const [canManage, setCanManage] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ homeTeam: "", homeFlag: "", opponent: "", opponentFlag: "", competition: "", kickoff: "" });
@@ -41,9 +42,10 @@ export function PartidoAdminView({ desktop = false }: { desktop?: boolean }) {
   }, [router]);
 
   const load = useCallback(async () => {
-    const res = await fetch("/api/match", { cache: "no-store" }).then((r) => r.json() as Promise<{ matches?: SerializedMatch[] }>);
+    const res = await fetch("/api/match", { cache: "no-store" }).then((r) => r.json() as Promise<{ matches?: SerializedMatch[]; canManage?: boolean }>);
     setMatches(res.matches ?? []);
-  }, []);
+    setCanManage(res.canManage === true || session?.platformAdmin === true);
+  }, [session?.platformAdmin]);
 
   useEffect(() => {
     if (!session) return;
@@ -179,7 +181,7 @@ export function PartidoAdminView({ desktop = false }: { desktop?: boolean }) {
 
   return (
     <div className={desktop ? "mx-auto max-w-2xl" : undefined}>
-        {/* Form */}
+        {canManage ? (
         <Card className="mb-3 p-4">
           <div className="mb-3 flex items-center gap-2">
             <Trophy className="text-green-600" size={18} />
@@ -237,6 +239,13 @@ export function PartidoAdminView({ desktop = false }: { desktop?: boolean }) {
             </button>
           </div>
         </Card>
+        ) : (
+          <Card className="mb-3 p-4">
+            <p className="text-sm text-muted">
+              Solo un administrador de plataforma puede programar o editar partidos (evento global).
+            </p>
+          </Card>
+        )}
 
         {/* Lista */}
         {loading ? (
@@ -261,8 +270,7 @@ export function PartidoAdminView({ desktop = false }: { desktop?: boolean }) {
                     <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-black ${badge.cls}`}>{badge.label}</span>
                   </div>
 
-                  {/* Estado vinculación */}
-                  {m.externalId ? (
+                  {canManage && m.externalId ? (
                     <div className="mt-2 flex items-center gap-1.5">
                       <span className="flex items-center gap-1 text-[11px] font-semibold text-green-600">
                         <Link2 size={12} /> Goles automáticos activos (ID {m.externalId})
@@ -275,7 +283,7 @@ export function PartidoAdminView({ desktop = false }: { desktop?: boolean }) {
                         <Link2Off size={11} /> Desvincular
                       </button>
                     </div>
-                  ) : m.status !== "FINISHED" ? (
+                  ) : canManage && m.status !== "FINISHED" ? (
                     <div className="mt-2">
                       <button
                         type="button"
@@ -310,8 +318,7 @@ export function PartidoAdminView({ desktop = false }: { desktop?: boolean }) {
                     </div>
                   ) : null}
 
-                  {/* Enlace de transmisión ("Ver partido" en el banner) */}
-                  {m.status !== "FINISHED" && (
+                  {canManage && m.status !== "FINISHED" && (
                     <div className="mt-2">
                       {streamEditing === m.id ? (
                         <div className="grid gap-1.5">
@@ -368,6 +375,7 @@ export function PartidoAdminView({ desktop = false }: { desktop?: boolean }) {
                     </div>
                   )}
 
+                  {canManage ? (
                   <div className="mt-2.5 flex items-center gap-1.5">
                     {m.status === "SCHEDULED" && (
                       <button type="button" onClick={() => void setStatus(m.id, "LIVE")} className="flex items-center gap-1 rounded-full bg-green-500/15 px-3 py-1 text-xs font-bold text-green-600 transition active:scale-95">
@@ -383,6 +391,7 @@ export function PartidoAdminView({ desktop = false }: { desktop?: boolean }) {
                       <Trash2 size={13} /> Eliminar
                     </button>
                   </div>
+                  ) : null}
                 </Card>
               );
             })}

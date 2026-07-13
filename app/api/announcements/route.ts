@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { isApiError, parseJson, requireSession } from "@/lib/api";
+import { enforceUploadRateLimit, isApiError, parseJson, requireSession } from "@/lib/api";
 import { createAnnouncement } from "@/lib/services/announcement-service";
 import { validateProfilePhoto } from "@/lib/profile-photo";
 import { deleteFromR2, uploadToR2 } from "@/lib/r2";
@@ -13,6 +13,8 @@ const textSchema = z.object({ title: z.string().trim().min(3).max(120), body: z.
 export async function POST(request: Request) {
   const session = await requireSession(["GERENTE", "SUBGERENTE"]);
   if (isApiError(session)) return session;
+  const limited = await enforceUploadRateLimit(session.userId);
+  if (limited) return limited;
 
   const contentType = request.headers.get("content-type") ?? "";
   let title: string;

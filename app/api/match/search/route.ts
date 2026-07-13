@@ -1,13 +1,12 @@
 import { NextResponse } from "next/server";
-import { requireSession, isApiError } from "@/lib/api";
+import { requirePlatformAdmin, isApiError } from "@/lib/api";
 import { searchFixturesByDate } from "@/lib/football-api";
 
 export const dynamic = "force-dynamic";
 
-// GET /api/match/search?date=2026-07-11 — todos los partidos del torneo ese
-// día (México primero si juega), para vincular el marcador automático.
+// GET /api/match/search?date=2026-07-11 — vincular marcador automático (solo platform admin).
 export async function GET(request: Request) {
-  const session = await requireSession(["GERENTE", "SUBGERENTE"]);
+  const session = await requirePlatformAdmin();
   if (isApiError(session)) return session;
 
   const { searchParams } = new URL(request.url);

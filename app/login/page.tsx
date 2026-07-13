@@ -28,13 +28,6 @@ import { ReadyStep } from "./ReadyStep";
 
 type Step = "employee" | "greeting" | "pin" | "confirm" | "profile" | "ready";
 
-interface PreviewData {
-  name: string;
-  role: string;
-  photo: string | null;
-  store: string;
-}
-
 function getGreeting() {
   const h = new Date().getHours();
   if (h < 12) return { text: "Buenos días", Icon: Sparkles };
@@ -59,7 +52,6 @@ export default function LoginPage() {
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [biometricStatus, setBiometricStatus] = useState<"idle" | "active" | "done">("idle");
   const { isDark } = useTheme();
-  const [previewData, setPreviewData] = useState<PreviewData | null>(null);
   // En escritorio (pantalla grande con mouse) no mostramos el teclado en
   // pantalla: el PIN se escribe con el teclado físico de la computadora.
   const [physicalKeyboard, setPhysicalKeyboard] = useState(false);
@@ -109,14 +101,8 @@ export default function LoginPage() {
     setBusy(true);
     setError("");
     try {
-      const [result, preview] = await Promise.all([
-        inspectEmployee(employeeNumber),
-        fetch(`/api/employees/${employeeNumber}/preview`)
-          .then((r) => (r.ok ? (r.json() as Promise<PreviewData>) : null))
-          .catch(() => null),
-      ]);
+      const result = await inspectEmployee(employeeNumber);
       setUser(result.user);
-      setPreviewData(preview);
       setRequiresPinSetup(result.requiresPinSetup);
       setStep(result.requiresPinSetup ? "pin" : "greeting");
     } catch (cause) {
@@ -295,7 +281,7 @@ export default function LoginPage() {
               error={error}
               onBiometricLogin={() => void handleBiometricLogin()}
               onPinLogin={() => setStep("pin")}
-              onBack={() => { setStep("employee"); setPreviewData(null); }}
+              onBack={() => { setStep("employee"); }}
             />
           ) : null}
 
