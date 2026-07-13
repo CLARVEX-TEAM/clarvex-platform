@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { ZodError, type ZodType } from "zod";
 import { getServerSession, type Session } from "@/lib/session";
+import { rateLimitAi, rateLimitUpload } from "@/lib/rate-limit";
 import type { Role } from "@/lib/types";
 
 export async function requireSession(
@@ -27,6 +28,26 @@ export async function requirePlatformAdmin(): Promise<Session | NextResponse> {
     return NextResponse.json({ error: "No tienes permiso para esta accion." }, { status: 403 });
   }
   return session;
+}
+
+/** Rate limit de IA tras autenticar. Devuelve NextResponse 429 o null. */
+export async function enforceAiRateLimit(userId: string): Promise<NextResponse | null> {
+  const result = await rateLimitAi(userId);
+  if (result.allowed) return null;
+  return NextResponse.json(
+    { error: "Demasiadas solicitudes de IA. Intenta en un momento." },
+    { status: 429, headers: { "Retry-After": String(result.retryAfterSeconds) } }
+  );
+}
+
+/** Rate limit de uploads tras autenticar. Devuelve NextResponse 429 o null. */
+export async function enforceUploadRateLimit(userId: string): Promise<NextResponse | null> {
+  const result = await rateLimitUpload(userId);
+  if (result.allowed) return null;
+  return NextResponse.json(
+    { error: "Demasiadas subidas. Intenta en un momento." },
+    { status: 429, headers: { "Retry-After": String(result.retryAfterSeconds) } }
+  );
 }
 
 export async function parseJson<T>(request: Request, schema: ZodType<T>) {

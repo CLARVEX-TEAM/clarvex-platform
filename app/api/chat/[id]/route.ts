@@ -3,6 +3,7 @@ import { requireSession, isApiError } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
 import { dispatchPushToUsers } from "@/lib/push";
 import { isOnline, resolveReplyTo, serializeChatMessage, touchPresence } from "@/lib/chat";
+import { chatMediaRejectionMessage, isAllowedChatMediaBody } from "@/lib/chat-message-guard";
 
 export const dynamic = "force-dynamic";
 
@@ -109,6 +110,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const text = body.body?.trim();
   if (!text) return NextResponse.json({ error: "El mensaje no puede estar vacío." }, { status: 400 });
   if (text.length > 1000) return NextResponse.json({ error: "Mensaje demasiado largo." }, { status: 400 });
+  if (!isAllowedChatMediaBody(text)) {
+    return NextResponse.json({ error: chatMediaRejectionMessage() }, { status: 400 });
+  }
 
   // Validar que el mensaje citado exista y pertenezca a este room.
   const replyToId = await resolveReplyTo(id, body.replyToId);

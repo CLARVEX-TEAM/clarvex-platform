@@ -1,16 +1,15 @@
 import { NextResponse } from "next/server";
-import { requireSession, isApiError } from "@/lib/api";
+import { requirePlatformAdmin, isApiError } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
 import { dispatchPushToUsers } from "@/lib/push";
 import { matchHome, serializeMatch } from "@/lib/match";
 
 export const dynamic = "force-dynamic";
 
-// POST — registrar un gol. { team: "MX" | "RIVAL" }. Un gol de México notifica
-// a todo el equipo al instante.
+// POST — registrar un gol. Solo platform admin (MatchEvent global + push masivo).
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const session = await requireSession(["GERENTE", "SUBGERENTE"]);
+  const session = await requirePlatformAdmin();
   if (isApiError(session)) return session;
 
   const body = (await request.json().catch(() => ({}))) as { team?: string };

@@ -31,9 +31,10 @@ const nextConfig = {
   },
 
   async headers() {
-    // a.espncdn.com: escudos de las selecciones en la sección Mundial.
-    const imgSrc = ["'self'", "data:", "blob:", r2Domain, "https://a.espncdn.com"].filter(Boolean).join(" ");
-    // 'unsafe-eval' solo es necesario para el HMR de desarrollo; en producción debilita el CSP.
+    // a.espncdn.com: escudos. Klipy CDN: GIFs del chat (hosts allowlisted en servidor).
+    const imgSrc = ["'self'", "data:", "blob:", r2Domain, "https://a.espncdn.com", "https://*.klipy.com", "https://klipy.com"].filter(Boolean).join(" ");
+    // 'unsafe-inline' es necesario para el runtime de Next.js sin nonces en layout;
+    // 'unsafe-eval' solo en desarrollo (HMR).
     const scriptSrc = ["'self'", "'unsafe-inline'", process.env.NODE_ENV === "development" ? "'unsafe-eval'" : ""].filter(Boolean).join(" ");
 
     return [

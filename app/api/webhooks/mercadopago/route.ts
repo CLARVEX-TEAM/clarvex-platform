@@ -1,35 +1,14 @@
-import crypto from "node:crypto";
 import { NextResponse } from "next/server";
 import { NotificationType } from "@prisma/client";
 import { extendSubscription, monthlyAmount } from "@/lib/billing";
 import { getPayment } from "@/lib/mercadopago";
+import { verifyMpSignature } from "@/lib/mercadopago-webhook";
 import { createNotifications } from "@/lib/notifications";
 import { prisma } from "@/lib/prisma";
 import { dispatchPushToUsers } from "@/lib/push";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
-
-// Verificación de firma de Mercado Pago (defensa en profundidad; la fuente de
-// verdad sigue siendo el re-fetch del pago). Solo se aplica si hay secreto
-// configurado. Manifest: id:<data.id>;request-id:<x-request-id>;ts:<ts>;
-function verifyMpSignature(request: Request, dataId: string): boolean {
-  const secret = process.env.MERCADOPAGO_WEBHOOK_SECRET;
-  if (!secret) return true; // sin secreto configurado: no se exige firma
-  const signature = request.headers.get("x-signature") ?? "";
-  const requestId = request.headers.get("x-request-id") ?? "";
-  const parts = Object.fromEntries(signature.split(",").map((kv) => kv.split("=").map((s) => s.trim())).filter((p) => p.length === 2));
-  const ts = parts.ts;
-  const v1 = parts.v1;
-  if (!ts || !v1) return false;
-  const manifest = `id:${dataId};request-id:${requestId};ts:${ts};`;
-  const expected = crypto.createHmac("sha256", secret).update(manifest).digest("hex");
-  try {
-    return crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(v1));
-  } catch {
-    return false;
-  }
-}
 
 // Webhook de Mercado Pago. MP solo envía el id del pago; NO se confía en el
 // cuerpo: se vuelve a consultar el pago a la API de MP con nuestro token (fuente

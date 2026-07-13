@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireSession, isApiError } from "@/lib/api";
+import { requirePlatformAdmin, isApiError } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
 import { dispatchPushToUsers } from "@/lib/push";
 import { matchHome, serializeMatch } from "@/lib/match";
@@ -8,9 +8,10 @@ import { normalizeStreamUrl } from "@/lib/stream-url";
 export const dynamic = "force-dynamic";
 
 // PATCH — editar o cambiar estado (iniciar / finalizar) un partido.
+// Solo platform admin: MatchEvent es global y los cambios disparan push a todos.
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const session = await requireSession(["GERENTE", "SUBGERENTE"]);
+  const session = await requirePlatformAdmin();
   if (isApiError(session)) return session;
 
   const body = (await request.json().catch(() => ({}))) as {
@@ -95,7 +96,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 // DELETE — eliminar un partido.
 export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const session = await requireSession(["GERENTE", "SUBGERENTE"]);
+  const session = await requirePlatformAdmin();
   if (isApiError(session)) return session;
 
   await prisma.matchEvent.delete({ where: { id } }).catch(() => undefined);

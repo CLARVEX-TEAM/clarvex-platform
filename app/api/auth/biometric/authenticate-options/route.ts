@@ -26,8 +26,10 @@ export async function POST(request: Request) {
     where: { employeeNumber: parsed.data.employeeNumber },
     include: { webAuthnCredentials: { select: { credentialId: true, transports: true } } }
   });
+  // Misma respuesta para inexistente / inactivo / sin biometría: evita enumerar
+  // qué empleados tienen Face ID / huella registrada.
   if (!user || !user.active || !user.biometricEnabled || user.webAuthnCredentials.length === 0) {
-    return NextResponse.json({ error: "Biometria no disponible para este usuario." }, { status: 404 });
+    return NextResponse.json({ error: "No se pudo iniciar la autenticación biométrica." }, { status: 400 });
   }
 
   // Un solo desafío activo por usuario: limpia expirados y los previos de este

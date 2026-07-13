@@ -88,17 +88,29 @@ export function encodeStickerMsg(id: string) {
 }
 
 export function encodeGifMsg(url: string) {
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== "https:") return "";
+    const host = parsed.hostname.toLowerCase();
+    if (host !== "klipy.com" && !host.endsWith(".klipy.com")) return "";
+  } catch {
+    return "";
+  }
   return `[gif:${url}]`;
 }
 
 export function encodeImageMsg(url: string) {
+  // Solo el proxy autenticado; no se aceptan https externos en mensajes nuevos.
+  if (!url.startsWith("/api/chat/file?k=")) return "";
   return `[img:${url}]`;
 }
 
 export function decodeImageMsg(body: string): string | null {
-  // Acepta tanto URL absoluta (formato antiguo) como ruta del proxy "/api/chat/file?...".
-  const m = /^\[img:((?:https?:\/\/|\/)[^\]]+)\]$/.exec(body);
-  return m ? m[1] : null;
+  // Proxy actual; https históricos se muestran solo si el guard del API los rechazó al escribir.
+  const proxy = /^\[img:(\/api\/chat\/file\?k=[^\]]+)\]$/.exec(body);
+  if (proxy) return proxy[1];
+  const legacy = /^\[img:(https:\/\/[^\]]+)\]$/.exec(body);
+  return legacy ? legacy[1] : null;
 }
 
 export function decodeStickerMsg(body: string): Sticker | null {
@@ -108,8 +120,15 @@ export function decodeStickerMsg(body: string): Sticker | null {
 }
 
 export function decodeGifMsg(body: string): string | null {
-  const m = /^\[gif:(https?:\/\/[^\]]+)\]$/.exec(body);
-  return m ? m[1] : null;
+  const m = /^\[gif:(https:\/\/[^\]]+)\]$/.exec(body);
+  if (!m) return null;
+  try {
+    const host = new URL(m[1]).hostname.toLowerCase();
+    if (host !== "klipy.com" && !host.endsWith(".klipy.com")) return null;
+  } catch {
+    return null;
+  }
+  return m[1];
 }
 
 // Texto corto para mostrar en la lista de chats (último mensaje).

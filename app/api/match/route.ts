@@ -1,22 +1,25 @@
 import { NextResponse } from "next/server";
-import { requireSession, isApiError } from "@/lib/api";
+import { requireSession, requirePlatformAdmin, isApiError } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
 import { serializeMatch } from "@/lib/match";
 
 export const dynamic = "force-dynamic";
 
-// GET — lista de partidos (para el panel de gerencia).
+// GET — lista de partidos (panel de gerencia / admin). Feature global sin storeId.
 export async function GET() {
   const session = await requireSession(["GERENTE", "SUBGERENTE"]);
   if (isApiError(session)) return session;
 
   const matches = await prisma.matchEvent.findMany({ orderBy: { kickoff: "desc" }, take: 50 });
-  return NextResponse.json({ matches: matches.map(serializeMatch) });
+  return NextResponse.json({
+    matches: matches.map(serializeMatch),
+    canManage: session.platformAdmin === true
+  });
 }
 
-// POST — programar un partido (gerencia).
+// POST — programar un partido (solo platform admin: MatchEvent es global).
 export async function POST(request: Request) {
-  const session = await requireSession(["GERENTE", "SUBGERENTE"]);
+  const session = await requirePlatformAdmin();
   if (isApiError(session)) return session;
 
   const body = (await request.json().catch(() => ({}))) as {
