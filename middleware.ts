@@ -31,6 +31,7 @@ const sharedRoutes = [
 
 /** Rutas API públicas (sin cookie de sesión). Cron/webhooks usan su propio secreto. */
 const publicApiExact = new Set([
+  "/api/health",
   "/api/auth/employee-login",
   "/api/auth/session",
   "/api/auth/biometric/authenticate",

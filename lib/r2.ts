@@ -1,4 +1,4 @@
-import { DeleteObjectCommand, GetObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { DeleteObjectCommand, GetObjectCommand, HeadBucketCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import fs from "node:fs";
 import path from "node:path";
 
@@ -66,6 +66,23 @@ export async function deleteFromR2ByKey(key: string): Promise<void> {
   const bucket = process.env.R2_BUCKET_NAME;
   if (!bucket) return;
   await createClient().send(new DeleteObjectCommand({ Bucket: bucket, Key: key })).catch(() => undefined);
+}
+
+// Verifica conectividad y credenciales contra R2 (HeadBucket, sin descargar
+// objetos). Para el endpoint de health-check. Fail-soft: devuelve false ante
+// cualquier error en lugar de lanzar.
+export async function checkR2Health(): Promise<boolean> {
+  if (process.env.NODE_ENV === "test" || process.env.MOCK_EXTERNAL_SERVICES === "true") {
+    return true;
+  }
+  const bucket = process.env.R2_BUCKET_NAME;
+  if (!bucket) return false;
+  try {
+    await createClient().send(new HeadBucketCommand({ Bucket: bucket }));
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 // Lee un objeto del bucket usando las credenciales (no requiere acceso público).

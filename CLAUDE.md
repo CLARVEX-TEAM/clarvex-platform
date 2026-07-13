@@ -67,6 +67,22 @@ WEBAUTHN_ORIGIN=
 CRON_SECRET=
 ```
 
+### Opcionales
+
+```env
+# Sentry — monitoreo de errores. Sin DSN, Sentry queda desactivado (no-op).
+NEXT_PUBLIC_SENTRY_DSN=
+SENTRY_ORG=          # solo para subir source maps
+SENTRY_PROJECT=      # solo para subir source maps
+SENTRY_AUTH_TOKEN=   # solo para subir source maps
+```
+
+## Monitoreo
+
+- **Health-check:** `GET /api/health` (público, sin sesión) — verifica la BD. Devuelve `200 {status:"ok"}` o `503 {status:"degraded"}`. Consumido por Uptime Kuma en el VPS.
+- **Chequeo profundo:** `GET /api/health?deep=1` con header `Authorization: Bearer <CRON_SECRET>` — además verifica R2 (HeadBucket).
+- **Errores en producción:** Sentry (`@sentry/nextjs`). Session Replay desactivado a propósito (grabaría datos de ventas y empleados).
+
 ---
 
 ## Roles de usuario
