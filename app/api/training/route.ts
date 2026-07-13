@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { isApiError, requireSession } from "@/lib/api";
+import { enforceUploadRateLimit, isApiError, requireSession } from "@/lib/api";
 import { isTrainingCategory } from "@/lib/training";
 import { validateEvidenceImage } from "@/lib/evidence";
 import { prisma } from "@/lib/prisma";
@@ -52,6 +52,8 @@ export async function GET() {
 export async function POST(request: Request) {
   const session = await requireSession(["GERENTE", "SUBGERENTE"]);
   if (isApiError(session)) return session;
+  const limited = await enforceUploadRateLimit(session.userId);
+  if (limited) return limited;
 
   const form = await request.formData().catch(() => null);
   const title = form?.get("title")?.toString().trim() ?? "";

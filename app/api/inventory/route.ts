@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { isApiError, requireSession } from "@/lib/api";
+import { enforceUploadRateLimit, isApiError, requireSession } from "@/lib/api";
 import { isInventoryCategory, INVENTORY_CATEGORY_LABELS } from "@/lib/inventory";
 import { validateEvidenceImage } from "@/lib/evidence";
 import { createNotifications } from "@/lib/notifications";
@@ -54,6 +54,8 @@ export async function GET() {
 export async function POST(request: Request) {
   const session = await requireSession();
   if (isApiError(session)) return session;
+  const limited = await enforceUploadRateLimit(session.userId);
+  if (limited) return limited;
 
   const form = await request.formData().catch(() => null);
   const productName = form?.get("productName")?.toString().trim() ?? "";

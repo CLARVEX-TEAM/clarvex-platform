@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireSession, isApiError } from "@/lib/api";
+import { enforceUploadRateLimit, requireSession, isApiError } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
 import { dispatchPushToUsers } from "@/lib/push";
 import { validateEvidenceImage } from "@/lib/evidence";
@@ -22,6 +22,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const { id } = await params;
   const session = await requireSession();
   if (isApiError(session)) return session;
+  const limited = await enforceUploadRateLimit(session.userId);
+  if (limited) return limited;
 
   const member = await prisma.chatMember.findUnique({
     where: { roomId_userId: { roomId: id, userId: session.userId } }

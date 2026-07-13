@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { isApiError, requireSession } from "@/lib/api";
+import { enforceUploadRateLimit, isApiError, requireSession } from "@/lib/api";
 import { serializeEvidence } from "@/lib/discussion";
 import { authorizeResource, parseResourceTarget, targetWhere, validateEvidenceImage } from "@/lib/evidence";
 import { createNotifications } from "@/lib/notifications";
@@ -33,6 +33,8 @@ export async function GET(request: NextRequest) {
 export async function POST(request: Request) {
   const session = await requireSession();
   if (isApiError(session)) return session;
+  const limited = await enforceUploadRateLimit(session.userId);
+  if (limited) return limited;
   const form = await request.formData().catch(() => null);
 
   const rawFiles = form?.getAll("files") ?? [];

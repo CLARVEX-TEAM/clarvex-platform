@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { DATA_SOURCE_ROLES } from "@/lib/access-control";
-import { isApiError, parseJson, requireSession } from "@/lib/api";
+import { enforceUploadRateLimit, isApiError, parseJson, requireSession } from "@/lib/api";
 import { CHECKLIST_ITEMS, findChecklistItem } from "@/lib/checklist";
 import { resolveMonterreyDate } from "@/lib/cron-time";
 import { prisma } from "@/lib/prisma";
@@ -61,6 +61,8 @@ const jsonSchema = z.object({
 export async function POST(request: Request) {
   const session = await requireSession(DATA_SOURCE_ROLES);
   if (isApiError(session)) return session;
+  const limited = await enforceUploadRateLimit(session.userId);
+  if (limited) return limited;
 
   const contentType = request.headers.get("content-type") ?? "";
   let itemKey: string;

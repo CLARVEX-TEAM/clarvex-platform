@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { isApiError, requireSession } from "@/lib/api";
+import { enforceUploadRateLimit, isApiError, requireSession } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
 import { validateProfilePhoto } from "@/lib/profile-photo";
 import { deleteFromR2, uploadToR2 } from "@/lib/r2";
@@ -10,6 +10,8 @@ export const runtime = "nodejs";
 export async function POST(request: Request) {
   const session = await requireSession();
   if (isApiError(session)) return session;
+  const limited = await enforceUploadRateLimit(session.userId);
+  if (limited) return limited;
 
   const form = await request.formData().catch(() => null);
   const file = form?.get("photo");
