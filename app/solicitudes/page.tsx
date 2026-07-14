@@ -7,6 +7,7 @@ import { getSession } from "@/lib/auth";
 import { DAY_BALANCE_LABELS, SHIFT_TYPE_LABELS, dayBalanceField, formatRequestDate, isHourType } from "@/lib/shift-requests";
 import type { User } from "@/lib/types";
 import { AppFrame, AppHeader, Badge, BottomNav, Button, Card, EmptyState, ProfileAvatar, Skeleton } from "@/components/ui";
+import { ShiftSwaps } from "@/components/ShiftSwaps";
 
 type ShiftRequest = {
   id: string;
@@ -134,7 +135,8 @@ export default function SolicitudesPage() {
     <>
       <AppHeader title="Solicitudes" subtitle="Cambio de turno y días libres" backHref={isManager ? "/manager" : "/advisor"} />
       <AppFrame>
-        <Card className="mb-3 p-3.5">
+        {session ? <ShiftSwaps myId={session.id} /> : null}
+        <Card className="mb-3 mt-3 p-3.5">
           <div className="mb-3 flex items-center gap-2">
             <CalendarOff className="text-volt" size={18} />
             <h2 className="text-lg font-black">Solicitar</h2>

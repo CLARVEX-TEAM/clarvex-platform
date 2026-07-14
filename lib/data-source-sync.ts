@@ -7,6 +7,7 @@ import { parsePosDiscountWorkbook } from "@/lib/pos-discount-parser";
 import { prisma } from "@/lib/prisma";
 import { parseScheduleWorkbook } from "@/lib/schedule-parser";
 import { reconcileAbsences } from "@/lib/attendance-reconcile";
+import { reconcileShiftSwaps } from "@/lib/shift-swap-reconcile";
 import { importAttendance } from "@/lib/attendance-sync";
 import { findStaleScheduleIds, scheduleScopeDates } from "@/lib/schedule-sync-diff";
 import { syncLog } from "@/lib/sync-log";
@@ -463,6 +464,11 @@ async function importSchedules(workbook: Parameters<typeof parseScheduleWorkbook
   // Solo se corrigen días donde nadie marcó entrada (ver attendance-reconcile).
   const absencesFixed = await reconcileAbsences(storeId, scheduleScopeDates(matchedRecords));
   if (absencesFixed > 0) syncLog("[SCHEDULE-SYNC] Faltas corregidas por cambio de horario:", absencesFixed);
+
+  // Intercambios de descanso aprobados que el Drive ya refleja: se marcan solos,
+  // y el recordatorio a gerencia desaparece sin que nadie tenga que acordarse.
+  const swapsDone = await reconcileShiftSwaps(storeId);
+  if (swapsDone > 0) syncLog("[SCHEDULE-SYNC] Intercambios ya reflejados en el Drive:", swapsDone);
 
   return buildScheduleMetrics(parsed, users.length, matchedRecords.length, recordsCreated, recordsUpdated, recordsDeleted, errors, employeesNotFound);
 }

@@ -34,6 +34,7 @@ model Store {
   pendings              Pending[]
   schedules             Schedule[]
   attendances           Attendance[]
+  shiftSwaps            ShiftSwap[]
   shiftRequests         ShiftRequest[]
   fixtures              StoreFixture[]
   logEntries            StoreLog[]
@@ -151,6 +152,8 @@ model User {
   schedules             Schedule[]
   attendances           Attendance[]
   shiftRequests         ShiftRequest[]         @relation("ShiftRequester")
+  swapsRequested        ShiftSwap[]            @relation("SwapRequester")
+  swapsReceived         ShiftSwap[]            @relation("SwapTarget")
   authoredLogs          StoreLog[]
   authoredSurveys       Survey[]               @relation("SurveyAuthor")
   surveyResponses       SurveyResponse[]       @relation("SurveyRespondent")
@@ -336,6 +339,46 @@ model Schedule {
 
   @@unique([userId, date])
   @@index([storeId, date])
+}
+
+/// Intercambio de descansos entre dos asesores.
+///
+/// Hoy esto vive en WhatsApp y en la memoria de gerencia — y de ahí salió un bug
+/// real (se editó el Drive a mano y el ranking mostraba a los dos laborando).
+///
+/// La app COORDINA (propuesta → el compañero acepta → gerencia autoriza) pero NO
+/// escribe el horario: la fuente de verdad sigue siendo el archivo de Horarios.
+/// Al aprobarse, la app le dice a gerencia exactamente qué cambiar en el Drive, y
+/// detecta sola cuándo ya quedó (driveUpdated).
+model ShiftSwap {
+  id            String    @id @default(cuid())
+  storeId       String
+  /// Quien propone el cambio.
+  requesterId   String
+  /// El día que HOY descansa el proponente ("YYYY-MM-DD") y cede.
+  requesterDate String
+  /// Con quién se cambia.
+  targetId      String
+  /// El día que HOY descansa el compañero y cede.
+  targetDate    String
+  reason        String?
+  /// PENDIENTE_COMPANERO → PENDIENTE_GERENCIA → APROBADO | RECHAZADO
+  status        String    @default("PENDIENTE_COMPANERO")
+  /// Cuándo respondió el compañero.
+  respondedAt   DateTime?
+  resolvedById  String?
+  resolvedAt    DateTime?
+  managerNote   String?
+  /// El archivo de Horarios ya refleja el cambio. Se marca solo al sincronizar.
+  driveUpdated  Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  store         Store     @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  requester     User      @relation("SwapRequester", fields: [requesterId], references: [id], onDelete: Cascade)
+  target        User      @relation("SwapTarget", fields: [targetId], references: [id], onDelete: Cascade)
+
+  @@index([storeId, status])
+  @@index([targetId, status])
 }
 
 /// Asistencia diaria: la foto de un día que la hoja APERTURA sobrescribe.
