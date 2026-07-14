@@ -6,6 +6,7 @@ import { parseKpiWorkbook } from "@/lib/kpi-parser";
 import { parsePosDiscountWorkbook } from "@/lib/pos-discount-parser";
 import { prisma } from "@/lib/prisma";
 import { parseScheduleWorkbook } from "@/lib/schedule-parser";
+import { reconcileAbsences } from "@/lib/attendance-reconcile";
 import { importAttendance } from "@/lib/attendance-sync";
 import { findStaleScheduleIds, scheduleScopeDates } from "@/lib/schedule-sync-diff";
 import { syncLog } from "@/lib/sync-log";
@@ -455,6 +456,13 @@ async function importSchedules(workbook: Parameters<typeof parseScheduleWorkbook
   // fechas presentes en el archivo. Nunca se tocan otras semanas ni gente que no
   // venga en la hoja.
   const recordsDeleted = await deleteStaleSchedules(storeId, users.map((user) => user.id), matchedRecords);
+
+  // Si un día pasó a no laborable, la FALTA que se hubiera registrado ese día ya
+  // no lo es. Pasa cuando se concede un descanso y el archivo de Horarios se
+  // actualiza después: la persona no vino (con permiso) y el cron la marcó falta.
+  // Solo se corrigen días donde nadie marcó entrada (ver attendance-reconcile).
+  const absencesFixed = await reconcileAbsences(storeId, scheduleScopeDates(matchedRecords));
+  if (absencesFixed > 0) syncLog("[SCHEDULE-SYNC] Faltas corregidas por cambio de horario:", absencesFixed);
 
   return buildScheduleMetrics(parsed, users.length, matchedRecords.length, recordsCreated, recordsUpdated, recordsDeleted, errors, employeesNotFound);
 }
