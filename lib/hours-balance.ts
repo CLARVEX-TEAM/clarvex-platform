@@ -1,11 +1,8 @@
-import { toMinutes } from "@/lib/attendance";
+import { TOLERANCE_MINUTES, toMinutes } from "@/lib/attendance";
 import type { AttendanceStatus } from "@/lib/attendance";
 
 /**
  * Banco de horas: cuántas horas se le deben a alguien (o cuántas debe).
- *
- * Replica la fórmula de la hoja CONTROL HORAS, para no cambiar las reglas por
- * accidente al migrar del Excel a la app:
  *
  *   saldo = (entrada_esperada − entrada_real) + (salida_real − salida_esperada)
  *
@@ -13,10 +10,19 @@ import type { AttendanceStatus } from "@/lib/attendance";
  *
  *   Entra 8:00,  sale 21:00 →  +2:30  (se le deben 2½ h)
  *   Entra 10:30, sale 19:00 →  −2:00  (debe 2 h)
- *   Entra 11:00, sale 21:00 →  −0:30  (llegó tarde: resta)
+ *   Entra 11:00, sale 21:00 →  −0:30  (pidió entrar tarde: resta)
  *   Entra 10:30, sale 22:00 →  +1:00  (se quedó más: suma)
  *
  * Positivo = a favor del colaborador (la tienda le debe horas).
+ *
+ * ⚠️ DENTRO DE LA TOLERANCIA EL SALDO NO SE MUEVE. Llegar 10:36 no es "deber 6
+ * minutos": es llegar a tiempo, y así lo clasifica el resto de la app. El banco
+ * de horas es para jornadas que de verdad cambiaron (pidió entrar a las 11, se
+ * fue a las 19:00, entró a las 8:00), no para el ruido de marcar unos minutos
+ * antes o después. Contarlo generaba saldos negativos por gente puntual.
+ *
+ * Cuando SÍ se sale de la tolerancia se cuenta la desviación COMPLETA: quien
+ * entra a las 11:00 debe 30 minutos, no 16.
  *
  * Cada parte se cuenta SOLO si se capturó. Si no marcó salida, no se le castiga
  * con un saldo negativo enorme — igual que en el Excel, que exige ISNUMBER().
@@ -24,6 +30,11 @@ import type { AttendanceStatus } from "@/lib/attendance";
 
 export const DEFAULT_ENTRY = "10:30";
 export const DEFAULT_EXIT = "21:00";
+
+/** Desviaciones de minutos sueltos no mueven el banco de horas. */
+function beyondTolerance(deviation: number): number {
+  return Math.abs(deviation) <= TOLERANCE_MINUTES ? 0 : deviation;
+}
 
 /** Días en los que no se esperaba a la persona: no generan saldo. */
 function offDay(status: AttendanceStatus): boolean {
@@ -50,8 +61,8 @@ export function dayBalanceMinutes(input: DayBalanceInput): number {
   const left = toMinutes(input.leftAt);
 
   let balance = 0;
-  if (arrived !== null) balance += expectedEntry - arrived; // antes = suma, tarde = resta
-  if (left !== null) balance += left - expectedExit;        // se queda = suma, se va = resta
+  if (arrived !== null) balance += beyondTolerance(expectedEntry - arrived); // antes = suma, tarde = resta
+  if (left !== null) balance += beyondTolerance(left - expectedExit);        // se queda = suma, se va = resta
   return balance;
 }
 

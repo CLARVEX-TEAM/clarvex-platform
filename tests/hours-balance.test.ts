@@ -32,6 +32,28 @@ test("un día exacto no mueve el saldo", () => {
   assert.equal(formatBalance(0), "+0:00");
 });
 
+test("llegar unos minutos tarde NO resta: está dentro de la tolerancia", () => {
+  // Caso real (14 jul 2026): Itzel marcó 10:36 y Jazmín 10:35. La app las
+  // clasificó "A tiempo" — pero el banco de horas les restaba 6 y 5 minutos.
+  // Solo debe restar cuando de verdad pidieron entrar tarde (11:00, 11:30...).
+  assert.equal(dayBalanceMinutes(day("10:36", "21:00")), 0);
+  assert.equal(dayBalanceMinutes(day("10:35", "21:00")), 0);
+  assert.equal(dayBalanceMinutes(day("10:44", "21:00")), 0); // el límite de la tolerancia
+});
+
+test("marcar unos minutos antes o después tampoco regala saldo", () => {
+  assert.equal(dayBalanceMinutes(day("10:25", "21:00")), 0);
+  assert.equal(dayBalanceMinutes(day("10:30", "21:10")), 0);
+  assert.equal(dayBalanceMinutes(day("10:20", "21:12")), 0);
+});
+
+test("fuera de la tolerancia se cuenta la desviación COMPLETA", () => {
+  // Quien entra a las 11:00 debe 30 minutos, no 16 (30 − tolerancia).
+  assert.equal(dayBalanceMinutes(day("11:00", "21:00")), -30);
+  assert.equal(dayBalanceMinutes(day("10:45", "21:00")), -15); // primer minuto fuera
+  assert.equal(dayBalanceMinutes(day("10:30", "20:45")), -15);
+});
+
 test("las dos puntas se suman", () => {
   // Entra 1 h antes y se va 1 h después: 2 h a favor.
   assert.equal(dayBalanceMinutes(day("09:30", "22:00")), 120);
