@@ -5,6 +5,7 @@ import { createNotifications } from "@/lib/notifications";
 import { dispatchPushToUsers } from "@/lib/push";
 import { firstName } from "@/lib/daily-summary";
 import { DAY_BALANCE_LABELS, SHIFT_TYPE_LABELS, dayBalanceField, formatRequestDate, isHourType } from "@/lib/shift-requests";
+import { hoursBalanceFor } from "@/lib/hours-account";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -17,17 +18,20 @@ export async function GET() {
   if (isApiError(session)) return session;
   const manager = session.role !== "ASESOR";
 
-  const [requests, me] = await Promise.all([
+  const [requests, me, balance] = await Promise.all([
     prisma.shiftRequest.findMany({
       where: { storeId: session.storeId, ...(manager ? {} : { requesterId: session.userId }) },
       orderBy: { createdAt: "desc" },
       include: { requester: { select: { name: true, photoUrl: true } } }
     }),
-    prisma.user.findUnique({ where: { id: session.userId }, select: { hoursOwed: true, vacationDays: true, paidDays: true } })
+    prisma.user.findUnique({ where: { id: session.userId }, select: { vacationDays: true, paidDays: true } }),
+    // Saldo REAL: el inicial (del Excel) MÁS lo que la app acumuló sola. Leerlo
+    // solo de hoursOwed dejaría atrapadas las horas ganadas automáticamente.
+    hoursBalanceFor(session.userId)
   ]);
 
   return NextResponse.json({
-    balance: me?.hoursOwed ?? 0,
+    balance,
     vacationDays: me?.vacationDays ?? 0,
     paidDays: me?.paidDays ?? 0,
     requests: requests.map((request) => ({
@@ -63,8 +67,7 @@ export async function POST(request: Request) {
 
   // No se pueden solicitar más horas de las que se tienen de saldo.
   if (hours) {
-    const me = await prisma.user.findUnique({ where: { id: session.userId }, select: { hoursOwed: true } });
-    const balance = me?.hoursOwed ?? 0;
+    const balance = await hoursBalanceFor(session.userId);
     if (hours > balance) {
       return NextResponse.json({ error: `No tienes saldo suficiente. Disponible: ${balance} h.` }, { status: 400 });
     }

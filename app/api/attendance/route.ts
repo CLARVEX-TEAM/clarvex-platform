@@ -3,6 +3,7 @@ import { z } from "zod";
 import { recordAudit } from "@/lib/audit";
 import { isApiError, parseJson, requireSession } from "@/lib/api";
 import { classifyArrival, type AttendanceStatus } from "@/lib/attendance";
+import { hoursBalanceMinutes } from "@/lib/hours-account";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -59,10 +60,14 @@ export async function GET(request: Request) {
     })
   ]);
 
+  // Saldo acumulado REAL de cada quien: el inicial del Excel + TODO lo que la app
+  // ha registrado (no solo el mes que se está viendo).
+  const balances = await hoursBalanceMinutes(users.map((user) => user.id));
+
   return NextResponse.json({
     month,
     canEdit: manager,
-    users,
+    users: users.map((user) => ({ ...user, balanceMinutes: balances.get(user.id) ?? 0 })),
     schedules: schedules.map((day) => ({
       userId: day.userId,
       date: day.date.toISOString().slice(0, 10),

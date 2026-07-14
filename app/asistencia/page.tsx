@@ -25,7 +25,9 @@ import { formatBalance } from "@/lib/hours-balance";
 import { AppFrame, AppHeader, BottomNav, Card, ProfileAvatar } from "@/components/ui";
 import { cn } from "@/lib/utils";
 
-type Teammate = { id: string; name: string; employeeNumber: string; role: string; photoUrl: string | null; hoursOwed: number };
+// balanceMinutes: saldo acumulado REAL (inicial del Excel + todo lo registrado),
+// no solo el del mes que se está viendo.
+type Teammate = { id: string; name: string; employeeNumber: string; role: string; photoUrl: string | null; hoursOwed: number; balanceMinutes: number };
 
 function shiftMonth(month: string, delta: number): string {
   const [year, monthNumber] = month.split("-").map(Number);
@@ -189,7 +191,7 @@ export default function AsistenciaPage() {
                           {formatBalance(balanceFor(user.id))}
                         </span>
                         {" · Acumulado: "}
-                        <span className="text-ink/70">{formatBalance(Math.round(user.hoursOwed * 60) + balanceFor(user.id))}</span>
+                        <span className="text-ink/70">{formatBalance(user.balanceMinutes)}</span>
                       </p>
                     </div>
                     <ChevronRight size={16} className={cn("shrink-0 text-muted transition-transform", open && "rotate-90")} />
@@ -217,7 +219,7 @@ export default function AsistenciaPage() {
               <div className="text-right">
                 <p className="text-xs font-bold text-muted">Saldo acumulado</p>
                 <p className="text-lg font-black text-ink">
-                  {formatBalance(Math.round((users[0]?.hoursOwed ?? 0) * 60) + balanceFor(soloUser))}
+                  {formatBalance(users[0]?.balanceMinutes ?? 0)}
                 </p>
               </div>
             </Card>
