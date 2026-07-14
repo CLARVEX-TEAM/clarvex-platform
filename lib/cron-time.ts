@@ -22,6 +22,25 @@ export function retailWeekRange(utcDate: Date): { weekStart: Date; weekEnd: Date
   return { weekStart, weekEnd };
 }
 
+/**
+ * Minutos transcurridos del día EN MONTERREY (10:30 → 630).
+ *
+ * El VPS corre en UTC, y Monterrey es UTC−6. Usar `getUTCHours()` para compararlo
+ * contra una hora local ("10:30") da un desfase de 6 horas: a las 6 de la mañana
+ * la app creería que ya pasó la hora de corte y le pondría FALTA a todo el equipo
+ * antes de que la tienda abra.
+ */
+export function monterreyMinutesOfDay(now = new Date()): number {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "America/Monterrey",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23"
+  }).formatToParts(now);
+  const valueOf = (type: string) => Number(parts.find((part) => part.type === type)?.value);
+  return valueOf("hour") * 60 + valueOf("minute");
+}
+
 export function resolveMonterreyDate(now = new Date()): MonterreyDate {
   const parts = new Intl.DateTimeFormat("en-CA", {
     timeZone: "America/Monterrey",

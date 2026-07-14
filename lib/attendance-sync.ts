@@ -1,7 +1,7 @@
 import { classifyDay, TOLERANCE_MINUTES, CUTOFF_MINUTES, DEFAULT_EXPECTED_ENTRY, toMinutes, type ScheduledStatus } from "@/lib/attendance";
 import { parseAttendanceWorkbook } from "@/lib/attendance-parser";
 import { dayBalanceMinutes, DEFAULT_EXIT } from "@/lib/hours-balance";
-import { resolveMonterreyDate } from "@/lib/cron-time";
+import { monterreyMinutesOfDay, resolveMonterreyDate } from "@/lib/cron-time";
 import { buildUserByEmployeeNumber } from "@/lib/employee-match";
 import { prisma } from "@/lib/prisma";
 import type { WorkBook } from "@/lib/spreadsheet";
@@ -108,7 +108,10 @@ export async function importAttendance(workbook: WorkBook, storeId: string, now 
   const manualUsers = new Set(existing.filter((row) => row.source === "MANUAL").map((row) => row.userId));
   const existingUsers = new Set(existing.map((row) => row.userId));
 
-  const nowMinutes = now.getUTCHours() * 60 + now.getUTCMinutes();
+  // Hora local de Monterrey, NO UTC: el VPS corre en UTC y compararlo contra un
+  // horario local ("10:30") desfasaría 6 horas — y la corrida de la madrugada le
+  // pondría FALTA a todo el equipo antes de que la tienda abra.
+  const nowMinutes = monterreyMinutesOfDay(now);
 
   for (const row of parsed.rows) {
     const userId = userByEmployee.get(row.employeeNumber);
