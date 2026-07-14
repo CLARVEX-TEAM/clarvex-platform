@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const dataSourceTypes = ["HORARIOS", "KPIS", "METAS", "COMISIONES", "COMUNICADOS", "DESCUENTOS_POS"] as const;
+export const dataSourceTypes = ["HORARIOS", "KPIS", "METAS", "COMISIONES", "COMUNICADOS", "DESCUENTOS_POS", "ASISTENCIA"] as const;
 export const dataSourceProviders = ["MANUAL", "EXCEL", "SHAREPOINT"] as const;
 export const dataSourceStatuses = ["CONNECTED", "DISCONNECTED", "ERROR"] as const;
 export const dataSourceFrequencies = ["MANUAL", "HOURLY", "DAILY", "WEEKLY"] as const;
@@ -71,7 +71,23 @@ export type DiscountSyncMetrics = {
   errors: string[];
 };
 
-export type DataSyncMetrics = ScheduleSyncMetrics | KpiSyncMetrics | DiscountSyncMetrics;
+export type AttendanceSyncMetrics = {
+  /** Fecha que declaraba la hoja APERTURA (celda M3). */
+  sheetDate: string | null;
+  employeesFound: number;
+  recordsProcessed: number;
+  recordsCreated: number;
+  recordsUpdated: number;
+  /** Omitidos: su hora de corte aún no llega, así que todavía no son falta. */
+  recordsPending: number;
+  /** Omitidos: gerencia ya los corrigió a mano y no se pisan. */
+  recordsManual: number;
+  employeesNotFound: string[];
+  unknownEntries: Record<string, number>;
+  errors: string[];
+};
+
+export type DataSyncMetrics = ScheduleSyncMetrics | KpiSyncMetrics | DiscountSyncMetrics | AttendanceSyncMetrics;
 
 export type DataSourceRecord = {
   id: string;

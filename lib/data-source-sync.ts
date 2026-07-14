@@ -1,11 +1,12 @@
 import type { DataSource } from "@prisma/client";
-import { encodeSyncLogMessage, getNextSyncAt, serializeDataSource, type DiscountSyncMetrics, type KpiSyncMetrics, type ScheduleSyncMetrics } from "@/lib/data-source";
+import { encodeSyncLogMessage, getNextSyncAt, serializeDataSource, type AttendanceSyncMetrics, type DiscountSyncMetrics, type KpiSyncMetrics, type ScheduleSyncMetrics } from "@/lib/data-source";
 import { downloadExcelWorkbook, summarizeWorkbook } from "@/lib/excel-proxy";
 import { buildUserByEmployeeNumber } from "@/lib/employee-match";
 import { parseKpiWorkbook } from "@/lib/kpi-parser";
 import { parsePosDiscountWorkbook } from "@/lib/pos-discount-parser";
 import { prisma } from "@/lib/prisma";
 import { parseScheduleWorkbook } from "@/lib/schedule-parser";
+import { importAttendance } from "@/lib/attendance-sync";
 import { findStaleScheduleIds, scheduleScopeDates } from "@/lib/schedule-sync-diff";
 import { syncLog } from "@/lib/sync-log";
 
@@ -23,6 +24,7 @@ export type SyncOutcome =
       scheduleMetrics?: ScheduleSyncMetrics;
       kpiMetrics?: KpiSyncMetrics;
       discountMetrics?: DiscountSyncMetrics;
+      attendanceMetrics?: AttendanceSyncMetrics;
       dataSource: ReturnType<typeof serializeDataSource>;
     }
   | { ok: false; error: string };
@@ -58,7 +60,10 @@ export async function syncDataSource(source: DataSource): Promise<SyncOutcome> {
     const discountMetrics = source.type === "DESCUENTOS_POS"
       ? await importDiscounts(excelWorkbook, source.storeId)
       : undefined;
-    const syncMetrics = scheduleMetrics ?? kpiMetrics ?? discountMetrics;
+    const attendanceMetrics = source.type === "ASISTENCIA"
+      ? await importAttendance(excelWorkbook, source.storeId)
+      : undefined;
+    const syncMetrics = scheduleMetrics ?? kpiMetrics ?? discountMetrics ?? attendanceMetrics;
     const completedAt = new Date();
     const nextSyncAt = getNextSyncAt(source.frequency, completedAt);
     const successMessage = scheduleMetrics
@@ -67,14 +72,20 @@ export async function syncDataSource(source: DataSource): Promise<SyncOutcome> {
         ? `${kpiMetrics.recordsCreated + kpiMetrics.recordsUpdated} registros sincronizados`
         : discountMetrics
           ? `Descuentos sincronizados: ${discountMetrics.recordsUpdated} registros, ${discountMetrics.weekNumbers.length} semanas.`
-          : "Sincronizacion completada";
+          : attendanceMetrics
+            ? attendanceMetrics.errors.length > 0
+              ? `Asistencia NO guardada: ${attendanceMetrics.errors[0]}`
+              : `Asistencia del ${attendanceMetrics.sheetDate}: ${attendanceMetrics.recordsCreated} creados, ${attendanceMetrics.recordsUpdated} actualizados, ${attendanceMetrics.recordsPending} por llegar.`
+            : "Sincronizacion completada";
     const recordsProcessed = kpiMetrics
       ? kpiMetrics.recordsCreated + kpiMetrics.recordsUpdated
       : scheduleMetrics
         ? scheduleMetrics.recordsProcessed
         : discountMetrics
           ? discountMetrics.recordsProcessed
-          : workbook.recordsProcessed;
+          : attendanceMetrics
+            ? attendanceMetrics.recordsProcessed
+            : workbook.recordsProcessed;
     await prisma.syncLog.update({
       where: { id: log.id },
       data: {
@@ -100,6 +111,7 @@ export async function syncDataSource(source: DataSource): Promise<SyncOutcome> {
       scheduleMetrics,
       kpiMetrics,
       discountMetrics,
+      attendanceMetrics,
       dataSource: serializeDataSource(updated)
     };
   } catch (error) {
@@ -572,7 +584,9 @@ async function importDiscounts(workbook: Parameters<typeof parsePosDiscountWorkb
 }
 
 // Orden de sincronización: KPIs primero (los Descuentos POS se anclan a registros KPI existentes).
-const SYNC_TYPE_ORDER: Record<string, number> = { KPIS: 0, HORARIOS: 1, DESCUENTOS_POS: 2 };
+// Horarios ANTES que asistencia: la asistencia cruza contra el horario del día
+// para no marcarle falta a quien descansaba.
+const SYNC_TYPE_ORDER: Record<string, number> = { KPIS: 0, HORARIOS: 1, DESCUENTOS_POS: 2, ASISTENCIA: 3 };
 
 /**
  * Sincroniza TODAS las fuentes auto-sincronizables (SharePoint/Excel; excluye MANUAL),

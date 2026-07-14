@@ -33,6 +33,7 @@ model Store {
   notifications         Notification[]
   pendings              Pending[]
   schedules             Schedule[]
+  attendances           Attendance[]
   shiftRequests         ShiftRequest[]
   fixtures              StoreFixture[]
   logEntries            StoreLog[]
@@ -148,6 +149,7 @@ model User {
   assignedPendings      Pending[]              @relation("PendingOwner")
   pushSubscriptions     PushSubscription[]
   schedules             Schedule[]
+  attendances           Attendance[]
   shiftRequests         ShiftRequest[]         @relation("ShiftRequester")
   authoredLogs          StoreLog[]
   authoredSurveys       Survey[]               @relation("SurveyAuthor")
@@ -334,6 +336,50 @@ model Schedule {
 
   @@unique([userId, date])
   @@index([storeId, date])
+}
+
+/// Asistencia diaria: la foto de un día que la hoja APERTURA sobrescribe.
+/// La hoja solo guarda el día en curso, así que el cron la baja varias veces al
+/// día y la conserva aquí. De esta tabla salen los reportes de nómina (faltas
+/// quincenales; retardos, domingos y festivos mensuales).
+model Attendance {
+  id          String           @id @default(cuid())
+  storeId     String
+  userId      String
+  date        DateTime
+  /// Hora que debía entrar ("10:30"), tomada del horario del día.
+  expectedAt  String?
+  /// Hora que marcó en el POS ("10:45"). null = no marcó entrada.
+  arrivedAt   String?
+  lunchStart  String?
+  leftAt      String?
+  /// Diferencia contra su horario. Negativo = llegó antes.
+  minutesLate Int              @default(0)
+  status      AttendanceStatus
+  /// Texto crudo de la celda de entrada cuando no era una hora ("VACACIONES").
+  entryText   String?
+  /// APERTURA_XLSX (del archivo) o MANUAL (corregido por gerencia).
+  source      String           @default("APERTURA_XLSX")
+  /// Nota de la corrección manual. Quién y cuándo va en AuditLog.
+  note        String?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  store       Store            @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  user        User             @relation(fields: [userId], references: [id])
+
+  @@unique([userId, date])
+  @@index([storeId, date])
+}
+
+enum AttendanceStatus {
+  ON_TIME
+  LATE
+  ABSENT
+  EXCUSED
+  REST
+  VACATION
+  PAID_DAY
+  INVENTORY
 }
 
 model DayPlan {
@@ -929,6 +975,7 @@ enum DataSourceType {
   COMISIONES
   COMUNICADOS
   DESCUENTOS_POS
+  ASISTENCIA
 }
 
 enum DataSourceProvider {

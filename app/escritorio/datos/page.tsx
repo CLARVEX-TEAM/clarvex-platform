@@ -17,7 +17,8 @@ import {
   Tags,
   Target,
   Wifi,
-  X
+  X,
+  Clock
 } from "lucide-react";
 import {
   dataSourceTypes,
@@ -36,7 +37,8 @@ const modules: Record<DataSourceType, { label: string; icon: typeof CalendarDays
   METAS: { label: "Metas", icon: Target, description: "Objetivos diarios y mensuales." },
   COMISIONES: { label: "Comisiones", icon: CircleDollarSign, description: "Reglas, niveles y resultados." },
   COMUNICADOS: { label: "Comunicados", icon: Megaphone, description: "Avisos y confirmaciones de lectura." },
-  DESCUENTOS_POS: { label: "Descuentos POS", icon: Tags, description: "Venta bruta, descuentos y limite permitido." }
+  DESCUENTOS_POS: { label: "Descuentos POS", icon: Tags, description: "Venta bruta, descuentos y limite permitido." },
+  ASISTENCIA: { label: "Asistencia", icon: Clock, description: "Hora de llegada, retardos y faltas (hoja APERTURA)." }
 };
 
 const providers: Array<{ value: DataSourceProvider; label: string; icon: typeof Database }> = [
