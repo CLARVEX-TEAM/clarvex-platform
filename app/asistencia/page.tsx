@@ -2,18 +2,22 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CalendarX2, ChevronLeft, ChevronRight, Clock, Sun } from "lucide-react";
+import { CalendarX2, ChevronLeft, ChevronRight, Clock, PartyPopper, Sun } from "lucide-react";
 import { getSession } from "@/lib/auth";
 import type { User } from "@/lib/types";
 import {
   currentMonth,
   dayLabel,
+  fortnightOf,
+  incidentsFor,
+  INCIDENT_TONE,
   isSunday,
   STATUS_LABEL,
   STATUS_TONE,
   totalsByUser,
   totalsFor,
-  type AttendanceRecord
+  type AttendanceRecord,
+  type Incident
 } from "@/lib/attendance-view";
 import { AppFrame, AppHeader, BottomNav, Card, ProfileAvatar } from "@/components/ui";
 import { cn } from "@/lib/utils";
@@ -41,6 +45,9 @@ export default function AsistenciaPage() {
   const [canEdit, setCanEdit] = useState(false);
   const [openUser, setOpenUser] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [tab, setTab] = useState<"dias" | "incidencias">("dias");
+  // Las faltas se reportan por quincena; los retardos y festivos, por mes.
+  const [period, setPeriod] = useState<1 | 2 | "mes">("mes");
 
   useEffect(() => {
     getSession().then((current) => {
@@ -73,6 +80,14 @@ export default function AsistenciaPage() {
   const byUser = useMemo(() => totalsByUser(records), [records]);
   const totals = useMemo(() => totalsFor(records), [records]);
 
+  // Incidencias del periodo elegido: es lo que se teclea en Blitz.
+  const scoped = useMemo(
+    () => (period === "mes" ? records : records.filter((record) => fortnightOf(record.date) === period)),
+    [records, period]
+  );
+  const incidents = useMemo(() => incidentsFor(scoped), [scoped]);
+  const nameById = useMemo(() => new Map(users.map((user) => [user.id, user.name])), [users]);
+
   // Un asesor solo se ve a sí mismo: se le abre su detalle directo.
   const soloUser = users.length === 1 ? users[0].id : null;
   const expanded = soloUser ?? openUser;
@@ -98,10 +113,28 @@ export default function AsistenciaPage() {
         </Card>
 
         {/* Lo que se reporta a nómina */}
-        <div className="mb-3 grid grid-cols-3 gap-2">
-          <SummaryTile icon={<CalendarX2 size={16} />} label="Faltas" value={totals.absences} tone="text-rose-600 dark:text-rose-400" />
-          <SummaryTile icon={<Clock size={16} />} label="Retardos" value={totals.lates} tone="text-amber-600 dark:text-amber-400" />
-          <SummaryTile icon={<Sun size={16} />} label="Domingos" value={totals.sundaysWorked} tone="text-blue-600 dark:text-blue-400" />
+        <div className="mb-3 grid grid-cols-4 gap-2">
+          <SummaryTile icon={<CalendarX2 size={15} />} label="Faltas" value={totals.absences} tone="text-rose-600 dark:text-rose-400" />
+          <SummaryTile icon={<Clock size={15} />} label="Retardos" value={totals.lates} tone="text-amber-600 dark:text-amber-400" />
+          <SummaryTile icon={<Sun size={15} />} label="Domingos" value={totals.sundaysWorked} tone="text-blue-600 dark:text-blue-400" />
+          <SummaryTile icon={<PartyPopper size={15} />} label="Festivos" value={totals.holidaysWorked} tone="text-violet-600 dark:text-violet-400" />
+        </div>
+
+        {/* Pestañas: el día a día, o la lista lista para capturar en Blitz. */}
+        <div className="mb-3 grid grid-cols-2 gap-1 rounded-2xl bg-black/[0.04] p-1 dark:bg-white/[0.06]">
+          {(["dias", "incidencias"] as const).map((value) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => setTab(value)}
+              className={cn(
+                "rounded-xl py-2 text-xs font-black transition",
+                tab === value ? "bg-panel text-ink shadow-sm" : "text-muted"
+              )}
+            >
+              {value === "dias" ? "Día a día" : "Incidencias"}
+            </button>
+          ))}
         </div>
 
         {loading && records.length === 0 ? (
@@ -113,7 +146,7 @@ export default function AsistenciaPage() {
         ) : null}
 
         {/* Equipo (solo gerencia) */}
-        {canEdit && users.length > 1 ? (
+        {tab === "dias" && canEdit && users.length > 1 ? (
           <Card className="mb-3 overflow-hidden p-0">
             {users.map((user, index) => {
               const userTotals = byUser.get(user.id);
@@ -143,10 +176,37 @@ export default function AsistenciaPage() {
         ) : null}
 
         {/* Asesor: su propio detalle */}
-        {soloUser ? (
+        {tab === "dias" && soloUser ? (
           <Card className="overflow-hidden p-0">
             <DayList records={detail} />
           </Card>
+        ) : null}
+
+        {/* Incidencias: lo que se teclea en Blitz */}
+        {tab === "incidencias" ? (
+          <>
+            <div className="mb-3 grid grid-cols-3 gap-1 rounded-2xl bg-black/[0.04] p-1 dark:bg-white/[0.06]">
+              {([1, 2, "mes"] as const).map((value) => (
+                <button
+                  key={String(value)}
+                  type="button"
+                  onClick={() => setPeriod(value)}
+                  className={cn(
+                    "rounded-xl py-1.5 text-[11px] font-black transition",
+                    period === value ? "bg-panel text-ink shadow-sm" : "text-muted"
+                  )}
+                >
+                  {value === 1 ? "1ª quincena" : value === 2 ? "2ª quincena" : "Mes completo"}
+                </button>
+              ))}
+            </div>
+            <p className="mb-2 px-1 text-[11px] font-semibold text-muted">
+              {period === "mes"
+                ? "Retardos, domingos y festivos se reportan por mes."
+                : "Las faltas se reportan por quincena."}
+            </p>
+            <IncidentList incidents={incidents} nameById={nameById} />
+          </>
         ) : null}
       </AppFrame>
       <BottomNav />
@@ -160,6 +220,38 @@ function SummaryTile({ icon, label, value, tone }: { icon: React.ReactNode; labe
       <span className={cn("mx-auto grid size-8 place-items-center", tone)}>{icon}</span>
       <p className={cn("mt-1 text-xl font-black", tone)}>{value}</p>
       <p className="text-[11px] font-bold text-muted">{label}</p>
+    </Card>
+  );
+}
+
+/**
+ * La lista que se lee para capturar en Blitz. Cada renglón es una incidencia
+ * suelta con su fecha, la persona y el detalle — nada que volver a contar.
+ */
+function IncidentList({ incidents, nameById }: { incidents: Incident[]; nameById: Map<string, string> }) {
+  if (incidents.length === 0) {
+    return (
+      <Card className="text-sm font-semibold text-muted">
+        Sin incidencias en este periodo. 🎉
+      </Card>
+    );
+  }
+  return (
+    <Card className="overflow-hidden p-0">
+      <div className="divide-y divide-line/50">
+        {incidents.map((incident, index) => (
+          <div key={`${incident.userId}-${incident.date}-${incident.kind}-${index}`} className="flex items-center gap-3 px-4 py-2.5">
+            <p className="w-14 shrink-0 text-xs font-bold text-muted">{dayLabel(incident.date)}</p>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-bold text-ink">{nameById.get(incident.userId) ?? "—"}</p>
+              <p className="truncate text-[11px] text-muted">{incident.detail}</p>
+            </div>
+            <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-[10px] font-black", INCIDENT_TONE[incident.kind])}>
+              {incident.kind}
+            </span>
+          </div>
+        ))}
+      </div>
     </Card>
   );
 }

@@ -1,5 +1,6 @@
 import type { AttendanceStatus } from "@/lib/attendance";
 import { countsAsAbsence, countsAsLate, earnsSundayPremium } from "@/lib/attendance";
+import { holidayLabel, isHoliday } from "@/lib/holidays";
 
 /**
  * Presentación y totales de asistencia. Puro y testeable: los totales son los
@@ -50,12 +51,19 @@ export type AttendanceTotals = {
   lates: number;
   /** Domingos TRABAJADOS: generan prima dominical. */
   sundaysWorked: number;
+  /** Festivos oficiales TRABAJADOS: se pagan distinto (LFT Art. 75). */
+  holidaysWorked: number;
   /** Minutos acumulados de retardo (solo de los días con retardo). */
   minutesLate: number;
 };
 
+/** Se presentó a trabajar (aunque llegara tarde o con permiso). */
+function worked(status: AttendanceStatus): boolean {
+  return status === "ON_TIME" || status === "LATE" || status === "EXCUSED";
+}
+
 export function totalsFor(records: AttendanceRecord[]): AttendanceTotals {
-  const totals: AttendanceTotals = { absences: 0, lates: 0, sundaysWorked: 0, minutesLate: 0 };
+  const totals: AttendanceTotals = { absences: 0, lates: 0, sundaysWorked: 0, holidaysWorked: 0, minutesLate: 0 };
   for (const record of records) {
     const date = new Date(`${record.date}T00:00:00.000Z`);
     if (countsAsAbsence(record.status)) totals.absences += 1;
@@ -64,8 +72,65 @@ export function totalsFor(records: AttendanceRecord[]): AttendanceTotals {
       totals.minutesLate += Math.max(0, record.minutesLate);
     }
     if (earnsSundayPremium(record.status, date)) totals.sundaysWorked += 1;
+    if (isHoliday(record.date) && worked(record.status)) totals.holidaysWorked += 1;
   }
   return totals;
+}
+
+/** Una incidencia suelta, tal cual se captura en Blitz. */
+export type Incident = {
+  userId: string;
+  date: string;
+  kind: "FALTA" | "RETARDO" | "DOMINGO" | "FESTIVO";
+  detail: string;
+};
+
+/**
+ * Todas las incidencias del periodo, planas y ordenadas por fecha.
+ *
+ * Es lo que se lee para capturar en Blitz: no hay exportación a Excel porque esa
+ * plataforma no la acepta — se teclea. Así que la pantalla tiene que dar la lista
+ * ya masticada, sin que nadie vuelva a contar nada a mano.
+ */
+export function incidentsFor(records: AttendanceRecord[]): Incident[] {
+  const incidents: Incident[] = [];
+  for (const record of records) {
+    const date = new Date(`${record.date}T00:00:00.000Z`);
+    if (countsAsAbsence(record.status)) {
+      incidents.push({ userId: record.userId, date: record.date, kind: "FALTA", detail: "No se presentó" });
+    }
+    if (countsAsLate(record.status)) {
+      incidents.push({
+        userId: record.userId,
+        date: record.date,
+        kind: "RETARDO",
+        detail: `Llegó ${record.arrivedAt ?? "—"} (esperada ${record.expectedAt ?? "—"}, +${Math.max(0, record.minutesLate)} min)`
+      });
+    }
+    if (earnsSundayPremium(record.status, date)) {
+      incidents.push({ userId: record.userId, date: record.date, kind: "DOMINGO", detail: "Prima dominical" });
+    }
+    const holiday = holidayLabel(record.date);
+    if (holiday && worked(record.status)) {
+      incidents.push({ userId: record.userId, date: record.date, kind: "FESTIVO", detail: holiday });
+    }
+  }
+  return incidents.sort((a, b) => a.date.localeCompare(b.date) || a.kind.localeCompare(b.kind));
+}
+
+export const INCIDENT_TONE: Record<Incident["kind"], string> = {
+  FALTA: "bg-rose-100 text-rose-800 dark:bg-rose-950/50 dark:text-rose-200",
+  RETARDO: "bg-amber-100 text-amber-900 dark:bg-amber-950/50 dark:text-amber-200",
+  DOMINGO: "bg-blue-100 text-blue-800 dark:bg-blue-950/50 dark:text-blue-200",
+  FESTIVO: "bg-violet-100 text-violet-800 dark:bg-violet-950/50 dark:text-violet-200"
+};
+
+/**
+ * Quincena a la que pertenece una fecha: 1 (días 1-15) o 2 (16 al fin de mes).
+ * Las faltas se reportan cada quincena.
+ */
+export function fortnightOf(date: string): 1 | 2 {
+  return Number(date.slice(8, 10)) <= 15 ? 1 : 2;
 }
 
 /** Totales por colaborador, para el reporte y para la lista de gerencia. */
