@@ -25,9 +25,14 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
     return NextResponse.json({ error: outcome.error }, { status: 502 });
   }
 
-  const { message, workbook, scheduleMetrics, kpiMetrics, discountMetrics, dataSource } = outcome;
+  const { message, workbook, scheduleMetrics, kpiMetrics, discountMetrics, attendanceMetrics, dataSource } = outcome;
+  // La sincronización puede terminar "bien" y aun así no haber guardado nada
+  // (p. ej. el archivo de asistencia no es de hoy). Eso no es un error de
+  // conexión, pero el usuario TIENE que verlo distinto a un éxito.
+  const warning = Boolean(attendanceMetrics && attendanceMetrics.errors.length > 0);
   return NextResponse.json({
     message,
+    warning,
     workbook,
     ...(scheduleMetrics ? {
       registrosProcesados: scheduleMetrics.recordsProcessed,

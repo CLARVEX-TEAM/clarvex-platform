@@ -31,6 +31,15 @@ import {
   type SheetSummary
 } from "@/lib/data-source";
 import { Badge, Button, Card } from "@/components/ui";
+import { cn } from "@/lib/utils";
+// Cada tono lleva SU variante oscura. El banner tenia bg-blue-50 fijo: en modo
+// oscuro el texto (claro) quedaba sobre un fondo casi blanco = ilegible.
+const toneClass = {
+  info: "border-line bg-blue-50 text-ink/75 dark:border-blue-900/40 dark:bg-blue-950/40 dark:text-blue-100",
+  warn: "border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-800/50 dark:bg-amber-950/40 dark:text-amber-100",
+  error: "border-rose-300 bg-rose-50 text-rose-900 dark:border-rose-800/50 dark:bg-rose-950/40 dark:text-rose-100"
+} as const;
+
 const modules: Record<DataSourceType, { label: string; icon: typeof CalendarDays; description: string }> = {
   HORARIOS: { label: "Horarios", icon: CalendarDays, description: "Turnos, descansos y zonas." },
   KPIS: { label: "KPIs", icon: Gauge, description: "Venta, conversion y productividad." },
@@ -72,6 +81,8 @@ export default function EscritorioDatos() {
   const [testedSheets, setTestedSheets] = useState<Record<string, SheetSummary[]>>({});
   const [testedRecords, setTestedRecords] = useState<Record<string, number>>({});
   const [message, setMessage] = useState("");
+  // Un fallo de sincronización no puede verse igual que un aviso normal.
+  const [tone, setTone] = useState<"info" | "warn" | "error">("info");
 
   useEffect(() => {
     void fetchSources();
@@ -99,7 +110,7 @@ export default function EscritorioDatos() {
       const payload = await response.json() as { dataSources: DataSourceRecord[] };
       setSources(payload.dataSources);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "No se pudo cargar el Centro de Datos.");
+      setTone("error"); setMessage(error instanceof Error ? error.message : "No se pudo cargar el Centro de Datos.");
     } finally {
       setLoading(false);
     }
@@ -138,9 +149,9 @@ export default function EscritorioDatos() {
       setTestedRecords((current) => omitSourceResult(current, payload.dataSource!.id));
       await fetchSources();
       setConfig(null);
-      setMessage("Configuracion guardada en PostgreSQL.");
+      setTone("info"); setMessage("Configuracion guardada en PostgreSQL.");
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "No se pudo guardar la fuente.");
+      setTone("error"); setMessage(error instanceof Error ? error.message : "No se pudo guardar la fuente.");
     } finally {
       setSaving(false);
     }
@@ -148,15 +159,16 @@ export default function EscritorioDatos() {
 
   async function syncSource(source: DataSourceRecord) {
     setSyncingId(source.id);
-    setMessage(`Sincronizando ${modules[source.type].label}...`);
+    setTone("info"); setMessage(`Sincronizando ${modules[source.type].label}...`);
     try {
       const response = await fetch(`/api/data-sources/${source.id}/sync`, { method: "POST" });
-      const payload = await response.json() as { dataSource?: DataSourceRecord; message?: string; error?: string };
+      const payload = await response.json() as { dataSource?: DataSourceRecord; message?: string; warning?: boolean; error?: string };
       if (!response.ok || !payload.dataSource) throw new Error(payload.error ?? "No se pudo sincronizar.");
       setSources((current) => current.map((item) => item.id === source.id ? payload.dataSource! : item));
+      setTone(payload.warning ? "warn" : "info");
       setMessage(payload.message ?? "Sincronizacion completada");
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "No se pudo sincronizar.");
+      setTone("error"); setMessage(error instanceof Error ? error.message : "No se pudo sincronizar.");
       await fetchSources();
     } finally {
       setSyncingId(null);
@@ -182,7 +194,7 @@ export default function EscritorioDatos() {
       setTestedRecords((current) => ({ ...current, [source.id]: payload.workbook!.recordsProcessed }));
       setMessage(payload.message ?? "Conexion correcta.");
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "No se pudo probar la conexion.");
+      setTone("error"); setMessage(error instanceof Error ? error.message : "No se pudo probar la conexion.");
       await fetchSources();
     } finally {
       setTestingId(null);
@@ -204,7 +216,7 @@ export default function EscritorioDatos() {
         </div>
       </section>
 
-      {message ? <p className="rounded-2xl border border-line bg-blue-50 px-3 py-2 text-[13px] font-semibold text-ink/75 dark:bg-blue-950/30">{message}</p> : null}
+      {message ? <p className={cn("rounded-2xl border px-3 py-2 text-[13px] font-semibold", toneClass[tone])}>{message}</p> : null}
 
       <section className="grid grid-cols-2 gap-4" aria-label="Modulos de datos">
         {dataSourceTypes.map((type) => {
