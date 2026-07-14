@@ -6,6 +6,7 @@ import { Send, Smile, Users, ImagePlus, Trash2, X, Reply } from "lucide-react";
 import { getSession } from "@/lib/auth";
 import type { User } from "@/lib/types";
 import { AppHeader, ProfileAvatar } from "@/components/ui";
+import { useToast } from "@/components/Toast";
 import { cn } from "@/lib/utils";
 import {
   ChatPicker,
@@ -98,6 +99,7 @@ function MessageBody({ msg, isMe, onImageClick }: { msg: Message; isMe: boolean;
 export default function ChatRoomPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
+  const toast = useToast();
   const [session, setSession] = useState<User | null>(null);
   const [room, setRoom] = useState<RoomInfo | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -119,9 +121,18 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
   }, [router]);
 
   const fetchMessages = useCallback(async () => {
-    const res = await fetchChatRoom(id);
-    setMessages(res.messages);
-    if (res.room) setRoom(res.room);
+    try {
+      const res = await fetchChatRoom(id);
+      setMessages(res.messages);
+      if (res.room) setRoom(res.room);
+    } catch {
+      // Este sondeo corre cada 3 s en un móvil: perder una petición por señal
+      // intermitente, cambio de red o app en segundo plano es lo NORMAL, no una
+      // excepción. Se ignora y se reintenta en el siguiente ciclo.
+      //
+      // Antes se propagaba sin capturar y Sentry lo reportaba como
+      // "TypeError: Failed to fetch" (unhandled) una y otra vez.
+    }
   }, [id]);
 
   useEffect(() => {
@@ -147,6 +158,12 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
     try {
       const message = await postChatMessage(id, body, replyToId);
       setMessages((prev) => [...prev, message]);
+    } catch {
+      // Se devuelve el texto al campo: perder lo que acababas de escribir por un
+      // bache de señal sería peor que el propio fallo.
+      setInput(body);
+      if (replyToId) setReplyTo((prev) => prev ?? null);
+      toast("No se pudo enviar. Revisa tu conexión.", "error");
     } finally {
       setSending(false);
       inputRef.current?.focus();
@@ -163,7 +180,9 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
     try {
       const res = await postChatImage(id, file, replyToId);
       if (res.message) setMessages((prev) => [...prev, res.message!]);
-      else if (res.error) alert(res.error);
+      else if (res.error) toast(res.error, "error");
+    } catch {
+      toast("No se pudo enviar la imagen. Revisa tu conexión.", "error");
     } finally {
       setSending(false);
     }
@@ -171,9 +190,14 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
 
   async function reactToMessage(msg: Message, emoji: string) {
     setMenuMsg(null);
-    const reactions = await postChatReaction(id, msg.id, emoji);
-    if (reactions) {
-      setMessages((prev) => prev.map((m) => (m.id === msg.id ? { ...m, reactions } : m)));
+    try {
+      const reactions = await postChatReaction(id, msg.id, emoji);
+      if (reactions) {
+        setMessages((prev) => prev.map((m) => (m.id === msg.id ? { ...m, reactions } : m)));
+      }
+    } catch {
+      // Una reacción es cosmética: si falla, el sondeo la resincroniza sola. No
+      // vale la pena molestar al usuario, pero sí evitar el unhandled rejection.
     }
   }
 

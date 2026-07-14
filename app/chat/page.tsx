@@ -8,6 +8,7 @@ import { fetchAppData } from "@/lib/app-data";
 import type { User } from "@/lib/types";
 import { AppFrame, AppHeader, BottomNav, Card, ProfileAvatar } from "@/components/ui";
 import { chatPreview } from "@/components/ChatPicker";
+import { useToast } from "@/components/Toast";
 
 type RoomSummary = {
   id: string;
@@ -22,6 +23,7 @@ type Teammate = { id: string; name: string; photoUrl: string | null };
 
 export default function ChatPage() {
   const router = useRouter();
+  const toast = useToast();
   const [session, setSession] = useState<User | null>(null);
   const [rooms, setRooms] = useState<RoomSummary[]>([]);
   const [team, setTeam] = useState<Teammate[]>([]);
@@ -41,26 +43,42 @@ export default function ChatPage() {
   }, [session]);
 
   async function refreshRooms() {
-    const res = await fetch("/api/chat", { cache: "no-store" }).then((r) => r.json() as Promise<{ rooms: RoomSummary[] }>);
-    setRooms(res.rooms ?? []);
+    try {
+      const res = await fetch("/api/chat", { cache: "no-store" }).then((r) => r.json() as Promise<{ rooms: RoomSummary[] }>);
+      setRooms(res.rooms ?? []);
+    } catch {
+      // Sondeo cada 5 s en un móvil: perder una petición por señal intermitente
+      // o por tener la app en segundo plano es lo NORMAL. Se reintenta al
+      // siguiente ciclo.
+      //
+      // Antes se propagaba sin capturar: Sentry lo reportaba como
+      // "TypeError: Failed to fetch" (unhandled) cada 5 segundos.
+    }
   }
 
   async function load() {
     try {
       const [, appData] = await Promise.all([refreshRooms(), fetchAppData()]);
       setTeam(appData.users.filter((u) => u.id !== session?.id).map((u) => ({ id: u.id, name: u.name, photoUrl: u.photoUrl ?? null })));
+    } catch {
+      // Sin conexión al abrir: se muestra la pantalla vacía y el sondeo la
+      // llenará en cuanto vuelva la red.
     } finally {
       setLoading(false);
     }
   }
 
   async function openDirect(targetId: string) {
-    const res = await fetch("/api/chat", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ targetUserId: targetId })
-    }).then((r) => r.json() as Promise<{ room: { id: string } }>);
-    router.push(`/chat/${res.room.id}`);
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ targetUserId: targetId })
+      }).then((r) => r.json() as Promise<{ room: { id: string } }>);
+      router.push(`/chat/${res.room.id}`);
+    } catch {
+      toast("No se pudo abrir el chat. Revisa tu conexión.", "error");
+    }
   }
 
   const homeHref = session?.role === "ASESOR" ? "/advisor" : "/manager";
