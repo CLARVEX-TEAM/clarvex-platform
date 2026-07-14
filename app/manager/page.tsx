@@ -22,6 +22,7 @@ import { getSession, logout } from "@/lib/auth";
 import { completion, money, performanceTone, performanceTextClass } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { computeDailyStreak } from "@/lib/streaks";
+import { isRestingToday, scheduleStatusByUser } from "@/lib/working-today";
 import type { User } from "@/lib/types";
 import { AppFrame, Badge, BottomNav, Card, ProfileAvatar, ProgressBar, priorityTone } from "@/components/ui";
 import { PullToRefresh } from "@/components/PullToRefresh";
@@ -113,13 +114,17 @@ export default function ManagerDashboard() {
   const storeProgress = completion(store?.dailySales ?? 0, store?.dailyGoal ?? 0);
   const activityProgress = allActivities ? Math.round((doneActivities / allActivities) * 100) : 0;
   // Ranking del DÍA: solo el KPI de HOY (no caer al día anterior).
-  // Si el asesor no tiene fila de hoy o su meta diaria es 0 → está de descanso:
-  // se etiqueta "Descanso" y se manda al fondo en vez de mostrar la venta de ayer.
+  // Quien descansa se etiqueta "Descanso" y se manda al fondo en vez de mostrar
+  // la venta de ayer.
+  //
+  // Quién descansa lo dice el archivo de HORARIOS, no la meta del RDV (ver
+  // lib/working-today).
   const todayKey = data.dashboardDaily.date;
+  const statusToday = scheduleStatusByUser(data.schedules, todayKey);
   const ranking = advisors
     .map((a) => {
       const kpi = data.kpis.find((k) => k.userId === a.id && k.date === todayKey);
-      const resting = !kpi || (kpi.dailyGoal ?? 0) === 0;
+      const resting = isRestingToday(statusToday.get(a.id), kpi);
       return { advisor: a, kpi, resting };
     })
     .sort((a, b) =>

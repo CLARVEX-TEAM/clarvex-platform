@@ -77,15 +77,15 @@ export const announcements: Announcement[] = [
 ];
 
 export const schedules: ScheduleShift[] = [
-  { id: "s1", userId: "waira", day: "Lun", start: "10:00", end: "18:00", zone: "Piso" },
-  { id: "s2", userId: "waira", day: "Mar", start: "12:00", end: "20:00", zone: "Probadores" },
-  { id: "s3", userId: "waira", day: "Mie", start: "Descanso", end: "", zone: "" },
-  { id: "s4", userId: "waira", day: "Jue", start: "11:00", end: "19:00", zone: "Caja apoyo" },
-  { id: "s5", userId: "waira", day: "Vie", start: "13:00", end: "21:00", zone: "Piso" },
-  { id: "s6", userId: "jazmin", day: "Lun", start: "12:00", end: "20:00", zone: "Piso" },
-  { id: "s7", userId: "jazmin", day: "Mar", start: "10:00", end: "18:00", zone: "Entrada" },
-  { id: "s8", userId: "alonso", day: "Lun", start: "13:00", end: "21:00", zone: "Piso" },
-  { id: "s9", userId: "alonso", day: "Mar", start: "11:00", end: "19:00", zone: "Bodega apoyo" }
+  { id: "s1", userId: "waira", date: "2026-06-01", status: "WORKING", day: "Lun", start: "10:00", end: "18:00", zone: "Piso" },
+  { id: "s2", userId: "waira", date: "2026-06-02", status: "WORKING", day: "Mar", start: "12:00", end: "20:00", zone: "Probadores" },
+  { id: "s3", userId: "waira", date: "2026-06-03", status: "OFF", day: "Mie", start: "Descanso", end: "", zone: "" },
+  { id: "s4", userId: "waira", date: "2026-06-04", status: "WORKING", day: "Jue", start: "11:00", end: "19:00", zone: "Caja apoyo" },
+  { id: "s5", userId: "waira", date: "2026-06-05", status: "WORKING", day: "Vie", start: "13:00", end: "21:00", zone: "Piso" },
+  { id: "s6", userId: "jazmin", date: "2026-06-01", status: "WORKING", day: "Lun", start: "12:00", end: "20:00", zone: "Piso" },
+  { id: "s7", userId: "jazmin", date: "2026-06-02", status: "WORKING", day: "Mar", start: "10:00", end: "18:00", zone: "Entrada" },
+  { id: "s8", userId: "alonso", date: "2026-06-01", status: "WORKING", day: "Lun", start: "13:00", end: "21:00", zone: "Piso" },
+  { id: "s9", userId: "alonso", date: "2026-06-02", status: "WORKING", day: "Mar", start: "11:00", end: "19:00", zone: "Bodega apoyo" }
 ];
 
 export const advisors = users.filter((user) => user.role === "ASESOR");

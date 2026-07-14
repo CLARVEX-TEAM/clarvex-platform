@@ -101,6 +101,10 @@ export type Announcement = {
 export type ScheduleShift = {
   id: string;
   userId: string;
+  /** "YYYY-MM-DD" */
+  date: string;
+  /** WORKING | OFF | VACATION | PAID_DAY | INVENTORY | TERMINATED */
+  status: string;
   day: string;
   start: string;
   end: string;

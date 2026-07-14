@@ -8,6 +8,7 @@ import type { LucideIcon } from "lucide-react";
 import { completion, money } from "@/lib/format";
 import { buildSalesTrend } from "@/lib/trend";
 import { cn } from "@/lib/utils";
+import { isRestingToday, scheduleStatusByUser } from "@/lib/working-today";
 import { achievementTone, Badge, Card, ProgressBar, ProgressRing, ProfileAvatar, priorityTone } from "@/components/ui";
 import { TeamCelebrationsCard } from "@/components/home/TeamCelebrationsCard";
 import { useTheme } from "@/components/ThemeProvider";
@@ -48,10 +49,12 @@ export default function EscritorioDashboard() {
     .slice(0, 6);
   const userName = (id: string) => data.users.find((u) => u.id === id)?.name ?? "Equipo";
 
+  // Mismo criterio que /manager: manda el archivo de HORARIOS (lib/working-today).
+  const statusToday = scheduleStatusByUser(data.schedules, todayKey);
   const ranking = advisors
     .map((a) => {
       const kpi = data.kpis.find((k) => k.userId === a.id && k.date === todayKey);
-      const resting = !kpi || (kpi.dailyGoal ?? 0) === 0;
+      const resting = isRestingToday(statusToday.get(a.id), kpi);
       const progress = completion(kpi?.dailySales ?? 0, kpi?.dailyGoal ?? 0);
       return { advisor: a, sales: kpi?.dailySales ?? 0, goal: kpi?.dailyGoal ?? 0, progress, resting };
     })
