@@ -6,8 +6,20 @@ import type {
 } from "@simplewebauthn/server";
 import type { User } from "@/lib/types";
 
+/**
+ * Lo que devuelve el paso "inspect" del login (ANTES de autenticar). A propósito
+ * NO es un `User`: sin sesión no se entregan foto, rol, último acceso ni id
+ * interno. Ver publicUserPreAuth en lib/security.
+ */
+export type PreAuthUser = {
+  name: string;
+  employeeNumber: string;
+  avatar: string;
+  biometricEnabled: boolean;
+};
+
 type EmployeeLookup = {
-  user: User;
+  user: PreAuthUser;
   requiresPinSetup: boolean;
 };
 

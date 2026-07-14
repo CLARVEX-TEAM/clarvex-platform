@@ -1,10 +1,9 @@
 "use client";
 
-import Image from "next/image";
 import { motion } from "framer-motion";
 import type { LucideIcon } from "lucide-react";
 import { Fingerprint, KeyRound } from "lucide-react";
-import type { User } from "@/lib/types";
+import type { PreAuthUser } from "@/lib/auth";
 
 export function GreetingStep({
   user,
@@ -16,7 +15,7 @@ export function GreetingStep({
   onPinLogin,
   onBack
 }: {
-  user: User;
+  user: PreAuthUser;
   greeting: { text: string; Icon: LucideIcon };
   isDark: boolean;
   busy: boolean;
@@ -35,34 +34,22 @@ export function GreetingStep({
       transition={{ duration: 0.48, ease: [0.22, 1, 0.36, 1] }}
       className="flex min-h-screen flex-col items-center px-5 pb-10 pt-16"
     >
-      {/* Foto con glow */}
+      {/* Iniciales con glow.
+          NO se muestra la foto: este saludo se pinta SIN sesión, así que la foto
+          sería obtenible por cualquiera que teclee números de empleado. El rol y
+          la tienda se omiten por lo mismo. Ver publicUserPreAuth en lib/security. */}
       <div className="relative mb-5">
         <div
           className="absolute inset-0 rounded-full blur-3xl"
           style={{ background: "rgba(59,130,246,0.42)", transform: "scale(1.35)" }}
         />
         <div className="relative size-[112px] overflow-hidden rounded-full ring-4 ring-white/80 shadow-2xl">
-          {user.photoUrl ? (
-            <Image
-              src={user.photoUrl}
-              alt={user.name}
-              width={112}
-              height={112}
-              className="size-full object-cover"
-            />
-          ) : (
-            <div
-              className="flex size-full items-center justify-center text-3xl font-black text-white"
-              style={{ background: "linear-gradient(135deg, #60a5fa 0%, #1d4ed8 100%)" }}
-            >
-              {user.name
-                .split(" ")
-                .slice(0, 2)
-                .map((w) => w[0] ?? "")
-                .join("")
-                .toUpperCase()}
-            </div>
-          )}
+          <div
+            className="flex size-full items-center justify-center text-3xl font-black text-white"
+            style={{ background: "linear-gradient(135deg, #60a5fa 0%, #1d4ed8 100%)" }}
+          >
+            {user.avatar}
+          </div>
         </div>
       </div>
 
@@ -73,10 +60,6 @@ export function GreetingStep({
       <h1 className={`mt-1 text-2xl font-black tracking-tight ${isDark ? "text-white" : "text-slate-900"}`}>
         {user.name}
       </h1>
-      <p className={`mt-1 text-sm font-medium ${isDark ? "text-slate-400" : "text-slate-500"}`}>
-        {user.role === "ASESOR" ? "Vendedor" : user.role}
-        {user.storeName ? ` · ${user.storeName}` : ""}
-      </p>
 
       {/* Botón biometría (si tiene registrada) */}
       {user.biometricEnabled ? (

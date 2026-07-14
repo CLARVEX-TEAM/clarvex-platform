@@ -2,10 +2,9 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { parseJson } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
-import { signR2Url } from "@/lib/r2";
 import { rateLimitAuth, rateLimitInspect } from "@/lib/rate-limit";
 import { clientIp } from "@/lib/request-ip";
-import { hashPin, publicUser, verifyPin, canSetupPin } from "@/lib/security";
+import { hashPin, publicUser, publicUserPreAuth, verifyPin, canSetupPin } from "@/lib/security";
 import { createSessionToken, SESSION_COOKIE, sessionCookieOptions, getServerSession } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
@@ -42,13 +41,9 @@ export async function POST(request: Request) {
   if (isInspect) {
     // Los usuarios desactivados se tratan como inexistentes.
     if (!user || !user.active) return NextResponse.json({ error: "Numero de empleado no encontrado." }, { status: 404 });
-    // El saludo del login se pinta SIN sesión, así que no puede usar el proxy
-    // autenticado: se firma la foto para que funcione con el bucket privado.
-    const shape = publicUser(user);
-    return NextResponse.json({
-      user: { ...shape, photoUrl: await signR2Url(shape.photoUrl) },
-      requiresPinSetup: !user.pinHash
-    });
+    // Sin sesión: solo lo mínimo (ver publicUserPreAuth). Nada de foto, rol,
+    // último acceso ni id interno — es cosechable tecleando números de empleado.
+    return NextResponse.json({ user: publicUserPreAuth(user), requiresPinSetup: !user.pinHash });
   }
 
   // Unified error for "not found", "deactivated" and "wrong PIN" to prevent user enumeration via login

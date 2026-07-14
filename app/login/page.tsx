@@ -14,6 +14,7 @@ import {
   inspectEmployee,
   loginWithPin,
   registerBiometric,
+  type PreAuthUser,
 } from "@/lib/auth";
 import type { User } from "@/lib/types";
 import { useTheme } from "@/components/ThemeProvider";
@@ -46,6 +47,9 @@ export default function LoginPage() {
   const [confirmPin, setConfirmPin] = useState("");
   const [step, setStep] = useState<Step>("employee");
   const [error, setError] = useState("");
+  // `lookup`: lo poco que se sabe ANTES de autenticar (solo el saludo).
+  // `user`: el usuario completo, ya autenticado. No se mezclan a propósito.
+  const [lookup, setLookup] = useState<PreAuthUser | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [requiresPinSetup, setRequiresPinSetup] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -102,7 +106,7 @@ export default function LoginPage() {
     setError("");
     try {
       const result = await inspectEmployee(employeeNumber);
-      setUser(result.user);
+      setLookup(result.user);
       setRequiresPinSetup(result.requiresPinSetup);
       setStep(result.requiresPinSetup ? "pin" : "greeting");
     } catch (cause) {
@@ -272,9 +276,9 @@ export default function LoginPage() {
             />
           )}
 
-          {step === "greeting" && user ? (
+          {step === "greeting" && lookup ? (
             <GreetingStep
-              user={user}
+              user={lookup}
               greeting={greeting}
               isDark={isDark}
               busy={busy}

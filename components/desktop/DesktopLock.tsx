@@ -30,6 +30,9 @@ function roleLabel(role: SavedProfile["role"]) {
   return role === "GERENTE" ? "Gerente" : role === "SUBGERENTE" ? "Subgerente" : "Vendedor";
 }
 
+/** Perfil mostrado en la pantalla de PIN: el rol y la foto pueden faltar. */
+type LockProfile = Omit<SavedProfile, "role"> & { role: SavedProfile["role"] | null };
+
 function Avatar({
   name,
   photoUrl,
@@ -94,7 +97,9 @@ export function DesktopLock({ onUnlock }: { onUnlock: (user: User) => void }) {
   const router = useRouter();
   const [profiles, setProfiles] = useState<SavedProfile[]>([]);
   const [mode, setMode] = useState<Mode>("picker");
-  const [selected, setSelected] = useState<SavedProfile | null>(null);
+  // Un perfil guardado trae rol y foto (se guardaron tras iniciar sesión). Uno
+  // tecleado a mano no: sin sesión solo se conoce el nombre.
+  const [selected, setSelected] = useState<LockProfile | null>(null);
   const [employeeNumber, setEmployeeNumber] = useState("");
   const [pin, setPin] = useState("");
   const [busy, setBusy] = useState(false);
@@ -135,6 +140,15 @@ export function DesktopLock({ onUnlock }: { onUnlock: (user: User) => void }) {
     setBusy(true);
     try {
       const { user } = await loginWithPin(employeeNumber, next);
+      // El rol solo se conoce ya autenticado: aquí se filtra el acceso al
+      // escritorio (antes se hacía en el inspect, filtrando el rol sin sesión).
+      if (user.role === "ASESOR") {
+        setError("El escritorio es solo para gerencia. Usa la app móvil.");
+        setPin("");
+        setBusy(false);
+        submittingRef.current = false;
+        return;
+      }
       await saveProfileWithAvatar(user);
       onUnlock(user);
     } catch (cause) {
@@ -154,11 +168,8 @@ export function DesktopLock({ onUnlock }: { onUnlock: (user: User) => void }) {
     setError("");
     try {
       const result = await inspectEmployee(employeeNumber);
-      if (result.user.role === "ASESOR") {
-        setError("El escritorio es solo para gerencia. Usa la app móvil.");
-        setBusy(false);
-        return;
-      }
+      // El rol NO se conoce antes de autenticar (sería cosechable tecleando
+      // números de empleado). El filtro de "solo gerencia" se aplica tras el PIN.
       if (result.requiresPinSetup) {
         // Primer ingreso: configuración completa (PIN, foto, biometría) en /login.
         router.push("/login");
@@ -167,9 +178,9 @@ export function DesktopLock({ onUnlock }: { onUnlock: (user: User) => void }) {
       setSelected({
         employeeNumber,
         name: result.user.name,
-        role: result.user.role,
-        photoUrl: result.user.photoUrl,
-        storeName: result.user.storeName
+        role: null,
+        photoUrl: null,
+        storeName: null
       });
       setPin("");
       setMode("pin");

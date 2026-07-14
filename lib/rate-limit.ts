@@ -63,9 +63,12 @@ export function rateLimitUser(bucket: string, userId: string, max: number, windo
   return check(bucket, `user:${userId}`, max, windowMs);
 }
 
-// 30 inspections per minute per IP (UX flow)
+// Consulta de número de empleado (paso previo al login, SIN sesión). Es el
+// endpoint que permite enumerar empleados, así que se acota: una persona teclea
+// un número, no doce. El margen cubre errores de dedo y que toda la tienda
+// comparta la misma IP pública (NAT del WiFi).
 export function rateLimitInspect(ip: string): Promise<Result> {
-  return check("inspect", ip, 30);
+  return check("inspect", ip, 12);
 }
 
 // 10 login/setup attempts per minute per IP
