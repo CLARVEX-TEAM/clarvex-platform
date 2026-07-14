@@ -2,11 +2,11 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { BarChart3, BookOpen, Boxes, CalendarClock, CalendarDays, CheckSquare, ClipboardCheck, ClipboardList, CreditCard, GraduationCap, HeartHandshake, PackageSearch, Trophy } from "lucide-react";
+import { BarChart3, BookOpen, Boxes, CalendarClock, CalendarDays, CheckSquare, ClipboardCheck, ClipboardList, Clock, CreditCard, GraduationCap, HeartHandshake, PackageSearch, Trophy } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { LucideIcon } from "lucide-react";
 
-type ActionColor = "blue" | "green" | "purple" | "orange" | "pink";
+type ActionColor = "blue" | "green" | "purple" | "orange" | "pink" | "amber";
 
 interface Action {
   href: string;
@@ -21,6 +21,7 @@ const managerActions: Action[] = [
   { href: "/bitacora", icon: BookOpen, label: "Bitácora", color: "purple" },
   { href: "/horarios", icon: CalendarDays, label: "Horarios", color: "orange" },
   { href: "/kudos", icon: HeartHandshake, label: "Reconocer", color: "pink" },
+  { href: "/asistencia", icon: Clock, label: "Asistencia", color: "amber" },
   { href: "/solicitudes", icon: CalendarClock, label: "Solicitudes", color: "blue" },
   { href: "/faltantes", icon: PackageSearch, label: "Faltantes", color: "orange" },
   { href: "/capacitacion", icon: GraduationCap, label: "Capacitación", color: "purple" },
@@ -35,6 +36,7 @@ const advisorActions: Action[] = [
   { href: "/pendientes", icon: ClipboardList, label: "Pendientes", color: "blue" },
   { href: "/kpis", icon: BarChart3, label: "Mis KPIs", color: "green" },
   { href: "/kudos", icon: HeartHandshake, label: "Reconocer", color: "pink" },
+  { href: "/asistencia", icon: Clock, label: "Mi asistencia", color: "amber" },
   { href: "/solicitudes", icon: CalendarClock, label: "Solicitar día", color: "blue" },
   { href: "/faltantes", icon: PackageSearch, label: "Faltantes", color: "orange" },
   { href: "/capacitacion", icon: GraduationCap, label: "Capacitación", color: "purple" },
@@ -48,7 +50,8 @@ const colorMap: Record<ActionColor, string> = {
   green: "bg-green-50 dark:bg-green-950/50 text-green-600 dark:text-green-500",
   purple: "bg-purple-50 dark:bg-purple-950/50 text-purple-600 dark:text-purple-400",
   orange: "bg-orange-50 dark:bg-orange-950/50 text-orange-500",
-  pink: "bg-pink-50 dark:bg-pink-950/50 text-pink-600 dark:text-pink-400"
+  pink: "bg-pink-50 dark:bg-pink-950/50 text-pink-600 dark:text-pink-400",
+  amber: "bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400"
 };
 
 interface QuickActionsProps {
