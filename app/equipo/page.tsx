@@ -7,7 +7,15 @@ import { getSession } from "@/lib/auth";
 import { fetchAppData } from "@/lib/app-data";
 import { AppFrame, AppHeader, BottomNav, Button, Card, ProfileAvatar } from "@/components/ui";
 
-type Row = { id: string; name: string; photoUrl?: string | null; birthDate: string; hireDate: string; hoursOwed: string; vacationDays: string; paidDays: string; active: boolean };
+type Row = {
+  id: string; name: string; photoUrl?: string | null; birthDate: string; hireDate: string;
+  hoursOwed: string;
+  /** Lo que se edita: el saldo capturado a mano (el punto de partida). */
+  vacationDays: string;
+  /** Lo que se muestra: el saldo real y de dónde sale. No se editan. */
+  vacationAvailable: number; vacationEarned: number; vacationTaken: number;
+  paidDays: string; active: boolean;
+};
 
 export default function TeamDatesPage() {
   const router = useRouter();
@@ -35,7 +43,17 @@ export default function TeamDatesPage() {
 
   useEffect(() => {
     fetchAppData({ includeInactive: true })
-      .then((data) => setRows(data.users.map((u) => ({ id: u.id, name: u.name, photoUrl: u.photoUrl, birthDate: u.birthDate ?? "", hireDate: u.hireDate ?? "", hoursOwed: String(u.hoursOwed ?? 0), vacationDays: String(u.vacationDays ?? 0), paidDays: String(u.paidDays ?? 0), active: u.active ?? true }))))
+      .then((data) => setRows(data.users.map((u) => ({
+        id: u.id, name: u.name, photoUrl: u.photoUrl, birthDate: u.birthDate ?? "", hireDate: u.hireDate ?? "",
+        hoursOwed: String(u.hoursOwed ?? 0),
+        // El input edita el saldo CAPTURADO, no el calculado: si se llenara con el
+        // saldo real, guardar sin tocar nada movería la fecha de corte sola.
+        vacationDays: String(u.vacationBaseline ?? u.vacationDays ?? 0),
+        vacationAvailable: u.vacationDays ?? 0,
+        vacationEarned: u.vacationEarned ?? 0,
+        vacationTaken: u.vacationTaken ?? 0,
+        paidDays: String(u.paidDays ?? 0), active: u.active ?? true
+      }))))
       .catch(() => setError("No se pudo cargar el equipo."))
       .finally(() => setLoading(false));
   }, []);
@@ -113,7 +131,7 @@ export default function TeamDatesPage() {
       });
       const payload = await response.json() as { user?: { id: string; name: string }; error?: string };
       if (!response.ok || !payload.user) throw new Error(payload.error ?? "No se pudo agregar al integrante.");
-      setRows((current) => [...current, { id: payload.user!.id, name: payload.user!.name, photoUrl: null, birthDate: "", hireDate: "", hoursOwed: "0", vacationDays: "0", paidDays: "0", active: true }]);
+      setRows((current) => [...current, { id: payload.user!.id, name: payload.user!.name, photoUrl: null, birthDate: "", hireDate: "", hoursOwed: "0", vacationDays: "0", vacationAvailable: 0, vacationEarned: 0, vacationTaken: 0, paidDays: "0", active: true }]);
       setAddedMessage(`${payload.user.name} ya puede iniciar sesión con el número ${newNumber} y crear su PIN.`);
       setNewName("");
       setNewNumber("");
@@ -211,13 +229,27 @@ export default function TeamDatesPage() {
                     <input type="number" step="0.5" inputMode="decimal" value={row.hoursOwed} onChange={(event) => update(row.id, "hoursOwed", event.target.value)} className={inputClass} />
                   </label>
                   <label className="grid gap-1">
-                    <span className="text-xs font-bold text-muted">Días de vacaciones</span>
+                    <span className="text-xs font-bold text-muted">Vacaciones (saldo inicial)</span>
                     <input type="number" step="1" min="0" inputMode="numeric" value={row.vacationDays} onChange={(event) => update(row.id, "vacationDays", event.target.value)} className={inputClass} />
                   </label>
                   <label className="grid gap-1">
                     <span className="text-xs font-bold text-muted">Días de pago de día</span>
                     <input type="number" step="1" min="0" inputMode="numeric" value={row.paidDays} onChange={(event) => update(row.id, "paidDays", event.target.value)} className={inputClass} />
                   </label>
+                  {/* El saldo que de verdad manda. Se muestra aquí para que no se
+                      confunda con el campo de arriba, que es solo el punto de partida. */}
+                  <div className="col-span-2 rounded-lg bg-surface-2 px-3 py-2">
+                    <div className="flex items-baseline justify-between">
+                      <span className="text-xs font-bold text-muted">Vacaciones disponibles hoy</span>
+                      <span className="text-lg font-black">{row.vacationAvailable} {row.vacationAvailable === 1 ? "día" : "días"}</span>
+                    </div>
+                    <p className="mt-0.5 text-xs text-muted">
+                      {row.vacationDays} iniciales
+                      {row.vacationEarned > 0 ? ` + ${row.vacationEarned} de antigüedad` : ""}
+                      {row.vacationTaken > 0 ? ` − ${row.vacationTaken} tomados` : ""}
+                      {!row.hireDate ? " · falta la fecha de ingreso para calcular su derecho de ley" : ""}
+                    </p>
+                  </div>
                 </div>
                 <div className="mt-3 flex items-center gap-3">
                   <Button type="button" variant="primary" onClick={() => void save(row)} disabled={savingId === row.id} className="min-h-10 px-4">

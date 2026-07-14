@@ -29,7 +29,12 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   // Solo se descuenta al aprobar por primera vez.
   const firstApproval = status === "APROBADO" && existing.status !== "APROBADO";
   const deductHours = firstApproval && isHourType(existing.type) && existing.hours ? existing.hours : 0;
-  const deductDayField = firstApproval ? dayBalanceField(existing.type) : null;
+  // Las VACACIONES ya no se descuentan aquí: el saldo real las resta cuando el día
+  // aparece como VACATION en Horarios (lib/vacation-account). Descontarlas también
+  // al aprobar se las cobraría DOS VECES al asesor. Aprobar es una intención; el
+  // horario es el hecho, y en esta app el horario siempre manda.
+  const dayField = firstApproval ? dayBalanceField(existing.type) : null;
+  const deductDayField = dayField === "vacationDays" ? null : dayField;
 
   await prisma.$transaction(async (tx) => {
     await tx.shiftRequest.update({

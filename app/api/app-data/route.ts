@@ -3,6 +3,7 @@ import { isApiError, requireSession } from "@/lib/api";
 import { buildUserDashboardKpi, dashboardDateKey, dashboardDateRange } from "@/lib/dashboard-kpi";
 import { prisma } from "@/lib/prisma";
 import { signR2Url } from "@/lib/r2";
+import { vacationBalances } from "@/lib/vacation-account";
 
 export const dynamic = "force-dynamic";
 
@@ -63,17 +64,30 @@ export async function GET(request: Request) {
     Promise.all(announcements.map((announcement) => signR2Url(announcement.imageUrl)))
   ]);
 
+  // Saldo de vacaciones REAL (capturado + ganado en aniversarios − tomado en
+  // Horarios). El campo crudo de la BD es solo el punto de partida: mostrarlo tal
+  // cual enseñaría un número que se desfasa en cuanto alguien toma vacaciones.
+  const vacation = await vacationBalances(users.map((user) => user.id));
+
   return NextResponse.json({
     // Los saldos de RH (horas, vacaciones, días pagados) son sensibles: solo los
     // ve gerencia o el propio colaborador. Cumpleaños y aniversario (birthDate/
     // hireDate) sí son visibles para todo el equipo (celebraciones).
     users: users.map((user) => {
       const canSeeBalances = manager || user.id === session.userId;
+      const days = vacation.get(user.id);
       return {
         id: user.id, name: user.name, employeeNumber: user.employeeNumber, role: user.role, avatar: user.name.slice(0, 2).toUpperCase(), photoUrl: user.photoUrl, biometricEnabled: user.biometricEnabled, lastLoginAt: user.lastLoginAt?.toISOString() ?? null,
         birthDate: user.birthDate ? user.birthDate.toISOString().slice(0, 10) : null,
         hireDate: user.hireDate ? user.hireDate.toISOString().slice(0, 10) : null,
-        ...(canSeeBalances ? { hoursOwed: user.hoursOwed, vacationDays: user.vacationDays, paidDays: user.paidDays } : {}),
+        ...(canSeeBalances ? {
+          hoursOwed: user.hoursOwed,
+          vacationDays: days?.available ?? user.vacationDays,
+          vacationBaseline: days?.baseline ?? user.vacationDays,
+          vacationEarned: days?.earned ?? 0,
+          vacationTaken: days?.taken ?? 0,
+          paidDays: user.paidDays
+        } : {}),
         active: user.active
       };
     }),

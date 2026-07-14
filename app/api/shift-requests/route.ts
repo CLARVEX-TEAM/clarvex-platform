@@ -6,6 +6,7 @@ import { dispatchPushToUsers } from "@/lib/push";
 import { firstName } from "@/lib/daily-summary";
 import { DAY_BALANCE_LABELS, SHIFT_TYPE_LABELS, dayBalanceField, formatRequestDate, isHourType } from "@/lib/shift-requests";
 import { hoursBalanceFor } from "@/lib/hours-account";
+import { vacationDaysAvailable } from "@/lib/vacation-account";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -18,21 +19,24 @@ export async function GET() {
   if (isApiError(session)) return session;
   const manager = session.role !== "ASESOR";
 
-  const [requests, me, balance] = await Promise.all([
+  const [requests, me, balance, vacation] = await Promise.all([
     prisma.shiftRequest.findMany({
       where: { storeId: session.storeId, ...(manager ? {} : { requesterId: session.userId }) },
       orderBy: { createdAt: "desc" },
       include: { requester: { select: { name: true, photoUrl: true } } }
     }),
-    prisma.user.findUnique({ where: { id: session.userId }, select: { vacationDays: true, paidDays: true } }),
+    prisma.user.findUnique({ where: { id: session.userId }, select: { paidDays: true } }),
     // Saldo REAL: el inicial (del Excel) MÁS lo que la app acumuló sola. Leerlo
     // solo de hoursOwed dejaría atrapadas las horas ganadas automáticamente.
-    hoursBalanceFor(session.userId)
+    hoursBalanceFor(session.userId),
+    // Lo mismo con las vacaciones: el saldo capturado más lo ganado en cada
+    // aniversario, menos lo que ya se tomó en Horarios.
+    vacationDaysAvailable(session.userId)
   ]);
 
   return NextResponse.json({
     balance,
-    vacationDays: me?.vacationDays ?? 0,
+    vacationDays: vacation,
     paidDays: me?.paidDays ?? 0,
     requests: requests.map((request) => ({
       id: request.id,
@@ -76,8 +80,11 @@ export async function POST(request: Request) {
   // Vacaciones / pago de día consumen 1 día del saldo correspondiente.
   const dayField = dayBalanceField(type);
   if (dayField) {
-    const me = await prisma.user.findUnique({ where: { id: session.userId }, select: { vacationDays: true, paidDays: true } });
-    const balance = me?.[dayField] ?? 0;
+    // Las vacaciones se validan contra el saldo REAL (capturado + ganado − tomado);
+    // el pago de día sigue siendo un número a mano, que nada calcula solo.
+    const balance = dayField === "vacationDays"
+      ? await vacationDaysAvailable(session.userId)
+      : (await prisma.user.findUnique({ where: { id: session.userId }, select: { paidDays: true } }))?.paidDays ?? 0;
     if (balance < 1) {
       return NextResponse.json({ error: `No tienes saldo de ${DAY_BALANCE_LABELS[dayField]} disponible (saldo: ${balance}).` }, { status: 400 });
     }

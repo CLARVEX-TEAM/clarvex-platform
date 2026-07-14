@@ -56,7 +56,7 @@ export async function PUT(request: Request) {
     targetUserId = target.id;
   }
 
-  const data: { birthDate?: Date | null; hireDate?: Date | null; hoursOwed?: number; vacationDays?: number; paidDays?: number; active?: boolean; pinHash?: string } = {};
+  const data: { birthDate?: Date | null; hireDate?: Date | null; hoursOwed?: number; vacationDays?: number; vacationBaselineAt?: Date; paidDays?: number; active?: boolean; pinHash?: string } = {};
   const birth = toDate(parsed.data.birthDate);
   const hire = toDate(parsed.data.hireDate);
   if (birth !== undefined) data.birthDate = birth;
@@ -64,7 +64,14 @@ export async function PUT(request: Request) {
   // Solo gerencia puede ajustar los saldos (horas, vacaciones y pago de días) y PIN.
   if (session.role !== "ASESOR") {
     if (parsed.data.hoursOwed !== undefined) data.hoursOwed = parsed.data.hoursOwed;
-    if (parsed.data.vacationDays !== undefined) data.vacationDays = parsed.data.vacationDays;
+    if (parsed.data.vacationDays !== undefined) {
+      data.vacationDays = parsed.data.vacationDays;
+      // La fecha de corte se mueve SOLO si el número de verdad cambió. Equipo manda
+      // este campo en cada guardado (aunque se haya editado otra cosa): recorrer el
+      // corte a ciegas borraría las vacaciones tomadas desde el corte anterior.
+      const current = await prisma.user.findUnique({ where: { id: targetUserId }, select: { vacationDays: true } });
+      if (current && current.vacationDays !== parsed.data.vacationDays) data.vacationBaselineAt = new Date();
+    }
     if (parsed.data.paidDays !== undefined) data.paidDays = parsed.data.paidDays;
     if (parsed.data.pin !== undefined) data.pinHash = await hashPin(parsed.data.pin);
     // Activar/desactivar cuenta: solo sobre otro integrante (nadie puede desactivarse a sí mismo).

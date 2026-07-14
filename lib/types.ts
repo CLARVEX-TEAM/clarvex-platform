@@ -15,7 +15,12 @@ export type User = {
   birthDate?: string | null;
   hireDate?: string | null;
   hoursOwed?: number;
+  /** Días de vacaciones REALES que le quedan (ya descuenta lo tomado en Horarios). */
   vacationDays?: number;
+  /** El número que gerencia capturó a mano, y de dónde salió el saldo de arriba. */
+  vacationBaseline?: number;
+  vacationEarned?: number;
+  vacationTaken?: number;
   paidDays?: number;
   active?: boolean;
   platformAdmin?: boolean;

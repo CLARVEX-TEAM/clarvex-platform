@@ -117,7 +117,12 @@ model User {
   birthDate             DateTime?
   hireDate              DateTime?
   hoursOwed             Float                  @default(0)
+  /// Saldo de vacaciones capturado a mano. NO es el saldo real: el que manda lo
+  /// calcula lib/vacation-account (este + lo ganado en aniversarios − lo tomado).
   vacationDays          Float                  @default(0)
+  /// Fecha de corte del saldo de arriba: lo anterior a ella YA está descontado.
+  /// Sin esta frontera, las vacaciones viejas se restarían dos veces.
+  vacationBaselineAt    DateTime?
   paidDays              Float                  @default(0)
   lastSeenAt            DateTime?
   active                Boolean                @default(true)
