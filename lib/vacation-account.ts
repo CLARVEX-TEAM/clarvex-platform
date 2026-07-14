@@ -1,12 +1,13 @@
 import { prisma } from "@/lib/prisma";
-import { vacationEarnedBetween } from "@/lib/vacations";
+import { resolveMonterreyDate } from "@/lib/cron-time";
+import { splitVacationDays, vacationEarnedBetween } from "@/lib/vacations";
 
 /**
  * Saldo REAL de vacaciones de una persona.
  *
  *   saldo = saldo inicial (User.vacationDays, el que gerencia capturó)
  *         + días ganados en los aniversarios posteriores a esa captura
- *         − días de vacaciones efectivamente tomados desde entonces
+ *         − días de vacaciones que YA SE TOMARON desde entonces
  *
  * Por qué existe: `User.vacationDays` es un número a mano. Sin esto, hay que
  * acordarse de bajarlo cada vez que alguien se va de vacaciones y de subirlo cada
@@ -17,6 +18,8 @@ import { vacationEarnedBetween } from "@/lib/vacations";
  * lo anterior a ella. Solo se cuenta lo que pasó DESPUÉS. Sin esa frontera se
  * restarían dos veces las vacaciones viejas.
  *
+ * Los días FUTUROS no se descuentan (ver `splitVacationDays`).
+ *
  * Este es el número que manda: para mostrar y para validar una solicitud.
  */
 
@@ -26,35 +29,13 @@ export type VacationBalance = {
   baselineAt: Date | null;
   /** Ganados en aniversarios posteriores al corte. */
   earned: number;
-  /** Tomados después del corte. */
+  /** Tomados después del corte. Solo días que YA pasaron. */
   taken: number;
-  /** Lo que de verdad le queda. */
+  /** Ya capturados en Horarios pero todavía por venir. NO se descuentan aún. */
+  planned: number;
+  /** Lo que de verdad le queda hoy. */
   available: number;
 };
-
-/** Los días que ya se disfrutaron: la asistencia manda; el horario es el respaldo. */
-async function takenDaysSince(userIds: string[], since: Date): Promise<Map<string, number>> {
-  const [attendance, schedules] = await Promise.all([
-    prisma.attendance.findMany({
-      where: { userId: { in: userIds }, status: "VACATION", date: { gt: since } },
-      select: { userId: true, date: true }
-    }),
-    prisma.schedule.findMany({
-      where: { userId: { in: userIds }, status: "VACATION", date: { gt: since } },
-      select: { userId: true, date: true }
-    })
-  ]);
-
-  // Un día con asistencia Y horario no puede contar doble: se agrupa por fecha.
-  const byUser = new Map<string, Set<string>>();
-  for (const row of [...attendance, ...schedules]) {
-    const key = row.date.toISOString().slice(0, 10);
-    const days = byUser.get(row.userId) ?? new Set<string>();
-    days.add(key);
-    byUser.set(row.userId, days);
-  }
-  return new Map(Array.from(byUser, ([userId, days]) => [userId, days.size]));
-}
 
 /** Saldo de vacaciones de varias personas de golpe. */
 export async function vacationBalances(userIds: string[], now = new Date()): Promise<Map<string, VacationBalance>> {
@@ -73,7 +54,21 @@ export async function vacationBalances(userIds: string[], now = new Date()): Pro
     return at.getTime() < oldest.getTime() ? at : oldest;
   }, now);
 
-  const taken = await takenDaysSince(userIds, earliest);
+  // Hoy en Monterrey, no en UTC: el VPS corre en UTC y de noche allá ya es el día
+  // siguiente. Sin esto, un día de vacaciones se descontaría antes de terminar.
+  const today = resolveMonterreyDate(now).utcDate;
+
+  const [attendance, schedules] = await Promise.all([
+    prisma.attendance.findMany({
+      where: { userId: { in: userIds }, status: "VACATION", date: { gt: earliest } },
+      select: { userId: true, date: true }
+    }),
+    prisma.schedule.findMany({
+      where: { userId: { in: userIds }, status: "VACATION", date: { gt: earliest } },
+      select: { userId: true, date: true }
+    })
+  ]);
+  const days = splitVacationDays([...attendance, ...schedules], earliest, today);
 
   return new Map(users.map((user) => {
     const baselineAt = user.vacationBaselineAt;
@@ -85,14 +80,16 @@ export async function vacationBalances(userIds: string[], now = new Date()): Pro
       ? vacationEarnedBetween(user.hireDate, baselineAt, now)
       : 0;
 
-    const takenDays = baselineAt ? (taken.get(user.id) ?? 0) : 0;
+    const counted = baselineAt ? days.get(user.id) : undefined;
+    const taken = counted?.taken ?? 0;
 
     return [user.id, {
       baseline,
       baselineAt,
       earned,
-      taken: takenDays,
-      available: baseline + earned - takenDays
+      taken,
+      planned: days.get(user.id)?.planned ?? 0,
+      available: baseline + earned - taken
     }];
   }));
 }

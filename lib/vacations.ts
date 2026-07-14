@@ -18,6 +18,63 @@
  * extra se captura como ajuste manual — este archivo no lo inventa.
  */
 
+/**
+ * ¿Este día de vacaciones ya se DISFRUTÓ (y por tanto se descuenta)?
+ *
+ * Un día se descuenta cuando se vivió, no cuando se planeó. En Horarios se
+ * capturan vacaciones futuras con semanas de anticipación: descontarlas de una vez
+ * le quitaría al asesor días que todavía no ha tomado — y si el plan cambia, se le
+ * quitaron por nada.
+ *
+ * `since` es la fecha de corte del saldo capturado: lo anterior ya está descontado.
+ */
+export function isVacationTaken(date: Date, since: Date, today: Date): boolean {
+  return date.getTime() > since.getTime() && date.getTime() < today.getTime();
+}
+
+/** Ya capturado en Horarios pero todavía por venir. Informa; no descuenta. */
+export function isVacationPlanned(date: Date, today: Date): boolean {
+  return date.getTime() >= today.getTime();
+}
+
+export type VacationDayRow = { userId: string; date: Date };
+
+/**
+ * Reparte los días de vacaciones en tomados (ya pasaron) y programados (por venir).
+ *
+ * Vive aquí, y no en `vacation-account`, porque este módulo no toca la base: así
+ * la regla — la parte delicada del cálculo — se puede probar sola. Metida dentro
+ * de una consulta SQL no habría forma.
+ *
+ * La asistencia manda y el horario es el respaldo; un día que aparece en las dos
+ * fuentes no puede contar doble, por eso se agrupa por fecha.
+ */
+export function splitVacationDays(
+  rows: VacationDayRow[],
+  since: Date,
+  today: Date
+): Map<string, { taken: number; planned: number }> {
+  const takenByUser = new Map<string, Set<string>>();
+  const plannedByUser = new Map<string, Set<string>>();
+
+  for (const row of rows) {
+    const bucket = isVacationTaken(row.date, since, today) ? takenByUser
+      : isVacationPlanned(row.date, today) ? plannedByUser
+      : null; // anterior al corte: ya está descontado dentro del saldo capturado
+    if (!bucket) continue;
+    const key = row.date.toISOString().slice(0, 10);
+    const days = bucket.get(row.userId) ?? new Set<string>();
+    days.add(key);
+    bucket.set(row.userId, days);
+  }
+
+  const userIds = new Set([...takenByUser.keys(), ...plannedByUser.keys()]);
+  return new Map(Array.from(userIds, (userId) => [userId, {
+    taken: takenByUser.get(userId)?.size ?? 0,
+    planned: plannedByUser.get(userId)?.size ?? 0
+  }]));
+}
+
 /** Días que se ganan al cumplir `yearsCompleted` años de servicio. */
 export function lftVacationDays(yearsCompleted: number): number {
   if (yearsCompleted < 1) return 0; // aún no cumple el primer año: no hay derecho

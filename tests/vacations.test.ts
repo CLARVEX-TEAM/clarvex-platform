@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { addYears, lftVacationDays, nextAnniversary, vacationEarnedBetween, yearsOfService } from "../lib/vacations";
+import { addYears, lftVacationDays, nextAnniversary, splitVacationDays, vacationEarnedBetween, yearsOfService } from "../lib/vacations";
+
 
 const day = (iso: string) => new Date(`${iso}T00:00:00.000Z`);
 
@@ -77,4 +78,64 @@ test("cruzar el escalón de la tabla suma lo correcto", () => {
 test("un corte en el futuro no genera derecho", () => {
   const hire = day("2020-07-01");
   assert.equal(vacationEarnedBetween(hire, day("2027-01-01"), day("2026-12-31")), 0);
+});
+
+// ─── Qué días se descuentan ────────────────────────────────────────────────────
+
+const CORTE = day("2026-07-01");
+const HOY = day("2026-07-15");
+
+test("las vacaciones PROGRAMADAS no se descuentan todavía", () => {
+  // En Horarios se capturan con semanas de anticipación. Descontarlas de una vez
+  // le quitaría al asesor días que aún no toma — y si el plan cambia, por nada.
+  const days = splitVacationDays([
+    { userId: "itzel", date: day("2026-07-20") },
+    { userId: "itzel", date: day("2026-07-21") },
+    { userId: "itzel", date: day("2026-08-03") }
+  ], CORTE, HOY);
+  assert.equal(days.get("itzel")?.taken, 0);
+  assert.equal(days.get("itzel")?.planned, 3);
+});
+
+test("el día de hoy todavía NO se descuenta: no ha terminado", () => {
+  const days = splitVacationDays([{ userId: "jazmin", date: HOY }], CORTE, HOY);
+  assert.equal(days.get("jazmin")?.taken, 0);
+  assert.equal(days.get("jazmin")?.planned, 1);
+});
+
+test("los días que ya pasaron sí se descuentan", () => {
+  const days = splitVacationDays([
+    { userId: "alonso", date: day("2026-07-10") },
+    { userId: "alonso", date: day("2026-07-11") }
+  ], CORTE, HOY);
+  assert.equal(days.get("alonso")?.taken, 2);
+  assert.equal(days.get("alonso")?.planned, 0);
+});
+
+test("lo anterior al corte no se cuenta: ya está en el saldo capturado", () => {
+  const days = splitVacationDays([
+    { userId: "waira", date: day("2026-06-20") }, // antes del corte
+    { userId: "waira", date: CORTE },             // el día del corte
+    { userId: "waira", date: day("2026-07-05") }  // después: este sí
+  ], CORTE, HOY);
+  assert.equal(days.get("waira")?.taken, 1);
+});
+
+test("un día en asistencia Y en horario cuenta UNA vez", () => {
+  const days = splitVacationDays([
+    { userId: "itzel", date: day("2026-07-10") }, // de Asistencia
+    { userId: "itzel", date: day("2026-07-10") }  // el mismo, de Horarios
+  ], CORTE, HOY);
+  assert.equal(days.get("itzel")?.taken, 1);
+});
+
+test("cada quien con lo suyo", () => {
+  const days = splitVacationDays([
+    { userId: "itzel", date: day("2026-07-10") },
+    { userId: "jazmin", date: day("2026-07-20") }
+  ], CORTE, HOY);
+  assert.equal(days.get("itzel")?.taken, 1);
+  assert.equal(days.get("itzel")?.planned, 0);
+  assert.equal(days.get("jazmin")?.taken, 0);
+  assert.equal(days.get("jazmin")?.planned, 1);
 });

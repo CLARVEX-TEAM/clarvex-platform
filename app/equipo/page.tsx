@@ -13,7 +13,7 @@ type Row = {
   /** Lo que se edita: el saldo capturado a mano (el punto de partida). */
   vacationDays: string;
   /** Lo que se muestra: el saldo real y de dónde sale. No se editan. */
-  vacationAvailable: number; vacationEarned: number; vacationTaken: number;
+  vacationAvailable: number; vacationEarned: number; vacationTaken: number; vacationPlanned: number;
   paidDays: string; active: boolean;
 };
 
@@ -52,6 +52,7 @@ export default function TeamDatesPage() {
         vacationAvailable: u.vacationDays ?? 0,
         vacationEarned: u.vacationEarned ?? 0,
         vacationTaken: u.vacationTaken ?? 0,
+        vacationPlanned: u.vacationPlanned ?? 0,
         paidDays: String(u.paidDays ?? 0), active: u.active ?? true
       }))))
       .catch(() => setError("No se pudo cargar el equipo."))
@@ -131,7 +132,7 @@ export default function TeamDatesPage() {
       });
       const payload = await response.json() as { user?: { id: string; name: string }; error?: string };
       if (!response.ok || !payload.user) throw new Error(payload.error ?? "No se pudo agregar al integrante.");
-      setRows((current) => [...current, { id: payload.user!.id, name: payload.user!.name, photoUrl: null, birthDate: "", hireDate: "", hoursOwed: "0", vacationDays: "0", vacationAvailable: 0, vacationEarned: 0, vacationTaken: 0, paidDays: "0", active: true }]);
+      setRows((current) => [...current, { id: payload.user!.id, name: payload.user!.name, photoUrl: null, birthDate: "", hireDate: "", hoursOwed: "0", vacationDays: "0", vacationAvailable: 0, vacationEarned: 0, vacationTaken: 0, vacationPlanned: 0, paidDays: "0", active: true }]);
       setAddedMessage(`${payload.user.name} ya puede iniciar sesión con el número ${newNumber} y crear su PIN.`);
       setNewName("");
       setNewNumber("");
@@ -249,6 +250,13 @@ export default function TeamDatesPage() {
                       {row.vacationTaken > 0 ? ` − ${row.vacationTaken} tomados` : ""}
                       {!row.hireDate ? " · falta la fecha de ingreso para calcular su derecho de ley" : ""}
                     </p>
+                    {/* Se avisan aparte para que no parezca que el saldo "no baja":
+                        un día programado todavía no se descuenta. */}
+                    {row.vacationPlanned > 0 ? (
+                      <p className="mt-1 text-xs font-semibold text-amber-700 dark:text-amber-400">
+                        {row.vacationPlanned} {row.vacationPlanned === 1 ? "día programado" : "días programados"} en Horarios · se descuentan al pasar
+                      </p>
+                    ) : null}
                   </div>
                 </div>
                 <div className="mt-3 flex items-center gap-3">

@@ -86,6 +86,7 @@ export async function GET(request: Request) {
           vacationBaseline: days?.baseline ?? user.vacationDays,
           vacationEarned: days?.earned ?? 0,
           vacationTaken: days?.taken ?? 0,
+          vacationPlanned: days?.planned ?? 0,
           paidDays: user.paidDays
         } : {}),
         active: user.active

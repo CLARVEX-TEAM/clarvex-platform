@@ -21,6 +21,8 @@ export type User = {
   vacationBaseline?: number;
   vacationEarned?: number;
   vacationTaken?: number;
+  /** Ya capturadas en Horarios pero aún por venir: no descuentan todavía. */
+  vacationPlanned?: number;
   paidDays?: number;
   active?: boolean;
   platformAdmin?: boolean;
