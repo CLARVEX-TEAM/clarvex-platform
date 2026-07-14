@@ -20,6 +20,7 @@ import { HomeHeader } from "@/components/home/HomeHeader";
 import { DailySalesCard } from "@/components/home/DailySalesCard";
 import { QuickKpiGrid, type KpiCardData } from "@/components/home/QuickKpiGrid";
 import { QuickActions } from "@/components/home/QuickActions";
+import { UniformToday } from "@/components/home/UniformToday";
 import { SalesTrendCard } from "@/components/home/SalesTrendCard";
 import { TeamCelebrationsCard } from "@/components/home/TeamCelebrationsCard";
 import { PaceCard } from "@/components/home/PaceCard";
@@ -306,6 +307,7 @@ export default function AdvisorDashboard() {
 
         <div className="mt-3">
           <QuickActions variant="advisor" delay={0.24} />
+          <UniformToday />
         </div>
 
         <motion.div {...cardAnim(0.26)} className="mt-3">

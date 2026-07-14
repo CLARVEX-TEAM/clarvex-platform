@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { BarChart3, BookOpen, Boxes, CalendarClock, CalendarDays, CheckSquare, ClipboardCheck, ClipboardList, Clock, CreditCard, GraduationCap, HeartHandshake, PackageSearch, Trophy } from "lucide-react";
+import { BarChart3, BookOpen, Boxes, CalendarClock, CalendarDays, CheckSquare, ClipboardCheck, ClipboardList, Clock, CreditCard, GraduationCap, HeartHandshake, PackageSearch, Shirt, Trophy } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { LucideIcon } from "lucide-react";
 
@@ -22,6 +22,7 @@ const managerActions: Action[] = [
   { href: "/horarios", icon: CalendarDays, label: "Horarios", color: "orange" },
   { href: "/kudos", icon: HeartHandshake, label: "Reconocer", color: "pink" },
   { href: "/asistencia", icon: Clock, label: "Asistencia", color: "amber" },
+  { href: "/uniformes", icon: Shirt, label: "Uniformes", color: "pink" },
   { href: "/solicitudes", icon: CalendarClock, label: "Días y cambios", color: "blue" },
   { href: "/faltantes", icon: PackageSearch, label: "Faltantes", color: "orange" },
   { href: "/capacitacion", icon: GraduationCap, label: "Capacitación", color: "purple" },
@@ -37,6 +38,7 @@ const advisorActions: Action[] = [
   { href: "/kpis", icon: BarChart3, label: "Mis KPIs", color: "green" },
   { href: "/kudos", icon: HeartHandshake, label: "Reconocer", color: "pink" },
   { href: "/asistencia", icon: Clock, label: "Mi asistencia", color: "amber" },
+  { href: "/uniformes", icon: Shirt, label: "Uniformes", color: "pink" },
   { href: "/solicitudes", icon: CalendarClock, label: "Días y cambios", color: "blue" },
   { href: "/faltantes", icon: PackageSearch, label: "Faltantes", color: "orange" },
   { href: "/capacitacion", icon: GraduationCap, label: "Capacitación", color: "purple" },

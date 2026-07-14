@@ -31,6 +31,7 @@ import { DailySalesCard } from "@/components/home/DailySalesCard";
 import { QuickKpiGrid, type KpiCardData } from "@/components/home/QuickKpiGrid";
 import { StoreStatusCard } from "@/components/home/StoreStatusCard";
 import { QuickActions } from "@/components/home/QuickActions";
+import { UniformToday } from "@/components/home/UniformToday";
 import { SalesTrendCard } from "@/components/home/SalesTrendCard";
 import { TeamCelebrationsCard } from "@/components/home/TeamCelebrationsCard";
 import { buildSalesTrend, buildDailySeries } from "@/lib/trend";
@@ -270,6 +271,7 @@ export default function ManagerDashboard() {
 
         <div className="mt-3">
           <QuickActions variant="manager" delay={0.32} />
+          <UniformToday />
         </div>
 
         <motion.div {...cardAnim(0.40)} className="mt-3">

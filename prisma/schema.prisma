@@ -35,6 +35,7 @@ model Store {
   schedules             Schedule[]
   attendances           Attendance[]
   shiftSwaps            ShiftSwap[]
+  uniformDays           UniformDay[]
   shiftRequests         ShiftRequest[]
   fixtures              StoreFixture[]
   logEntries            StoreLog[]
@@ -127,6 +128,9 @@ model User {
   sessionVersion        Int                    @default(0)
   termsAcceptedAt       DateTime?
   termsAcceptedVersion  String?
+  /// Qué columna del uniforme le toca: MUJER | HOMBRE. No registra identidad:
+  /// solo decide qué playera le corresponde (el martes ellas de negro, ellos de blanco).
+  uniformVariant        String?
   authoredAnnouncements Announcement[]
   announcementReactions AnnouncementReaction[]
   announcementReads     AnnouncementRead[]
@@ -339,6 +343,30 @@ model Schedule {
 
   @@unique([userId, date])
   @@index([storeId, date])
+}
+
+/// Uniforme que toca cada día de la semana. Editable por gerencia: los uniformes
+/// cambian con las temporadas y no se puede depender de un despliegue para
+/// cambiar "roja" por "guinda".
+///
+/// Si una tienda no tiene filas, la app usa la tabla por defecto de
+/// lib/uniforms.ts. La primera edición las crea.
+model UniformDay {
+  id           String   @id @default(cuid())
+  storeId      String
+  /// 0 = domingo … 6 = sábado (igual que Date.getUTCDay()).
+  weekday      Int
+  womanTop     String
+  womanBottom  String
+  manTop       String
+  manBottom    String
+  /// Nota del día (p. ej. "El sábado es día formal").
+  note         String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  store        Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@unique([storeId, weekday])
 }
 
 /// Intercambio de descansos entre dos asesores.

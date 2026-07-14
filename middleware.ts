@@ -25,6 +25,7 @@ const sharedRoutes = [
   "/kudos",
   "/capacitacion",
   "/asistencia",
+  "/uniformes",
   "/solicitudes",
   "/escritorio",
   "/bitacora"
@@ -140,6 +141,7 @@ export const config = {
     "/kudos/:path*",
     "/capacitacion/:path*",
     "/asistencia/:path*",
+    "/uniformes/:path*",
     "/solicitudes/:path*"
   ]
 };
