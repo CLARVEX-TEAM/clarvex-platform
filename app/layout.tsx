@@ -6,6 +6,7 @@ import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { PageTransition } from "@/components/PageTransition";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { ToastProvider } from "@/components/Toast";
+import { UpdatePrompt } from "@/components/UpdatePrompt";
 import { OfflineBanner } from "@/components/OfflineBanner";
 import { WhatsNewModal } from "@/components/WhatsNewModal";
 import { MatchBanner } from "@/components/MatchBanner";
@@ -58,6 +59,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <ToastProvider>
             <AnimatedBackground />
             <PwaRegister />
+            <UpdatePrompt />
             <OfflineBanner />
             <MatchBanner />
             <MatchIntro />

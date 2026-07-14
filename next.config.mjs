@@ -26,8 +26,19 @@ const r2Domain = r2PublicUrl
     })()
   : "";
 
+// Huella única de cada build. El cliente lleva la suya incrustada; el servidor
+// (ya reconstruido) devuelve la nueva. Si difieren, la app sabe que está corriendo
+// código viejo y ofrece recargar.
+//
+// Sin esto, una PWA en Android se queda con el bundle viejo hasta que el usuario
+// la cierra desde "recientes" — y nadie hace eso. El equipo puede pasar semanas
+// sin recibir un arreglo ya desplegado.
+const buildId = process.env.BUILD_ID ?? Date.now().toString(36);
+
 const nextConfig = {
   reactStrictMode: true,
+  generateBuildId: () => buildId,
+  env: { NEXT_PUBLIC_BUILD_ID: buildId },
 
   // URL limpia para el manual de uso (archivo estático en /public/manual.html).
   async rewrites() {
