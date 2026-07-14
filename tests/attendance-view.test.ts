@@ -104,6 +104,57 @@ test("la quincena parte el mes en 1-15 y 16-fin", () => {
   assert.equal(fortnightOf("2026-07-31"), 2);
 });
 
+// ── Cruce con HORARIOS: recupera el histórico anterior a la asistencia ────────
+
+test("los domingos trabajados salen del HORARIO cuando no hay asistencia", () => {
+  // La asistencia arrancó hoy, pero el archivo de horarios tiene meses de
+  // historia. Sin cruzarlos, los domingos de julio saldrían en CERO aunque sí
+  // se trabajaron — y habría que capturarlos a mano.
+  const schedules = [
+    { userId: "u1", date: "2026-07-05", status: "WORKING" }, // domingo trabajado
+    { userId: "u1", date: "2026-07-12", status: "OFF" },     // domingo de descanso
+    { userId: "u1", date: "2026-07-13", status: "WORKING" }  // lunes
+  ];
+  const totals = totalsFor([], schedules);
+  assert.equal(totals.sundaysWorked, 1);
+});
+
+test("la ASISTENCIA manda sobre el horario cuando existe", () => {
+  // Estaba programado el domingo… pero faltó. No lo trabajó: no hay prima.
+  const schedules = [{ userId: "u1", date: "2026-07-05", status: "WORKING" }];
+  const records = [record({ userId: "u1", date: "2026-07-05", status: "ABSENT" })];
+  assert.equal(totalsFor(records, schedules).sundaysWorked, 0);
+
+  // Y si llegó tarde, sí lo trabajó: cuenta.
+  const late = [record({ userId: "u1", date: "2026-07-05", status: "LATE", minutesLate: 15 })];
+  assert.equal(totalsFor(late, schedules).sundaysWorked, 1);
+});
+
+test("los festivos también salen del horario", () => {
+  // 16-sep-2026 (Independencia).
+  const schedules = [{ userId: "u1", date: "2026-09-16", status: "WORKING" }];
+  assert.equal(totalsFor([], schedules).holidaysWorked, 1);
+  // Si lo descansó, no cuenta.
+  assert.equal(totalsFor([], [{ userId: "u1", date: "2026-09-16", status: "OFF" }]).holidaysWorked, 0);
+});
+
+test("faltas y retardos NO se inventan desde el horario", () => {
+  // El horario dice lo PLANEADO; no sabe si la persona llegó. Un día programado
+  // sin registro de asistencia no puede convertirse en falta.
+  const schedules = [{ userId: "u1", date: "2026-07-13", status: "WORKING" }];
+  const totals = totalsFor([], schedules);
+  assert.equal(totals.absences, 0);
+  assert.equal(totals.lates, 0);
+});
+
+test("las incidencias de domingo también se recuperan del horario", () => {
+  const incidents = incidentsFor([], [
+    { userId: "u1", date: "2026-07-05", status: "WORKING" },
+    { userId: "u1", date: "2026-07-12", status: "OFF" }
+  ]);
+  assert.deepEqual(incidents.map((i) => [i.date, i.kind]), [["2026-07-05", "DOMINGO"]]);
+});
+
 test("los totales se separan por colaborador", () => {
   const byUser = totalsByUser([
     record({ userId: "itzel", date: "2026-07-13", status: "LATE", minutesLate: 15 }),

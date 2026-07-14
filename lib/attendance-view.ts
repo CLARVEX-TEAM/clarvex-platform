@@ -71,18 +71,58 @@ function worked(status: AttendanceStatus): boolean {
   return status === "ON_TIME" || status === "LATE" || status === "EXCUSED";
 }
 
-export function totalsFor(records: AttendanceRecord[]): AttendanceTotals {
-  const totals: AttendanceTotals = { absences: 0, lates: 0, sundaysWorked: 0, holidaysWorked: 0, minutesLate: 0 };
+/** Un día del archivo de HORARIOS: dice lo PLANEADO, no si llegó. */
+export type ScheduleDay = {
+  userId: string;
+  /** "YYYY-MM-DD" */
+  date: string;
+  /** WORKING | OFF | VACATION | PAID_DAY | INVENTORY | TERMINATED */
+  status: string;
+};
+
+/**
+ * Días efectivamente trabajados, cruzando ambas fuentes.
+ *
+ * Los domingos y festivos trabajados NO necesitan la asistencia real: basta con
+ * saber que a esa persona le tocaba trabajar. Y eso el archivo de HORARIOS lo
+ * sabe desde hace meses, mientras que la asistencia arrancó apenas hoy.
+ *
+ * Si no se cruzara, el histórico saldría en cero y habría que capturar a mano
+ * meses de domingos que la app ya tiene delante.
+ *
+ * La ASISTENCIA manda cuando existe (si estaba programado pero faltó, no lo
+ * trabajó); el HORARIO se usa como respaldo para todo lo anterior.
+ */
+function workedDays(records: AttendanceRecord[], schedules: ScheduleDay[]): Array<{ userId: string; date: string }> {
+  const byKey = new Map<string, { userId: string; date: string; worked: boolean }>();
+  for (const day of schedules) {
+    byKey.set(`${day.userId}:${day.date}`, { userId: day.userId, date: day.date, worked: day.status === "WORKING" });
+  }
   for (const record of records) {
-    const date = new Date(`${record.date}T00:00:00.000Z`);
+    byKey.set(`${record.userId}:${record.date}`, { userId: record.userId, date: record.date, worked: worked(record.status) });
+  }
+  return Array.from(byKey.values()).filter((day) => day.worked);
+}
+
+export function totalsFor(records: AttendanceRecord[], schedules: ScheduleDay[] = []): AttendanceTotals {
+  const totals: AttendanceTotals = { absences: 0, lates: 0, sundaysWorked: 0, holidaysWorked: 0, minutesLate: 0 };
+
+  // Faltas y retardos SOLO pueden salir de la asistencia real: el horario dice
+  // lo que estaba planeado, no si la persona llegó.
+  for (const record of records) {
     if (countsAsAbsence(record.status)) totals.absences += 1;
     if (countsAsLate(record.status)) {
       totals.lates += 1;
       totals.minutesLate += Math.max(0, record.minutesLate);
     }
-    if (earnsSundayPremium(record.status, date)) totals.sundaysWorked += 1;
-    if (isHoliday(record.date) && worked(record.status)) totals.holidaysWorked += 1;
   }
+
+  // Domingos y festivos: se cruza con el horario para recuperar el histórico.
+  for (const day of workedDays(records, schedules)) {
+    if (isSunday(day.date)) totals.sundaysWorked += 1;
+    if (isHoliday(day.date)) totals.holidaysWorked += 1;
+  }
+
   return totals;
 }
 
@@ -101,10 +141,11 @@ export type Incident = {
  * plataforma no la acepta — se teclea. Así que la pantalla tiene que dar la lista
  * ya masticada, sin que nadie vuelva a contar nada a mano.
  */
-export function incidentsFor(records: AttendanceRecord[]): Incident[] {
+export function incidentsFor(records: AttendanceRecord[], schedules: ScheduleDay[] = []): Incident[] {
   const incidents: Incident[] = [];
+
+  // Faltas y retardos: solo de la asistencia real.
   for (const record of records) {
-    const date = new Date(`${record.date}T00:00:00.000Z`);
     if (countsAsAbsence(record.status)) {
       incidents.push({ userId: record.userId, date: record.date, kind: "FALTA", detail: "No se presentó" });
     }
@@ -116,14 +157,19 @@ export function incidentsFor(records: AttendanceRecord[]): Incident[] {
         detail: `Llegó ${record.arrivedAt ?? "—"} (esperada ${record.expectedAt ?? "—"}, +${Math.max(0, record.minutesLate)} min)`
       });
     }
-    if (earnsSundayPremium(record.status, date)) {
-      incidents.push({ userId: record.userId, date: record.date, kind: "DOMINGO", detail: "Prima dominical" });
+  }
+
+  // Domingos y festivos: cruzados con el horario, para no perder el histórico.
+  for (const day of workedDays(records, schedules)) {
+    if (isSunday(day.date)) {
+      incidents.push({ userId: day.userId, date: day.date, kind: "DOMINGO", detail: "Prima dominical" });
     }
-    const holiday = holidayLabel(record.date);
-    if (holiday && worked(record.status)) {
-      incidents.push({ userId: record.userId, date: record.date, kind: "FESTIVO", detail: holiday });
+    const holiday = holidayLabel(day.date);
+    if (holiday) {
+      incidents.push({ userId: day.userId, date: day.date, kind: "FESTIVO", detail: holiday });
     }
   }
+
   return incidents.sort((a, b) => a.date.localeCompare(b.date) || a.kind.localeCompare(b.kind));
 }
 
@@ -143,14 +189,15 @@ export function fortnightOf(date: string): 1 | 2 {
 }
 
 /** Totales por colaborador, para el reporte y para la lista de gerencia. */
-export function totalsByUser(records: AttendanceRecord[]): Map<string, AttendanceTotals> {
-  const grouped = new Map<string, AttendanceRecord[]>();
-  for (const record of records) {
-    const list = grouped.get(record.userId) ?? [];
-    list.push(record);
-    grouped.set(record.userId, list);
-  }
-  return new Map(Array.from(grouped, ([userId, list]) => [userId, totalsFor(list)]));
+export function totalsByUser(records: AttendanceRecord[], schedules: ScheduleDay[] = []): Map<string, AttendanceTotals> {
+  const userIds = new Set([...records.map((r) => r.userId), ...schedules.map((s) => s.userId)]);
+  return new Map(Array.from(userIds, (userId) => [
+    userId,
+    totalsFor(
+      records.filter((record) => record.userId === userId),
+      schedules.filter((day) => day.userId === userId)
+    )
+  ]));
 }
 
 /** "2026-07-14" → "mar 14". Para la lista del mes. */

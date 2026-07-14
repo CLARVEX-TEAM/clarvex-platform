@@ -37,7 +37,7 @@ export async function GET(request: Request) {
   const { start, end } = monthRange(month);
   const manager = session.role === "GERENTE" || session.role === "SUBGERENTE";
 
-  const [users, records] = await Promise.all([
+  const [users, records, schedules] = await Promise.all([
     prisma.user.findMany({
       where: { storeId: session.storeId, active: true, ...(manager ? {} : { id: session.userId }) },
       // hoursOwed: el saldo que traían del Excel. Es el punto de partida del
@@ -48,6 +48,14 @@ export async function GET(request: Request) {
     prisma.attendance.findMany({
       where: { storeId: session.storeId, date: { gte: start, lt: end }, ...(manager ? {} : { userId: session.userId }) },
       orderBy: { date: "asc" }
+    }),
+    // Los HORARIOS traen meses de historia; la asistencia arrancó apenas. Los
+    // domingos y festivos trabajados se sacan de aquí cuando no hay asistencia,
+    // así el histórico no sale en cero (ver workedDays en lib/attendance-view).
+    prisma.schedule.findMany({
+      where: { storeId: session.storeId, date: { gte: start, lt: end }, ...(manager ? {} : { userId: session.userId }) },
+      select: { userId: true, date: true, status: true },
+      orderBy: { date: "asc" }
     })
   ]);
 
@@ -55,6 +63,11 @@ export async function GET(request: Request) {
     month,
     canEdit: manager,
     users,
+    schedules: schedules.map((day) => ({
+      userId: day.userId,
+      date: day.date.toISOString().slice(0, 10),
+      status: day.status
+    })),
     records: records.map((record) => ({
       id: record.id,
       userId: record.userId,

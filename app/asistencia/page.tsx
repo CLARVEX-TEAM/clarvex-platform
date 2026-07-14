@@ -18,7 +18,8 @@ import {
   totalsByUser,
   totalsFor,
   type AttendanceRecord,
-  type Incident
+  type Incident,
+  type ScheduleDay
 } from "@/lib/attendance-view";
 import { formatBalance } from "@/lib/hours-balance";
 import { AppFrame, AppHeader, BottomNav, Card, ProfileAvatar } from "@/components/ui";
@@ -44,6 +45,9 @@ export default function AsistenciaPage() {
   const [month, setMonth] = useState(currentMonth());
   const [users, setUsers] = useState<Teammate[]>([]);
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
+  // Los horarios traen meses de historia: de ahí salen los domingos y festivos
+  // trabajados de antes de que la asistencia empezara a capturarse.
+  const [schedules, setSchedules] = useState<ScheduleDay[]>([]);
   const [canEdit, setCanEdit] = useState(false);
   const [openUser, setOpenUser] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -63,9 +67,10 @@ export default function AsistenciaPage() {
     try {
       const response = await fetch(`/api/attendance?month=${month}`, { cache: "no-store" });
       if (!response.ok) throw new Error();
-      const payload = await response.json() as { users: Teammate[]; records: AttendanceRecord[]; canEdit: boolean };
+      const payload = await response.json() as { users: Teammate[]; records: AttendanceRecord[]; schedules: ScheduleDay[]; canEdit: boolean };
       setUsers(payload.users);
       setRecords(payload.records);
+      setSchedules(payload.schedules ?? []);
       setCanEdit(payload.canEdit);
     } catch {
       // Sin conexión: se deja lo que ya estaba en pantalla.
@@ -79,15 +84,19 @@ export default function AsistenciaPage() {
     void load();
   }, [session, load]);
 
-  const byUser = useMemo(() => totalsByUser(records), [records]);
-  const totals = useMemo(() => totalsFor(records), [records]);
+  const byUser = useMemo(() => totalsByUser(records, schedules), [records, schedules]);
+  const totals = useMemo(() => totalsFor(records, schedules), [records, schedules]);
 
   // Incidencias del periodo elegido: es lo que se teclea en Blitz.
   const scoped = useMemo(
     () => (period === "mes" ? records : records.filter((record) => fortnightOf(record.date) === period)),
     [records, period]
   );
-  const incidents = useMemo(() => incidentsFor(scoped), [scoped]);
+  const scopedSchedules = useMemo(
+    () => (period === "mes" ? schedules : schedules.filter((day) => fortnightOf(day.date) === period)),
+    [schedules, period]
+  );
+  const incidents = useMemo(() => incidentsFor(scoped, scopedSchedules), [scoped, scopedSchedules]);
   const nameById = useMemo(() => new Map(users.map((user) => [user.id, user.name])), [users]);
 
   // Banco de horas: lo que la app registró este mes. El ACUMULADO parte del
