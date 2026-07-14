@@ -18,7 +18,6 @@ export default function EscritorioPerfil() {
   const { theme, setTheme, isDark } = useTheme();
   const inputRef = useRef<HTMLInputElement>(null);
   const [user, setUser] = useState<User | null>(null);
-  const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -28,7 +27,6 @@ export default function EscritorioPerfil() {
   const [hireDate, setHireDate] = useState("");
   const [savingDates, setSavingDates] = useState(false);
   const [savedDates, setSavedDates] = useState(false);
-  const [savedPhoto, setSavedPhoto] = useState(false);
 
   useEffect(() => {
     getSession().then(setUser).finally(() => setLoading(false));
@@ -68,28 +66,33 @@ export default function EscritorioPerfil() {
     if (!acceptedTypes.includes(selected.type)) { toast("Usa una imagen JPG, PNG o WEBP.", "error"); event.target.value = ""; return; }
     if (selected.size > maxBytes) { toast("La imagen debe pesar menos de 5 MB.", "error"); event.target.value = ""; return; }
     if (previewUrl) URL.revokeObjectURL(previewUrl);
-    setFile(selected);
     setPreviewUrl(URL.createObjectURL(selected));
+    // Se sube SOLA. Antes había un botón "Guardar foto" aparte, y en esta misma
+    // pantalla otro "Guardar datos": ambos decían "¡Guardado!". Con el preview
+    // local mostrando ya la foto nueva, era facilísimo pulsar el equivocado,
+    // ver el verde, e irse sin haber subido nada.
+    void savePhoto(selected);
   }
 
-  async function savePhoto() {
-    if (!file) return;
+  // Recibe el File directo: el estado de React todavía no lo tendría.
+  async function savePhoto(selected: File) {
     setSaving(true);
     try {
       const form = new FormData();
-      form.set("photo", file);
+      form.set("photo", selected);
       const response = await fetch("/api/profile/photo", { method: "POST", body: form });
       const payload = await response.json() as { photoUrl?: string; error?: string };
       if (!response.ok || !payload.photoUrl) throw new Error(payload.error ?? "No se pudo guardar la foto.");
       setUser((current) => current ? { ...current, photoUrl: payload.photoUrl } : current);
-      setFile(null);
       if (previewUrl) URL.revokeObjectURL(previewUrl);
       setPreviewUrl(null);
       if (inputRef.current) inputRef.current.value = "";
       toast("Foto de perfil actualizada.", "success");
-      setSavedPhoto(true);
-      window.setTimeout(() => setSavedPhoto(false), 2000);
     } catch (uploadError) {
+      // Falló: se quita el preview para no dejar una foto que NO se guardó.
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+      setPreviewUrl(null);
+      if (inputRef.current) inputRef.current.value = "";
       toast(uploadError instanceof Error ? uploadError.message : "No se pudo guardar la foto.", "error");
     } finally {
       setSaving(false);
@@ -170,11 +173,12 @@ export default function EscritorioPerfil() {
         <Card className="p-5">
           <div className="flex items-center gap-3"><span className="grid size-10 place-items-center rounded-2xl bg-blue-50 text-volt dark:bg-[#1a2540]"><ImageUp size={19} /></span><div><h2 className="font-black text-ink">Foto de perfil</h2><p className="text-xs text-muted">JPG, PNG o WEBP. Máximo 5 MB.</p></div></div>
           <input ref={inputRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={selectPhoto} className="sr-only" />
-          <div className="mt-4 grid grid-cols-2 gap-2">
-            <Button type="button" variant="ghost" onClick={() => inputRef.current?.click()} disabled={saving}>{user.photoUrl ? "Cambiar foto" : "Elegir foto"}</Button>
-            <SaveButton type="button" onClick={savePhoto} disabled={!file} loading={saving} success={savedPhoto} savedLabel="¡Guardado!">Guardar foto</SaveButton>
+          {/* Sin botón de guardar: al elegir la imagen se sube sola. */}
+          <div className="mt-4">
+            <Button type="button" variant="ghost" onClick={() => inputRef.current?.click()} disabled={saving} className="w-full">
+              {saving ? "Subiendo…" : user.photoUrl ? "Cambiar foto" : "Elegir foto"}
+            </Button>
           </div>
-          {file ? <p className="mt-3 truncate text-xs font-semibold text-muted">Vista previa: {file.name}</p> : null}
         </Card>
 
         <Card className="p-5">
