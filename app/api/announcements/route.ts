@@ -3,7 +3,7 @@ import { z } from "zod";
 import { enforceUploadRateLimit, isApiError, parseJson, requireSession } from "@/lib/api";
 import { createAnnouncement } from "@/lib/services/announcement-service";
 import { validateProfilePhoto } from "@/lib/profile-photo";
-import { deleteFromR2, uploadToR2 } from "@/lib/r2";
+import { deleteFromR2, signR2Url, uploadToR2 } from "@/lib/r2";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -54,5 +54,10 @@ export async function POST(request: Request) {
     throw error;
   });
 
-  return NextResponse.json({ announcement }, { status: 201 });
+  // Firmada para que la UI pinte la imagen recién subida sin esperar al refetch
+  // (el bucket es privado: la URL pública que devuelve uploadToR2 no sirve sola).
+  return NextResponse.json(
+    { announcement: { ...announcement, imageUrl: await signR2Url(announcement.imageUrl) } },
+    { status: 201 }
+  );
 }

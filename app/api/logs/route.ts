@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { isApiError, parseJson, requireSession } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
+import { signR2Url } from "@/lib/r2";
 
 export const dynamic = "force-dynamic";
 
@@ -9,7 +10,9 @@ export async function GET() {
   const session = await requireSession(["GERENTE", "SUBGERENTE"]);
   if (isApiError(session)) return session;
   const entries = await prisma.storeLog.findMany({ where: { storeId: session.storeId }, orderBy: { createdAt: "asc" } });
-  return NextResponse.json({ logEntries: entries.map((entry) => ({ id: entry.id, date: entry.createdAt.toISOString(), authorId: entry.authorId, category: entry.category, description: entry.description, evidenceUrl: entry.evidenceUrl })) });
+  // La evidencia vive en R2 (bucket privado) → URL firmada, igual que en app-data.
+  const signed = await Promise.all(entries.map((entry) => signR2Url(entry.evidenceUrl)));
+  return NextResponse.json({ logEntries: entries.map((entry, index) => ({ id: entry.id, date: entry.createdAt.toISOString(), authorId: entry.authorId, category: entry.category, description: entry.description, evidenceUrl: signed[index] })) });
 }
 
 export async function POST(request: Request) {
