@@ -7,6 +7,8 @@ import { dispatchPushToUsers } from "@/lib/push";
 import { firstName } from "@/lib/daily-summary";
 import { prisma } from "@/lib/prisma";
 import { deleteFromR2, signR2Url, uploadToR2 } from "@/lib/r2";
+import { inventoryCaption } from "@/lib/webhook-caption";
+import { isPhotoWebhookEnabled, sendPhotoWebhook } from "@/lib/webhooks";
 import { storeKey } from "@/lib/r2-keys";
 
 export const dynamic = "force-dynamic";
@@ -97,6 +99,32 @@ export async function POST(request: Request) {
       const body = `${firstName(session.name)} reportó ${INVENTORY_CATEGORY_LABELS[category] ?? category}: ${productName}`;
       await createNotifications(prisma, managerIds.map((id) => ({ storeId: session.storeId, userId: id, type: "INVENTORY_REPORT" as const, title, body })));
       dispatchPushToUsers(managerIds, { title, body, tag: "inventario", url: "/faltantes" }).catch(() => undefined);
+    }
+
+    // Aviso a n8n → Telegram. Solo si hay foto: un faltante sin imagen no aporta
+    // nada en un canal. Fire-and-forget, igual que las evidencias.
+    if (photoUrl && isPhotoWebhookEnabled(session.storeId)) {
+      void (async () => {
+        const store = await prisma.store.findUnique({ where: { id: session.storeId }, select: { name: true } });
+        const signed = await signR2Url(photoUrl, 6 * 60 * 60);
+        await sendPhotoWebhook({
+          type: "inventory",
+          storeId: session.storeId,
+          storeName: store?.name ?? "Tienda",
+          caption: inventoryCaption({
+            storeName: store?.name ?? "Tienda",
+            reporterName: session.name,
+            employeeNumber: session.employeeNumber,
+            productName: report.productName,
+            category: INVENTORY_CATEGORY_LABELS[report.category] ?? report.category,
+            note: report.note,
+            createdAt: report.createdAt
+          }),
+          imageUrl: signed ?? photoUrl,
+          fileName: null,
+          createdAt: report.createdAt.toISOString()
+        });
+      })().catch(() => undefined);
     }
 
     return NextResponse.json({ report: await serialize(report) }, { status: 201 });

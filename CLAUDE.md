@@ -75,7 +75,22 @@ NEXT_PUBLIC_SENTRY_DSN=
 SENTRY_ORG=          # solo para subir source maps
 SENTRY_PROJECT=      # solo para subir source maps
 SENTRY_AUTH_TOKEN=   # solo para subir source maps
+
+# Webhook de fotos → n8n → Telegram. Sin WEBHOOK_URL queda desactivado.
+WEBHOOK_URL=
+WEBHOOK_STORE_IDS=   # obligatorio para activarlo: lista de storeId separados por coma
+WEBHOOK_SECRET=      # se manda como header X-Clarvex-Secret
 ```
+
+## Fotos a Telegram (n8n)
+
+Cuando un asesor sube una **evidencia** o un **faltante con foto**, la app avisa a un webhook de n8n, que reenvía la imagen a un canal de Telegram con un pie de foto identificable (quién, de qué, cuándo).
+
+- El mensaje lo arma **la app** (`lib/webhook-caption.ts`), no n8n. El flujo de n8n es: Webhook → Telegram `sendPhoto` con `caption` + `imageUrl`.
+- **Fire-and-forget** (`lib/webhooks.ts`): timeout de 5 s y nunca lanza. Si n8n está caído, la evidencia se guarda igual — no se rompe una subida por una notificación.
+- **Filtro por tienda obligatorio:** sin `WEBHOOK_STORE_IDS` no se manda nada. Al ser multi-tienda, las fotos de una tienda no pueden acabar en el canal de otra.
+- La `imageUrl` es una URL **firmada de 6 h** (el bucket R2 es privado); ese margen le permite a n8n reintentar.
+- ⚠️ Las fotos salen de la infraestructura propia: quien esté en el canal las ve.
 
 ## Backups
 

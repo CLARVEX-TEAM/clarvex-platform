@@ -6,6 +6,8 @@ import { createNotifications } from "@/lib/notifications";
 import { dispatchPushToUsers } from "@/lib/push";
 import { prisma } from "@/lib/prisma";
 import { deleteFromR2, signR2Url, uploadToR2 } from "@/lib/r2";
+import { evidenceCaption } from "@/lib/webhook-caption";
+import { isPhotoWebhookEnabled, sendPhotoWebhook } from "@/lib/webhooks";
 import { storeKey } from "@/lib/r2-keys";
 
 export const dynamic = "force-dynamic";
@@ -116,6 +118,34 @@ export async function POST(request: Request) {
 
     // Se devuelve firmada para que la UI la pinte al instante sin recargar.
     const signedUrls = await Promise.all(result.created.map((evidence) => signR2Url(evidence.url)));
+
+    // Aviso a n8n → canal de Telegram. Fire-and-forget: si n8n está caído, la
+    // evidencia YA quedó guardada. No se rompe una subida por una notificación.
+    if (isPhotoWebhookEnabled(session.storeId)) {
+      void (async () => {
+        const store = await prisma.store.findUnique({ where: { id: session.storeId }, select: { name: true } });
+        // 6 h: le da margen a n8n para reintentar si estaba caído al momento.
+        const urls = await Promise.all(result.created.map((evidence) => signR2Url(evidence.url, 6 * 60 * 60)));
+        await Promise.all(result.created.map((evidence, index) => sendPhotoWebhook({
+          type: "evidence",
+          storeId: session.storeId,
+          storeName: store?.name ?? "Tienda",
+          caption: evidenceCaption({
+            storeName: store?.name ?? "Tienda",
+            uploaderName: session.name,
+            employeeNumber: session.employeeNumber,
+            resourceKind: resource.kind,
+            resourceTitle: resource.title,
+            note: evidence.note,
+            createdAt: evidence.createdAt
+          }),
+          imageUrl: urls[index] ?? evidence.url,
+          fileName: evidence.fileName,
+          createdAt: evidence.createdAt.toISOString()
+        })));
+      })().catch(() => undefined);
+    }
+
     return NextResponse.json({
       evidences: result.created.map((evidence, index) => ({ ...serializeEvidence(evidence), url: signedUrls[index] ?? evidence.url }))
     }, { status: 201 });
