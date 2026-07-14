@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { isApiError, requireSession } from "@/lib/api";
 import { getFromR2 } from "@/lib/r2";
+import { canReadProfileKey } from "@/lib/r2-keys";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -8,16 +9,16 @@ export const runtime = "nodejs";
 // GET /api/files/photo?k=<key> — sirve una foto de perfil desde R2 con las
 // credenciales del servidor, sin depender del acceso público del bucket.
 //
-// Las fotos de perfil las ve todo el equipo (así está definido en el producto),
-// así que basta con tener sesión. Se restringe el prefijo a `profiles/` para que
-// este endpoint no se pueda usar como lector genérico del bucket (las evidencias
-// van por URL firmada, con su propia autorización).
+// Las fotos de perfil las ve todo el equipo, pero SOLO dentro de su tienda: la
+// llave nueva lleva el storeId (`stores/<storeId>/profiles/…`) y se valida contra
+// la sesión, así que un gerente de otra tienda no puede leerlas ni conociendo la
+// llave. Ver canReadProfileKey en lib/r2-keys.
 export async function GET(request: Request) {
   const session = await requireSession();
   if (isApiError(session)) return session;
 
   const key = new URL(request.url).searchParams.get("k") ?? "";
-  if (!key.startsWith("profiles/") || key.includes("..") || key.length > 500) {
+  if (!canReadProfileKey(key, session.storeId)) {
     return NextResponse.json({ error: "Ruta inválida." }, { status: 400 });
   }
 

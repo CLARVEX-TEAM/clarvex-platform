@@ -6,6 +6,7 @@ import { createNotifications } from "@/lib/notifications";
 import { dispatchPushToUsers } from "@/lib/push";
 import { prisma } from "@/lib/prisma";
 import { deleteFromR2, signR2Url, uploadToR2 } from "@/lib/r2";
+import { storeKey } from "@/lib/r2-keys";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -66,7 +67,7 @@ export async function POST(request: Request) {
   const uploaded: Array<{ url: string; file: File }> = [];
   try {
     for (const { file, bytes, extension } of validated) {
-      const key = `evidences/${session.userId}-${Date.now()}-${crypto.randomUUID()}.${extension}`;
+      const key = storeKey(session.storeId, "evidences", `${session.userId}-${Date.now()}-${crypto.randomUUID()}.${extension}`);
       const url = await uploadToR2(key, bytes, file.type);
       uploaded.push({ url, file });
     }

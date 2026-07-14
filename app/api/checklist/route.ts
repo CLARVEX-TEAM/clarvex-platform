@@ -7,6 +7,7 @@ import { resolveMonterreyDate } from "@/lib/cron-time";
 import { prisma } from "@/lib/prisma";
 import { validateProfilePhoto } from "@/lib/profile-photo";
 import { signR2Url, uploadToR2 } from "@/lib/r2";
+import { storeKey } from "@/lib/r2-keys";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -89,7 +90,7 @@ export async function POST(request: Request) {
       const bytes = new Uint8Array(await imageFile.arrayBuffer());
       const validation = validateProfilePhoto(imageFile, bytes);
       if (!validation.valid) return NextResponse.json({ error: validation.error }, { status: 400 });
-      const key = `checklist/${session.storeId}-${itemKey}-${Date.now()}.${validation.extension}`;
+      const key = storeKey(session.storeId, "checklist", `${itemKey}-${Date.now()}.${validation.extension}`);
       try {
         evidenceUrl = await uploadToR2(key, bytes, imageFile.type);
       } catch {

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireSession, isApiError } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
 import { getFromR2 } from "@/lib/r2";
+import { chatRoomFromKey } from "@/lib/r2-keys";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -14,13 +15,13 @@ export async function GET(request: Request) {
   if (isApiError(session)) return session;
 
   const key = new URL(request.url).searchParams.get("k") ?? "";
-  const parts = key.split("/");
-  // Formato esperado: evidences/chat/<roomId>/<archivo>
-  if (parts[0] !== "evidences" || parts[1] !== "chat" || parts.length < 4) {
-    return NextResponse.json({ error: "Ruta inválida." }, { status: 400 });
-  }
-  const roomId = parts[2];
+  // Acepta la llave nueva (stores/<storeId>/chat/<roomId>/…) y la legada
+  // (evidences/chat/<roomId>/…). Ver chatRoomFromKey en lib/r2-keys.
+  const roomId = chatRoomFromKey(key);
+  if (!roomId) return NextResponse.json({ error: "Ruta inválida." }, { status: 400 });
 
+  // El permiso real: ser miembro del room. Esto ya acota por tienda, porque los
+  // rooms pertenecen a una tienda.
   const member = await prisma.chatMember.findUnique({
     where: { roomId_userId: { roomId, userId: session.userId } }
   });

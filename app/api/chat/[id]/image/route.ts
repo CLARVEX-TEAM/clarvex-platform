@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { dispatchPushToUsers } from "@/lib/push";
 import { validateEvidenceImage } from "@/lib/evidence";
 import { uploadToR2 } from "@/lib/r2";
+import { storeKey } from "@/lib/r2-keys";
 import { resolveReplyTo, serializeChatMessage } from "@/lib/chat";
 
 export const dynamic = "force-dynamic";
@@ -38,7 +39,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const validation = validateEvidenceImage(raw, bytes);
   if (!validation.valid) return NextResponse.json({ error: validation.error }, { status: 400 });
 
-  const key = `evidences/chat/${id}/${session.userId}-${Date.now()}-${crypto.randomUUID()}.${validation.extension}`;
+  const key = storeKey(session.storeId, "chat", `${id}/${session.userId}-${Date.now()}-${crypto.randomUUID()}.${validation.extension}`);
   try {
     await uploadToR2(key, bytes, raw.type);
   } catch (error) {

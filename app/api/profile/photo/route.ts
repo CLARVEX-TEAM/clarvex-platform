@@ -3,6 +3,7 @@ import { enforceUploadRateLimit, isApiError, requireSession } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
 import { validateProfilePhoto } from "@/lib/profile-photo";
 import { deleteFromR2, uploadToR2 } from "@/lib/r2";
+import { storeKey } from "@/lib/r2-keys";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -21,7 +22,7 @@ export async function POST(request: Request) {
   const validation = validateProfilePhoto(file, bytes);
   if (!validation.valid) return NextResponse.json({ error: validation.error }, { status: 400 });
 
-  const key = `profiles/${session.userId}-${Date.now()}.${validation.extension}`;
+  const key = storeKey(session.storeId, "profiles", `${session.userId}-${Date.now()}.${validation.extension}`);
   let photoUrl: string;
   try {
     photoUrl = await uploadToR2(key, bytes, file.type);

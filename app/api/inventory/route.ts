@@ -7,6 +7,7 @@ import { dispatchPushToUsers } from "@/lib/push";
 import { firstName } from "@/lib/daily-summary";
 import { prisma } from "@/lib/prisma";
 import { deleteFromR2, signR2Url, uploadToR2 } from "@/lib/r2";
+import { storeKey } from "@/lib/r2-keys";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -76,7 +77,7 @@ export async function POST(request: Request) {
     const validation = validateEvidenceImage(file, bytes);
     if (!validation.valid) return NextResponse.json({ error: validation.error }, { status: 400 });
     try {
-      const key = `inventory/${session.userId}-${Date.now()}-${crypto.randomUUID()}.${validation.extension}`;
+      const key = storeKey(session.storeId, "inventory", `${session.userId}-${Date.now()}-${crypto.randomUUID()}.${validation.extension}`);
       photoUrl = await uploadToR2(key, bytes, file.type);
     } catch (error) {
       return NextResponse.json({ error: error instanceof Error ? error.message : "No se pudo subir la foto." }, { status: 500 });

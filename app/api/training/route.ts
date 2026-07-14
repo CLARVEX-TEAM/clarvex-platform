@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { createNotifications } from "@/lib/notifications";
 import { dispatchPushToUsers } from "@/lib/push";
 import { deleteFromR2, signR2Url, uploadToR2 } from "@/lib/r2";
+import { storeKey } from "@/lib/r2-keys";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -81,7 +82,7 @@ export async function POST(request: Request) {
     if (isPdf(bytes)) {
       if (bytes.byteLength > MAX_PDF_BYTES) return NextResponse.json({ error: "El PDF debe pesar menos de 10 MB." }, { status: 400 });
       try {
-        const key = `training/${session.userId}-${Date.now()}-${crypto.randomUUID()}.pdf`;
+        const key = storeKey(session.storeId, "training", `${session.userId}-${Date.now()}-${crypto.randomUUID()}.pdf`);
         fileUrl = await uploadToR2(key, bytes, "application/pdf");
       } catch (error) {
         return NextResponse.json({ error: error instanceof Error ? error.message : "No se pudo subir el archivo." }, { status: 500 });
@@ -90,7 +91,7 @@ export async function POST(request: Request) {
       const validation = validateEvidenceImage(file, bytes);
       if (!validation.valid) return NextResponse.json({ error: validation.error }, { status: 400 });
       try {
-        const key = `training/${session.userId}-${Date.now()}-${crypto.randomUUID()}.${validation.extension}`;
+        const key = storeKey(session.storeId, "training", `${session.userId}-${Date.now()}-${crypto.randomUUID()}.${validation.extension}`);
         fileUrl = await uploadToR2(key, bytes, file.type);
       } catch (error) {
         return NextResponse.json({ error: error instanceof Error ? error.message : "No se pudo subir el archivo." }, { status: 500 });
