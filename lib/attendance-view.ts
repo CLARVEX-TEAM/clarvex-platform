@@ -13,13 +13,22 @@ export type AttendanceRecord = {
   /** "YYYY-MM-DD" */
   date: string;
   expectedAt: string | null;
+  expectedLeaveAt: string | null;
   arrivedAt: string | null;
+  leftAt: string | null;
   minutesLate: number;
+  /** Saldo del día en minutos. Positivo = horas a favor del colaborador. */
+  minutesBalance: number;
   status: AttendanceStatus;
   entryText: string | null;
   source: string;
   note: string | null;
 };
+
+/** Saldo de horas del periodo, en minutos. */
+export function balanceOf(records: AttendanceRecord[]): number {
+  return records.reduce((total, record) => total + record.minutesBalance, 0);
+}
 
 export const STATUS_LABEL: Record<AttendanceStatus, string> = {
   ON_TIME: "A tiempo",

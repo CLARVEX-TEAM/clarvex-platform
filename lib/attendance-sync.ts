@@ -1,5 +1,6 @@
 import { classifyDay, TOLERANCE_MINUTES, CUTOFF_MINUTES, DEFAULT_EXPECTED_ENTRY, toMinutes, type ScheduledStatus } from "@/lib/attendance";
 import { parseAttendanceWorkbook } from "@/lib/attendance-parser";
+import { dayBalanceMinutes, DEFAULT_EXIT } from "@/lib/hours-balance";
 import { resolveMonterreyDate } from "@/lib/cron-time";
 import { buildUserByEmployeeNumber } from "@/lib/employee-match";
 import { prisma } from "@/lib/prisma";
@@ -94,7 +95,7 @@ export async function importAttendance(workbook: WorkBook, storeId: string, now 
   // Contexto del día: qué le tocaba a cada quien y quién tenía permiso.
   // Ojo: ShiftRequest usa `requesterId` y guarda la fecha como texto "YYYY-MM-DD".
   const [schedules, excusedRequests, existing] = await Promise.all([
-    prisma.schedule.findMany({ where: { storeId, userId: { in: userIds }, date }, select: { userId: true, status: true, startTime: true } }),
+    prisma.schedule.findMany({ where: { storeId, userId: { in: userIds }, date }, select: { userId: true, status: true, startTime: true, endTime: true } }),
     prisma.shiftRequest.findMany({
       where: { storeId, requesterId: { in: userIds }, date: today.dateKey, type: "ENTRAR_TARDE", status: "APROBADO" },
       select: { requesterId: true }
@@ -144,13 +145,27 @@ export async function importAttendance(workbook: WorkBook, storeId: string, now 
       }
     }
 
+    // Banco de horas: entrar temprano suma, salir temprano resta (ver
+    // lib/hours-balance). Se guarda ya calculado para que el histórico no cambie
+    // si mañana se ajusta el horario estándar de la tienda.
+    const expectedLeaveAt = schedule?.endTime && toMinutes(schedule.endTime) !== null ? schedule.endTime : DEFAULT_EXIT;
+    const minutesBalance = dayBalanceMinutes({
+      status: result.status,
+      expectedEntry: expectedAt,
+      expectedExit: expectedLeaveAt,
+      arrivedAt: row.arrived,
+      leftAt: row.leftAt
+    });
+
     const data = {
       storeId,
       expectedAt,
+      expectedLeaveAt,
       arrivedAt: row.arrived,
       lunchStart: row.lunchStart,
       leftAt: row.leftAt,
       minutesLate: result.minutesLate,
+      minutesBalance,
       status: result.status,
       entryText: row.entryText,
       source: "APERTURA_XLSX"

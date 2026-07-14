@@ -40,7 +40,9 @@ export async function GET(request: Request) {
   const [users, records] = await Promise.all([
     prisma.user.findMany({
       where: { storeId: session.storeId, active: true, ...(manager ? {} : { id: session.userId }) },
-      select: { id: true, name: true, employeeNumber: true, role: true, photoUrl: true },
+      // hoursOwed: el saldo que traían del Excel. Es el punto de partida del
+      // banco de horas — la app solo suma lo que registra a partir de ahora.
+      select: { id: true, name: true, employeeNumber: true, role: true, photoUrl: true, hoursOwed: true },
       orderBy: [{ role: "asc" }, { name: "asc" }]
     }),
     prisma.attendance.findMany({
@@ -58,8 +60,11 @@ export async function GET(request: Request) {
       userId: record.userId,
       date: record.date.toISOString().slice(0, 10),
       expectedAt: record.expectedAt,
+      expectedLeaveAt: record.expectedLeaveAt,
       arrivedAt: record.arrivedAt,
+      leftAt: record.leftAt,
       minutesLate: record.minutesLate,
+      minutesBalance: record.minutesBalance,
       status: record.status,
       entryText: record.entryText,
       source: record.source,

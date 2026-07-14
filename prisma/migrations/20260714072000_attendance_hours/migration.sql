@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "Attendance" ADD COLUMN IF NOT EXISTS "expectedLeaveAt" TEXT;
+ALTER TABLE "Attendance" ADD COLUMN IF NOT EXISTS "minutesBalance" INTEGER NOT NULL DEFAULT 0;

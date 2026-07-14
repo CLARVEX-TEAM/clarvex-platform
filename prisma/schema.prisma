@@ -353,8 +353,12 @@ model Attendance {
   arrivedAt   String?
   lunchStart  String?
   leftAt      String?
+  /// Hora en que debía salir ("21:00"). Para el banco de horas.
+  expectedLeaveAt String?
   /// Diferencia contra su horario. Negativo = llegó antes.
   minutesLate Int              @default(0)
+  /// Saldo del día en minutos (ver lib/hours-balance). Positivo = a su favor.
+  minutesBalance Int           @default(0)
   status      AttendanceStatus
   /// Texto crudo de la celda de entrada cuando no era una hora ("VACACIONES").
   entryText   String?

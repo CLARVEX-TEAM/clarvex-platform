@@ -8,6 +8,7 @@ import type { User } from "@/lib/types";
 import {
   currentMonth,
   dayLabel,
+  balanceOf,
   fortnightOf,
   incidentsFor,
   INCIDENT_TONE,
@@ -19,10 +20,11 @@ import {
   type AttendanceRecord,
   type Incident
 } from "@/lib/attendance-view";
+import { formatBalance } from "@/lib/hours-balance";
 import { AppFrame, AppHeader, BottomNav, Card, ProfileAvatar } from "@/components/ui";
 import { cn } from "@/lib/utils";
 
-type Teammate = { id: string; name: string; employeeNumber: string; role: string; photoUrl: string | null };
+type Teammate = { id: string; name: string; employeeNumber: string; role: string; photoUrl: string | null; hoursOwed: number };
 
 function shiftMonth(month: string, delta: number): string {
   const [year, monthNumber] = month.split("-").map(Number);
@@ -87,6 +89,13 @@ export default function AsistenciaPage() {
   );
   const incidents = useMemo(() => incidentsFor(scoped), [scoped]);
   const nameById = useMemo(() => new Map(users.map((user) => [user.id, user.name])), [users]);
+
+  // Banco de horas: lo que la app registró este mes. El ACUMULADO parte del
+  // saldo que traían del Excel (User.hoursOwed) y le suma esto.
+  const balanceFor = useCallback(
+    (userId: string) => balanceOf(records.filter((record) => record.userId === userId)),
+    [records]
+  );
 
   // Un asesor solo se ve a sí mismo: se le abre su detalle directo.
   const soloUser = users.length === 1 ? users[0].id : null;
@@ -165,6 +174,14 @@ export default function AsistenciaPage() {
                         {userTotals?.absences ?? 0} faltas · {userTotals?.lates ?? 0} retardos
                         {userTotals?.sundaysWorked ? ` · ${userTotals.sundaysWorked} domingos` : ""}
                       </p>
+                      <p className="text-[11px] font-bold text-muted">
+                        Horas del mes:{" "}
+                        <span className={cn(balanceFor(user.id) < 0 ? "text-rose-600 dark:text-rose-400" : "text-emerald-600 dark:text-emerald-400")}>
+                          {formatBalance(balanceFor(user.id))}
+                        </span>
+                        {" · Acumulado: "}
+                        <span className="text-ink/70">{formatBalance(Math.round(user.hoursOwed * 60) + balanceFor(user.id))}</span>
+                      </p>
                     </div>
                     <ChevronRight size={16} className={cn("shrink-0 text-muted transition-transform", open && "rotate-90")} />
                   </button>
@@ -175,11 +192,30 @@ export default function AsistenciaPage() {
           </Card>
         ) : null}
 
-        {/* Asesor: su propio detalle */}
+        {/* Asesor: su banco de horas + su detalle */}
         {tab === "dias" && soloUser ? (
-          <Card className="overflow-hidden p-0">
-            <DayList records={detail} />
-          </Card>
+          <>
+            <Card className="mb-3 flex items-center justify-between p-3.5">
+              <div>
+                <p className="text-xs font-bold text-muted">Horas de este mes</p>
+                <p className={cn(
+                  "text-2xl font-black",
+                  balanceFor(soloUser) < 0 ? "text-rose-600 dark:text-rose-400" : "text-emerald-600 dark:text-emerald-400"
+                )}>
+                  {formatBalance(balanceFor(soloUser))}
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="text-xs font-bold text-muted">Saldo acumulado</p>
+                <p className="text-lg font-black text-ink">
+                  {formatBalance(Math.round((users[0]?.hoursOwed ?? 0) * 60) + balanceFor(soloUser))}
+                </p>
+              </div>
+            </Card>
+            <Card className="overflow-hidden p-0">
+              <DayList records={detail} />
+            </Card>
+          </>
         ) : null}
 
         {/* Incidencias: lo que se teclea en Blitz */}
