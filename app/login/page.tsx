@@ -228,7 +228,9 @@ export default function LoginPage() {
   }
 
   async function handleBiometricLogin() {
-    if (!user) return;
+    // Se dispara desde el saludo, ANTES de autenticar: ahí lo que existe es
+    // `lookup`, no `user` (que solo se llena tras iniciar sesión).
+    if (!lookup) return;
     setBusy(true);
     setError("");
     try {
