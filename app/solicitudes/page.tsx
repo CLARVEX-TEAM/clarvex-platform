@@ -133,7 +133,7 @@ export default function SolicitudesPage() {
 
   return (
     <>
-      <AppHeader title="Solicitudes" subtitle="Cambio de turno y días libres" backHref={isManager ? "/manager" : "/advisor"} />
+      <AppHeader title="Días y cambios" subtitle="Intercambia descansos con un compañero o pide días libres." backHref={isManager ? "/manager" : "/advisor"} />
       <AppFrame>
         {session ? <ShiftSwaps myId={session.id} /> : null}
         <Card className="mb-3 mt-3 p-3.5">
