@@ -12,6 +12,7 @@ import {
   saveProfileWithAvatar,
   type SavedProfile
 } from "@/lib/desktop-profiles";
+import { photoSrc } from "@/lib/photo-src";
 import type { User } from "@/lib/types";
 import { ClarvexIcon } from "@/components/ClarvexIcon";
 
@@ -42,14 +43,20 @@ function Avatar({
   photoUrl?: string | null;
   size: number;
 }) {
-  if (photoUrl) {
+  // La foto del lock suele ser un `data:` URI cacheado (para verse sin sesión), o
+  // una URL de R2 que hay que servir por el proxy. En ambos casos el optimizador
+  // de Next falla —no procesa `data:` y a R2 privado le da 401—, así que va con
+  // `unoptimized`, igual que ProfileAvatar.
+  const src = photoSrc(photoUrl);
+  if (src) {
     return (
       <Image
-        src={photoUrl}
+        src={src}
         alt={name}
         width={size}
         height={size}
         className="size-full object-cover"
+        unoptimized
       />
     );
   }
