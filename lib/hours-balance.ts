@@ -24,6 +24,13 @@ import type { AttendanceStatus } from "@/lib/attendance";
  * Cuando SÍ se sale de la tolerancia se cuenta la desviación COMPLETA: quien
  * entra a las 11:00 debe 30 minutos, no 16.
  *
+ * ⚠️ ENTRADAS ADELANTADAS: la entrada estándar es 10:30, pero a veces se abre
+ * antes a una hora cerrada (7, 8, 9, 10). La tolerancia también aplica ahí:
+ * llegar 8:11 cuenta como haber entrado a las 8:00, así que el crédito es +2:30
+ * (10:30 − 8:00), no +2:19. Se redondea la llegada temprana a su hora en punto
+ * cuando cae dentro de la tolerancia después de ella. La entrada TARDE (después
+ * de 10:30) no se redondea: eso es un descuento real.
+ *
  * Cada parte se cuenta SOLO si se capturó. Si no marcó salida, no se le castiga
  * con un saldo negativo enorme — igual que en el Excel, que exige ISNUMBER().
  */
@@ -31,9 +38,31 @@ import type { AttendanceStatus } from "@/lib/attendance";
 export const DEFAULT_ENTRY = "10:30";
 export const DEFAULT_EXIT = "21:00";
 
+// Las entradas adelantadas se piden a horas cerradas (7:00, 8:00…). El banco
+// redondea la llegada a esa cuadrícula de 30 min cuando cae dentro de tolerancia.
+const ENTRY_GRID_MINUTES = 30;
+
 /** Desviaciones de minutos sueltos no mueven el banco de horas. */
 function beyondTolerance(deviation: number): number {
   return Math.abs(deviation) <= TOLERANCE_MINUTES ? 0 : deviation;
+}
+
+/**
+ * Crédito de la ENTRADA, con la tolerancia aplicada a la hora en punto prevista.
+ * Positivo = entró antes del estándar (suma). Negativo = entró tarde (resta).
+ */
+function entryCredit(expectedEntry: number, arrived: number): number {
+  // Dentro de la tolerancia del estándar: no mueve el banco.
+  if (Math.abs(expectedEntry - arrived) <= TOLERANCE_MINUTES) return 0;
+  // Entrada adelantada: se redondea a su hora en punto (8:11 → 8:00) si llegó
+  // dentro de la tolerancia después de ella. Así el crédito es completo.
+  if (arrived < expectedEntry) {
+    const pastBoundary = arrived % ENTRY_GRID_MINUTES;
+    const effectiveArrival = pastBoundary <= TOLERANCE_MINUTES ? arrived - pastBoundary : arrived;
+    return expectedEntry - effectiveArrival;
+  }
+  // Entrada tarde: descuento real, sin redondeo.
+  return expectedEntry - arrived;
 }
 
 /** Días en los que no se esperaba a la persona: no generan saldo. */
@@ -61,8 +90,8 @@ export function dayBalanceMinutes(input: DayBalanceInput): number {
   const left = toMinutes(input.leftAt);
 
   let balance = 0;
-  if (arrived !== null) balance += beyondTolerance(expectedEntry - arrived); // antes = suma, tarde = resta
-  if (left !== null) balance += beyondTolerance(left - expectedExit);        // se queda = suma, se va = resta
+  if (arrived !== null) balance += entryCredit(expectedEntry, arrived); // antes = suma (redondeada), tarde = resta
+  if (left !== null) balance += beyondTolerance(left - expectedExit);   // se queda = suma, se va = resta
   return balance;
 }
 

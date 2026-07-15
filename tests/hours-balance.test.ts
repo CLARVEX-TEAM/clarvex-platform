@@ -32,6 +32,24 @@ test("un día exacto no mueve el saldo", () => {
   assert.equal(formatBalance(0), "+0:00");
 });
 
+test("entrada adelantada: llegar unos minutos tarde a la hora en punto igual da crédito completo", () => {
+  // Caso real (15-jul-2026): abrieron a las 8:00. Jesús marcó 8:11. Debe sumar
+  // +2:30 (10:30 − 8:00), no +2:19: los 11 min caen dentro de la tolerancia, así
+  // que cuenta como haber entrado a las 8:00.
+  assert.equal(dayBalanceMinutes(day("08:11", "21:00")), 150); // +2:30
+  assert.equal(dayBalanceMinutes(day("08:02", "21:00")), 150); // Itzel, ~8:02
+  assert.equal(dayBalanceMinutes(day("08:05", "21:00")), 150); // Alonso, ~8:05
+  assert.equal(dayBalanceMinutes(day("07:12", "21:00")), 210); // abrieron a las 7 → +3:30
+  assert.equal(dayBalanceMinutes(day("09:08", "21:00")), 90);  // abrieron a las 9 → +1:30
+});
+
+test("entrada adelantada: pasada la tolerancia de la hora en punto se cuenta lo real", () => {
+  // Abrieron a las 8:00 y llegó 8:20 (20 min, fuera de tolerancia): cuenta desde
+  // su llegada real, no se le regala hasta las 8:00.
+  assert.equal(dayBalanceMinutes(day("08:20", "21:00")), 130); // +2:10
+  assert.equal(dayBalanceMinutes(day("08:00", "21:00")), 150); // exacto sigue siendo +2:30
+});
+
 test("llegar unos minutos tarde NO resta: está dentro de la tolerancia", () => {
   // Caso real (14 jul 2026): Itzel marcó 10:36 y Jazmín 10:35. La app las
   // clasificó "A tiempo" — pero el banco de horas les restaba 6 y 5 minutos.
