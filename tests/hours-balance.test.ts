@@ -94,6 +94,18 @@ test("descanso, vacaciones y falta no generan saldo", () => {
   assert.equal(dayBalanceMinutes({ ...day(null, null), status: "ABSENT" }), 0);
 });
 
+test("vino a trabajar en su descanso: se le acreditan las horas que estuvo", () => {
+  // Caso real (15-jul-2026): Jazmín descansaba pero vino a un curso de 8:00 a
+  // 10:30. Ese día no contaba, así que las 2:30 que estuvo son todas extra.
+  assert.equal(dayBalanceMinutes({ status: "REST", arrivedAt: "08:00", leftAt: "10:30", expectedEntry: "10:30", expectedExit: "21:00" }), 150);
+  // Media jornada extra un domingo de descanso.
+  assert.equal(dayBalanceMinutes({ status: "REST", arrivedAt: "14:00", leftAt: "18:00", expectedEntry: "10:30", expectedExit: "21:00" }), 240);
+});
+
+test("descanso con solo la entrada marcada no acredita (no se sabe cuánto se quedó)", () => {
+  assert.equal(dayBalanceMinutes({ status: "REST", arrivedAt: "08:00", leftAt: null, expectedEntry: "10:30", expectedExit: "21:00" }), 0);
+});
+
 test("el acumulado suma los días", () => {
   const total = totalBalanceMinutes([
     day("08:00", "21:00"),  // +2:30

@@ -67,7 +67,7 @@ function entryCredit(expectedEntry: number, arrived: number): number {
 
 /** Días en los que no se esperaba a la persona: no generan saldo. */
 function offDay(status: AttendanceStatus): boolean {
-  return status === "REST" || status === "VACATION" || status === "PAID_DAY"
+  return status === "VACATION" || status === "PAID_DAY"
     || status === "INVENTORY" || status === "ABSENT";
 }
 
@@ -81,7 +81,17 @@ export type DayBalanceInput = {
 
 /** Saldo del día EN MINUTOS. Positivo = a favor del colaborador. */
 export function dayBalanceMinutes(input: DayBalanceInput): number {
-  // Descanso, vacaciones o falta: no hay jornada que comparar.
+  // Vino a trabajar (o a un curso) en su DÍA DE DESCANSO: todo lo que estuvo es
+  // EXTRA, porque ese día no contaba. Se le acredita lo que estuvo presente
+  // (entrada → salida). Requiere ambas marcas: con solo la entrada no se sabe
+  // cuánto se quedó. Si no marcó nada, su descanso sigue en 0.
+  if (input.status === "REST") {
+    const arrived = toMinutes(input.arrivedAt);
+    const left = toMinutes(input.leftAt);
+    return arrived !== null && left !== null && left > arrived ? left - arrived : 0;
+  }
+
+  // Vacaciones, falta, pago de día o inventario: no hay jornada que comparar.
   if (offDay(input.status)) return 0;
 
   const expectedEntry = toMinutes(input.expectedEntry ?? DEFAULT_ENTRY) ?? toMinutes(DEFAULT_ENTRY)!;
