@@ -180,7 +180,12 @@ export default function ComunicadosPage() {
       if (imageFile) form.append("image", imageFile);
 
       const response = await fetch("/api/announcements", { method: "POST", body: form });
-      if (!response.ok) throw new Error("No se pudo publicar.");
+      if (!response.ok) {
+        // Se muestra el motivo REAL del servidor (imagen muy grande, formato no
+        // válido, rate limit…). Un "No se pudo publicar" a secas obliga a adivinar.
+        const detail = await response.json().then((data: { error?: string }) => data.error).catch(() => null);
+        throw new Error(detail ?? "No se pudo publicar el comunicado.");
+      }
       const payload = await response.json() as { announcement: Announcement };
 
       setAnnouncements((current) => [payload.announcement, ...current]);
@@ -190,8 +195,8 @@ export default function ComunicadosPage() {
       toast("Comunicado publicado.", "success");
       setSaved(true);
       setTimeout(() => setSaved(false), 1600);
-    } catch {
-      toast("No se pudo publicar el comunicado.", "error");
+    } catch (error) {
+      toast(error instanceof Error ? error.message : "No se pudo publicar el comunicado.", "error");
     } finally {
       setSubmitting(false);
     }
