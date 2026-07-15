@@ -18,7 +18,10 @@ export function QuickLink({ href, icon: Icon, label, className = "" }: { href: s
 
 export function FloatingActionButton({ href, icon: Icon = Plus, label }: { href: string; icon?: LucideIcon; label: string }) {
   return (
-    <Link href={href} className="tappable btn-sheen fixed bottom-20 right-4 z-20 flex min-h-12 items-center gap-2 overflow-hidden rounded-full bg-volt px-4 text-sm font-black text-white shadow-[0_10px_24px_rgb(37_99_235_/_0.32)] hover:bg-[#1D4ED8]">
+    // Abajo-IZQUIERDA a propósito: el botón del copiloto Clarvex es fijo abajo-
+    // derecha en todas las pantallas (va en el layout). Si este FAB también fuera
+    // a la derecha, quedarían uno encima del otro.
+    <Link href={href} className="tappable btn-sheen fixed bottom-20 left-4 z-20 flex min-h-12 items-center gap-2 overflow-hidden rounded-full bg-volt px-4 text-sm font-black text-white shadow-[0_10px_24px_rgb(37_99_235_/_0.32)] hover:bg-[#1D4ED8]">
       <Icon size={18} />
       {label}
     </Link>
