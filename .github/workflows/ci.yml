@@ -64,4 +64,21 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: pnpm audit (high + critical only)
-        run: pnpm audit --audit-level=high
+        # `pnpm audit` sale con código de error tanto si encuentra vulnerabilidades
+        # como si el endpoint de npm no responde. npm retiró el endpoint clásico
+        # (responde 410), así que hay que distinguir los dos casos: una caída de
+        # infraestructura NO debe tumbar el CI, pero una vulnerabilidad real SÍ.
+        run: |
+          set +e
+          output=$(pnpm audit --audit-level=high 2>&1)
+          status=$?
+          echo "$output"
+          if [ $status -eq 0 ]; then
+            exit 0
+          fi
+          if echo "$output" | grep -qiE 'ERR_PNPM_AUDIT_BAD_RESPONSE|being retired|endpoint|410|ENOTFOUND|ETIMEDOUT'; then
+            echo "::warning::El endpoint de auditoría de npm no respondió (lo retiraron). Se omite la auditoría en este run; revisa dependencias manualmente con 'pnpm audit' cuando npm publique el reemplazo."
+            exit 0
+          fi
+          echo "::error::La auditoría encontró vulnerabilidades high/critical."
+          exit 1
