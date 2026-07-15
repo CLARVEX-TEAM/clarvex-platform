@@ -32,6 +32,13 @@ export async function fetchAppData(options?: { includeInactive?: boolean }): Pro
   for (let attempt = 0; attempt < 3; attempt += 1) {
     try {
       const response = await fetchWithTimeout(url, 12000);
+      if (response.status === 401) {
+        // Sesión caducada o inválida: al login. No es un error de "conexión" ni
+        // algo que reintentar — mostrarlo así hacía parecer una caída del servidor
+        // cuando en realidad solo hay que volver a iniciar sesión.
+        window.location.href = "/login";
+        throw new Error("Sesión expirada.");
+      }
       if (response.status === 402) {
         // Suscripción de la tienda vencida: pantalla de suspensión.
         window.location.href = "/suspendida";
