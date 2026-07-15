@@ -98,6 +98,8 @@ test("vino a trabajar en su descanso: se le acreditan las horas que estuvo", () 
   // Caso real (15-jul-2026): Jazmín descansaba pero vino a un curso de 8:00 a
   // 10:30. Ese día no contaba, así que las 2:30 que estuvo son todas extra.
   assert.equal(dayBalanceMinutes({ status: "REST", arrivedAt: "08:00", leftAt: "10:30", expectedEntry: "10:30", expectedExit: "21:00" }), 150);
+  // Marcó 8:01 (1 min): la tolerancia lo redondea a 8:00 → sigue siendo +2:30.
+  assert.equal(dayBalanceMinutes({ status: "REST", arrivedAt: "08:01", leftAt: "10:30", expectedEntry: "10:30", expectedExit: "21:00" }), 150);
   // Media jornada extra un domingo de descanso.
   assert.equal(dayBalanceMinutes({ status: "REST", arrivedAt: "14:00", leftAt: "18:00", expectedEntry: "10:30", expectedExit: "21:00" }), 240);
 });

@@ -38,9 +38,23 @@ import type { AttendanceStatus } from "@/lib/attendance";
 export const DEFAULT_ENTRY = "10:30";
 export const DEFAULT_EXIT = "21:00";
 
-// Las entradas adelantadas se piden a horas cerradas (7:00, 8:00…). El banco
-// redondea la llegada a esa cuadrícula de 30 min cuando cae dentro de tolerancia.
-const ENTRY_GRID_MINUTES = 30;
+// Las entradas y salidas se piden a horas cerradas (7:00, 8:00, 10:30…). El banco
+// redondea la marca a esa cuadrícula de 30 min cuando cae dentro de tolerancia,
+// SIEMPRE a favor del colaborador: la entrada baja a su hora en punto, la salida
+// sube a la suya. Así llegar 8:01 cuenta como 8:00 y salir 10:29 como 10:30.
+const GRID_MINUTES = 30;
+
+/** Baja la marca a la hora en punto anterior si cae dentro de la tolerancia. */
+function snapDownToGrid(minutes: number): number {
+  const pastBoundary = minutes % GRID_MINUTES;
+  return pastBoundary <= TOLERANCE_MINUTES ? minutes - pastBoundary : minutes;
+}
+
+/** Sube la marca a la hora en punto siguiente si cae dentro de la tolerancia. */
+function snapUpToGrid(minutes: number): number {
+  const toNextBoundary = (GRID_MINUTES - (minutes % GRID_MINUTES)) % GRID_MINUTES;
+  return toNextBoundary <= TOLERANCE_MINUTES ? minutes + toNextBoundary : minutes;
+}
 
 /** Desviaciones de minutos sueltos no mueven el banco de horas. */
 function beyondTolerance(deviation: number): number {
@@ -56,11 +70,7 @@ function entryCredit(expectedEntry: number, arrived: number): number {
   if (Math.abs(expectedEntry - arrived) <= TOLERANCE_MINUTES) return 0;
   // Entrada adelantada: se redondea a su hora en punto (8:11 → 8:00) si llegó
   // dentro de la tolerancia después de ella. Así el crédito es completo.
-  if (arrived < expectedEntry) {
-    const pastBoundary = arrived % ENTRY_GRID_MINUTES;
-    const effectiveArrival = pastBoundary <= TOLERANCE_MINUTES ? arrived - pastBoundary : arrived;
-    return expectedEntry - effectiveArrival;
-  }
+  if (arrived < expectedEntry) return expectedEntry - snapDownToGrid(arrived);
   // Entrada tarde: descuento real, sin redondeo.
   return expectedEntry - arrived;
 }
@@ -88,7 +98,11 @@ export function dayBalanceMinutes(input: DayBalanceInput): number {
   if (input.status === "REST") {
     const arrived = toMinutes(input.arrivedAt);
     const left = toMinutes(input.leftAt);
-    return arrived !== null && left !== null && left > arrived ? left - arrived : 0;
+    if (arrived === null || left === null || left <= arrived) return 0;
+    // Se redondea a la hora en punto del curso/turno (8:01 → 8:00, 10:29 → 10:30):
+    // la tolerancia también aplica aquí, así que estar del curso de 8 a 10:30 son
+    // 2:30 aunque haya marcado 8:01.
+    return snapUpToGrid(left) - snapDownToGrid(arrived);
   }
 
   // Vacaciones, falta, pago de día o inventario: no hay jornada que comparar.
