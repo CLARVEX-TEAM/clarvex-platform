@@ -44,6 +44,9 @@ export type KpiSyncMetrics = {
   recordsProcessed: number;
   recordsCreated: number;
   recordsUpdated: number;
+  // Metas obsoletas borradas: estaban en la BD pero ya no en el RDV (presupuesto
+  // reasignado). Opcional: los logs viejos no lo traen.
+  recordsDeleted?: number;
   employeesNotFound: string[];
   // Nombre por número de empleado (del RDV) para los no encontrados, para
   // mostrarlos con nombre en el Centro de Datos. Opcional (logs viejos no lo traen).

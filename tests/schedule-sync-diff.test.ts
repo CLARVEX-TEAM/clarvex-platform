@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { findStaleScheduleIds, scheduleScopeDates } from "../lib/schedule-sync-diff";
+import { findStaleRecordIds, findStaleScheduleIds, scheduleScopeDates } from "../lib/schedule-sync-diff";
 
 const SAB = new Date("2026-07-11T00:00:00.000Z");
 const DOM = new Date("2026-07-12T00:00:00.000Z");
@@ -57,4 +57,19 @@ test("archivo sin registros no borra nada (protege de vaciar la BD)", () => {
   // (findStaleScheduleIds solo se llama con un alcance no vacío; aquí se
   // documenta que sin alcance el sync ni siquiera consulta la BD.)
   assert.equal(existing.length, 1);
+});
+
+test("KPI: presupuesto reasignado borra la meta vieja que quedó sin celda", () => {
+  // Caso real (15-jul-2026): Jazmín y Alonso se intercambiaron horarios y también
+  // presupuestos. Al mover la meta de Jazmín a Alonso, la casilla de Jazmín del
+  // día quedó VACÍA en el RDV. El parser no emite registro para casillas vacías,
+  // así que su meta vieja (11,307.35) sobrevivía y se sumaba al total de tienda:
+  // aparecían Alonso y Jazmín con el MISMO presupuesto.
+  const existing = [
+    { id: "k-alonso", userId: ALONSO, date: SAB },
+    { id: "k-jazmin", userId: JAZMIN, date: SAB } // meta vieja, ya sin respaldo
+  ];
+  const fromFile = [{ userId: ALONSO, date: SAB }]; // solo Alonso trae meta ese día
+
+  assert.deepEqual(findStaleRecordIds(existing, fromFile), ["k-jazmin"]);
 });

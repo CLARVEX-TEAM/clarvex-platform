@@ -9,7 +9,7 @@ import { parseScheduleWorkbook } from "@/lib/schedule-parser";
 import { reconcileAbsences } from "@/lib/attendance-reconcile";
 import { reconcileShiftSwaps } from "@/lib/shift-swap-reconcile";
 import { importAttendance } from "@/lib/attendance-sync";
-import { findStaleScheduleIds, scheduleScopeDates } from "@/lib/schedule-sync-diff";
+import { findStaleRecordIds, findStaleScheduleIds, scheduleScopeDates, syncScopeDates } from "@/lib/schedule-sync-diff";
 import { syncLog } from "@/lib/sync-log";
 
 const SCHEDULE_BATCH_SIZE = 25;
@@ -180,7 +180,9 @@ async function importKpis(workbook: Parameters<typeof parseKpiWorkbook>[0], stor
         errors.push(...pendingRecords.map((pending) => (
           `Empleado ${pending.employeeNumber}, fecha ${pending.date.toISOString().slice(0, 10)}: tiempo maximo de importacion excedido.`
         )));
-        return buildKpiMetrics(parsed, users.length, matchedRecords.length, recordsCreated, recordsUpdated, employeesNotFound, errors);
+        // Importación abortada por tiempo: NO se borran metas obsoletas, porque la
+        // hoja no se procesó completa y podríamos borrar lo que no toca.
+        return buildKpiMetrics(parsed, users.length, matchedRecords.length, recordsCreated, recordsUpdated, 0, employeesNotFound, errors);
       }
 
       const key = `${record.userId}:${record.date.toISOString()}`;
@@ -245,7 +247,38 @@ async function importKpis(workbook: Parameters<typeof parseKpiWorkbook>[0], stor
     }
   }
 
-  return buildKpiMetrics(parsed, users.length, matchedRecords.length, recordsCreated, recordsUpdated, employeesNotFound, errors);
+  // El RDV es la fuente de verdad: si una meta estaba en la BD y ya NO está en la
+  // hoja (se vació la casilla al reasignar el presupuesto a otra persona), hay que
+  // BORRARLA. El upsert de arriba solo crea y actualiza, así que sin esto la meta
+  // vieja sobrevivía y se seguía sumando al total de tienda —aparecían dos
+  // personas con el mismo presupuesto—. Mismo arreglo que el sync de horarios.
+  //
+  // Alcance acotado a propósito: solo empleados presentes en el archivo y solo
+  // fechas presentes en el archivo. Nunca se tocan otros meses ni gente fuera de
+  // la hoja.
+  const recordsDeleted = await deleteStaleKpis(storeId, users.map((user) => user.id), matchedRecords);
+
+  return buildKpiMetrics(parsed, users.length, matchedRecords.length, recordsCreated, recordsUpdated, recordsDeleted, employeesNotFound, errors);
+}
+
+async function deleteStaleKpis(
+  storeId: string,
+  scopeUserIds: string[],
+  matchedRecords: Array<{ userId: string; date: Date }>
+): Promise<number> {
+  const scopeDates = syncScopeDates(matchedRecords);
+  if (scopeUserIds.length === 0 || scopeDates.length === 0) return 0;
+
+  const existing = await prisma.kpi.findMany({
+    where: { storeId, userId: { in: scopeUserIds }, date: { in: scopeDates } },
+    select: { id: true, userId: true, date: true }
+  });
+  const staleIds = findStaleRecordIds(existing, matchedRecords);
+  if (staleIds.length === 0) return 0;
+
+  await prisma.kpi.deleteMany({ where: { id: { in: staleIds } } });
+  syncLog("[KPI-SYNC] Metas obsoletas eliminadas:", staleIds.length);
+  return staleIds.length;
 }
 
 function logParsedKpiWeeks(parsed: ReturnType<typeof parseKpiWorkbook>) {
@@ -312,6 +345,7 @@ function buildKpiMetrics(
   recordsProcessed: number,
   recordsCreated: number,
   recordsUpdated: number,
+  recordsDeleted: number,
   employeesNotFound: string[],
   errors: string[]
 ): KpiSyncMetrics {
@@ -339,6 +373,7 @@ function buildKpiMetrics(
     recordsProcessed,
     recordsCreated,
     recordsUpdated,
+    recordsDeleted,
     employeesNotFound,
     errors,
     crmTransactionsProcessed: parsed.crmTransactionsTotal,
