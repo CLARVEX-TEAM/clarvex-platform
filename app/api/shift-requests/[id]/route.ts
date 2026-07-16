@@ -4,7 +4,7 @@ import { isApiError, parseJson, requireSession } from "@/lib/api";
 import { createNotifications } from "@/lib/notifications";
 import { dispatchPushToUsers } from "@/lib/push";
 import { prisma } from "@/lib/prisma";
-import { SHIFT_TYPE_LABELS, dayBalanceField, formatRequestDate, isHourType } from "@/lib/shift-requests";
+import { SHIFT_TYPE_LABELS, dayBalanceField, formatRequestDate } from "@/lib/shift-requests";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -28,22 +28,22 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
   // Solo se descuenta al aprobar por primera vez.
   const firstApproval = status === "APROBADO" && existing.status !== "APROBADO";
-  const deductHours = firstApproval && isHourType(existing.type) && existing.hours ? existing.hours : 0;
-  // Las VACACIONES ya no se descuentan aquí: el saldo real las resta cuando el día
-  // aparece como VACATION en Horarios (lib/vacation-account). Descontarlas también
-  // al aprobar se las cobraría DOS VECES al asesor. Aprobar es una intención; el
-  // horario es el hecho, y en esta app el horario siempre manda.
+  // ⚠️ Ni las HORAS (entrar tarde / salir temprano) ni las VACACIONES se descuentan
+  // aquí. El saldo real lo lleva la ASISTENCIA: cuando la persona marca 13:00 con
+  // permiso, el banco de horas ya resta esas 2:30 (lib/hours-balance); y las
+  // vacaciones se restan cuando el día aparece como VACATION en Horarios
+  // (lib/vacation-account). Descontar también al aprobar se lo cobraba DOS VECES.
+  // Aprobar es la INTENCIÓN; el hecho lo registra la asistencia/el horario, que en
+  // esta app siempre mandan. El "pago de día" sí es un saldo aparte que nada
+  // calcula solo, así que ese se sigue descontando aquí.
   const dayField = firstApproval ? dayBalanceField(existing.type) : null;
-  const deductDayField = dayField === "vacationDays" ? null : dayField;
+  const deductDayField = dayField === "paidDays" ? dayField : null;
 
   await prisma.$transaction(async (tx) => {
     await tx.shiftRequest.update({
       where: { id },
       data: { status, managerNote: managerNote || null, resolvedById: session.userId, resolvedAt: new Date() }
     });
-    if (deductHours > 0) {
-      await tx.user.update({ where: { id: existing.requesterId }, data: { hoursOwed: { decrement: deductHours } } });
-    }
     if (deductDayField) {
       await tx.user.update({ where: { id: existing.requesterId }, data: { [deductDayField]: { decrement: 1 } } });
     }
