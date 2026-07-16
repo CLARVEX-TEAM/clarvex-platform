@@ -124,6 +124,39 @@ export function totalBalanceMinutes(days: DayBalanceInput[]): number {
   return days.reduce((total, day) => total + dayBalanceMinutes(day), 0);
 }
 
+export type BalancePart = { part: "entry" | "exit" | "rest"; minutes: number };
+
+/**
+ * El saldo del día, desglosado por MOTIVO (entrada, salida, descanso trabajado).
+ * La suma de los `minutes` es exactamente `dayBalanceMinutes`: sirve para explicar
+ * en pantalla POR QUÉ se movió el banco ("entró tarde: −2:30", "salió antes: −2:00").
+ */
+export function dayBalanceParts(input: DayBalanceInput): BalancePart[] {
+  if (input.status === "REST") {
+    const arrived = toMinutes(input.arrivedAt);
+    const left = toMinutes(input.leftAt);
+    if (arrived === null || left === null || left <= arrived) return [];
+    return [{ part: "rest", minutes: snapUpToGrid(left) - snapDownToGrid(arrived) }];
+  }
+  if (offDay(input.status)) return [];
+
+  const expectedEntry = toMinutes(input.expectedEntry ?? DEFAULT_ENTRY) ?? toMinutes(DEFAULT_ENTRY)!;
+  const expectedExit = toMinutes(input.expectedExit ?? DEFAULT_EXIT) ?? toMinutes(DEFAULT_EXIT)!;
+  const arrived = toMinutes(input.arrivedAt);
+  const left = toMinutes(input.leftAt);
+
+  const parts: BalancePart[] = [];
+  if (arrived !== null) {
+    const minutes = entryCredit(expectedEntry, arrived);
+    if (minutes !== 0) parts.push({ part: "entry", minutes });
+  }
+  if (left !== null) {
+    const minutes = beyondTolerance(left - expectedExit);
+    if (minutes !== 0) parts.push({ part: "exit", minutes });
+  }
+  return parts;
+}
+
 /**
  * Minutos → "+2:30" / "−0:45" / "+0:00".
  * Mismo formato que la hoja CONTROL HORAS, para que se puedan comparar de un

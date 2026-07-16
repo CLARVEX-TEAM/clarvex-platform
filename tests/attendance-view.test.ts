@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { fortnightOf, incidentsFor, totalsByUser, totalsFor, type AttendanceRecord } from "../lib/attendance-view";
+import { fortnightOf, hoursMovements, incidentsFor, totalsByUser, totalsFor, type AttendanceRecord } from "../lib/attendance-view";
 
 function record(partial: Partial<AttendanceRecord> & Pick<AttendanceRecord, "date" | "status">): AttendanceRecord {
   return {
@@ -166,4 +166,20 @@ test("los totales se separan por colaborador", () => {
   assert.equal(byUser.get("itzel")?.lates, 1);
   assert.equal(byUser.get("jazmin")?.absences, 0);
   assert.equal(byUser.get("jazmin")?.lates, 0);
+});
+
+test("hoursMovements explica el movimiento del banco en palabras", () => {
+  const base = { id: "1", userId: "u", date: "2026-07-16", minutesLate: 0, minutesBalance: 0, entryText: null, source: "APERTURA_XLSX", note: null, expectedAt: "10:30", expectedLeaveAt: "21:00" };
+  // Permiso: entró a la 1 → −2:30
+  const tarde = hoursMovements({ ...base, status: "EXCUSED", arrivedAt: "13:00", leftAt: null });
+  assert.equal(tarde.length, 1);
+  assert.equal(tarde[0].minutes, -150);
+  assert.match(tarde[0].text, /Entró tarde a las 13:00/);
+  // Salió a las 7 → −2:00
+  const salida = hoursMovements({ ...base, status: "ON_TIME", arrivedAt: "10:37", leftAt: "19:00" });
+  assert.equal(salida[0].minutes, -120);
+  assert.match(salida[0].text, /Salió temprano a las 19:00/);
+  // Descanso trabajado
+  const descanso = hoursMovements({ ...base, status: "REST", arrivedAt: "08:00", leftAt: "10:30" });
+  assert.match(descanso[0].text, /Trabajó en su descanso/);
 });

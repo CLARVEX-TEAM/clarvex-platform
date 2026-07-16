@@ -10,6 +10,7 @@ import {
   dayLabel,
   balanceOf,
   fortnightOf,
+  hoursMovements,
   incidentsFor,
   INCIDENT_TONE,
   isSunday,
@@ -309,26 +310,40 @@ function DayList({ records }: { records: AttendanceRecord[] }) {
   }
   return (
     <div className="divide-y divide-line/50 bg-black/[0.02] dark:bg-white/[0.02]">
-      {records.map((record) => (
-        <div key={record.id} className="flex items-center gap-3 px-4 py-2.5">
-          <p className="w-14 shrink-0 text-xs font-bold text-muted">
-            {dayLabel(record.date)}
-            {isSunday(record.date) ? <span className="ml-1 text-blue-500">•</span> : null}
-          </p>
-          <span className={cn("rounded-full px-2 py-0.5 text-[11px] font-black", STATUS_TONE[record.status])}>
-            {STATUS_LABEL[record.status]}
-          </span>
-          <div className="ml-auto text-right">
-            {record.arrivedAt ? (
-              <p className="text-xs font-bold text-ink">
-                {record.arrivedAt}
-                {record.minutesLate > 0 ? <span className="ml-1 text-amber-600 dark:text-amber-400">+{record.minutesLate}′</span> : null}
+      {records.map((record) => {
+        const movements = hoursMovements(record);
+        return (
+          <div key={record.id} className="px-4 py-2.5">
+            <div className="flex items-center gap-3">
+              <p className="w-14 shrink-0 text-xs font-bold text-muted">
+                {dayLabel(record.date)}
+                {isSunday(record.date) ? <span className="ml-1 text-blue-500">•</span> : null}
               </p>
-            ) : null}
-            {record.source === "MANUAL" ? <p className="text-[10px] font-bold text-muted">corregido</p> : null}
+              <span className={cn("rounded-full px-2 py-0.5 text-[11px] font-black", STATUS_TONE[record.status])}>
+                {STATUS_LABEL[record.status]}
+              </span>
+              <div className="ml-auto text-right">
+                {record.arrivedAt ? (
+                  <p className="text-xs font-bold text-ink">
+                    {record.arrivedAt}
+                    {record.minutesLate > 0 ? <span className="ml-1 text-amber-600 dark:text-amber-400">+{record.minutesLate}′</span> : null}
+                  </p>
+                ) : null}
+                {record.source === "MANUAL" ? <p className="text-[10px] font-bold text-muted">corregido</p> : null}
+              </div>
+            </div>
+            {/* Por qué se movió el banco de horas ese día. */}
+            {movements.map((movement, index) => (
+              <div key={index} className="mt-1 flex items-center gap-2 pl-[4.25rem] text-[11px] font-semibold">
+                <span className={cn("tabular-nums", movement.minutes < 0 ? "text-rose-600 dark:text-rose-400" : "text-emerald-600 dark:text-emerald-400")}>
+                  {formatBalance(movement.minutes)}
+                </span>
+                <span className="text-muted">{movement.text}</span>
+              </div>
+            ))}
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }

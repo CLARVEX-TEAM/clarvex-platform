@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { dayBalanceMinutes, formatBalance, totalBalanceMinutes } from "../lib/hours-balance";
+import { dayBalanceMinutes, dayBalanceParts, formatBalance, totalBalanceMinutes } from "../lib/hours-balance";
 
 // Horario estándar de la tienda: 10:30 a 21:00.
 const day = (arrivedAt: string | null, leftAt: string | null, status = "ON_TIME" as const) =>
@@ -106,6 +106,30 @@ test("vino a trabajar en su descanso: se le acreditan las horas que estuvo", () 
 
 test("descanso con solo la entrada marcada no acredita (no se sabe cuánto se quedó)", () => {
   assert.equal(dayBalanceMinutes({ status: "REST", arrivedAt: "08:00", leftAt: null, expectedEntry: "10:30", expectedExit: "21:00" }), 0);
+});
+
+test("el desglose explica el saldo y suma exactamente igual", () => {
+  const parts = dayBalanceParts(day("08:11", "22:00")); // entró temprano y salió tarde
+  assert.equal(parts.length, 2);
+  assert.deepEqual(parts.find((p) => p.part === "entry"), { part: "entry", minutes: 150 }); // 8:11 → 8:00, 10:30 − 8:00
+  assert.deepEqual(parts.find((p) => p.part === "exit"), { part: "exit", minutes: 60 });    // 22:00 − 21:00
+  // La suma del desglose es el saldo del día.
+  assert.equal(parts.reduce((t, p) => t + p.minutes, 0), dayBalanceMinutes(day("08:11", "22:00")));
+});
+
+test("el desglose de un permiso de entrar tarde", () => {
+  const parts = dayBalanceParts({ status: "EXCUSED", arrivedAt: "13:00", leftAt: null, expectedEntry: "10:30", expectedExit: "21:00" });
+  assert.deepEqual(parts, [{ part: "entry", minutes: -150 }]); // entró a la 1: −2:30
+});
+
+test("el desglose del descanso trabajado", () => {
+  const parts = dayBalanceParts({ status: "REST", arrivedAt: "08:00", leftAt: "10:30", expectedEntry: "10:30", expectedExit: "21:00" });
+  assert.deepEqual(parts, [{ part: "rest", minutes: 150 }]);
+});
+
+test("un día sin movimiento no genera desglose", () => {
+  assert.deepEqual(dayBalanceParts(day("10:35", "21:00")), []); // dentro de tolerancia
+  assert.deepEqual(dayBalanceParts({ ...day(null, null), status: "VACATION" }), []);
 });
 
 test("el acumulado suma los días", () => {

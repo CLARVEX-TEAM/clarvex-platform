@@ -1,6 +1,7 @@
 import type { AttendanceStatus } from "@/lib/attendance";
 import { countsAsAbsence, countsAsLate, earnsSundayPremium } from "@/lib/attendance";
 import { holidayLabel, isHoliday } from "@/lib/holidays";
+import { dayBalanceParts } from "@/lib/hours-balance";
 
 /**
  * Presentación y totales de asistencia. Puro y testeable: los totales son los
@@ -198,6 +199,45 @@ export function totalsByUser(records: AttendanceRecord[], schedules: ScheduleDay
       schedules.filter((day) => day.userId === userId)
     )
   ]));
+}
+
+/** Un movimiento del banco de horas de un día, ya explicado. */
+export type HoursMovement = {
+  /** Minutos del movimiento. Positivo = a favor. */
+  minutes: number;
+  /** Motivo en palabras: "Entró tarde a las 13:00". */
+  text: string;
+};
+
+/**
+ * Explica POR QUÉ el banco de horas se movió ese día, motivo por motivo.
+ *
+ * Es la transparencia que pide gerencia: no solo "−2:30", sino "entró tarde a las
+ * 13:00 · −2:30". La suma de los movimientos es exactamente el saldo del día.
+ */
+export function hoursMovements(record: AttendanceRecord): HoursMovement[] {
+  const parts = dayBalanceParts({
+    status: record.status,
+    expectedEntry: record.expectedAt,
+    expectedExit: record.expectedLeaveAt,
+    arrivedAt: record.arrivedAt,
+    leftAt: record.leftAt
+  });
+  return parts.map((part) => {
+    if (part.part === "rest") {
+      return { minutes: part.minutes, text: `Trabajó en su descanso (${record.arrivedAt}–${record.leftAt})` };
+    }
+    if (part.part === "entry") {
+      return {
+        minutes: part.minutes,
+        text: part.minutes > 0 ? `Entró temprano a las ${record.arrivedAt}` : `Entró tarde a las ${record.arrivedAt}`
+      };
+    }
+    return {
+      minutes: part.minutes,
+      text: part.minutes > 0 ? `Salió tarde a las ${record.leftAt}` : `Salió temprano a las ${record.leftAt}`
+    };
+  });
 }
 
 /** "2026-07-14" → "mar 14". Para la lista del mes. */
