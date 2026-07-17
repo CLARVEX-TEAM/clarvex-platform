@@ -299,6 +299,7 @@ export default function TeamDatesPage() {
                   </Button>
                   {savedId === row.id ? <span className="flex items-center gap-1 text-sm font-semibold text-emerald-700"><CheckCircle2 size={15} />Guardado</span> : null}
                 </div>
+                {row.id !== currentUserId ? <PinSetter userId={row.id} name={row.name} /> : null}
               </Card>
             ))}
           </div>
@@ -306,5 +307,60 @@ export default function TeamDatesPage() {
       </AppFrame>
       <BottomNav />
     </>
+  );
+}
+
+/**
+ * Gerencia configura un PIN de acceso para un integrante (temporal). Es la forma
+ * de dar de alta el PIN de un usuario nuevo —sobre todo el "kiosko" del celular
+ * de la tienda—: ese usuario no puede ponérselo solo (el setup del PIN exige
+ * autorización de gerencia). Con esto entra con el número de empleado + este PIN,
+ * y puede cambiarlo después desde su perfil.
+ */
+function PinSetter({ userId, name }: { userId: string; name: string }) {
+  const [pin, setPin] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [done, setDone] = useState(false);
+  const [error, setError] = useState("");
+
+  async function save() {
+    if (!/^\d{4}$/.test(pin)) { setError("El PIN debe ser de 4 dígitos."); return; }
+    setBusy(true); setError(""); setDone(false);
+    try {
+      const response = await fetch("/api/profile", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, pin })
+      });
+      const payload = await response.json().catch(() => ({})) as { error?: string };
+      if (!response.ok) throw new Error(payload.error);
+      setDone(true); setPin("");
+    } catch (saveError) {
+      setError(saveError instanceof Error && saveError.message ? saveError.message : "No se pudo configurar el PIN.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="mt-3 rounded-2xl border border-line/70 p-3">
+      <p className="text-xs font-bold text-muted">PIN de acceso (temporal)</p>
+      <p className="mb-2 text-[11px] text-muted">Con este PIN {name.split(" ")[0]} entra a la app con su número de empleado. Puede cambiarlo después.</p>
+      <div className="flex items-center gap-2">
+        <input
+          value={pin}
+          onChange={(event) => { setPin(event.target.value.replace(/\D/g, "").slice(0, 4)); setDone(false); }}
+          inputMode="numeric"
+          maxLength={4}
+          placeholder="4 dígitos"
+          className="min-h-11 w-28 rounded-2xl border border-line bg-panel px-3 text-center text-sm font-bold tracking-[0.3em] text-ink outline-none focus:border-volt"
+        />
+        <Button type="button" variant="primary" onClick={() => void save()} disabled={busy || pin.length !== 4} className="min-h-10 px-4">
+          {busy ? "..." : "Configurar PIN"}
+        </Button>
+        {done ? <span className="flex items-center gap-1 text-sm font-semibold text-emerald-700"><CheckCircle2 size={15} />Listo</span> : null}
+      </div>
+      {error ? <p className="mt-1 text-xs font-semibold text-rose-600">{error}</p> : null}
+    </div>
   );
 }
