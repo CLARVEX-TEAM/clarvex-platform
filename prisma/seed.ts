@@ -3,6 +3,20 @@ import { PrismaClient, Role, PendingCategory, PendingPriority, PendingStatus } f
 const prisma = new PrismaClient();
 
 async function main() {
+  // ⚠️ CANDADO DE SEGURIDAD. Esta semilla BORRA (deleteMany más abajo) e inserta
+  // datos demo en la tienda `clarvex-demo-store` — que EN PRODUCCIÓN es la tienda
+  // real (solo se le cambió el nombre visible). Correrla contra la BD de
+  // producción destruiría evidencias, pendientes, horarios y comunicados reales.
+  //
+  // Por eso es opt-in explícito y se niega en producción. Nadie la corre por
+  // accidente ni "para ver qué pasa".
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("La semilla NO se corre en producción: borraría datos reales de la tienda. Aborta.");
+  }
+  if (process.env.ALLOW_DEMO_SEED !== "true") {
+    throw new Error("Semilla demo protegida. Corre con ALLOW_DEMO_SEED=true SOLO en un entorno de desarrollo (borra e inserta datos demo en clarvex-demo-store).");
+  }
+
   const store = await prisma.store.upsert({
     where: { id: "clarvex-demo-store" },
     update: {},
