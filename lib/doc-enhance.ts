@@ -57,6 +57,23 @@ function localMeanDivide(gray: Float32Array, width: number, height: number): voi
   }
 }
 
+/**
+ * Blanquea el fondo de un ImageData EN SITIO: escala de grises + normalización de
+ * iluminación. Se usa tanto en la foto completa como en el documento ya enderezado.
+ */
+export function whiten(image: ImageData): void {
+  const { width, height, data } = image;
+  const gray = new Float32Array(width * height);
+  for (let i = 0, p = 0; i < data.length; i += 4, p += 1) {
+    gray[p] = data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114;
+  }
+  localMeanDivide(gray, width, height);
+  for (let i = 0, p = 0; i < data.length; i += 4, p += 1) {
+    const v = gray[p];
+    data[i] = v; data[i + 1] = v; data[i + 2] = v;
+  }
+}
+
 function loadImage(file: Blob): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const url = URL.createObjectURL(file);
@@ -86,19 +103,7 @@ export async function enhanceDocument(file: File): Promise<Blob> {
     ctx.drawImage(img, 0, 0, width, height);
 
     const image = ctx.getImageData(0, 0, width, height);
-    const data = image.data;
-    const gray = new Float32Array(width * height);
-    for (let i = 0, p = 0; i < data.length; i += 4, p += 1) {
-      // Luminancia perceptual.
-      gray[p] = data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114;
-    }
-
-    localMeanDivide(gray, width, height);
-
-    for (let i = 0, p = 0; i < data.length; i += 4, p += 1) {
-      const v = gray[p];
-      data[i] = v; data[i + 1] = v; data[i + 2] = v; // gris, fondo blanco
-    }
+    whiten(image);
     ctx.putImageData(image, 0, 0);
 
     const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.85));

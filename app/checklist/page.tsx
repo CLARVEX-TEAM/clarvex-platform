@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import NextImage from "next/image";
 import { Camera, CheckCircle2, Circle, FileText, LogOut, Moon, Sun, X } from "lucide-react";
 import { getSession, logout } from "@/lib/auth";
-import { enhanceDocument } from "@/lib/doc-enhance";
+import { DocScanner } from "@/components/DocScanner";
 import type { User } from "@/lib/types";
 import { AppFrame, AppHeader, Badge, BottomNav, Card, ProgressBar } from "@/components/ui";
 
@@ -42,6 +42,8 @@ export default function ChecklistPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [busyKey, setBusyKey] = useState<string | null>(null);
+  // Foto recién capturada, esperando que se ajusten las esquinas en el escáner.
+  const [scanning, setScanning] = useState<{ item: ChecklistItem; file: File } | null>(null);
 
   useEffect(() => {
     getSession().then((current) => {
@@ -114,13 +116,11 @@ export default function ChecklistPage() {
     }
   }
 
-  async function addScan(item: ChecklistItem, file: File, enhance: boolean) {
+  async function addScan(item: ChecklistItem, image: Blob) {
     setBusyKey(item.key);
     setError("");
     try {
-      // Realce tipo escáner (fondo blanco, alto contraste) en el celular antes de
-      // subir. También reduce el tamaño para que la subida no se corte.
-      const image = enhance ? await enhanceDocument(file) : file;
+      // La imagen ya viene enderezada y con el fondo blanco desde el escáner.
       const form = new FormData();
       form.append("itemKey", item.key);
       if (date) form.append("date", date);
@@ -208,7 +208,7 @@ export default function ChecklistPage() {
                         key={item.key}
                         item={item}
                         busy={busyKey === item.key}
-                        onAdd={(file, enhance) => void addScan(item, file, enhance)}
+                        onCapture={(file) => setScanning({ item, file })}
                         onRemove={(scanId) => void removeScan(item, scanId)}
                         onGeneratePdf={() => generatePdf(item)}
                       />
@@ -228,6 +228,13 @@ export default function ChecklistPage() {
           </div>
         )}
       </AppFrame>
+      {scanning ? (
+        <DocScanner
+          file={scanning.file}
+          onDone={(blob) => { const { item } = scanning; setScanning(null); void addScan(item, blob); }}
+          onCancel={() => setScanning(null)}
+        />
+      ) : null}
       {kiosk ? null : <BottomNav />}
     </>
   );
@@ -262,15 +269,14 @@ function ChecklistRow({ item, busy, onToggle, onPhoto }: { item: ChecklistItem; 
  * depósito). Se escanean las hojas y luego se juntan en UN PDF que se manda al
  * canal de Telegram. `capture="environment"` abre la cámara trasera directo.
  */
-function ScanRow({ item, busy, onAdd, onRemove, onGeneratePdf }: {
+function ScanRow({ item, busy, onCapture, onRemove, onGeneratePdf }: {
   item: ChecklistItem;
   busy: boolean;
-  onAdd: (file: File, enhance: boolean) => void;
+  onCapture: (file: File) => void;
   onRemove: (scanId: string) => void;
   onGeneratePdf: () => Promise<{ pdfUrl: string; sentToTelegram: boolean }>;
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
-  const [enhance, setEnhance] = useState(true);
   const [pdfBusy, setPdfBusy] = useState(false);
   const [pdf, setPdf] = useState<{ url: string; sent: boolean } | null>(null);
   const [pdfError, setPdfError] = useState("");
@@ -309,13 +315,6 @@ function ScanRow({ item, busy, onAdd, onRemove, onGeneratePdf }: {
         </button>
       </div>
 
-      {/* Realce tipo escáner (fondo blanco, alto contraste). Se puede apagar por si
-          un voucher térmico muy tenue se ve mejor tal cual. */}
-      <label className="mt-2 flex items-center gap-2 pl-[2.1rem] text-[11px] font-semibold text-muted">
-        <input type="checkbox" checked={enhance} onChange={(event) => setEnhance(event.target.checked)} className="size-3.5 accent-volt" />
-        Realzar documento (fondo blanco)
-      </label>
-
       {pages ? (
         <div className="mt-2 flex flex-wrap gap-2 pl-[2.1rem]">
           {item.scans.map((scan, index) => (
@@ -346,7 +345,7 @@ function ScanRow({ item, busy, onAdd, onRemove, onGeneratePdf }: {
       ) : null}
       {pdfError ? <p className="mt-1 pl-[2.1rem] text-[11px] font-semibold text-rose-600">{pdfError}</p> : null}
 
-      <input ref={fileRef} type="file" accept="image/jpeg,image/png" capture="environment" className="hidden" onChange={(event) => { const file = event.target.files?.[0]; if (file) onAdd(file, enhance); event.target.value = ""; }} />
+      <input ref={fileRef} type="file" accept="image/jpeg,image/png" capture="environment" className="hidden" onChange={(event) => { const file = event.target.files?.[0]; if (file) onCapture(file); event.target.value = ""; }} />
     </div>
   );
 }
