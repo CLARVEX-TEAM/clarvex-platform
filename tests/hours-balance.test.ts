@@ -1,9 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import type { AttendanceStatus } from "../lib/attendance";
 import { dayBalanceMinutes, dayBalanceParts, formatBalance, totalBalanceMinutes } from "../lib/hours-balance";
 
 // Horario estándar de la tienda: 10:30 a 21:00.
-const day = (arrivedAt: string | null, leftAt: string | null, status = "ON_TIME" as const) =>
+const day = (arrivedAt: string | null, leftAt: string | null, status: AttendanceStatus = "ON_TIME") =>
   ({ status, arrivedAt, leftAt, expectedEntry: "10:30", expectedExit: "21:00" });
 
 test("entrar temprano SUMA horas a favor", () => {
@@ -18,8 +19,14 @@ test("salir temprano RESTA horas", () => {
   assert.equal(formatBalance(-120), "−2:00");
 });
 
-test("entrar tarde también resta", () => {
-  assert.equal(dayBalanceMinutes(day("11:00", "21:00")), -30); // −0:30
+test("un RETARDO no descuenta del banco; un PERMISO de entrar tarde sí", () => {
+  // Caso real (17-jul-2026): Alonso marcó 10:52 (retardo). El retardo ya se
+  // penaliza aparte (reporte de retardos); el banco NO debe quitarle esos 22 min.
+  assert.equal(dayBalanceMinutes(day("10:52", "21:00", "LATE")), 0);
+  assert.equal(dayBalanceMinutes(day("11:00", "21:00", "LATE")), 0);
+  // Con PERMISO (EXCUSED) sí usa el saldo de horas: se acordó cambiar la jornada.
+  assert.equal(dayBalanceMinutes(day("11:00", "21:00", "EXCUSED")), -30);  // −0:30
+  assert.equal(dayBalanceMinutes(day("13:00", "21:00", "EXCUSED")), -150); // permiso de entrar a la 1: −2:30
 });
 
 test("quedarse más tarde suma", () => {
@@ -65,18 +72,19 @@ test("marcar unos minutos antes o después tampoco regala saldo", () => {
   assert.equal(dayBalanceMinutes(day("10:20", "21:12")), 0);
 });
 
-test("fuera de la tolerancia se cuenta la desviación COMPLETA", () => {
-  // Quien entra a las 11:00 debe 30 minutos, no 16 (30 − tolerancia).
-  assert.equal(dayBalanceMinutes(day("11:00", "21:00")), -30);
-  assert.equal(dayBalanceMinutes(day("10:45", "21:00")), -15); // primer minuto fuera
+test("fuera de la tolerancia: entrada con permiso y salida temprana se cuentan completas", () => {
+  // Entrada tarde CON PERMISO: quien entra a las 11:00 debe 30 min, no 16.
+  assert.equal(dayBalanceMinutes(day("11:00", "21:00", "EXCUSED")), -30);
+  assert.equal(dayBalanceMinutes(day("10:45", "21:00", "EXCUSED")), -15); // primer minuto fuera
+  // Salida temprana (no depende de permiso): resta completa.
   assert.equal(dayBalanceMinutes(day("10:30", "20:45")), -15);
 });
 
 test("las dos puntas se suman", () => {
   // Entra 1 h antes y se va 1 h después: 2 h a favor.
   assert.equal(dayBalanceMinutes(day("09:30", "22:00")), 120);
-  // Entra tarde Y se va temprano: castigo doble.
-  assert.equal(dayBalanceMinutes(day("11:00", "20:00")), -90); // −0:30 − 1:00
+  // Entra tarde CON PERMISO Y se va temprano: castigo doble.
+  assert.equal(dayBalanceMinutes(day("11:00", "20:00", "EXCUSED")), -90); // −0:30 − 1:00
 });
 
 test("si no marcó salida NO se le castiga con un saldo enorme", () => {

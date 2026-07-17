@@ -62,17 +62,20 @@ function beyondTolerance(deviation: number): number {
 }
 
 /**
- * Crédito de la ENTRADA, con la tolerancia aplicada a la hora en punto prevista.
- * Positivo = entró antes del estándar (suma). Negativo = entró tarde (resta).
+ * Crédito de la ENTRADA al banco de horas.
+ * Positivo = entró antes del estándar (suma). Negativo = entró tarde con permiso.
  */
-function entryCredit(expectedEntry: number, arrived: number): number {
+function entryCredit(expectedEntry: number, arrived: number, status: AttendanceStatus): number {
   // Dentro de la tolerancia del estándar: no mueve el banco.
   if (Math.abs(expectedEntry - arrived) <= TOLERANCE_MINUTES) return 0;
   // Entrada adelantada: se redondea a su hora en punto (8:11 → 8:00) si llegó
   // dentro de la tolerancia después de ella. Así el crédito es completo.
   if (arrived < expectedEntry) return expectedEntry - snapDownToGrid(arrived);
-  // Entrada tarde: descuento real, sin redondeo.
-  return expectedEntry - arrived;
+  // ⚠️ Entrada TARDE: un RETARDO no descuenta del banco de horas. Ya se penaliza
+  // como retardo aparte (reporte mensual); descontarle horas además sería
+  // castigarlo dos veces. Solo una entrada tarde CON PERMISO (EXCUSED) usa el
+  // saldo de horas — porque ahí sí se acordó cambiar la jornada.
+  return status === "EXCUSED" ? expectedEntry - arrived : 0;
 }
 
 /** Días en los que no se esperaba a la persona: no generan saldo. */
@@ -114,7 +117,7 @@ export function dayBalanceMinutes(input: DayBalanceInput): number {
   const left = toMinutes(input.leftAt);
 
   let balance = 0;
-  if (arrived !== null) balance += entryCredit(expectedEntry, arrived); // antes = suma (redondeada), tarde = resta
+  if (arrived !== null) balance += entryCredit(expectedEntry, arrived, input.status); // antes = suma; tarde = resta solo con permiso
   if (left !== null) balance += beyondTolerance(left - expectedExit);   // se queda = suma, se va = resta
   return balance;
 }
@@ -147,7 +150,7 @@ export function dayBalanceParts(input: DayBalanceInput): BalancePart[] {
 
   const parts: BalancePart[] = [];
   if (arrived !== null) {
-    const minutes = entryCredit(expectedEntry, arrived);
+    const minutes = entryCredit(expectedEntry, arrived, input.status);
     if (minutes !== 0) parts.push({ part: "entry", minutes });
   }
   if (left !== null) {
