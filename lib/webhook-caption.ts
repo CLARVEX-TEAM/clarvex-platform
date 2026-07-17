@@ -68,6 +68,24 @@ export function evidenceCaption(input: EvidenceCaptionInput): string {
   return trim(lines.join("\n"));
 }
 
+export type ScanCaptionInput = {
+  storeName: string;
+  uploaderName: string;
+  employeeNumber: string;
+  /** Nombre del documento: "Corte de caja", "Vouchers de terminal"… */
+  document: string;
+  createdAt: Date;
+};
+
+/** Escaneo del cierre (corte de caja, vouchers, depósito) → canal de Telegram. */
+export function checklistScanCaption(input: ScanCaptionInput): string {
+  return trim([
+    `🧾 Cierre · ${input.document} · ${input.storeName}`,
+    `👤 ${input.uploaderName} (${input.employeeNumber})`,
+    `🕐 ${when(input.createdAt)}`
+  ].join("\n"));
+}
+
 export function inventoryCaption(input: InventoryCaptionInput): string {
   const lines = [
     `📦 Faltante · ${input.storeName}`,

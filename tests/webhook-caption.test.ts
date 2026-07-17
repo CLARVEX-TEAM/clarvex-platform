@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { evidenceCaption, inventoryCaption } from "../lib/webhook-caption";
+import { checklistScanCaption, evidenceCaption, inventoryCaption } from "../lib/webhook-caption";
 
 // 2026-07-14 15:30 UTC = 09:30 en Monterrey (UTC−6, sin horario de verano).
 const AT = new Date("2026-07-14T15:30:00.000Z");
@@ -91,4 +91,17 @@ test("el faltante identifica producto y categoría", () => {
   assert.match(caption, /🏷️ Bolsa Marina Negra/);
   assert.match(caption, /📂 Bolsas/);
   assert.match(caption, /📝 Solo queda exhibición/);
+});
+
+test("el escaneo de cierre identifica el documento", () => {
+  const caption = checklistScanCaption({
+    storeName: "San Agustín",
+    uploaderName: "JESUS ADRIAN",
+    employeeNumber: "102259",
+    document: "Corte de caja",
+    createdAt: AT
+  });
+  assert.match(caption, /🧾 Cierre · Corte de caja · San Agustín/);
+  assert.match(caption, /JESUS ADRIAN \(102259\)/);
+  assert.match(caption, /9:30/); // hora de Monterrey
 });

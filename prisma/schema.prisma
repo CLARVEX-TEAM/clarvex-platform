@@ -18,6 +18,7 @@ model Store {
   announcements         Announcement[]
   chatRooms             ChatRoom[]
   checklistEntries      ChecklistEntry[]
+  checklistScans        ChecklistScan[]
   choreAssignments      ChoreAssignment[]
   comments              Comment[]
   commissionRules       CommissionRule[]
@@ -709,6 +710,23 @@ model ChecklistEntry {
 
   @@unique([storeId, date, itemKey])
   @@index([storeId, date])
+}
+
+/// Fotos de los ítems de ESCANEO del checklist (corte de caja, vouchers, depósito).
+/// Van varias por documento, a diferencia de la foto única de ChecklistEntry.
+/// Cada una se manda al canal de Telegram al subirse.
+model ChecklistScan {
+  id           String   @id @default(cuid())
+  storeId      String
+  date         String
+  itemKey      String
+  url          String
+  fileName     String?
+  uploadedById String
+  createdAt    DateTime @default(now())
+  store        Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@index([storeId, date, itemKey])
 }
 
 model DailyNotificationLog {

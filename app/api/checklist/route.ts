@@ -19,13 +19,24 @@ function resolveDate(value: string | null): string {
 }
 
 type EntryRow = { itemKey: string; completed: boolean; note: string | null; evidenceUrl: string | null; completedBy: string | null; completedAt: Date | null };
+type ScanRow = { id: string; itemKey: string; url: string; fileName: string | null; createdAt: Date };
 
-async function serialize(date: string, entries: EntryRow[]) {
+async function serialize(date: string, entries: EntryRow[], scans: ScanRow[]) {
   const byKey = new Map(entries.map((entry) => [entry.itemKey, entry]));
   // Las evidencias del checklist viven en R2 (bucket privado) → URL firmada.
   const signed = new Map(
     await Promise.all(entries.map(async (entry) => [entry.itemKey, await signR2Url(entry.evidenceUrl)] as const))
   );
+  // Fotos de escaneo por ítem, firmadas y ordenadas por subida.
+  const signedScans = await Promise.all(scans.map(async (scan) => ({
+    id: scan.id, itemKey: scan.itemKey, fileName: scan.fileName, url: await signR2Url(scan.url) ?? scan.url, createdAt: scan.createdAt.toISOString()
+  })));
+  const scansByKey = new Map<string, typeof signedScans>();
+  for (const scan of signedScans) {
+    const list = scansByKey.get(scan.itemKey) ?? [];
+    list.push(scan);
+    scansByKey.set(scan.itemKey, list);
+  }
   return {
     date,
     items: CHECKLIST_ITEMS.map((def) => {
@@ -34,14 +45,31 @@ async function serialize(date: string, entries: EntryRow[]) {
         key: def.key,
         label: def.label,
         section: def.section,
+        kind: def.kind,
         completed: entry?.completed ?? false,
         note: entry?.note ?? null,
         evidenceUrl: signed.get(def.key) ?? null,
         completedBy: entry?.completedBy ?? null,
-        completedAt: entry?.completedAt?.toISOString() ?? null
+        completedAt: entry?.completedAt?.toISOString() ?? null,
+        scans: def.kind === "scan" ? (scansByKey.get(def.key) ?? []) : []
       };
     })
   };
+}
+
+async function loadChecklist(storeId: string, date: string) {
+  const [entries, scans] = await Promise.all([
+    prisma.checklistEntry.findMany({
+      where: { storeId, date },
+      select: { itemKey: true, completed: true, note: true, evidenceUrl: true, completedBy: true, completedAt: true }
+    }),
+    prisma.checklistScan.findMany({
+      where: { storeId, date },
+      select: { id: true, itemKey: true, url: true, fileName: true, createdAt: true },
+      orderBy: { createdAt: "asc" }
+    })
+  ]);
+  return serialize(date, entries, scans);
 }
 
 export async function GET(request: Request) {
@@ -49,11 +77,7 @@ export async function GET(request: Request) {
   if (isApiError(session)) return session;
 
   const date = resolveDate(new URL(request.url).searchParams.get("date"));
-  const entries = await prisma.checklistEntry.findMany({
-    where: { storeId: session.storeId, date },
-    select: { itemKey: true, completed: true, note: true, evidenceUrl: true, completedBy: true, completedAt: true }
-  });
-  return NextResponse.json(await serialize(date, entries));
+  return NextResponse.json(await loadChecklist(session.storeId, date));
 }
 
 const jsonSchema = z.object({
@@ -124,9 +148,5 @@ export async function POST(request: Request) {
     create: { storeId: session.storeId, date, itemKey, ...base }
   });
 
-  const entries = await prisma.checklistEntry.findMany({
-    where: { storeId: session.storeId, date },
-    select: { itemKey: true, completed: true, note: true, evidenceUrl: true, completedBy: true, completedAt: true }
-  });
-  return NextResponse.json(await serialize(date, entries));
+  return NextResponse.json(await loadChecklist(session.storeId, date));
 }

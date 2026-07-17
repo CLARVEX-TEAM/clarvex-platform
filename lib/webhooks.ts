@@ -20,7 +20,7 @@
 const TIMEOUT_MS = 5000;
 
 export type PhotoWebhookPayload = {
-  type: "evidence" | "inventory";
+  type: "evidence" | "inventory" | "checklist";
   storeId: string;
   storeName: string;
   /** Ya viene armado (ver lib/webhook-caption): n8n solo lo reenvía. */
