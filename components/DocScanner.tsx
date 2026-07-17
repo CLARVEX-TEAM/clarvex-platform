@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Check, ImageDown, Loader2, X } from "lucide-react";
+import { detectDocumentCorners } from "@/lib/doc-detect";
 import { whiten } from "@/lib/doc-enhance";
 import { warpDocument, type Point } from "@/lib/doc-warp";
 
@@ -48,12 +49,19 @@ export function DocScanner({ file, onDone, onCancel }: { file: File; onDone: (bl
       const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
       revoke = url;
       URL.revokeObjectURL(url);
-      setWork({ imageData: ctx.getImageData(0, 0, w, h), url: dataUrl, w, h });
-      // Esquinas iniciales: un margen del 8% (la foto suele encuadrar el documento).
-      const mx = w * 0.08, my = h * 0.08;
-      setCorners([
-        { x: mx, y: my }, { x: w - mx, y: my }, { x: w - mx, y: h - my }, { x: mx, y: h - my }
-      ]);
+      const imageData = ctx.getImageData(0, 0, w, h);
+      setWork({ imageData, url: dataUrl, w, h });
+      // Detección automática de las esquinas del documento. Si no hay una región
+      // clara clara, se cae a un recuadro con margen del 8% para ajustar a mano.
+      const detected = detectDocumentCorners(imageData);
+      if (detected) {
+        setCorners(detected);
+      } else {
+        const mx = w * 0.08, my = h * 0.08;
+        setCorners([
+          { x: mx, y: my }, { x: w - mx, y: my }, { x: w - mx, y: h - my }, { x: mx, y: h - my }
+        ]);
+      }
     };
     img.onerror = () => { setError("No se pudo leer la imagen."); URL.revokeObjectURL(url); };
     img.src = url;
@@ -96,7 +104,7 @@ export function DocScanner({ file, onDone, onCancel }: { file: File; onDone: (bl
     <div className="fixed inset-0 z-50 flex flex-col bg-black/90 backdrop-blur-sm">
       <div className="flex items-center justify-between px-4 py-3 text-white">
         <button type="button" onClick={onCancel} className="flex items-center gap-1.5 text-sm font-bold"><X size={18} />Cancelar</button>
-        <p className="text-sm font-black">Ajusta las esquinas</p>
+        <p className="text-sm font-black">Revisa el recorte</p>
         <span className="w-20" />
       </div>
 
