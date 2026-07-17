@@ -25,10 +25,15 @@ export type PhotoWebhookPayload = {
   storeName: string;
   /** Ya viene armado (ver lib/webhook-caption): n8n solo lo reenvía. */
   caption: string;
-  /** URL firmada de la foto. Vive lo suficiente para que n8n reintente. */
+  /** URL firmada del archivo. Vive lo suficiente para que n8n reintente. */
   imageUrl: string;
   fileName: string | null;
   createdAt: string;
+  /**
+   * "photo" (default) → Telegram sendPhoto. "document" → sendDocument (para el
+   * PDF de los escaneos del cierre). n8n hace un Switch sobre este campo.
+   */
+  format?: "photo" | "document";
 };
 
 /** ¿Está configurado el webhook para esta tienda? */

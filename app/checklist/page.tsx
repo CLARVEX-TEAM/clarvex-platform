@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import NextImage from "next/image";
-import { Camera, CheckCircle2, Circle, Moon, Sun, X } from "lucide-react";
+import { Camera, CheckCircle2, Circle, FileText, Moon, Sun, X } from "lucide-react";
 import { getSession } from "@/lib/auth";
 import type { User } from "@/lib/types";
 import { AppFrame, AppHeader, Badge, BottomNav, Card, ProgressBar } from "@/components/ui";
@@ -145,6 +145,17 @@ export default function ChecklistPage() {
     }
   }
 
+  async function generatePdf(item: ChecklistItem): Promise<{ pdfUrl: string; sentToTelegram: boolean }> {
+    const response = await fetch("/api/checklist/scan/pdf", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ itemKey: item.key, date: date || undefined })
+    });
+    const payload = await response.json() as { pdfUrl?: string; sentToTelegram?: boolean; error?: string };
+    if (!response.ok || !payload.pdfUrl) throw new Error(payload.error ?? "No se pudo generar el PDF.");
+    return { pdfUrl: payload.pdfUrl, sentToTelegram: payload.sentToTelegram ?? false };
+  }
+
   const dateLabel = date
     ? new Date(`${date}T00:00:00Z`).toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" })
     : "";
@@ -182,6 +193,7 @@ export default function ChecklistPage() {
                         busy={busyKey === item.key}
                         onAdd={(file) => void addScan(item, file)}
                         onRemove={(scanId) => void removeScan(item, scanId)}
+                        onGeneratePdf={() => generatePdf(item)}
                       />
                     ) : (
                       <ChecklistRow
@@ -229,13 +241,41 @@ function ChecklistRow({ item, busy, onToggle, onPhoto }: { item: ChecklistItem; 
 }
 
 /**
- * Ítem de ESCANEO: varias fotos por documento (corte de caja, vouchers, depósito).
- * Cada foto se sube y se manda al canal de Telegram. `capture="environment"` abre
- * la cámara trasera directo, para escanear los papeles sin buscar en la galería.
+ * Ítem de ESCANEO: varias páginas por documento (corte de caja, vouchers,
+ * depósito). Se escanean las hojas y luego se juntan en UN PDF que se manda al
+ * canal de Telegram. `capture="environment"` abre la cámara trasera directo.
  */
-function ScanRow({ item, busy, onAdd, onRemove }: { item: ChecklistItem; busy: boolean; onAdd: (file: File) => void; onRemove: (scanId: string) => void }) {
+function ScanRow({ item, busy, onAdd, onRemove, onGeneratePdf }: {
+  item: ChecklistItem;
+  busy: boolean;
+  onAdd: (file: File) => void;
+  onRemove: (scanId: string) => void;
+  onGeneratePdf: () => Promise<{ pdfUrl: string; sentToTelegram: boolean }>;
+}) {
   const fileRef = useRef<HTMLInputElement>(null);
-  const done = item.scans.length > 0;
+  const [pdfBusy, setPdfBusy] = useState(false);
+  const [pdf, setPdf] = useState<{ url: string; sent: boolean } | null>(null);
+  const [pdfError, setPdfError] = useState("");
+  const pages = item.scans.length;
+  const done = pages > 0;
+
+  // Si cambian las páginas después de generar, el PDF queda desactualizado.
+  const pagesKey = item.scans.map((s) => s.id).join(",");
+  useEffect(() => { setPdf(null); }, [pagesKey]);
+
+  async function makePdf() {
+    setPdfBusy(true);
+    setPdfError("");
+    try {
+      const result = await onGeneratePdf();
+      setPdf({ url: result.pdfUrl, sent: result.sentToTelegram });
+    } catch (error) {
+      setPdfError(error instanceof Error ? error.message : "No se pudo generar el PDF.");
+    } finally {
+      setPdfBusy(false);
+    }
+  }
+
   return (
     <div className="py-2.5">
       <div className="flex items-center gap-3">
@@ -244,27 +284,44 @@ function ScanRow({ item, busy, onAdd, onRemove }: { item: ChecklistItem; busy: b
         </span>
         <div className="min-w-0 flex-1">
           <p className="text-sm font-bold text-ink">{item.label}</p>
-          <p className="text-[11px] text-muted">{item.scans.length ? `${item.scans.length} ${item.scans.length === 1 ? "foto" : "fotos"} · va a Telegram` : "Escanea y llega a Telegram"}</p>
+          <p className="text-[11px] text-muted">{pages ? `${pages} ${pages === 1 ? "página" : "páginas"}` : "Escanea las hojas y genera el PDF"}</p>
         </div>
         <button type="button" onClick={() => fileRef.current?.click()} disabled={busy} className="flex shrink-0 items-center gap-1.5 rounded-xl border border-line px-3 py-2 text-xs font-black text-volt transition hover:border-volt active:scale-95 disabled:opacity-50">
           <Camera size={15} />{busy ? "…" : "Escanear"}
         </button>
       </div>
-      {item.scans.length ? (
+
+      {pages ? (
         <div className="mt-2 flex flex-wrap gap-2 pl-[2.1rem]">
-          {item.scans.map((scan) => (
+          {item.scans.map((scan, index) => (
             <div key={scan.id} className="relative">
               <a href={scan.url} target="_blank" rel="noreferrer">
-                <NextImage src={scan.url} alt="Escaneo" width={56} height={56} className="size-14 rounded-lg object-cover" unoptimized />
+                <NextImage src={scan.url} alt={`Página ${index + 1}`} width={56} height={56} className="size-14 rounded-lg object-cover" unoptimized />
               </a>
-              <button type="button" onClick={() => onRemove(scan.id)} aria-label="Borrar foto" className="absolute -right-1.5 -top-1.5 grid size-5 place-items-center rounded-full bg-rose-600 text-white shadow-sm transition active:scale-90">
+              <span className="absolute bottom-0 left-0 rounded-tr-md rounded-bl-lg bg-black/60 px-1 text-[9px] font-black text-white">{index + 1}</span>
+              <button type="button" onClick={() => onRemove(scan.id)} aria-label="Borrar página" className="absolute -right-1.5 -top-1.5 grid size-5 place-items-center rounded-full bg-rose-600 text-white shadow-sm transition active:scale-90">
                 <X size={11} />
               </button>
             </div>
           ))}
         </div>
       ) : null}
-      <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" capture="environment" className="hidden" onChange={(event) => { const file = event.target.files?.[0]; if (file) onAdd(file); event.target.value = ""; }} />
+
+      {pages ? (
+        <div className="mt-2 flex items-center gap-2 pl-[2.1rem]">
+          <button type="button" onClick={() => void makePdf()} disabled={pdfBusy} className="flex items-center gap-1.5 rounded-xl bg-volt px-3 py-2 text-xs font-black text-white transition hover:bg-[#1D4ED8] active:scale-95 disabled:opacity-50">
+            <FileText size={15} />{pdfBusy ? "Generando…" : pdf ? "Regenerar PDF" : "Generar PDF y enviar"}
+          </button>
+          {pdf ? (
+            <a href={pdf.url} target="_blank" rel="noreferrer" className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
+              ✓ PDF listo{pdf.sent ? " · enviado a Telegram" : ""}
+            </a>
+          ) : null}
+        </div>
+      ) : null}
+      {pdfError ? <p className="mt-1 pl-[2.1rem] text-[11px] font-semibold text-rose-600">{pdfError}</p> : null}
+
+      <input ref={fileRef} type="file" accept="image/jpeg,image/png" capture="environment" className="hidden" onChange={(event) => { const file = event.target.files?.[0]; if (file) onAdd(file); event.target.value = ""; }} />
     </div>
   );
 }
