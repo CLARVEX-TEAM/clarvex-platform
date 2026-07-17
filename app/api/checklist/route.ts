@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { DATA_SOURCE_ROLES } from "@/lib/access-control";
+import { canUseChecklist } from "@/lib/access-control";
 import { enforceUploadRateLimit, isApiError, parseJson, requireSession } from "@/lib/api";
 import { CHECKLIST_ITEMS, findChecklistItem } from "@/lib/checklist";
 import { resolveMonterreyDate } from "@/lib/cron-time";
@@ -73,8 +73,9 @@ async function loadChecklist(storeId: string, date: string) {
 }
 
 export async function GET(request: Request) {
-  const session = await requireSession(DATA_SOURCE_ROLES);
+  const session = await requireSession();
   if (isApiError(session)) return session;
+  if (!canUseChecklist(session)) return NextResponse.json({ error: "No tienes permiso." }, { status: 403 });
 
   const date = resolveDate(new URL(request.url).searchParams.get("date"));
   return NextResponse.json(await loadChecklist(session.storeId, date));
@@ -88,8 +89,9 @@ const jsonSchema = z.object({
 });
 
 export async function POST(request: Request) {
-  const session = await requireSession(DATA_SOURCE_ROLES);
+  const session = await requireSession();
   if (isApiError(session)) return session;
+  if (!canUseChecklist(session)) return NextResponse.json({ error: "No tienes permiso." }, { status: 403 });
   const limited = await enforceUploadRateLimit(session.userId);
   if (limited) return limited;
 

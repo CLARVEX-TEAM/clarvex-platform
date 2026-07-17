@@ -13,6 +13,8 @@ export type Session = JWTPayload & {
   name: string;
   employeeNumber: string;
   platformAdmin: boolean;
+  // Usuario "kiosko" de la tienda: solo el checklist. El middleware lo encierra.
+  checklistOnly?: boolean;
   // Versión de sesión: invalida tokens tras logout / cambio de PIN. Tokens
   // viejos (sin este claim) se tratan como versión 0.
   sessionVersion?: number;
@@ -45,9 +47,10 @@ export async function createSessionToken(user: {
   name: string;
   employeeNumber: string;
   platformAdmin?: boolean;
+  checklistOnly?: boolean;
   sessionVersion?: number;
 }) {
-  return new SignJWT({ userId: user.id, storeId: user.storeId, role: user.role, name: user.name, employeeNumber: user.employeeNumber, platformAdmin: user.platformAdmin === true, sessionVersion: user.sessionVersion ?? 0 })
+  return new SignJWT({ userId: user.id, storeId: user.storeId, role: user.role, name: user.name, employeeNumber: user.employeeNumber, platformAdmin: user.platformAdmin === true, checklistOnly: user.checklistOnly === true, sessionVersion: user.sessionVersion ?? 0 })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime(`${SESSION_TTL_SECONDS}s`)
@@ -62,8 +65,9 @@ export async function verifySessionToken(token: string): Promise<Session | null>
       typeof payload.role !== "string" || typeof payload.name !== "string" ||
       typeof payload.employeeNumber !== "string"
     ) return null;
-    // Tokens emitidos antes de este campo no lo traen: tratarlos como no-admin.
+    // Tokens emitidos antes de estos campos no los traen: valores seguros.
     if (typeof payload.platformAdmin !== "boolean") payload.platformAdmin = false;
+    if (typeof payload.checklistOnly !== "boolean") payload.checklistOnly = false;
     return payload as Session;
   } catch {
     return null;

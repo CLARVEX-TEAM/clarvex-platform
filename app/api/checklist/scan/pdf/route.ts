@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { DATA_SOURCE_ROLES } from "@/lib/access-control";
+import { canUseChecklist } from "@/lib/access-control";
 import { isApiError, parseJson, requireSession } from "@/lib/api";
 import { findChecklistItem, isScanItem } from "@/lib/checklist";
 import { resolveMonterreyDate } from "@/lib/cron-time";
@@ -27,8 +27,9 @@ const schema = z.object({
  * subirlo a Checklist Fácil.
  */
 export async function POST(request: Request) {
-  const session = await requireSession(DATA_SOURCE_ROLES);
+  const session = await requireSession();
   if (isApiError(session)) return session;
+  if (!canUseChecklist(session)) return NextResponse.json({ error: "No tienes permiso." }, { status: 403 });
 
   const parsed = await parseJson(request, schema);
   if ("response" in parsed) return parsed.response;

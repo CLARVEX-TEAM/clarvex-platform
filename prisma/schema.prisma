@@ -128,6 +128,9 @@ model User {
   lastSeenAt            DateTime?
   active                Boolean                @default(true)
   platformAdmin         Boolean                @default(false)
+  /// Usuario "kiosko" del celular de la tienda: SOLO ve el checklist (para los
+  /// escaneos del cierre). El middleware lo encierra en /checklist.
+  checklistOnly         Boolean                @default(false)
   failedPinAttempts     Int                    @default(0)
   pinLockedUntil        DateTime?
   pinLockoutCount       Int                    @default(0)

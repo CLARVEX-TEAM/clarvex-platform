@@ -16,6 +16,7 @@ const schema = z.object({
   vacationDays: z.number().min(-1000).max(1000).optional(), // solo gerencia
   paidDays: z.number().min(-1000).max(1000).optional(), // solo gerencia
   active: z.boolean().optional(), // solo gerencia, sobre otro integrante
+  checklistOnly: z.boolean().optional(), // solo gerencia, sobre otro integrante (kiosko)
   pin: z.string().regex(/^\d{4}$/, "El PIN debe tener 4 dígitos.").optional() // solo gerencia, reset PIN
 });
 
@@ -56,7 +57,7 @@ export async function PUT(request: Request) {
     targetUserId = target.id;
   }
 
-  const data: { birthDate?: Date | null; hireDate?: Date | null; hoursOwed?: number; vacationDays?: number; vacationBaselineAt?: Date; paidDays?: number; active?: boolean; pinHash?: string } = {};
+  const data: { birthDate?: Date | null; hireDate?: Date | null; hoursOwed?: number; vacationDays?: number; vacationBaselineAt?: Date; paidDays?: number; active?: boolean; checklistOnly?: boolean; pinHash?: string; sessionVersion?: { increment: number } } = {};
   const birth = toDate(parsed.data.birthDate);
   const hire = toDate(parsed.data.hireDate);
   if (birth !== undefined) data.birthDate = birth;
@@ -78,6 +79,13 @@ export async function PUT(request: Request) {
     if (parsed.data.active !== undefined) {
       if (targetUserId === session.userId) return NextResponse.json({ error: "No puedes desactivar tu propia cuenta." }, { status: 400 });
       data.active = parsed.data.active;
+    }
+    // Modo kiosko (solo checklist): solo sobre otro integrante — nadie se encierra
+    // a sí mismo. Cambiar el modo invalida sus sesiones para que aplique enseguida.
+    if (parsed.data.checklistOnly !== undefined) {
+      if (targetUserId === session.userId) return NextResponse.json({ error: "No puedes ponerte a ti mismo en modo kiosko." }, { status: 400 });
+      data.checklistOnly = parsed.data.checklistOnly;
+      data.sessionVersion = { increment: 1 };
     }
   }
 

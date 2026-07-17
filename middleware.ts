@@ -65,11 +65,17 @@ export async function middleware(request: NextRequest) {
     if (!session) {
       return NextResponse.json({ error: "Sesion requerida." }, { status: 401 });
     }
+    // Usuario kiosko: solo las APIs del checklist (y auth/sesión). Cualquier otra
+    // se corta aquí, además de que los handlers ya validan rol.
+    if (session.checklistOnly && !pathname.startsWith("/api/checklist") && !pathname.startsWith("/api/auth/")) {
+      return NextResponse.json({ error: "Sin permiso." }, { status: 403 });
+    }
     return NextResponse.next();
   }
 
   if (pathname === "/login") {
     if (!session) return NextResponse.next();
+    if (session.checklistOnly) return NextResponse.redirect(new URL("/checklist", request.url));
     if (session.role === "REGIONAL") {
       return NextResponse.redirect(new URL("/regional", request.url));
     }
@@ -78,11 +84,19 @@ export async function middleware(request: NextRequest) {
 
   if (pathname === "/") {
     if (!session) return NextResponse.redirect(new URL("/login", request.url));
+    if (session.checklistOnly) return NextResponse.redirect(new URL("/checklist", request.url));
     if (session.role === "REGIONAL") return NextResponse.redirect(new URL("/regional", request.url));
     return NextResponse.redirect(new URL(session.role === "ASESOR" ? "/advisor" : "/manager", request.url));
   }
 
   if (!session) return NextResponse.redirect(new URL("/login", request.url));
+
+  // Usuario kiosko de la tienda: encerrado en /checklist. Cualquier otra página
+  // lo devuelve ahí. Es la protección real (no basta esconder botones).
+  if (session.checklistOnly) {
+    if (startsWithRoute(pathname, ["/checklist"])) return NextResponse.next();
+    return NextResponse.redirect(new URL("/checklist", request.url));
+  }
   const isRegional = session.role === "REGIONAL";
   const isManager = session.role === "GERENTE" || session.role === "SUBGERENTE";
   const isPlatformAdmin = session.platformAdmin === true;

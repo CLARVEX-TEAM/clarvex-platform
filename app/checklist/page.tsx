@@ -3,8 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import NextImage from "next/image";
-import { Camera, CheckCircle2, Circle, FileText, Moon, Sun, X } from "lucide-react";
-import { getSession } from "@/lib/auth";
+import { Camera, CheckCircle2, Circle, FileText, LogOut, Moon, Sun, X } from "lucide-react";
+import { getSession, logout } from "@/lib/auth";
 import type { User } from "@/lib/types";
 import { AppFrame, AppHeader, Badge, BottomNav, Card, ProgressBar } from "@/components/ui";
 
@@ -45,7 +45,8 @@ export default function ChecklistPage() {
   useEffect(() => {
     getSession().then((current) => {
       if (!current) { router.replace("/login"); return; }
-      if (current.role === "ASESOR") { router.replace("/advisor"); return; }
+      // El usuario kiosko SÍ entra aquí aunque sea ASESOR (es su única pantalla).
+      if (!current.checklistOnly && current.role === "ASESOR") { router.replace("/advisor"); return; }
       setSession(current);
     });
   }, [router]);
@@ -160,9 +161,21 @@ export default function ChecklistPage() {
     ? new Date(`${date}T00:00:00Z`).toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" })
     : "";
 
+  // Usuario kiosko (celular de la tienda): sin navegación ni "atrás", solo salir.
+  const kiosk = session?.checklistOnly === true;
+
   return (
     <>
-      <AppHeader title="Checklist de tienda" subtitle={dateLabel ? dateLabel.charAt(0).toUpperCase() + dateLabel.slice(1) : "Apertura y cierre"} backHref="/manager" />
+      <AppHeader
+        title="Checklist de tienda"
+        subtitle={dateLabel ? dateLabel.charAt(0).toUpperCase() + dateLabel.slice(1) : "Apertura y cierre"}
+        backHref={kiosk ? undefined : "/manager"}
+        action={kiosk ? (
+          <button type="button" onClick={() => void logout().then(() => router.replace("/login"))} className="flex items-center gap-1.5 rounded-full border border-line px-3 py-1.5 text-xs font-black text-muted transition active:scale-95">
+            <LogOut size={14} />Salir
+          </button>
+        ) : undefined}
+      />
       <AppFrame>
         {error ? <Card className="mb-3 text-sm font-semibold text-rose-700">{error}</Card> : null}
         {loading ? (
@@ -211,7 +224,7 @@ export default function ChecklistPage() {
           </div>
         )}
       </AppFrame>
-      <BottomNav />
+      {kiosk ? null : <BottomNav />}
     </>
   );
 }

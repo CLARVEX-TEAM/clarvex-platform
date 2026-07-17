@@ -26,6 +26,8 @@ export type User = {
   paidDays?: number;
   active?: boolean;
   platformAdmin?: boolean;
+  /** Usuario "kiosko" de la tienda: solo ve el checklist (escaneos del cierre). */
+  checklistOnly?: boolean;
 };
 
 export type Kpi = {

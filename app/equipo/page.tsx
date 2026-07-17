@@ -14,7 +14,7 @@ type Row = {
   vacationDays: string;
   /** Lo que se muestra: el saldo real y de dónde sale. No se editan. */
   vacationAvailable: number; vacationEarned: number; vacationTaken: number; vacationPlanned: number;
-  paidDays: string; active: boolean;
+  paidDays: string; active: boolean; checklistOnly: boolean;
 };
 
 export default function TeamDatesPage() {
@@ -53,7 +53,7 @@ export default function TeamDatesPage() {
         vacationEarned: u.vacationEarned ?? 0,
         vacationTaken: u.vacationTaken ?? 0,
         vacationPlanned: u.vacationPlanned ?? 0,
-        paidDays: String(u.paidDays ?? 0), active: u.active ?? true
+        paidDays: String(u.paidDays ?? 0), active: u.active ?? true, checklistOnly: u.checklistOnly ?? false
       }))))
       .catch(() => setError("No se pudo cargar el equipo."))
       .finally(() => setLoading(false));
@@ -79,6 +79,30 @@ export default function TeamDatesPage() {
       setRows((current) => current.map((r) => r.id === row.id ? { ...r, active: next } : r));
     } catch {
       setError(`No se pudo ${next ? "activar" : "desactivar"} a ${row.name}.`);
+    } finally {
+      setTogglingId(null);
+    }
+  }
+
+  async function toggleChecklistOnly(row: Row) {
+    const next = !row.checklistOnly;
+    const message = next
+      ? `¿Poner a ${row.name} en modo kiosko? Solo verá el checklist (para el celular de la tienda). Su sesión actual se cerrará.`
+      : `¿Quitar el modo kiosko de ${row.name}? Volverá a ver la app normal según su rol.`;
+    if (!window.confirm(message)) return;
+    setTogglingId(row.id);
+    setError("");
+    try {
+      const response = await fetch("/api/profile", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: row.id, checklistOnly: next })
+      });
+      const payload = await response.json().catch(() => ({})) as { error?: string };
+      if (!response.ok) throw new Error(payload.error);
+      setRows((current) => current.map((r) => r.id === row.id ? { ...r, checklistOnly: next } : r));
+    } catch (toggleError) {
+      setError(toggleError instanceof Error && toggleError.message ? toggleError.message : `No se pudo cambiar el modo de ${row.name}.`);
     } finally {
       setTogglingId(null);
     }
@@ -132,7 +156,7 @@ export default function TeamDatesPage() {
       });
       const payload = await response.json() as { user?: { id: string; name: string }; error?: string };
       if (!response.ok || !payload.user) throw new Error(payload.error ?? "No se pudo agregar al integrante.");
-      setRows((current) => [...current, { id: payload.user!.id, name: payload.user!.name, photoUrl: null, birthDate: "", hireDate: "", hoursOwed: "0", vacationDays: "0", vacationAvailable: 0, vacationEarned: 0, vacationTaken: 0, vacationPlanned: 0, paidDays: "0", active: true }]);
+      setRows((current) => [...current, { id: payload.user!.id, name: payload.user!.name, photoUrl: null, birthDate: "", hireDate: "", hoursOwed: "0", vacationDays: "0", vacationAvailable: 0, vacationEarned: 0, vacationTaken: 0, vacationPlanned: 0, paidDays: "0", active: true, checklistOnly: false }]);
       setAddedMessage(`${payload.user.name} ya puede iniciar sesión con el número ${newNumber} y crear su PIN.`);
       setNewName("");
       setNewNumber("");
@@ -192,6 +216,7 @@ export default function TeamDatesPage() {
                   <ProfileAvatar name={row.name} photoUrl={row.photoUrl} size="sm" />
                   <p className={`font-black ${row.active ? "text-ink" : "text-muted line-through"}`}>{row.name}</p>
                   {!row.active ? <span className="rounded-full bg-rose-100 px-2 py-0.5 text-xs font-bold text-rose-700">Desactivado</span> : null}
+                  {row.checklistOnly ? <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-bold text-blue-700 dark:bg-blue-950/50 dark:text-blue-200">Kiosko</span> : null}
                   {row.id !== currentUserId ? (
                     <div className="ml-auto flex items-center gap-1.5">
                       {!row.active ? (
@@ -205,6 +230,15 @@ export default function TeamDatesPage() {
                           {deletingId === row.id ? "..." : <Trash2 size={14} />}
                         </button>
                       ) : null}
+                      <button
+                        type="button"
+                        onClick={() => void toggleChecklistOnly(row)}
+                        disabled={togglingId === row.id}
+                        title="Modo kiosko: solo checklist (celular de la tienda)"
+                        className={`min-h-8 rounded-full px-3 text-xs font-bold transition ${row.checklistOnly ? "bg-blue-100 text-blue-700 hover:bg-blue-200 dark:bg-blue-950/50 dark:text-blue-200" : "bg-panel text-muted hover:text-blue-700"} disabled:opacity-50`}
+                      >
+                        {row.checklistOnly ? "Quitar kiosko" : "Kiosko"}
+                      </button>
                       <button
                         type="button"
                         onClick={() => void toggleActive(row)}

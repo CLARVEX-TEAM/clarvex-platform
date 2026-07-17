@@ -89,7 +89,8 @@ export async function GET(request: Request) {
           vacationPlanned: days?.planned ?? 0,
           paidDays: user.paidDays
         } : {}),
-        active: user.active
+        active: user.active,
+        checklistOnly: user.checklistOnly
       };
     }),
     kpis: kpis.map((kpi) => ({ userId: kpi.userId, date: kpi.date.toISOString().slice(0, 10), dailySales: Number(kpi.dailySales), monthlySales: Number(kpi.monthlySales), dailyGoal: Number(kpi.dailyGoal), monthlyGoal: Number(kpi.monthlyGoal), avgTicket: Number(kpi.avgTicket), upt: Number(kpi.upt), conversion: kpi.conversion === null ? null : Number(kpi.conversion), traffic: kpi.traffic, pieces: kpi.pieces, transactions: kpi.transactions, ranking: kpi.ranking, grossSales: kpi.grossSales === null ? null : Number(kpi.grossSales), discountAmount: kpi.discountAmount === null ? null : Number(kpi.discountAmount), discountMargin: kpi.discountMargin === null ? null : Number(kpi.discountMargin), discountLimit: kpi.discountLimit === null ? null : Number(kpi.discountLimit), commissionAmount: Number(kpi.commissionAmount), commissionPercent: Number(kpi.commissionPercent) })),

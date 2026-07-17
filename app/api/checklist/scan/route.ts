@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { DATA_SOURCE_ROLES } from "@/lib/access-control";
+import { canUseChecklist } from "@/lib/access-control";
 import { enforceUploadRateLimit, isApiError, requireSession } from "@/lib/api";
 import { findChecklistItem, isScanItem } from "@/lib/checklist";
 import { resolveMonterreyDate } from "@/lib/cron-time";
@@ -25,8 +25,9 @@ function resolveDate(value: string | null): string {
  * Solo JPG/PNG: el PDF se arma con pdf-lib, que no incrusta WEBP.
  */
 export async function POST(request: Request) {
-  const session = await requireSession(DATA_SOURCE_ROLES);
+  const session = await requireSession();
   if (isApiError(session)) return session;
+  if (!canUseChecklist(session)) return NextResponse.json({ error: "No tienes permiso." }, { status: 403 });
   const limited = await enforceUploadRateLimit(session.userId);
   if (limited) return limited;
 
@@ -73,8 +74,9 @@ export async function POST(request: Request) {
 
 /** Borra una página escaneada (una equivocada), antes de armar el PDF. */
 export async function DELETE(request: Request) {
-  const session = await requireSession(DATA_SOURCE_ROLES);
+  const session = await requireSession();
   if (isApiError(session)) return session;
+  if (!canUseChecklist(session)) return NextResponse.json({ error: "No tienes permiso." }, { status: 403 });
 
   const id = new URL(request.url).searchParams.get("id") ?? "";
   if (!id) return NextResponse.json({ error: "Falta el id." }, { status: 400 });
