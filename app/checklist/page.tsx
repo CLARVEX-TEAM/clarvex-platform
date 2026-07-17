@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import NextImage from "next/image";
-import { Camera, CheckCircle2, Circle, FileText, LogOut, Moon, Sun, X } from "lucide-react";
+import { Camera, CheckCircle2, Circle, FileText, LogOut, Moon, SlidersHorizontal, Sun, X } from "lucide-react";
 import { getSession, logout } from "@/lib/auth";
 import { DocScanner } from "@/components/DocScanner";
 import type { User } from "@/lib/types";
@@ -178,7 +178,11 @@ export default function ChecklistPage() {
           <button type="button" onClick={() => void logout().then(() => router.replace("/login"))} className="flex items-center gap-1.5 rounded-full border border-line px-3 py-1.5 text-xs font-black text-muted transition active:scale-95">
             <LogOut size={14} />Salir
           </button>
-        ) : undefined}
+        ) : (
+          <button type="button" onClick={() => router.push("/checklist/config")} className="flex items-center gap-1.5 rounded-full border border-line px-3 py-1.5 text-xs font-black text-muted transition active:scale-95 hover:text-volt">
+            <SlidersHorizontal size={14} />Editar
+          </button>
+        )}
       />
       <AppFrame>
         {error ? <Card className="mb-3 text-sm font-semibold text-rose-700">{error}</Card> : null}

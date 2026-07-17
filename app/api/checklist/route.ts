@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { canUseChecklist } from "@/lib/access-control";
 import { enforceUploadRateLimit, isApiError, parseJson, requireSession } from "@/lib/api";
-import { CHECKLIST_ITEMS, findChecklistItem } from "@/lib/checklist";
+import { getStoreChecklistItem, loadStoreChecklistItems, type StoreChecklistItem } from "@/lib/checklist-store";
 import { resolveMonterreyDate } from "@/lib/cron-time";
 import { prisma } from "@/lib/prisma";
 import { validateProfilePhoto } from "@/lib/profile-photo";
@@ -21,7 +21,7 @@ function resolveDate(value: string | null): string {
 type EntryRow = { itemKey: string; completed: boolean; note: string | null; evidenceUrl: string | null; completedBy: string | null; completedAt: Date | null };
 type ScanRow = { id: string; itemKey: string; url: string; fileName: string | null; createdAt: Date };
 
-async function serialize(date: string, entries: EntryRow[], scans: ScanRow[]) {
+async function serialize(date: string, defs: StoreChecklistItem[], entries: EntryRow[], scans: ScanRow[]) {
   const byKey = new Map(entries.map((entry) => [entry.itemKey, entry]));
   // Las evidencias del checklist viven en R2 (bucket privado) → URL firmada.
   const signed = new Map(
@@ -39,7 +39,7 @@ async function serialize(date: string, entries: EntryRow[], scans: ScanRow[]) {
   }
   return {
     date,
-    items: CHECKLIST_ITEMS.map((def) => {
+    items: defs.map((def) => {
       const entry = byKey.get(def.key);
       return {
         key: def.key,
@@ -58,7 +58,8 @@ async function serialize(date: string, entries: EntryRow[], scans: ScanRow[]) {
 }
 
 async function loadChecklist(storeId: string, date: string) {
-  const [entries, scans] = await Promise.all([
+  const [defs, entries, scans] = await Promise.all([
+    loadStoreChecklistItems(storeId),
     prisma.checklistEntry.findMany({
       where: { storeId, date },
       select: { itemKey: true, completed: true, note: true, evidenceUrl: true, completedBy: true, completedAt: true }
@@ -69,7 +70,7 @@ async function loadChecklist(storeId: string, date: string) {
       orderBy: { createdAt: "asc" }
     })
   ]);
-  return serialize(date, entries, scans);
+  return serialize(date, defs, entries, scans);
 }
 
 export async function GET(request: Request) {
@@ -132,7 +133,7 @@ export async function POST(request: Request) {
     date = resolveDate(parsed.data.date ?? null);
   }
 
-  const def = findChecklistItem(itemKey);
+  const def = await getStoreChecklistItem(session.storeId, itemKey);
   if (!def) return NextResponse.json({ error: "Item de checklist no válido." }, { status: 400 });
 
   const base = {

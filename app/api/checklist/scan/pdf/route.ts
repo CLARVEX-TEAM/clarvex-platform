@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { canUseChecklist } from "@/lib/access-control";
 import { isApiError, parseJson, requireSession } from "@/lib/api";
-import { findChecklistItem, isScanItem } from "@/lib/checklist";
+import { getStoreChecklistItem } from "@/lib/checklist-store";
 import { resolveMonterreyDate } from "@/lib/cron-time";
 import { prisma } from "@/lib/prisma";
 import { deleteFromR2, signR2Url, uploadToR2 } from "@/lib/r2";
@@ -34,8 +34,8 @@ export async function POST(request: Request) {
   const parsed = await parseJson(request, schema);
   if ("response" in parsed) return parsed.response;
   const { itemKey } = parsed.data;
-  const def = findChecklistItem(itemKey);
-  if (!def || !isScanItem(itemKey)) return NextResponse.json({ error: "Ítem de escaneo no válido." }, { status: 400 });
+  const def = await getStoreChecklistItem(session.storeId, itemKey);
+  if (!def || def.kind !== "scan") return NextResponse.json({ error: "Ítem de escaneo no válido." }, { status: 400 });
   const date = parsed.data.date && DATE_RE.test(parsed.data.date) ? parsed.data.date : resolveMonterreyDate().dateKey;
 
   const scans = await prisma.checklistScan.findMany({

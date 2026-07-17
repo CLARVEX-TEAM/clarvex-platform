@@ -19,6 +19,7 @@ model Store {
   chatRooms             ChatRoom[]
   checklistEntries      ChecklistEntry[]
   checklistScans        ChecklistScan[]
+  checklistItems        ChecklistItem[]
   choreAssignments      ChoreAssignment[]
   comments              Comment[]
   commissionRules       CommissionRule[]
@@ -713,6 +714,26 @@ model ChecklistEntry {
 
   @@unique([storeId, date, itemKey])
   @@index([storeId, date])
+}
+
+/// Definición de los puntos del checklist, EDITABLE por tienda (gerencia agrega,
+/// renombra, reordena y quita). `key` es el identificador estable que referencian
+/// ChecklistEntry y ChecklistScan; se conserva aunque cambie la etiqueta. Quitar
+/// un punto lo marca active=false (no se borra, para no perder el histórico).
+model ChecklistItem {
+  id        String   @id @default(cuid())
+  storeId   String
+  key       String
+  section   String
+  kind      String   @default("check")
+  label     String
+  sortOrder Int      @default(0)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  store     Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@unique([storeId, key])
+  @@index([storeId])
 }
 
 /// Fotos de los ítems de ESCANEO del checklist (corte de caja, vouchers, depósito).

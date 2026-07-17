@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { canUseChecklist } from "@/lib/access-control";
 import { enforceUploadRateLimit, isApiError, requireSession } from "@/lib/api";
-import { findChecklistItem, isScanItem } from "@/lib/checklist";
+import { getStoreChecklistItem } from "@/lib/checklist-store";
 import { resolveMonterreyDate } from "@/lib/cron-time";
 import { prisma } from "@/lib/prisma";
 import { validateProfilePhoto } from "@/lib/profile-photo";
@@ -35,7 +35,8 @@ export async function POST(request: Request) {
   if (!form) return NextResponse.json({ error: "Formulario inválido." }, { status: 400 });
 
   const itemKey = String(form.get("itemKey") ?? "");
-  if (!findChecklistItem(itemKey) || !isScanItem(itemKey)) return NextResponse.json({ error: "Ítem de escaneo no válido." }, { status: 400 });
+  const def = await getStoreChecklistItem(session.storeId, itemKey);
+  if (!def || def.kind !== "scan") return NextResponse.json({ error: "Ítem de escaneo no válido." }, { status: 400 });
   const date = resolveDate(typeof form.get("date") === "string" ? String(form.get("date")) : null);
 
   const imageFile = form.get("image");
