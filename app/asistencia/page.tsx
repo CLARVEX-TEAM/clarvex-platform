@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CalendarX2, ChevronLeft, ChevronRight, Clock, PartyPopper, Sun } from "lucide-react";
 import { getSession } from "@/lib/auth";
+import type { AttendanceStatus } from "@/lib/attendance";
 import type { User } from "@/lib/types";
 import {
   currentMonth,
@@ -23,7 +24,7 @@ import {
   type ScheduleDay
 } from "@/lib/attendance-view";
 import { formatBalance } from "@/lib/hours-balance";
-import { AppFrame, AppHeader, BottomNav, Card, ProfileAvatar } from "@/components/ui";
+import { AppFrame, AppHeader, BottomNav, Button, Card, ProfileAvatar } from "@/components/ui";
 import { cn } from "@/lib/utils";
 
 // balanceMinutes: saldo acumulado REAL (inicial del Excel + todo lo registrado),
@@ -114,6 +115,10 @@ export default function AsistenciaPage() {
   const expanded = soloUser ?? openUser;
   const detail = expanded ? records.filter((record) => record.userId === expanded) : [];
 
+  // Corrección manual de gerencia: solo si puede editar (GERENTE/SUBGERENTE).
+  const [editing, setEditing] = useState<AttendanceRecord | null>(null);
+  const onEditDay = canEdit ? setEditing : undefined;
+
   return (
     <>
       <AppHeader
@@ -197,7 +202,7 @@ export default function AsistenciaPage() {
                     </div>
                     <ChevronRight size={16} className={cn("shrink-0 text-muted transition-transform", open && "rotate-90")} />
                   </button>
-                  {open ? <DayList records={records.filter((record) => record.userId === user.id)} /> : null}
+                  {open ? <DayList records={records.filter((record) => record.userId === user.id)} onEdit={onEditDay} /> : null}
                 </div>
               );
             })}
@@ -257,8 +262,103 @@ export default function AsistenciaPage() {
           </>
         ) : null}
       </AppFrame>
+      {editing ? (
+        <EditDayModal
+          record={editing}
+          name={nameById.get(editing.userId) ?? "Colaborador"}
+          onClose={() => setEditing(null)}
+          onSaved={() => { setEditing(null); void load(); }}
+        />
+      ) : null}
       <BottomNav />
     </>
+  );
+}
+
+const EDITABLE_STATUSES: AttendanceStatus[] = ["ON_TIME", "LATE", "ABSENT", "EXCUSED", "REST", "VACATION", "PAID_DAY", "INVENTORY"];
+
+/**
+ * Corrección manual de un día. Va a nómina, así que se audita en el servidor y a
+ * partir de aquí el archivo ya no la pisa (source=MANUAL). El saldo del banco de
+ * horas se recalcula solo de la entrada/salida capturadas.
+ */
+function EditDayModal({ record, name, onClose, onSaved }: { record: AttendanceRecord; name: string; onClose: () => void; onSaved: () => void }) {
+  const [status, setStatus] = useState<AttendanceStatus>(record.status);
+  const [arrivedAt, setArrivedAt] = useState(record.arrivedAt ?? "");
+  const [leftAt, setLeftAt] = useState(record.leftAt ?? "");
+  const [note, setNote] = useState(record.note ?? "");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  async function save() {
+    setSaving(true);
+    setError("");
+    try {
+      const response = await fetch("/api/attendance", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: record.userId,
+          date: record.date,
+          status,
+          arrivedAt: arrivedAt || null,
+          leftAt: leftAt || null,
+          note: note.trim() || null
+        })
+      });
+      if (!response.ok) {
+        const detail = await response.json().then((d: { error?: string }) => d.error).catch(() => null);
+        throw new Error(detail ?? "No se pudo guardar la corrección.");
+      }
+      onSaved();
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : "No se pudo guardar la corrección.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const inputClass = "min-h-11 w-full rounded-2xl border border-line bg-panel px-3 text-sm font-bold text-ink outline-none focus:border-volt";
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm p-4 sm:items-center" onClick={onClose}>
+      <Card className="w-full max-w-sm p-4" onClick={(event) => event.stopPropagation()}>
+        <p className="text-sm font-black text-ink">Corregir día</p>
+        <p className="mb-3 text-xs font-semibold text-muted">{name} · {dayLabel(record.date)}</p>
+
+        <label className="mb-3 grid gap-1">
+          <span className="text-xs font-bold text-muted">Estatus</span>
+          <select value={status} onChange={(event) => setStatus(event.target.value as AttendanceStatus)} className={inputClass}>
+            {EDITABLE_STATUSES.map((value) => <option key={value} value={value}>{STATUS_LABEL[value]}</option>)}
+          </select>
+        </label>
+
+        <div className="mb-3 grid grid-cols-2 gap-2">
+          <label className="grid gap-1">
+            <span className="text-xs font-bold text-muted">Entrada</span>
+            <input type="time" value={arrivedAt} onChange={(event) => setArrivedAt(event.target.value)} className={inputClass} />
+          </label>
+          <label className="grid gap-1">
+            <span className="text-xs font-bold text-muted">Salida</span>
+            <input type="time" value={leftAt} onChange={(event) => setLeftAt(event.target.value)} className={inputClass} />
+          </label>
+        </div>
+
+        <label className="mb-3 grid gap-1">
+          <span className="text-xs font-bold text-muted">Nota (por qué se corrige)</span>
+          <input value={note} onChange={(event) => setNote(event.target.value)} maxLength={300} placeholder="Ej. no marcó salida en el POS" className={inputClass} />
+        </label>
+
+        {error ? <p className="mb-2 text-xs font-semibold text-rose-600">{error}</p> : null}
+
+        <div className="flex gap-2">
+          <Button type="button" variant="ghost" onClick={onClose} className="flex-1">Cancelar</Button>
+          <Button type="button" variant="primary" onClick={() => void save()} disabled={saving} className="flex-1">
+            {saving ? "Guardando…" : "Guardar"}
+          </Button>
+        </div>
+      </Card>
+    </div>
   );
 }
 
@@ -304,7 +404,7 @@ function IncidentList({ incidents, nameById }: { incidents: Incident[]; nameById
   );
 }
 
-function DayList({ records }: { records: AttendanceRecord[] }) {
+function DayList({ records, onEdit }: { records: AttendanceRecord[]; onEdit?: (record: AttendanceRecord) => void }) {
   if (records.length === 0) {
     return <p className="px-4 py-3 text-xs font-semibold text-muted">Sin registros este mes.</p>;
   }
@@ -312,8 +412,8 @@ function DayList({ records }: { records: AttendanceRecord[] }) {
     <div className="divide-y divide-line/50 bg-black/[0.02] dark:bg-white/[0.02]">
       {records.map((record) => {
         const movements = hoursMovements(record);
-        return (
-          <div key={record.id} className="px-4 py-2.5">
+        const body = (
+          <>
             <div className="flex items-center gap-3">
               <p className="w-14 shrink-0 text-xs font-bold text-muted">
                 {dayLabel(record.date)}
@@ -326,10 +426,11 @@ function DayList({ records }: { records: AttendanceRecord[] }) {
                 {record.arrivedAt ? (
                   <p className="text-xs font-bold text-ink">
                     {record.arrivedAt}
+                    {record.leftAt ? <span className="text-muted"> – {record.leftAt}</span> : null}
                     {record.minutesLate > 0 ? <span className="ml-1 text-amber-600 dark:text-amber-400">+{record.minutesLate}′</span> : null}
                   </p>
                 ) : null}
-                {record.source === "MANUAL" ? <p className="text-[10px] font-bold text-muted">corregido</p> : null}
+                {record.source === "MANUAL" ? <p className="text-[10px] font-bold text-muted">corregido{onEdit ? " · toca para editar" : ""}</p> : null}
               </div>
             </div>
             {/* Por qué se movió el banco de horas ese día. */}
@@ -341,7 +442,14 @@ function DayList({ records }: { records: AttendanceRecord[] }) {
                 <span className="text-muted">{movement.text}</span>
               </div>
             ))}
-          </div>
+          </>
+        );
+        return onEdit ? (
+          <button key={record.id} type="button" onClick={() => onEdit(record)} className="w-full px-4 py-2.5 text-left transition-colors active:bg-volt/8">
+            {body}
+          </button>
+        ) : (
+          <div key={record.id} className="px-4 py-2.5">{body}</div>
         );
       })}
     </div>

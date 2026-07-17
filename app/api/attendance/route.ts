@@ -3,6 +3,7 @@ import { z } from "zod";
 import { recordAudit } from "@/lib/audit";
 import { isApiError, parseJson, requireSession } from "@/lib/api";
 import { classifyArrival, type AttendanceStatus } from "@/lib/attendance";
+import { dayBalanceMinutes } from "@/lib/hours-balance";
 import { hoursBalanceMinutes } from "@/lib/hours-account";
 import { prisma } from "@/lib/prisma";
 
@@ -91,11 +92,13 @@ export async function GET(request: Request) {
   }, { headers: { "Cache-Control": "private, no-store" } });
 }
 
+const TIME_RE = /^\d{1,2}:\d{2}$/;
 const patchSchema = z.object({
   userId: z.string().min(1),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   status: z.enum(["ON_TIME", "LATE", "ABSENT", "EXCUSED", "REST", "VACATION", "PAID_DAY", "INVENTORY"]),
-  arrivedAt: z.string().regex(/^\d{1,2}:\d{2}$/).nullable().optional(),
+  arrivedAt: z.string().regex(TIME_RE).nullable().optional(),
+  leftAt: z.string().regex(TIME_RE).nullable().optional(),
   note: z.string().trim().max(300).nullable().optional()
 });
 
@@ -112,7 +115,7 @@ export async function PATCH(request: Request) {
 
   const parsed = await parseJson(request, patchSchema);
   if ("response" in parsed) return parsed.response;
-  const { userId, date, status, arrivedAt, note } = parsed.data;
+  const { userId, date, status, arrivedAt, leftAt, note } = parsed.data;
 
   // El usuario tiene que ser de esta tienda (no se corrige a nadie de otra).
   const target = await prisma.user.findFirst({ where: { id: userId, storeId: session.storeId }, select: { id: true, name: true } });
@@ -121,19 +124,32 @@ export async function PATCH(request: Request) {
   const day = new Date(`${date}T00:00:00.000Z`);
   const previous = await prisma.attendance.findUnique({ where: { userId_date: { userId, date: day } } });
   const expectedAt = previous?.expectedAt ?? "10:30";
+  const expectedLeaveAt = previous?.expectedLeaveAt ?? "21:00";
 
-  // Si gerencia captura una hora, se recalcula el retardo con la misma regla que
-  // el archivo: no se deja que la hora y el estatus se contradigan.
-  const recomputed = arrivedAt ? classifyArrival({ expected: expectedAt, arrived: arrivedAt }) : null;
-  const finalStatus: AttendanceStatus = recomputed && status === recomputed.status ? recomputed.status : status;
-  const minutesLate = recomputed ? recomputed.minutesLate : 0;
+  // Gerencia elige el estatus; el retardo (minutesLate) se recalcula de la hora de
+  // entrada con la misma regla que el archivo, para que hora y estatus no se
+  // contradigan en el reporte.
+  const minutesLate = arrivedAt ? classifyArrival({ expected: expectedAt, arrived: arrivedAt }).minutesLate : 0;
+
+  // ⚠️ El saldo del banco de horas se RECALCULA con la entrada y salida capturadas.
+  // Sin esto, corregir una hora dejaba el saldo viejo — y el saldo va a nómina.
+  const minutesBalance = dayBalanceMinutes({
+    status: status as AttendanceStatus,
+    expectedEntry: expectedAt,
+    expectedExit: expectedLeaveAt,
+    arrivedAt: arrivedAt ?? null,
+    leftAt: leftAt ?? null
+  });
 
   const data = {
     storeId: session.storeId,
     expectedAt,
+    expectedLeaveAt,
     arrivedAt: arrivedAt ?? null,
+    leftAt: leftAt ?? null,
     minutesLate,
-    status: finalStatus,
+    minutesBalance,
+    status: status as AttendanceStatus,
     note: note ?? null,
     source: "MANUAL"
   };
@@ -150,7 +166,7 @@ export async function PATCH(request: Request) {
     entity: "Attendance",
     entityId: record.id,
     storeId: session.storeId,
-    detail: `${target.name} · ${date}: ${previous?.status ?? "(sin registro)"} → ${finalStatus}${arrivedAt ? ` (${arrivedAt})` : ""}${note ? ` · ${note}` : ""}`
+    detail: `${target.name} · ${date}: ${previous?.status ?? "(sin registro)"} → ${status}${arrivedAt ? ` entra ${arrivedAt}` : ""}${leftAt ? ` sale ${leftAt}` : ""} · saldo ${minutesBalance >= 0 ? "+" : ""}${minutesBalance}m${note ? ` · ${note}` : ""}`
   });
 
   return NextResponse.json({
@@ -159,8 +175,11 @@ export async function PATCH(request: Request) {
       userId: record.userId,
       date,
       expectedAt: record.expectedAt,
+      expectedLeaveAt: record.expectedLeaveAt,
       arrivedAt: record.arrivedAt,
+      leftAt: record.leftAt,
       minutesLate: record.minutesLate,
+      minutesBalance: record.minutesBalance,
       status: record.status,
       entryText: record.entryText,
       source: record.source,
