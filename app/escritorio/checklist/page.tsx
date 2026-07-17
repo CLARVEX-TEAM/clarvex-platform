@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import NextImage from "next/image";
-import { Camera, CheckCircle2, Circle, Moon, Sun } from "lucide-react";
+import { Camera, CheckCircle2, Circle, Moon, SlidersHorizontal, Sun } from "lucide-react";
 import { Badge, Card, ProgressBar } from "@/components/ui";
 import { useToast } from "@/components/Toast";
 
@@ -96,7 +97,12 @@ export default function EscritorioChecklist() {
 
   return (
     <div className="space-y-4">
-      {dateLabel ? <p className="text-sm font-bold capitalize text-muted">{dateLabel}</p> : null}
+      <div className="flex items-center justify-between">
+        {dateLabel ? <p className="text-sm font-bold capitalize text-muted">{dateLabel}</p> : <span />}
+        <Link href="/checklist/config" className="flex items-center gap-1.5 rounded-full border border-line px-3 py-1.5 text-xs font-black text-muted transition hover:text-volt">
+          <SlidersHorizontal size={14} />Editar puntos
+        </Link>
+      </div>
       {loading ? (
         <Card className="text-sm font-semibold text-muted">Cargando checklist…</Card>
       ) : (
