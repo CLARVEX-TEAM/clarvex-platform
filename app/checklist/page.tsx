@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import NextImage from "next/image";
 import { Camera, CheckCircle2, Circle, FileText, LogOut, Moon, SlidersHorizontal, Sun, X } from "lucide-react";
 import { getSession, logout } from "@/lib/auth";
+import { compressImage } from "@/lib/image-compress";
 import { DocScanner } from "@/components/DocScanner";
 import type { User } from "@/lib/types";
 import { AppFrame, AppHeader, Badge, BottomNav, Card, ProgressBar } from "@/components/ui";
@@ -100,11 +101,12 @@ export default function ChecklistPage() {
     setBusyKey(item.key);
     setError("");
     try {
+      const image = await compressImage(file); // baja el peso: subida confiable en el celular de la tienda
       const form = new FormData();
       form.append("itemKey", item.key);
       form.append("completed", String(item.completed));
       if (item.note) form.append("note", item.note);
-      form.append("image", file);
+      form.append("image", image, "evidencia.jpg");
       const response = await fetch("/api/checklist", { method: "POST", body: form });
       const payload = await response.json() as { items: ChecklistItem[]; error?: string };
       if (!response.ok) throw new Error(payload.error ?? "No se pudo subir la evidencia.");

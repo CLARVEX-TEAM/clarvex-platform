@@ -8,6 +8,8 @@ import { prisma } from "@/lib/prisma";
 import { validateProfilePhoto } from "@/lib/profile-photo";
 import { signR2Url, uploadToR2 } from "@/lib/r2";
 import { storeKey } from "@/lib/r2-keys";
+import { checklistEvidenceCaption } from "@/lib/webhook-caption";
+import { isPhotoWebhookEnabled, sendPhotoWebhook } from "@/lib/webhooks";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -150,6 +152,37 @@ export async function POST(request: Request) {
     update: base,
     create: { storeId: session.storeId, date, itemKey, ...base }
   });
+
+  // Si se subió foto de evidencia, avísale al canal de Telegram (igual que las
+  // evidencias de pendientes/faltantes). Fire-and-forget: la evidencia YA quedó
+  // guardada; que n8n esté caído no rompe la subida.
+  if (evidenceUrl && isPhotoWebhookEnabled(session.storeId)) {
+    const capturedUrl = evidenceUrl;
+    const item = def.label.replace(/^Escanear\s+/i, "");
+    const capturedNote = note;
+    const createdAt = new Date();
+    void (async () => {
+      const store = await prisma.store.findUnique({ where: { id: session.storeId }, select: { name: true } });
+      const signed = await signR2Url(capturedUrl, 6 * 60 * 60);
+      await sendPhotoWebhook({
+        type: "checklist",
+        format: "photo",
+        storeId: session.storeId,
+        storeName: store?.name ?? "Tienda",
+        caption: checklistEvidenceCaption({
+          storeName: store?.name ?? "Tienda",
+          uploaderName: session.name,
+          employeeNumber: session.employeeNumber,
+          item,
+          note: capturedNote,
+          createdAt
+        }),
+        imageUrl: signed ?? capturedUrl,
+        fileName: `${item} ${date}.jpg`,
+        createdAt: createdAt.toISOString()
+      });
+    })().catch(() => undefined);
+  }
 
   return NextResponse.json(await loadChecklist(session.storeId, date));
 }

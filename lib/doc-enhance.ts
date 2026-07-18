@@ -15,7 +15,7 @@
  * borraría.
  */
 
-const MAX_DIMENSION = 2200;
+const MAX_DIMENSION = 2400;
 
 /** Media local con imagen integral (box blur O(n)). */
 function localMeanDivide(gray: Float32Array, width: number, height: number): void {
@@ -50,8 +50,12 @@ function localMeanDivide(gray: Float32Array, width: number, height: number): voi
       // El +8 evita divisiones inestables en zonas muy oscuras.
       const value = gray[y * width + x];
       let out = (value / (mean + 8)) * 255;
-      // Un poco de contraste para que el texto asiente sin comerse lo tenue.
-      out = (out - 128) * 1.15 + 128;
+      // Contraste suave: asienta el texto sin comerse lo tenue del voucher térmico.
+      out = (out - 128) * 1.08 + 128;
+      // Limpieza de altas luces: lo casi-blanco se fija a blanco puro. Quita el
+      // GRANO del papel (la causa de que se vieran sucios) sin tocar el texto,
+      // que en un corte/voucher siempre queda muy por debajo de 220.
+      if (out > 220) out = 255;
       gray[y * width + x] = out < 0 ? 0 : out > 255 ? 255 : out;
     }
   }
@@ -106,7 +110,7 @@ export async function enhanceDocument(file: File): Promise<Blob> {
     whiten(image);
     ctx.putImageData(image, 0, 0);
 
-    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.85));
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.92));
     return blob ?? file;
   } catch {
     return file; // ante cualquier problema, la foto original

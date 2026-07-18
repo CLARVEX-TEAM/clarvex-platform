@@ -6,18 +6,45 @@ import { detectDocumentCorners } from "@/lib/doc-detect";
 import { whiten } from "@/lib/doc-enhance";
 import { warpDocument, type Point } from "@/lib/doc-warp";
 
-const WORK_MAX = 1400; // resolución de trabajo (arrastre + procesado)
+const WORK_MAX = 1400;   // resolución de la PREVIEW (arrastre de esquinas fluido)
+const PROCESS_MAX = 2400; // resolución de SALIDA (para que corte/vouchers sean legibles)
 
 type Work = { imageData: ImageData; url: string; w: number; h: number };
 
-function imageDataToBlob(image: ImageData): Promise<Blob | null> {
+function imageDataToBlob(image: ImageData, quality = 0.92): Promise<Blob | null> {
   const canvas = document.createElement("canvas");
   canvas.width = image.width;
   canvas.height = image.height;
   const ctx = canvas.getContext("2d");
   if (!ctx) return Promise.resolve(null);
   ctx.putImageData(image, 0, 0);
-  return new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.85));
+  return new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", quality));
+}
+
+/**
+ * Decodifica la foto ORIGINAL a máxima resolución (acotada a `max`). El recorte y
+ * el blanqueado se hacen sobre ESTA imagen, no sobre la preview de 1400 px, para
+ * no perder detalle del documento.
+ */
+function loadHiRes(file: File, max: number): Promise<{ imageData: ImageData; w: number; h: number }> {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      const scale = Math.min(1, max / Math.max(img.width, img.height));
+      const w = Math.max(1, Math.round(img.width * scale));
+      const h = Math.max(1, Math.round(img.height * scale));
+      const canvas = document.createElement("canvas");
+      canvas.width = w; canvas.height = h;
+      const ctx = canvas.getContext("2d", { willReadFrequently: true });
+      URL.revokeObjectURL(url);
+      if (!ctx) { reject(new Error("sin canvas")); return; }
+      ctx.drawImage(img, 0, 0, w, h);
+      resolve({ imageData: ctx.getImageData(0, 0, w, h), w, h });
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("no se pudo leer")); };
+    img.src = url;
+  });
 }
 
 /**
@@ -30,6 +57,8 @@ export function DocScanner({ file, onDone, onCancel }: { file: File; onDone: (bl
   const [corners, setCorners] = useState<Point[]>([]); // TL, TR, BR, BL en coords de trabajo
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  // B/N (documento realzado, ideal para tickets) vs Color (la foto tal cual, en alta).
+  const [color, setColor] = useState(false);
   const boxRef = useRef<HTMLDivElement>(null);
   const dragging = useRef<number | null>(null);
 
@@ -85,9 +114,15 @@ export function DocScanner({ file, onDone, onCancel }: { file: File; onDone: (bl
     setBusy(true);
     setError("");
     try {
-      const image = cropped ? warpDocument(work.imageData, corners) : work.imageData;
-      whiten(image);
-      const blob = await imageDataToBlob(image);
+      // Se procesa sobre la foto ORIGINAL en alta resolución. Las esquinas se
+      // ajustaron en la preview (1400 px) → se escalan al tamaño real.
+      const hi = await loadHiRes(file, PROCESS_MAX);
+      const sx = hi.w / work.w;
+      const sy = hi.h / work.h;
+      const hiCorners = corners.map((c) => ({ x: c.x * sx, y: c.y * sy }));
+      const image = cropped ? warpDocument(hi.imageData, hiCorners, PROCESS_MAX) : hi.imageData;
+      if (!color) whiten(image); // en Color se deja la foto tal cual, solo enderezada
+      const blob = await imageDataToBlob(image, 0.92);
       if (!blob) throw new Error("No se pudo generar la imagen.");
       onDone(blob);
     } catch {
@@ -142,6 +177,17 @@ export function DocScanner({ file, onDone, onCancel }: { file: File; onDone: (bl
       </div>
 
       {error ? <p className="px-4 pb-1 text-center text-xs font-semibold text-rose-300">{error}</p> : null}
+
+      <div className="flex justify-center px-4 pt-1">
+        <div className="inline-flex rounded-full border border-white/20 p-0.5 text-xs font-black">
+          <button type="button" onClick={() => setColor(false)} className={`rounded-full px-4 py-1.5 transition ${!color ? "bg-white text-black" : "text-white/70"}`}>
+            Blanco y negro
+          </button>
+          <button type="button" onClick={() => setColor(true)} className={`rounded-full px-4 py-1.5 transition ${color ? "bg-white text-black" : "text-white/70"}`}>
+            Color
+          </button>
+        </div>
+      </div>
 
       <div className="flex items-center gap-2 px-4 py-4">
         <button type="button" onClick={() => void finish(false)} disabled={busy || !work} className="flex flex-1 items-center justify-center gap-1.5 rounded-2xl border border-white/25 py-3 text-sm font-black text-white disabled:opacity-50">

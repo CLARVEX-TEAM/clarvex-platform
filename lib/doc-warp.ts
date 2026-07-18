@@ -72,9 +72,13 @@ export function outputSize(corners: Point[], maxSide = 1600): { width: number; h
 /**
  * Endereza el documento a un rectángulo. `corners` en orden TL, TR, BR, BL, en
  * coordenadas de `source`. Devuelve un ImageData del documento recto.
+ *
+ * `maxSide` acota el lado mayor de salida. Se sube a 2400 (antes 1600) para que
+ * un corte de caja o un voucher queden LEGIBLES; el techo evita reventar memoria
+ * con fotos de 12 MP.
  */
-export function warpDocument(source: ImageData, corners: Point[]): ImageData {
-  const { width, height } = outputSize(corners);
+export function warpDocument(source: ImageData, corners: Point[], maxSide = 2400): ImageData {
+  const { width, height } = outputSize(corners, maxSide);
   const dstCorners: Point[] = [
     { x: 0, y: 0 }, { x: width, y: 0 }, { x: width, y: height }, { x: 0, y: height }
   ];

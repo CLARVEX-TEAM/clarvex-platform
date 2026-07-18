@@ -86,6 +86,27 @@ export function checklistScanCaption(input: ScanCaptionInput): string {
   ].join("\n"));
 }
 
+export type ChecklistEvidenceCaptionInput = {
+  storeName: string;
+  uploaderName: string;
+  employeeNumber: string;
+  /** Punto del checklist: "Abrir caja con el fondo correcto", "Cuadrar y cerrar caja"… */
+  item: string;
+  note: string | null;
+  createdAt: Date;
+};
+
+/** Foto de evidencia de un punto del checklist (apertura/cierre) → Telegram. */
+export function checklistEvidenceCaption(input: ChecklistEvidenceCaptionInput): string {
+  const lines = [
+    `✅ Checklist · ${input.item} · ${input.storeName}`,
+    `👤 ${input.uploaderName} (${input.employeeNumber})`
+  ];
+  if (input.note) lines.push(`📝 ${input.note}`);
+  lines.push(`🕐 ${when(input.createdAt)}`);
+  return trim(lines.join("\n"));
+}
+
 export function inventoryCaption(input: InventoryCaptionInput): string {
   const lines = [
     `📦 Faltante · ${input.storeName}`,

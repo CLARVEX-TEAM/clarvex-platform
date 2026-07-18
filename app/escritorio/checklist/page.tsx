@@ -6,6 +6,7 @@ import NextImage from "next/image";
 import { Camera, CheckCircle2, Circle, Moon, SlidersHorizontal, Sun } from "lucide-react";
 import { Badge, Card, ProgressBar } from "@/components/ui";
 import { useToast } from "@/components/Toast";
+import { compressImage } from "@/lib/image-compress";
 
 type Section = "APERTURA" | "CIERRE";
 type ChecklistItem = {
@@ -75,11 +76,12 @@ export default function EscritorioChecklist() {
   async function attachPhoto(item: ChecklistItem, file: File) {
     setBusyKey(item.key);
     try {
+      const image = await compressImage(file);
       const form = new FormData();
       form.append("itemKey", item.key);
       form.append("completed", String(item.completed));
       if (item.note) form.append("note", item.note);
-      form.append("image", file);
+      form.append("image", image, "evidencia.jpg");
       const response = await fetch("/api/checklist", { method: "POST", body: form });
       const payload = await response.json() as { items: ChecklistItem[]; error?: string };
       if (!response.ok) throw new Error(payload.error ?? "No se pudo subir la evidencia.");
