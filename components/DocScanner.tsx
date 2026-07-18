@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Check, ImageDown, Loader2, X } from "lucide-react";
+import { Check, ImageDown, Loader2, RotateCcw, X } from "lucide-react";
 import { detectDocumentCorners } from "@/lib/doc-detect";
 import { whiten } from "@/lib/doc-enhance";
 import { warpDocument, type Point } from "@/lib/doc-warp";
@@ -48,6 +48,17 @@ function loadHiRes(file: File, max: number): Promise<{ imageData: ImageData; w: 
 }
 
 /**
+ * Esquinas iniciales: las detectadas automáticamente o, si no hay una región
+ * clara, un recuadro con margen del 8% para ajustar a mano.
+ */
+function autoCorners(imageData: ImageData, w: number, h: number): Point[] {
+  const detected = detectDocumentCorners(imageData);
+  if (detected) return detected;
+  const mx = w * 0.08, my = h * 0.08;
+  return [{ x: mx, y: my }, { x: w - mx, y: my }, { x: w - mx, y: h - my }, { x: mx, y: h - my }];
+}
+
+/**
  * Recorte tipo CamScanner: se muestra la foto con 4 esquinas arrastrables; al
  * confirmar, se endereza el documento y se blanquea el fondo. También deja usar la
  * foto completa (solo blanqueada) por si un documento no conviene recortarlo.
@@ -80,17 +91,7 @@ export function DocScanner({ file, onDone, onCancel }: { file: File; onDone: (bl
       URL.revokeObjectURL(url);
       const imageData = ctx.getImageData(0, 0, w, h);
       setWork({ imageData, url: dataUrl, w, h });
-      // Detección automática de las esquinas del documento. Si no hay una región
-      // clara clara, se cae a un recuadro con margen del 8% para ajustar a mano.
-      const detected = detectDocumentCorners(imageData);
-      if (detected) {
-        setCorners(detected);
-      } else {
-        const mx = w * 0.08, my = h * 0.08;
-        setCorners([
-          { x: mx, y: my }, { x: w - mx, y: my }, { x: w - mx, y: h - my }, { x: mx, y: h - my }
-        ]);
-      }
+      setCorners(autoCorners(imageData, w, h));
     };
     img.onerror = () => { setError("No se pudo leer la imagen."); URL.revokeObjectURL(url); };
     img.src = url;
@@ -137,11 +138,19 @@ export function DocScanner({ file, onDone, onCancel }: { file: File; onDone: (bl
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-black/90 backdrop-blur-sm">
-      <div className="flex items-center justify-between px-4 py-3 text-white">
+      <div className="flex items-center justify-between px-4 pb-1 pt-3 text-white">
         <button type="button" onClick={onCancel} className="flex items-center gap-1.5 text-sm font-bold"><X size={18} />Cancelar</button>
         <p className="text-sm font-black">Revisa el recorte</p>
-        <span className="w-20" />
+        <button
+          type="button"
+          onClick={() => { if (work) setCorners(autoCorners(work.imageData, work.w, work.h)); }}
+          disabled={!work}
+          className="flex items-center gap-1 text-xs font-bold text-white/80 disabled:opacity-40"
+        >
+          <RotateCcw size={14} />Reajustar
+        </button>
       </div>
+      <p className="px-4 pb-2 text-center text-xs text-white/60">Arrastra las esquinas a las orillas del documento</p>
 
       <div className="flex flex-1 items-center justify-center overflow-hidden px-3">
         {work ? (
@@ -164,10 +173,10 @@ export function DocScanner({ file, onDone, onCancel }: { file: File; onDone: (bl
                 type="button"
                 aria-label={`Esquina ${i + 1}`}
                 onPointerDown={(event) => { event.preventDefault(); dragging.current = i; event.currentTarget.setPointerCapture(event.pointerId); }}
-                className="absolute grid size-8 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border-2 border-volt bg-white/90 shadow-lg"
+                className="absolute grid size-9 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border-[3px] border-white bg-volt/40 shadow-lg backdrop-blur-[1px] active:scale-110"
                 style={{ left: `${(corner.x / work.w) * 100}%`, top: `${(corner.y / work.h) * 100}%` }}
               >
-                <span className="size-2 rounded-full bg-volt" />
+                <span className="size-2.5 rounded-full bg-white" />
               </button>
             ))}
           </div>

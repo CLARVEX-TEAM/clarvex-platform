@@ -3,6 +3,7 @@ import { z } from "zod";
 import { canUseChecklist } from "@/lib/access-control";
 import { isApiError, parseJson, requireSession } from "@/lib/api";
 import { getStoreChecklistItem } from "@/lib/checklist-store";
+import { scanDocumentLabel, scanPdfFileName } from "@/lib/checklist-scan";
 import { resolveMonterreyDate } from "@/lib/cron-time";
 import { prisma } from "@/lib/prisma";
 import { deleteFromR2, signR2Url, uploadToR2 } from "@/lib/r2";
@@ -66,7 +67,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "No se pudo armar el PDF (¿alguna imagen dañada?)." }, { status: 500 });
   }
 
-  const document = def.label.replace(/^Escanear\s+/i, ""); // "Escanear corte de caja" → "Corte de caja"
   const key = storeKey(session.storeId, "checklist", `${itemKey}-${date}-${Date.now()}.pdf`);
   let pdfUrl: string;
   try {
@@ -81,21 +81,22 @@ export async function POST(request: Request) {
   if (isPhotoWebhookEnabled(session.storeId)) {
     void (async () => {
       const store = await prisma.store.findUnique({ where: { id: session.storeId }, select: { name: true } });
+      const storeName = store?.name ?? "Tienda";
       const signed = await signR2Url(pdfUrl, 6 * 60 * 60);
       await sendPhotoWebhook({
         type: "checklist",
         format: "document",
         storeId: session.storeId,
-        storeName: store?.name ?? "Tienda",
+        storeName,
         caption: checklistScanCaption({
-          storeName: store?.name ?? "Tienda",
+          storeName,
           uploaderName: session.name,
           employeeNumber: session.employeeNumber,
-          document,
+          document: scanDocumentLabel(def.label),
           createdAt
         }),
         imageUrl: signed ?? pdfUrl,
-        fileName: `${document} ${date}.pdf`,
+        fileName: scanPdfFileName(def.label, storeName, date),
         createdAt: createdAt.toISOString()
       });
     })().catch(() => undefined);

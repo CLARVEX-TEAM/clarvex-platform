@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { canUseChecklist } from "@/lib/access-control";
 import { enforceUploadRateLimit, isApiError, requireSession } from "@/lib/api";
-import { getStoreChecklistItem } from "@/lib/checklist-store";
+import { getStoreChecklistItem, loadStoreChecklistItems } from "@/lib/checklist-store";
+import { scanRole } from "@/lib/checklist-scan";
 import { resolveMonterreyDate } from "@/lib/cron-time";
 import { prisma } from "@/lib/prisma";
 import { validateProfilePhoto } from "@/lib/profile-photo";
@@ -66,6 +67,27 @@ export async function POST(request: Request) {
   } catch (error) {
     await deleteFromR2(url).catch(() => undefined);
     throw error;
+  }
+
+  // Si es la tarea de VOUCHERS, la misma página se copia también a la tarea de
+  // CIERRE (corte de caja), para no escanear los vouchers dos veces. Es una copia
+  // INDEPENDIENTE (su propio objeto en R2 y su propio registro): borrarla en el
+  // cierre no toca el PDF de vouchers, y viceversa. Best-effort: si el copiado
+  // falla, el voucher YA quedó guardado.
+  if (scanRole(def.label) === "vouchers") {
+    const items = await loadStoreChecklistItems(session.storeId);
+    const cierre = items.find((item) => item.kind === "scan" && scanRole(item.label) === "cierre");
+    if (cierre) {
+      try {
+        const copyKey = storeKey(session.storeId, "checklist", `${cierre.key}-${Date.now()}-copia.${validation.extension}`);
+        const copyUrl = await uploadToR2(copyKey, bytes, imageFile.type);
+        await prisma.checklistScan.create({
+          data: { storeId: session.storeId, date, itemKey: cierre.key, url: copyUrl, fileName: imageFile.name.slice(0, 255), uploadedById: session.userId }
+        });
+      } catch {
+        // El voucher ya se guardó; que falle la copia al cierre no rompe la subida.
+      }
+    }
   }
 
   return NextResponse.json({

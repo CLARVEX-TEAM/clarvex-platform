@@ -77,6 +77,18 @@ export default function ChecklistPage() {
     }
   }
 
+  /** Refresco silencioso (sin spinner): para reflejar las páginas de vouchers que
+   *  se copian a la tarea de cierre del lado del servidor. */
+  async function silentRefresh() {
+    try {
+      const response = await fetch("/api/checklist", { cache: "no-store" });
+      const payload = await response.json() as { items: ChecklistItem[] };
+      if (response.ok) setItems(payload.items);
+    } catch {
+      // silencioso a propósito
+    }
+  }
+
   async function toggle(item: ChecklistItem) {
     setBusyKey(item.key);
     const previous = items;
@@ -132,6 +144,9 @@ export default function ChecklistPage() {
       if (!response.ok || !payload.scan) throw new Error(payload.error ?? "No se pudo subir la foto.");
       const added = payload.scan;
       setItems((current) => current.map((i) => i.key === item.key ? { ...i, scans: [...i.scans, added] } : i));
+      // Los vouchers se copian a la tarea de cierre en el servidor → refrescar
+      // para que esas páginas aparezcan también allá.
+      if (item.label.toLowerCase().includes("voucher")) void silentRefresh();
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "No se pudo subir la foto.");
     } finally {
