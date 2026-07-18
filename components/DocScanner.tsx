@@ -63,7 +63,7 @@ function autoCorners(imageData: ImageData, w: number, h: number): Point[] {
  * confirmar, se endereza el documento y se blanquea el fondo. También deja usar la
  * foto completa (solo blanqueada) por si un documento no conviene recortarlo.
  */
-export function DocScanner({ file, onDone, onCancel }: { file: File; onDone: (blob: Blob) => void; onCancel: () => void }) {
+export function DocScanner({ file, onDone, onCancel, lite = false }: { file: File; onDone: (blob: Blob) => void; onCancel: () => void; lite?: boolean }) {
   const [work, setWork] = useState<Work | null>(null);
   const [corners, setCorners] = useState<Point[]>([]); // TL, TR, BR, BL en coords de trabajo
   const [busy, setBusy] = useState(false);
@@ -114,16 +114,24 @@ export function DocScanner({ file, onDone, onCancel }: { file: File; onDone: (bl
     if (!work) return;
     setBusy(true);
     setError("");
+    // Deja pintar el spinner "Procesando…" antes del trabajo pesado (en gama baja
+    // el hilo se congela unos segundos; así al menos el usuario ve que avanza).
+    await new Promise((resolve) => setTimeout(resolve, 20));
     try {
-      // Se procesa sobre la foto ORIGINAL en alta resolución. Las esquinas se
-      // ajustaron en la preview (1400 px) → se escalan al tamaño real.
-      const hi = await loadHiRes(file, PROCESS_MAX);
+      // En kiosko (celular de la tienda, gama baja) se procesa más ligero: menos
+      // resolución = recorte/blanqueado más rápidos y subida más liviana, sin dejar
+      // de ser legible para un corte o voucher.
+      const max = lite ? 2000 : PROCESS_MAX;
+      const quality = lite ? 0.88 : 0.92;
+      // Se procesa sobre la foto ORIGINAL. Las esquinas se ajustaron en la preview
+      // (1400 px) → se escalan al tamaño real.
+      const hi = await loadHiRes(file, max);
       const sx = hi.w / work.w;
       const sy = hi.h / work.h;
       const hiCorners = corners.map((c) => ({ x: c.x * sx, y: c.y * sy }));
-      const image = cropped ? warpDocument(hi.imageData, hiCorners, PROCESS_MAX) : hi.imageData;
+      const image = cropped ? warpDocument(hi.imageData, hiCorners, max) : hi.imageData;
       if (!color) whiten(image); // en Color se deja la foto tal cual, solo enderezada
-      const blob = await imageDataToBlob(image, 0.92);
+      const blob = await imageDataToBlob(image, quality);
       if (!blob) throw new Error("No se pudo generar la imagen.");
       onDone(blob);
     } catch {

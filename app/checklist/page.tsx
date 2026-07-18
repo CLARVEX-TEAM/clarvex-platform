@@ -113,7 +113,11 @@ export default function ChecklistPage() {
     setBusyKey(item.key);
     setError("");
     try {
-      const image = await compressImage(file); // baja el peso: subida confiable en el celular de la tienda
+      // En kiosko (celular de la tienda, gama baja) la evidencia se comprime más:
+      // sube más rápido y no necesita alta resolución (es prueba de la tarea).
+      const image = session?.checklistOnly
+        ? await compressImage(file, 1500, 0.78)
+        : await compressImage(file);
       const form = new FormData();
       form.append("itemKey", item.key);
       form.append("completed", String(item.completed));
@@ -252,6 +256,7 @@ export default function ChecklistPage() {
       {scanning ? (
         <DocScanner
           file={scanning.file}
+          lite={kiosk}
           onDone={(blob) => { const { item } = scanning; setScanning(null); void addScan(item, blob); }}
           onCancel={() => setScanning(null)}
         />
