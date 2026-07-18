@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import NextImage from "next/image";
-import { Camera, CheckCircle2, Circle, FileText, LogOut, Moon, SlidersHorizontal, Sun, X } from "lucide-react";
+import { Camera, CheckCircle2, Circle, FileText, Image as ImageIcon, LogOut, Moon, SlidersHorizontal, Sun, X } from "lucide-react";
 import { getSession, logout } from "@/lib/auth";
 import { compressImage } from "@/lib/image-compress";
 import { DocScanner } from "@/components/DocScanner";
@@ -262,7 +262,8 @@ export default function ChecklistPage() {
 }
 
 function ChecklistRow({ item, busy, onToggle, onPhoto }: { item: ChecklistItem; busy: boolean; onToggle: () => void; onPhoto: (file: File) => void }) {
-  const fileRef = useRef<HTMLInputElement>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
+  const galleryRef = useRef<HTMLInputElement>(null);
   return (
     <div className="flex items-center gap-3 py-2.5">
       <button type="button" onClick={onToggle} disabled={busy} aria-pressed={item.completed} className="shrink-0 transition active:scale-90 disabled:opacity-50">
@@ -277,10 +278,14 @@ function ChecklistRow({ item, busy, onToggle, onPhoto }: { item: ChecklistItem; 
           <NextImage src={item.evidenceUrl} alt="Evidencia" width={40} height={40} className="size-10 rounded-lg object-cover" unoptimized />
         </a>
       ) : null}
-      <button type="button" onClick={() => fileRef.current?.click()} disabled={busy} aria-label="Adjuntar foto" className="grid size-9 shrink-0 place-items-center rounded-xl border border-line text-muted transition hover:border-volt hover:text-volt active:scale-90 disabled:opacity-50">
+      <button type="button" onClick={() => cameraRef.current?.click()} disabled={busy} aria-label="Tomar foto" className="grid size-9 shrink-0 place-items-center rounded-xl border border-line text-muted transition hover:border-volt hover:text-volt active:scale-90 disabled:opacity-50">
         <Camera size={16} />
       </button>
-      <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(event) => { const file = event.target.files?.[0]; if (file) onPhoto(file); event.target.value = ""; }} />
+      <button type="button" onClick={() => galleryRef.current?.click()} disabled={busy} aria-label="Elegir de galería" className="grid size-9 shrink-0 place-items-center rounded-xl border border-line text-muted transition hover:border-volt hover:text-volt active:scale-90 disabled:opacity-50">
+        <ImageIcon size={16} />
+      </button>
+      <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(event) => { const file = event.target.files?.[0]; if (file) onPhoto(file); event.target.value = ""; }} />
+      <input ref={galleryRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(event) => { const file = event.target.files?.[0]; if (file) onPhoto(file); event.target.value = ""; }} />
     </div>
   );
 }
