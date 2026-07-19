@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { getSession } from "@/lib/auth";
-import { prefersDesktop } from "@/lib/view-mode";
+import { noteViewRedirect, prefersDesktop } from "@/lib/view-mode";
 
 /**
  * Si gerencia abre la app móvil en una pantalla grande (computadora), la lleva a
@@ -15,7 +15,7 @@ export function DesktopAutoRedirect() {
   useEffect(() => {
     if (!prefersDesktop()) return;
     getSession().then((session) => {
-      if (session && session.role !== "ASESOR") router.replace("/escritorio");
+      if (session && session.role !== "ASESOR") { noteViewRedirect(); router.replace("/escritorio"); }
     });
   }, [router]);
   return null;

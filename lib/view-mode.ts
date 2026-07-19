@@ -14,6 +14,43 @@
 export const DESKTOP_MIN_WIDTH = 1024;
 const PREF_KEY = "clarvex-view";
 
+// ─── Cortacircuitos anti-bucle ──────────────────────────────────────────────
+// Cada redirección de versión (móvil↔escritorio) avisa aquí. Si detecta muchos
+// rebotes en pocos segundos, activa "force-mobile": prefersDesktop() pasa a false
+// en TODOS lados y la app aterriza estable en la versión móvil (que sirve en
+// cualquier pantalla), rompiendo el loop pase lo que pase con la detección. Se
+// limpia solo al cerrar la pestaña.
+const BOUNCE_KEY = "clarvex-view-bounces";
+const FORCE_MOBILE_KEY = "clarvex-force-mobile";
+const BOUNCE_WINDOW_MS = 6000;
+const BOUNCE_LIMIT = 4;
+
+export function noteViewRedirect(): void {
+  if (typeof window === "undefined") return;
+  try {
+    const now = Date.now();
+    const raw = window.sessionStorage.getItem(BOUNCE_KEY);
+    const rec = raw ? (JSON.parse(raw) as { n: number; t: number }) : { n: 0, t: now };
+    const within = now - rec.t < BOUNCE_WINDOW_MS;
+    const n = within ? rec.n + 1 : 1;
+    const t = within ? rec.t : now;
+    window.sessionStorage.setItem(BOUNCE_KEY, JSON.stringify({ n, t }));
+    if (n > BOUNCE_LIMIT) window.sessionStorage.setItem(FORCE_MOBILE_KEY, "1");
+  } catch {
+    // sessionStorage bloqueado: sin cortacircuitos, pero la detección por puntero
+    // ya evita el loop en la práctica.
+  }
+}
+
+function forcedMobile(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    return window.sessionStorage.getItem(FORCE_MOBILE_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
 export type ViewPreference = "desktop" | "mobile" | "auto";
 
 export function getViewPreference(): ViewPreference {
@@ -31,6 +68,7 @@ export function setViewPreference(mode: ViewPreference) {
 /** ¿Esta pantalla debe usar la versión de escritorio? (para gerencia) */
 export function prefersDesktop(): boolean {
   if (typeof window === "undefined") return false;
+  if (forcedMobile()) return false; // cortacircuitos: un loop detectado fuerza móvil
   const pref = getViewPreference();
   if (pref === "mobile") return false;
 

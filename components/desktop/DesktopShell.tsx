@@ -40,7 +40,7 @@ import { DesktopChromeProvider, FreshnessPill } from "@/components/desktop/Deskt
 import { DesktopNotifications } from "@/components/desktop/DesktopNotifications";
 import { DesktopLock } from "@/components/desktop/DesktopLock";
 import { consumeDesktopFreshLogin } from "@/lib/desktop-profiles";
-import { prefersDesktop, setViewPreference } from "@/lib/view-mode";
+import { noteViewRedirect, prefersDesktop, setViewPreference } from "@/lib/view-mode";
 
 // Ancho mínimo para considerar "escritorio". Por debajo, gerencia usa la app móvil.
 export const DESKTOP_MIN_WIDTH = 1024;
@@ -142,6 +142,7 @@ export function DesktopShell({ children }: { children: React.ReactNode }) {
     // window.innerWidth < 1024, un POS con zoom rebotaría /escritorio ⇄ /manager
     // en bucle: el guard móvil lo trae a escritorio y este lo devolvía a móvil.
     if (typeof window !== "undefined" && !prefersDesktop()) {
+      noteViewRedirect();
       router.replace("/manager");
       return;
     }

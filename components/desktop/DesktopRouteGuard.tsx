@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { getSession } from "@/lib/auth";
-import { prefersDesktop } from "@/lib/view-mode";
+import { noteViewRedirect, prefersDesktop } from "@/lib/view-mode";
 
 // Rutas de gerencia que tienen equivalente en el escritorio (/escritorio/<seg>).
 const MIRRORED = new Set([
@@ -36,7 +36,7 @@ export function DesktopRouteGuard() {
     if (!target) return;
 
     getSession()
-      .then((session) => { if (session && session.role !== "ASESOR") router.replace(target as string); })
+      .then((session) => { if (session && session.role !== "ASESOR") { noteViewRedirect(); router.replace(target as string); } })
       .catch(() => {});
   }, [pathname, router]);
 
