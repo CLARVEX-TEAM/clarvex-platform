@@ -31,7 +31,7 @@ export function EmptyState({
       >
         <Icon size={26} />
       </motion.span>
-      <p className="mt-3 text-base font-black text-ink">{title}</p>
+      <p className="mt-3 text-base font-semibold text-ink">{title}</p>
       {description ? <p className="mt-1 max-w-[16rem] text-sm text-muted">{description}</p> : null}
       {action ? <div className="mt-4">{action}</div> : null}
     </motion.div>

@@ -278,7 +278,7 @@ export default function AdminPage() {
         ) : null}
 
         <Card className="mb-4 p-3.5">
-          <p className="mb-3 flex items-center gap-2 font-black text-ink"><Plus size={16} />Nueva tienda</p>
+          <p className="mb-3 flex items-center gap-2 font-semibold text-ink"><Plus size={16} />Nueva tienda</p>
           <form onSubmit={(event) => void createStore(event)} className="grid gap-2">
             <label className="grid gap-1">
               <span className="text-xs font-bold text-muted">Nombre de la tienda</span>
@@ -306,8 +306,8 @@ export default function AdminPage() {
             <Card className="mb-3 p-3.5">
               <p className="mb-1 flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.13em] text-muted"><TrendingUp size={13} className="text-volt" />Todas las tiendas · semana en curso</p>
               <div className="flex items-baseline gap-3">
-                <p className="text-2xl font-black text-ink">{money(stores.reduce((total, store) => total + store.weekSales, 0))}</p>
-                {(() => { const goal = stores.reduce((total, store) => total + store.weekGoal, 0); const sales = stores.reduce((total, store) => total + store.weekSales, 0); return goal > 0 ? <span className={`text-sm font-black ${sales >= goal ? "text-success" : "text-muted"}`}>{Math.round((sales / goal) * 100)}% de meta</span> : null; })()}
+                <p className="text-2xl font-semibold text-ink">{money(stores.reduce((total, store) => total + store.weekSales, 0))}</p>
+                {(() => { const goal = stores.reduce((total, store) => total + store.weekGoal, 0); const sales = stores.reduce((total, store) => total + store.weekSales, 0); return goal > 0 ? <span className={`text-sm font-semibold ${sales >= goal ? "text-success" : "text-muted"}`}>{Math.round((sales / goal) * 100)}% de meta</span> : null; })()}
               </div>
             </Card>
           ) : null}
@@ -317,7 +317,7 @@ export default function AdminPage() {
                 <div className="flex items-center gap-3">
                   <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-panel text-muted"><Building2 size={18} /></span>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate font-black text-ink">{store.name}</p>
+                    <p className="truncate font-semibold text-ink">{store.name}</p>
                     <p className="text-xs font-semibold text-muted">
                       {store.activeUsers} activos de {store.totalUsers} · {store.dataSources} fuentes de datos
                       {(() => { const s = billingStatus(store); return (
@@ -350,7 +350,7 @@ export default function AdminPage() {
                       ) : store.members.map((member) => (
                         <div key={member.id} className="flex items-center justify-between gap-2">
                           <div className="min-w-0">
-                            <p className={`truncate text-sm font-black ${member.active ? "text-ink" : "text-muted line-through"}`}>{member.name}</p>
+                            <p className={`truncate text-sm font-semibold ${member.active ? "text-ink" : "text-muted line-through"}`}>{member.name}</p>
                             <p className="font-mono text-[10px] font-semibold text-muted">#{member.employeeNumber}{member.active ? "" : " · desactivado"}</p>
                           </div>
                           <div className="flex shrink-0 items-center gap-1.5">
@@ -454,7 +454,7 @@ export default function AdminPage() {
 
         <Card className="mt-4 p-3.5">
           <button type="button" onClick={() => void toggleAudit()} className="flex w-full items-center justify-between">
-            <span className="flex items-center gap-2 font-black text-ink"><ScrollText size={16} className="text-volt" />Auditoría</span>
+            <span className="flex items-center gap-2 font-semibold text-ink"><ScrollText size={16} className="text-volt" />Auditoría</span>
             <ChevronDown size={15} className={`text-muted transition-transform ${showAudit ? "rotate-180" : ""}`} />
           </button>
           {showAudit ? (
@@ -466,7 +466,7 @@ export default function AdminPage() {
               ) : auditEntries.map((entry) => (
                 <div key={entry.id} className="py-2.5">
                   <div className="flex items-center justify-between gap-2">
-                    <p className="min-w-0 truncate text-sm font-black text-ink">{entry.actorName}{entry.storeName ? ` · ${entry.storeName}` : ""}</p>
+                    <p className="min-w-0 truncate text-sm font-semibold text-ink">{entry.actorName}{entry.storeName ? ` · ${entry.storeName}` : ""}</p>
                     <span className="shrink-0 rounded-full bg-panel px-2 py-0.5 text-[10px] font-bold text-muted ring-1 ring-line">{AUDIT_ACTION_LABELS[entry.action] ?? entry.action}</span>
                   </div>
                   {entry.detail ? <p className="mt-0.5 text-xs font-semibold text-muted">{entry.detail}</p> : null}

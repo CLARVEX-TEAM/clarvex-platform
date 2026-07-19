@@ -37,7 +37,7 @@ export default function BitacoraPage() {
         <AppFrame>
           {loadError ? (
             <Card className="text-center">
-              <p className="font-black text-ink">No se pudo cargar la bitácora</p>
+              <p className="font-semibold text-ink">No se pudo cargar la bitácora</p>
               <p className="mt-1 text-sm text-muted">Revisa tu conexión e inténtalo de nuevo.</p>
               <Button className="mt-4" onClick={() => void load()}>Reintentar</Button>
             </Card>
@@ -92,7 +92,7 @@ export default function BitacoraPage() {
           <div className="flex items-center justify-between gap-4">
             <div>
               <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-ink/45">Operacion</p>
-              <h2 className="mt-1 text-2xl font-black tracking-tight text-ink">{entries.length} registros</h2>
+              <h2 className="mt-1 text-2xl font-semibold tracking-tight text-ink">{entries.length} registros</h2>
               <p className="mt-1 text-sm text-ink/58">
                 Ultimo: {latest ? new Date(latest.date).toLocaleDateString("es-MX") : "sin registros"}
               </p>
@@ -111,7 +111,7 @@ export default function BitacoraPage() {
         <Card className="mb-3">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <h2 className="text-lg font-black">Nuevo registro</h2>
+              <h2 className="text-lg font-semibold">Nuevo registro</h2>
               <p className="mt-1 text-sm text-ink/50">Captura eventos relevantes de apertura, cliente, inventario o cierre.</p>
             </div>
             <PenLine className="text-volt" size={20} />
@@ -128,7 +128,7 @@ export default function BitacoraPage() {
                 <button type="button" onClick={() => setEvidence(null)} className="absolute right-2 top-2 grid size-9 place-items-center rounded-full bg-white/90" aria-label="Quitar evidencia"><X size={16} /></button>
               </div>
             ) : null}
-            <label className="flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-2xl border border-line bg-panel text-sm font-black text-ink">
+            <label className="flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-2xl border border-line bg-panel text-sm font-semibold text-ink">
               <ImagePlus size={17} /> {evidence ? "Cambiar evidencia" : "Agregar evidencia"}
               <input type="file" accept="image/jpeg,image/png,image/webp" aria-label="Subir archivo de evidencia" className="sr-only" onChange={(event) => setEvidence(event.target.files?.[0] ?? null)} />
             </label>

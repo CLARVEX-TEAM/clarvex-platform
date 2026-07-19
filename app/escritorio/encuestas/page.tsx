@@ -112,7 +112,7 @@ export default function EscritorioEncuestas() {
     <div className="grid grid-cols-5 gap-5">
       {/* Crear encuesta */}
       <Card className="col-span-2 h-fit p-5">
-        <div className="mb-3 flex items-center gap-2"><ClipboardCheck className="text-volt" size={18} /><h2 className="text-lg font-black text-ink">Nueva encuesta</h2></div>
+        <div className="mb-3 flex items-center gap-2"><ClipboardCheck className="text-volt" size={18} /><h2 className="text-lg font-semibold text-ink">Nueva encuesta</h2></div>
         <div className="grid gap-3">
           <input value={title} onChange={(e) => setTitle(e.target.value)} maxLength={140} placeholder="Título (ej. Clima laboral junio)" className={inputClass} />
           <textarea value={description} onChange={(e) => setDescription(e.target.value)} maxLength={500} rows={2} placeholder="Descripción (opcional)…" className="rounded-2xl border border-line bg-panel px-3 py-2.5 text-sm font-semibold text-ink outline-none focus:border-volt" />
@@ -133,7 +133,7 @@ export default function EscritorioEncuestas() {
                 </div>
                 <div className="mt-2 flex gap-1.5">
                   {(["RATING", "TEXT"] as const).map((t) => (
-                    <button key={t} type="button" onClick={() => setQuestion(index, { type: t })} className={`min-h-8 rounded-full px-3 text-xs font-black transition ${q.type === t ? "bg-volt text-white" : "bg-panel text-muted ring-1 ring-line"}`}>
+                    <button key={t} type="button" onClick={() => setQuestion(index, { type: t })} className={`min-h-8 rounded-full px-3 text-xs font-semibold transition ${q.type === t ? "bg-volt text-white" : "bg-panel text-muted ring-1 ring-line"}`}>
                       {t === "RATING" ? "★ Calificación 1-5" : "✎ Texto libre"}
                     </button>
                   ))}
@@ -168,7 +168,7 @@ export default function EscritorioEncuestas() {
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
-                    <h3 className="text-[15px] font-black text-ink">{survey.title}</h3>
+                    <h3 className="text-[15px] font-semibold text-ink">{survey.title}</h3>
                     {survey.anonymous ? <Badge tone="success"><Lock size={11} /> Anónima</Badge> : null}
                   </div>
                   {survey.description ? <p className="mt-0.5 text-sm text-muted">{survey.description}</p> : null}
@@ -196,7 +196,7 @@ export default function EscritorioEncuestas() {
                             <div>
                               <div className="mb-1.5 flex items-center gap-2">
                                 <Star size={16} className="fill-amber-400 text-amber-400" />
-                                <span className="text-lg font-black text-ink">{q.average !== null ? q.average.toFixed(1) : "—"}</span>
+                                <span className="text-lg font-semibold text-ink">{q.average !== null ? q.average.toFixed(1) : "—"}</span>
                                 <span className="text-xs text-muted">promedio · {q.count} respuesta{q.count === 1 ? "" : "s"}</span>
                               </div>
                               <div className="space-y-1">

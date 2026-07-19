@@ -185,7 +185,7 @@ export function PartidoAdminView({ desktop = false }: { desktop?: boolean }) {
         <Card className="mb-3 p-4">
           <div className="mb-3 flex items-center gap-2">
             <Trophy className="text-green-600" size={18} />
-            <h2 className="text-base font-black">Programar partido</h2>
+            <h2 className="text-base font-semibold">Programar partido</h2>
           </div>
           <div className="grid gap-2.5">
             <div className="flex gap-2">
@@ -233,7 +233,7 @@ export function PartidoAdminView({ desktop = false }: { desktop?: boolean }) {
               type="button"
               onClick={createMatch}
               disabled={saving}
-              className="flex items-center justify-center gap-2 rounded-2xl bg-green-600 px-4 py-2.5 text-sm font-black text-white transition active:scale-95 disabled:opacity-50"
+              className="flex items-center justify-center gap-2 rounded-2xl bg-green-600 px-4 py-2.5 text-sm font-semibold text-white transition active:scale-95 disabled:opacity-50"
             >
               <Plus size={17} /> {saving ? "Guardando…" : "Programar partido"}
             </button>
@@ -261,13 +261,13 @@ export function PartidoAdminView({ desktop = false }: { desktop?: boolean }) {
                 <Card key={m.id} className="p-3.5">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-black text-ink">{m.homeTeam ? `${m.homeFlag ?? "🏆"} ${m.homeTeam}` : "🇲🇽 México"} 🆚 {m.opponentFlag ?? ""} {m.opponent}</p>
+                      <p className="truncate text-sm font-semibold text-ink">{m.homeTeam ? `${m.homeFlag ?? "🏆"} ${m.homeTeam}` : "🇲🇽 México"} 🆚 {m.opponentFlag ?? ""} {m.opponent}</p>
                       <p className="text-xs text-muted">{fmt(m.kickoff)}{m.competition ? ` · ${m.competition}` : ""}</p>
                       {m.status !== "SCHEDULED" && (
-                        <p className="mt-0.5 text-sm font-black tabular-nums text-green-600">{m.mxScore} - {m.rivalScore}</p>
+                        <p className="mt-0.5 text-sm font-semibold tabular-nums text-green-600">{m.mxScore} - {m.rivalScore}</p>
                       )}
                     </div>
-                    <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-black ${badge.cls}`}>{badge.label}</span>
+                    <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${badge.cls}`}>{badge.label}</span>
                   </div>
 
                   {canManage && m.externalId ? (
@@ -307,7 +307,7 @@ export function PartidoAdminView({ desktop = false }: { desktop?: boolean }) {
                               className="flex items-center justify-between rounded-2xl border border-line bg-panel px-3 py-2 text-left transition active:scale-95"
                             >
                               <div>
-                                <p className="text-xs font-black text-ink">{f.homeFlag || "🏆"} {f.home} vs {f.awayFlag} {f.away}</p>
+                                <p className="text-xs font-semibold text-ink">{f.homeFlag || "🏆"} {f.home} vs {f.awayFlag} {f.away}</p>
                                 <p className="text-[11px] text-muted">{f.competition}</p>
                               </div>
                               <span className="text-[11px] font-bold text-green-600">Vincular →</span>
@@ -335,7 +335,7 @@ export function PartidoAdminView({ desktop = false }: { desktop?: boolean }) {
                               type="button"
                               onClick={() => void saveStreamUrl(m.id)}
                               disabled={streamSaving}
-                              className="flex items-center gap-1 rounded-full bg-green-600 px-3 py-1 text-[11px] font-black text-white transition active:scale-95 disabled:opacity-50"
+                              className="flex items-center gap-1 rounded-full bg-green-600 px-3 py-1 text-[11px] font-semibold text-white transition active:scale-95 disabled:opacity-50"
                             >
                               {streamSaving ? "Guardando…" : "Guardar enlace"}
                             </button>

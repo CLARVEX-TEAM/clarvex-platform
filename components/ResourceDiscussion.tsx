@@ -119,7 +119,7 @@ export function ResourceDiscussion({ target, className = "" }: { target: Target;
 
   return (
     <div className={`mt-2.5 border-t border-line/70 pt-2.5 ${className}`}>
-      <button type="button" onClick={() => void toggle()} className="flex min-h-10 w-full items-center justify-between rounded-xl px-2 text-sm font-black text-volt transition hover:bg-blue-50 active:scale-[0.99]" aria-expanded={open}>
+      <button type="button" onClick={() => void toggle()} className="flex min-h-10 w-full items-center justify-between rounded-xl px-2 text-sm font-semibold text-volt transition hover:bg-blue-50 active:scale-[0.99]" aria-expanded={open}>
         <span className="flex items-center gap-2"><MessageCircle size={16} /> Evidencias y comentarios</span>
         <span className="text-xs text-muted">{evidences.length + comments.length || "Abrir"}</span>
       </button>
@@ -165,7 +165,7 @@ export function ResourceDiscussion({ target, className = "" }: { target: Target;
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-xl border border-line bg-white dark:bg-slate-800 px-3 text-sm font-black text-ink transition active:scale-[0.99]"
+                className="flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-xl border border-line bg-white dark:bg-slate-800 px-3 text-sm font-semibold text-ink transition active:scale-[0.99]"
               >
                 <ImagePlus size={17} />
                 {files.length > 0 ? `Agregar más fotos (${files.length}/${MAX_FILES})` : "Agregar evidencia"}
@@ -183,7 +183,7 @@ export function ResourceDiscussion({ target, className = "" }: { target: Target;
               />
             ) : null}
             {files.length > 0 ? (
-              <button type="button" onClick={() => void uploadEvidence()} disabled={uploading} className="min-h-11 rounded-xl bg-volt px-3 text-sm font-black text-white transition active:scale-[0.99] disabled:opacity-60">
+              <button type="button" onClick={() => void uploadEvidence()} disabled={uploading} className="min-h-11 rounded-xl bg-volt px-3 text-sm font-semibold text-white transition active:scale-[0.99] disabled:opacity-60">
                 {uploading ? "Subiendo…" : `Subir ${files.length > 1 ? `${files.length} evidencias` : "evidencia"}`}
               </button>
             ) : null}
@@ -194,7 +194,7 @@ export function ResourceDiscussion({ target, className = "" }: { target: Target;
               <div key={item.id} className="flex gap-2">
                 <ProfileAvatar name={item.author.name} photoUrl={item.author.photoUrl} size="sm" className="size-8 rounded-full shadow-none" />
                 <div className="min-w-0 flex-1 rounded-xl bg-white dark:bg-slate-800 px-3 py-2">
-                  <p className="text-xs font-black text-ink">{item.author.name}</p>
+                  <p className="text-xs font-semibold text-ink">{item.author.name}</p>
                   <p className="mt-0.5 text-sm leading-5 text-muted">{item.body}</p>
                 </div>
               </div>

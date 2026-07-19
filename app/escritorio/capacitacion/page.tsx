@@ -123,7 +123,7 @@ export default function EscritorioCapacitacion() {
       <Card className="col-span-2 h-fit p-5">
         <div className="mb-4 flex items-center gap-2">
           <GraduationCap className="text-volt" size={18} />
-          <h2 className="text-lg font-black text-ink">Nuevo recurso</h2>
+          <h2 className="text-lg font-semibold text-ink">Nuevo recurso</h2>
         </div>
         <div className="grid gap-3">
           <label className="grid gap-1.5">
@@ -168,7 +168,7 @@ export default function EscritorioCapacitacion() {
                 <Card className="p-5">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <h3 className="font-black text-ink">{resource.title}</h3>
+                      <h3 className="font-semibold text-ink">{resource.title}</h3>
                       <p className="text-xs text-muted">{TRAINING_CATEGORY_LABELS[resource.category] ?? resource.category} · {resource.author}</p>
                     </div>
                     <button onClick={() => setPendingDeleteId(resource.id)} aria-label="Eliminar recurso" className="tappable grid size-9 place-items-center rounded-full text-muted transition hover:bg-rose-50 hover:text-rose-500 dark:hover:bg-rose-950/30">
@@ -177,7 +177,7 @@ export default function EscritorioCapacitacion() {
                   </div>
                   {resource.description ? <p className="mt-2 text-sm leading-6 text-ink/80">{resource.description}</p> : null}
                   <div className="mt-3 flex items-center gap-3">
-                    <button type="button" onClick={() => void open(resource)} className="tappable flex min-h-10 items-center gap-2 rounded-xl bg-volt/10 px-4 text-sm font-black text-volt ring-1 ring-volt/30 transition hover:bg-volt/15">
+                    <button type="button" onClick={() => void open(resource)} className="tappable flex min-h-10 items-center gap-2 rounded-xl bg-volt/10 px-4 text-sm font-semibold text-volt ring-1 ring-volt/30 transition hover:bg-volt/15">
                       {resource.fileUrl && !resource.linkUrl ? <FileText size={16} /> : <ExternalLink size={16} />}
                       Abrir recurso
                     </button>

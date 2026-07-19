@@ -50,7 +50,7 @@ export default function ImprimirMarbetesPage() {
           <option value="chico">Chico (~2 cm, piso)</option>
           <option value="mediano">Mediano (~3 cm, bodega)</option>
         </select>
-        <button type="button" onClick={() => window.print()} className="ml-auto flex items-center gap-2 rounded-full bg-blue-600 px-5 py-2 text-sm font-black text-white">
+        <button type="button" onClick={() => window.print()} className="ml-auto flex items-center gap-2 rounded-full bg-blue-600 px-5 py-2 text-sm font-semibold text-white">
           <Printer size={15} /> Imprimir
         </button>
         <p className="w-full text-xs text-slate-500">
@@ -65,7 +65,7 @@ export default function ImprimirMarbetesPage() {
           {visible.map((tag) => (
             <div key={tag.id} className="flex flex-col items-center rounded border border-dashed border-slate-300 p-1.5" style={{ breakInside: "avoid" }}>
               <div style={{ width: sizePx, height: sizePx }} dangerouslySetInnerHTML={{ __html: tag.svg }} />
-              <span className="mt-0.5 text-[10px] font-black leading-none">
+              <span className="mt-0.5 text-[10px] font-semibold leading-none">
                 {tag.zone === "PISO" ? "P" : "B"}-{tag.number}
               </span>
             </div>

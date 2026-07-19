@@ -28,7 +28,7 @@ export function ReadyStep({
         <div className="mx-auto mb-5 grid size-16 place-items-center rounded-[1.35rem] border border-green-500/30 bg-green-500/15 text-green-500">
           <BadgeCheck size={28} />
         </div>
-        <h2 className={`text-2xl font-black ${isDark ? "text-white" : "text-slate-900"}`}>
+        <h2 className={`text-2xl font-semibold ${isDark ? "text-white" : "text-slate-900"}`}>
           Listo para operar
         </h2>
         <p className={`mt-2 text-sm ${isDark ? "text-slate-400" : "text-slate-500"}`}>

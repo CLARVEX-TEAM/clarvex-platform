@@ -103,7 +103,7 @@ export default function EscritorioNotificaciones() {
                     </span>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-start justify-between gap-3">
-                        <h2 className="text-sm font-black text-ink">{item.title}</h2>
+                        <h2 className="text-sm font-semibold text-ink">{item.title}</h2>
                         <Badge tone={unreadItem ? "info" : "default"}>{unreadItem ? meta.label : "Leída"}</Badge>
                       </div>
                       <p className="mt-1.5 text-sm leading-5 text-muted">{item.body}</p>

@@ -54,7 +54,7 @@ function MessageBody({ msg, isMe, onImageClick }: { msg: Message; isMe: boolean;
     return (
       <div className={cn("flex flex-col items-center gap-1 rounded-3xl bg-gradient-to-br p-4", sticker.bg)}>
         <span className="text-5xl leading-none">{sticker.emoji}</span>
-        <span className="text-xs font-black text-ink">{sticker.label}</span>
+        <span className="text-xs font-semibold text-ink">{sticker.label}</span>
       </div>
     );
   }
@@ -278,7 +278,7 @@ export default function EscritorioChat() {
         <div className="border-b border-line px-4 py-3.5">
           <div className="flex items-center gap-2">
             <MessageSquare className="text-volt" size={18} />
-            <h2 className="text-base font-black">Chat</h2>
+            <h2 className="text-base font-semibold">Chat</h2>
           </div>
         </div>
 
@@ -309,7 +309,7 @@ export default function EscritorioChat() {
                       <span className="absolute -bottom-0.5 -right-0.5 size-3 rounded-full border-2 border-white bg-green-500 dark:border-[#0f1729]" />
                     )}
                     {room.unreadCount > 0 && (
-                      <span className="absolute -right-1 -top-1 grid size-4 place-items-center rounded-full bg-volt text-[9px] font-black text-white">
+                      <span className="absolute -right-1 -top-1 grid size-4 place-items-center rounded-full bg-volt text-[9px] font-semibold text-white">
                         {room.unreadCount > 9 ? "9+" : room.unreadCount}
                       </span>
                     )}
@@ -365,7 +365,7 @@ export default function EscritorioChat() {
             <span className="grid size-16 place-items-center rounded-[28px] bg-volt/12 text-volt">
               <MessageSquare size={28} />
             </span>
-            <p className="text-base font-black text-ink">Selecciona un chat</p>
+            <p className="text-base font-semibold text-ink">Selecciona un chat</p>
             <p className="text-sm text-muted">Elige una conversación o inicia un nuevo mensaje directo.</p>
           </div>
         ) : (
@@ -390,7 +390,7 @@ export default function EscritorioChat() {
                 )}
               </div>
               <div>
-                <p className="text-sm font-black text-ink">{activeRoomTitle}</p>
+                <p className="text-sm font-semibold text-ink">{activeRoomTitle}</p>
                 {activeRoomSubtitle && (
                   <p className={cn("text-xs", otherMember?.online ? "font-semibold text-green-500" : "text-muted")}>{activeRoomSubtitle}</p>
                 )}

@@ -54,8 +54,8 @@ export function PaceCard({ sales, goal, userId }: { sales: number; goal: number;
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="text-[11px] font-bold uppercase tracking-[0.13em] text-muted">{title}</p>
-          <h2 className="mt-1 text-[1.9rem] font-black leading-none text-ink">{money(pace.projected)}</h2>
-          <p className={`mt-1 text-xs font-black ${tone}`}>
+          <h2 className="mt-1 text-[1.9rem] font-semibold leading-none text-ink">{money(pace.projected)}</h2>
+          <p className={`mt-1 text-xs font-semibold ${tone}`}>
             {pace.afterShift
               ? `Cerraste al ${pace.projectedAchievement}% de tu meta`
               : pace.onTrack

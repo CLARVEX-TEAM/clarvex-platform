@@ -31,7 +31,7 @@ export function PremiumButton({
       whileHover={{ scale: 1.02, y: -1 }}
       transition={tactileSpring}
       className={cn(
-        "tappable relative inline-flex min-h-12 items-center justify-center gap-2 overflow-hidden rounded-full px-4 text-sm font-black tracking-[-0.01em] focus:outline-none focus-visible:ring-4 focus-visible:ring-volt/40 disabled:cursor-not-allowed disabled:opacity-55",
+        "tappable relative inline-flex min-h-12 items-center justify-center gap-2 overflow-hidden rounded-full px-4 text-sm font-semibold tracking-[-0.01em] focus:outline-none focus-visible:ring-4 focus-visible:ring-volt/40 disabled:cursor-not-allowed disabled:opacity-55",
         solid && "btn-sheen",
         variant === "primary" && "bg-volt text-white shadow-[0_8px_20px_rgb(37_99_235_/_0.22)] hover:bg-[#1D4ED8]",
         variant === "success" && "bg-success text-white shadow-[0_8px_20px_rgb(34_197_94_/_0.24)]",

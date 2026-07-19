@@ -125,7 +125,7 @@ export default function EscritorioEquipo() {
     <div className="grid grid-cols-5 gap-5">
       {/* Equipo */}
       <Card className="col-span-3 h-fit p-5">
-        <div className="mb-3 flex items-center gap-2"><UsersRound className="text-volt" size={18} /><h2 className="text-lg font-black text-ink">Equipo ({members.length})</h2></div>
+        <div className="mb-3 flex items-center gap-2"><UsersRound className="text-volt" size={18} /><h2 className="text-lg font-semibold text-ink">Equipo ({members.length})</h2></div>
         <div className="overflow-hidden rounded-2xl border border-line">
           <table className="w-full text-sm">
             <thead className="bg-panel text-left text-[11px] font-bold uppercase tracking-[0.1em] text-muted">
@@ -162,7 +162,7 @@ export default function EscritorioEquipo() {
                         : progress === null ? <span className="text-xs text-muted">—</span> : (
                         <div className="flex items-center gap-2">
                           <div className="flex-1"><ProgressBar value={progress} tone={achievementTone(progress)} /></div>
-                          <span className="w-9 shrink-0 text-right text-xs font-black text-ink">{progress}%</span>
+                          <span className="w-9 shrink-0 text-right text-xs font-semibold text-ink">{progress}%</span>
                         </div>
                       )}
                     </td>
@@ -176,7 +176,7 @@ export default function EscritorioEquipo() {
 
       {/* Horarios de la semana */}
       <Card className="col-span-2 h-fit p-5">
-        <div className="mb-3 flex items-center gap-2"><CalendarClock className="text-volt" size={18} /><h2 className="text-lg font-black text-ink">Horarios de la semana</h2></div>
+        <div className="mb-3 flex items-center gap-2"><CalendarClock className="text-volt" size={18} /><h2 className="text-lg font-semibold text-ink">Horarios de la semana</h2></div>
         <div className="space-y-3">
           {members.map((u) => {
             const week = weekFor(u.id);
@@ -185,7 +185,7 @@ export default function EscritorioEquipo() {
               <div key={u.id} className="rounded-2xl border border-line p-3">
                 <div className="mb-2 flex items-center gap-2.5">
                   <ProfileAvatar name={u.name} photoUrl={u.photoUrl} size="sm" className="size-7 rounded-lg shadow-none" />
-                  <p className="text-sm font-black text-ink">{u.name}</p>
+                  <p className="text-sm font-semibold text-ink">{u.name}</p>
                 </div>
                 <div className="grid grid-cols-2 gap-1.5">
                   {week.map((s) => {
@@ -194,7 +194,7 @@ export default function EscritorioEquipo() {
                     const dow = dayAbbr[new Date(`${s.date}T00:00:00Z`).getUTCDay()];
                     return (
                       <div key={s.id} className={`flex items-center justify-between gap-1.5 rounded-xl border px-2.5 py-1.5 text-[11px] ${isToday ? "border-volt/40 bg-volt/[0.06]" : "border-line bg-panel"}`}>
-                        <span className="font-black text-ink">{dow}</span>
+                        <span className="font-semibold text-ink">{dow}</span>
                         {s.status === "WORKING" && s.startTime ? (
                           <span className="flex items-center gap-1 text-muted"><Clock3 size={11} />{s.startTime}{s.endTime ? `–${s.endTime}` : ""}</span>
                         ) : (
@@ -214,7 +214,7 @@ export default function EscritorioEquipo() {
 
       {/* Fechas y saldos del equipo (editable) */}
       <Card className="p-5">
-        <div className="mb-3 flex items-center gap-2"><CalendarHeart className="text-volt" size={18} /><h2 className="text-lg font-black text-ink">Fechas y saldos del equipo</h2></div>
+        <div className="mb-3 flex items-center gap-2"><CalendarHeart className="text-volt" size={18} /><h2 className="text-lg font-semibold text-ink">Fechas y saldos del equipo</h2></div>
         <div className="overflow-x-auto rounded-2xl border border-line">
           <table className="w-full min-w-[760px] text-sm">
             <thead className="bg-panel text-left text-[11px] font-bold uppercase tracking-[0.1em] text-muted">

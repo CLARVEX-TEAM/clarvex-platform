@@ -135,12 +135,12 @@ export default function EscritorioComunicados() {
         <div className="mb-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Megaphone className="text-volt" size={18} />
-            <h2 className="text-lg font-black text-ink">Nuevo comunicado</h2>
+            <h2 className="text-lg font-semibold text-ink">Nuevo comunicado</h2>
           </div>
           <button
             type="button"
             onClick={() => setShowAnnouncementPrompt((prev) => !prev)}
-            className="flex items-center gap-1.5 text-[11px] font-black uppercase tracking-wider bg-[#00FF66] text-black px-3 py-1 rounded-xl active:scale-95 transition"
+            className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider bg-[#2563EB] text-white px-3 py-1 rounded-xl active:scale-95 transition"
           >
             <Sparkles size={11} />
             IA
@@ -148,9 +148,9 @@ export default function EscritorioComunicados() {
         </div>
 
         {showAnnouncementPrompt && (
-          <div className="mb-3 rounded-2xl border border-[#00FF66]/20 bg-[#00FF66]/5 p-3 space-y-2">
-            <p className="text-[11px] font-black text-white flex items-center gap-1">
-              <Sparkles size={12} className="text-[#00FF66]" /> Redactar con IA:
+          <div className="mb-3 rounded-2xl border border-[#2563EB]/20 bg-[#2563EB]/5 p-3 space-y-2">
+            <p className="text-[11px] font-semibold text-white flex items-center gap-1">
+              <Sparkles size={12} className="text-[#2563EB]" /> Redactar con IA:
             </p>
             <div className="flex gap-2">
               <input
@@ -158,13 +158,13 @@ export default function EscritorioComunicados() {
                 value={announcementPrompt}
                 onChange={(e) => setAnnouncementPrompt(e.target.value)}
                 placeholder="Ej. Promoción Jeans 30% descuento este fin..."
-                className="flex-1 min-h-9 rounded-xl border border-white/10 bg-[#0A0A0A] px-3 text-xs text-white placeholder-slate-500 outline-none focus:border-[#00FF66]"
+                className="flex-1 min-h-9 rounded-xl border border-white/10 bg-[#0A0A0A] px-3 text-xs text-white placeholder-slate-500 outline-none focus:border-[#2563EB]"
               />
               <button
                 type="button"
                 onClick={() => void handleGenerateAnnouncement()}
                 disabled={generatingAnnouncement || !announcementPrompt.trim()}
-                className="rounded-xl bg-[#00FF66] px-3 text-xs font-black text-black active:scale-95 transition disabled:opacity-50"
+                className="rounded-xl bg-[#2563EB] px-3 text-xs font-semibold text-white active:scale-95 transition disabled:opacity-50"
               >
                 {generatingAnnouncement ? "Generando..." : "Generar"}
               </button>
@@ -220,7 +220,7 @@ export default function EscritorioComunicados() {
                     <div className="flex items-start gap-3">
                       <ProfileAvatar name={authorName(item.authorId)} photoUrl={authorPhoto(item.authorId)} size="sm" className="size-9 rounded-full shadow-none" />
                       <div>
-                        <h3 className="text-[15px] font-black leading-tight text-ink">{item.title}</h3>
+                        <h3 className="text-[15px] font-semibold leading-tight text-ink">{item.title}</h3>
                         <p className="text-[11px] text-muted">{authorName(item.authorId)} · {item.date}</p>
                       </div>
                     </div>

@@ -255,7 +255,7 @@ export function ClarvexCopilot() {
                                 <button
                                   onClick={() => confirmAction(index, action.proposalId)}
                                   disabled={msg.actionStatus === "confirming" || msg.actionStatus === "done"}
-                                  className="w-full rounded-lg bg-[#00FF66] px-3 py-2 text-xs font-black uppercase tracking-wider text-black transition active:scale-95 disabled:opacity-50"
+                                  className="w-full rounded-lg bg-[#00FF66] px-3 py-2 text-xs font-semibold uppercase tracking-wider text-black transition active:scale-95 disabled:opacity-50"
                                 >
                                   {msg.actionStatus === "done"
                                     ? "Publicado ✓"
@@ -276,7 +276,7 @@ export function ClarvexCopilot() {
                               <button
                                 onClick={() => publishDraftFromMessage(index, msg.content)}
                                 disabled={msg.draftPublishStatus === "proposing"}
-                                className="w-full rounded-lg bg-[#00FF66] px-3 py-2 text-xs font-black uppercase tracking-wider text-black transition active:scale-95 disabled:opacity-50"
+                                className="w-full rounded-lg bg-[#00FF66] px-3 py-2 text-xs font-semibold uppercase tracking-wider text-black transition active:scale-95 disabled:opacity-50"
                               >
                                 {msg.draftPublishStatus === "proposing" ? "Preparando..." : "Preparar publicación"}
                               </button>

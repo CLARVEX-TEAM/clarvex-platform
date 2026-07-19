@@ -219,14 +219,14 @@ export function DesktopShell({ children }: { children: React.ReactNode }) {
           </span>
           <div className="leading-tight">
             <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-volt/90">CLARVEX</p>
-            <p className="text-[15px] font-black tracking-[-0.02em] text-ink">Escritorio</p>
+            <p className="text-[15px] font-semibold tracking-[-0.02em] text-ink">Escritorio</p>
           </div>
         </Link>
 
         <nav className="mt-6 flex flex-1 flex-col gap-4 overflow-y-auto pr-1">
           {navGroups.map((group) => (
             <div key={group.label} className="flex flex-col gap-0.5">
-              <p className="px-3 pb-1 text-[10px] font-black uppercase tracking-[0.14em] text-muted/70">{group.label}</p>
+              <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted/70">{group.label}</p>
               {group.items.filter((item) => !item.adminOnly || user?.platformAdmin).map((item) => {
                 const active = pathname === item.href || (item.href !== "/escritorio" && pathname.startsWith(`${item.href}/`));
                 return (
@@ -261,7 +261,7 @@ export function DesktopShell({ children }: { children: React.ReactNode }) {
           <Link href="/escritorio/perfil" className="flex items-center gap-2.5 rounded-2xl px-1 py-1 transition hover:bg-slate-100 dark:hover:bg-slate-800/60">
             <ProfileAvatar name={user?.name ?? "Gerencia"} photoUrl={user?.photoUrl} size="sm" className="size-9 rounded-2xl shadow-none" />
             <div className="min-w-0 leading-tight">
-              <p className="truncate text-sm font-black text-ink">{user?.name}</p>
+              <p className="truncate text-sm font-semibold text-ink">{user?.name}</p>
               <p className="text-[11px] font-bold text-muted">{roleLabel}</p>
             </div>
           </Link>
@@ -286,12 +286,12 @@ export function DesktopShell({ children }: { children: React.ReactNode }) {
         <div className="flex min-w-0 flex-1 flex-col">
           <header className="sticky top-0 z-20 flex items-center justify-between gap-4 border-b border-line bg-white/80 px-8 py-3.5 backdrop-blur-xl dark:bg-[#0f1729]/85">
             <div className="min-w-0">
-              <h1 className="text-[1.4rem] font-black leading-tight tracking-[-0.03em] text-ink">{section.title}</h1>
+              <h1 className="text-[1.4rem] font-semibold leading-tight tracking-[-0.03em] text-ink">{section.title}</h1>
               {section.subtitle ? <p className="truncate text-sm text-muted">{section.subtitle}</p> : null}
             </div>
             <div className="flex shrink-0 items-center gap-3">
               <div className="hidden text-right xl:block">
-                {user?.storeName ? <p className="text-sm font-black leading-tight text-ink">{user.storeName}</p> : null}
+                {user?.storeName ? <p className="text-sm font-semibold leading-tight text-ink">{user.storeName}</p> : null}
                 <p className="text-[11px] capitalize text-muted">{todayLabel}</p>
               </div>
               <FreshnessPill />

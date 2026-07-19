@@ -135,7 +135,7 @@ export default function EscritorioSolicitudes() {
       <Card className="col-span-2 h-fit p-5">
         <div className="mb-3 flex items-center gap-2">
           <CalendarOff className="text-volt" size={18} />
-          <h2 className="text-lg font-black text-ink">Solicitar</h2>
+          <h2 className="text-lg font-semibold text-ink">Solicitar</h2>
         </div>
         <div className="mb-3 flex flex-wrap gap-1.5">
           <Badge tone={balance > 0 ? "success" : "default"}>Horas: {balance} h</Badge>
@@ -186,14 +186,14 @@ export default function EscritorioSolicitudes() {
       <div className="col-span-3 space-y-4">
         {isManager && pending.length > 0 ? (
           <Card className="p-5">
-            <h2 className="mb-3 text-lg font-black text-ink">Pendientes por aprobar <span className="text-volt">({pending.length})</span></h2>
+            <h2 className="mb-3 text-lg font-semibold text-ink">Pendientes por aprobar <span className="text-volt">({pending.length})</span></h2>
             <div className="grid gap-2.5 md:grid-cols-2">
               {pending.map((request) => (
                 <div key={request.id} className="rounded-2xl border border-line p-3">
                   <div className="flex items-center gap-2.5">
                     <ProfileAvatar name={request.requester.name} photoUrl={request.requester.photoUrl} size="sm" />
                     <div className="min-w-0">
-                      <p className="truncate font-black text-ink">{request.requester.name}</p>
+                      <p className="truncate font-semibold text-ink">{request.requester.name}</p>
                       <p className="text-xs text-muted">{typeLabel(request)} · {formatRequestDate(request.date)}</p>
                     </div>
                   </div>
@@ -209,7 +209,7 @@ export default function EscritorioSolicitudes() {
         ) : null}
 
         <Card className="p-5">
-          <h2 className="mb-3 text-lg font-black text-ink">{isManager ? "Historial" : "Mis solicitudes"}</h2>
+          <h2 className="mb-3 text-lg font-semibold text-ink">{isManager ? "Historial" : "Mis solicitudes"}</h2>
           {loading ? (
             <div className="space-y-2.5 py-2"><Skeleton className="h-12" /><Skeleton className="h-12" /><Skeleton className="h-12" /></div>
           ) : (isManager ? history : requests).length === 0 ? (

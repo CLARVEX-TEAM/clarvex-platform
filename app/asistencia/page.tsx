@@ -132,7 +132,7 @@ export default function AsistenciaPage() {
           <button type="button" aria-label="Mes anterior" onClick={() => setMonth((m) => shiftMonth(m, -1))} className="grid size-9 place-items-center rounded-full text-muted transition active:scale-95">
             <ChevronLeft size={18} />
           </button>
-          <p className="text-sm font-black text-ink">{monthTitle(month)}</p>
+          <p className="text-sm font-semibold text-ink">{monthTitle(month)}</p>
           <button type="button" aria-label="Mes siguiente" onClick={() => setMonth((m) => shiftMonth(m, 1))} className="grid size-9 place-items-center rounded-full text-muted transition active:scale-95">
             <ChevronRight size={18} />
           </button>
@@ -154,7 +154,7 @@ export default function AsistenciaPage() {
               type="button"
               onClick={() => setTab(value)}
               className={cn(
-                "rounded-xl py-2 text-xs font-black transition",
+                "rounded-xl py-2 text-xs font-semibold transition",
                 tab === value ? "bg-panel text-ink shadow-sm" : "text-muted"
               )}
             >
@@ -216,7 +216,7 @@ export default function AsistenciaPage() {
               <div>
                 <p className="text-xs font-bold text-muted">Horas de este mes</p>
                 <p className={cn(
-                  "text-2xl font-black",
+                  "text-2xl font-semibold",
                   balanceFor(soloUser) < 0 ? "text-rose-600 dark:text-rose-400" : "text-emerald-600 dark:text-emerald-400"
                 )}>
                   {formatBalance(balanceFor(soloUser))}
@@ -224,7 +224,7 @@ export default function AsistenciaPage() {
               </div>
               <div className="text-right">
                 <p className="text-xs font-bold text-muted">Saldo acumulado</p>
-                <p className="text-lg font-black text-ink">
+                <p className="text-lg font-semibold text-ink">
                   {formatBalance(users[0]?.balanceMinutes ?? 0)}
                 </p>
               </div>
@@ -245,7 +245,7 @@ export default function AsistenciaPage() {
                   type="button"
                   onClick={() => setPeriod(value)}
                   className={cn(
-                    "rounded-xl py-1.5 text-[11px] font-black transition",
+                    "rounded-xl py-1.5 text-[11px] font-semibold transition",
                     period === value ? "bg-panel text-ink shadow-sm" : "text-muted"
                   )}
                 >
@@ -323,7 +323,7 @@ function EditDayModal({ record, name, onClose, onSaved }: { record: AttendanceRe
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm p-4 sm:items-center" onClick={onClose}>
       <Card className="w-full max-w-sm p-4" onClick={(event) => event.stopPropagation()}>
-        <p className="text-sm font-black text-ink">Corregir día</p>
+        <p className="text-sm font-semibold text-ink">Corregir día</p>
         <p className="mb-3 text-xs font-semibold text-muted">{name} · {dayLabel(record.date)}</p>
 
         <label className="mb-3 grid gap-1">
@@ -366,7 +366,7 @@ function SummaryTile({ icon, label, value, tone }: { icon: React.ReactNode; labe
   return (
     <Card className="p-3 text-center">
       <span className={cn("mx-auto grid size-8 place-items-center", tone)}>{icon}</span>
-      <p className={cn("mt-1 text-xl font-black", tone)}>{value}</p>
+      <p className={cn("mt-1 text-xl font-semibold", tone)}>{value}</p>
       <p className="text-[11px] font-bold text-muted">{label}</p>
     </Card>
   );
@@ -394,7 +394,7 @@ function IncidentList({ incidents, nameById }: { incidents: Incident[]; nameById
               <p className="truncate text-sm font-bold text-ink">{nameById.get(incident.userId) ?? "—"}</p>
               <p className="truncate text-[11px] text-muted">{incident.detail}</p>
             </div>
-            <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-[10px] font-black", INCIDENT_TONE[incident.kind])}>
+            <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold", INCIDENT_TONE[incident.kind])}>
               {incident.kind}
             </span>
           </div>
@@ -419,7 +419,7 @@ function DayList({ records, onEdit }: { records: AttendanceRecord[]; onEdit?: (r
                 {dayLabel(record.date)}
                 {isSunday(record.date) ? <span className="ml-1 text-blue-500">•</span> : null}
               </p>
-              <span className={cn("rounded-full px-2 py-0.5 text-[11px] font-black", STATUS_TONE[record.status])}>
+              <span className={cn("rounded-full px-2 py-0.5 text-[11px] font-semibold", STATUS_TONE[record.status])}>
                 {STATUS_LABEL[record.status]}
               </span>
               <div className="ml-auto text-right">

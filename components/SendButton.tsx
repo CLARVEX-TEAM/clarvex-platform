@@ -48,7 +48,7 @@ export function SendButton({
       {...props}
       disabled={loading || success || props.disabled}
       className={cn(
-        "tappable relative inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl px-5 text-sm font-black tracking-[-0.01em] focus:outline-none focus:ring-4 disabled:cursor-not-allowed",
+        "tappable relative inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl px-5 text-sm font-semibold tracking-[-0.01em] focus:outline-none focus:ring-4 disabled:cursor-not-allowed",
         // overflow visible para que el avión pueda "salir" del botón al despegar.
         // (sin btn-sheen: su franja blanca asomaría por el borde al no recortarse)
         "overflow-visible",

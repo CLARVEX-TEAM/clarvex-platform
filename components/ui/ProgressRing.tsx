@@ -30,7 +30,7 @@ export function ProgressRing({ value, tone = "volt", size = 76 }: { value: numbe
           transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
         />
       </svg>
-      <span className={cn("absolute font-black text-ink", display >= 1000 ? "text-[11px]" : "text-sm")}>{display}%</span>
+      <span className={cn("absolute font-semibold text-ink", display >= 1000 ? "text-[11px]" : "text-sm")}>{display}%</span>
     </div>
   );
 }

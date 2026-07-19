@@ -107,10 +107,10 @@ export default function UniformesPage() {
           <Card className="mb-3 p-4">
             <p className="text-xs font-bold text-muted">Hoy · {WEEKDAY_LABEL[today]}</p>
             <div className="mt-2 grid gap-1.5">
-              <p className="flex items-center gap-2 text-base font-black text-ink">
+              <p className="flex items-center gap-2 text-base font-semibold text-ink">
                 <Swatch garment={mine.top} /> {mine.top}
               </p>
-              <p className="flex items-center gap-2 text-base font-black text-ink">
+              <p className="flex items-center gap-2 text-base font-semibold text-ink">
                 <Swatch garment={mine.bottom} /> {mine.bottom}
               </p>
             </div>
@@ -128,7 +128,7 @@ export default function UniformesPage() {
           <div className="mb-3 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Shirt size={17} className="text-volt" />
-              <h2 className="text-base font-black text-ink">La semana</h2>
+              <h2 className="text-base font-semibold text-ink">La semana</h2>
             </div>
             {canEdit ? (
               <Button type="button" variant="ghost" onClick={() => setEditing((value) => !value)}>
@@ -143,7 +143,7 @@ export default function UniformesPage() {
               const isToday = day.weekday === today;
               return (
                 <div key={day.weekday} className={cn("py-2.5", isToday && "rounded-xl bg-volt/[0.07] px-2")}>
-                  <p className={cn("text-xs font-black", isToday ? "text-volt" : "text-muted")}>
+                  <p className={cn("text-xs font-semibold", isToday ? "text-volt" : "text-muted")}>
                     {WEEKDAY_LABEL[day.weekday]}{isToday ? " · hoy" : ""}
                   </p>
                   {editing ? (
@@ -179,7 +179,7 @@ export default function UniformesPage() {
         {/* Quién usa qué variante (solo gerencia) */}
         {canEdit && editing ? (
           <Card className="mb-3 p-3.5">
-            <h2 className="mb-1 text-base font-black text-ink">Variante por colaborador</h2>
+            <h2 className="mb-1 text-base font-semibold text-ink">Variante por colaborador</h2>
             <p className="mb-3 text-[11px] font-semibold text-muted">
               Decide qué columna del uniforme le toca a cada quien. No registra identidad: solo qué playera usa.
             </p>
@@ -195,7 +195,7 @@ export default function UniformesPage() {
                         type="button"
                         onClick={() => setUsers((current) => current.map((row) => row.id === user.id ? { ...row, uniformVariant: row.uniformVariant === variant ? null : variant } : row))}
                         className={cn(
-                          "rounded-xl px-2.5 py-1 text-[11px] font-black transition",
+                          "rounded-xl px-2.5 py-1 text-[11px] font-semibold transition",
                           user.uniformVariant === variant ? "bg-volt text-white" : "bg-slate-100 text-muted dark:bg-slate-800"
                         )}
                       >

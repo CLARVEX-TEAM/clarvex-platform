@@ -27,7 +27,7 @@ function NotificationBell() {
         <Bell size={18} />
       </Link>
       {unreadCount > 0 ? (
-        <span className="pointer-events-none absolute -right-1 -top-1 grid h-[18px] min-w-[18px] place-items-center rounded-full bg-rose-500 px-[5px] text-[10px] font-black leading-none text-white shadow-sm ring-2 ring-card dark:ring-void">
+        <span className="pointer-events-none absolute -right-1 -top-1 grid h-[18px] min-w-[18px] place-items-center rounded-full bg-rose-500 px-[5px] text-[10px] font-semibold leading-none text-white shadow-sm ring-2 ring-card dark:ring-void">
           {unreadCount > 99 ? "99+" : unreadCount}
         </span>
       ) : null}
@@ -84,7 +84,7 @@ export function AppHeader({
           ) : null}
           <div className="min-w-0">
             <p className={cn("font-bold uppercase tracking-[0.16em] text-volt/90 transition-all duration-300", scrolled ? "text-[9px] opacity-70" : "text-[10px] opacity-100")}>CLARVEX Team</p>
-            <h1 className="text-[1.15rem] font-black leading-tight tracking-[-0.035em] text-ink">{title}</h1>
+            <h1 className="text-[1.15rem] font-semibold leading-tight tracking-[-0.035em] text-ink">{title}</h1>
             <p className={cn("overflow-hidden text-[11px] leading-4 text-muted transition-all duration-300", scrolled ? "max-h-0 opacity-0" : "max-h-5 opacity-100")}>{subtitle}</p>
           </div>
         </div>

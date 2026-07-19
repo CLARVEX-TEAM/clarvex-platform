@@ -69,15 +69,15 @@ export default function VerPartidoPage() {
         <div className="min-w-0 flex-1 text-center">
           {match ? (
             <>
-              <p className="text-[10px] font-black uppercase tracking-wider text-white/60">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-white/60">
                 {match.status === "LIVE" ? "🔴 En vivo" : "Partido de hoy"}{match.competition ? ` · ${match.competition}` : ""}
               </p>
-              <p className="truncate text-sm font-black">
+              <p className="truncate text-sm font-semibold">
                 {home?.flag} {home?.name} {started ? <span className="mx-1 rounded-md bg-white/15 px-1.5 py-0.5 tabular-nums">{match.mxScore} – {match.rivalScore}</span> : " 🆚 "} {rival}
               </p>
             </>
           ) : (
-            <p className="text-sm font-black">Partido en vivo</p>
+            <p className="text-sm font-semibold">Partido en vivo</p>
           )}
         </div>
         {enabled && match?.streamUrl ? (
@@ -109,7 +109,7 @@ export default function VerPartidoPage() {
         <div className="grid flex-1 place-items-center px-8 text-center">
           <div>
             <span className="mb-4 mx-auto grid size-16 place-items-center rounded-3xl bg-white/10"><Tv size={30} /></span>
-            <p className="text-lg font-black">
+            <p className="text-lg font-semibold">
               {match && matchPhase(match) !== "past" && !match.streamUrl
                 ? "La transmisión aún no está configurada"
                 : "Disponible solo el día del partido"}
@@ -122,7 +122,7 @@ export default function VerPartidoPage() {
             <button
               type="button"
               onClick={() => router.back()}
-              className="mt-6 rounded-full bg-white/15 px-7 py-2.5 text-sm font-black transition active:scale-95"
+              className="mt-6 rounded-full bg-white/15 px-7 py-2.5 text-sm font-semibold transition active:scale-95"
             >
               Regresar
             </button>

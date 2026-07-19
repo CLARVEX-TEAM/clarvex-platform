@@ -156,7 +156,7 @@ export default function KpisPage() {
             >
               <div className="flex items-center justify-between border-b border-white/5 pb-3">
                 <div className="flex items-center gap-2">
-                  <Sparkles className="text-[#00FF66]" size={20} />
+                  <Sparkles className="text-[#2563EB]" size={20} />
                   <h3 className="text-sm font-semibold text-white">{iaReport.title}</h3>
                 </div>
                 <button
@@ -169,7 +169,7 @@ export default function KpisPage() {
 
               <div className="space-y-4 text-xs text-slate-300 leading-relaxed">
                 <div>
-                  <h4 className="font-bold text-[#00FF66] uppercase tracking-wider text-[10px]">Resumen Ejecutivo</h4>
+                  <h4 className="font-bold text-[#2563EB] uppercase tracking-wider text-[10px]">Resumen Ejecutivo</h4>
                   <p className="mt-1 bg-white/[0.02] border border-white/5 rounded-xl p-3 text-slate-200 italic">{iaReport.executiveSummary}</p>
                 </div>
 

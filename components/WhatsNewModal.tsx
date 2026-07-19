@@ -173,7 +173,7 @@ export function WhatsNewModal() {
                 <Sparkles size={26} />
               </motion.span>
               <p className="mt-3 text-[10px] font-bold uppercase tracking-[0.18em] text-volt/90">Novedades de hoy</p>
-              <h2 className="mt-1 text-[1.5rem] font-black leading-tight tracking-[-0.035em] text-ink">
+              <h2 className="mt-1 text-[1.5rem] font-semibold leading-tight tracking-[-0.035em] text-ink">
                 Estrenamos cosas nuevas
               </h2>
               <p className="mt-1 text-[13px] leading-5 text-muted">
@@ -196,7 +196,7 @@ export function WhatsNewModal() {
                       <feature.icon size={19} />
                     </span>
                     <div className="min-w-0">
-                      <h3 className="text-[14px] font-black leading-5 tracking-[-0.02em] text-ink">{feature.title}</h3>
+                      <h3 className="text-[14px] font-semibold leading-5 tracking-[-0.02em] text-ink">{feature.title}</h3>
                       <p className="mt-0.5 text-[12px] leading-4 text-muted">{feature.body}</p>
                     </div>
                   </motion.li>
@@ -210,7 +210,7 @@ export function WhatsNewModal() {
               transition={{ delay: 0.55, duration: 0.3 }}
               whileTap={{ scale: 0.98, y: 1 }}
               onClick={dismiss}
-              className="relative mt-5 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-volt px-4 text-sm font-black tracking-[-0.01em] text-white shadow-[0_8px_20px_rgb(37_99_235_/_0.28)] transition hover:bg-[#1D4ED8]"
+              className="relative mt-5 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-volt px-4 text-sm font-semibold tracking-[-0.01em] text-white shadow-[0_8px_20px_rgb(37_99_235_/_0.28)] transition hover:bg-[#1D4ED8]"
             >
               <Sparkles size={17} />
               Entendido, a explorar

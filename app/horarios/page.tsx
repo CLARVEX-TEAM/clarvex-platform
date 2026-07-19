@@ -120,8 +120,8 @@ export default function HorariosPage() {
       <AppFrame>
         {isManager ? (
           <div className="mb-3 flex rounded-full bg-slate-100 dark:bg-slate-800 p-1" role="group" aria-label="Vista de horarios">
-            <button type="button" onClick={() => setView("mine")} className={`min-h-10 flex-1 rounded-full text-sm font-black transition ${view === "mine" ? "bg-white dark:bg-slate-600 text-volt shadow-sm" : "text-muted"}`}>Mi horario</button>
-            <button type="button" onClick={() => setView("team")} className={`min-h-10 flex-1 rounded-full text-sm font-black transition ${view === "team" ? "bg-white dark:bg-slate-600 text-volt shadow-sm" : "text-muted"}`}>Equipo</button>
+            <button type="button" onClick={() => setView("mine")} className={`min-h-10 flex-1 rounded-full text-sm font-semibold transition ${view === "mine" ? "bg-white dark:bg-slate-600 text-volt shadow-sm" : "text-muted"}`}>Mi horario</button>
+            <button type="button" onClick={() => setView("team")} className={`min-h-10 flex-1 rounded-full text-sm font-semibold transition ${view === "team" ? "bg-white dark:bg-slate-600 text-volt shadow-sm" : "text-muted"}`}>Equipo</button>
           </div>
         ) : null}
 
@@ -130,7 +130,7 @@ export default function HorariosPage() {
             <button type="button" onClick={() => moveWeek(-1)} className="grid size-11 shrink-0 place-items-center rounded-full bg-slate-100 dark:bg-slate-800 text-ink transition active:scale-95" aria-label="Semana anterior"><ChevronLeft size={20} /></button>
             <div className="min-w-0 text-center">
               <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-volt">{isManager && view === "team" ? "Semana del equipo" : "Mi semana"}</p>
-              <h2 className="mt-0.5 text-lg font-black tracking-[-0.03em] text-ink">Semana {isoWeekNumber(new Date(`${weekStart}T00:00:00Z`))}</h2>
+              <h2 className="mt-0.5 text-lg font-semibold tracking-[-0.03em] text-ink">Semana {isoWeekNumber(new Date(`${weekStart}T00:00:00Z`))}</h2>
               <p className="text-xs font-semibold text-muted">{rangeLabel}</p>
             </div>
             <button type="button" onClick={() => moveWeek(1)} className="grid size-11 shrink-0 place-items-center rounded-full bg-slate-100 text-ink transition active:scale-95" aria-label="Semana siguiente"><ChevronRight size={20} /></button>
@@ -139,7 +139,7 @@ export default function HorariosPage() {
             <Button variant={weekStart === currentWeek ? "primary" : "ghost"} className="min-h-9 shrink-0 px-3 text-xs" onClick={() => setWeekStart(currentWeek)}>Actual</Button>
             <Button variant={weekStart === previousWeek ? "primary" : "ghost"} className="min-h-9 shrink-0 px-3 text-xs" onClick={() => setWeekStart(previousWeek)}>Anterior</Button>
             <Button variant={weekStart === nextWeek ? "primary" : "ghost"} className="min-h-9 shrink-0 px-3 text-xs" onClick={() => setWeekStart(nextWeek)}>Siguiente</Button>
-            <select aria-label="Semanas disponibles" value={weekStart} onChange={(event) => setWeekStart(event.target.value)} className="min-h-9 shrink-0 rounded-full border-0 bg-slate-100 dark:bg-slate-800 px-3 text-xs font-black text-ink outline-none focus:ring-4 focus:ring-volt/20">
+            <select aria-label="Semanas disponibles" value={weekStart} onChange={(event) => setWeekStart(event.target.value)} className="min-h-9 shrink-0 rounded-full border-0 bg-slate-100 dark:bg-slate-800 px-3 text-xs font-semibold text-ink outline-none focus:ring-4 focus:ring-volt/20">
               {Array.from(new Set([weekStart, currentWeek, ...(payload?.availableWeeks ?? [])])).sort().reverse().map((week) => <option key={week} value={week}>{formatWeekRange(week)}</option>)}
             </select>
           </div>
@@ -161,8 +161,8 @@ export default function HorariosPage() {
                 <Card key={day.key} className={`p-3 ${current ? "ring-2 ring-volt/30" : ""}`}>
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex items-center gap-3">
-                      <span className={`grid size-10 place-items-center rounded-2xl text-sm font-black ${current ? "bg-volt text-white" : "bg-blue-50 text-volt"}`}>{day.date.getUTCDate()}</span>
-                      <div><h3 className="font-black text-ink">{day.name}</h3><p className="text-[11px] text-muted">{formatLongDate(day.date)}{current ? " · Hoy" : ""}</p></div>
+                      <span className={`grid size-10 place-items-center rounded-2xl text-sm font-semibold ${current ? "bg-volt text-white" : "bg-blue-50 text-volt"}`}>{day.date.getUTCDate()}</span>
+                      <div><h3 className="font-semibold text-ink">{day.name}</h3><p className="text-[11px] text-muted">{formatLongDate(day.date)}{current ? " · Hoy" : ""}</p></div>
                     </div>
                     <CalendarDays size={18} className={current ? "text-volt" : "text-muted"} />
                   </div>
@@ -191,11 +191,11 @@ export default function HorariosPage() {
 
 function ScheduleRow({ item, showUser }: { item: ScheduleItem; showUser: boolean }) {
   const config = statusConfig[item.status];
-  return <div className="flex min-h-11 items-center justify-between gap-3 py-1.5"><div className="flex min-w-0 items-center gap-2.5">{showUser ? <ProfileAvatar name={item.userName} photoUrl={item.photoUrl} size="sm" className="size-9 rounded-full shadow-none" /> : null}<div className="min-w-0"><p className="truncate text-sm font-black text-ink">{showUser ? item.userName : config.label}</p><p className="mt-0.5 flex items-center gap-1.5 text-[11px] text-muted">{item.startTime ? <><Clock3 size={12} />{item.startTime}{item.endTime ? ` - ${item.endTime}` : ""}</> : item.statusRaw ?? config.label}{showUser && item.zone ? ` · ${item.zone}` : ""}</p></div></div><Badge tone={config.tone}>{config.label}</Badge></div>;
+  return <div className="flex min-h-11 items-center justify-between gap-3 py-1.5"><div className="flex min-w-0 items-center gap-2.5">{showUser ? <ProfileAvatar name={item.userName} photoUrl={item.photoUrl} size="sm" className="size-9 rounded-full shadow-none" /> : null}<div className="min-w-0"><p className="truncate text-sm font-semibold text-ink">{showUser ? item.userName : config.label}</p><p className="mt-0.5 flex items-center gap-1.5 text-[11px] text-muted">{item.startTime ? <><Clock3 size={12} />{item.startTime}{item.endTime ? ` - ${item.endTime}` : ""}</> : item.statusRaw ?? config.label}{showUser && item.zone ? ` · ${item.zone}` : ""}</p></div></div><Badge tone={config.tone}>{config.label}</Badge></div>;
 }
 
 function Summary({ label, value, className }: { label: string; value: number; className: string }) {
-  return <div className="rounded-2xl bg-white dark:bg-slate-800 px-2 py-2.5 text-center shadow-sm dark:shadow-none"><p className={`text-xl font-black ${className}`}>{value}</p><p className="mt-0.5 truncate text-[9px] font-bold text-muted">{label}</p></div>;
+  return <div className="rounded-2xl bg-white dark:bg-slate-800 px-2 py-2.5 text-center shadow-sm dark:shadow-none"><p className={`text-xl font-semibold ${className}`}>{value}</p><p className="mt-0.5 truncate text-[9px] font-bold text-muted">{label}</p></div>;
 }
 
 function formatWeekRange(value: string) {

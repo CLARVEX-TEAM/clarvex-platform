@@ -180,7 +180,7 @@ export function AppSelect({
                     <AvatarSmall name={opt.label} photoUrl={opt.photoUrl} size={44} />
                   ) : null}
                   <div className="min-w-0 flex-1">
-                    <p className="truncate font-black text-ink">{opt.label}</p>
+                    <p className="truncate font-semibold text-ink">{opt.label}</p>
                     {opt.description ? (
                       <p className="text-xs text-slate-400 dark:text-slate-500">{opt.description}</p>
                     ) : null}
@@ -417,7 +417,7 @@ export function AppButton({
       {...props}
       disabled={loading || success || props.disabled}
       className={cn(
-        "tappable relative inline-flex min-h-12 items-center justify-center gap-2 overflow-hidden rounded-2xl px-5 text-sm font-black tracking-[-0.01em] focus:outline-none focus:ring-4 disabled:cursor-not-allowed disabled:opacity-55",
+        "tappable relative inline-flex min-h-12 items-center justify-center gap-2 overflow-hidden rounded-2xl px-5 text-sm font-semibold tracking-[-0.01em] focus:outline-none focus:ring-4 disabled:cursor-not-allowed disabled:opacity-55",
         variant === "primary" && !success &&
           "btn-sheen bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-[0_8px_30px_rgba(37,99,235,0.35)] hover:shadow-[0_12px_36px_rgba(37,99,235,0.45)] focus:ring-blue-500/20",
         variant === "primary" && success &&
@@ -475,7 +475,7 @@ function AvatarSmall({ name, photoUrl, size = 36 }: { name: string; photoUrl?: s
   }
   return (
     <span
-      className="grid shrink-0 place-items-center rounded-full bg-blue-100 dark:bg-blue-950/50 font-black text-blue-600 dark:text-blue-400"
+      className="grid shrink-0 place-items-center rounded-full bg-blue-100 dark:bg-blue-950/50 font-semibold text-blue-600 dark:text-blue-400"
       style={{ width: size, height: size, fontSize: Math.round(size * 0.32) }}
     >
       {name.slice(0, 2).toUpperCase()}

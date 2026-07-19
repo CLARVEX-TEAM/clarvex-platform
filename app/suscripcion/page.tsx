@@ -94,7 +94,7 @@ export default function SubscriptionPage() {
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-muted">{status.storeName}</p>
-                  <h2 className="mt-1 text-2xl font-black text-ink">{money(status.amountMxn)}<span className="text-sm font-bold text-muted"> / mes</span></h2>
+                  <h2 className="mt-1 text-2xl font-semibold text-ink">{money(status.amountMxn)}<span className="text-sm font-bold text-muted"> / mes</span></h2>
                   <p className="mt-0.5 text-xs text-muted">{status.activeUsers} usuario{status.activeUsers === 1 ? "" : "s"} × {money(status.pricePerUserMxn)} · IVA incl.</p>
                 </div>
                 {ui ? <Badge tone={ui.tone}>{ui.label}</Badge> : null}
@@ -133,7 +133,7 @@ export default function SubscriptionPage() {
                   {status.payments.map((payment) => (
                     <div key={payment.id} className="flex items-center justify-between gap-3 py-2.5 first:pt-0 last:pb-0">
                       <div>
-                        <p className="text-sm font-black text-ink">{money(payment.amountMxn)}</p>
+                        <p className="text-sm font-semibold text-ink">{money(payment.amountMxn)}</p>
                         <p className="text-[11px] font-semibold text-muted">{fmtDate(payment.paidAt)}{payment.method ? ` · ${payment.method}` : ""}</p>
                       </div>
                       <Badge tone="success">Hasta {fmtDate(payment.periodEnd)}</Badge>

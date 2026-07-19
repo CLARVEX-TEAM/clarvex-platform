@@ -11,7 +11,7 @@ export function AchievementsCard({ achievements }: { achievements: Achievement[]
       <div className="mb-3 flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <Award className="text-volt" size={18} />
-          <h2 className="text-lg font-black">Logros</h2>
+          <h2 className="text-lg font-semibold">Logros</h2>
         </div>
         <Badge tone={unlocked > 0 ? "success" : "default"}>{unlocked}/{achievements.length}</Badge>
       </div>
@@ -29,7 +29,7 @@ export function AchievementsCard({ achievements }: { achievements: Achievement[]
               {a.unlocked ? a.emoji : "🔒"}
             </span>
             <div className="min-w-0">
-              <p className={`truncate text-sm font-black ${a.unlocked ? "text-ink" : "text-muted"}`}>{a.title}</p>
+              <p className={`truncate text-sm font-semibold ${a.unlocked ? "text-ink" : "text-muted"}`}>{a.title}</p>
               <p className="truncate text-[11px] text-muted">{a.description}</p>
             </div>
           </div>

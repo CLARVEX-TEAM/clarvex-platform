@@ -97,12 +97,12 @@ export default function AdvisorDashboard() {
       <div className="grid min-h-screen place-items-center px-8 text-center">
         <div>
           <span className="mx-auto mb-3 grid size-14 place-items-center rounded-3xl bg-rose-500/10 text-2xl">📡</span>
-          <p className="text-base font-black text-ink">No se pudo cargar la información</p>
+          <p className="text-base font-semibold text-ink">No se pudo cargar la información</p>
           <p className="mt-1 text-sm font-semibold text-muted">Revisa tu conexión e intenta de nuevo.</p>
           <button
             type="button"
             onClick={() => { setLoadFailed(false); void load(); }}
-            className="mt-4 rounded-full bg-volt px-7 py-2.5 text-sm font-black text-white transition active:scale-95"
+            className="mt-4 rounded-full bg-volt px-7 py-2.5 text-sm font-semibold text-white transition active:scale-95"
           >
             Reintentar
           </button>
@@ -220,22 +220,23 @@ export default function AdvisorDashboard() {
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mb-3 rounded-2xl bg-[#00FF66]/10 border border-[#00FF66]/20 p-3.5 flex items-center justify-between gap-3 shadow-lg shadow-[#00FF66]/5"
+            className="mb-3 flex items-center justify-between gap-3 rounded-2xl border border-line bg-card p-3.5"
+            style={{ boxShadow: "0 1px 2px rgba(20,21,26,0.04), 0 1px 3px rgba(20,21,26,0.03)" }}
           >
             <div className="flex items-center gap-3">
-              <span className="text-xl">📢</span>
+              <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-[#EEF3FF] text-base dark:bg-[#172134]">📢</span>
               <div className="min-w-0">
-                <p className="text-xs font-bold text-white">Comunicados pendientes</p>
-                <p className="text-[11px] text-[#00FF66] font-semibold mt-0.5">
+                <p className="text-[13px] font-semibold text-ink">Comunicados pendientes</p>
+                <p className="mt-0.5 text-[11.5px] text-muted">
                   Tienes {unread.length} {unread.length === 1 ? "comunicado" : "comunicados"} sin confirmar lectura.
                 </p>
               </div>
             </div>
             <Link
               href="/comunicados"
-              className="rounded-xl bg-[#00FF66] px-3.5 py-1.5 text-xs font-black text-black transition active:scale-95 shrink-0"
+              className="shrink-0 rounded-full bg-[#2563EB] px-3.5 py-2 text-xs font-semibold text-white transition active:scale-95 dark:bg-[#6B9BFF]"
             >
-              Leer ahora
+              Leer
             </Link>
           </motion.div>
         )}
@@ -247,7 +248,7 @@ export default function AdvisorDashboard() {
           <Card className="border border-white/10 bg-[#0A0A0A]/60 backdrop-blur-xl p-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
-                <span className="grid size-10 place-items-center rounded-2xl bg-gradient-to-br from-yellow-400 to-amber-500 text-white font-black text-lg shadow-lg shadow-amber-500/10">
+                <span className="grid size-10 place-items-center rounded-2xl bg-gradient-to-br from-yellow-400 to-amber-500 text-white font-semibold text-lg shadow-lg shadow-amber-500/10">
                   {level}
                 </span>
                 <div>
@@ -267,28 +268,28 @@ export default function AdvisorDashboard() {
                 <motion.div
                   initial={{ width: 0 }}
                   animate={{ width: `${xpProgress}%` }}
-                  className="h-full bg-gradient-to-r from-[#00FF66] to-emerald-400"
+                  className="h-full bg-gradient-to-r from-[#2563EB] to-emerald-400"
                 />
               </div>
             </div>
 
             {/* Retos y Tareas Diarias */}
             <div className="mt-4 pt-3.5 border-t border-white/5 space-y-2">
-              <p className="text-xs font-black text-white flex items-center gap-1.5">
+              <p className="text-xs font-semibold text-white flex items-center gap-1.5">
                 <span>⚡</span> Retos del Día:
               </p>
               <div className="grid grid-cols-2 gap-2 text-[11px]">
                 <div className={`rounded-xl border p-2 flex flex-col justify-between ${daily.dailySales >= daily.dailyGoal && daily.dailyGoal > 0 ? "bg-emerald-500/10 border-emerald-500/20" : "bg-white/5 border-white/5"}`}>
                   <p className="font-bold text-white">Meta Diaria</p>
                   <p className="text-slate-400 mt-0.5">Vender {money(daily.dailyGoal)}</p>
-                  <span className={`mt-1.5 font-bold uppercase tracking-wider text-[9px] ${daily.dailySales >= daily.dailyGoal && daily.dailyGoal > 0 ? "text-[#00FF66]" : "text-amber-500"}`}>
+                  <span className={`mt-1.5 font-bold uppercase tracking-wider text-[9px] ${daily.dailySales >= daily.dailyGoal && daily.dailyGoal > 0 ? "text-[#2563EB]" : "text-amber-500"}`}>
                     {daily.dailySales >= daily.dailyGoal && daily.dailyGoal > 0 ? "Completado" : "Pendiente"}
                   </span>
                 </div>
                 <div className={`rounded-xl border p-2 flex flex-col justify-between ${planTotal > 0 && planDone === planTotal ? "bg-emerald-500/10 border-emerald-500/20" : "bg-white/5 border-white/5"}`}>
                   <p className="font-bold text-white">Checklist</p>
                   <p className="text-slate-400 mt-0.5">Plan ({planDone}/{planTotal})</p>
-                  <span className={`mt-1.5 font-bold uppercase tracking-wider text-[9px] ${planTotal > 0 && planDone === planTotal ? "text-[#00FF66]" : "text-amber-500"}`}>
+                  <span className={`mt-1.5 font-bold uppercase tracking-wider text-[9px] ${planTotal > 0 && planDone === planTotal ? "text-[#2563EB]" : "text-amber-500"}`}>
                     {planTotal > 0 && planDone === planTotal ? "Completado" : "Pendiente"}
                   </span>
                 </div>
@@ -325,7 +326,7 @@ export default function AdvisorDashboard() {
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-[11px] font-bold uppercase tracking-[0.13em] text-muted">Tu racha</p>
-                <h2 className="mt-1 text-[2rem] font-black leading-none text-ink">🔥 {streak.current} {streak.current === 1 ? "día" : "días"}</h2>
+                <h2 className="mt-1 text-[2rem] font-semibold leading-none text-ink">🔥 {streak.current} {streak.current === 1 ? "día" : "días"}</h2>
                 <p className="mt-1 text-xs text-muted">Mejor racha: {streak.best} {streak.best === 1 ? "día" : "días"} cumpliendo meta</p>
               </div>
             </div>
@@ -343,8 +344,8 @@ export default function AdvisorDashboard() {
 
         <motion.div {...cardAnim(0.31)} className="mt-3">
           <Card>
-            <h2 className="mb-3 text-lg font-black flex items-center gap-2">
-              <span className="text-[#00FF66]">🎯</span> Retos del Día
+            <h2 className="mb-3 text-lg font-semibold flex items-center gap-2">
+              <span className="text-[#2563EB]">🎯</span> Retos del Día
             </h2>
             <div className="space-y-3.5">
               {/* Reto 1: Meta de Ventas */}
@@ -386,7 +387,7 @@ export default function AdvisorDashboard() {
         <motion.div {...cardAnim(0.32)} className="mt-3">
           <Card>
             <div className="mb-3 flex items-center justify-between gap-2">
-              <h2 className="text-lg font-black">Plan del día</h2>
+              <h2 className="text-lg font-semibold">Plan del día</h2>
               <Badge>
                 {planDone}/{planTotal}
               </Badge>
@@ -406,7 +407,7 @@ export default function AdvisorDashboard() {
             <div className="mb-3 flex items-center justify-between gap-2">
               <div className="flex items-center gap-2">
                 <Sparkles className="text-volt animate-pulse" size={18} />
-                <h2 className="text-lg font-black">Coach de Ventas IA</h2>
+                <h2 className="text-lg font-semibold">Coach de Ventas IA</h2>
               </div>
               <Badge tone="success">Recomendaciones</Badge>
             </div>
@@ -418,7 +419,7 @@ export default function AdvisorDashboard() {
                   type="button"
                   onClick={() => void fetchSalesTips()}
                   disabled={loadingTips}
-                  className="w-full flex items-center justify-center gap-2 rounded-2xl bg-[#00FF66] px-4 py-2.5 text-sm font-black text-black transition active:scale-95 disabled:opacity-40"
+                  className="w-full flex items-center justify-center gap-2 rounded-2xl bg-[#2563EB] px-4 py-2.5 text-sm font-semibold text-white transition active:scale-95 disabled:opacity-40"
                 >
                   <Sparkles size={16} />
                   {loadingTips ? "Analizando KPIs..." : "Consultar a mi Coach IA"}
@@ -446,12 +447,12 @@ export default function AdvisorDashboard() {
                   <div className="grid grid-cols-2 gap-3 text-xs">
                     <div className="rounded-xl bg-emerald-500/10 border border-emerald-500/20 p-2.5">
                       <p className="font-bold text-emerald-400 text-[10px] uppercase tracking-wider">Fuerte 🚀</p>
-                      <p className="font-black text-white mt-1 text-[13px]">{profile.strongestKpi.name}</p>
+                      <p className="font-semibold text-white mt-1 text-[13px]">{profile.strongestKpi.name}</p>
                       <p className="text-white/60 mt-0.5 leading-relaxed text-[11px]">{profile.strongestKpi.details}</p>
                     </div>
                     <div className="rounded-xl bg-rose-500/10 border border-rose-500/20 p-2.5">
                       <p className="font-bold text-rose-400 text-[10px] uppercase tracking-wider">Mejora 🎯</p>
-                      <p className="font-black text-white mt-1 text-[13px]">{profile.weakestKpi.name}</p>
+                      <p className="font-semibold text-white mt-1 text-[13px]">{profile.weakestKpi.name}</p>
                       <p className="text-white/60 mt-0.5 leading-relaxed text-[11px]">{profile.weakestKpi.details}</p>
                     </div>
                   </div>
@@ -459,7 +460,7 @@ export default function AdvisorDashboard() {
 
                 {profile && profile.techniques && (
                   <div className="rounded-xl bg-white/5 border border-white/5 p-3 space-y-2">
-                    <p className="text-[11px] font-black text-white uppercase tracking-wider text-white/40 flex items-center gap-1">
+                    <p className="text-[11px] font-semibold text-white uppercase tracking-wider text-white/40 flex items-center gap-1">
                       💡 Técnicas de Venta Recomendadas:
                     </p>
                     <ul className="list-disc pl-4 space-y-1 text-xs text-white/70 leading-relaxed">
@@ -472,7 +473,7 @@ export default function AdvisorDashboard() {
 
                 {profile && profile.recommendedResources && profile.recommendedResources.length > 0 && (
                   <div className="rounded-xl bg-white/5 border border-white/5 p-3 space-y-2">
-                    <p className="text-[11px] font-black uppercase tracking-wider text-[#00FF66] flex items-center gap-1">
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-[#2563EB] flex items-center gap-1">
                       📚 Capacitación Recomendada:
                     </p>
                     <div className="space-y-2">
@@ -519,7 +520,7 @@ export default function AdvisorDashboard() {
 
         <motion.div {...cardAnim(0.40)} className="mt-3">
           <Card>
-            <h2 className="mb-3 text-lg font-black">KPIs principales</h2>
+            <h2 className="mb-3 text-lg font-semibold">KPIs principales</h2>
             <div className="grid grid-cols-2 gap-3 text-sm">
               <Metric label="Ticket promedio" value={money(kpi?.avgTicket ?? 0)} />
               <Metric label="UPT" value={String(kpi?.upt ?? 0)} />
@@ -535,7 +536,7 @@ export default function AdvisorDashboard() {
         <motion.div {...cardAnim(0.48)} className="mt-3">
           <Card>
             <div className="mb-3 flex items-center justify-between gap-2">
-              <h2 className="text-lg font-black">Actividad</h2>
+              <h2 className="text-lg font-semibold">Actividad</h2>
               <Badge tone={unread.length ? "warn" : "success"}>{unread.length} sin leer</Badge>
             </div>
             <div className="space-y-2">
@@ -567,7 +568,7 @@ function Metric({ label, value }: { label: string; value: string }) {
   return (
     <div className="border-b border-white/[0.07] px-1 py-2 last:border-b-0">
       <p className="text-ink/45">{label}</p>
-      <p className="mt-1 text-lg font-black text-ink/90">{value}</p>
+      <p className="mt-1 text-lg font-semibold text-ink/90">{value}</p>
     </div>
   );
 }

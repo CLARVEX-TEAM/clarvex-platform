@@ -62,7 +62,7 @@ export function DeleteButton({
       {...props}
       disabled={loading || props.disabled}
       className={cn(
-        "tappable group rounded-xl font-black tracking-[-0.01em] focus:outline-none focus:ring-4 focus:ring-rose-500/20 disabled:cursor-not-allowed disabled:opacity-55",
+        "tappable group rounded-xl font-semibold tracking-[-0.01em] focus:outline-none focus:ring-4 focus:ring-rose-500/20 disabled:cursor-not-allowed disabled:opacity-55",
         iconOnly ? "grid place-items-center" : "inline-flex min-h-10 items-center justify-center gap-1.5 px-3 text-sm",
         variant === "soft" && "border border-rose-200/60 bg-rose-50/60 text-rose-600 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-400",
         variant === "solid" && "bg-rose-500 text-white shadow-[0_8px_20px_rgb(244_63_94_/_0.28)] hover:bg-rose-600",
@@ -121,7 +121,7 @@ export function SaveButton({
       {...props}
       disabled={loading || success || props.disabled}
       className={cn(
-        "tappable relative inline-flex min-h-12 items-center justify-center gap-2 overflow-hidden rounded-2xl px-5 text-sm font-black tracking-[-0.01em] focus:outline-none focus:ring-4 disabled:cursor-not-allowed disabled:opacity-55",
+        "tappable relative inline-flex min-h-12 items-center justify-center gap-2 overflow-hidden rounded-2xl px-5 text-sm font-semibold tracking-[-0.01em] focus:outline-none focus:ring-4 disabled:cursor-not-allowed disabled:opacity-55",
         !success && "btn-sheen bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-[0_8px_30px_rgba(37,99,235,0.35)] focus:ring-blue-500/20",
         success && "bg-gradient-to-r from-emerald-600 to-emerald-500 text-white shadow-[0_8px_30px_rgba(34,197,94,0.35)] focus:ring-emerald-500/20",
         className

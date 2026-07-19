@@ -88,7 +88,7 @@ export default function EscritorioDashboard() {
         {/* Tendencia de ventas */}
         <Card className="col-span-2 p-5">
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-lg font-black text-ink">Tendencia de ventas</h2>
+            <h2 className="text-lg font-semibold text-ink">Tendencia de ventas</h2>
             <Badge>Últimos {trend.length} días</Badge>
           </div>
           <div className="h-64">
@@ -131,7 +131,7 @@ export default function EscritorioDashboard() {
         <Card className="col-span-2 p-5">
           <div className="mb-3 flex items-center gap-2">
             <UsersRound className="text-volt" size={18} />
-            <h2 className="text-lg font-black text-ink">Equipo hoy</h2>
+            <h2 className="text-lg font-semibold text-ink">Equipo hoy</h2>
           </div>
           <div className="overflow-hidden rounded-2xl border border-line">
             <table className="w-full text-sm">
@@ -152,13 +152,13 @@ export default function EscritorioDashboard() {
                         <span className="font-bold text-ink">{i === 0 && !r.resting ? "👑 " : ""}{r.advisor.name}</span>
                       </div>
                     </td>
-                    <td className="px-4 py-2.5 text-right font-black text-ink">{money(r.sales)}</td>
+                    <td className="px-4 py-2.5 text-right font-semibold text-ink">{money(r.sales)}</td>
                     <td className="px-4 py-2.5 text-right text-muted">{money(r.goal)}</td>
                     <td className="px-4 py-2.5">
                       {r.resting ? <Badge>Descanso</Badge> : (
                         <div className="flex items-center gap-2">
                           <div className="flex-1"><ProgressBar value={r.progress} tone={achievementTone(r.progress)} /></div>
-                          <span className="w-9 shrink-0 text-right text-xs font-black text-ink">{r.progress}%</span>
+                          <span className="w-9 shrink-0 text-right text-xs font-semibold text-ink">{r.progress}%</span>
                         </div>
                       )}
                     </td>
@@ -174,7 +174,7 @@ export default function EscritorioDashboard() {
         <div className="space-y-4">
           <Card className="p-5">
             <div className="mb-3 flex items-center justify-between">
-              <div className="flex items-center gap-2"><AlertTriangle className="text-orchid" size={18} /><h2 className="text-lg font-black text-ink">Críticos</h2></div>
+              <div className="flex items-center gap-2"><AlertTriangle className="text-orchid" size={18} /><h2 className="text-lg font-semibold text-ink">Críticos</h2></div>
               <Link href="/escritorio/pendientes" className="text-xs font-bold text-volt hover:underline">Ver todos</Link>
             </div>
             <div className="space-y-2.5">
@@ -207,7 +207,7 @@ function KpiTile({ icon: Icon, label, value, tone }: { icon: LucideIcon; label: 
         <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-muted">{label}</p>
         <span className={cn("grid size-9 place-items-center rounded-2xl bg-blue-50 dark:bg-[#1a2540]", tone)}><Icon size={17} /></span>
       </div>
-      <p className={cn("mt-3 text-[1.7rem] font-black leading-none tracking-[-0.03em]", tone)}>{value}</p>
+      <p className={cn("mt-3 text-[1.7rem] font-semibold leading-none tracking-[-0.03em]", tone)}>{value}</p>
     </Card>
   );
 }

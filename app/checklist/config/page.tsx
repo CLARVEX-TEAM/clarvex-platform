@@ -126,7 +126,7 @@ export default function ChecklistConfigPage() {
               const list = items.filter((i) => i.section === section.id).sort((a, b) => a.sortOrder - b.sortOrder);
               return (
                 <Card key={section.id} className="p-3.5">
-                  <h2 className="mb-2 text-lg font-black">{section.label}</h2>
+                  <h2 className="mb-2 text-lg font-semibold">{section.label}</h2>
                   <div className="divide-y divide-line">
                     {list.map((item, index) => (
                       <ItemRow
@@ -174,7 +174,7 @@ function ItemRow({ item, canUp, canDown, onRename, onRemove, onMove }: {
         maxLength={120}
         className="min-w-0 flex-1 rounded-lg border border-transparent bg-transparent px-1 py-1 text-sm font-bold text-ink outline-none focus:border-line"
       />
-      {changed ? <button type="button" onClick={() => onRename(label.trim())} className="shrink-0 rounded-lg bg-volt px-2 py-1 text-[11px] font-black text-white">Guardar</button> : null}
+      {changed ? <button type="button" onClick={() => onRename(label.trim())} className="shrink-0 rounded-lg bg-volt px-2 py-1 text-[11px] font-semibold text-white">Guardar</button> : null}
       <div className="flex shrink-0 flex-col">
         <button type="button" onClick={() => onMove(-1)} disabled={!canUp} aria-label="Subir" className="text-muted disabled:opacity-30"><ChevronUp size={16} /></button>
         <button type="button" onClick={() => onMove(1)} disabled={!canDown} aria-label="Bajar" className="text-muted disabled:opacity-30"><ChevronDown size={16} /></button>

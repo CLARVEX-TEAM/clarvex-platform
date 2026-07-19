@@ -17,12 +17,12 @@ export default function TerminosPage() {
 
       <article className="space-y-5 text-[15px] leading-7 text-ink">
         <header className="space-y-1">
-          <h1 className="text-2xl font-black tracking-[-0.02em]">Términos de Uso</h1>
+          <h1 className="text-2xl font-semibold tracking-[-0.02em]">Términos de Uso</h1>
           <p className="text-sm font-semibold text-muted">CLARVEX Team</p>
         </header>
 
         <section className="space-y-2">
-          <h2 className="text-lg font-black">1. Naturaleza de la herramienta</h2>
+          <h2 className="text-lg font-semibold">1. Naturaleza de la herramienta</h2>
           <p>
             CLARVEX Team es una aplicación de uso interno provista por CLARVEX, representada por su representante
             legal Jesús Adrián Hernández Luna, para la gestión operativa de sus tiendas. El acceso se otorga
@@ -31,7 +31,7 @@ export default function TerminosPage() {
         </section>
 
         <section className="space-y-2">
-          <h2 className="text-lg font-black">2. Uso de la cuenta</h2>
+          <h2 className="text-lg font-semibold">2. Uso de la cuenta</h2>
           <ul className="list-disc space-y-1 pl-5 text-muted">
             <li>Su PIN y su acceso biométrico son personales e intransferibles.</li>
             <li>Usted es responsable de la actividad realizada desde su cuenta.</li>
@@ -40,7 +40,7 @@ export default function TerminosPage() {
         </section>
 
         <section className="space-y-2">
-          <h2 className="text-lg font-black">3. Uso aceptable</h2>
+          <h2 className="text-lg font-semibold">3. Uso aceptable</h2>
           <p>
             La información mostrada (ventas, metas, comisiones, datos del equipo) es confidencial y de uso
             estrictamente laboral. Queda prohibido compartirla fuera de la organización, así como usar la
@@ -49,7 +49,7 @@ export default function TerminosPage() {
         </section>
 
         <section className="space-y-2">
-          <h2 className="text-lg font-black">4. Disponibilidad</h2>
+          <h2 className="text-lg font-semibold">4. Disponibilidad</h2>
           <p>
             El servicio se ofrece “tal cual”. El Responsable procura su disponibilidad continua, pero puede
             realizar mantenimientos o suspender el acceso cuando concluya la relación laboral o por motivos de
@@ -58,7 +58,7 @@ export default function TerminosPage() {
         </section>
 
         <section className="space-y-2">
-          <h2 className="text-lg font-black">5. Datos personales</h2>
+          <h2 className="text-lg font-semibold">5. Datos personales</h2>
           <p>
             El tratamiento de datos personales se rige por el{" "}
             <Link href="/privacidad" className="font-bold text-volt underline-offset-2 hover:underline">Aviso de Privacidad</Link>.

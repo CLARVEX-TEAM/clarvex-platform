@@ -122,7 +122,7 @@ export default function ChatPage() {
                         <span className="absolute -bottom-0.5 -right-0.5 size-3.5 rounded-full border-2 border-white bg-green-500 dark:border-[#0f1729]" />
                       )}
                       {room.unreadCount > 0 && (
-                        <span className="absolute -right-1 -top-1 grid size-5 place-items-center rounded-full bg-volt text-[10px] font-black text-white">
+                        <span className="absolute -right-1 -top-1 grid size-5 place-items-center rounded-full bg-volt text-[10px] font-semibold text-white">
                           {room.unreadCount > 9 ? "9+" : room.unreadCount}
                         </span>
                       )}
@@ -154,7 +154,7 @@ export default function ChatPage() {
               <Card className="p-3.5">
                 <div className="mb-3 flex items-center gap-2">
                   <MessageSquare className="text-volt" size={17} />
-                  <h2 className="text-base font-black">Nuevo mensaje directo</h2>
+                  <h2 className="text-base font-semibold">Nuevo mensaje directo</h2>
                 </div>
                 <div className="grid gap-1">
                   {team.map((member) => (

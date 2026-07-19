@@ -136,7 +136,7 @@ export default function CapacitacionPage() {
           <Card className="mb-3 p-3.5">
             <div className="mb-3 flex items-center gap-2">
               <GraduationCap className="text-volt" size={18} />
-              <h2 className="text-lg font-black">Nuevo recurso</h2>
+              <h2 className="text-lg font-semibold">Nuevo recurso</h2>
             </div>
             <div className="grid gap-3">
               <label className="grid gap-1">
@@ -168,20 +168,20 @@ export default function CapacitacionPage() {
         {loading ? (
           <Card className="text-sm font-semibold text-muted">Cargando recursos…</Card>
         ) : resources.length === 0 ? (
-          <Card><p className="font-black">Sin recursos</p><p className="mt-2 text-sm text-muted">Aquí aparecerán los materiales de capacitación del equipo.</p></Card>
+          <Card><p className="font-semibold">Sin recursos</p><p className="mt-2 text-sm text-muted">Aquí aparecerán los materiales de capacitación del equipo.</p></Card>
         ) : (
           <div className="space-y-2.5">
             {resources.map((resource) => (
               <Card key={resource.id} className="p-3.5">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
-                    <p className="font-black text-ink">{resource.title}</p>
+                    <p className="font-semibold text-ink">{resource.title}</p>
                     <p className="text-xs text-muted">{TRAINING_CATEGORY_LABELS[resource.category] ?? resource.category} · {resource.author}</p>
                   </div>
                   {resource.viewedByMe ? <Badge tone="success">Visto</Badge> : <Badge tone="warn">Nuevo</Badge>}
                 </div>
                 {resource.description ? <p className="mt-2 text-sm text-muted">{resource.description}</p> : null}
-                <button type="button" onClick={() => void open(resource)} className="mt-3 flex min-h-10 w-full items-center justify-center gap-2 rounded-xl bg-volt/10 text-sm font-black text-volt ring-1 ring-volt/30 transition active:scale-95">
+                <button type="button" onClick={() => void open(resource)} className="mt-3 flex min-h-10 w-full items-center justify-center gap-2 rounded-xl bg-volt/10 text-sm font-semibold text-volt ring-1 ring-volt/30 transition active:scale-95">
                   {resource.fileUrl && !resource.linkUrl ? <FileText size={16} /> : <ExternalLink size={16} />}
                   Abrir recurso
                 </button>

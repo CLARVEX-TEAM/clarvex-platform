@@ -79,14 +79,14 @@ export default function EscritorioKpis() {
           <div className="flex gap-2">
             <a
               href={`/api/reports/kpis?start=${report.startDate}&end=${report.endDate}&period=${period}&label=${encodeURIComponent(rangeLabel)}${report.weekNumber ? `&week=${report.weekNumber}` : ""}`}
-              className="flex min-h-11 items-center justify-center gap-2 rounded-2xl border border-line bg-panel px-4 text-sm font-black text-white transition hover:border-volt"
+              className="flex min-h-11 items-center justify-center gap-2 rounded-2xl border border-line bg-panel px-4 text-sm font-semibold text-ink/70 transition hover:border-volt"
             >
               <Download size={16} /> Exportar (Excel)
             </a>
             <button
               onClick={() => void fetchIaReport()}
               disabled={loadingIaReport}
-              className="flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-[#00FF66] px-4 text-sm font-black text-black transition disabled:opacity-50"
+              className="flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-[#2563EB] px-4 text-sm font-semibold text-white transition disabled:opacity-50"
             >
               <Sparkles size={16} />
               {loadingIaReport ? "Generando..." : "Reporte IA"}
@@ -97,7 +97,7 @@ export default function EscritorioKpis() {
 
       <div className="flex gap-1.5">
         {tabs.map((tab) => (
-          <motion.button key={tab.id} onClick={() => setActiveTab(tab.id)} whileTap={{ scale: 0.96 }} className={`relative min-h-10 rounded-full px-5 text-sm font-black transition ${activeTab === tab.id ? "text-white" : "text-muted hover:text-ink"}`}>
+          <motion.button key={tab.id} onClick={() => setActiveTab(tab.id)} whileTap={{ scale: 0.96 }} className={`relative min-h-10 rounded-full px-5 text-sm font-semibold transition ${activeTab === tab.id ? "text-white" : "text-muted hover:text-ink"}`}>
             {activeTab === tab.id ? <motion.span layoutId="desktop-kpi-tab" className="absolute inset-0 rounded-full bg-volt shadow-[0_8px_18px_rgb(37_99_235_/_0.2)]" transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }} /> : null}
             <span className="relative">{tab.label}</span>
           </motion.button>
@@ -147,8 +147,8 @@ export default function EscritorioKpis() {
             >
               <div className="flex items-center justify-between border-b border-white/5 pb-3">
                 <div className="flex items-center gap-2">
-                  <Sparkles className="text-[#00FF66]" size={20} />
-                  <h3 className="text-sm font-black text-white">{iaReport.title}</h3>
+                  <Sparkles className="text-[#2563EB]" size={20} />
+                  <h3 className="text-sm font-semibold text-white">{iaReport.title}</h3>
                 </div>
                 <button
                   onClick={() => setShowIaReportModal(false)}
@@ -160,7 +160,7 @@ export default function EscritorioKpis() {
 
               <div className="space-y-4 text-xs text-slate-300 leading-relaxed">
                 <div>
-                  <h4 className="font-bold text-[#00FF66] uppercase tracking-wider text-[10px]">Resumen Ejecutivo</h4>
+                  <h4 className="font-bold text-[#2563EB] uppercase tracking-wider text-[10px]">Resumen Ejecutivo</h4>
                   <p className="mt-1 bg-white/[0.02] border border-white/5 rounded-xl p-3 text-slate-200 italic">{iaReport.executiveSummary}</p>
                 </div>
 
@@ -204,12 +204,12 @@ function PeriodBar({ period, setPeriod, selectedDate, setSelectedDate, rangeLabe
     <div className="flex flex-wrap items-center gap-3">
       <div className="flex rounded-full bg-slate-100 p-1 dark:bg-[#1a2540]" role="group" aria-label="Periodo de KPIs">
         {(["week", "month"] as const).map((option) => (
-          <button key={option} type="button" onClick={() => setPeriod(option)} className={`min-h-9 rounded-full px-5 text-sm font-black transition ${period === option ? "bg-white text-volt shadow-sm dark:bg-[#2a3a5c]" : "text-muted"}`}>{option === "week" ? "Semana" : "Mes"}</button>
+          <button key={option} type="button" onClick={() => setPeriod(option)} className={`min-h-9 rounded-full px-5 text-sm font-semibold transition ${period === option ? "bg-white text-volt shadow-sm dark:bg-[#2a3a5c]" : "text-muted"}`}>{option === "week" ? "Semana" : "Mes"}</button>
         ))}
       </div>
       <div className="flex items-center gap-2.5 rounded-2xl border border-line bg-panel px-3 py-2">
         <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-blue-50 text-volt dark:bg-[#1a2540]"><CalendarDays size={17} /></span>
-        <div className="min-w-0"><p className="text-[10px] font-bold uppercase tracking-[0.1em] text-muted">Período</p><p className="truncate text-sm font-black text-ink">{rangeLabel}</p></div>
+        <div className="min-w-0"><p className="text-[10px] font-bold uppercase tracking-[0.1em] text-muted">Período</p><p className="truncate text-sm font-semibold text-ink">{rangeLabel}</p></div>
         {period === "week" ? (
           <select aria-label="Seleccionar semana RDV" value={selectedDate} onChange={(event) => setSelectedDate(event.target.value)} className="min-h-9 rounded-xl bg-slate-100 px-2 text-xs font-bold text-ink outline-none focus:ring-4 focus:ring-volt/20 dark:bg-[#1a2540]">{availableWeeks.map((week) => <option key={`${week.weekNumber}-${week.weekStart}`} value={week.weekStart}>Semana {week.weekNumber}</option>)}</select>
         ) : (
@@ -247,10 +247,10 @@ function ResumenView({ activeKpi, team, progress, periodLabel, hasDiscountSource
           <div className="flex items-center justify-between gap-4">
             <div>
               <p className="text-[11px] font-bold uppercase tracking-[0.13em] text-muted">Cumplimiento {periodLabel}</p>
-              <h2 className={cn("mt-1 text-[2.6rem] font-black leading-none", goalToneText)}>{progress}%</h2>
+              <h2 className={cn("mt-1 text-[2.6rem] font-semibold leading-none", goalToneText)}>{progress}%</h2>
               <p className="mt-1 text-sm text-muted">{money(activeKpi.sales)} de {money(activeKpi.goal)}</p>
               {activeKpi.goal > 0 ? (
-                <p className={cn("mt-0.5 text-xs font-black", activeKpi.sales >= activeKpi.goal ? "text-success" : "text-volt")}>
+                <p className={cn("mt-0.5 text-xs font-semibold", activeKpi.sales >= activeKpi.goal ? "text-success" : "text-volt")}>
                   {activeKpi.sales >= activeKpi.goal ? `Meta superada por ${money(activeKpi.sales - activeKpi.goal)}` : `Faltan ${money(activeKpi.goal - activeKpi.sales)} para la meta ${periodLabel}`}
                 </p>
               ) : null}
@@ -270,14 +270,14 @@ function ResumenView({ activeKpi, team, progress, periodLabel, hasDiscountSource
         {salesProjection ? (
           <Card className="border border-emerald-400/30 bg-gradient-to-br from-emerald-50 to-blue-50 p-4 dark:from-[#0f2a1e] dark:to-[#11203f]">
             <p className="text-[11px] font-bold uppercase tracking-[0.13em] text-muted">Proyección de cierre</p>
-            <h2 className="mt-1 text-[1.7rem] font-black leading-none text-ink">{money(salesProjection.projectedSales)}</h2>
+            <h2 className="mt-1 text-[1.7rem] font-semibold leading-none text-ink">{money(salesProjection.projectedSales)}</h2>
             <p className="mt-1.5 text-xs text-muted">{salesProjection.achievement}% de {money(salesProjection.goal)} · ritmo {formatWeeksElapsed(salesProjection.weeksElapsed)}/{salesProjection.totalWeeks} sem.</p>
             <div className="mt-2.5"><ProgressBar value={Math.min(salesProjection.achievement, 100)} /></div>
           </Card>
         ) : (
           <Card className="flex flex-col justify-center p-4">
             <p className="text-[11px] font-bold uppercase tracking-[0.13em] text-muted">Transacciones</p>
-            <h2 className="mt-1 text-[1.7rem] font-black leading-none text-ink">{activeKpi.transactions}</h2>
+            <h2 className="mt-1 text-[1.7rem] font-semibold leading-none text-ink">{activeKpi.transactions}</h2>
             <p className="mt-1.5 text-xs text-muted">Piezas: {activeKpi.pieces} · Tráfico: {activeKpi.traffic ?? "—"}</p>
           </Card>
         )}
@@ -300,7 +300,7 @@ function ResumenView({ activeKpi, team, progress, periodLabel, hasDiscountSource
 function TeamTable({ team }: { team: KpiReportItem[] }) {
   return (
     <Card className="p-5">
-      <h2 className="mb-3 text-lg font-black text-ink">Desempeño por asesor</h2>
+      <h2 className="mb-3 text-lg font-semibold text-ink">Desempeño por asesor</h2>
       <div className="overflow-hidden rounded-2xl border border-line">
         <table className="w-full text-sm">
           <thead className="bg-panel text-left text-[11px] font-bold uppercase tracking-[0.1em] text-muted">
@@ -322,12 +322,12 @@ function TeamTable({ team }: { team: KpiReportItem[] }) {
                     <span className="font-bold text-ink">{item.userName}</span>
                   </div>
                 </td>
-                <td className="px-4 py-2.5 text-right font-black text-ink">{money(item.sales)}</td>
+                <td className="px-4 py-2.5 text-right font-semibold text-ink">{money(item.sales)}</td>
                 <td className="px-4 py-2.5 text-right text-muted">{money(item.goal)}</td>
                 <td className="px-4 py-2.5">
                   <div className="flex items-center gap-2">
                     <div className="flex-1"><ProgressBar value={Math.round(item.achievement)} tone={achievementTone(Math.round(item.achievement))} /></div>
-                    <span className="w-9 shrink-0 text-right text-xs font-black text-ink">{Math.round(item.achievement)}%</span>
+                    <span className="w-9 shrink-0 text-right text-xs font-semibold text-ink">{Math.round(item.achievement)}%</span>
                   </div>
                 </td>
                 <td className="px-4 py-2.5 text-right text-ink">{item.upt === null ? "—" : item.upt}</td>
@@ -360,7 +360,7 @@ function MetricCard({ metric, value, detail, sparkData, trafficLight }: { metric
       <span className={cn("absolute right-3 top-3 size-2.5 rounded-full", dotClass)} />
       <span className={cn("inline-grid size-9 place-items-center rounded-[14px]", accent.chip)}><Icon size={17} /></span>
       <p className="mt-2 text-[10px] font-bold uppercase tracking-[0.12em] text-muted">{label}</p>
-      <p className="mt-0.5 text-[1.6rem] font-black leading-none tracking-[-0.03em] text-ink">{value}</p>
+      <p className="mt-0.5 text-[1.6rem] font-semibold leading-none tracking-[-0.03em] text-ink">{value}</p>
       <p className="mt-0.5 text-[11px] leading-4 text-muted">{detail}</p>
       {sparkData.length > 2 ? (
         <div className="pointer-events-none absolute bottom-0 right-0 h-12 w-24 opacity-60">
@@ -382,7 +382,7 @@ function VentasView({ activeKpi, chartData, team, progress, periodLabel }: { act
   return (
     <div className="space-y-4">
       <Card className="p-5">
-        <div className="mb-3 flex items-center justify-between"><div className="flex items-center gap-2"><TrendingUp className="text-volt" size={18} /><h2 className="text-lg font-black text-ink">Venta vs meta por asesor</h2></div><Badge>{progress}%</Badge></div>
+        <div className="mb-3 flex items-center justify-between"><div className="flex items-center gap-2"><TrendingUp className="text-volt" size={18} /><h2 className="text-lg font-semibold text-ink">Venta vs meta por asesor</h2></div><Badge>{progress}%</Badge></div>
         <div className="h-72">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={team.map((m) => ({ name: m.userName.split(" ")[0], Venta: m.sales, Meta: m.goal }))} margin={{ top: 12, right: 12, left: 8, bottom: 0 }} barGap={4}>
@@ -397,7 +397,7 @@ function VentasView({ activeKpi, chartData, team, progress, periodLabel }: { act
         </div>
       </Card>
       <Card className="p-5">
-        <h2 className="mb-3 text-lg font-black text-ink">Tendencia de venta</h2>
+        <h2 className="mb-3 text-lg font-semibold text-ink">Tendencia de venta</h2>
         <div className="h-56">
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={data} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
@@ -435,7 +435,7 @@ function ComisionView({ activeKpi, rules, simulatedSales, setSimulatedSales, act
               <div className="flex items-center gap-3">
                 <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-amber-400/15 text-2xl">🏆</span>
                 <div>
-                  <h2 className="text-lg font-black leading-tight text-ink">¡Nivel máximo de comisión!</h2>
+                  <h2 className="text-lg font-semibold leading-tight text-ink">¡Nivel máximo de comisión!</h2>
                   <p className="mt-0.5 text-sm font-semibold text-muted">Ya ganas el {bracketGap.currentPercent}% — mantén el ritmo.</p>
                 </div>
               </div>
@@ -445,8 +445,8 @@ function ComisionView({ activeKpi, rules, simulatedSales, setSimulatedSales, act
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <p className="text-[11px] font-bold uppercase tracking-[0.13em] text-muted">Te faltan</p>
-                  <h2 className="mt-1 text-[2rem] font-black leading-none text-ink">{money(bracketGap.salesNeeded)}</h2>
-                  <p className="mt-1.5 text-sm text-muted">para el {bracketGap.targetAchievement}% y subir tu comisión de {bracketGap.currentPercent}% a <span className="font-black text-volt">{bracketGap.nextPercent}%</span></p>
+                  <h2 className="mt-1 text-[2rem] font-semibold leading-none text-ink">{money(bracketGap.salesNeeded)}</h2>
+                  <p className="mt-1.5 text-sm text-muted">para el {bracketGap.targetAchievement}% y subir tu comisión de {bracketGap.currentPercent}% a <span className="font-semibold text-volt">{bracketGap.nextPercent}%</span></p>
                 </div>
                 <span className="grid size-12 place-items-center rounded-2xl bg-volt/10 text-2xl">🎯</span>
               </div>
@@ -457,7 +457,7 @@ function ComisionView({ activeKpi, rules, simulatedSales, setSimulatedSales, act
         {projection ? (
           <Card className="border border-emerald-400/30 bg-gradient-to-br from-emerald-50 to-blue-50 p-5 dark:from-[#0f2a1e] dark:to-[#11203f]">
             <div className="flex items-start justify-between gap-4">
-              <div><p className="text-[11px] font-bold uppercase tracking-[0.13em] text-muted">Proyección de cierre de mes</p><h2 className="mt-1 text-[2rem] font-black leading-none text-ink">{money(projection.projectedCommission)}</h2><p className="mt-1.5 text-sm text-muted">Al ritmo de tus semanas con datos 💰</p></div>
+              <div><p className="text-[11px] font-bold uppercase tracking-[0.13em] text-muted">Proyección de cierre de mes</p><h2 className="mt-1 text-[2rem] font-semibold leading-none text-ink">{money(projection.projectedCommission)}</h2><p className="mt-1.5 text-sm text-muted">Al ritmo de tus semanas con datos 💰</p></div>
               <span className="grid size-12 place-items-center rounded-2xl bg-emerald-100 text-emerald-600 dark:bg-[#10301f]"><TrendingUp size={25} /></span>
             </div>
             <div className="mt-3 grid grid-cols-3 gap-2"><Mini label="Venta proy." value={money(projection.projectedSales)} /><Mini label="Nivel actual" value={`${projection.percent}%`} /><Mini label="Semanas" value={`${formatWeeksElapsed(projection.weeksElapsed)}/${projection.totalWeeks}`} /></div>
@@ -465,21 +465,21 @@ function ComisionView({ activeKpi, rules, simulatedSales, setSimulatedSales, act
         ) : null}
         <Card className="premium-hero p-5">
           <div className="flex items-start justify-between gap-4">
-            <div><p className="text-[11px] font-bold uppercase tracking-[0.13em] text-muted">Comisión estimada {periodLabel}</p><h2 className="mt-1 text-[2.1rem] font-black leading-none text-ink">{hasMinimum ? money(simulatedCommission) : "—"}</h2><p className={`mt-1 text-sm ${activeRule ? "text-muted" : "font-semibold text-rose-700"}`}>{activeRule ? `${activeRule.commissionPercent}% por nivel actual` : missingRuleMessage}</p></div>
+            <div><p className="text-[11px] font-bold uppercase tracking-[0.13em] text-muted">Comisión estimada {periodLabel}</p><h2 className="mt-1 text-[2.1rem] font-semibold leading-none text-ink">{hasMinimum ? money(simulatedCommission) : "—"}</h2><p className={`mt-1 text-sm ${activeRule ? "text-muted" : "font-semibold text-rose-700"}`}>{activeRule ? `${activeRule.commissionPercent}% por nivel actual` : missingRuleMessage}</p></div>
             <span className="grid size-12 place-items-center rounded-2xl bg-violet-50 text-purple dark:bg-[#1a2540]"><Trophy size={25} /></span>
           </div>
           <div className="mt-3 grid grid-cols-2 gap-2"><Mini label="Porcentaje" value={hasMinimum ? `${appliedPercent}%` : "—"} /><Mini label="Alcance vs mínimo" value={hasMinimum ? `${Math.round(simulatedAchievement)}%` : "—"} /></div>
         </Card>
         <Card className="p-5">
-          <div className="mb-2.5 flex items-center gap-2"><Calculator className="text-volt" size={18} /><h2 className="text-lg font-black text-ink">Simulador {periodLabel}</h2></div>
-          <input value={simulatedSales} onChange={(event) => setSimulatedSales(event.target.value.replace(/[^\d.]/g, ""))} inputMode="decimal" placeholder={String(Math.round(activeKpi.sales))} aria-label={`Venta simulada ${periodLabel}`} className="min-h-14 w-full rounded-2xl border border-line bg-blue-50 px-4 text-xl font-black text-ink outline-none focus:border-volt focus:ring-4 focus:ring-volt/15 dark:bg-[#1a2540]" />
+          <div className="mb-2.5 flex items-center gap-2"><Calculator className="text-volt" size={18} /><h2 className="text-lg font-semibold text-ink">Simulador {periodLabel}</h2></div>
+          <input value={simulatedSales} onChange={(event) => setSimulatedSales(event.target.value.replace(/[^\d.]/g, ""))} inputMode="decimal" placeholder={String(Math.round(activeKpi.sales))} aria-label={`Venta simulada ${periodLabel}`} className="min-h-14 w-full rounded-2xl border border-line bg-blue-50 px-4 text-xl font-semibold text-ink outline-none focus:border-volt focus:ring-4 focus:ring-volt/15 dark:bg-[#1a2540]" />
         </Card>
       </div>
       <Card className="h-fit p-5">
-        <div className="mb-2.5 flex items-center justify-between"><h2 className="text-lg font-black text-ink">Escalera de niveles</h2><Badge>{commissionRole}</Badge></div>
+        <div className="mb-2.5 flex items-center justify-between"><h2 className="text-lg font-semibold text-ink">Escalera de niveles</h2><Badge>{commissionRole}</Badge></div>
         {rules.filter((rule) => rule.active && rule.role === commissionRole).map((rule) => (
           <div key={rule.id} className="flex items-center justify-between border-t border-line py-3 first:border-0">
-            <div><p className="font-black text-ink">{rule.minAchievement}% a {rule.maxAchievement ?? "más"}%</p><p className="text-xs text-muted">Regla por cumplimiento</p></div>
+            <div><p className="font-semibold text-ink">{rule.minAchievement}% a {rule.maxAchievement ?? "más"}%</p><p className="text-xs text-muted">Regla por cumplimiento</p></div>
             <Badge tone={rule.id === activeRule?.id ? "success" : "default"}>{rule.commissionPercent}%</Badge>
           </div>
         ))}
@@ -516,11 +516,11 @@ function RankingView({ ranking, periodLabel, isAdvisor, currentUserId }: { ranki
     <div className="space-y-4">
       <Card className="p-5">
         <div className="mb-3 flex items-center justify-between">
-          <div className="flex items-center gap-2"><UsersRound className="text-volt" size={18} /><h2 className="text-lg font-black text-ink">Ranking {periodLabel}</h2></div>
+          <div className="flex items-center gap-2"><UsersRound className="text-volt" size={18} /><h2 className="text-lg font-semibold text-ink">Ranking {periodLabel}</h2></div>
           {!isAdvisor ? (
             <div className="flex gap-1.5">
               {RANK_METRICS.map((option) => (
-                <button key={option.id} type="button" onClick={() => setMetricId(option.id)} className={cn("min-h-9 rounded-full px-3.5 text-[13px] font-black transition", metricId === option.id ? "bg-volt text-white" : "bg-panel text-muted ring-1 ring-line hover:text-ink")}>{option.label}</button>
+                <button key={option.id} type="button" onClick={() => setMetricId(option.id)} className={cn("min-h-9 rounded-full px-3.5 text-[13px] font-semibold transition", metricId === option.id ? "bg-volt text-white" : "bg-panel text-muted ring-1 ring-line hover:text-ink")}>{option.label}</button>
               ))}
             </div>
           ) : null}
@@ -546,7 +546,7 @@ function RankingView({ ranking, periodLabel, isAdvisor, currentUserId }: { ranki
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
                   <ProfileAvatar name={item.userName} photoUrl={item.photoUrl} size="md" />
-                  <div><h3 className="font-black text-ink">{entry.position === 1 ? "👑 " : ""}{item.userName}</h3><p className="text-sm text-muted">#{entry.position}{showValue ? ` · ${isAdvisor ? money(item.sales) : valueLabel}` : ""}</p></div>
+                  <div><h3 className="font-semibold text-ink">{entry.position === 1 ? "👑 " : ""}{item.userName}</h3><p className="text-sm text-muted">#{entry.position}{showValue ? ` · ${isAdvisor ? money(item.sales) : valueLabel}` : ""}</p></div>
                 </div>
                 {entry.position === 1 ? <Badge tone="warn">Líder</Badge> : <Badge>{Math.round(item.achievement)}%</Badge>}
               </div>
@@ -561,13 +561,13 @@ function RankingView({ ranking, periodLabel, isAdvisor, currentUserId }: { ranki
 
 function ReciboView({ receipts, loading, isManager }: { receipts: ReceiptMonth[] | null; loading: boolean; isManager: boolean }) {
   if (loading || receipts === null) return <Card className="text-sm font-semibold text-muted">Cargando recibos…</Card>;
-  if (receipts.length === 0) return <Card className="p-5"><p className="font-black text-ink">Sin recibos</p><p className="mt-2 text-sm text-muted">Aquí aparecerá un recibo de comisión por cada mes con datos.</p></Card>;
+  if (receipts.length === 0) return <Card className="p-5"><p className="font-semibold text-ink">Sin recibos</p><p className="mt-2 text-sm text-muted">Aquí aparecerá un recibo de comisión por cada mes con datos.</p></Card>;
   return (
     <div className="grid grid-cols-2 gap-4">
       {receipts.map((month) => (
         <Card key={month.start} className="h-fit p-5">
           <div className="mb-3 flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2"><Receipt className="text-volt" size={18} /><h2 className="text-lg font-black capitalize text-ink">{month.label}</h2></div>
+            <div className="flex items-center gap-2"><Receipt className="text-volt" size={18} /><h2 className="text-lg font-semibold capitalize text-ink">{month.label}</h2></div>
             <Badge tone={month.isCurrent ? "warn" : "default"}>{month.isCurrent ? "En curso" : "Cerrado"}</Badge>
           </div>
           <ReceiptBody line={month.main} highlight />
@@ -577,7 +577,7 @@ function ReciboView({ receipts, loading, isManager }: { receipts: ReceiptMonth[]
               <div className="space-y-2.5">
                 {month.team.map((line) => (
                   <div key={line.name} className="rounded-2xl bg-panel p-3">
-                    <div className="mb-1.5 flex items-center gap-2.5"><ProfileAvatar name={line.name} photoUrl={line.photoUrl} size="sm" /><p className="min-w-0 truncate font-black text-ink">{line.name}</p></div>
+                    <div className="mb-1.5 flex items-center gap-2.5"><ProfileAvatar name={line.name} photoUrl={line.photoUrl} size="sm" /><p className="min-w-0 truncate font-semibold text-ink">{line.name}</p></div>
                     <ReceiptBody line={line} />
                   </div>
                 ))}
@@ -610,15 +610,15 @@ function ReceiptBody({ line, highlight }: { line: ReceiptLine; highlight?: boole
         <ReceiptRow label="Nivel" value={line.percent > 0 ? `${line.percent}%` : "—"} />
       </div>
       <div className={cn("mt-2.5 flex items-center justify-between rounded-2xl px-3 py-2.5", highlight ? "bg-volt/10 ring-1 ring-volt/30" : "bg-panel")}>
-        <span className="text-sm font-black text-muted">Comisión</span>
-        <span className="text-lg font-black text-ink">{money(line.commission)}</span>
+        <span className="text-sm font-semibold text-muted">Comisión</span>
+        <span className="text-lg font-semibold text-ink">{money(line.commission)}</span>
       </div>
     </>
   );
 }
 
 function ReceiptRow({ label, value }: { label: string; value: string }) {
-  return <div className="flex items-center justify-between"><span className="text-muted">{label}</span><span className="font-black text-ink">{value}</span></div>;
+  return <div className="flex items-center justify-between"><span className="text-muted">{label}</span><span className="font-semibold text-ink">{value}</span></div>;
 }
 
 function TargetSheet({ targets, period, onClose, onSave }: { targets: KpiTarget[]; period: "SEMANA" | "MES"; onClose: () => void; onSave: (saved: KpiTarget[]) => void }) {
@@ -659,7 +659,7 @@ function TargetSheet({ targets, period, onClose, onSave }: { targets: KpiTarget[
     <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm" onMouseDown={(event) => { if (event.currentTarget === event.target && !saving) onClose(); }}>
       <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} transition={{ duration: 0.2 }} className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl dark:bg-slate-900">
         <div className="mb-5 flex items-center justify-between">
-          <h2 className="text-lg font-black text-ink">Metas KPI — {period === "SEMANA" ? "Semana" : "Mes"}</h2>
+          <h2 className="text-lg font-semibold text-ink">Metas KPI — {period === "SEMANA" ? "Semana" : "Mes"}</h2>
           <button onClick={onClose} className="grid size-9 place-items-center rounded-full bg-slate-100 text-ink dark:bg-slate-800"><X size={16} /></button>
         </div>
         <div className="grid grid-cols-2 gap-3">
@@ -674,10 +674,10 @@ function TargetSheet({ targets, period, onClose, onSave }: { targets: KpiTarget[
           })}
         </div>
         {status ? <p className={cn("mt-3 text-sm font-semibold", status.includes("guardadas") ? "text-emerald-600 dark:text-emerald-400" : "text-muted")}>{status}</p> : null}
-        <button type="button" onClick={() => void handleSave()} disabled={saving} className="mt-4 min-h-12 w-full rounded-2xl bg-gradient-to-r from-blue-600 to-blue-500 text-sm font-black text-white shadow-[0_8px_30px_rgba(37,99,235,0.35)] transition active:scale-95 disabled:opacity-60">{saving ? "Guardando…" : "Guardar metas"}</button>
+        <button type="button" onClick={() => void handleSave()} disabled={saving} className="mt-4 min-h-12 w-full rounded-2xl bg-gradient-to-r from-blue-600 to-blue-500 text-sm font-semibold text-white shadow-[0_8px_30px_rgba(37,99,235,0.35)] transition active:scale-95 disabled:opacity-60">{saving ? "Guardando…" : "Guardar metas"}</button>
       </motion.div>
     </div>
   );
 }
 
-function Mini({ label, value }: { label: string; value: string }) { return <div className="px-2"><p className="text-[11px] font-bold uppercase tracking-[0.1em] text-muted">{label}</p><p className="mt-1 font-black text-ink">{value}</p></div>; }
+function Mini({ label, value }: { label: string; value: string }) { return <div className="px-2"><p className="text-[11px] font-bold uppercase tracking-[0.1em] text-muted">{label}</p><p className="mt-1 font-semibold text-ink">{value}</p></div>; }

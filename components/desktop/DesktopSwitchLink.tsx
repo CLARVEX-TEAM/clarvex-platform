@@ -25,7 +25,7 @@ export function DesktopSwitchLink() {
     <button
       type="button"
       onClick={() => { setViewPreference("desktop"); router.replace("/escritorio"); }}
-      className="mt-3 flex w-full items-center justify-center gap-2 rounded-2xl border border-line bg-panel py-3 text-sm font-black text-volt transition active:scale-[0.98]"
+      className="mt-3 flex w-full items-center justify-center gap-2 rounded-2xl border border-line bg-panel py-3 text-sm font-semibold text-volt transition active:scale-[0.98]"
     >
       <Monitor size={16} /> Usar versión de escritorio (computadora)
     </button>

@@ -64,7 +64,7 @@ export function LiquidBottomNav() {
                   <item.icon size={19} />
                 </motion.span>
               </span>
-              <span className={cn("relative text-[10px] tracking-[-0.01em] transition-colors", active ? "font-black text-volt" : "font-bold text-muted")}>
+              <span className={cn("relative text-[10px] tracking-[-0.01em] transition-colors", active ? "font-semibold text-volt" : "font-bold text-muted")}>
                 {item.label}
               </span>
             </Link>

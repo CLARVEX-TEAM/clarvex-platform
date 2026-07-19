@@ -62,7 +62,7 @@ export function UpdatePrompt() {
         <button
           type="button"
           onClick={() => window.location.reload()}
-          className="shrink-0 rounded-xl bg-white/20 px-3 py-1.5 text-xs font-black text-white transition active:scale-95"
+          className="shrink-0 rounded-xl bg-white/20 px-3 py-1.5 text-xs font-semibold text-white transition active:scale-95"
         >
           Actualizar
         </button>

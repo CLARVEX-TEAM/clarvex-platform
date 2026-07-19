@@ -196,11 +196,11 @@ export default function ChecklistPage() {
         subtitle={dateLabel ? dateLabel.charAt(0).toUpperCase() + dateLabel.slice(1) : "Apertura y cierre"}
         backHref={kiosk ? undefined : "/manager"}
         action={kiosk ? (
-          <button type="button" onClick={() => void logout().then(() => router.replace("/login"))} className="flex items-center gap-1.5 rounded-full border border-line px-3 py-1.5 text-xs font-black text-muted transition active:scale-95">
+          <button type="button" onClick={() => void logout().then(() => router.replace("/login"))} className="flex items-center gap-1.5 rounded-full border border-line px-3 py-1.5 text-xs font-semibold text-muted transition active:scale-95">
             <LogOut size={14} />Salir
           </button>
         ) : (
-          <button type="button" onClick={() => router.push("/checklist/config")} className="flex items-center gap-1.5 rounded-full border border-line px-3 py-1.5 text-xs font-black text-muted transition active:scale-95 hover:text-volt">
+          <button type="button" onClick={() => router.push("/checklist/config")} className="flex items-center gap-1.5 rounded-full border border-line px-3 py-1.5 text-xs font-semibold text-muted transition active:scale-95 hover:text-volt">
             <SlidersHorizontal size={14} />Editar
           </button>
         )}
@@ -222,7 +222,7 @@ export default function ChecklistPage() {
                   <div className="mb-2.5 flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <SectionIcon className="text-volt" size={18} />
-                      <h2 className="text-lg font-black">{section.label}</h2>
+                      <h2 className="text-lg font-semibold">{section.label}</h2>
                     </div>
                     <Badge tone={done === total ? "success" : "default"}>{done}/{total}</Badge>
                   </div>
@@ -341,7 +341,7 @@ function ScanRow({ item, busy, onCapture, onRemove, onGeneratePdf }: {
           <p className="text-sm font-bold text-ink">{item.label}</p>
           <p className="text-[11px] text-muted">{pages ? `${pages} ${pages === 1 ? "página" : "páginas"}` : "Escanea las hojas y genera el PDF"}</p>
         </div>
-        <button type="button" onClick={() => fileRef.current?.click()} disabled={busy} className="flex shrink-0 items-center gap-1.5 rounded-xl border border-line px-3 py-2 text-xs font-black text-volt transition hover:border-volt active:scale-95 disabled:opacity-50">
+        <button type="button" onClick={() => fileRef.current?.click()} disabled={busy} className="flex shrink-0 items-center gap-1.5 rounded-xl border border-line px-3 py-2 text-xs font-semibold text-volt transition hover:border-volt active:scale-95 disabled:opacity-50">
           <Camera size={15} />{busy ? "…" : "Escanear"}
         </button>
       </div>
@@ -353,7 +353,7 @@ function ScanRow({ item, busy, onCapture, onRemove, onGeneratePdf }: {
               <a href={scan.url} target="_blank" rel="noreferrer">
                 <NextImage src={scan.url} alt={`Página ${index + 1}`} width={56} height={56} className="size-14 rounded-lg object-cover" unoptimized />
               </a>
-              <span className="absolute bottom-0 left-0 rounded-tr-md rounded-bl-lg bg-black/60 px-1 text-[9px] font-black text-white">{index + 1}</span>
+              <span className="absolute bottom-0 left-0 rounded-tr-md rounded-bl-lg bg-black/60 px-1 text-[9px] font-semibold text-white">{index + 1}</span>
               <button type="button" onClick={() => onRemove(scan.id)} aria-label="Borrar página" className="absolute -right-1.5 -top-1.5 grid size-5 place-items-center rounded-full bg-rose-600 text-white shadow-sm transition active:scale-90">
                 <X size={11} />
               </button>
@@ -364,7 +364,7 @@ function ScanRow({ item, busy, onCapture, onRemove, onGeneratePdf }: {
 
       {pages ? (
         <div className="mt-2 flex items-center gap-2 pl-[2.1rem]">
-          <button type="button" onClick={() => void makePdf()} disabled={pdfBusy} className="flex items-center gap-1.5 rounded-xl bg-volt px-3 py-2 text-xs font-black text-white transition hover:bg-[#1D4ED8] active:scale-95 disabled:opacity-50">
+          <button type="button" onClick={() => void makePdf()} disabled={pdfBusy} className="flex items-center gap-1.5 rounded-xl bg-volt px-3 py-2 text-xs font-semibold text-white transition hover:bg-[#1D4ED8] active:scale-95 disabled:opacity-50">
             <FileText size={15} />{pdfBusy ? "Generando…" : pdf ? "Regenerar PDF" : "Generar PDF y enviar"}
           </button>
           {pdf ? (

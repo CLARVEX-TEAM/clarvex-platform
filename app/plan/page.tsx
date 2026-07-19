@@ -252,7 +252,7 @@ export default function PlanPage() {
               key={day}
               onClick={() => setSelectedDay(day)}
               whileTap={{ scale: 0.93 }}
-              className="relative min-h-10 shrink-0 rounded-full px-3.5 text-[13px] font-black tracking-[-0.01em] transition"
+              className="relative min-h-10 shrink-0 rounded-full px-3.5 text-[13px] font-semibold tracking-[-0.01em] transition"
             >
               {selectedDay === day ? (
                 <motion.span
@@ -273,7 +273,7 @@ export default function PlanPage() {
           <div className="flex items-center justify-between gap-4">
             <div>
               <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#2563EB]">Progreso del dia</p>
-              <h2 className="mt-1 text-[2.4rem] font-black leading-none tracking-[-0.05em] text-slate-900 dark:text-white">
+              <h2 className="mt-1 text-[2.4rem] font-semibold leading-none tracking-[-0.05em] text-slate-900 dark:text-white">
                 {dayProgress}%
               </h2>
               <p className="mt-1 text-xs font-semibold text-slate-500 dark:text-slate-400">
@@ -297,7 +297,7 @@ export default function PlanPage() {
           <Card className="mb-3">
             <div className="mb-3 flex items-center gap-2">
               <Sparkles className="text-volt" size={18} />
-              <h2 className="text-lg font-black">Actividades automáticas</h2>
+              <h2 className="text-lg font-semibold">Actividades automáticas</h2>
             </div>
             <p className="mb-3 text-sm text-muted">
               Asigna cíclico, limpieza y visual según las reglas de la tienda, rotando de forma justa entre los asesores que trabajan ese día.
@@ -335,12 +335,12 @@ export default function PlanPage() {
         {!isAdvisor ? (
           <Card className="mb-3">
             <div className="mb-4 flex items-center justify-between gap-3">
-              <h2 className="text-lg font-black">Crear plan</h2>
+              <h2 className="text-lg font-semibold">Crear plan</h2>
               <button
                 type="button"
                 onClick={() => void suggestWithAI()}
                 disabled={suggesting}
-                className="flex items-center gap-1.5 rounded-full bg-volt/15 px-3 py-1.5 text-xs font-black text-[#00FF66] ring-1 ring-volt/40 transition active:scale-95 disabled:opacity-40"
+                className="flex items-center gap-1.5 rounded-full bg-volt/15 px-3 py-1.5 text-xs font-semibold text-[#2563EB] ring-1 ring-volt/40 transition active:scale-95 disabled:opacity-40"
               >
                 <Sparkles size={13} className="text-volt animate-pulse" />
                 {suggesting ? "Pensando..." : "Sugerir con IA"}
@@ -401,7 +401,7 @@ export default function PlanPage() {
                   <div className="flex min-w-0 items-center gap-3">
                     <ProfileAvatar name={userName(plan.userId)} photoUrl={planUser(plan.userId)?.photoUrl} size="sm" className="rounded-full shadow-none" />
                     <div>
-                      <h2 className="truncate text-xl font-black">{userName(plan.userId)}</h2>
+                      <h2 className="truncate text-xl font-semibold">{userName(plan.userId)}</h2>
                       <p className="text-sm text-muted">{plan.date}</p>
                     </div>
                   </div>
@@ -419,7 +419,7 @@ export default function PlanPage() {
                 <div className="mt-2.5 space-y-2.5">
                   {groupedActivities(plan.activities).map((group) => (
                     <section key={group.label}>
-                      <div className="mb-2 flex items-center gap-2 text-sm font-black text-ink">
+                      <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-ink">
                         <group.icon className="text-volt" size={17} />
                         {group.label}
                       </div>

@@ -51,7 +51,7 @@ function MessageBody({ msg, isMe, onImageClick }: { msg: Message; isMe: boolean;
     return (
       <div className={cn("flex flex-col items-center gap-1 rounded-3xl bg-gradient-to-br p-4", sticker.bg)}>
         <span className="text-5xl leading-none">{sticker.emoji}</span>
-        <span className="text-xs font-black text-ink">{sticker.label}</span>
+        <span className="text-xs font-semibold text-ink">{sticker.label}</span>
       </div>
     );
   }

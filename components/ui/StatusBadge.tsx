@@ -7,7 +7,7 @@ import type { Priority, PendingStatus } from "@/lib/types";
 
 export function StatusBadge({ children, tone = "default" }: { children: React.ReactNode; tone?: Tone }) {
   return (
-    <span className={cn("inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-black tracking-[-0.01em]", badgeTones[tone])}>
+    <span className={cn("inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold tracking-[-0.01em]", badgeTones[tone])}>
       {children}
     </span>
   );

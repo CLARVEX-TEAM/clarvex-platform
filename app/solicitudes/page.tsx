@@ -139,7 +139,7 @@ export default function SolicitudesPage() {
         <Card className="mb-3 mt-3 p-3.5">
           <div className="mb-3 flex items-center gap-2">
             <CalendarOff className="text-volt" size={18} />
-            <h2 className="text-lg font-black">Solicitar</h2>
+            <h2 className="text-lg font-semibold">Solicitar</h2>
           </div>
           <div className="mb-3 flex flex-wrap gap-1.5">
             <Badge tone={balance > 0 ? "success" : "default"}>Horas: {balance} h</Badge>
@@ -189,14 +189,14 @@ export default function SolicitudesPage() {
 
         {isManager && pending.length > 0 ? (
           <Card className="mb-3 p-3.5">
-            <h2 className="mb-2.5 text-lg font-black">Pendientes por aprobar</h2>
+            <h2 className="mb-2.5 text-lg font-semibold">Pendientes por aprobar</h2>
             <div className="space-y-2.5">
               {pending.map((request) => (
                 <div key={request.id} className="rounded-2xl border border-line p-3">
                   <div className="flex items-center gap-2.5">
                     <ProfileAvatar name={request.requester.name} photoUrl={request.requester.photoUrl} size="sm" />
                     <div className="min-w-0">
-                      <p className="truncate font-black text-ink">{request.requester.name}</p>
+                      <p className="truncate font-semibold text-ink">{request.requester.name}</p>
                       <p className="text-xs text-muted">{typeLabel(request)} · {formatRequestDate(request.date)}</p>
                     </div>
                   </div>
@@ -212,7 +212,7 @@ export default function SolicitudesPage() {
         ) : null}
 
         <Card className="p-3.5">
-          <h2 className="mb-2.5 text-lg font-black">{isManager ? "Historial" : "Mis solicitudes"}</h2>
+          <h2 className="mb-2.5 text-lg font-semibold">{isManager ? "Historial" : "Mis solicitudes"}</h2>
           {loading ? (
             <div className="space-y-2.5 py-2">
               <Skeleton className="h-12" />

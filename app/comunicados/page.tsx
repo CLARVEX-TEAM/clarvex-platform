@@ -225,7 +225,7 @@ export default function ComunicadosPage() {
             <button
               key={value}
               onClick={() => setFilter(value as Filter)}
-              className={`min-h-10 shrink-0 rounded-full px-3.5 text-[13px] font-black tracking-[-0.01em] transition active:scale-95 ${filter === value ? "bg-volt text-white shadow-[0_8px_18px_rgb(37_99_235_/_0.2)]" : "text-muted hover:text-ink"}`}
+              className={`min-h-10 shrink-0 rounded-full px-3.5 text-[13px] font-semibold tracking-[-0.01em] transition active:scale-95 ${filter === value ? "bg-volt text-white shadow-[0_8px_18px_rgb(37_99_235_/_0.2)]" : "text-muted hover:text-ink"}`}
             >
               {label}
             </button>
@@ -239,12 +239,12 @@ export default function ComunicadosPage() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Megaphone className="text-volt" size={18} />
-                <h2 className="text-lg font-black">Publicar comunicado</h2>
+                <h2 className="text-lg font-semibold">Publicar comunicado</h2>
               </div>
               <button
                 type="button"
                 onClick={() => setShowAnnouncementPrompt((prev) => !prev)}
-                className="flex items-center gap-1.5 text-[11px] font-black uppercase tracking-wider bg-[#00FF66] text-black px-3 py-1 rounded-xl active:scale-95 transition"
+                className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider bg-[#2563EB] text-white px-3 py-1 rounded-xl active:scale-95 transition"
               >
                 <Sparkles size={11} />
                 IA
@@ -252,9 +252,9 @@ export default function ComunicadosPage() {
             </div>
 
             {showAnnouncementPrompt && (
-              <div className="rounded-2xl border border-[#00FF66]/20 bg-[#00FF66]/5 p-3 space-y-2">
-                <p className="text-[11px] font-black text-white flex items-center gap-1">
-                  <Sparkles size={12} className="text-[#00FF66]" /> Redactar con IA:
+              <div className="rounded-2xl border border-[#2563EB]/20 bg-[#2563EB]/5 p-3 space-y-2">
+                <p className="text-[11px] font-semibold text-white flex items-center gap-1">
+                  <Sparkles size={12} className="text-[#2563EB]" /> Redactar con IA:
                 </p>
                 <div className="flex gap-2">
                   <input
@@ -262,13 +262,13 @@ export default function ComunicadosPage() {
                     value={announcementPrompt}
                     onChange={(e) => setAnnouncementPrompt(e.target.value)}
                     placeholder="Ej. Promoción Jeans 30% descuento este fin..."
-                    className="flex-1 min-h-9 rounded-xl border border-white/10 bg-[#0A0A0A] px-3 text-xs text-white placeholder-slate-500 outline-none focus:border-[#00FF66]"
+                    className="flex-1 min-h-9 rounded-xl border border-white/10 bg-[#0A0A0A] px-3 text-xs text-white placeholder-slate-500 outline-none focus:border-[#2563EB]"
                   />
                   <button
                     type="button"
                     onClick={() => void handleGenerateAnnouncement()}
                     disabled={generatingAnnouncement || !announcementPrompt.trim()}
-                    className="rounded-xl bg-[#00FF66] px-3 text-xs font-black text-black active:scale-95 transition disabled:opacity-50"
+                    className="rounded-xl bg-[#2563EB] px-3 text-xs font-semibold text-white active:scale-95 transition disabled:opacity-50"
                   >
                     {generatingAnnouncement ? "Generando..." : "Generar"}
                   </button>
@@ -383,7 +383,7 @@ export default function ComunicadosPage() {
           </AnimatePresence>
           {visibleAnnouncements.length === 0 ? (
             <Card>
-              <p className="font-black">Sin comunicados</p>
+              <p className="font-semibold">Sin comunicados</p>
               <p className="mt-2 text-sm text-muted">Los avisos de gerencia apareceran aqui con estado de lectura.</p>
             </Card>
           ) : null}
@@ -471,7 +471,7 @@ function CommentsThread({ announcementId, session }: { announcementId: string; s
               <div key={comment.id} className="flex items-start gap-2.5">
                 <ProfileAvatar name={comment.author.name} photoUrl={comment.author.photoUrl} size="sm" />
                 <div className="min-w-0 flex-1 rounded-2xl bg-panel px-3 py-2">
-                  <p className="text-xs font-black text-ink">{comment.author.name}{comment.authorId === session.id ? " · tú" : ""}</p>
+                  <p className="text-xs font-semibold text-ink">{comment.author.name}{comment.authorId === session.id ? " · tú" : ""}</p>
                   <p className="mt-0.5 whitespace-pre-wrap break-words text-sm text-ink">{comment.body}</p>
                 </div>
               </div>
@@ -532,7 +532,7 @@ function ReactionBar({ reactions, currentUserId, onToggle }: { reactions: Announ
                   animate={{ y: 0, opacity: 1 }}
                   exit={{ y: -9, opacity: 0 }}
                   transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
-                  className={`text-xs font-black ${reacted ? "text-volt" : "text-muted"}`}
+                  className={`text-xs font-semibold ${reacted ? "text-volt" : "text-muted"}`}
                 >
                   {count}
                 </motion.span>

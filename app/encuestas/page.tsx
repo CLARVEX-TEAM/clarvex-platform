@@ -91,7 +91,7 @@ export default function EncuestasPage() {
               <Card key={survey.id} className="p-3.5">
                 <div className="mb-1 flex items-center gap-2">
                   <ClipboardCheck className="text-volt" size={18} />
-                  <h2 className="text-lg font-black">{survey.title}</h2>
+                  <h2 className="text-lg font-semibold">{survey.title}</h2>
                 </div>
                 {survey.description ? <p className="mb-2 text-sm text-muted">{survey.description}</p> : null}
                 {survey.anonymous ? <p className="mb-3 flex items-center gap-1 text-[11px] font-bold text-emerald-600"><Lock size={12} /> Respuesta anónima</p> : null}
@@ -129,7 +129,7 @@ export default function EncuestasPage() {
                   {done.map((survey) => (
                     <Card key={survey.id} className="flex items-center justify-between gap-3 p-3.5">
                       <div className="min-w-0">
-                        <p className="truncate font-black text-ink">{survey.title}</p>
+                        <p className="truncate font-semibold text-ink">{survey.title}</p>
                         <p className="text-xs text-muted">{survey.questions.length} pregunta{survey.questions.length === 1 ? "" : "s"}</p>
                       </div>
                       <Badge tone={survey.responded ? "success" : "default"}>{survey.responded ? "Respondida" : "Cerrada"}</Badge>

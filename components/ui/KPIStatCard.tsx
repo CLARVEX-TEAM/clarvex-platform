@@ -47,7 +47,7 @@ export function KPIStatCard({
         {icon ? <span className={cn("grid place-items-center border border-line bg-volt/10", compact ? "size-7 rounded-[14px]" : "size-9 rounded-[18px]", accentText[tone])}>{icon}</span> : null}
         {!icon && delta ? <StatusBadge tone="success">{delta}</StatusBadge> : null}
       </div>
-      <p className={cn("font-black leading-none tracking-[-0.03em]", compact ? "mt-1.5 text-[1.4rem]" : "mt-3 text-[1.72rem]", accentText[tone])}><AnimatedNumber value={value} /></p>
+      <p className={cn("font-semibold leading-none tracking-[-0.03em]", compact ? "mt-1.5 text-[1.4rem]" : "mt-3 text-[1.72rem]", accentText[tone])}><AnimatedNumber value={value} /></p>
       {bars ? (
         <div className={cn("flex items-end", compact ? "mt-2 h-3 gap-1" : "mt-3 h-7 gap-1.5")}>
           {bars.map((height, index) => (

@@ -19,12 +19,12 @@ export default function PrivacidadPage() {
 
       <article className="space-y-5 text-[15px] leading-7 text-ink">
         <header className="space-y-1">
-          <h1 className="text-2xl font-black tracking-[-0.02em]">Aviso de Privacidad</h1>
+          <h1 className="text-2xl font-semibold tracking-[-0.02em]">Aviso de Privacidad</h1>
           <p className="text-sm font-semibold text-muted">CLARVEX Team</p>
         </header>
 
         <section className="space-y-2">
-          <h2 className="text-lg font-black">1. Responsable de sus datos personales</h2>
+          <h2 className="text-lg font-semibold">1. Responsable de sus datos personales</h2>
           <p>
             CLARVEX, representada por su representante legal Jesús Adrián Hernández Luna (en adelante, “el
             Responsable”), con domicilio en Loma Alta 164, Las Lomas Residencial, Nuevo León, es responsable del
@@ -35,7 +35,7 @@ export default function PrivacidadPage() {
         </section>
 
         <section className="space-y-2">
-          <h2 className="text-lg font-black">2. Datos personales que se recaban</h2>
+          <h2 className="text-lg font-semibold">2. Datos personales que se recaban</h2>
           <p>Para el funcionamiento de la aplicación se tratan las siguientes categorías de datos:</p>
           <ul className="list-disc space-y-1 pl-5 text-muted">
             <li><span className="font-bold text-ink">Identificación:</span> nombre, número de empleado, fotografía de perfil, fecha de nacimiento y fecha de ingreso.</li>
@@ -47,7 +47,7 @@ export default function PrivacidadPage() {
         </section>
 
         <section className="space-y-2">
-          <h2 className="text-lg font-black">3. Finalidades del tratamiento</h2>
+          <h2 className="text-lg font-semibold">3. Finalidades del tratamiento</h2>
           <p><span className="font-bold">Finalidades primarias</span> (necesarias para la relación laboral y el uso de la app):</p>
           <ul className="list-disc space-y-1 pl-5 text-muted">
             <li>Operación diaria de la tienda: planes, horarios, pendientes y comunicación interna.</li>
@@ -59,7 +59,7 @@ export default function PrivacidadPage() {
         </section>
 
         <section className="space-y-2">
-          <h2 className="text-lg font-black">4. Transferencias y encargados</h2>
+          <h2 className="text-lg font-semibold">4. Transferencias y encargados</h2>
           <p>
             Sus datos se alojan con proveedores de infraestructura que actúan como encargados del tratamiento
             (por ejemplo, servicios de hospedaje y de almacenamiento en la nube). Estos proveedores tratan los
@@ -71,7 +71,7 @@ export default function PrivacidadPage() {
         </section>
 
         <section className="space-y-2">
-          <h2 className="text-lg font-black">5. Derechos ARCO y revocación</h2>
+          <h2 className="text-lg font-semibold">5. Derechos ARCO y revocación</h2>
           <p>
             Usted puede ejercer sus derechos de Acceso, Rectificación, Cancelación y Oposición (ARCO), así como
             revocar su consentimiento, enviando una solicitud a contacto@clarvex.adrianluna.mx. La solicitud
@@ -81,7 +81,7 @@ export default function PrivacidadPage() {
         </section>
 
         <section className="space-y-2">
-          <h2 className="text-lg font-black">6. Tecnologías de rastreo</h2>
+          <h2 className="text-lg font-semibold">6. Tecnologías de rastreo</h2>
           <p>
             La aplicación utiliza una cookie de sesión estrictamente necesaria para mantener su acceso, y
             notificaciones push que solo se activan si usted las autoriza en su dispositivo. No se emplean
@@ -90,7 +90,7 @@ export default function PrivacidadPage() {
         </section>
 
         <section className="space-y-2">
-          <h2 className="text-lg font-black">7. Cambios al aviso</h2>
+          <h2 className="text-lg font-semibold">7. Cambios al aviso</h2>
           <p>
             Este aviso puede actualizarse. Cualquier modificación se reflejará en esta misma página, indicando la
             fecha de última actualización.

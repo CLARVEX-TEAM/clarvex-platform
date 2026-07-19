@@ -101,7 +101,7 @@ export function PwaRegister() {
       <p className="flex-1 text-sm font-semibold text-ink">Activa las notificaciones push</p>
       <button
         onClick={() => void handleActivate()}
-        className="rounded-xl bg-volt px-3 py-1.5 text-xs font-black text-white"
+        className="rounded-xl bg-volt px-3 py-1.5 text-xs font-semibold text-white"
       >
         Activar
       </button>

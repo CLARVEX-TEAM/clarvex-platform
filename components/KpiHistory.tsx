@@ -56,12 +56,12 @@ export function KpiHistoryView() {
     <>
       <Card className="mb-3 p-3.5">
         <div className="mb-2.5 flex items-center justify-between">
-          <div className="flex items-center gap-2"><History className="text-volt" size={18} /><h2 className="text-lg font-black text-ink">Histórico semanal</h2></div>
+          <div className="flex items-center gap-2"><History className="text-volt" size={18} /><h2 className="text-lg font-semibold text-ink">Histórico semanal</h2></div>
           <Badge>{weeks.length} semanas</Badge>
         </div>
         <div className="no-scrollbar mb-3 flex gap-1.5 overflow-x-auto">
           {METRICS.map((option) => (
-            <button key={option.id} type="button" onClick={() => setMetricId(option.id)} className={cn("min-h-9 shrink-0 rounded-full px-3 text-[13px] font-black transition active:scale-95", metricId === option.id ? "bg-volt text-white" : "bg-panel text-muted ring-1 ring-line hover:text-ink")}>{option.label}</button>
+            <button key={option.id} type="button" onClick={() => setMetricId(option.id)} className={cn("min-h-9 shrink-0 rounded-full px-3 text-[13px] font-semibold transition active:scale-95", metricId === option.id ? "bg-volt text-white" : "bg-panel text-muted ring-1 ring-line hover:text-ink")}>{option.label}</button>
           ))}
         </div>
         <div className="h-44">
@@ -101,16 +101,16 @@ export function KpiHistoryView() {
           return (
             <div key={week.weekStart} className="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0">
               <div>
-                <p className="font-black text-ink">Semana {week.weekNumber}</p>
+                <p className="font-semibold text-ink">Semana {week.weekNumber}</p>
                 <p className="text-xs font-semibold text-muted">{formatRange(week.weekStart, week.weekEnd)}</p>
               </div>
               <div className="flex items-center gap-2.5">
                 {delta !== null ? (
-                  <span className={cn("flex items-center gap-0.5 text-xs font-black", delta >= 0 ? "text-success" : "text-rose-600")}>
+                  <span className={cn("flex items-center gap-0.5 text-xs font-semibold", delta >= 0 ? "text-success" : "text-rose-600")}>
                     {delta >= 0 ? <TrendingUp size={13} /> : <TrendingDown size={13} />}{Math.abs(delta).toFixed(1)}%
                   </span>
                 ) : null}
-                <p className="font-black text-ink">{money(week.sales)}</p>
+                <p className="font-semibold text-ink">{money(week.sales)}</p>
                 <Badge tone={week.achievement >= 100 ? "success" : week.achievement >= 90 ? "warn" : "danger"}>{Math.round(week.achievement)}%</Badge>
               </div>
             </div>
@@ -127,9 +127,9 @@ function DeltaChip({ label, delta }: { label: string; delta: number | null }) {
     <div className="rounded-xl bg-panel px-2.5 py-2 ring-1 ring-line">
       <p className="text-[10px] font-bold uppercase tracking-wide text-muted">{label}</p>
       {delta === null ? (
-        <p className="mt-0.5 text-sm font-black text-muted">—</p>
+        <p className="mt-0.5 text-sm font-semibold text-muted">—</p>
       ) : (
-        <p className={cn("mt-0.5 flex items-center gap-1 text-sm font-black", positive ? "text-success" : "text-rose-600")}>
+        <p className={cn("mt-0.5 flex items-center gap-1 text-sm font-semibold", positive ? "text-success" : "text-rose-600")}>
           {positive ? <TrendingUp size={14} /> : <TrendingDown size={14} />}{positive ? "+" : "−"}{Math.abs(delta).toFixed(1)}%
         </p>
       )}

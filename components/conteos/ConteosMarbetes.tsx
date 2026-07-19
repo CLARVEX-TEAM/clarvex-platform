@@ -99,18 +99,18 @@ export function ConteosMarbetesView({ desktop = false }: { desktop?: boolean }) 
     <div className={desktop ? "mx-auto max-w-2xl" : undefined}>
         {/* Alta por rango */}
         <Card className="mb-3 p-4">
-          <p className="mb-2 text-sm font-black text-ink">Dar de alta por rango</p>
+          <p className="mb-2 text-sm font-semibold text-ink">Dar de alta por rango</p>
           <div className="mb-2 flex rounded-full bg-slate-100 p-1 dark:bg-[#1a2540]">
             {zones.map((z) => (
-              <button key={z.id} type="button" onClick={() => setZone(z.id)} className={`min-h-9 flex-1 rounded-full text-xs font-black transition ${zone === z.id ? "bg-white text-ink shadow dark:bg-slate-700" : "text-muted"}`}>
+              <button key={z.id} type="button" onClick={() => setZone(z.id)} className={`min-h-9 flex-1 rounded-full text-xs font-semibold transition ${zone === z.id ? "bg-white text-ink shadow dark:bg-slate-700" : "text-muted"}`}>
                 {z.label}
               </button>
             ))}
           </div>
           <div className="flex gap-1.5">
-            <input value={from} onChange={(e) => setFrom(e.target.value.replace(/\D/g, "").slice(0, 5))} inputMode="numeric" placeholder="Del" aria-label="Marbete inicial" className="min-w-0 flex-1 rounded-2xl border border-line bg-panel px-3 py-2.5 text-center text-sm font-black text-ink outline-none focus:border-volt" />
-            <input value={to} onChange={(e) => setTo(e.target.value.replace(/\D/g, "").slice(0, 5))} inputMode="numeric" placeholder="Al" aria-label="Marbete final" className="min-w-0 flex-1 rounded-2xl border border-line bg-panel px-3 py-2.5 text-center text-sm font-black text-ink outline-none focus:border-volt" />
-            <button type="button" onClick={() => void addRange()} disabled={saving} className="flex items-center gap-1 rounded-2xl bg-volt px-4 text-sm font-black text-white transition active:scale-95 disabled:opacity-50">
+            <input value={from} onChange={(e) => setFrom(e.target.value.replace(/\D/g, "").slice(0, 5))} inputMode="numeric" placeholder="Del" aria-label="Marbete inicial" className="min-w-0 flex-1 rounded-2xl border border-line bg-panel px-3 py-2.5 text-center text-sm font-semibold text-ink outline-none focus:border-volt" />
+            <input value={to} onChange={(e) => setTo(e.target.value.replace(/\D/g, "").slice(0, 5))} inputMode="numeric" placeholder="Al" aria-label="Marbete final" className="min-w-0 flex-1 rounded-2xl border border-line bg-panel px-3 py-2.5 text-center text-sm font-semibold text-ink outline-none focus:border-volt" />
+            <button type="button" onClick={() => void addRange()} disabled={saving} className="flex items-center gap-1 rounded-2xl bg-volt px-4 text-sm font-semibold text-white transition active:scale-95 disabled:opacity-50">
               <Plus size={15} /> Alta
             </button>
           </div>
@@ -118,7 +118,7 @@ export function ConteosMarbetesView({ desktop = false }: { desktop?: boolean }) 
           <p className="mt-2 text-[11px] font-semibold text-muted">Los marbetes son fijos y sirven para todos los conteos. Toca uno o varios para seleccionarlos y luego muévelos de zona, actívalos o desactívalos. No se borra el historial.</p>
           <Link
             href="/conteos/marbetes/imprimir"
-            className="mt-2.5 flex items-center justify-center gap-2 rounded-2xl border border-line bg-panel py-2.5 text-sm font-black text-ink transition active:scale-95"
+            className="mt-2.5 flex items-center justify-center gap-2 rounded-2xl border border-line bg-panel py-2.5 text-sm font-semibold text-ink transition active:scale-95"
           >
             <Printer size={15} /> Imprimir marbetes QR
           </Link>
@@ -128,18 +128,18 @@ export function ConteosMarbetesView({ desktop = false }: { desktop?: boolean }) 
         {selected.size > 0 ? (
           <Card className="sticky top-2 z-10 mb-3 p-3">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-sm font-black text-ink">{selected.size} seleccionado{selected.size === 1 ? "" : "s"}</span>
+              <span className="text-sm font-semibold text-ink">{selected.size} seleccionado{selected.size === 1 ? "" : "s"}</span>
               <div className="ml-auto flex flex-wrap gap-1.5">
-                <button type="button" disabled={saving} onClick={() => void applyToSelected({ zone: "BODEGA" })} className="flex items-center gap-1 rounded-xl bg-volt px-3 py-2 text-xs font-black text-white transition active:scale-95 disabled:opacity-50">
+                <button type="button" disabled={saving} onClick={() => void applyToSelected({ zone: "BODEGA" })} className="flex items-center gap-1 rounded-xl bg-volt px-3 py-2 text-xs font-semibold text-white transition active:scale-95 disabled:opacity-50">
                   <ArrowLeftRight size={13} /> A Bodega
                 </button>
-                <button type="button" disabled={saving} onClick={() => void applyToSelected({ zone: "PISO" })} className="flex items-center gap-1 rounded-xl bg-volt px-3 py-2 text-xs font-black text-white transition active:scale-95 disabled:opacity-50">
+                <button type="button" disabled={saving} onClick={() => void applyToSelected({ zone: "PISO" })} className="flex items-center gap-1 rounded-xl bg-volt px-3 py-2 text-xs font-semibold text-white transition active:scale-95 disabled:opacity-50">
                   <ArrowLeftRight size={13} /> A Piso
                 </button>
-                <button type="button" disabled={saving} onClick={() => void applyToSelected({ active: false })} className="flex items-center gap-1 rounded-xl bg-panel px-3 py-2 text-xs font-black text-rose-600 ring-1 ring-line transition active:scale-95 disabled:opacity-50">
+                <button type="button" disabled={saving} onClick={() => void applyToSelected({ active: false })} className="flex items-center gap-1 rounded-xl bg-panel px-3 py-2 text-xs font-semibold text-rose-600 ring-1 ring-line transition active:scale-95 disabled:opacity-50">
                   <Power size={13} /> Desactivar
                 </button>
-                <button type="button" disabled={saving} onClick={() => void applyToSelected({ active: true })} className="flex items-center gap-1 rounded-xl bg-panel px-3 py-2 text-xs font-black text-emerald-600 ring-1 ring-line transition active:scale-95 disabled:opacity-50">
+                <button type="button" disabled={saving} onClick={() => void applyToSelected({ active: true })} className="flex items-center gap-1 rounded-xl bg-panel px-3 py-2 text-xs font-semibold text-emerald-600 ring-1 ring-line transition active:scale-95 disabled:opacity-50">
                   <Power size={13} /> Activar
                 </button>
                 <button type="button" onClick={() => setSelected(new Set())} aria-label="Cancelar selección" className="grid size-9 place-items-center rounded-xl bg-panel text-muted ring-1 ring-line transition active:scale-95">
@@ -159,7 +159,7 @@ export function ConteosMarbetesView({ desktop = false }: { desktop?: boolean }) 
             if (zoneTags.length === 0) return null;
             return (
               <Card key={z.id} className="mb-3 p-3.5">
-                <p className="mb-2 text-xs font-black uppercase tracking-[0.14em] text-muted">{z.label} · {zoneTags.filter((t) => t.active).length} activos</p>
+                <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-muted">{z.label} · {zoneTags.filter((t) => t.active).length} activos</p>
                 <div className="grid grid-cols-6 gap-1.5">
                   {zoneTags.map((tag) => {
                     const isSelected = selected.has(tag.id);
@@ -169,7 +169,7 @@ export function ConteosMarbetesView({ desktop = false }: { desktop?: boolean }) 
                         type="button"
                         onClick={() => toggleSelect(tag.id)}
                         aria-pressed={isSelected}
-                        className={`min-h-9 rounded-xl border text-xs font-black transition active:scale-95 ${
+                        className={`min-h-9 rounded-xl border text-xs font-semibold transition active:scale-95 ${
                           isSelected
                             ? "border-volt bg-volt/15 text-volt ring-2 ring-volt/40"
                             : tag.active

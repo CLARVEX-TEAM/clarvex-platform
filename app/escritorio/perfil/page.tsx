@@ -125,7 +125,7 @@ export default function EscritorioPerfil() {
           <ProfileAvatar name={user.name} photoUrl={previewUrl ?? user.photoUrl} size="lg" className="size-32 rounded-full ring-4 ring-white dark:ring-[#2a3a5c]" />
           <button type="button" onClick={() => inputRef.current?.click()} aria-label="Cambiar foto de perfil" className="absolute bottom-1 right-1 grid size-9 place-items-center rounded-full bg-volt text-white ring-4 ring-white dark:ring-[#2a3a5c] transition active:scale-95"><Camera size={16} /></button>
         </div>
-        <h2 className="mt-4 text-xl font-black text-ink">{user.name}</h2>
+        <h2 className="mt-4 text-xl font-semibold text-ink">{user.name}</h2>
         <div className="mt-1 flex justify-center"><Badge>{roleLabels[user.role]}</Badge></div>
 
         <div className="mt-5 divide-y divide-line text-left">
@@ -139,7 +139,7 @@ export default function EscritorioPerfil() {
         <Card className="p-5">
           <div className="flex items-center gap-3">
             <span className="grid size-10 place-items-center rounded-2xl bg-pink-50 text-pink-500 dark:bg-[#2a1a2a]"><Cake size={19} /></span>
-            <div><h2 className="font-black text-ink">Datos personales</h2><p className="text-xs text-muted">Para felicitarte en tu día 🎂</p></div>
+            <div><h2 className="font-semibold text-ink">Datos personales</h2><p className="text-xs text-muted">Para felicitarte en tu día 🎂</p></div>
           </div>
           <div className="mt-4 grid grid-cols-2 gap-3">
             <label className="grid gap-1">
@@ -158,11 +158,11 @@ export default function EscritorioPerfil() {
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               <span className="grid size-10 place-items-center rounded-2xl bg-slate-100 text-muted dark:bg-[#1a2540]">{isDark ? <Moon size={19} /> : <Sun size={19} />}</span>
-              <div><h2 className="font-black text-ink">Apariencia</h2><p className="text-xs text-muted">Tema de la aplicación</p></div>
+              <div><h2 className="font-semibold text-ink">Apariencia</h2><p className="text-xs text-muted">Tema de la aplicación</p></div>
             </div>
             <div className="flex gap-1.5">
               {(["light", "system", "dark"] as Theme[]).map((t) => (
-                <button key={t} type="button" onClick={() => setTheme(t)} className={`rounded-xl px-3 py-1.5 text-[11px] font-black transition ${theme === t ? "bg-volt text-white shadow-sm" : "bg-slate-100 text-muted dark:bg-[#1a2540]"}`}>
+                <button key={t} type="button" onClick={() => setTheme(t)} className={`rounded-xl px-3 py-1.5 text-[11px] font-semibold transition ${theme === t ? "bg-volt text-white shadow-sm" : "bg-slate-100 text-muted dark:bg-[#1a2540]"}`}>
                   {t === "light" ? "Claro" : t === "dark" ? "Oscuro" : "Auto"}
                 </button>
               ))}
@@ -171,7 +171,7 @@ export default function EscritorioPerfil() {
         </Card>
 
         <Card className="p-5">
-          <div className="flex items-center gap-3"><span className="grid size-10 place-items-center rounded-2xl bg-blue-50 text-volt dark:bg-[#1a2540]"><ImageUp size={19} /></span><div><h2 className="font-black text-ink">Foto de perfil</h2><p className="text-xs text-muted">JPG, PNG o WEBP. Máximo 5 MB.</p></div></div>
+          <div className="flex items-center gap-3"><span className="grid size-10 place-items-center rounded-2xl bg-blue-50 text-volt dark:bg-[#1a2540]"><ImageUp size={19} /></span><div><h2 className="font-semibold text-ink">Foto de perfil</h2><p className="text-xs text-muted">JPG, PNG o WEBP. Máximo 5 MB.</p></div></div>
           <input ref={inputRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={selectPhoto} className="sr-only" />
           {/* Sin botón de guardar: al elegir la imagen se sube sola. */}
           <div className="mt-4">
@@ -184,7 +184,7 @@ export default function EscritorioPerfil() {
         <Card className="p-5">
           <div className="flex items-center gap-3">
             <span className="grid size-10 place-items-center rounded-2xl bg-violet-50 text-purple dark:bg-[#1a2540]"><Fingerprint size={19} /></span>
-            <div><h2 className="font-black text-ink">Acceso biométrico</h2><p className="text-xs text-muted">Face ID o huella dactilar para entrar sin PIN.</p></div>
+            <div><h2 className="font-semibold text-ink">Acceso biométrico</h2><p className="text-xs text-muted">Face ID o huella dactilar para entrar sin PIN.</p></div>
           </div>
           {user.biometricEnabled ? (
             <div className="mt-4 flex items-center justify-between rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 dark:border-emerald-800 dark:bg-emerald-950/30">
@@ -206,5 +206,5 @@ export default function EscritorioPerfil() {
 }
 
 function ProfileField({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
-  return <div className="flex items-center gap-3 py-3 first:pt-0 last:pb-0"><span className="grid size-9 place-items-center rounded-2xl bg-slate-100 text-muted dark:bg-slate-700">{icon}</span><div><p className="text-xs font-semibold text-muted">{label}</p><p className="font-black text-ink">{value}</p></div></div>;
+  return <div className="flex items-center gap-3 py-3 first:pt-0 last:pb-0"><span className="grid size-9 place-items-center rounded-2xl bg-slate-100 text-muted dark:bg-slate-700">{icon}</span><div><p className="text-xs font-semibold text-muted">{label}</p><p className="font-semibold text-ink">{value}</p></div></div>;
 }

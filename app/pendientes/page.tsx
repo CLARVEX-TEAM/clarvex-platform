@@ -185,7 +185,7 @@ export default function PendientesPage() {
           <button
             onClick={() => void fetchTaskOptimization()}
             disabled={loadingOpt}
-            className="mb-3 w-full flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-[#00FF66] text-sm font-black text-black transition active:scale-95 disabled:opacity-50"
+            className="mb-3 w-full flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-[#2563EB] text-sm font-semibold text-white transition active:scale-95 disabled:opacity-50"
           >
             <Sparkles size={16} />
             {loadingOpt ? "Optimizando Handover..." : "Optimizar Pendientes con IA"}
@@ -201,7 +201,7 @@ export default function PendientesPage() {
             <button
               key={value}
               onClick={() => setFilter(value as Filter)}
-              className={`min-h-10 shrink-0 rounded-full px-3.5 text-[13px] font-black tracking-[-0.01em] transition active:scale-95 ${filter === value ? "bg-volt text-white shadow-[0_8px_18px_rgb(37_99_235_/_0.2)]" : "text-muted hover:text-ink"}`}
+              className={`min-h-10 shrink-0 rounded-full px-3.5 text-[13px] font-semibold tracking-[-0.01em] transition active:scale-95 ${filter === value ? "bg-volt text-white shadow-[0_8px_18px_rgb(37_99_235_/_0.2)]" : "text-muted hover:text-ink"}`}
             >
               {label}
             </button>
@@ -212,7 +212,7 @@ export default function PendientesPage() {
           <Card className="mb-3 border-volt/30 bg-volt/[0.055]">
             <div className="mb-3 flex items-center gap-2">
               <AlertTriangle className="text-volt" size={18} />
-              <h2 className="text-lg font-black">Pendientes de gerencia</h2>
+              <h2 className="text-lg font-semibold">Pendientes de gerencia</h2>
             </div>
             <div className="divide-y divide-white/[0.07]">
               {management.slice(0, 3).map((pending) => (
@@ -230,7 +230,7 @@ export default function PendientesPage() {
 
         {!isAdvisor ? (
           <Card className="mb-3" id="crear-pendiente">
-            <h2 className="mb-4 text-lg font-black">{editId ? "Editar pendiente" : "Crear pendiente"}</h2>
+            <h2 className="mb-4 text-lg font-semibold">{editId ? "Editar pendiente" : "Crear pendiente"}</h2>
             <form className="grid gap-3" onSubmit={savePending}>
               <AppInput label="Título" value={title} onChange={(e) => setTitle(e.target.value)} required />
               <AppTextarea label="Descripción" value={description} onChange={(e) => setDescription(e.target.value)} required />
@@ -269,7 +269,7 @@ export default function PendientesPage() {
             <Card key={pending.id} layout exit={{ opacity: 0, scale: 0.9, x: 60 }}>
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <h2 className="font-black">{pending.title}</h2>
+                  <h2 className="font-semibold">{pending.title}</h2>
                   <p className="mt-1 text-[13px] leading-5 text-muted">{pending.description}</p>
                 </div>
                 <Badge tone={priorityTone(pending.priority)}>{pending.priority}</Badge>
@@ -282,8 +282,8 @@ export default function PendientesPage() {
               </div>
               {!isAdvisor ? (
                 <div className="mt-2.5 grid grid-cols-3 gap-2">
-                  <button onClick={() => editPending(pending)} className="min-h-10 rounded-xl bg-slate-100 dark:bg-slate-700 text-sm font-black text-ink">Editar</button>
-                  <select aria-label="Cambiar estado" value={pending.status === "en proceso" ? "EN_PROCESO" : pending.status.toUpperCase()} onChange={(event) => void changeStatus(pending.id, event.target.value as "PENDIENTE" | "EN_PROCESO" | "COMPLETADO")} className="min-h-10 rounded-xl border border-line bg-panel px-3 text-sm font-black"><option value="PENDIENTE">Pendiente</option><option value="EN_PROCESO">En proceso</option><option value="COMPLETADO">Cerrar</option></select>
+                  <button onClick={() => editPending(pending)} className="min-h-10 rounded-xl bg-slate-100 dark:bg-slate-700 text-sm font-semibold text-ink">Editar</button>
+                  <select aria-label="Cambiar estado" value={pending.status === "en proceso" ? "EN_PROCESO" : pending.status.toUpperCase()} onChange={(event) => void changeStatus(pending.id, event.target.value as "PENDIENTE" | "EN_PROCESO" | "COMPLETADO")} className="min-h-10 rounded-xl border border-line bg-panel px-3 text-sm font-semibold"><option value="PENDIENTE">Pendiente</option><option value="EN_PROCESO">En proceso</option><option value="COMPLETADO">Cerrar</option></select>
                   <DeleteButton onClick={() => requestDelete(pending.id)} className="w-full">Borrar</DeleteButton>
                 </div>
               ) : null}
@@ -332,8 +332,8 @@ export default function PendientesPage() {
             >
               <div className="flex items-center justify-between border-b border-white/5 pb-3">
                 <div className="flex items-center gap-2">
-                  <Sparkles className="text-[#00FF66]" size={20} />
-                  <h3 className="text-sm font-black text-white">Priorización & Handover IA</h3>
+                  <Sparkles className="text-[#2563EB]" size={20} />
+                  <h3 className="text-sm font-semibold text-white">Priorización & Handover IA</h3>
                 </div>
                 <button
                   onClick={() => setShowOptModal(false)}
@@ -345,13 +345,13 @@ export default function PendientesPage() {
 
               <div className="space-y-4 text-xs text-slate-300 leading-relaxed">
                 <div>
-                  <h4 className="font-bold text-[#00FF66] uppercase tracking-wider text-[10px] mb-1.5">⚡ Prioridades Recomendadas</h4>
+                  <h4 className="font-bold text-[#2563EB] uppercase tracking-wider text-[10px] mb-1.5">⚡ Prioridades Recomendadas</h4>
                   <div className="space-y-2">
                     {optimization.prioritizedTasks.map((task: any) => {
                       const orig = data.pendings.find((p) => p.id === task.id);
                       return (
                         <div key={task.id} className="rounded-xl bg-white/5 border border-white/5 p-3 space-y-1">
-                          <p className="font-black text-white">{orig?.title || "Tarea"}</p>
+                          <p className="font-semibold text-white">{orig?.title || "Tarea"}</p>
                           <p className="text-slate-400">{task.justification}</p>
                         </div>
                       );
@@ -365,7 +365,7 @@ export default function PendientesPage() {
                     <div className="space-y-2">
                       {optimization.duplicates.map((dup: any, idx: number) => (
                         <div key={idx} className="rounded-xl bg-yellow-500/5 border border-yellow-500/10 p-3">
-                          <p className="font-black text-white">Fusión sugerida: &quot;{dup.suggestedTitle}&quot;</p>
+                          <p className="font-semibold text-white">Fusión sugerida: &quot;{dup.suggestedTitle}&quot;</p>
                           <p className="text-slate-400 mt-1 text-[11px]">Cubre {dup.taskIds.length} pendientes repetidos.</p>
                         </div>
                       ))}
@@ -380,7 +380,7 @@ export default function PendientesPage() {
                       const orig = data.pendings.find((p) => p.id === sug.taskId);
                       return (
                         <div key={sug.taskId} className="rounded-xl bg-blue-500/5 border border-blue-500/10 p-3 space-y-1">
-                          <p className="font-black text-white">{orig?.title || "Tarea"}</p>
+                          <p className="font-semibold text-white">{orig?.title || "Tarea"}</p>
                           <p className="text-slate-400 leading-normal">
                             Asignar a: <strong className="text-blue-400">{sug.recommendedOwnerName}</strong> · {sug.reason}
                           </p>

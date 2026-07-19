@@ -51,7 +51,7 @@ export function UniformToday() {
         </span>
         <div className="min-w-0 flex-1">
           <p className="text-[11px] font-bold text-muted">Uniforme de hoy</p>
-          <p className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-sm font-black text-ink">
+          <p className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-sm font-semibold text-ink">
             <Dot garment={outfit.top} /> {outfit.top}
             <span className="text-muted">·</span>
             <Dot garment={outfit.bottom} /> {outfit.bottom}

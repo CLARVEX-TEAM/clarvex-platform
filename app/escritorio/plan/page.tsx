@@ -170,7 +170,7 @@ export default function EscritorioPlan() {
         <Card className="p-5">
           <div className="mb-3 flex items-center gap-2">
             <Sparkles className="text-volt" size={18} />
-            <h2 className="text-lg font-black text-ink">Actividades automáticas</h2>
+            <h2 className="text-lg font-semibold text-ink">Actividades automáticas</h2>
           </div>
           <p className="mb-3 text-sm text-muted">Asigna cíclico, limpieza y visual según las reglas de la tienda, rotando de forma justa entre los asesores del día.</p>
           <div className="grid gap-3">
@@ -195,7 +195,7 @@ export default function EscritorioPlan() {
         </Card>
 
         <Card className="p-5">
-          <h2 className="mb-4 text-lg font-black text-ink">Crear plan</h2>
+          <h2 className="mb-4 text-lg font-semibold text-ink">Crear plan</h2>
           <form className="grid gap-3" onSubmit={createPlan}>
             <div className="grid grid-cols-2 gap-3">
               <AppDatePicker label="Fecha" value={date} onChange={setDate} required />
@@ -216,7 +216,7 @@ export default function EscritorioPlan() {
           <div className="flex items-center justify-between gap-4">
             <div>
               <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-volt">Progreso del día</p>
-              <h2 className="mt-1 text-[2.6rem] font-black leading-none tracking-[-0.05em] text-ink">{dayProgress}%</h2>
+              <h2 className="mt-1 text-[2.6rem] font-semibold leading-none tracking-[-0.05em] text-ink">{dayProgress}%</h2>
               <p className="mt-1 text-xs font-semibold text-muted">{completed} de {totalActivities.length} actividades completadas</p>
             </div>
             <ProgressRing value={dayProgress} size={84} />
@@ -234,7 +234,7 @@ export default function EscritorioPlan() {
                 <div className="flex min-w-0 items-center gap-3">
                   <ProfileAvatar name={userName(plan.userId)} photoUrl={planUser(plan.userId)?.photoUrl} size="sm" className="rounded-full shadow-none" />
                   <div>
-                    <h2 className="truncate text-xl font-black text-ink">{userName(plan.userId)}</h2>
+                    <h2 className="truncate text-xl font-semibold text-ink">{userName(plan.userId)}</h2>
                     <p className="text-sm text-muted">{plan.date}</p>
                   </div>
                 </div>
@@ -250,7 +250,7 @@ export default function EscritorioPlan() {
               <div className="mt-2.5 space-y-2.5">
                 {groupedActivities(plan.activities).map((group) => (
                   <section key={group.label}>
-                    <div className="mb-2 flex items-center gap-2 text-sm font-black text-ink">
+                    <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-ink">
                       <group.icon className="text-volt" size={17} />
                       {group.label}
                     </div>

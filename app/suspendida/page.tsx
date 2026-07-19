@@ -20,7 +20,7 @@ export default function SuspendedPage() {
         <span className="mx-auto grid size-14 place-items-center rounded-[20px] bg-ember/10 text-ember">
           <CreditCard size={26} />
         </span>
-        <h1 className="mt-4 text-lg font-black text-ink">Suscripción vencida</h1>
+        <h1 className="mt-4 text-lg font-semibold text-ink">Suscripción vencida</h1>
         <p className="mt-2 text-sm leading-6 text-muted">
           {isManager
             ? "El acceso de tu tienda a Clarvex Team está pausado. Paga tu mensualidad para reactivarlo al instante."

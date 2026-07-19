@@ -101,7 +101,7 @@ export default function EscritorioChecklist() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         {dateLabel ? <p className="text-sm font-bold capitalize text-muted">{dateLabel}</p> : <span />}
-        <Link href="/checklist/config" className="flex items-center gap-1.5 rounded-full border border-line px-3 py-1.5 text-xs font-black text-muted transition hover:text-volt">
+        <Link href="/checklist/config" className="flex items-center gap-1.5 rounded-full border border-line px-3 py-1.5 text-xs font-semibold text-muted transition hover:text-volt">
           <SlidersHorizontal size={14} />Editar puntos
         </Link>
       </div>
@@ -120,7 +120,7 @@ export default function EscritorioChecklist() {
                 <div className="mb-3 flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <SectionIcon className="text-volt" size={20} />
-                    <h2 className="text-lg font-black text-ink">{section.label}</h2>
+                    <h2 className="text-lg font-semibold text-ink">{section.label}</h2>
                   </div>
                   <Badge tone={done === total && total > 0 ? "success" : "default"}>{done}/{total}</Badge>
                 </div>

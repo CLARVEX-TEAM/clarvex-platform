@@ -152,7 +152,7 @@ function IntroOverlay({ match, onClose }: { match: SerializedMatch; onClose: () 
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.28 }}
-          className="mb-1 text-[11px] font-black uppercase tracking-[0.22em] text-white/50"
+          className="mb-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-white/50"
         >
           {isLive ? "¡En vivo ahora!" : home.isMexico ? "Hoy juega" : "Hoy en el Mundial"}
         </motion.p>
@@ -162,7 +162,7 @@ function IntroOverlay({ match, onClose }: { match: SerializedMatch; onClose: () 
           initial={{ opacity: 0, y: 14 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.34 }}
-          className={`mb-3 font-black uppercase leading-none tracking-tight ${home.isMexico ? "text-[52px]" : "text-[34px]"}`}
+          className={`mb-3 font-semibold uppercase leading-none tracking-tight ${home.isMexico ? "text-[52px]" : "text-[34px]"}`}
           style={{
             background: palette.title,
             WebkitBackgroundClip: "text",
@@ -190,7 +190,7 @@ function IntroOverlay({ match, onClose }: { match: SerializedMatch; onClose: () 
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.48 }}
-          className="mb-1 text-[22px] font-black text-white"
+          className="mb-1 text-[22px] font-semibold text-white"
         >
           🆚 {rival}
         </motion.p>
@@ -215,7 +215,7 @@ function IntroOverlay({ match, onClose }: { match: SerializedMatch; onClose: () 
           transition={{ delay: 0.6 }}
           whileTap={{ scale: 0.94 }}
           onClick={onClose}
-          className="rounded-full px-9 py-3 text-sm font-black text-white"
+          className="rounded-full px-9 py-3 text-sm font-semibold text-white"
           style={{
             background: palette.button,
             boxShadow: palette.buttonShadow

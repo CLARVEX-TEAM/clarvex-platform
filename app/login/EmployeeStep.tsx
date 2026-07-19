@@ -44,7 +44,7 @@ export function EmployeeStep({
         >
           <ClarvexIcon size={44} />
         </div>
-        <p className="mt-3 text-[11px] font-black tracking-[0.42em] text-blue-600">CLARVEX TEAM</p>
+        <p className="mt-3 text-[11px] font-semibold tracking-[0.42em] text-blue-600">CLARVEX TEAM</p>
       </motion.div>
 
       {/* Card */}
@@ -56,7 +56,7 @@ export function EmployeeStep({
       >
         <div className="mb-1 flex items-center gap-2">
           <ShieldCheck className="text-blue-600" size={16} />
-          <span className="text-sm font-black text-blue-700">Acceso seguro</span>
+          <span className="text-sm font-semibold text-blue-700">Acceso seguro</span>
         </div>
         <p className={`mb-6 text-sm ${isDark ? "text-slate-400" : "text-slate-500"}`}>
           Ingresa tu número de empleado
@@ -75,7 +75,7 @@ export function EmployeeStep({
             autoComplete="username"
             autoFocus
             placeholder="ej. 81893"
-            className={`min-h-14 w-full rounded-2xl border px-4 text-center text-xl font-black tracking-[0.18em] outline-none shadow-inner transition placeholder:font-normal placeholder:tracking-normal placeholder:text-slate-300 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/15 ${
+            className={`min-h-14 w-full rounded-2xl border px-4 text-center text-xl font-semibold tracking-[0.18em] outline-none shadow-inner transition placeholder:font-normal placeholder:tracking-normal placeholder:text-slate-300 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/15 ${
               isDark
                 ? "border-slate-700 bg-slate-800 text-white"
                 : "border-slate-200 bg-slate-50 text-slate-900"

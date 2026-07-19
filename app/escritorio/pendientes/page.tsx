@@ -170,7 +170,7 @@ export default function EscritorioPendientes() {
       <Card className="col-span-2 h-fit p-5">
         <div className="mb-4 flex items-center gap-2">
           <AlertTriangle className="text-volt" size={18} />
-          <h2 className="text-lg font-black text-ink">{editId ? "Editar pendiente" : "Nuevo pendiente"}</h2>
+          <h2 className="text-lg font-semibold text-ink">{editId ? "Editar pendiente" : "Nuevo pendiente"}</h2>
         </div>
         <form className="grid gap-3" onSubmit={savePending}>
           <AppInput label="Título" value={title} onChange={(e) => setTitle(e.target.value)} required />
@@ -183,7 +183,7 @@ export default function EscritorioPendientes() {
           <AppDatePicker label="Fecha límite" value={dueDate} onChange={setDueDate} required />
           <div className="flex gap-2">
             {editId ? (
-              <button type="button" onClick={resetForm} className="tappable min-h-12 flex-1 rounded-2xl bg-slate-100 dark:bg-slate-800 text-sm font-black text-ink">Cancelar</button>
+              <button type="button" onClick={resetForm} className="tappable min-h-12 flex-1 rounded-2xl bg-slate-100 dark:bg-slate-800 text-sm font-semibold text-ink">Cancelar</button>
             ) : null}
             <SendButton type="submit" loading={submitting} success={saved} sentLabel="¡Listo!" className="flex-1">
               {editId ? "Guardar cambios" : "Crear pendiente"}
@@ -203,7 +203,7 @@ export default function EscritorioPendientes() {
           <button
             onClick={() => void fetchTaskOptimization()}
             disabled={loadingOpt}
-            className="flex min-h-9 items-center justify-center gap-2 rounded-full bg-[#00FF66] px-4 text-[13px] font-black text-black transition active:scale-95 disabled:opacity-50"
+            className="flex min-h-9 items-center justify-center gap-2 rounded-full bg-[#2563EB] px-4 text-[13px] font-semibold text-white transition active:scale-95 disabled:opacity-50"
           >
             <Sparkles size={14} />
             {loadingOpt ? "Optimizando..." : "Optimizar con IA"}
@@ -220,7 +220,7 @@ export default function EscritorioPendientes() {
               <Card className="p-5">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <h3 className="font-black text-ink">{p.title}</h3>
+                    <h3 className="font-semibold text-ink">{p.title}</h3>
                     <p className="mt-1 text-[13px] leading-5 text-muted">{p.description}</p>
                   </div>
                   <Badge tone={priorityTone(p.priority)}>{p.priority}</Badge>
@@ -280,8 +280,8 @@ export default function EscritorioPendientes() {
             >
               <div className="flex items-center justify-between border-b border-white/5 pb-3">
                 <div className="flex items-center gap-2">
-                  <Sparkles className="text-[#00FF66]" size={20} />
-                  <h3 className="text-sm font-black text-white">Priorización & Handover IA</h3>
+                  <Sparkles className="text-[#2563EB]" size={20} />
+                  <h3 className="text-sm font-semibold text-white">Priorización & Handover IA</h3>
                 </div>
                 <button
                   onClick={() => setShowOptModal(false)}
@@ -293,13 +293,13 @@ export default function EscritorioPendientes() {
 
               <div className="space-y-4 text-xs text-slate-300 leading-relaxed">
                 <div>
-                  <h4 className="font-bold text-[#00FF66] uppercase tracking-wider text-[10px] mb-1.5">⚡ Prioridades Recomendadas</h4>
+                  <h4 className="font-bold text-[#2563EB] uppercase tracking-wider text-[10px] mb-1.5">⚡ Prioridades Recomendadas</h4>
                   <div className="space-y-2">
                     {optimization.prioritizedTasks.map((task: any) => {
                       const orig = data.pendings.find((p) => p.id === task.id);
                       return (
                         <div key={task.id} className="rounded-xl bg-white/5 border border-white/5 p-3 space-y-1">
-                          <p className="font-black text-white">{orig?.title || "Tarea"}</p>
+                          <p className="font-semibold text-white">{orig?.title || "Tarea"}</p>
                           <p className="text-slate-400">{task.justification}</p>
                         </div>
                       );
@@ -313,7 +313,7 @@ export default function EscritorioPendientes() {
                     <div className="space-y-2">
                       {optimization.duplicates.map((dup: any, idx: number) => (
                         <div key={idx} className="rounded-xl bg-yellow-500/5 border border-yellow-500/10 p-3">
-                          <p className="font-black text-white">Fusión sugerida: &quot;{dup.suggestedTitle}&quot;</p>
+                          <p className="font-semibold text-white">Fusión sugerida: &quot;{dup.suggestedTitle}&quot;</p>
                           <p className="text-slate-400 mt-1 text-[11px]">Cubre {dup.taskIds.length} pendientes repetidos.</p>
                         </div>
                       ))}
@@ -328,7 +328,7 @@ export default function EscritorioPendientes() {
                       const orig = data.pendings.find((p) => p.id === sug.taskId);
                       return (
                         <div key={sug.taskId} className="rounded-xl bg-blue-500/5 border border-blue-500/10 p-3 space-y-1">
-                          <p className="font-black text-white">{orig?.title || "Tarea"}</p>
+                          <p className="font-semibold text-white">{orig?.title || "Tarea"}</p>
                           <p className="text-slate-400 leading-normal">
                             Asignar a: <strong className="text-blue-400">{sug.recommendedOwnerName}</strong> · {sug.reason}
                           </p>

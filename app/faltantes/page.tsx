@@ -154,7 +154,7 @@ export default function FaltantesPage() {
         <Card className="mb-3 p-3.5">
           <div className="mb-3 flex items-center gap-2">
             <PackageSearch className="text-volt" size={18} />
-            <h2 className="text-lg font-black">Nuevo reporte</h2>
+            <h2 className="text-lg font-semibold">Nuevo reporte</h2>
           </div>
           <div className="grid gap-3">
             <label className="grid gap-1">
@@ -185,7 +185,7 @@ export default function FaltantesPage() {
 
         <Card className="p-3.5">
           <div className="mb-2.5 flex items-center justify-between">
-            <h2 className="text-lg font-black">Abiertos</h2>
+            <h2 className="text-lg font-semibold">Abiertos</h2>
             <Badge tone={open.length > 0 ? "warn" : "default"}>{open.length}</Badge>
           </div>
           {loading ? (
@@ -203,7 +203,7 @@ export default function FaltantesPage() {
 
         {resolved.length > 0 ? (
           <Card className="mt-3 p-3.5">
-            <h2 className="mb-2.5 text-lg font-black text-muted">Resueltos</h2>
+            <h2 className="mb-2.5 text-lg font-semibold text-muted">Resueltos</h2>
             <div className="space-y-2.5">
               {resolved.map((report) => (
                 <ReportRow key={report.id} report={report} isManager={isManager} busy={busyId === report.id} onResolve={() => void setReportStatus(report.id, "RESUELTO")} onDelete={() => setPendingDeleteId(report.id)} onReopen={() => void setReportStatus(report.id, "ABIERTO")} />
@@ -231,7 +231,7 @@ function ReportRow({ report, isManager, busy, onResolve, onDelete, onReopen }: {
     <div className={`rounded-2xl border border-line p-3 ${resolved ? "opacity-70" : ""}`}>
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <p className="truncate font-black text-ink">{report.productName}</p>
+          <p className="truncate font-semibold text-ink">{report.productName}</p>
           <p className="text-xs text-muted">{INVENTORY_CATEGORY_LABELS[report.category] ?? report.category} · {formatDate(report.createdAt)}</p>
         </div>
         <Badge tone={resolved ? "success" : "warn"}>{resolved ? "Resuelto" : "Abierto"}</Badge>

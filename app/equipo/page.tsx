@@ -182,7 +182,7 @@ export default function TeamDatesPage() {
         ) : null}
 
         <Card className="mb-4 p-3.5">
-          <p className="mb-3 flex items-center gap-2 font-black text-ink"><UserPlus size={16} />Agregar integrante</p>
+          <p className="mb-3 flex items-center gap-2 font-semibold text-ink"><UserPlus size={16} />Agregar integrante</p>
           <form onSubmit={(event) => void addMember(event)} className="grid grid-cols-2 gap-2">
             <label className="col-span-2 grid gap-1">
               <span className="text-xs font-bold text-muted">Nombre completo</span>
@@ -214,7 +214,7 @@ export default function TeamDatesPage() {
               <Card key={row.id} className="p-3.5">
                 <div className="mb-3 flex items-center gap-3">
                   <ProfileAvatar name={row.name} photoUrl={row.photoUrl} size="sm" />
-                  <p className={`font-black ${row.active ? "text-ink" : "text-muted line-through"}`}>{row.name}</p>
+                  <p className={`font-semibold ${row.active ? "text-ink" : "text-muted line-through"}`}>{row.name}</p>
                   {!row.active ? <span className="rounded-full bg-rose-100 px-2 py-0.5 text-xs font-bold text-rose-700">Desactivado</span> : null}
                   {row.checklistOnly ? <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-bold text-blue-700 dark:bg-blue-950/50 dark:text-blue-200">Kiosko</span> : null}
                   {row.id !== currentUserId ? (
@@ -276,7 +276,7 @@ export default function TeamDatesPage() {
                   <div className="col-span-2 rounded-lg bg-surface-2 px-3 py-2">
                     <div className="flex items-baseline justify-between">
                       <span className="text-xs font-bold text-muted">Vacaciones disponibles hoy</span>
-                      <span className="text-lg font-black">{row.vacationAvailable} {row.vacationAvailable === 1 ? "día" : "días"}</span>
+                      <span className="text-lg font-semibold">{row.vacationAvailable} {row.vacationAvailable === 1 ? "día" : "días"}</span>
                     </div>
                     <p className="mt-0.5 text-xs text-muted">
                       {row.vacationDays} iniciales

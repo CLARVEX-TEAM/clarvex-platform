@@ -80,19 +80,19 @@ export function TermsGate() {
             <span className="mb-3 grid size-12 place-items-center rounded-2xl bg-volt/12 text-2xl">
               📋
             </span>
-            <h2 className="text-lg font-black text-ink">Términos y privacidad</h2>
+            <h2 className="text-lg font-semibold text-ink">Términos y privacidad</h2>
             <p className="mt-1.5 text-sm leading-relaxed text-muted">
               Para usar Clarvex Team necesitas aceptar los{" "}
-              <a href="/terminos" target="_blank" rel="noreferrer" className="font-black text-volt underline">Términos de Servicio</a>{" "}
+              <a href="/terminos" target="_blank" rel="noreferrer" className="font-semibold text-volt underline">Términos de Servicio</a>{" "}
               y el{" "}
-              <a href="/privacidad" target="_blank" rel="noreferrer" className="font-black text-volt underline">Aviso de Privacidad</a>.
+              <a href="/privacidad" target="_blank" rel="noreferrer" className="font-semibold text-volt underline">Aviso de Privacidad</a>.
               Tu aceptación queda registrada con fecha y versión.
             </p>
             <button
               type="button"
               onClick={() => void accept()}
               disabled={saving}
-              className="mt-4 w-full rounded-2xl bg-volt py-3 text-sm font-black text-white transition active:scale-95 disabled:opacity-50"
+              className="mt-4 w-full rounded-2xl bg-volt py-3 text-sm font-semibold text-white transition active:scale-95 disabled:opacity-50"
             >
               {saving ? "Guardando…" : "Acepto los términos y el aviso de privacidad"}
             </button>

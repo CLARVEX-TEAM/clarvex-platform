@@ -44,7 +44,7 @@ export function ProfileStep({
         <div className="mb-5 flex items-center gap-4">
           <ProfileAvatar name={user?.name ?? "CL"} photoUrl={photoPreview ?? user?.photoUrl} size="lg" />
           <div>
-            <h2 className={`text-xl font-black ${isDark ? "text-white" : "text-slate-900"}`}>
+            <h2 className={`text-xl font-semibold ${isDark ? "text-white" : "text-slate-900"}`}>
               {user?.name}
             </h2>
             <p className={`mt-1 text-sm ${isDark ? "text-slate-400" : "text-slate-500"}`}>

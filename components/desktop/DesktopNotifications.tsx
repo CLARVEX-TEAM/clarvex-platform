@@ -103,7 +103,7 @@ export function DesktopNotifications() {
       >
         <Bell size={18} />
         {unread > 0 ? (
-          <span className="pointer-events-none absolute -right-1 -top-1 grid h-[18px] min-w-[18px] place-items-center rounded-full bg-rose-500 px-[5px] text-[10px] font-black leading-none text-white shadow-sm ring-2 ring-white dark:ring-[#0f1729]">
+          <span className="pointer-events-none absolute -right-1 -top-1 grid h-[18px] min-w-[18px] place-items-center rounded-full bg-rose-500 px-[5px] text-[10px] font-semibold leading-none text-white shadow-sm ring-2 ring-white dark:ring-[#0f1729]">
             {unread > 99 ? "99+" : unread}
           </span>
         ) : null}
@@ -119,7 +119,7 @@ export function DesktopNotifications() {
             className="absolute right-0 z-50 mt-2 w-96 overflow-hidden rounded-3xl border border-line bg-white shadow-2xl dark:bg-[#1a2540]"
           >
             <div className="flex items-center justify-between border-b border-line px-4 py-3">
-              <p className="text-sm font-black text-ink">Notificaciones</p>
+              <p className="text-sm font-semibold text-ink">Notificaciones</p>
               {unread > 0 ? (
                 <button onClick={() => void markAllRead()} className="flex items-center gap-1 text-xs font-bold text-volt hover:underline">
                   <CheckCheck size={14} /> Marcar todas
@@ -143,7 +143,7 @@ export function DesktopNotifications() {
                     </span>
                     <span className="min-w-0 flex-1">
                       <span className="flex items-center gap-2">
-                        <span className="truncate text-sm font-black text-ink">{item.title}</span>
+                        <span className="truncate text-sm font-semibold text-ink">{item.title}</span>
                         {unreadItem ? <span className="size-1.5 shrink-0 rounded-full bg-volt" /> : null}
                       </span>
                       <span className="mt-0.5 line-clamp-2 block text-[13px] leading-5 text-muted">{item.body}</span>

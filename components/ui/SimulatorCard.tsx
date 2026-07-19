@@ -55,7 +55,7 @@ export function SimulatorCard({
       <div className="flex items-center justify-between border-b border-white/[0.08] pb-3 mb-4">
         <div className="flex items-center gap-2">
           <TrendingUp className="text-[#00FF66]" size={20} />
-          <h3 className="text-base font-black tracking-tight">Simulador de Comisión</h3>
+          <h3 className="text-base font-semibold tracking-tight">Simulador de Comisión</h3>
         </div>
         <span className="text-[10px] font-bold bg-[#00FF66]/10 text-[#00FF66] border border-[#00FF66]/20 rounded-full px-2.5 py-0.5 uppercase tracking-wider">
           En Vivo
@@ -66,7 +66,7 @@ export function SimulatorCard({
       <div className="grid grid-cols-2 gap-4 mb-4">
         <div className="bg-white/[0.03] border border-white/[0.04] rounded-2xl p-3.5">
           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Venta Actual</p>
-          <p className="text-lg font-black mt-1 text-white">{money(sales)}</p>
+          <p className="text-lg font-semibold mt-1 text-white">{money(sales)}</p>
           <div className="flex items-center gap-1.5 mt-1.5">
             <span className="text-xs font-bold text-[#00FF66]">{realPercent}%</span>
             <span className="text-[10px] text-slate-500 font-semibold">tasa comisión</span>
@@ -75,7 +75,7 @@ export function SimulatorCard({
 
         <div className="bg-white/[0.03] border border-white/[0.04] rounded-2xl p-3.5">
           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Ganancia Est.</p>
-          <p className="text-lg font-black mt-1 text-[#00FF66]">{money(realCommission)}</p>
+          <p className="text-lg font-semibold mt-1 text-[#00FF66]">{money(realCommission)}</p>
           <div className="flex items-center gap-1.5 mt-1.5">
             <span className="text-xs font-bold text-white">{Math.round(realAchievement)}%</span>
             <span className="text-[10px] text-slate-500 font-semibold">de alcance</span>
@@ -87,7 +87,7 @@ export function SimulatorCard({
       <div className="space-y-3 bg-white/[0.02] border border-white/[0.04] rounded-2xl p-4 mb-4">
         <div className="flex justify-between items-center text-sm">
           <span className="font-bold text-slate-300">Simular más ventas:</span>
-          <span className="font-black text-[#00FF66] text-base">{money(simulatedSales)}</span>
+          <span className="font-semibold text-[#00FF66] text-base">{money(simulatedSales)}</span>
         </div>
         
         <input
@@ -117,7 +117,7 @@ export function SimulatorCard({
           <div className="flex items-center gap-1.5 text-xs text-slate-300 font-semibold">
             <span>Comisión Simulada:</span>
           </div>
-          <span className="text-lg font-black text-[#00FF66]">{money(simCommission)}</span>
+          <span className="text-lg font-semibold text-[#00FF66]">{money(simCommission)}</span>
         </div>
 
         <div className="flex items-center justify-between border-t border-white/[0.08] pt-2 text-xs">
@@ -131,7 +131,7 @@ export function SimulatorCard({
             <div className="text-xs leading-normal">
               <span className="font-bold text-slate-200">¡Próximo nivel al alcanzar el {gap.targetAchievement}%!</span>
               <p className="text-slate-400 mt-0.5">
-                Vende <span className="font-black text-white">{money(gap.salesNeeded)}</span> adicionales para subir tu tasa al <span className="font-black text-[#00FF66]">{gap.nextPercent}%</span> y sumar <span className="font-black text-[#00FF66]">+{money(gap.extraCommission)}</span> extra de comisión.
+                Vende <span className="font-semibold text-white">{money(gap.salesNeeded)}</span> adicionales para subir tu tasa al <span className="font-semibold text-[#00FF66]">{gap.nextPercent}%</span> y sumar <span className="font-semibold text-[#00FF66]">+{money(gap.extraCommission)}</span> extra de comisión.
               </p>
             </div>
           </div>
@@ -143,7 +143,7 @@ export function SimulatorCard({
             <div className="text-xs leading-normal">
               <span className="font-bold text-slate-200">¡Nivel Máximo Alcanzado!</span>
               <p className="text-slate-400 mt-0.5">
-                Estás en la tasa de comisión más alta del <span className="font-black text-[#00FF66]">{gap.currentPercent}%</span>. ¡Excelente trabajo en piso de venta!
+                Estás en la tasa de comisión más alta del <span className="font-semibold text-[#00FF66]">{gap.currentPercent}%</span>. ¡Excelente trabajo en piso de venta!
               </p>
             </div>
           </div>

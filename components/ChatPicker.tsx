@@ -363,7 +363,7 @@ export function ChatPicker({ open, onClose, onEmoji, onSticker, onGif }: Props) 
               type="button"
               onClick={() => { setTab(t); if (t === "gif" && searchRef.current) setTimeout(() => searchRef.current?.focus(), 50); }}
               className={cn(
-                "flex-1 py-2.5 text-xs font-black uppercase tracking-[0.1em] transition-colors",
+                "flex-1 py-2.5 text-xs font-semibold uppercase tracking-[0.1em] transition-colors",
                 tab === t ? "border-b-2 border-volt text-volt" : "text-muted"
               )}
             >

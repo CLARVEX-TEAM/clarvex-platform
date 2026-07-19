@@ -31,7 +31,7 @@ export function NotificationCard({
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <h2 className="text-[15px] font-black leading-5 tracking-[-0.02em] text-ink">{title}</h2>
+              <h2 className="text-[15px] font-semibold leading-5 tracking-[-0.02em] text-ink">{title}</h2>
               {meta ? <p className="mt-0.5 text-[11px] text-muted">{meta}</p> : null}
             </div>
             <StatusBadge tone={unread ? "success" : "default"}>{unread ? "nuevo" : "leido"}</StatusBadge>

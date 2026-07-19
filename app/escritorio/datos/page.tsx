@@ -207,7 +207,7 @@ export default function EscritorioDatos() {
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-volt">Integraciones de tienda</p>
-            <h2 className="mt-1 text-2xl font-black tracking-[-0.035em] text-ink">{connectedCount} de {dataSourceTypes.length} vinculadas</h2>
+            <h2 className="mt-1 text-2xl font-semibold tracking-[-0.035em] text-ink">{connectedCount} de {dataSourceTypes.length} vinculadas</h2>
             <p className="mt-1 max-w-md text-[13px] leading-5 text-muted">Prepara Excel y SharePoint sin alterar la operación actual.</p>
           </div>
           <Button type="button" variant="primary" icon={<Link2 size={17} />} onClick={() => openConfig(dataSourceTypes.find((type) => !sourceByType.has(type)) ?? "HORARIOS")}>
@@ -237,7 +237,7 @@ export default function EscritorioDatos() {
                 <div className="min-w-0 flex-1">
                   <div className="flex items-start justify-between gap-2">
                     <div>
-                      <h2 className="font-black tracking-[-0.02em] text-ink">{item.label}</h2>
+                      <h2 className="font-semibold tracking-[-0.02em] text-ink">{item.label}</h2>
                       <p className="text-[11px] text-muted">{item.description}</p>
                     </div>
                     <SourceStatus status={status} />
@@ -248,7 +248,7 @@ export default function EscritorioDatos() {
                     </span>
                     <div className="min-w-0 flex-1">
                       <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-muted">Archivo vinculado</p>
-                      <p className="truncate text-xs font-black text-ink/85">{source?.name ?? "Sin archivo configurado"}</p>
+                      <p className="truncate text-xs font-semibold text-ink/85">{source?.name ?? "Sin archivo configurado"}</p>
                       {source?.url ? <p className="truncate text-[10px] text-muted">{linkedFileReference(source.url)}</p> : null}
                     </div>
                   </div>
@@ -298,7 +298,7 @@ export default function EscritorioDatos() {
                       type="button"
                       onClick={() => source && void testConnection(source)}
                       disabled={!canConnect || testingId === source?.id || syncingId === source?.id}
-                      className="col-span-2 flex min-h-10 items-center justify-center gap-2 rounded-xl border border-line bg-white text-xs font-black text-ink/75 transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-slate-800"
+                      className="col-span-2 flex min-h-10 items-center justify-center gap-2 rounded-xl border border-line bg-white text-xs font-semibold text-ink/75 transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-slate-800"
                     >
                       <Wifi size={14} className={testingId === source?.id ? "animate-pulse" : "text-volt"} />
                       {testingId === source?.id ? "Probando conexion" : "Probar conexion"}
@@ -307,12 +307,12 @@ export default function EscritorioDatos() {
                       type="button"
                       onClick={() => source && void syncSource(source)}
                       disabled={!canConnect || syncingId === source?.id || testingId === source?.id}
-                      className="flex min-h-10 items-center justify-center gap-2 rounded-xl bg-volt/12 text-xs font-black text-volt transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
+                      className="flex min-h-10 items-center justify-center gap-2 rounded-xl bg-volt/12 text-xs font-semibold text-volt transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
                     >
                       <RefreshCw size={14} className={syncingId === source?.id ? "animate-spin" : ""} />
                       {syncingId === source?.id ? "Sincronizando" : "Sincronizar ahora"}
                     </button>
-                    <button type="button" onClick={() => openConfig(type)} className="flex min-h-10 items-center justify-center gap-2 rounded-xl bg-slate-100 text-xs font-black text-ink/80 transition active:scale-95 dark:bg-slate-700">
+                    <button type="button" onClick={() => openConfig(type)} className="flex min-h-10 items-center justify-center gap-2 rounded-xl bg-slate-100 text-xs font-semibold text-ink/80 transition active:scale-95 dark:bg-slate-700">
                       <Settings2 size={14} /> Configurar
                     </button>
                   </div>
@@ -327,7 +327,7 @@ export default function EscritorioDatos() {
         <div className="flex items-center gap-2">
           <CalendarClock size={18} className="text-volt" />
           <div>
-            <h2 className="font-black text-ink">Automatizaciones programadas</h2>
+            <h2 className="font-semibold text-ink">Automatizaciones programadas</h2>
             <p className="text-[11px] text-muted">Siguiente ejecución por fuente vinculada.</p>
           </div>
         </div>
@@ -354,7 +354,7 @@ export default function EscritorioDatos() {
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-[11px] font-bold uppercase tracking-[0.13em] text-volt">Configurar fuente</p>
-                <h2 id="source-config-title" className="mt-1 text-xl font-black tracking-[-0.03em] text-ink">{modules[config.type].label}</h2>
+                <h2 id="source-config-title" className="mt-1 text-xl font-semibold tracking-[-0.03em] text-ink">{modules[config.type].label}</h2>
                 <p className="mt-1 text-xs text-muted">Los cambios se guardan para esta tienda.</p>
               </div>
               <button type="button" onClick={() => setConfig(null)} disabled={saving} className="grid size-10 shrink-0 place-items-center rounded-[16px] bg-slate-100 text-muted transition hover:text-ink disabled:opacity-40 dark:bg-slate-700" aria-label="Cerrar configuracion">
@@ -363,7 +363,7 @@ export default function EscritorioDatos() {
             </div>
             <form className="mt-4 grid gap-3" onSubmit={saveSource}>
               <fieldset>
-                <legend className="mb-2 text-xs font-black text-ink/75">Origen de datos</legend>
+                <legend className="mb-2 text-xs font-semibold text-ink/75">Origen de datos</legend>
                 <div className="grid grid-cols-3 gap-2">
                   {providers.map((provider) => {
                     const Icon = provider.icon;
@@ -372,7 +372,7 @@ export default function EscritorioDatos() {
                         key={provider.value}
                         type="button"
                         onClick={() => setConfig({ ...config, provider: provider.value })}
-                        className={`grid min-h-16 place-items-center rounded-2xl border text-[11px] font-black transition active:scale-[0.98] ${config.provider === provider.value ? "border-volt/40 bg-volt/12 text-volt" : "border-line bg-slate-50 text-muted dark:bg-slate-800"}`}
+                        className={`grid min-h-16 place-items-center rounded-2xl border text-[11px] font-semibold transition active:scale-[0.98] ${config.provider === provider.value ? "border-volt/40 bg-volt/12 text-volt" : "border-line bg-slate-50 text-muted dark:bg-slate-800"}`}
                         aria-pressed={config.provider === provider.value}
                       >
                         <Icon size={18} />{provider.label}
@@ -382,18 +382,18 @@ export default function EscritorioDatos() {
                 </div>
               </fieldset>
 
-              <label className="grid gap-1.5 text-xs font-black text-ink/75">
+              <label className="grid gap-1.5 text-xs font-semibold text-ink/75">
                 Nombre de la fuente
                 <input autoFocus value={config.name} onChange={(event) => setConfig({ ...config, name: event.target.value })} className="min-h-11 rounded-2xl border border-line bg-panel px-3 text-sm font-semibold text-ink outline-none focus:border-volt focus:ring-4 focus:ring-volt/15" placeholder="Nombre de la fuente" required />
               </label>
 
-              <label className="grid gap-1.5 text-xs font-black text-ink/75">
+              <label className="grid gap-1.5 text-xs font-semibold text-ink/75">
                 URL {config.provider === "MANUAL" ? "(opcional)" : ""}
                 <input type="url" value={config.url} onChange={(event) => setConfig({ ...config, url: event.target.value })} className="min-h-11 rounded-2xl border border-line bg-panel px-3 text-sm font-semibold text-ink outline-none focus:border-volt focus:ring-4 focus:ring-volt/15" placeholder="https://..." required={config.provider !== "MANUAL"} />
               </label>
 
               <fieldset>
-                <legend className="mb-2 text-xs font-black text-ink/75">Frecuencia de sincronizacion</legend>
+                <legend className="mb-2 text-xs font-semibold text-ink/75">Frecuencia de sincronizacion</legend>
                 <div className="grid grid-cols-2 gap-2">
                   {frequencies.map((frequency) => (
                     <button
@@ -403,7 +403,7 @@ export default function EscritorioDatos() {
                       className={`min-h-14 rounded-2xl border px-3 text-left transition active:scale-[0.98] ${config.frequency === frequency.value ? "border-volt/40 bg-volt/12" : "border-line bg-slate-50 dark:bg-slate-800"}`}
                       aria-pressed={config.frequency === frequency.value}
                     >
-                      <span className={`block text-xs font-black ${config.frequency === frequency.value ? "text-volt" : "text-ink"}`}>{frequency.label}</span>
+                      <span className={`block text-xs font-semibold ${config.frequency === frequency.value ? "text-volt" : "text-ink"}`}>{frequency.label}</span>
                       <span className="mt-0.5 block text-[10px] text-muted">{frequency.detail}</span>
                     </button>
                   ))}
@@ -433,7 +433,7 @@ function DataPoint({ label, value }: { label: string; value: string }) {
 }
 
 function MetricDetail({ label, value }: { label: string; value: number }) {
-  return <div className="bg-slate-50 px-3 py-2 dark:bg-slate-800"><p className="text-[10px] font-bold text-muted">{label}</p><p className="mt-0.5 text-sm font-black text-ink">{value.toLocaleString("es-MX")}</p></div>;
+  return <div className="bg-slate-50 px-3 py-2 dark:bg-slate-800"><p className="text-[10px] font-bold text-muted">{label}</p><p className="mt-0.5 text-sm font-semibold text-ink">{value.toLocaleString("es-MX")}</p></div>;
 }
 
 function isKpiSyncMetrics(value: unknown): value is KpiSyncMetrics {

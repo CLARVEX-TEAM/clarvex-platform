@@ -79,7 +79,7 @@ export default function EscritorioBitacora() {
     <div className="grid grid-cols-5 gap-5">
       {/* Nuevo registro */}
       <Card className="col-span-2 h-fit p-5">
-        <div className="mb-4 flex items-center gap-2"><PenLine className="text-volt" size={18} /><h2 className="text-lg font-black text-ink">Nuevo registro</h2></div>
+        <div className="mb-4 flex items-center gap-2"><PenLine className="text-volt" size={18} /><h2 className="text-lg font-semibold text-ink">Nuevo registro</h2></div>
         <form className="grid gap-3" onSubmit={createLog}>
           <label className="grid gap-1.5">
             <span className="text-[11px] font-bold uppercase tracking-[0.1em] text-muted">Categoría</span>

@@ -41,13 +41,13 @@ export function PinStep({
         >
           <ClarvexIcon size={34} />
         </div>
-        <p className="mb-5 text-[10px] font-black tracking-[0.42em] text-blue-600">CLARVEX TEAM</p>
+        <p className="mb-5 text-[10px] font-semibold tracking-[0.42em] text-blue-600">CLARVEX TEAM</p>
 
         {/* Card con dots */}
         <div className={`w-full max-w-sm rounded-3xl p-6 ${card}`}>
           <div className="mb-1 flex items-center gap-2">
             <ShieldCheck className="text-blue-600" size={16} />
-            <span className="text-sm font-black text-blue-700">Acceso seguro</span>
+            <span className="text-sm font-semibold text-blue-700">Acceso seguro</span>
           </div>
           <p className={`mb-6 text-sm ${isDark ? "text-slate-400" : "text-slate-500"}`}>
             {requiresPinSetup ? "Crea tu PIN personal de 4 dígitos" : "Ingresa tu PIN personal"}

@@ -148,7 +148,7 @@ export function DocScanner({ file, onDone, onCancel, lite = false }: { file: Fil
     <div className="fixed inset-0 z-50 flex flex-col bg-black/90 backdrop-blur-sm">
       <div className="flex items-center justify-between px-4 pb-1 pt-3 text-white">
         <button type="button" onClick={onCancel} className="flex items-center gap-1.5 text-sm font-bold"><X size={18} />Cancelar</button>
-        <p className="text-sm font-black">Revisa el recorte</p>
+        <p className="text-sm font-semibold">Revisa el recorte</p>
         <button
           type="button"
           onClick={() => { if (work) setCorners(autoCorners(work.imageData, work.w, work.h)); }}
@@ -196,7 +196,7 @@ export function DocScanner({ file, onDone, onCancel, lite = false }: { file: Fil
       {error ? <p className="px-4 pb-1 text-center text-xs font-semibold text-rose-300">{error}</p> : null}
 
       <div className="flex justify-center px-4 pt-1">
-        <div className="inline-flex rounded-full border border-white/20 p-0.5 text-xs font-black">
+        <div className="inline-flex rounded-full border border-white/20 p-0.5 text-xs font-semibold">
           <button type="button" onClick={() => setColor(false)} className={`rounded-full px-4 py-1.5 transition ${!color ? "bg-white text-black" : "text-white/70"}`}>
             Blanco y negro
           </button>
@@ -207,10 +207,10 @@ export function DocScanner({ file, onDone, onCancel, lite = false }: { file: Fil
       </div>
 
       <div className="flex items-center gap-2 px-4 py-4">
-        <button type="button" onClick={() => void finish(false)} disabled={busy || !work} className="flex flex-1 items-center justify-center gap-1.5 rounded-2xl border border-white/25 py-3 text-sm font-black text-white disabled:opacity-50">
+        <button type="button" onClick={() => void finish(false)} disabled={busy || !work} className="flex flex-1 items-center justify-center gap-1.5 rounded-2xl border border-white/25 py-3 text-sm font-semibold text-white disabled:opacity-50">
           <ImageDown size={16} />Foto completa
         </button>
-        <button type="button" onClick={() => void finish(true)} disabled={busy || !work} className="flex flex-[1.4] items-center justify-center gap-1.5 rounded-2xl bg-volt py-3 text-sm font-black text-white disabled:opacity-50">
+        <button type="button" onClick={() => void finish(true)} disabled={busy || !work} className="flex flex-[1.4] items-center justify-center gap-1.5 rounded-2xl bg-volt py-3 text-sm font-semibold text-white disabled:opacity-50">
           {busy ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}{busy ? "Procesando…" : "Extraer documento"}
         </button>
       </div>

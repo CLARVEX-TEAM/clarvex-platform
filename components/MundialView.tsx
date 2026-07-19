@@ -65,8 +65,8 @@ export function MundialView({ desktop = false }: { desktop?: boolean }) {
         <div className="flex items-center gap-3">
           <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-white/15 text-2xl">🏆</span>
           <div className="min-w-0">
-            <p className="text-[11px] font-black uppercase tracking-[0.16em] text-white/60">Copa del Mundo FIFA 2026</p>
-            <p className="text-lg font-black leading-tight">Camino a la final</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-white/60">Copa del Mundo FIFA 2026</p>
+            <p className="text-lg font-semibold leading-tight">Camino a la final</p>
           </div>
         </div>
         <span className="mt-3 block h-[3px] rounded-full bg-gradient-to-r from-[#26d0ce] via-white/80 to-[#b03fd9] opacity-80" />
@@ -87,7 +87,7 @@ export function MundialView({ desktop = false }: { desktop?: boolean }) {
                 key={round.name}
                 type="button"
                 onClick={() => setActiveRound(index)}
-                className={`shrink-0 rounded-full px-4 py-1.5 text-xs font-black transition active:scale-95 ${
+                className={`shrink-0 rounded-full px-4 py-1.5 text-xs font-semibold transition active:scale-95 ${
                   index === shownRound
                     ? "bg-gradient-to-r from-[#1a1f71] to-[#4557d2] text-white shadow-[0_6px_16px_rgb(26_31_113_/_0.35)]"
                     : "bg-panel text-muted border border-line"
@@ -121,10 +121,10 @@ function TeamRow({ team, other, finished }: { team: BracketTeam | null; other: B
       ) : (
         <span className="grid size-[22px] shrink-0 place-items-center rounded-full bg-slate-500/15 text-[11px]">⚽</span>
       )}
-      <span className="min-w-0 flex-1 truncate text-sm font-black text-ink">
+      <span className="min-w-0 flex-1 truncate text-sm font-semibold text-ink">
         {team?.name ?? "Por definir"}
       </span>
-      <span className={`shrink-0 text-sm font-black tabular-nums ${team?.winner ? "text-emerald-500" : "text-ink"}`}>
+      <span className={`shrink-0 text-sm font-semibold tabular-nums ${team?.winner ? "text-emerald-500" : "text-ink"}`}>
         {team?.score ?? "–"}
       </span>
     </div>

@@ -64,14 +64,14 @@ export function ConfirmDialog({
             >
               <AlertTriangle size={24} />
             </motion.span>
-            <h3 className="mt-3 text-lg font-black text-ink">{title}</h3>
+            <h3 className="mt-3 text-lg font-semibold text-ink">{title}</h3>
             <p className="mt-1.5 text-sm text-muted">{description}</p>
             <div className="mt-5 grid grid-cols-2 gap-3">
               <button
                 type="button"
                 onClick={onCancel}
                 disabled={loading}
-                className="tappable min-h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 text-sm font-black text-ink disabled:opacity-55"
+                className="tappable min-h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 text-sm font-semibold text-ink disabled:opacity-55"
               >
                 Cancelar
               </button>

@@ -38,10 +38,10 @@ export function ConfirmStep({
         >
           <ClarvexIcon size={34} />
         </div>
-        <p className="mb-5 text-[10px] font-black tracking-[0.42em] text-blue-600">CLARVEX TEAM</p>
+        <p className="mb-5 text-[10px] font-semibold tracking-[0.42em] text-blue-600">CLARVEX TEAM</p>
 
         <div className={`w-full max-w-sm rounded-3xl p-6 ${card}`}>
-          <h2 className={`mb-1 text-lg font-black ${isDark ? "text-white" : "text-slate-900"}`}>
+          <h2 className={`mb-1 text-lg font-semibold ${isDark ? "text-white" : "text-slate-900"}`}>
             Confirma tu PIN
           </h2>
           <p className={`mb-6 text-sm ${isDark ? "text-slate-400" : "text-slate-500"}`}>

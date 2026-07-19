@@ -197,30 +197,30 @@ export function MatchBanner() {
           <div className="flex items-center justify-between gap-2">
             {isLive ? (
               <div className="min-w-0 flex-1">
-                <div className="flex items-center justify-center gap-1.5 text-[10px] font-black uppercase tracking-wider">
+                <div className="flex items-center justify-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider">
                   <span className="inline-block size-1.5 animate-pulse rounded-full bg-white" />
                   En vivo{match.competition ? ` · ${match.competition}` : ""}{match.externalId ? " · marcador automático" : ""}
                 </div>
                 <div className="mt-0.5 flex items-center justify-center gap-3">
-                  <span className="min-w-0 truncate text-right text-sm font-black">{home.flag} {home.name}</span>
+                  <span className="min-w-0 truncate text-right text-sm font-semibold">{home.flag} {home.name}</span>
                   <motion.span
                     key={`${match.mxScore}-${match.rivalScore}`}
                     initial={{ scale: 1.45 }}
                     animate={{ scale: 1 }}
                     transition={{ type: "spring", stiffness: 400, damping: 22 }}
-                    className="shrink-0 rounded-lg bg-black/25 px-2.5 py-0.5 text-lg font-black leading-none tabular-nums"
+                    className="shrink-0 rounded-lg bg-black/25 px-2.5 py-0.5 text-lg font-semibold leading-none tabular-nums"
                   >
                     {match.mxScore} – {match.rivalScore}
                   </motion.span>
-                  <span className="min-w-0 truncate text-left text-sm font-black">{match.opponentFlag ?? ""} {match.opponent}</span>
+                  <span className="min-w-0 truncate text-left text-sm font-semibold">{match.opponentFlag ?? ""} {match.opponent}</span>
                 </div>
               </div>
             ) : (
               <div className="flex min-w-0 flex-1 items-center gap-2">
                 <span className="text-lg leading-none">{home.isMexico ? "🇲🇽" : home.flag || "🏆"}</span>
                 <div className="min-w-0">
-                  <div className="text-[10px] font-black uppercase tracking-wider opacity-90">{countdown}{match.competition ? ` · ${match.competition}` : ""}</div>
-                  <p className="truncate text-sm font-black">
+                  <div className="text-[10px] font-semibold uppercase tracking-wider opacity-90">{countdown}{match.competition ? ` · ${match.competition}` : ""}</div>
+                  <p className="truncate text-sm font-semibold">
                     {home.isMexico ? "¡Juega México!" : `${home.name}`} 🆚 {match.opponentFlag ?? ""} {match.opponent}
                   </p>
                 </div>
@@ -230,7 +230,7 @@ export function MatchBanner() {
               {match.streamUrl && (
                 <a
                   href="/partido/ver"
-                  className="flex h-8 items-center gap-1.5 rounded-full bg-white px-3 text-[12px] font-black text-[#006847] transition hover:bg-white/90 active:scale-95"
+                  className="flex h-8 items-center gap-1.5 rounded-full bg-white px-3 text-[12px] font-semibold text-[#006847] transition hover:bg-white/90 active:scale-95"
                 >
                   <Tv size={13} /> Ver partido
                 </a>
@@ -246,11 +246,11 @@ export function MatchBanner() {
           {canManage && isLive && (
             <div className="flex items-center gap-1.5 pb-0.5">
               <div className="flex flex-1 items-center gap-1">
-                <button type="button" onClick={() => goal("MX")} disabled={busy} className={`flex-1 rounded-full bg-white px-2 py-1 text-[12px] font-black transition active:scale-95 disabled:opacity-50 ${home.isMexico ? "text-[#006847]" : "text-[#1a1f71]"}`}>
+                <button type="button" onClick={() => goal("MX")} disabled={busy} className={`flex-1 rounded-full bg-white px-2 py-1 text-[12px] font-semibold transition active:scale-95 disabled:opacity-50 ${home.isMexico ? "text-[#006847]" : "text-[#1a1f71]"}`}>
                   ⚽ Gol {home.name}
                 </button>
                 {match.mxScore > 0 && (
-                  <button type="button" onClick={() => undoGoal("MX")} disabled={busy} title="Deshacer gol México" className="grid size-6 shrink-0 place-items-center rounded-full bg-white/30 text-[11px] font-black transition active:scale-95 disabled:opacity-50">
+                  <button type="button" onClick={() => undoGoal("MX")} disabled={busy} title="Deshacer gol México" className="grid size-6 shrink-0 place-items-center rounded-full bg-white/30 text-[11px] font-semibold transition active:scale-95 disabled:opacity-50">
                     −
                   </button>
                 )}
@@ -260,7 +260,7 @@ export function MatchBanner() {
                   Gol rival
                 </button>
                 {match.rivalScore > 0 && (
-                  <button type="button" onClick={() => undoGoal("RIVAL")} disabled={busy} title="Deshacer gol rival" className="grid size-6 shrink-0 place-items-center rounded-full bg-white/30 text-[11px] font-black transition active:scale-95 disabled:opacity-50">
+                  <button type="button" onClick={() => undoGoal("RIVAL")} disabled={busy} title="Deshacer gol rival" className="grid size-6 shrink-0 place-items-center rounded-full bg-white/30 text-[11px] font-semibold transition active:scale-95 disabled:opacity-50">
                     −
                   </button>
                 )}

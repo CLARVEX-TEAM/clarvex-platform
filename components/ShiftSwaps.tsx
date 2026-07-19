@@ -125,7 +125,7 @@ export function ShiftSwaps({ myId }: { myId: string }) {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <ArrowLeftRight size={17} className="text-volt" />
-          <h2 className="text-base font-black text-ink">Cambio de descanso</h2>
+          <h2 className="text-base font-semibold text-ink">Cambio de descanso</h2>
         </div>
         {others.length > 0 ? (
           <Button type="button" variant="ghost" onClick={() => setOpen((value) => !value)}>
@@ -183,7 +183,7 @@ export function ShiftSwaps({ myId }: { myId: string }) {
                     </p>
                     {swap.reason ? <p className="truncate text-[11px] text-muted">{swap.reason}</p> : null}
                   </div>
-                  <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-[10px] font-black", SWAP_STATUS_TONE[swap.status])}>
+                  <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold", SWAP_STATUS_TONE[swap.status])}>
                     {SWAP_STATUS_LABEL[swap.status]}
                   </span>
                 </div>

@@ -77,13 +77,13 @@ export function ConteosListView({ desktop = false }: { desktop?: boolean }) {
               type="button"
               onClick={() => void createCount()}
               disabled={creating || !!open}
-              className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-volt px-4 py-2.5 text-sm font-black text-white transition active:scale-95 disabled:opacity-50"
+              className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-volt px-4 py-2.5 text-sm font-semibold text-white transition active:scale-95 disabled:opacity-50"
             >
               <Plus size={16} /> {open ? "Hay un conteo abierto" : creating ? "Abriendo…" : "Abrir conteo de hoy"}
             </button>
             <Link
               href={`${base}/marbetes`}
-              className="flex items-center gap-2 rounded-2xl border border-line bg-panel px-4 py-2.5 text-sm font-black text-ink transition active:scale-95"
+              className="flex items-center gap-2 rounded-2xl border border-line bg-panel px-4 py-2.5 text-sm font-semibold text-ink transition active:scale-95"
             >
               <Settings2 size={16} /> Marbetes
             </Link>
@@ -92,7 +92,7 @@ export function ConteosListView({ desktop = false }: { desktop?: boolean }) {
         {error && <p className="mb-2 text-xs font-semibold text-red-500">{error}</p>}
         {manager && totalTags === 0 && counts !== null && (
           <Card className="mb-3 p-4 text-sm font-semibold text-muted">
-            Aún no hay marbetes dados de alta. Ve a <Link className="font-black text-volt" href={`${base}/marbetes`}>Marbetes</Link> y captura los rangos de tienda y bodega (una sola vez: son fijos).
+            Aún no hay marbetes dados de alta. Ve a <Link className="font-semibold text-volt" href={`${base}/marbetes`}>Marbetes</Link> y captura los rangos de tienda y bodega (una sola vez: son fijos).
           </Card>
         )}
 
@@ -109,14 +109,14 @@ export function ConteosListView({ desktop = false }: { desktop?: boolean }) {
               <Link key={count.id} href={`${base}/${count.id}`}>
                 <Card className="p-3.5 transition active:scale-[0.99]">
                   <div className="flex items-center justify-between gap-2">
-                    <p className="text-sm font-black capitalize text-ink">{fmt(count.date)}</p>
+                    <p className="text-sm font-semibold capitalize text-ink">{fmt(count.date)}</p>
                     <Badge tone={count.status === "OPEN" ? "success" : "default"}>
                       {count.status === "OPEN" ? "En curso" : "Cerrado"}
                     </Badge>
                   </div>
                   <div className="mt-2 flex items-center gap-3">
                     <div className="flex-1"><ProgressBar value={count.totalTags > 0 ? (count.counted / count.totalTags) * 100 : 0} /></div>
-                    <span className="shrink-0 text-xs font-black tabular-nums text-muted">{count.counted}/{count.totalTags}</span>
+                    <span className="shrink-0 text-xs font-semibold tabular-nums text-muted">{count.counted}/{count.totalTags}</span>
                   </div>
                   <p className="mt-1.5 text-xs font-semibold text-muted">{count.pieces.toLocaleString("es-MX")} piezas contadas</p>
                 </Card>

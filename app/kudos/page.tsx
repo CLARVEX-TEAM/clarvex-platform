@@ -95,7 +95,7 @@ export default function KudosPage() {
                 <p className="text-[11px] font-bold uppercase tracking-[0.13em] text-muted">Reconocido de la semana</p>
                 <div className="mt-0.5 flex items-center gap-2">
                   <ProfileAvatar name={topWeek.name} photoUrl={topWeek.photoUrl} size="sm" />
-                  <p className="truncate font-black text-ink">{topWeek.name}</p>
+                  <p className="truncate font-semibold text-ink">{topWeek.name}</p>
                 </div>
                 <p className="mt-0.5 text-xs text-muted">{topWeek.count} {topWeek.count === 1 ? "reconocimiento" : "reconocimientos"} esta semana 🎉</p>
               </div>
@@ -106,7 +106,7 @@ export default function KudosPage() {
         <Card className="mb-3 p-3.5">
           <div className="mb-3 flex items-center gap-2">
             <HeartHandshake className="text-volt" size={18} />
-            <h2 className="text-lg font-black">Reconocer a alguien</h2>
+            <h2 className="text-lg font-semibold">Reconocer a alguien</h2>
           </div>
           <div className="grid gap-3">
             <label className="grid gap-1">
@@ -145,7 +145,7 @@ export default function KudosPage() {
         </Card>
 
         <Card className="p-3.5">
-          <h2 className="mb-2.5 text-lg font-black">Reconocimientos recientes</h2>
+          <h2 className="mb-2.5 text-lg font-semibold">Reconocimientos recientes</h2>
           {loading ? (
             <p className="py-4 text-sm font-semibold text-muted">Cargando…</p>
           ) : kudos.length === 0 ? (
