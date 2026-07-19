@@ -1,8 +1,15 @@
 // Decide si gerencia debe ver la versión de ESCRITORIO.
-// Los POS de tienda a veces tienen el navegador con zoom o pantallas chicas, así
-// que window.innerWidth se queda por debajo del umbral aunque sea una computadora.
-// Por eso se usa también screen.width (resolución física, no afectada por el zoom)
-// y una preferencia manual guardada por dispositivo que gana sobre la detección.
+//
+// El reto: distinguir un POS de tienda (computadora, a veces con el navegador con
+// zoom → innerWidth < umbral) de un teléfono. NO basta con screen.width: varios
+// Android lo reportan inflado a píxeles físicos (p. ej. 1080), lo que hacía que un
+// teléfono se tomara por computadora y quedara atrapado en la versión de escritorio.
+//
+// Señal fiable de "computadora": un puntero fino (mouse/trackpad). Un teléfono es
+// táctil y nunca lo tiene, así que jamás acaba en escritorio. screen.width solo se
+// considera cuando además hay mouse (para el POS con zoom). La preferencia manual
+// por dispositivo gana sobre la detección, pero "desktop" tampoco fuerza escritorio
+// en un equipo sin pantalla ni mouse capaces (un teléfono con la preferencia vieja).
 
 export const DESKTOP_MIN_WIDTH = 1024;
 const PREF_KEY = "clarvex-view";
@@ -25,8 +32,20 @@ export function setViewPreference(mode: ViewPreference) {
 export function prefersDesktop(): boolean {
   if (typeof window === "undefined") return false;
   const pref = getViewPreference();
-  if (pref === "desktop") return true;
   if (pref === "mobile") return false;
-  const widest = Math.max(window.innerWidth || 0, window.screen?.width || 0);
-  return widest >= DESKTOP_MIN_WIDTH;
+
+  // Ancho del viewport en px CSS: fiable en todos lados (a diferencia de
+  // screen.width). Un teléfono en vertical siempre queda por debajo del umbral.
+  const wideViewport = (window.innerWidth || 0) >= DESKTOP_MIN_WIDTH;
+  // ¿Puntero fino (mouse/trackpad)? Distingue un POS de un teléfono táctil.
+  const hasMouse = typeof window.matchMedia === "function"
+    && window.matchMedia("(pointer: fine)").matches;
+  // screen.width solo cuenta si hay mouse (en móvil viene inflado y engañaba).
+  const bigScreenWithMouse = hasMouse && (window.screen?.width || 0) >= DESKTOP_MIN_WIDTH;
+
+  // "desktop" manual: solo si el equipo realmente puede (viewport ancho o mouse).
+  // En un teléfono con la preferencia vieja guardada, esto lo mantiene en móvil.
+  if (pref === "desktop") return wideViewport || hasMouse;
+  // Auto: viewport ancho, o un equipo con mouse y pantalla física grande (POS con zoom).
+  return wideViewport || bigScreenWithMouse;
 }
