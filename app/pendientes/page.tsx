@@ -185,9 +185,9 @@ export default function PendientesPage() {
           <button
             onClick={() => void fetchTaskOptimization()}
             disabled={loadingOpt}
-            className="mb-3 w-full flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-[#2563EB] text-sm font-semibold text-white transition active:scale-95 disabled:opacity-50"
+            className="mb-3 w-full flex min-h-11 items-center justify-center gap-2 rounded-2xl border border-line bg-card text-sm font-semibold text-ink/80 transition hover:border-volt active:scale-95 disabled:opacity-50"
           >
-            <Sparkles size={16} />
+            <Sparkles size={16} className="text-volt" />
             {loadingOpt ? "Optimizando Handover..." : "Optimizar Pendientes con IA"}
           </button>
         )}

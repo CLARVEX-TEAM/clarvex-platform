@@ -37,7 +37,7 @@ export function AppInput({
         className={cn(
           "pointer-events-none absolute left-4 transition-all duration-150 ease-out",
           lifted
-            ? "top-2 text-[10px] font-bold uppercase tracking-[0.1em] text-blue-500 dark:text-blue-400"
+            ? "top-2 text-[10px] font-bold uppercase tracking-[0.1em] text-muted"
             : "top-[18px] text-[14px] font-normal text-slate-400 dark:text-slate-500"
         )}
       >
@@ -87,7 +87,7 @@ export function AppTextarea({
         className={cn(
           "pointer-events-none absolute left-4 transition-all duration-150 ease-out",
           lifted
-            ? "top-2 text-[10px] font-bold uppercase tracking-[0.1em] text-blue-500 dark:text-blue-400"
+            ? "top-2 text-[10px] font-bold uppercase tracking-[0.1em] text-muted"
             : "top-[18px] text-[14px] font-normal text-slate-400 dark:text-slate-500"
         )}
       >
@@ -218,7 +218,7 @@ export function AppSelect({
             <AvatarSmall name={selected.label} photoUrl={selected.photoUrl} size={32} />
           ) : null}
           <div className="min-w-0 flex-1">
-            <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-blue-500 dark:text-blue-400">{label}</p>
+            <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-muted">{label}</p>
             <p className={cn("truncate text-sm font-semibold", selected ? "text-ink" : "text-slate-400 dark:text-slate-500")}>
               {selected?.label ?? placeholder}
             </p>
@@ -280,7 +280,7 @@ export function AppChipInput({
         wrapperClassName
       )}
     >
-      <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.1em] text-blue-500 dark:text-blue-400">{label}</p>
+      <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.1em] text-muted">{label}</p>
       {chips.length > 0 && (
         <div className="mb-2.5 flex flex-wrap gap-1.5">
           <AnimatePresence>
@@ -371,7 +371,7 @@ export function AppDatePicker({
           <CalendarDays size={17} />
         </span>
         <div className="flex-1">
-          <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-blue-500 dark:text-blue-400">{label}</p>
+          <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-muted">{label}</p>
           <p className={cn("text-sm font-semibold", formatted ? "text-ink" : "text-slate-400 dark:text-slate-500")}>
             {formatted || "Seleccionar fecha"}
           </p>
