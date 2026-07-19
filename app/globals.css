@@ -81,9 +81,10 @@ body {
 .ambient-blob {
   position: absolute;
   display: block;
-  /* Rediseño minimalista: sin blobs de ambiente (fondo neutro y limpio). */
-  opacity: 0;
-  filter: blur(80px);
+  /* Rediseño minimalista: ambiente MUY sutil (apenas perceptible) que se mueve
+     lento con GSAP. Da vida al fondo claro sin romper la limpieza. */
+  opacity: 0.09;
+  filter: blur(90px);
   transform: translate3d(0, 0, 0);
   will-change: transform;
 }
