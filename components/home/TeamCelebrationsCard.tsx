@@ -16,11 +16,11 @@ export function TeamCelebrationsCard({ members, manageHref }: { members: TeamMem
     <Card className="p-3.5">
       <div className="mb-3 flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <Cake className="text-pink-500" size={18} />
-          <h2 className="text-lg font-black">Cumpleaños del equipo</h2>
+          <Cake className="text-pink-500" size={17} />
+          <h2 className="text-[15px] font-semibold">Cumpleaños del equipo</h2>
         </div>
         {manageHref ? (
-          <Link href={manageHref} className="flex items-center gap-1 text-xs font-black text-volt">
+          <Link href={manageHref} className="flex items-center gap-1 text-xs font-semibold text-volt">
             <Pencil size={13} /> Configurar
           </Link>
         ) : null}
@@ -33,7 +33,7 @@ export function TeamCelebrationsCard({ members, manageHref }: { members: TeamMem
             <div key={member.id} className="flex items-center justify-between gap-3 py-2.5">
               <div className="flex min-w-0 items-center gap-3">
                 <ProfileAvatar name={member.name} photoUrl={member.photoUrl} size="sm" />
-                <p className="truncate font-bold">{member.name}</p>
+                <p className="truncate font-medium text-ink">{member.name}</p>
               </div>
               <div className="flex shrink-0 flex-col items-end gap-0.5 text-xs">
                 <span className="text-ink/70">{birthday ? `🎂 ${birthday}` : <span className="text-muted">🎂 sin fecha</span>}</span>

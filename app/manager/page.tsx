@@ -19,7 +19,7 @@ import {
   UsersRound
 } from "lucide-react";
 import { getSession, logout } from "@/lib/auth";
-import { completion, money, performanceTone, performanceTextClass } from "@/lib/format";
+import { completion, money, performanceTextClass } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { computeDailyStreak } from "@/lib/streaks";
 import { isRestingToday, scheduleStatusByUser } from "@/lib/working-today";
@@ -71,12 +71,12 @@ export default function ManagerDashboard() {
         <div className="grid min-h-screen place-items-center px-8 text-center">
           <div>
             <span className="mx-auto mb-3 grid size-14 place-items-center rounded-3xl bg-rose-500/10 text-2xl">📡</span>
-            <p className="text-base font-black text-ink">No se pudo cargar la información</p>
+            <p className="text-base font-semibold text-ink">No se pudo cargar la información</p>
             <p className="mt-1 text-sm font-semibold text-muted">Revisa tu conexión e intenta de nuevo.</p>
             <button
               type="button"
               onClick={() => { setLoadFailed(false); void load(); }}
-              className="mt-4 rounded-full bg-volt px-7 py-2.5 text-sm font-black text-white transition active:scale-95"
+              className="mt-4 rounded-full bg-volt px-7 py-2.5 text-sm font-semibold text-white transition active:scale-95"
             >
               Reintentar
             </button>
@@ -133,18 +133,6 @@ export default function ManagerDashboard() {
       || completion(b.kpi?.dailySales ?? 0, b.kpi?.dailyGoal ?? 0) - completion(a.kpi?.dailySales ?? 0, a.kpi?.dailyGoal ?? 0)
       || (b.kpi?.dailySales ?? 0) - (a.kpi?.dailySales ?? 0)
     );
-  // Podio: top-3 de los que trabajan; el resto (y quienes descansan) van en lista.
-  const workingRanking = ranking.filter((r) => !r.resting);
-  const top3 = workingRanking.slice(0, 3);
-  const restRanking = [...workingRanking.slice(3), ...ranking.filter((r) => r.resting)];
-  // Orden visual del podio: 2.º, 1.º, 3.º (el campeón al centro y más alto).
-  const podium = (
-    [
-      top3[1] ? { entry: top3[1], rank: 2, medal: "🥈", ring: "ring-slate-300", bar: "h-16", from: "from-slate-300/40" } : null,
-      top3[0] ? { entry: top3[0], rank: 1, medal: "🥇", ring: "ring-yellow-400", bar: "h-24", from: "from-yellow-400/45" } : null,
-      top3[2] ? { entry: top3[2], rank: 3, medal: "🥉", ring: "ring-amber-600", bar: "h-12", from: "from-amber-600/40" } : null
-    ] as const
-  ).filter((slot): slot is NonNullable<typeof slot> => slot !== null);
   const userName = (id: string) => data.users.find((u) => u.id === id)?.name ?? "Equipo";
   const salesTrend = buildSalesTrend(data.kpis.map((k) => ({ date: k.date, dailySales: k.dailySales, dailyGoal: k.dailyGoal })), todayKey);
   const ventasSeries = buildDailySeries(data.kpis.map((k) => ({ date: k.date, value: k.dailySales })), todayKey, 7);
@@ -220,7 +208,7 @@ export default function ManagerDashboard() {
             </div>
             <Link
               href="/comunicados"
-              className="rounded-xl bg-[#00FF66] px-3.5 py-1.5 text-xs font-black text-black transition active:scale-95 shrink-0"
+              className="rounded-xl bg-[#00FF66] px-3.5 py-1.5 text-xs font-semibold text-black transition active:scale-95 shrink-0"
             >
               Leer ahora
             </Link>
@@ -248,7 +236,7 @@ export default function ManagerDashboard() {
             >
               <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-volt/15 text-volt"><UsersRound size={22} /></span>
               <div className="min-w-0 flex-1">
-                <p className="font-black text-ink">Da de alta a tu equipo</p>
+                <p className="font-semibold text-ink">Da de alta a tu equipo</p>
                 <p className="text-xs font-semibold text-muted">Agrega a tus asesores y subgerentes para empezar.</p>
               </div>
               <ArrowRight size={18} className="shrink-0 text-volt" />
@@ -277,94 +265,55 @@ export default function ManagerDashboard() {
         <motion.div {...cardAnim(0.40)} className="mt-3">
           <Card>
             <div className="mb-3 flex items-center gap-2">
-              <CheckCircle2 className="text-volt" size={18} />
-              <h2 className="text-lg font-black">Desempeño equipo</h2>
+              <CheckCircle2 className="text-muted" size={18} />
+              <h2 className="text-[15px] font-semibold">Desempeño equipo</h2>
             </div>
             <p className="text-sm text-muted">
               {doneActivities} actividades completadas de {allActivities}.
             </p>
-            <ProgressBar value={activityProgress} tone="purple" />
+            <ProgressBar value={activityProgress} />
           </Card>
         </motion.div>
 
         <motion.div {...cardAnim(0.48)} className="mt-3">
-          <Card>
-            <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-lg font-black">Ranking asesores</h2>
-              <Badge>tienda</Badge>
+          <Card className="p-0">
+            <div className="flex items-center justify-between px-4 pb-2 pt-4">
+              <h2 className="text-[13px] font-semibold text-ink/90">Ranking del día</h2>
+              <span className="text-[11px] text-muted">Tienda</span>
             </div>
-            {/* Podio top-3 */}
-            {podium.length > 0 ? (
-              <div className="mb-3 flex items-end justify-center gap-2">
-                {podium.map(({ entry, rank, medal, ring, bar, from }) => {
-                  const progress = completion(entry.kpi?.dailySales ?? 0, entry.kpi?.dailyGoal ?? 0);
-                  return (
-                    <div key={entry.advisor.id} className="flex flex-1 flex-col items-center">
-                      <span className="text-lg leading-none">{medal}</span>
-                      <ProfileAvatar
-                        name={entry.advisor.name}
-                        photoUrl={entry.advisor.photoUrl}
-                        size={rank === 1 ? "md" : "sm"}
-                        className={cn("mt-1 ring-2", ring)}
-                      />
-                      <p className="mt-1 w-full truncate text-center text-[11px] font-black text-ink">{entry.advisor.name.split(" ")[0]}</p>
-                      <p className={cn("text-sm font-black", performanceTextClass(progress))}>{progress}%</p>
-                      <motion.div
-                        initial={{ height: 0 }}
-                        animate={{ height: "auto" }}
-                        transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1], delay: 0.1 * rank }}
-                        className={cn("mt-1 grid w-full place-items-center rounded-t-2xl bg-gradient-to-b to-transparent text-xs font-black text-ink/55", bar, from)}
-                      >
-                        #{rank}
-                      </motion.div>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : null}
-
-            {/* Resto del equipo */}
-            {restRanking.length > 0 ? (
-              <div className="divide-y divide-white/[0.07] border-t border-line pt-1">
-                {restRanking.map(({ advisor, kpi, resting }, index) => {
+            <div>
+              {(() => {
+                let place = 0;
+                return ranking.map(({ advisor, kpi, resting }) => {
                   const progress = completion(kpi?.dailySales ?? 0, kpi?.dailyGoal ?? 0);
+                  if (!resting) place += 1;
                   const streak = computeDailyStreak(
                     data.kpis.filter((k) => k.userId === advisor.id && k.date !== undefined).map((k) => ({ date: k.date as string, sales: k.dailySales, goal: k.dailyGoal })),
                     todayKey
                   );
                   return (
-                    <div key={advisor.id} className="flex items-center justify-between py-2.5">
-                      <div className="flex items-center gap-3">
-                        <ProfileAvatar name={advisor.name} photoUrl={advisor.photoUrl} size="sm" className={resting ? "opacity-60" : undefined} />
-                        <div>
-                          <p className="font-bold">
-                            {resting ? "" : `#${podium.length + index + 1} `}{advisor.name}
-                            {!resting && streak.current >= 2 ? <span className="ml-1.5 text-xs font-black text-orange-500">🔥{streak.current}</span> : null}
-                          </p>
-                          {resting ? (
-                            <p className="text-sm font-semibold text-ink/45">😴 Descanso</p>
-                          ) : (
-                            <>
-                              <p className="text-sm text-ink/50">
-                                {money(kpi?.dailySales ?? 0)} de {money(kpi?.dailyGoal ?? 0)}
-                              </p>
-                              <div className="max-w-40">
-                                <ProgressBar value={progress} tone={performanceTone(progress)} />
-                              </div>
-                            </>
-                          )}
-                        </div>
+                    <div key={advisor.id} className="flex items-center gap-3 border-t border-line px-4 py-2.5 first:border-t-0">
+                      <span className={cn("w-5 shrink-0 text-center text-[13px] font-semibold tabular-nums", resting ? "text-muted/50" : "text-ink")}>
+                        {resting ? "—" : place}
+                      </span>
+                      <ProfileAvatar name={advisor.name} photoUrl={advisor.photoUrl} size="sm" className={resting ? "opacity-50" : undefined} />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-[13.5px] font-medium tracking-[-0.01em] text-ink">
+                          {advisor.name}
+                          {!resting && streak.current >= 2 ? <span className="ml-1.5 text-[11px] font-semibold text-orange-500">🔥{streak.current}</span> : null}
+                        </p>
+                        <p className="text-[11px] text-muted">
+                          {resting ? "Descanso hoy" : `${money(kpi?.dailySales ?? 0)} · meta ${money(kpi?.dailyGoal ?? 0)}`}
+                        </p>
                       </div>
-                      {resting ? (
-                        <Badge>Descanso</Badge>
-                      ) : (
-                        <p className={cn("text-xl font-black", performanceTextClass(progress))}>{progress}%</p>
-                      )}
+                      <span className={cn("shrink-0 text-[13px] font-semibold tabular-nums", resting ? "text-muted/50" : performanceTextClass(progress))}>
+                        {resting ? "—" : `${progress}%`}
+                      </span>
                     </div>
                   );
-                })}
-              </div>
-            ) : null}
+                });
+              })()}
+            </div>
           </Card>
         </motion.div>
 
@@ -373,13 +322,13 @@ export default function ManagerDashboard() {
             <Card>
               <div className="mb-3 flex items-center gap-2">
                 <Cake className="text-pink-500" size={18} />
-                <h2 className="text-lg font-black">Próximos festejos</h2>
+                <h2 className="text-[15px] font-semibold">Próximos festejos</h2>
               </div>
               <div className="divide-y divide-white/[0.07]">
                 {celebrations.map((celebration) => (
                   <div key={`${celebration.id}-${celebration.type}`} className="flex items-center justify-between py-2.5">
                     <div>
-                      <p className="font-bold">{celebration.type === "cumple" ? "🎂" : "🎉"} {celebration.name}</p>
+                      <p className="font-medium text-ink">{celebration.type === "cumple" ? "🎂" : "🎉"} {celebration.name}</p>
                       <p className="text-sm text-ink/55">{celebration.type === "cumple" ? "Cumpleaños" : `${celebration.years} ${celebration.years === 1 ? "año" : "años"} en el equipo`}</p>
                     </div>
                     <Badge tone={celebration.daysUntil === 0 ? "warn" : "default"}>{celebration.daysUntil === 0 ? "¡Hoy!" : `en ${celebration.daysUntil} ${celebration.daysUntil === 1 ? "día" : "días"}`}</Badge>
@@ -401,14 +350,14 @@ export default function ManagerDashboard() {
           <Card>
             <div className="mb-3 flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Megaphone className="text-volt" size={18} />
-                <h2 className="text-lg font-black">Comunicados recientes</h2>
+                <Megaphone className="text-muted" size={18} />
+                <h2 className="text-[15px] font-semibold">Comunicados recientes</h2>
               </div>
-              <Link href="/comunicados" className="text-xs font-black text-volt">Ver todos</Link>
+              <Link href="/comunicados" className="text-xs font-semibold text-volt">Ver todos</Link>
             </div>
             {data.announcements.map((item) => (
               <div key={item.id} className="border-t border-line py-2.5 first:border-t-0 first:pt-0">
-                <p className="font-bold">{item.title}</p>
+                <p className="font-medium text-ink">{item.title}</p>
                 <p className="mt-1 text-sm text-ink/55">
                   {item.readBy.length} leídos, {advisors.length - item.readBy.length} pendientes
                 </p>
@@ -420,14 +369,14 @@ export default function ManagerDashboard() {
         <motion.div {...cardAnim(0.64)} className="mt-3">
           <Card>
             <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-lg font-black">Pendientes de gerencia</h2>
-              <Link href="/pendientes" className="text-xs font-black text-volt">Ver todos</Link>
+              <h2 className="text-[15px] font-semibold">Pendientes de gerencia</h2>
+              <Link href="/pendientes" className="text-xs font-semibold text-volt">Ver todos</Link>
             </div>
             <div className="divide-y divide-white/[0.07]">
               {critical.map((pending) => (
                 <div key={pending.id} className="py-2.5">
                   <div className="flex items-center justify-between gap-2">
-                    <p className="font-bold">{pending.title}</p>
+                    <p className="font-medium text-ink">{pending.title}</p>
                     <Badge tone={priorityTone(pending.priority)}>{pending.priority}</Badge>
                   </div>
                   <p className="mt-1 text-sm text-ink/55">Responsable: {userName(pending.ownerId)}</p>
@@ -440,16 +389,16 @@ export default function ManagerDashboard() {
         <motion.div {...cardAnim(0.72)} className="mt-3">
           <Card className="p-3.5">
             <div className="flex items-center gap-3">
-              <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-emerald-50 dark:bg-[#10301f] text-emerald-600">
+              <span className="grid size-11 shrink-0 place-items-center rounded-2xl border border-line bg-void text-ink/65">
                 <ClipboardCheck size={20} />
               </span>
               <div className="min-w-0 flex-1">
-                <h2 className="font-black tracking-[-0.02em] text-ink">Checklist de tienda</h2>
+                <h2 className="font-semibold tracking-[-0.02em] text-ink">Checklist de tienda</h2>
                 <p className="mt-0.5 text-xs text-muted">Apertura y cierre con evidencia</p>
               </div>
               <Link
                 href="/checklist"
-                className="inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-full bg-volt px-3.5 text-xs font-black text-white transition active:scale-95"
+                className="inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-full border border-line px-3.5 text-xs font-semibold text-ink/75 transition active:scale-95"
               >
                 Abrir <ArrowRight size={14} />
               </Link>
@@ -460,16 +409,16 @@ export default function ManagerDashboard() {
         <motion.div {...cardAnim(0.80)} className="mt-3">
           <Card className="p-3.5">
             <div className="flex items-center gap-3">
-              <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-blue-50 dark:bg-[#1a2540] text-volt">
+              <span className="grid size-11 shrink-0 place-items-center rounded-2xl border border-line bg-void text-ink/65">
                 <Database size={20} />
               </span>
               <div className="min-w-0 flex-1">
-                <h2 className="font-black tracking-[-0.02em] text-ink">Centro de Datos</h2>
+                <h2 className="font-semibold tracking-[-0.02em] text-ink">Centro de Datos</h2>
                 <p className="mt-0.5 text-xs text-muted">Fuentes y sincronizaciones</p>
               </div>
               <Link
                 href="/datos"
-                className="inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-full bg-volt px-3.5 text-xs font-black text-white transition active:scale-95"
+                className="inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-full border border-line px-3.5 text-xs font-semibold text-ink/75 transition active:scale-95"
               >
                 Abrir <ArrowRight size={14} />
               </Link>
@@ -480,16 +429,16 @@ export default function ManagerDashboard() {
         <motion.div {...cardAnim(0.84)} className="mt-3">
           <Card className="p-3.5">
             <div className="flex items-center gap-3">
-              <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-green-50 dark:bg-[#10301f] text-green-600">
+              <span className="grid size-11 shrink-0 place-items-center rounded-2xl border border-line bg-void text-ink/65">
                 <Trophy size={20} />
               </span>
               <div className="min-w-0 flex-1">
-                <h2 className="font-black tracking-[-0.02em] text-ink">Selección Mexicana 🇲🇽</h2>
+                <h2 className="font-semibold tracking-[-0.02em] text-ink">Selección Mexicana 🇲🇽</h2>
                 <p className="mt-0.5 text-xs text-muted">Programa partidos y avisa los goles</p>
               </div>
               <Link
                 href="/partido"
-                className="inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-full bg-green-600 px-3.5 text-xs font-black text-white transition active:scale-95"
+                className="inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-full border border-line px-3.5 text-xs font-semibold text-ink/75 transition active:scale-95"
               >
                 Abrir <ArrowRight size={14} />
               </Link>
@@ -501,16 +450,16 @@ export default function ManagerDashboard() {
           <motion.div {...cardAnim(0.88)} className="mt-3">
             <Card className="p-3.5">
               <div className="flex items-center gap-3">
-                <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-violet-50 dark:bg-[#2a1f40] text-violet-600">
+                <span className="grid size-11 shrink-0 place-items-center rounded-2xl border border-line bg-void text-ink/65">
                   <Building2 size={20} />
                 </span>
                 <div className="min-w-0 flex-1">
-                  <h2 className="font-black tracking-[-0.02em] text-ink">Administración</h2>
+                  <h2 className="font-semibold tracking-[-0.02em] text-ink">Administración</h2>
                   <p className="mt-0.5 text-xs text-muted">Tiendas de la plataforma</p>
                 </div>
                 <Link
                   href="/admin"
-                  className="inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-full bg-violet-600 px-3.5 text-xs font-black text-white transition active:scale-95"
+                  className="inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-full border border-line px-3.5 text-xs font-semibold text-ink/75 transition active:scale-95"
                 >
                   Abrir <ArrowRight size={14} />
                 </Link>
