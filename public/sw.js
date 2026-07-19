@@ -1,4 +1,4 @@
-const CACHE_NAME = "clarvex-team-v9";
+const CACHE_NAME = "clarvex-team-v10";
 // Solo assets estáticos con nombre fijo. NUNCA se cachea HTML: un shell viejo
 // apuntaría a chunks de JS ya borrados tras un deploy → pantalla en blanco.
 const CORE_ASSETS = ["/manifest.webmanifest", "/icon.svg"];

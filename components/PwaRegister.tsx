@@ -61,13 +61,31 @@ export function PwaRegister() {
     };
     navigator.serviceWorker.addEventListener("controllerchange", onControllerChange);
 
+    // Busca un SW nuevo SIN depender de recargar el documento: al volver a la
+    // pestaña y cada minuto. Un POS que nunca cierra el navegador se quedaba con
+    // el bundle viejo tras un deploy (la comprobación de SW solo corría al abrir
+    // la app), así que un bug ya arreglado no llegaba nunca. updateViaCache:"none"
+    // evita además que el navegador sirva el sw.js viejo desde su caché HTTP
+    // (venía con max-age de 4 h), que era lo que impedía ver la versión nueva.
+    const checkForUpdate = () => {
+      navigator.serviceWorker.getRegistration().then((r) => r?.update()).catch(() => undefined);
+    };
+    const onVisible = () => { if (document.visibilityState === "visible") checkForUpdate(); };
+    document.addEventListener("visibilitychange", onVisible);
+    const updateTimer = window.setInterval(checkForUpdate, 60_000);
+    const cleanup = () => {
+      navigator.serviceWorker.removeEventListener("controllerchange", onControllerChange);
+      document.removeEventListener("visibilitychange", onVisible);
+      window.clearInterval(updateTimer);
+    };
+
     if (!("Notification" in window)) {
-      navigator.serviceWorker.register("/sw.js").catch(() => undefined);
-      return () => navigator.serviceWorker.removeEventListener("controllerchange", onControllerChange);
+      navigator.serviceWorker.register("/sw.js", { updateViaCache: "none" }).catch(() => undefined);
+      return cleanup;
     }
 
     navigator.serviceWorker
-      .register("/sw.js")
+      .register("/sw.js", { updateViaCache: "none" })
       .then((registration) => {
         setReg(registration);
         // Busca actualizaciones al abrir la app (clave en PWA que rara vez recarga).
@@ -82,7 +100,7 @@ export function PwaRegister() {
       })
       .catch(() => undefined);
 
-    return () => navigator.serviceWorker.removeEventListener("controllerchange", onControllerChange);
+    return cleanup;
   }, []);
 
   async function handleActivate() {

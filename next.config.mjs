@@ -75,6 +75,16 @@ const nextConfig = {
 
     return [
       {
+        // El service worker NUNCA debe cachearse: con max-age los dispositivos se
+        // quedan con el SW viejo y no reciben arreglos hasta que caduque (venía
+        // con 4 h). no-cache obliga a revalidar en cada comprobación de update.
+        source: "/sw.js",
+        headers: [
+          { key: "Cache-Control", value: "no-cache, no-store, must-revalidate" },
+          { key: "Service-Worker-Allowed", value: "/" },
+        ],
+      },
+      {
         source: "/(.*)",
         headers: [
           { key: "X-Frame-Options", value: "DENY" },
