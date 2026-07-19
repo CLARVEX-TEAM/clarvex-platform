@@ -79,20 +79,20 @@ export default function KpisPage() {
       <AppFrame>
         <PeriodSelector period={period} setPeriod={(next) => { if (next !== period) { setSlideDir(next === "month" ? 1 : -1); setPeriod(next); } }} selectedDate={selectedDate} setSelectedDate={(date) => { setSlideDir(0); setSelectedDate(date); }} rangeLabel={rangeLabel} availableWeeks={report?.availableWeeks ?? []} availableRetailMonths={report?.availableRetailMonths ?? []} />
 
-        {isAdvisor && report ? <Card className="mb-3 p-3"><p className="text-sm font-black text-ink">{report.workedDays ? "Calculado sobre tus dias laborados" : "Sin dias laborados en este periodo"}</p><p className="mt-1 text-xs font-semibold text-muted">Dias laborados: {report.workedDays ?? 0}</p></Card> : null}
+        {isAdvisor && report ? <Card className="mb-3 p-3"><p className="text-sm font-semibold text-ink">{report.workedDays ? "Calculado sobre tus dias laborados" : "Sin dias laborados en este periodo"}</p><p className="mt-1 text-xs font-semibold text-muted">Dias laborados: {report.workedDays ?? 0}</p></Card> : null}
 
         {isManager && report ? (
           <div className="mb-3 flex gap-2">
             <a
               href={`/api/reports/kpis?start=${report.startDate}&end=${report.endDate}&period=${period}&label=${encodeURIComponent(rangeLabel)}${report.weekNumber ? `&week=${report.weekNumber}` : ""}`}
-              className="flex-1 flex min-h-11 items-center justify-center gap-2 rounded-2xl border border-line bg-panel text-sm font-black text-white transition hover:border-volt active:scale-95"
+              className="flex-1 flex min-h-11 items-center justify-center gap-2 rounded-2xl border border-line bg-panel text-sm font-semibold text-ink/70 transition hover:border-volt active:scale-95"
             >
               <Download size={16} /> Exportar (Excel)
             </a>
             <button
               onClick={() => void fetchIaReport()}
               disabled={loadingIaReport}
-              className="flex-1 flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-[#00FF66] text-sm font-black text-black transition active:scale-95 disabled:opacity-50"
+              className="flex-1 flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-[#2563EB] text-sm font-semibold text-white transition active:scale-95 disabled:opacity-50 dark:bg-[#6B9BFF]"
             >
               <Sparkles size={16} />
               {loadingIaReport ? "Generando..." : "Reporte IA"}
@@ -102,7 +102,7 @@ export default function KpisPage() {
 
         <div className="no-scrollbar tab-glass-shell -mx-1 mb-3 flex gap-1 overflow-x-auto overflow-y-hidden p-1">
           {tabs.map((tab) => (
-            <motion.button key={tab.id} onClick={() => { setSlideDir(0); setActiveTab(tab.id); }} whileTap={{ scale: 0.96 }} className={`relative min-h-10 shrink-0 rounded-full px-3.5 text-[13px] font-black transition ${activeTab === tab.id ? "text-white" : "text-muted hover:text-ink"}`}>
+            <motion.button key={tab.id} onClick={() => { setSlideDir(0); setActiveTab(tab.id); }} whileTap={{ scale: 0.96 }} className={`relative min-h-10 shrink-0 rounded-full px-3.5 text-[13px] font-semibold transition ${activeTab === tab.id ? "text-white" : "text-muted hover:text-ink"}`}>
               {activeTab === tab.id ? <motion.span layoutId="kpi-tab-active" className="absolute inset-0 rounded-full bg-volt shadow-[0_8px_18px_rgb(37_99_235_/_0.2)]" transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }} /> : null}
               <span className="relative">{tab.label}</span>
             </motion.button>
@@ -157,7 +157,7 @@ export default function KpisPage() {
               <div className="flex items-center justify-between border-b border-white/5 pb-3">
                 <div className="flex items-center gap-2">
                   <Sparkles className="text-[#00FF66]" size={20} />
-                  <h3 className="text-sm font-black text-white">{iaReport.title}</h3>
+                  <h3 className="text-sm font-semibold text-white">{iaReport.title}</h3>
                 </div>
                 <button
                   onClick={() => setShowIaReportModal(false)}
@@ -212,11 +212,11 @@ function PeriodSelector({ period, setPeriod, selectedDate, setSelectedDate, rang
   return (
     <Card className="mb-3 p-3">
       <div className="flex rounded-full bg-panel p-1" role="group" aria-label="Periodo de KPIs">
-        {(["week", "month"] as const).map((option) => <button key={option} type="button" onClick={() => setPeriod(option)} className={`min-h-10 flex-1 rounded-full text-sm font-black transition ${period === option ? "bg-card dark:bg-line text-volt shadow-sm" : "text-muted"}`}>{option === "week" ? "Semana" : "Mes"}</button>)}
+        {(["week", "month"] as const).map((option) => <button key={option} type="button" onClick={() => setPeriod(option)} className={`min-h-10 flex-1 rounded-full text-sm font-semibold transition ${period === option ? "bg-card dark:bg-line text-volt shadow-sm" : "text-muted"}`}>{option === "week" ? "Semana" : "Mes"}</button>)}
       </div>
       <div className="mt-3 flex items-center gap-3">
         <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-volt/10 text-volt"><CalendarDays size={18} /></span>
-        <div className="min-w-0 flex-1"><p className="text-[11px] font-bold text-muted">Periodo seleccionado</p><p className="truncate text-sm font-black text-ink">{rangeLabel}</p></div>
+        <div className="min-w-0 flex-1"><p className="text-[11px] font-bold text-muted">Periodo seleccionado</p><p className="truncate text-sm font-semibold text-ink">{rangeLabel}</p></div>
         {period === "week" ? <select aria-label="Seleccionar semana RDV" value={selectedDate} onChange={(event) => setSelectedDate(event.target.value)} className="min-h-10 w-[8.3rem] rounded-xl bg-panel px-2 text-xs font-bold text-ink outline-none focus:ring-4 focus:ring-volt/20">{availableWeeks.map((week) => <option key={`${week.weekNumber}-${week.weekStart}`} value={week.weekStart}>Semana {week.weekNumber}</option>)}</select> : <select aria-label="Seleccionar mes retail" value={availableRetailMonths.find((month) => selectedDate >= month.start && selectedDate <= month.end)?.start ?? availableRetailMonths.at(-1)?.start ?? selectedDate} onChange={(event) => setSelectedDate(event.target.value)} className="min-h-10 w-[8.3rem] rounded-xl bg-panel px-2 text-xs font-bold text-ink outline-none focus:ring-4 focus:ring-volt/20">{availableRetailMonths.map((month) => <option key={month.start} value={month.start}>{month.label}</option>)}</select>}
       </div>
     </Card>
@@ -259,10 +259,10 @@ function ResumenView({ activeKpi, team, progress, periodLabel, hasDiscountSource
         <div className="flex items-center justify-between gap-4">
           <div>
             <p className="text-[11px] font-bold uppercase tracking-[0.13em] text-muted">Cumplimiento {periodLabel}</p>
-            <h2 className={cn("mt-1 text-[2.25rem] font-black leading-none", goalToneText)}>{progress}%</h2>
+            <h2 className={cn("mt-1 text-[2.25rem] font-semibold leading-none", goalToneText)}>{progress}%</h2>
             <p className="mt-1 text-xs text-muted">{money(activeKpi.sales)} de {money(activeKpi.goal)}</p>
             {activeKpi.goal > 0 ? (
-              <p className={cn("mt-0.5 text-xs font-black", activeKpi.sales >= activeKpi.goal ? "text-success" : "text-volt")}>
+              <p className={cn("mt-0.5 text-xs font-semibold", activeKpi.sales >= activeKpi.goal ? "text-success" : "text-volt")}>
                 {activeKpi.sales >= activeKpi.goal ? `Meta superada por ${money(activeKpi.sales - activeKpi.goal)}` : `Faltan ${money(activeKpi.goal - activeKpi.sales)} para la meta ${periodLabel}`}
               </p>
             ) : null}
@@ -289,7 +289,7 @@ function ResumenView({ activeKpi, team, progress, periodLabel, hasDiscountSource
           <div className="flex items-start justify-between gap-4">
             <div>
               <p className="text-[11px] font-bold uppercase tracking-[0.13em] text-muted">Proyección de cierre de mes</p>
-              <h2 className="mt-1 text-[1.9rem] font-black leading-none text-ink">{money(salesProjection.projectedSales)}</h2>
+              <h2 className="mt-1 text-[1.9rem] font-semibold leading-none text-ink">{money(salesProjection.projectedSales)}</h2>
               <p className="mt-1.5 text-sm text-muted">{salesProjection.achievement}% de la meta {money(salesProjection.goal)} · al ritmo de las semanas con datos ({formatWeeksElapsed(salesProjection.weeksElapsed)}/{salesProjection.totalWeeks})</p>
             </div>
             <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-success/10 text-success"><TrendingUp size={25} /></span>
@@ -333,7 +333,7 @@ function MetricCard({ metric, value, detail, sparkData, trafficLight }: { metric
       </span>
 
       <p className="mt-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-muted">{label}</p>
-      <p className="mt-0.5 text-[1.36rem] font-black leading-none tracking-[-0.03em] text-ink">{value}</p>
+      <p className="mt-0.5 text-[1.36rem] font-semibold leading-none tracking-[-0.03em] text-ink">{value}</p>
       <p className="mt-0.5 text-[11px] leading-4 text-muted">{detail}</p>
 
       {sparkData.length > 2 ? (
@@ -402,7 +402,7 @@ function TargetSheet({ targets, period, onClose, onSave }: { targets: KpiTarget[
         className="w-full max-w-lg rounded-t-3xl bg-card dark:bg-panel p-6 shadow-2xl"
       >
         <div className="mb-5 flex items-center justify-between">
-          <h2 className="text-lg font-black text-ink">Metas KPI — {period === "SEMANA" ? "Semana" : "Mes"}</h2>
+          <h2 className="text-lg font-semibold text-ink">Metas KPI — {period === "SEMANA" ? "Semana" : "Mes"}</h2>
           <button onClick={onClose} className="grid size-9 place-items-center rounded-full bg-panel dark:bg-line/60 text-ink">
             <X size={16} />
           </button>
@@ -435,7 +435,7 @@ function TargetSheet({ targets, period, onClose, onSave }: { targets: KpiTarget[
           type="button"
           onClick={() => void handleSave()}
           disabled={saving}
-          className="mt-4 min-h-12 w-full rounded-2xl bg-volt text-sm font-black text-white shadow-[0_8px_20px_rgb(37_99_235_/_0.22)] transition hover:bg-[#1D4ED8] active:scale-95 disabled:opacity-60"
+          className="mt-4 min-h-12 w-full rounded-2xl bg-volt text-sm font-semibold text-white shadow-[0_8px_20px_rgb(37_99_235_/_0.22)] transition hover:bg-[#1D4ED8] active:scale-95 disabled:opacity-60"
         >
           {saving ? "Guardando..." : "Guardar metas"}
         </button>
@@ -455,7 +455,7 @@ function VentasView({ activeKpi, chartData, progress, periodLabel }: { activeKpi
   const tickFill = isDark ? "#8899BB" : "#64748B";
   const gridStroke = isDark ? "rgba(255,255,255,0.08)" : "rgba(15,23,42,0.07)";
   const dotStroke = isDark ? "#1a2540" : "#FFFFFF";
-  return <><Card className="mb-3 p-3.5"><div className="mb-2.5 flex items-center justify-between"><div className="flex items-center gap-2"><TrendingUp className="text-volt" size={18} /><h2 className="text-lg font-black">Ventas {periodLabel === "semanal" ? "de la semana" : "del mes"}</h2></div><Badge>{progress}%</Badge></div><div className="h-44"><ResponsiveContainer width="100%" height="100%"><AreaChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}><defs><linearGradient id="kpiSales" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#2563EB" stopOpacity={0.35} /><stop offset="95%" stopColor="#2563EB" stopOpacity={0.03} /></linearGradient></defs><XAxis dataKey="name" tick={{ fill: tickFill, fontSize: 9 }} axisLine={false} tickLine={false} /><CartesianGrid strokeDasharray="3 3" stroke={gridStroke} /><Tooltip contentStyle={tooltipStyle} formatter={(value) => [money(Number(value)), "Venta"]} /><Area type="monotone" dataKey="venta" stroke="#2563EB" strokeWidth={2.5} fill="url(#kpiSales)" dot={{ r: 4, fill: "#2563EB", stroke: dotStroke, strokeWidth: 1.5 }} activeDot={{ r: 6, fill: "#3B82F6", stroke: dotStroke, strokeWidth: 2 }} animationDuration={800} animationEasing="ease-out" animationBegin={0} /></AreaChart></ResponsiveContainer></div></Card><div className="grid grid-cols-2 gap-3"><StatCard compact label={`Venta ${periodLabel}`} value={money(activeKpi.sales)} detail="Acumulada" progress={progress} icon={<ShoppingBag size={15} />} /><StatCard compact label={`Meta ${periodLabel}`} value={money(activeKpi.goal)} detail="Suma de metas diarias" tone="sky" icon={<Target size={15} />} /><StatCard compact label="Cumplimiento" value={`${progress}%`} detail={`Periodo ${periodLabel}`} tone="purple" progress={progress} icon={<TrendingUp size={15} />} /><StatCard compact label="Transacciones" value={String(activeKpi.transactions)} detail="Tickets acumulados" tone="ember" icon={<Receipt size={15} />} /></div></>;
+  return <><Card className="mb-3 p-3.5"><div className="mb-2.5 flex items-center justify-between"><div className="flex items-center gap-2"><TrendingUp className="text-volt" size={18} /><h2 className="text-lg font-semibold">Ventas {periodLabel === "semanal" ? "de la semana" : "del mes"}</h2></div><Badge>{progress}%</Badge></div><div className="h-44"><ResponsiveContainer width="100%" height="100%"><AreaChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}><defs><linearGradient id="kpiSales" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#2563EB" stopOpacity={0.35} /><stop offset="95%" stopColor="#2563EB" stopOpacity={0.03} /></linearGradient></defs><XAxis dataKey="name" tick={{ fill: tickFill, fontSize: 9 }} axisLine={false} tickLine={false} /><CartesianGrid strokeDasharray="3 3" stroke={gridStroke} /><Tooltip contentStyle={tooltipStyle} formatter={(value) => [money(Number(value)), "Venta"]} /><Area type="monotone" dataKey="venta" stroke="#2563EB" strokeWidth={2.5} fill="url(#kpiSales)" dot={{ r: 4, fill: "#2563EB", stroke: dotStroke, strokeWidth: 1.5 }} activeDot={{ r: 6, fill: "#3B82F6", stroke: dotStroke, strokeWidth: 2 }} animationDuration={800} animationEasing="ease-out" animationBegin={0} /></AreaChart></ResponsiveContainer></div></Card><div className="grid grid-cols-2 gap-3"><StatCard compact label={`Venta ${periodLabel}`} value={money(activeKpi.sales)} detail="Acumulada" progress={progress} icon={<ShoppingBag size={15} />} /><StatCard compact label={`Meta ${periodLabel}`} value={money(activeKpi.goal)} detail="Suma de metas diarias" tone="sky" icon={<Target size={15} />} /><StatCard compact label="Cumplimiento" value={`${progress}%`} detail={`Periodo ${periodLabel}`} tone="purple" progress={progress} icon={<TrendingUp size={15} />} /><StatCard compact label="Transacciones" value={String(activeKpi.transactions)} detail="Tickets acumulados" tone="ember" icon={<Receipt size={15} />} /></div></>;
 }
 
 function ComisionView({ activeKpi, rules, simulatedSales, setSimulatedSales, activeRule, appliedPercent, simulatedCommission, simulatedAchievement, commissionRole, periodLabel, projection, hasMinimum }: { activeKpi: KpiReportItem; rules: CommissionRule[]; simulatedSales: string; setSimulatedSales: (value: string) => void; activeRule?: CommissionRule; appliedPercent: number; simulatedCommission: number; simulatedAchievement: number; commissionRole: Role; periodLabel: string; projection?: MonthProjection | null; hasMinimum: boolean }) {
@@ -470,7 +470,7 @@ function ComisionView({ activeKpi, rules, simulatedSales, setSimulatedSales, act
         <div className="flex items-center gap-3">
           <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-amber-400/15 text-2xl">🏆</span>
           <div>
-            <h2 className="text-lg font-black leading-tight text-ink">¡Nivel máximo de comisión!</h2>
+            <h2 className="text-lg font-semibold leading-tight text-ink">¡Nivel máximo de comisión!</h2>
             <p className="mt-0.5 text-sm font-semibold text-muted">Ya ganas el {bracketGap.currentPercent}% — mantén el ritmo.</p>
           </div>
         </div>
@@ -480,15 +480,15 @@ function ComisionView({ activeKpi, rules, simulatedSales, setSimulatedSales, act
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-[11px] font-bold uppercase tracking-[0.13em] text-muted">Te faltan</p>
-            <h2 className="mt-1 text-[2rem] font-black leading-none text-ink">{money(bracketGap.salesNeeded)}</h2>
-            <p className="mt-1.5 text-sm text-muted">para el {bracketGap.targetAchievement}% y subir tu comisión de {bracketGap.currentPercent}% a <span className="font-black text-volt">{bracketGap.nextPercent}%</span></p>
+            <h2 className="mt-1 text-[2rem] font-semibold leading-none text-ink">{money(bracketGap.salesNeeded)}</h2>
+            <p className="mt-1.5 text-sm text-muted">para el {bracketGap.targetAchievement}% y subir tu comisión de {bracketGap.currentPercent}% a <span className="font-semibold text-volt">{bracketGap.nextPercent}%</span></p>
           </div>
           <span className="grid size-12 place-items-center rounded-2xl bg-volt/10 text-2xl">🎯</span>
         </div>
         {bracketGap.extraCommission > 0 ? <div className="mt-2.5"><Mini label="Comisión extra estimada" value={`+${money(bracketGap.extraCommission)}`} /></div> : null}
       </Card>
     )
-  ) : null}{projection ?<Card className="mb-3 border border-emerald-400/30 bg-gradient-to-br from-emerald-50 to-blue-50 p-3.5 dark:from-[#0f2a1e] dark:to-[#11203f]"><div className="flex items-start justify-between gap-4"><div><p className="text-[11px] font-bold uppercase tracking-[0.13em] text-muted">Proyección de cierre de mes</p><h2 className="mt-1 text-[2rem] font-black leading-none text-ink">{money(projection.projectedCommission)}</h2><p className="mt-1.5 text-sm text-muted">Al ritmo de tus semanas con datos 💰</p></div><span className="grid size-12 place-items-center rounded-2xl bg-success/10 text-success"><TrendingUp size={25} /></span></div><div className="mt-2.5 grid grid-cols-3 gap-2"><Mini label="Venta proy." value={money(projection.projectedSales)} /><Mini label="Nivel actual" value={`${projection.percent}%`} /><Mini label="Semanas" value={`${formatWeeksElapsed(projection.weeksElapsed)}/${projection.totalWeeks}`} /></div></Card> : null}<Card className="premium-hero mb-3 p-3.5"><div className="flex items-start justify-between gap-4"><div><p className="text-[11px] font-bold uppercase tracking-[0.13em] text-muted">Comision estimada {periodLabel}</p><h2 className="mt-1 text-[2.1rem] font-black leading-none text-ink">{hasMinimum ? money(simulatedCommission) : "—"}</h2><p className={`mt-1 text-sm ${activeRule ? "text-muted" : "font-semibold text-rose-700"}`}>{activeRule ? `${activeRule.commissionPercent}% por nivel actual` : missingRuleMessage}</p></div><span className="grid size-12 place-items-center rounded-2xl bg-purple/10 text-purple"><Trophy size={25} /></span></div><div className="mt-2.5 grid grid-cols-2 gap-2"><Mini label="Porcentaje" value={hasMinimum ? `${appliedPercent}%` : "—"} /><Mini label="Alcance vs mínimo" value={hasMinimum ? `${Math.round(simulatedAchievement)}%` : "—"} /></div></Card><Card className="mb-3 p-3.5"><div className="mb-2.5 flex items-center gap-2"><Calculator className="text-volt" size={18} /><h2 className="text-lg font-black">Simulador {periodLabel}</h2></div><input value={simulatedSales} onChange={(event) => setSimulatedSales(event.target.value.replace(/[^\d.]/g, ""))} inputMode="decimal" placeholder={String(Math.round(activeKpi.sales))} aria-label={`Venta simulada ${periodLabel}`} className="min-h-14 w-full rounded-2xl border border-line bg-panel px-4 text-xl font-black text-ink outline-none focus:border-volt focus:ring-4 focus:ring-volt/15" /></Card><Card className="p-3.5"><div className="mb-2.5 flex items-center justify-between"><h2 className="text-lg font-black">Escalera de niveles</h2><Badge>{commissionRole}</Badge></div>{rules.filter((rule) => rule.active && rule.role === commissionRole).map((rule) => <div key={rule.id} className="flex items-center justify-between border-t border-line py-2.5 first:border-0"><div><p className="font-black">{rule.minAchievement}% a {rule.maxAchievement ?? "mas"}%</p><p className="text-xs text-muted">Regla por cumplimiento</p></div><Badge tone={rule.id === activeRule?.id ? "success" : "default"}>{rule.commissionPercent}%</Badge></div>)}</Card></>;
+  ) : null}{projection ?<Card className="mb-3 border border-emerald-400/30 bg-gradient-to-br from-emerald-50 to-blue-50 p-3.5 dark:from-[#0f2a1e] dark:to-[#11203f]"><div className="flex items-start justify-between gap-4"><div><p className="text-[11px] font-bold uppercase tracking-[0.13em] text-muted">Proyección de cierre de mes</p><h2 className="mt-1 text-[2rem] font-semibold leading-none text-ink">{money(projection.projectedCommission)}</h2><p className="mt-1.5 text-sm text-muted">Al ritmo de tus semanas con datos 💰</p></div><span className="grid size-12 place-items-center rounded-2xl bg-success/10 text-success"><TrendingUp size={25} /></span></div><div className="mt-2.5 grid grid-cols-3 gap-2"><Mini label="Venta proy." value={money(projection.projectedSales)} /><Mini label="Nivel actual" value={`${projection.percent}%`} /><Mini label="Semanas" value={`${formatWeeksElapsed(projection.weeksElapsed)}/${projection.totalWeeks}`} /></div></Card> : null}<Card className="premium-hero mb-3 p-3.5"><div className="flex items-start justify-between gap-4"><div><p className="text-[11px] font-bold uppercase tracking-[0.13em] text-muted">Comision estimada {periodLabel}</p><h2 className="mt-1 text-[2.1rem] font-semibold leading-none text-ink">{hasMinimum ? money(simulatedCommission) : "—"}</h2><p className={`mt-1 text-sm ${activeRule ? "text-muted" : "font-semibold text-rose-700"}`}>{activeRule ? `${activeRule.commissionPercent}% por nivel actual` : missingRuleMessage}</p></div><span className="grid size-12 place-items-center rounded-2xl bg-purple/10 text-purple"><Trophy size={25} /></span></div><div className="mt-2.5 grid grid-cols-2 gap-2"><Mini label="Porcentaje" value={hasMinimum ? `${appliedPercent}%` : "—"} /><Mini label="Alcance vs mínimo" value={hasMinimum ? `${Math.round(simulatedAchievement)}%` : "—"} /></div></Card><Card className="mb-3 p-3.5"><div className="mb-2.5 flex items-center gap-2"><Calculator className="text-volt" size={18} /><h2 className="text-lg font-semibold">Simulador {periodLabel}</h2></div><input value={simulatedSales} onChange={(event) => setSimulatedSales(event.target.value.replace(/[^\d.]/g, ""))} inputMode="decimal" placeholder={String(Math.round(activeKpi.sales))} aria-label={`Venta simulada ${periodLabel}`} className="min-h-14 w-full rounded-2xl border border-line bg-panel px-4 text-xl font-semibold text-ink outline-none focus:border-volt focus:ring-4 focus:ring-volt/15" /></Card><Card className="p-3.5"><div className="mb-2.5 flex items-center justify-between"><h2 className="text-lg font-semibold">Escalera de niveles</h2><Badge>{commissionRole}</Badge></div>{rules.filter((rule) => rule.active && rule.role === commissionRole).map((rule) => <div key={rule.id} className="flex items-center justify-between border-t border-line py-2.5 first:border-0"><div><p className="font-semibold">{rule.minAchievement}% a {rule.maxAchievement ?? "mas"}%</p><p className="text-xs text-muted">Regla por cumplimiento</p></div><Badge tone={rule.id === activeRule?.id ? "success" : "default"}>{rule.commissionPercent}%</Badge></div>)}</Card></>;
 }
 
 type RankMetricId = "venta" | "conversion" | "upt" | "ept";
@@ -520,11 +520,11 @@ function RankingView({ ranking, periodLabel, isAdvisor, currentUserId }: { ranki
 
   return <>
     <Card className="mb-3 p-3.5">
-      <div className="mb-2.5 flex items-center justify-between"><div className="flex items-center gap-2"><UsersRound className="text-volt" size={18} /><h2 className="text-lg font-black">Ranking {periodLabel}</h2></div><Badge>equipo</Badge></div>
+      <div className="mb-2.5 flex items-center justify-between"><div className="flex items-center gap-2"><UsersRound className="text-volt" size={18} /><h2 className="text-lg font-semibold">Ranking {periodLabel}</h2></div><Badge>equipo</Badge></div>
       {!isAdvisor ? (
         <div className="no-scrollbar mb-3 flex gap-1.5 overflow-x-auto">
           {RANK_METRICS.map((option) => (
-            <button key={option.id} type="button" onClick={() => setMetricId(option.id)} className={cn("min-h-9 shrink-0 rounded-full px-3 text-[13px] font-black transition active:scale-95", metricId === option.id ? "bg-volt text-white" : "bg-panel text-muted ring-1 ring-line hover:text-ink")}>{option.label}</button>
+            <button key={option.id} type="button" onClick={() => setMetricId(option.id)} className={cn("min-h-9 shrink-0 rounded-full px-3 text-[13px] font-semibold transition active:scale-95", metricId === option.id ? "bg-volt text-white" : "bg-panel text-muted ring-1 ring-line hover:text-ink")}>{option.label}</button>
           ))}
         </div>
       ) : null}
@@ -534,14 +534,14 @@ function RankingView({ ranking, periodLabel, isAdvisor, currentUserId }: { ranki
       const item = entry.item;
       const showValue = !isAdvisor || item.userId === currentUserId;
       const valueLabel = entry.value === null ? "—" : metric.fmt(entry.value);
-      return <div key={item.userId} className="py-3 first:pt-0 last:pb-0"><div className="flex items-center justify-between gap-3"><div className="flex items-center gap-3"><ProfileAvatar name={item.userName} photoUrl={item.photoUrl} size="md" /><div><h3 className="font-black">{entry.position === 1 ? "👑 " : ""}{item.userName}</h3><p className="text-sm text-muted">#{entry.position}{showValue ? ` · ${isAdvisor ? money(item.sales) : valueLabel}` : ""}</p></div></div>{entry.position === 1 ? <Badge tone="warn">Líder</Badge> : <Badge>{Math.round(item.achievement)}%</Badge>}</div><ProgressBar value={isAdvisor ? item.achievement : Math.round(((entry.value ?? 0) / maxValue) * 100)} /></div>;
+      return <div key={item.userId} className="py-3 first:pt-0 last:pb-0"><div className="flex items-center justify-between gap-3"><div className="flex items-center gap-3"><ProfileAvatar name={item.userName} photoUrl={item.photoUrl} size="md" /><div><h3 className="font-semibold">{entry.position === 1 ? "👑 " : ""}{item.userName}</h3><p className="text-sm text-muted">#{entry.position}{showValue ? ` · ${isAdvisor ? money(item.sales) : valueLabel}` : ""}</p></div></div>{entry.position === 1 ? <Badge tone="warn">Líder</Badge> : <Badge>{Math.round(item.achievement)}%</Badge>}</div><ProgressBar value={isAdvisor ? item.achievement : Math.round(((entry.value ?? 0) / maxValue) * 100)} /></div>;
     }) : <p className="text-sm font-semibold text-muted">No hay asesores con datos en este periodo.</p>}</Card>
   </>;
 }
 
 function ReciboView({ receipts, loading, isManager }: { receipts: ReceiptMonth[] | null; loading: boolean; isManager: boolean }) {
   if (loading || receipts === null) return <Card className="text-sm font-semibold text-muted">Cargando recibos...</Card>;
-  if (receipts.length === 0) return <Card><p className="font-black">Sin recibos</p><p className="mt-2 text-sm text-muted">Aquí aparecerá un recibo de comisión por cada mes con datos.</p></Card>;
+  if (receipts.length === 0) return <Card><p className="font-semibold">Sin recibos</p><p className="mt-2 text-sm text-muted">Aquí aparecerá un recibo de comisión por cada mes con datos.</p></Card>;
   return (
     <div className="space-y-3">
       {receipts.map((month) => (
@@ -549,7 +549,7 @@ function ReciboView({ receipts, loading, isManager }: { receipts: ReceiptMonth[]
           <div className="mb-3 flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <Receipt className="text-volt" size={18} />
-              <h2 className="text-lg font-black capitalize">{month.label}</h2>
+              <h2 className="text-lg font-semibold capitalize">{month.label}</h2>
             </div>
             <Badge tone={month.isCurrent ? "warn" : "default"}>{month.isCurrent ? "En curso" : "Cerrado"}</Badge>
           </div>
@@ -562,7 +562,7 @@ function ReciboView({ receipts, loading, isManager }: { receipts: ReceiptMonth[]
                   <div key={line.name} className="rounded-2xl bg-panel p-3">
                     <div className="mb-1.5 flex items-center gap-2.5">
                       <ProfileAvatar name={line.name} photoUrl={line.photoUrl} size="sm" />
-                      <p className="min-w-0 truncate font-black text-ink">{line.name}</p>
+                      <p className="min-w-0 truncate font-semibold text-ink">{line.name}</p>
                     </div>
                     <ReceiptBody line={line} />
                   </div>
@@ -596,15 +596,15 @@ function ReceiptBody({ line, highlight }: { line: ReceiptLine; highlight?: boole
         <ReceiptRow label="Nivel" value={line.percent > 0 ? `${line.percent}%` : "—"} />
       </div>
       <div className={cn("mt-2.5 flex items-center justify-between rounded-2xl px-3 py-2.5", highlight ? "bg-volt/10 ring-1 ring-volt/30" : "bg-white/[0.04]")}>
-        <span className="text-sm font-black text-muted">Comisión</span>
-        <span className="text-lg font-black text-ink">{money(line.commission)}</span>
+        <span className="text-sm font-semibold text-muted">Comisión</span>
+        <span className="text-lg font-semibold text-ink">{money(line.commission)}</span>
       </div>
     </>
   );
 }
 
 function ReceiptRow({ label, value, strong }: { label: string; value: string; strong?: boolean }) {
-  return <div className="flex items-center justify-between"><span className="text-muted">{label}</span><span className={cn("font-black", strong ? "text-ink" : "text-ink")}>{value}</span></div>;
+  return <div className="flex items-center justify-between"><span className="text-muted">{label}</span><span className={cn("font-semibold", strong ? "text-ink" : "text-ink")}>{value}</span></div>;
 }
 
-function Mini({ label, value }: { label: string; value: string }) { return <div className="px-2"><p className="text-[11px] font-bold uppercase tracking-[0.1em] text-muted">{label}</p><p className="mt-1 font-black text-ink">{value}</p></div>; }
+function Mini({ label, value }: { label: string; value: string }) { return <div className="px-2"><p className="text-[11px] font-bold uppercase tracking-[0.1em] text-muted">{label}</p><p className="mt-1 font-semibold text-ink">{value}</p></div>; }

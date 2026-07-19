@@ -195,22 +195,25 @@ export default function ManagerDashboard() {
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mb-3 rounded-2xl bg-[#00FF66]/10 border border-[#00FF66]/20 p-3.5 flex items-center justify-between gap-3 shadow-lg shadow-[#00FF66]/5"
+            className="mb-3 flex items-center justify-between gap-3 rounded-2xl border border-line bg-card p-3.5"
+            style={{ boxShadow: "0 1px 2px rgba(20,21,26,0.04), 0 1px 3px rgba(20,21,26,0.03)" }}
           >
             <div className="flex items-center gap-3">
-              <span className="text-xl">📢</span>
+              <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-[#EEF3FF] text-[#2563EB] dark:bg-[#172134] dark:text-[#6B9BFF]">
+                <Megaphone size={17} />
+              </span>
               <div className="min-w-0">
-                <p className="text-xs font-bold text-white">Comunicados pendientes</p>
-                <p className="text-[11px] text-[#00FF66] font-semibold mt-0.5">
+                <p className="text-[13px] font-semibold text-ink">Comunicados pendientes</p>
+                <p className="mt-0.5 text-[11.5px] text-muted">
                   Tienes {data.announcements.filter((item) => !item.readBy.includes(manager?.id ?? "")).length} {data.announcements.filter((item) => !item.readBy.includes(manager?.id ?? "")).length === 1 ? "comunicado" : "comunicados"} sin confirmar lectura.
                 </p>
               </div>
             </div>
             <Link
               href="/comunicados"
-              className="rounded-xl bg-[#00FF66] px-3.5 py-1.5 text-xs font-semibold text-black transition active:scale-95 shrink-0"
+              className="shrink-0 rounded-full bg-[#2563EB] px-3.5 py-2 text-xs font-semibold text-white transition active:scale-95 dark:bg-[#6B9BFF]"
             >
-              Leer ahora
+              Leer
             </Link>
           </motion.div>
         )}
