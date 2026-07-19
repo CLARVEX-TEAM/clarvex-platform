@@ -64,7 +64,17 @@ export async function dispatchPushToUsers(userIds: string[], payload: PushPayloa
         if (status === 410 || status === 404) {
           expiredIds.push(sub.id);
         } else {
-          console.error("[push] Error enviando notificacion — status:", status, (error as Error).message);
+          // Registrar el body del servicio de push: ahí viene el motivo real del
+          // rechazo (VAPID inválido, JWT, payload, etc.), no solo el status.
+          const body = (error as { body?: string }).body;
+          let host = "";
+          try { host = new URL(sub.endpoint).host; } catch { /* endpoint raro */ }
+          console.error(
+            "[push] Error enviando notificacion — status:", status,
+            "host:", host,
+            "body:", typeof body === "string" ? body.slice(0, 300) : body,
+            "msg:", (error as Error).message
+          );
         }
       }
     })
