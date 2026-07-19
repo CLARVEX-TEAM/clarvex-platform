@@ -42,29 +42,26 @@ export function HomeHeader({ name, role, photoUrl, storeName, lastUpdated, onLog
   }, [pathname]);
 
   return (
-    <header className="pt-safe sticky top-[var(--matchday-offset,0px)] z-20 border-b border-slate-200/60 dark:border-slate-800/60 bg-white/88 dark:bg-slate-950/95 px-4 pb-3 backdrop-blur-xl" style={{ ["--pt-safe-base" as string]: "0.75rem" }}>
+    <header className="pt-safe sticky top-[var(--matchday-offset,0px)] z-20 border-b border-line bg-void/85 px-4 pb-3 backdrop-blur-xl" style={{ ["--pt-safe-base" as string]: "0.75rem" }}>
       <div className="mx-auto flex max-w-md items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
           <Link href="/perfil" aria-label="Mi perfil" className="shrink-0 transition active:scale-95">
-            <div
-              className="relative size-12 overflow-hidden rounded-full"
-              style={{ boxShadow: "0 0 0 2px rgba(37,99,235,0.18), 0 0 0 4px rgba(37,99,235,0.07), 0 4px 14px rgba(37,99,235,0.16)" }}
-            >
+            <div className="relative size-11 overflow-hidden rounded-full ring-1 ring-line">
               {photoSrc(photoUrl) ? (
-                <Image src={photoSrc(photoUrl)!} alt={name} fill sizes="48px" className="object-cover" unoptimized />
+                <Image src={photoSrc(photoUrl)!} alt={name} fill sizes="44px" className="object-cover" unoptimized />
               ) : (
-                <span className="grid size-full place-items-center rounded-full bg-[#2563EB] text-base font-black text-white">
+                <span className="grid size-full place-items-center rounded-full bg-gradient-to-b from-slate-700 to-slate-900 text-sm font-semibold text-white">
                   {firstName.slice(0, 2).toUpperCase()}
                 </span>
               )}
             </div>
           </Link>
           <div className="min-w-0">
-            <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#2563EB]">{timeGreeting()}</p>
-            <h1 className="text-[1.1rem] font-black leading-tight tracking-[-0.03em] text-slate-900 dark:text-white">
-              {firstName} 👋
+            <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-muted">{timeGreeting()}</p>
+            <h1 className="text-[1.05rem] font-semibold leading-tight tracking-[-0.02em] text-ink">
+              {firstName}
             </h1>
-            <p className="truncate text-[11.5px] font-medium text-slate-500 dark:text-slate-400">
+            <p className="truncate text-[11.5px] text-muted">
               {roleLabel[role]}{storeName ? ` · ${storeName}` : ""}
               {lastUpdated ? ` · Actualizado ${lastUpdated.toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" })}` : ""}
             </p>
@@ -75,21 +72,21 @@ export function HomeHeader({ name, role, photoUrl, storeName, lastUpdated, onLog
           <Link
             href="/notificaciones"
             aria-label={unreadCount ? `${unreadCount} notificaciones` : "Notificaciones"}
-            className="relative grid size-10 place-items-center rounded-[20px] bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 transition active:scale-95"
+            className="relative grid size-9 place-items-center rounded-full border border-line bg-card text-muted transition active:scale-95"
           >
-            <Bell size={17} />
+            <Bell size={16} />
             {unreadCount > 0 && (
-              <span className="absolute right-1 top-1 grid min-w-4 place-items-center rounded-full bg-rose-500 px-1 text-[8.5px] font-black leading-4 text-white">
+              <span className="absolute -right-0.5 -top-0.5 grid min-w-4 place-items-center rounded-full bg-rose-500 px-1 text-[8.5px] font-semibold leading-4 text-white">
                 {unreadCount > 99 ? "99+" : unreadCount}
               </span>
             )}
           </Link>
           <button
             onClick={onLogout}
-            className="grid size-10 place-items-center rounded-[20px] bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 transition active:scale-95"
+            className="grid size-9 place-items-center rounded-full border border-line bg-card text-muted transition active:scale-95"
             aria-label="Cerrar sesión"
           >
-            <LogOut size={17} />
+            <LogOut size={16} />
           </button>
         </div>
       </div>

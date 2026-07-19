@@ -1,37 +1,40 @@
 "use client";
 
 import { Area, CartesianGrid, ComposedChart, Line, ResponsiveContainer, Tooltip, XAxis } from "recharts";
-import { TrendingUp } from "lucide-react";
 import { money } from "@/lib/format";
 import type { TrendPoint } from "@/lib/trend";
-import { Badge, Card } from "@/components/ui";
+import { Card } from "@/components/ui";
 
 const tooltipStyle = {
-  background: "#1a2540",
-  border: "1px solid #2a3a5c",
-  borderRadius: 12,
-  color: "#f0f4ff",
-  boxShadow: "0 6px 14px rgb(0 0 0 / 0.3)"
+  background: "rgb(var(--color-card))",
+  border: "1px solid rgb(var(--color-line))",
+  borderRadius: 10,
+  color: "rgb(var(--color-ink))",
+  fontSize: 12,
+  boxShadow: "0 4px 14px rgb(20 21 26 / 0.1)"
 };
 
 export function SalesTrendCard({ points, title = "Tendencia de venta" }: { points: TrendPoint[]; title?: string }) {
   return (
-    <Card className="p-3.5">
-      <div className="mb-2.5 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <TrendingUp className="text-volt" size={18} />
-          <h2 className="text-lg font-black">{title}</h2>
-        </div>
-        {points.length ? <Badge>{points.length} días</Badge> : null}
+    <Card className="p-4">
+      <div className="mb-3 flex items-center justify-between">
+        <h2 className="text-[13px] font-semibold tracking-[0.01em] text-ink/90">{title} · 7 días</h2>
+        {points.length ? <span className="text-[11px] text-muted">Venta vs meta</span> : null}
       </div>
       {points.length < 2 ? (
-        <p className="py-6 text-center text-sm font-semibold text-muted">Sin datos suficientes para la tendencia.</p>
+        <p className="py-6 text-center text-sm text-muted">Sin datos suficientes para la tendencia.</p>
       ) : (
-        <div className="h-36 overflow-hidden rounded-xl" style={{ background: "#0f172a" }}>
+        <div className="h-32">
           <ResponsiveContainer width="100%" height="100%">
-            <ComposedChart data={points} margin={{ top: 10, right: 8, bottom: 0, left: 8 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" vertical={false} />
-              <XAxis dataKey="label" tick={{ fill: "#94A3B8", fontSize: 9 }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
+            <ComposedChart data={points} margin={{ top: 8, right: 4, bottom: 0, left: 4 }}>
+              <defs>
+                <linearGradient id="trendFill" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#2563EB" stopOpacity={0.14} />
+                  <stop offset="100%" stopColor="#2563EB" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid stroke="rgb(var(--color-line))" vertical={false} />
+              <XAxis dataKey="label" tick={{ fill: "rgb(var(--color-muted))", fontSize: 10 }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
               <Tooltip
                 contentStyle={tooltipStyle}
                 formatter={(value, name) => [money(Number(value)), name === "sales" ? "Venta" : "Meta"]}
@@ -40,8 +43,8 @@ export function SalesTrendCard({ points, title = "Tendencia de venta" }: { point
                   return date ? new Date(`${date}T00:00:00Z`).toLocaleDateString("es-MX", { day: "numeric", month: "short", timeZone: "UTC" }) : String(label);
                 }}
               />
-              <Area type="monotone" dataKey="sales" stroke="#3B82F6" fill="rgba(59,130,246,0.25)" strokeWidth={2} animationDuration={700} />
-              <Line type="monotone" dataKey="goal" stroke="#94A3B8" strokeDasharray="4 3" strokeWidth={1.5} dot={false} animationDuration={700} />
+              <Area type="monotone" dataKey="sales" stroke="#2563EB" fill="url(#trendFill)" strokeWidth={2.2} animationDuration={700} />
+              <Line type="monotone" dataKey="goal" stroke="rgb(var(--color-muted))" strokeDasharray="4 3" strokeWidth={1.5} dot={false} animationDuration={700} />
             </ComposedChart>
           </ResponsiveContainer>
         </div>

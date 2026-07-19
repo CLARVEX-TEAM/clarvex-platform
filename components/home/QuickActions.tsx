@@ -3,9 +3,10 @@
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { BarChart3, BookOpen, Boxes, CalendarClock, CalendarDays, CheckSquare, ClipboardCheck, ClipboardList, Clock, CreditCard, GraduationCap, HeartHandshake, PackageSearch, Shirt, Trophy } from "lucide-react";
-import { cn } from "@/lib/utils";
 import type { LucideIcon } from "lucide-react";
 
+// El color se conserva en los datos pero el rediseño minimalista usa iconos
+// neutros — el color ya no decora cada acción.
 type ActionColor = "blue" | "green" | "purple" | "orange" | "pink" | "amber";
 
 interface Action {
@@ -14,6 +15,8 @@ interface Action {
   label: string;
   color: ActionColor;
 }
+
+const CARD_SHADOW = "0 1px 2px rgba(20,21,26,0.04), 0 1px 3px rgba(20,21,26,0.03)";
 
 const managerActions: Action[] = [
   { href: "/plan", icon: CheckSquare, label: "Crear plan del día", color: "blue" },
@@ -47,15 +50,6 @@ const advisorActions: Action[] = [
   { href: "/mundial", icon: Trophy, label: "Mundial 2026", color: "purple" }
 ];
 
-const colorMap: Record<ActionColor, string> = {
-  blue: "bg-blue-50 dark:bg-blue-950/50 text-[#2563EB]",
-  green: "bg-green-50 dark:bg-green-950/50 text-green-600 dark:text-green-500",
-  purple: "bg-purple-50 dark:bg-purple-950/50 text-purple-600 dark:text-purple-400",
-  orange: "bg-orange-50 dark:bg-orange-950/50 text-orange-500",
-  pink: "bg-pink-50 dark:bg-pink-950/50 text-pink-600 dark:text-pink-400",
-  amber: "bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400"
-};
-
 interface QuickActionsProps {
   variant?: "manager" | "advisor";
   delay?: number;
@@ -72,16 +66,16 @@ export function QuickActions({ variant = "manager", delay = 0.30 }: QuickActions
       className="grid grid-cols-2 gap-2.5"
     >
       {actions.map((action) => (
-        <motion.div key={action.href} whileTap={{ scale: 0.97 }}>
+        <motion.div key={action.href} whileTap={{ scale: 0.985 }}>
           <Link
             href={action.href}
-            className="flex min-h-[52px] items-center gap-2.5 rounded-[22px] border border-white/50 bg-white/95 px-3.5 py-3 transition dark:border-slate-700/50 dark:bg-slate-800/90"
-            style={{ boxShadow: "0 4px 16px rgba(15,23,42,0.05)" }}
+            className="flex min-h-[52px] items-center gap-2.5 rounded-2xl border border-line bg-card px-3.5 py-3 transition hover:border-muted/50"
+            style={{ boxShadow: CARD_SHADOW }}
           >
-            <span className={cn("grid size-8 shrink-0 place-items-center rounded-[14px]", colorMap[action.color])}>
+            <span className="grid size-8 shrink-0 place-items-center rounded-xl border border-line bg-void text-ink/65">
               <action.icon size={16} />
             </span>
-            <span className="text-[12.5px] font-black leading-snug tracking-[-0.01em] text-slate-700 dark:text-slate-200">
+            <span className="text-[12.5px] font-medium leading-snug tracking-[-0.01em] text-ink/85">
               {action.label}
             </span>
           </Link>

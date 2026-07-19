@@ -22,43 +22,35 @@ export interface KpiCardData {
   href?: string;
 }
 
-const colorMap: Record<KpiColor, { icon: string; value: string; bar: string; stroke: string }> = {
-  blue: {
-    icon: "bg-blue-50 dark:bg-blue-950/50 text-[#2563EB]",
-    value: "text-[#2563EB]",
-    bar: "bg-[#2563EB]",
-    stroke: "#2563EB"
-  },
-  green: {
-    icon: "bg-green-50 dark:bg-green-950/50 text-green-600 dark:text-green-500",
-    value: "text-green-600 dark:text-green-500",
-    bar: "bg-green-500",
-    stroke: "#22C55E"
-  },
-  purple: {
-    icon: "bg-purple-50 dark:bg-purple-950/50 text-purple-600 dark:text-purple-400",
-    value: "text-purple-600 dark:text-purple-400",
-    bar: "bg-purple-500",
-    stroke: "#A855F7"
-  },
-  red: {
-    icon: "bg-red-50 dark:bg-red-950/50 text-red-500",
-    value: "text-red-500",
-    bar: "bg-red-400",
-    stroke: "#EF4444"
-  }
+// Minimalista: el valor va en tinta neutra salvo lo semántico (crítico en rojo).
+// El color solo aparece cuando comunica estado.
+const valueClass: Record<KpiColor, string> = {
+  blue: "text-ink",
+  green: "text-ink",
+  purple: "text-ink",
+  red: "text-[#DC2626] dark:text-[#F26B6B]"
 };
 
+// El sparkline es sutil: verde cuando la métrica es "buena", gris neutro el resto.
+const sparkStroke: Record<KpiColor, string> = {
+  blue: "#9A9BA3",
+  green: "#16A34A",
+  purple: "#9A9BA3",
+  red: "#DC2626"
+};
+
+const CARD_SHADOW = "0 1px 2px rgba(20,21,26,0.04), 0 1px 3px rgba(20,21,26,0.03)";
+
 function Sparkline({ data, color }: { data: number[]; color: KpiColor }) {
-  const stroke = colorMap[color].stroke;
+  const stroke = sparkStroke[color];
   const chartData = data.map((v, i) => ({ i, v }));
   return (
-    <div className="mt-2 h-8">
+    <div className="mt-2.5 h-7">
       <ResponsiveContainer width="100%" height="100%">
         <AreaChart data={chartData} margin={{ top: 2, right: 0, bottom: 0, left: 0 }}>
           <defs>
             <linearGradient id={`spark-${color}`} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor={stroke} stopOpacity={0.32} />
+              <stop offset="0%" stopColor={stroke} stopOpacity={0.14} />
               <stop offset="100%" stopColor={stroke} stopOpacity={0} />
             </linearGradient>
           </defs>
@@ -71,16 +63,15 @@ function Sparkline({ data, color }: { data: number[]; color: KpiColor }) {
 
 const containerVariants = {
   hidden: {},
-  show: (delay: number) => ({ transition: { staggerChildren: 0.08, delayChildren: delay } })
+  show: (delay: number) => ({ transition: { staggerChildren: 0.07, delayChildren: delay } })
 };
 
 const itemVariants = {
-  hidden: { opacity: 0, y: 16, scale: 0.96 },
+  hidden: { opacity: 0, y: 12 },
   show: {
     opacity: 1,
     y: 0,
-    scale: 1,
-    transition: { duration: 0.4, ease: [0.25, 0.1, 0.25, 1] as [number, number, number, number] }
+    transition: { duration: 0.38, ease: [0.22, 1, 0.36, 1] as [number, number, number, number] }
   }
 };
 
@@ -96,37 +87,35 @@ export function QuickKpiGrid({ cards, delay = 0.16 }: QuickKpiGridProps) {
       custom={delay}
       initial="hidden"
       animate="show"
-      className="grid grid-cols-2 gap-3"
+      className="grid grid-cols-2 gap-2.5"
     >
       {cards.map((card) => {
-        const colors = colorMap[card.color];
         const MotionCard = card.href ? motion(Link) : motion.div;
         return (
           <MotionCard
             key={card.label}
             {...(card.href ? { href: card.href } : {})}
             variants={itemVariants}
-            whileTap={{ scale: 0.97 }}
-            whileHover={{ scale: 1.02, y: -2, boxShadow: "0 8px 30px rgba(37,99,235,0.15)" }}
-            className="block min-h-[100px] rounded-[28px] border border-white/50 bg-white/75 p-3.5 backdrop-blur-2xl dark:border-slate-700/50 dark:bg-slate-800/60"
-            style={{ boxShadow: "0 4px 20px rgba(15,23,42,0.06)" }}
+            whileTap={{ scale: 0.985 }}
+            className="block min-h-[104px] rounded-2xl border border-line bg-card p-4"
+            style={{ boxShadow: CARD_SHADOW }}
           >
-            <span className={cn("inline-grid size-9 place-items-center rounded-[18px]", colors.icon)}>
-              <card.icon size={17} />
-            </span>
-            <p className="mt-2 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400 dark:text-slate-500">
-              {card.label}
-            </p>
-            <p className={cn("mt-0.5 text-[1.4rem] font-black leading-tight tracking-[-0.03em]", colors.value)}>
+            <div className="flex items-center justify-between">
+              <p className="text-[10.5px] font-semibold uppercase tracking-[0.06em] text-muted">
+                {card.label}
+              </p>
+              <card.icon size={16} className="text-muted/55" />
+            </div>
+            <p className={cn("mt-2.5 text-[1.35rem] font-semibold leading-tight tracking-[-0.02em]", valueClass[card.color])}>
               <AnimatedNumber value={card.value} />
             </p>
-            <p className="mt-0.5 text-[11px] leading-4 text-slate-400 dark:text-slate-500">{card.detail}</p>
+            <p className="mt-0.5 text-[11px] leading-4 text-muted">{card.detail}</p>
             {card.trend && card.trend.length >= 2 ? (
               <Sparkline data={card.trend} color={card.color} />
             ) : card.progress !== undefined ? (
-              <div className="mt-2 h-1 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-700">
+              <div className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-line">
                 <motion.div
-                  className={cn("h-full rounded-full", colors.bar)}
+                  className="h-full rounded-full bg-[#2563EB] dark:bg-[#6B9BFF]"
                   initial={{ width: 0 }}
                   animate={{ width: `${Math.min(100, Math.max(0, card.progress))}%` }}
                   transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1], delay: 0.3 }}
