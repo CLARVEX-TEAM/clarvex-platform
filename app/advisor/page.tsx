@@ -220,8 +220,7 @@ export default function AdvisorDashboard() {
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mb-3 flex items-center justify-between gap-3 rounded-2xl border border-line bg-card p-3.5"
-            style={{ boxShadow: "0 1px 2px rgba(20,21,26,0.04), 0 1px 3px rgba(20,21,26,0.03)" }}
+            className="card-3d mb-3 flex items-center justify-between gap-3 rounded-2xl border border-line bg-card p-3.5"
           >
             <div className="flex items-center gap-3">
               <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-[#EEF3FF] text-base dark:bg-[#172134]">📢</span>

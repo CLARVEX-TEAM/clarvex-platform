@@ -276,20 +276,37 @@ html[data-matchday="fifa"] .liquid-glass::after {
 
 /* Card opaca premium: conserva el brillo superior y el borde del glass,
    pero sin backdrop-filter (nada que difuminar detrás de una card estática). */
-/* Rediseño minimalista: card plana, borde fino, sombra apenas perceptible.
-   Sin brillo superior ni glow (eso era del look azul premium). */
+/* Card minimalista con profundidad sutil: borde fino + bisel de luz arriba +
+   sombra de elevación suave. Da volumen "3D" sin volver al look recargado. */
+.card-3d,
+.solid-card {
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.7),
+    0 1px 2px rgb(20 21 26 / 0.05),
+    0 10px 24px rgb(20 21 26 / 0.08);
+}
+.dark .card-3d,
+.dark .solid-card {
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.06),
+    0 1px 2px rgb(0 0 0 / 0.5),
+    0 10px 24px rgb(0 0 0 / 0.4);
+}
 .solid-card {
   position: relative;
   overflow: hidden;
   isolation: isolate;
   border: 1px solid var(--glass-border);
   background: rgb(var(--color-card));
-  box-shadow: 0 1px 2px rgb(20 21 26 / 0.04), 0 1px 3px rgb(20 21 26 / 0.03);
   transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
 }
 
-.dark .solid-card {
-  box-shadow: 0 1px 2px rgb(0 0 0 / 0.4);
+/* Los charts (recharts) no deben mostrar el recuadro de foco al tocarlos. */
+.recharts-wrapper:focus,
+.recharts-wrapper:focus-visible,
+.recharts-surface:focus,
+.recharts-surface:focus-visible {
+  outline: none;
 }
 
 .solid-card > * {

@@ -12,8 +12,6 @@ interface DailySalesCardProps {
   className?: string;
 }
 
-const CARD_SHADOW = "0 1px 2px rgba(20,21,26,0.04), 0 1px 3px rgba(20,21,26,0.03)";
-
 /** Color del pill de alcance — semántico (verde / ámbar / rojo), no el acento. */
 function pillTone(p: number): string {
   if (p >= 100) return "text-[#16A34A] bg-[#EAF6EE] dark:text-[#3AD684] dark:bg-[#10261C]";
@@ -29,8 +27,7 @@ export function DailySalesCard({ sales, goal, label = "Ventas de hoy", delay = 0
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.38, ease: [0.22, 1, 0.36, 1], delay }}
-      className={cn("rounded-2xl border border-line bg-card px-5 py-4", className)}
-      style={{ boxShadow: CARD_SHADOW }}
+      className={cn("card-3d rounded-2xl border border-line bg-card px-5 py-4", className)}
     >
       <div className="flex items-baseline justify-between gap-3">
         <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-muted">{label}</p>

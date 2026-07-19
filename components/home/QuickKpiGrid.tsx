@@ -39,8 +39,6 @@ const sparkStroke: Record<KpiColor, string> = {
   red: "#DC2626"
 };
 
-const CARD_SHADOW = "0 1px 2px rgba(20,21,26,0.04), 0 1px 3px rgba(20,21,26,0.03)";
-
 function Sparkline({ data, color }: { data: number[]; color: KpiColor }) {
   const stroke = sparkStroke[color];
   const chartData = data.map((v, i) => ({ i, v }));
@@ -97,8 +95,7 @@ export function QuickKpiGrid({ cards, delay = 0.16 }: QuickKpiGridProps) {
             {...(card.href ? { href: card.href } : {})}
             variants={itemVariants}
             whileTap={{ scale: 0.985 }}
-            className="block min-h-[104px] rounded-2xl border border-line bg-card p-4"
-            style={{ boxShadow: CARD_SHADOW }}
+            className="card-3d block min-h-[104px] rounded-2xl border border-line bg-card p-4"
           >
             <div className="flex items-center justify-between">
               <p className="text-[10.5px] font-semibold uppercase tracking-[0.06em] text-muted">

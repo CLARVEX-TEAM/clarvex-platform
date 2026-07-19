@@ -36,6 +36,7 @@ export function SalesTrendCard({ points, title = "Tendencia de venta" }: { point
               <CartesianGrid stroke="rgb(var(--color-line))" vertical={false} />
               <XAxis dataKey="label" tick={{ fill: "rgb(var(--color-muted))", fontSize: 10 }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
               <Tooltip
+                cursor={false}
                 contentStyle={tooltipStyle}
                 formatter={(value, name) => [money(Number(value)), name === "sales" ? "Venta" : "Meta"]}
                 labelFormatter={(label, payload) => {

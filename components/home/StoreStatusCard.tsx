@@ -11,8 +11,6 @@ interface StoreStatusCardProps {
   delay?: number;
 }
 
-const CARD_SHADOW = "0 1px 2px rgba(20,21,26,0.04), 0 1px 3px rgba(20,21,26,0.03)";
-
 export function StoreStatusCard({ storeProgress, conversion, planProgress, delay = 0.24 }: StoreStatusCardProps) {
   // Mismos umbrales que achievementTone: ≥100% en meta, 90–99% en ritmo, <90% en seguimiento.
   const status = storeProgress >= 100
@@ -26,8 +24,7 @@ export function StoreStatusCard({ storeProgress, conversion, planProgress, delay
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.38, ease: [0.22, 1, 0.36, 1], delay }}
-      className="rounded-2xl border border-line bg-card px-4 py-3.5"
-      style={{ boxShadow: CARD_SHADOW }}
+      className="card-3d rounded-2xl border border-line bg-card px-4 py-3.5"
     >
       <div className="mb-3 flex items-center justify-between">
         <div className="flex items-center gap-2">

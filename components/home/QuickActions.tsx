@@ -16,8 +16,6 @@ interface Action {
   color: ActionColor;
 }
 
-const CARD_SHADOW = "0 1px 2px rgba(20,21,26,0.04), 0 1px 3px rgba(20,21,26,0.03)";
-
 const managerActions: Action[] = [
   { href: "/plan", icon: CheckSquare, label: "Crear plan del día", color: "blue" },
   { href: "/pendientes", icon: ClipboardList, label: "Crear pendiente", color: "green" },
@@ -69,8 +67,7 @@ export function QuickActions({ variant = "manager", delay = 0.30 }: QuickActions
         <motion.div key={action.href} whileTap={{ scale: 0.985 }}>
           <Link
             href={action.href}
-            className="flex min-h-[52px] items-center gap-2.5 rounded-2xl border border-line bg-card px-3.5 py-3 transition hover:border-muted/50"
-            style={{ boxShadow: CARD_SHADOW }}
+            className="card-3d flex min-h-[52px] items-center gap-2.5 rounded-2xl border border-line bg-card px-3.5 py-3 transition hover:border-muted/50"
           >
             <span className="grid size-8 shrink-0 place-items-center rounded-xl border border-line bg-void text-ink/65">
               <action.icon size={16} />
