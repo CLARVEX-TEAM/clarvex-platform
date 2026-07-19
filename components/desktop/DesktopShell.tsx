@@ -40,7 +40,7 @@ import { DesktopChromeProvider, FreshnessPill } from "@/components/desktop/Deskt
 import { DesktopNotifications } from "@/components/desktop/DesktopNotifications";
 import { DesktopLock } from "@/components/desktop/DesktopLock";
 import { consumeDesktopFreshLogin } from "@/lib/desktop-profiles";
-import { setViewPreference } from "@/lib/view-mode";
+import { prefersDesktop, setViewPreference } from "@/lib/view-mode";
 
 // Ancho mínimo para considerar "escritorio". Por debajo, gerencia usa la app móvil.
 export const DESKTOP_MIN_WIDTH = 1024;
@@ -137,7 +137,11 @@ export function DesktopShell({ children }: { children: React.ReactNode }) {
   // pedir PIN al navegar entre secciones ni al salir y volver a /escritorio.
   useEffect(() => {
     if (unlockedSession) return; // ya desbloqueado en memoria: no re-bloquear al navegar
-    if (typeof window !== "undefined" && window.innerWidth < DESKTOP_MIN_WIDTH) {
+    // Usar la MISMA decisión que /manager (prefersDesktop: respeta la preferencia
+    // manual "desktop" y screen.width, no solo innerWidth). Si aquí usáramos solo
+    // window.innerWidth < 1024, un POS con zoom rebotaría /escritorio ⇄ /manager
+    // en bucle: el guard móvil lo trae a escritorio y este lo devolvía a móvil.
+    if (typeof window !== "undefined" && !prefersDesktop()) {
       router.replace("/manager");
       return;
     }
