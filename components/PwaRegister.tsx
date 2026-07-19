@@ -42,11 +42,21 @@ export function PwaRegister() {
     // Recarga automática al activarse un SW nuevo: evita la pantalla en blanco
     // tras un deploy, cuando el shell HTML viejo (cacheado por la PWA) apunta a
     // chunks de JS que ya no existen. Al tomar control el SW nuevo, refrescamos
-    // una sola vez para cargar los assets frescos. Guard contra bucles.
-    let refreshing = false;
+    // una sola vez para cargar los assets frescos.
+    //
+    // Guard en sessionStorage (NO una variable local): la variable se reinicia
+    // en cada recarga, así que no impide un BUCLE de recargas si el controlador
+    // cambia de forma repetida (p. ej. otra pestaña o un claim() reiterado). Con
+    // el flag persistente por pestaña, recargamos como máximo una vez.
+    const RELOAD_FLAG = "clarvex-sw-refreshed";
     const onControllerChange = () => {
-      if (refreshing) return;
-      refreshing = true;
+      try {
+        if (sessionStorage.getItem(RELOAD_FLAG) === "1") return;
+        sessionStorage.setItem(RELOAD_FLAG, "1");
+      } catch {
+        // sessionStorage bloqueado: mejor no recargar que arriesgar un bucle.
+        return;
+      }
       window.location.reload();
     };
     navigator.serviceWorker.addEventListener("controllerchange", onControllerChange);
