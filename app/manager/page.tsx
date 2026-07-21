@@ -22,7 +22,7 @@ import { getSession, logout } from "@/lib/auth";
 import { completion, money, performanceTextClass } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { computeDailyStreak } from "@/lib/streaks";
-import { isRestingToday, scheduleStatusByUser } from "@/lib/working-today";
+import { isRestingToday, restLabel, scheduleStatusByUser } from "@/lib/working-today";
 import type { User } from "@/lib/types";
 import { AppFrame, Badge, BottomNav, Card, ProfileAvatar, ProgressBar, priorityTone } from "@/components/ui";
 import { PullToRefresh } from "@/components/PullToRefresh";
@@ -125,8 +125,9 @@ export default function ManagerDashboard() {
   const ranking = advisors
     .map((a) => {
       const kpi = data.kpis.find((k) => k.userId === a.id && k.date === todayKey);
-      const resting = isRestingToday(statusToday.get(a.id), kpi);
-      return { advisor: a, kpi, resting };
+      const status = statusToday.get(a.id);
+      const resting = isRestingToday(status, kpi);
+      return { advisor: a, kpi, resting, restText: restLabel(status, true) };
     })
     .sort((a, b) =>
       Number(a.resting) - Number(b.resting)
@@ -286,7 +287,7 @@ export default function ManagerDashboard() {
             <div>
               {(() => {
                 let place = 0;
-                return ranking.map(({ advisor, kpi, resting }) => {
+                return ranking.map(({ advisor, kpi, resting, restText }) => {
                   const progress = completion(kpi?.dailySales ?? 0, kpi?.dailyGoal ?? 0);
                   if (!resting) place += 1;
                   const streak = computeDailyStreak(
@@ -305,7 +306,7 @@ export default function ManagerDashboard() {
                           {!resting && streak.current >= 2 ? <span className="ml-1.5 text-[11px] font-semibold text-orange-500">🔥{streak.current}</span> : null}
                         </p>
                         <p className="text-[11px] text-muted">
-                          {resting ? "Descanso hoy" : `${money(kpi?.dailySales ?? 0)} · meta ${money(kpi?.dailyGoal ?? 0)}`}
+                          {resting ? restText : `${money(kpi?.dailySales ?? 0)} · meta ${money(kpi?.dailyGoal ?? 0)}`}
                         </p>
                       </div>
                       <span className={cn("shrink-0 text-[13px] font-semibold tabular-nums", resting ? "text-muted/50" : performanceTextClass(progress))}>

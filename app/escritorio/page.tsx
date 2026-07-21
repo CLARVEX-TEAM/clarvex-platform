@@ -8,7 +8,7 @@ import type { LucideIcon } from "lucide-react";
 import { completion, money } from "@/lib/format";
 import { buildSalesTrend } from "@/lib/trend";
 import { cn } from "@/lib/utils";
-import { isRestingToday, scheduleStatusByUser } from "@/lib/working-today";
+import { isRestingToday, restLabel, scheduleStatusByUser } from "@/lib/working-today";
 import { achievementTone, Badge, Card, ProgressBar, ProgressRing, ProfileAvatar, priorityTone } from "@/components/ui";
 import { TeamCelebrationsCard } from "@/components/home/TeamCelebrationsCard";
 import { useTheme } from "@/components/ThemeProvider";
@@ -54,9 +54,10 @@ export default function EscritorioDashboard() {
   const ranking = advisors
     .map((a) => {
       const kpi = data.kpis.find((k) => k.userId === a.id && k.date === todayKey);
-      const resting = isRestingToday(statusToday.get(a.id), kpi);
+      const status = statusToday.get(a.id);
+      const resting = isRestingToday(status, kpi);
       const progress = completion(kpi?.dailySales ?? 0, kpi?.dailyGoal ?? 0);
-      return { advisor: a, sales: kpi?.dailySales ?? 0, goal: kpi?.dailyGoal ?? 0, progress, resting };
+      return { advisor: a, sales: kpi?.dailySales ?? 0, goal: kpi?.dailyGoal ?? 0, progress, resting, restText: restLabel(status) };
     })
     .sort((a, b) => Number(a.resting) - Number(b.resting) || b.progress - a.progress || b.sales - a.sales);
 
@@ -155,7 +156,7 @@ export default function EscritorioDashboard() {
                     <td className="px-4 py-2.5 text-right font-semibold text-ink">{money(r.sales)}</td>
                     <td className="px-4 py-2.5 text-right text-muted">{money(r.goal)}</td>
                     <td className="px-4 py-2.5">
-                      {r.resting ? <Badge>Descanso</Badge> : (
+                      {r.resting ? <Badge>{r.restText}</Badge> : (
                         <div className="flex items-center gap-2">
                           <div className="flex-1"><ProgressBar value={r.progress} tone={achievementTone(r.progress)} /></div>
                           <span className="w-9 shrink-0 text-right text-xs font-semibold text-ink">{r.progress}%</span>

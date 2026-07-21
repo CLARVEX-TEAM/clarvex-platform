@@ -24,3 +24,24 @@ export function isRestingToday(scheduledStatus: string | undefined, kpi: KpiLike
   if (scheduledStatus) return scheduledStatus !== "WORKING";
   return !kpi || (kpi.dailyGoal ?? 0) === 0;
 }
+
+/**
+ * Etiqueta legible para quien queda FUERA del podio de ventas hoy.
+ *
+ * No todos los que salen del ranking "descansan": conteo, vacaciones, pago de
+ * día y baja también quedan fuera (no tienen venta que rankear) pero mostrarlos
+ * a todos como "Descanso" confunde al gerente, porque en el archivo de HORARIOS
+ * aparecen con su estatus real. La fuente es el mismo Schedule.status.
+ *
+ * `withToday` agrega el sufijo "hoy" al descanso (subtítulo del ranking móvil);
+ * en un chip corto (escritorio) se deja sin sufijo.
+ */
+export function restLabel(scheduledStatus: string | undefined, withToday = false): string {
+  switch (scheduledStatus) {
+    case "VACATION": return "Vacaciones";
+    case "PAID_DAY": return "Pago de día";
+    case "INVENTORY": return "Conteo";
+    case "TERMINATED": return "Baja";
+    default: return withToday ? "Descanso hoy" : "Descanso"; // OFF o sin horario (heurístico)
+  }
+}

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { isRestingToday, scheduleStatusByUser } from "../lib/working-today";
+import { isRestingToday, restLabel, scheduleStatusByUser } from "../lib/working-today";
 
 const HOY = "2026-07-13"; // lunes
 const ALONSO = "user-alonso";
@@ -34,6 +34,18 @@ test("sin horario cargado: cae al heurístico viejo de la meta del RDV", () => {
   assert.equal(isRestingToday(undefined, { dailyGoal: 0 }), true);
   assert.equal(isRestingToday(undefined, undefined), true);
   assert.equal(isRestingToday(undefined, { dailyGoal: null }), true);
+});
+
+test("restLabel muestra el estatus real, no 'Descanso' para todos (bug del ranking)", () => {
+  // El gerente veía "Descanso hoy" a quien estaba en CONTEO o VACACIONES.
+  assert.equal(restLabel("INVENTORY"), "Conteo");
+  assert.equal(restLabel("VACATION"), "Vacaciones");
+  assert.equal(restLabel("PAID_DAY"), "Pago de día");
+  assert.equal(restLabel("TERMINATED"), "Baja");
+  // OFF y sin horario sí son descanso; con sufijo en el ranking móvil.
+  assert.equal(restLabel("OFF"), "Descanso");
+  assert.equal(restLabel("OFF", true), "Descanso hoy");
+  assert.equal(restLabel(undefined, true), "Descanso hoy");
 });
 
 test("solo se consideran los turnos del día consultado", () => {
