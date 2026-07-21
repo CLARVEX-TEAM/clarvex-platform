@@ -73,15 +73,21 @@ function entryCredit(expectedEntry: number, arrived: number, status: AttendanceS
   if (arrived < expectedEntry) return expectedEntry - snapDownToGrid(arrived);
   // ⚠️ Entrada TARDE: un RETARDO no descuenta del banco de horas. Ya se penaliza
   // como retardo aparte (reporte mensual); descontarle horas además sería
-  // castigarlo dos veces. Solo una entrada tarde CON PERMISO (EXCUSED) usa el
-  // saldo de horas — porque ahí sí se acordó cambiar la jornada.
-  return status === "EXCUSED" ? expectedEntry - arrived : 0;
+  // castigarlo dos veces.
+  //
+  // Excepciones que SÍ descuentan la entrada tarde:
+  //  - EXCUSED: entrada tarde CON PERMISO (se acordó cambiar la jornada).
+  //  - INVENTORY (conteo): día laborable SIN concepto de retardo (nadie se
+  //    regresa a casa), así que la entrada tarde no se penaliza como retardo —
+  //    va directo al banco de horas. Entró 12:00 en conteo → −1:30.
+  return status === "EXCUSED" || status === "INVENTORY" ? expectedEntry - arrived : 0;
 }
 
-/** Días en los que no se esperaba a la persona: no generan saldo. */
+/** Días en los que no se esperaba a la persona: no generan saldo.
+ *  El CONTEO (INVENTORY) NO está aquí: es día laborable y sí mueve el banco de
+ *  horas (entró tarde → descuenta; entró temprano / se quedó → suma). */
 function offDay(status: AttendanceStatus): boolean {
-  return status === "VACATION" || status === "PAID_DAY"
-    || status === "INVENTORY" || status === "ABSENT";
+  return status === "VACATION" || status === "PAID_DAY" || status === "ABSENT";
 }
 
 export type DayBalanceInput = {
@@ -108,7 +114,7 @@ export function dayBalanceMinutes(input: DayBalanceInput): number {
     return snapUpToGrid(left) - snapDownToGrid(arrived);
   }
 
-  // Vacaciones, falta, pago de día o inventario: no hay jornada que comparar.
+  // Vacaciones, falta o pago de día: no hay jornada que comparar.
   if (offDay(input.status)) return 0;
 
   const expectedEntry = toMinutes(input.expectedEntry ?? DEFAULT_ENTRY) ?? toMinutes(DEFAULT_ENTRY)!;

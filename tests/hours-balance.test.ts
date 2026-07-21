@@ -34,6 +34,20 @@ test("quedarse más tarde suma", () => {
   assert.equal(formatBalance(60), "+1:00");
 });
 
+test("CONTEO es día laborable: la entrada tarde SÍ descuenta del banco", () => {
+  // Caso real (mar-21): Itzel entró 12:00 en conteo. Debe descontar 1:30.
+  assert.equal(dayBalanceMinutes(day("12:00", "21:00", "INVENTORY")), -90); // −1:30
+  assert.equal(formatBalance(-90), "−1:30");
+  // Simétrico: en conteo, entrar temprano suma y salir temprano resta.
+  assert.equal(dayBalanceMinutes(day("08:00", "21:00", "INVENTORY")), 150); // +2:30
+  assert.equal(dayBalanceMinutes(day("10:30", "19:00", "INVENTORY")), -120); // −2:00
+  // A tiempo en conteo no mueve el banco.
+  assert.equal(dayBalanceMinutes(day("10:36", "21:00", "INVENTORY")), 0);
+  // El desglose lo explica en pantalla.
+  const parts = dayBalanceParts({ status: "INVENTORY", arrivedAt: "12:00", leftAt: "21:00", expectedEntry: "10:30", expectedExit: "21:00" });
+  assert.deepEqual(parts, [{ part: "entry", minutes: -90 }]);
+});
+
 test("un día exacto no mueve el saldo", () => {
   assert.equal(dayBalanceMinutes(day("10:30", "21:00")), 0);
   assert.equal(formatBalance(0), "+0:00");
