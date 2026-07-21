@@ -3,6 +3,13 @@
 #  - postcss <8.5.10: XSS en el stringify (vía next)
 #  - uuid <11.1.1: bounds check de buffer en v3/v5/v6 (vía exceljs; no explotable
 #    con el v4 que usa exceljs, pero se fija para dejar el audit en cero)
+#  - brace-expansion (GHSA-3jxr-9vmj-r5cp): ReDoS. Tres majors en el árbol,
+#    cada uno fijado a su parche (no cruzar de major).
+#  - js-yaml <4.3.0 (GHSA-52cp-r559-cp3m)
 overrides:
   postcss@<8.5.10: ">=8.5.10"
   exceljs>uuid: ">=11.1.1"
+  brace-expansion@1: 1.1.16
+  brace-expansion@2: 2.1.2
+  brace-expansion@5: 5.0.7
+  js-yaml@4: 4.3.0
