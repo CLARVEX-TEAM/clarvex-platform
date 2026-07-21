@@ -43,6 +43,14 @@ export async function dispatchPushToUsers(userIds: string[], payload: PushPayloa
 
   await Promise.allSettled(
     subscriptions.map(async (sub) => {
+      let host = "";
+      try { host = new URL(sub.endpoint).host; } catch { /* endpoint raro */ }
+      // Apple (web.push.apple.com) rechaza nuestro header Topic con
+      // "BadWebPushTopic" y NO entrega la notificación: a los iPhone no les
+      // llegaba nada. El Topic solo colapsa notificaciones en cola (una
+      // optimización), así que en iOS se OMITE para garantizar la entrega. El
+      // `tag` del payload sigue agrupando las ya mostradas en el dispositivo.
+      const isApple = host.endsWith("push.apple.com");
       try {
         await webpush.sendNotification(
           { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
@@ -56,7 +64,7 @@ export async function dispatchPushToUsers(userIds: string[], payload: PushPayloa
           {
             urgency: "high",        // máxima prioridad: mejor oportunidad contra No Molestar en Android
             TTL: 86400,             // 24 h de vida si el dispositivo está offline
-            ...(topic ? { topic } : {})
+            ...(topic && !isApple ? { topic } : {})
           }
         );
       } catch (error: unknown) {
@@ -67,8 +75,6 @@ export async function dispatchPushToUsers(userIds: string[], payload: PushPayloa
           // Registrar el body del servicio de push: ahí viene el motivo real del
           // rechazo (VAPID inválido, JWT, payload, etc.), no solo el status.
           const body = (error as { body?: string }).body;
-          let host = "";
-          try { host = new URL(sub.endpoint).host; } catch { /* endpoint raro */ }
           console.error(
             "[push] Error enviando notificacion — status:", status,
             "host:", host,
