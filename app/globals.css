@@ -210,45 +210,6 @@ svg.lucide {
   .btn-sheen:active::after { animation: none; }
 }
 
-/* Confeti al gol de México */
-@keyframes goalDrop {
-  0% { transform: translateY(-10vh) rotate(0deg); opacity: 1; }
-  100% { transform: translateY(110vh) rotate(540deg); opacity: 0.85; }
-}
-
-/* Partículas flotantes del intro de partido */
-@keyframes introFloat {
-  0%   { transform: translateY(0) scale(1);     opacity: 0; }
-  8%   { opacity: 0.7; }
-  92%  { opacity: 0.55; }
-  100% { transform: translateY(-105vh) scale(0.6); opacity: 0; }
-}
-
-/* Tema tricolor — blobs del fondo cambian a verde/rojo cuando hay partido */
-html[data-matchday] .ambient-blob-one   { background: #006847; }
-html[data-matchday] .ambient-blob-two   { background: #CE1126; }
-html[data-matchday] .ambient-blob-three { background: #009a54; }
-
-/* Día de partido: el ambiente sube un punto de presencia… */
-html[data-matchday] .ambient-blob { opacity: 0.42; }
-html[data-matchday].dark .ambient-blob { opacity: 0.26; }
-
-/* …y la barra flotante estrena su línea inferior tricolor. */
-html[data-matchday] .liquid-glass::after {
-  height: 2px;
-  background: linear-gradient(90deg, #006847 0 33%, #f5f5f5 33% 67%, #ce1126 67% 100%);
-  opacity: 0.75;
-}
-
-/* Variante FIFA — partidos del Mundial sin México: azules y violeta en lugar
-   del tricolor (México ya quedó fuera, pero el Mundial sigue 🏆). */
-html[data-matchday="fifa"] .ambient-blob-one   { background: #1a1f71; }
-html[data-matchday="fifa"] .ambient-blob-two   { background: #7b2fbf; }
-html[data-matchday="fifa"] .ambient-blob-three { background: #0aa2c0; }
-html[data-matchday="fifa"] .liquid-glass::after {
-  background: linear-gradient(90deg, #26d0ce 0%, #4557d2 50%, #b03fd9 100%);
-}
-
 .no-scrollbar {
   -ms-overflow-style: none;
   overscroll-behavior-x: contain;

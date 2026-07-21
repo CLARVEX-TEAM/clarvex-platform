@@ -9,7 +9,7 @@ import { getSession } from "@/lib/auth";
 // los términos) el usuario debe aceptar Términos y Aviso de Privacidad antes
 // de seguir usando la app. La aceptación queda registrada (fecha + versión).
 
-const EXCLUDED = ["/login", "/terminos", "/privacidad", "/partido/ver", "/conteos/marbetes/imprimir", "/suspendida"];
+const EXCLUDED = ["/login", "/terminos", "/privacidad", "/conteos/marbetes/imprimir", "/suspendida"];
 
 export function TermsGate() {
   const pathname = usePathname();

@@ -15,7 +15,6 @@ import {
   CheckSquare,
   ClipboardCheck,
   Database,
-  Globe,
   GraduationCap,
   HeartHandshake,
   LayoutDashboard,
@@ -27,7 +26,6 @@ import {
   PackageSearch,
   Smartphone,
   Sun,
-  Trophy,
   UsersRound
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -76,8 +74,6 @@ const navGroups: { label: string; items: { href: string; label: string; icon: Lu
       { href: "/escritorio/encuestas", label: "Encuestas", icon: ClipboardCheck },
       { href: "/escritorio/capacitacion", label: "Capacitación", icon: GraduationCap },
       { href: "/escritorio/datos", label: "Centro de Datos", icon: Database },
-      { href: "/escritorio/mundial", label: "Mundial 2026", icon: Globe },
-      { href: "/escritorio/partido", label: "Partidos", icon: Trophy },
       { href: "/admin", label: "Administración", icon: Building2, adminOnly: true }
     ]
   }
@@ -103,9 +99,7 @@ const sectionTitles: Record<string, { title: string; subtitle: string }> = {
   "/escritorio/notificaciones": { title: "Notificaciones", subtitle: "Avisos del equipo" },
   "/escritorio/perfil": { title: "Mi perfil", subtitle: "Tus datos y preferencias" },
   "/escritorio/conteos": { title: "Conteos", subtitle: "Inventario físico por marbete" },
-  "/escritorio/conteos/marbetes": { title: "Marbetes", subtitle: "Catálogo fijo de tienda y bodega" },
-  "/escritorio/mundial": { title: "Mundial 2026", subtitle: "Cuadro de la fase final" },
-  "/escritorio/partido": { title: "Partidos", subtitle: "Programa partidos y transmisiones" }
+  "/escritorio/conteos/marbetes": { title: "Marbetes", subtitle: "Catálogo fijo de tienda y bodega" }
 };
 
 // Título por prefijo para rutas dinámicas (p. ej. /escritorio/conteos/[id]).

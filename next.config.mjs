@@ -104,9 +104,8 @@ const nextConfig = {
               `connect-src ${connectSrc}`,
               "manifest-src 'self'",
               "worker-src 'self'",
-              // Transmisión del partido ("Ver partido"): dominios permitidos en iframe
-              "frame-src 'self' https://embedindia.st https://tvhd1.com https://www.youtube.com https://www.youtube-nocookie.com",
-              "child-src 'self' https://embedindia.st https://tvhd1.com https://www.youtube.com https://www.youtube-nocookie.com",
+              "frame-src 'self'",
+              "child-src 'self'",
               "object-src 'none'",
               "base-uri 'self'",
               "form-action 'self'",

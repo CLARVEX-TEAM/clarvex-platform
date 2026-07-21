@@ -9,8 +9,6 @@ import { ToastProvider } from "@/components/Toast";
 import { UpdatePrompt } from "@/components/UpdatePrompt";
 import { OfflineBanner } from "@/components/OfflineBanner";
 import { WhatsNewModal } from "@/components/WhatsNewModal";
-import { MatchBanner } from "@/components/MatchBanner";
-import { MatchIntro } from "@/components/MatchIntro";
 import { TermsGate } from "@/components/TermsGate";
 import { DesktopRouteGuard } from "@/components/desktop/DesktopRouteGuard";
 import { ClarvexCopilot } from "@/components/ClarvexCopilot";
@@ -61,8 +59,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <PwaRegister />
             <UpdatePrompt />
             <OfflineBanner />
-            <MatchBanner />
-            <MatchIntro />
             <DesktopRouteGuard />
             <TermsGate />
             <PageTransition>{children}</PageTransition>

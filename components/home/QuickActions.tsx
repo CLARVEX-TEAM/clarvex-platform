@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { BarChart3, BookOpen, Boxes, CalendarClock, CalendarDays, CheckSquare, ClipboardCheck, ClipboardList, Clock, CreditCard, GraduationCap, HeartHandshake, PackageSearch, Shirt, Trophy } from "lucide-react";
+import { BarChart3, BookOpen, Boxes, CalendarClock, CalendarDays, CheckSquare, ClipboardCheck, ClipboardList, Clock, CreditCard, GraduationCap, HeartHandshake, PackageSearch, Shirt } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 // El color se conserva en los datos pero el rediseño minimalista usa iconos
@@ -29,8 +29,7 @@ const managerActions: Action[] = [
   { href: "/capacitacion", icon: GraduationCap, label: "Capacitación", color: "purple" },
   { href: "/encuestas", icon: ClipboardCheck, label: "Encuestas", color: "green" },
   { href: "/conteos", icon: Boxes, label: "Conteos", color: "blue" },
-  { href: "/suscripcion", icon: CreditCard, label: "Suscripción", color: "green" },
-  { href: "/mundial", icon: Trophy, label: "Mundial 2026", color: "purple" }
+  { href: "/suscripcion", icon: CreditCard, label: "Suscripción", color: "green" }
 ];
 
 const advisorActions: Action[] = [
@@ -44,8 +43,7 @@ const advisorActions: Action[] = [
   { href: "/faltantes", icon: PackageSearch, label: "Faltantes", color: "orange" },
   { href: "/capacitacion", icon: GraduationCap, label: "Capacitación", color: "purple" },
   { href: "/encuestas", icon: ClipboardCheck, label: "Encuestas", color: "green" },
-  { href: "/conteos", icon: Boxes, label: "Conteos", color: "blue" },
-  { href: "/mundial", icon: Trophy, label: "Mundial 2026", color: "purple" }
+  { href: "/conteos", icon: Boxes, label: "Conteos", color: "blue" }
 ];
 
 interface QuickActionsProps {
