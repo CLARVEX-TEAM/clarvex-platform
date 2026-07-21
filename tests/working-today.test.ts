@@ -20,12 +20,15 @@ test("el horario manda sobre la meta del RDV (bug del ranking)", () => {
   assert.equal(isRestingToday(status.get(JAZMIN), { dailyGoal: 12_000 }), false);
 });
 
-test("otros estados de no-laborando también cuentan como descanso", () => {
+test("conteo (inventario) es laborable: entra al podio con su alcance", () => {
+  assert.equal(isRestingToday("INVENTORY", { dailyGoal: 12_000 }), false);
+  assert.equal(isRestingToday("WORKING", { dailyGoal: 0 }), false);
+});
+
+test("vacaciones, pago de día y baja sí cuentan como fuera del podio", () => {
   assert.equal(isRestingToday("VACATION", { dailyGoal: 12_000 }), true);
   assert.equal(isRestingToday("PAID_DAY", { dailyGoal: 12_000 }), true);
-  assert.equal(isRestingToday("INVENTORY", { dailyGoal: 12_000 }), true);
   assert.equal(isRestingToday("TERMINATED", { dailyGoal: 12_000 }), true);
-  assert.equal(isRestingToday("WORKING", { dailyGoal: 0 }), false);
 });
 
 test("sin horario cargado: cae al heurístico viejo de la meta del RDV", () => {
@@ -37,8 +40,7 @@ test("sin horario cargado: cae al heurístico viejo de la meta del RDV", () => {
 });
 
 test("restLabel muestra el estatus real, no 'Descanso' para todos (bug del ranking)", () => {
-  // El gerente veía "Descanso hoy" a quien estaba en CONTEO o VACACIONES.
-  assert.equal(restLabel("INVENTORY"), "Conteo");
+  // El gerente veía "Descanso hoy" a quien estaba en VACACIONES/pago de día.
   assert.equal(restLabel("VACATION"), "Vacaciones");
   assert.equal(restLabel("PAID_DAY"), "Pago de día");
   assert.equal(restLabel("TERMINATED"), "Baja");

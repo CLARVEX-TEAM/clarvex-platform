@@ -20,8 +20,15 @@ export function scheduleStatusByUser(shifts: ShiftLike[], dateKey: string): Map<
   return new Map(shifts.filter((shift) => shift.date === dateKey).map((shift) => [shift.userId, shift.status]));
 }
 
+/**
+ * Estatus del horario que SÍ cuentan como día laborable (aparecen en el podio con
+ * su alcance). CONTEO (inventario) es laborable: ese día venden y tienen meta, así
+ * que su alcance debe verse. Descanso, vacaciones, pago de día y baja no.
+ */
+const WORKING_STATUSES = new Set(["WORKING", "INVENTORY"]);
+
 export function isRestingToday(scheduledStatus: string | undefined, kpi: KpiLike): boolean {
-  if (scheduledStatus) return scheduledStatus !== "WORKING";
+  if (scheduledStatus) return !WORKING_STATUSES.has(scheduledStatus);
   return !kpi || (kpi.dailyGoal ?? 0) === 0;
 }
 
@@ -40,7 +47,6 @@ export function restLabel(scheduledStatus: string | undefined, withToday = false
   switch (scheduledStatus) {
     case "VACATION": return "Vacaciones";
     case "PAID_DAY": return "Pago de día";
-    case "INVENTORY": return "Conteo";
     case "TERMINATED": return "Baja";
     default: return withToday ? "Descanso hoy" : "Descanso"; // OFF o sin horario (heurístico)
   }
