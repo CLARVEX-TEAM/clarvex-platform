@@ -16,11 +16,13 @@ export async function GET(request: Request) {
   if (isApiError(session)) return session;
   const manager = session.role !== "ASESOR";
   const own = manager ? {} : { userId: session.userId };
-  // Por defecto solo usuarios ACTIVOS: un asesor desactivado no debe aparecer en
-  // cumpleaños, ranking ni equipo. La pantalla de gestión de equipo (/equipo)
-  // pide includeInactive=1 para poder reactivar cuentas.
+  // Por defecto solo usuarios ACTIVOS y de carne y hueso: un asesor desactivado
+  // no debe aparecer en cumpleaños, ranking ni equipo, y el usuario "kiosko"
+  // (checklistOnly, el celular del cierre) tampoco — es una cuenta de dispositivo,
+  // no un integrante. La pantalla de gestión de equipo (/equipo) pide
+  // includeInactive=1 para poder reactivar cuentas y gestionar el modo kiosko.
   const includeInactive = new URL(request.url).searchParams.get("includeInactive") === "1" && manager;
-  const activeFilter = includeInactive ? {} : { active: true };
+  const activeFilter = includeInactive ? {} : { active: true, checklistOnly: false };
   const dashboardDate = dashboardDateKey();
   const dashboardRange = dashboardDateRange(dashboardDate);
 

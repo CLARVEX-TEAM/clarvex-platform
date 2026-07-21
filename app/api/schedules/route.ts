@@ -24,7 +24,9 @@ export async function GET(request: NextRequest) {
 
   const [users, schedules, availableWeeks] = await Promise.all([
     prisma.user.findMany({
-      where: { storeId: session.storeId, active: true, ...(userId ? { id: userId } : {}) },
+      // Sin el usuario "kiosko" (checklistOnly): es el celular del cierre, no un
+      // integrante con turno. Salía como "Sin horario" en toda la semana.
+      where: { storeId: session.storeId, active: true, checklistOnly: false, ...(userId ? { id: userId } : {}) },
       select: { id: true, name: true, role: true, photoUrl: true },
       orderBy: [{ role: "asc" }, { name: "asc" }]
     }),
