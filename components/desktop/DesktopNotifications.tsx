@@ -103,7 +103,7 @@ export function DesktopNotifications() {
       >
         <Bell size={18} />
         {unread > 0 ? (
-          <span className="pointer-events-none absolute -right-1 -top-1 grid h-[18px] min-w-[18px] place-items-center rounded-full bg-rose-500 px-[5px] text-[10px] font-semibold leading-none text-white shadow-sm ring-2 ring-white dark:ring-[#0f1729]">
+          <span className="pointer-events-none absolute -right-1 -top-1 grid h-[18px] min-w-[18px] place-items-center rounded-full bg-rose-500 px-[5px] text-[10px] font-semibold leading-none text-white shadow-sm ring-2 ring-card">
             {unread > 99 ? "99+" : unread}
           </span>
         ) : null}
@@ -116,7 +116,7 @@ export function DesktopNotifications() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -8, scale: 0.98 }}
             transition={{ duration: 0.16, ease: [0.22, 1, 0.36, 1] }}
-            className="absolute right-0 z-50 mt-2 w-96 overflow-hidden rounded-3xl border border-line bg-white shadow-2xl dark:bg-[#1a2540]"
+            className="absolute right-0 z-50 mt-2 w-96 overflow-hidden rounded-3xl border border-line bg-card shadow-2xl"
           >
             <div className="flex items-center justify-between border-b border-line px-4 py-3">
               <p className="text-sm font-semibold text-ink">Notificaciones</p>

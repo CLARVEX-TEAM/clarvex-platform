@@ -34,8 +34,8 @@ export default function EscritorioDashboard() {
   if (!data) {
     return (
       <div className="animate-pulse space-y-5">
-        <div className="grid grid-cols-4 gap-4">{[0, 1, 2, 3].map((i) => <div key={i} className="h-28 rounded-3xl bg-slate-200 dark:bg-slate-800" />)}</div>
-        <div className="grid grid-cols-3 gap-4"><div className="col-span-2 h-72 rounded-3xl bg-slate-200 dark:bg-slate-800" /><div className="h-72 rounded-3xl bg-slate-200 dark:bg-slate-800" /></div>
+        <div className="grid grid-cols-4 gap-4">{[0, 1, 2, 3].map((i) => <div key={i} className="h-28 rounded-3xl bg-panel" />)}</div>
+        <div className="grid grid-cols-3 gap-4"><div className="col-span-2 h-72 rounded-3xl bg-panel" /><div className="h-72 rounded-3xl bg-panel" /></div>
       </div>
     );
   }
@@ -72,8 +72,8 @@ export default function EscritorioDashboard() {
     todayKey
   );
   const tooltipStyle = isDark
-    ? { background: "#1a2540", border: "1px solid #2a3a5c", borderRadius: 12, color: "#f0f4ff" }
-    : { background: "#FFFFFF", border: "1px solid #E2E8F0", borderRadius: 12, color: "#0F172A" };
+    ? { background: "#141519", border: "1px solid #23242A", borderRadius: 12, color: "#F2F3F5" }
+    : { background: "#FFFFFF", border: "1px solid #ECECEF", borderRadius: 12, color: "#17181C" };
 
   return (
     <div className="space-y-5">
@@ -146,7 +146,7 @@ export default function EscritorioDashboard() {
               </thead>
               <tbody>
                 {ranking.map((r, i) => (
-                  <tr key={r.advisor.id} className="border-t border-line transition-colors hover:bg-volt/[0.04] even:bg-slate-50/50 dark:even:bg-white/[0.02]">
+                  <tr key={r.advisor.id} className="border-t border-line transition-colors hover:bg-volt/[0.04] even:bg-black/[0.02] dark:even:bg-white/[0.02]">
                     <td className="px-4 py-2.5">
                       <div className="flex items-center gap-2.5">
                         <ProfileAvatar name={r.advisor.name} photoUrl={r.advisor.photoUrl} size="sm" className="size-8 rounded-xl shadow-none" />
@@ -206,7 +206,7 @@ function KpiTile({ icon: Icon, label, value, tone }: { icon: LucideIcon; label: 
     <Card className="p-4">
       <div className="flex items-center justify-between">
         <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-muted">{label}</p>
-        <span className={cn("grid size-9 place-items-center rounded-2xl bg-blue-50 dark:bg-[#1a2540]", tone)}><Icon size={17} /></span>
+        <span className={cn("grid size-9 place-items-center rounded-2xl bg-panel", tone)}><Icon size={17} /></span>
       </div>
       <p className={cn("mt-3 text-[1.7rem] font-semibold leading-none tracking-[-0.03em]", tone)}>{value}</p>
     </Card>

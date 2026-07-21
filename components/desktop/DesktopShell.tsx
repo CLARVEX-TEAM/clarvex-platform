@@ -211,7 +211,7 @@ export function DesktopShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-screen">
       {/* ─── Barra lateral ─────────────────────────────────────────── */}
-      <aside className="sticky top-0 flex h-screen w-64 shrink-0 flex-col border-r border-line bg-white/85 px-4 py-5 backdrop-blur-xl dark:bg-[#0f1729]/90">
+      <aside className="sticky top-0 flex h-screen w-64 shrink-0 flex-col border-r border-line bg-card/85 px-4 py-5 backdrop-blur-xl">
         <Link href="/escritorio" className="flex items-center gap-2.5 px-2">
           <span className="grid size-10 place-items-center rounded-2xl bg-volt text-white shadow-[0_8px_20px_rgb(37_99_235_/_0.28)]">
             <LayoutDashboard size={20} />
@@ -235,7 +235,7 @@ export function DesktopShell({ children }: { children: React.ReactNode }) {
                     aria-current={active ? "page" : undefined}
                     className={cn(
                       "tappable relative flex min-h-10 items-center gap-3 rounded-2xl px-3 text-[13.5px] font-bold tracking-[-0.01em] transition-colors",
-                      active ? "text-volt" : "text-muted hover:bg-slate-100 hover:text-ink dark:hover:bg-slate-800/60"
+                      active ? "text-volt" : "text-muted hover:bg-black/[0.04] hover:text-ink dark:hover:bg-white/[0.06]"
                     )}
                   >
                     {active ? (
@@ -257,7 +257,7 @@ export function DesktopShell({ children }: { children: React.ReactNode }) {
         </nav>
 
         <div className="mt-4 space-y-2 border-t border-line pt-4">
-          <Link href="/escritorio/perfil" className="flex items-center gap-2.5 rounded-2xl px-1 py-1 transition hover:bg-slate-100 dark:hover:bg-slate-800/60">
+          <Link href="/escritorio/perfil" className="flex items-center gap-2.5 rounded-2xl px-1 py-1 transition hover:bg-black/[0.04] dark:hover:bg-white/[0.06]">
             <ProfileAvatar name={user?.name ?? "Gerencia"} photoUrl={user?.photoUrl} size="sm" className="size-9 rounded-2xl shadow-none" />
             <div className="min-w-0 leading-tight">
               <p className="truncate text-sm font-semibold text-ink">{user?.name}</p>
@@ -267,11 +267,11 @@ export function DesktopShell({ children }: { children: React.ReactNode }) {
           <button
             type="button"
             onClick={() => { setViewPreference("mobile"); router.replace("/manager"); }}
-            className="tappable flex min-h-10 w-full items-center gap-2.5 rounded-2xl px-3 text-[13px] font-bold text-muted transition hover:bg-slate-100 hover:text-ink dark:hover:bg-slate-800/60"
+            className="tappable flex min-h-10 w-full items-center gap-2.5 rounded-2xl px-3 text-[13px] font-bold text-muted transition hover:bg-black/[0.04] hover:text-ink dark:hover:bg-white/[0.06]"
           >
             <Smartphone size={16} /> Ver versión móvil
           </button>
-          <button onClick={relock} className="tappable flex min-h-10 w-full items-center gap-2.5 rounded-2xl px-3 text-[13px] font-bold text-muted transition hover:bg-slate-100 hover:text-ink dark:hover:bg-slate-800/60">
+          <button onClick={relock} className="tappable flex min-h-10 w-full items-center gap-2.5 rounded-2xl px-3 text-[13px] font-bold text-muted transition hover:bg-black/[0.04] hover:text-ink dark:hover:bg-white/[0.06]">
             <UsersRound size={16} /> Cambiar de usuario
           </button>
           <button onClick={() => void handleLogout()} className="tappable flex min-h-10 w-full items-center gap-2.5 rounded-2xl px-3 text-[13px] font-bold text-rose-500 transition hover:bg-rose-50 dark:hover:bg-rose-950/30">
@@ -283,7 +283,7 @@ export function DesktopShell({ children }: { children: React.ReactNode }) {
       {/* ─── Contenido ─────────────────────────────────────────────── */}
       <DesktopChromeProvider>
         <div className="flex min-w-0 flex-1 flex-col">
-          <header className="sticky top-0 z-20 flex items-center justify-between gap-4 border-b border-line bg-white/80 px-8 py-3.5 backdrop-blur-xl dark:bg-[#0f1729]/85">
+          <header className="sticky top-0 z-20 flex items-center justify-between gap-4 border-b border-line bg-card/80 px-8 py-3.5 backdrop-blur-xl">
             <div className="min-w-0">
               <h1 className="text-[1.4rem] font-semibold leading-tight tracking-[-0.03em] text-ink">{section.title}</h1>
               {section.subtitle ? <p className="truncate text-sm text-muted">{section.subtitle}</p> : null}
