@@ -105,8 +105,12 @@ export default function AsistenciaPage() {
 
   // Banco de horas: lo que la app registró este mes. El ACUMULADO parte del
   // saldo que traían del Excel (User.hoursOwed) y le suma esto.
+  //
+  // "Horas del mes" NO se muestra en negativo (piso en 0): el descuento de un
+  // mes con saldo negativo ya vive en el Acumulado (que sí puede bajar) y en el
+  // desglose del día. Verlo también aquí en rojo lo hacía parecer doble.
   const balanceFor = useCallback(
-    (userId: string) => balanceOf(records.filter((record) => record.userId === userId)),
+    (userId: string) => Math.max(0, balanceOf(records.filter((record) => record.userId === userId))),
     [records]
   );
 
