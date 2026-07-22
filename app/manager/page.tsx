@@ -15,11 +15,9 @@ import {
   Megaphone,
   Receipt,
   ShoppingBag,
-  Trophy,
   UsersRound
 } from "lucide-react";
 import { getSession, logout } from "@/lib/auth";
-import { accruedCommission } from "@/lib/commission";
 import { completion, money, performanceTextClass } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { computeDailyStreak } from "@/lib/streaks";
@@ -36,6 +34,7 @@ import { UniformToday } from "@/components/home/UniformToday";
 import { SalesTrendCard } from "@/components/home/SalesTrendCard";
 import { TeamCelebrationsCard } from "@/components/home/TeamCelebrationsCard";
 import { QuincenaCard } from "@/components/home/QuincenaCard";
+import { ManagerPerformanceCard } from "@/components/home/ManagerPerformanceCard";
 import { buildSalesTrend, buildDailySeries } from "@/lib/trend";
 import { upcomingCelebrations } from "@/lib/celebrations";
 import { DesktopAutoRedirect } from "@/components/desktop/DesktopAutoRedirect";
@@ -143,14 +142,6 @@ export default function ManagerDashboard() {
     ? (data.kpis.find((k) => k.userId === manager.id && k.date !== undefined && k.date <= todayKey)
         ?? data.kpis.find((k) => k.userId === manager.id))
     : undefined;
-  const myProgress = myKpi ? completion(myKpi.dailySales, myKpi.dailyGoal) : 0;
-  // Alcance del MES (venta ÷ meta) y comisión ACUMULADA estimada. La comisión se
-  // calcula en vivo (venta mes × tasa del bracket) porque el RDV a veces trae
-  // commissionAmount en 0; solo lee el cálculo aprobado, no lo cambia.
-  const myAlcanceMes = myKpi ? completion(myKpi.monthlySales, myKpi.monthlyGoal) : 0;
-  const myCommission = manager && myKpi
-    ? accruedCommission({ sales: myKpi.monthlySales, goal: myKpi.monthlyGoal, minimum: myKpi.commissionMinimum, rules: data.commissionRules, role: manager.role })
-    : null;
   const salesTrend = buildSalesTrend(data.kpis.map((k) => ({ date: k.date, dailySales: k.dailySales, dailyGoal: k.dailyGoal })), todayKey);
   const ventasSeries = buildDailySeries(data.kpis.map((k) => ({ date: k.date, value: k.dailySales })), todayKey, 7);
   const ticketsSeries = buildDailySeries(data.kpis.map((k) => ({ date: k.date, value: k.transactions })), todayKey, 7);
@@ -247,32 +238,13 @@ export default function ManagerDashboard() {
 
         {manager && myKpi ? (
           <motion.div {...cardAnim(0.18)} className="mt-3">
-            <Card>
-              <div className="mb-3 flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <Trophy className="text-muted" size={18} />
-                  <h2 className="text-[15px] font-semibold">Tu desempeño individual</h2>
-                </div>
-                <Badge tone="default">Gerencia</Badge>
-              </div>
-              <div className="flex items-end justify-between gap-3">
-                <div>
-                  <p className="text-[11px] font-bold uppercase tracking-[0.13em] text-muted">Tu venta hoy</p>
-                  <p className="mt-1 text-2xl font-semibold leading-none text-ink">{money(myKpi.dailySales)}</p>
-                  <p className="mt-1 text-xs text-muted">Meta {money(myKpi.dailyGoal)}</p>
-                </div>
-                <span className={cn("text-[15px] font-semibold tabular-nums", performanceTextClass(myProgress))}>
-                  {myProgress}%
-                </span>
-              </div>
-              <div className="mt-2"><ProgressBar value={myProgress} /></div>
-              <div className="mt-3 grid grid-cols-2 gap-3 border-t border-line pt-3 text-sm">
-                <Metric label="Meta mes" value={money(myKpi.monthlyGoal ?? 0)} />
-                <Metric label="Venta mes" value={money(myKpi.monthlySales ?? 0)} />
-                <Metric label="Alcance" value={`${myAlcanceMes}%`} />
-                <Metric label={`Comisión${myCommission?.percent ? ` · ${myCommission.percent}%` : ""}`} value={money(myCommission?.amount ?? 0)} />
-              </div>
-            </Card>
+            <ManagerPerformanceCard
+              role={manager.role}
+              dailySales={myKpi.dailySales}
+              dailyGoal={myKpi.dailyGoal}
+              monthlySales={myKpi.monthlySales}
+              monthlyGoal={myKpi.monthlyGoal}
+            />
           </motion.div>
         ) : null}
 
@@ -507,14 +479,5 @@ export default function ManagerDashboard() {
       </PullToRefresh>
       <BottomNav />
     </>
-  );
-}
-
-function Metric({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <p className="text-[11px] text-muted">{label}</p>
-      <p className="mt-0.5 text-sm font-semibold tabular-nums text-ink">{value}</p>
-    </div>
   );
 }
