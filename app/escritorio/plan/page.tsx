@@ -221,7 +221,7 @@ export default function EscritorioPlan() {
             </div>
             <ProgressRing value={dayProgress} size={84} />
           </div>
-          <div className="mt-4 h-2 overflow-hidden rounded-full bg-blue-100 dark:bg-[#2a3a5c]">
+          <div className="mt-4 h-2 overflow-hidden rounded-full bg-blue-100 dark:bg-[#23242A]">
             <motion.div className="h-full rounded-full bg-gradient-to-r from-blue-600 to-cyan-400" initial={{ width: 0 }} animate={{ width: `${dayProgress}%` }} transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }} />
           </div>
         </Card>

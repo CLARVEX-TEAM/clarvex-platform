@@ -272,7 +272,7 @@ export default function EscritorioChat() {
       : "";
 
   return (
-    <div className="flex h-[calc(100vh-0px)] overflow-hidden rounded-2xl border border-line bg-white/60 dark:bg-[#0f1729]/60">
+    <div className="flex h-[calc(100vh-0px)] overflow-hidden rounded-2xl border border-line bg-white/60 dark:bg-[#141519]/60">
       {/* ─── Panel izquierdo: lista de rooms ─── */}
       <div className="flex w-72 shrink-0 flex-col border-r border-line">
         <div className="border-b border-line px-4 py-3.5">
@@ -306,7 +306,7 @@ export default function EscritorioChat() {
                       <ProfileAvatar name={room.other?.name ?? "?"} photoUrl={room.other?.photoUrl} size="sm" className="size-10 rounded-2xl" />
                     )}
                     {room.type === "DIRECT" && room.other?.online && (
-                      <span className="absolute -bottom-0.5 -right-0.5 size-3 rounded-full border-2 border-white bg-green-500 dark:border-[#0f1729]" />
+                      <span className="absolute -bottom-0.5 -right-0.5 size-3 rounded-full border-2 border-white bg-green-500 dark:border-[#141519]" />
                     )}
                     {room.unreadCount > 0 && (
                       <span className="absolute -right-1 -top-1 grid size-4 place-items-center rounded-full bg-volt text-[9px] font-semibold text-white">
@@ -386,7 +386,7 @@ export default function EscritorioChat() {
                   />
                 ) : null}
                 {roomInfo?.type === "DIRECT" && otherMember?.online && (
-                  <span className="absolute -bottom-0.5 -right-0.5 size-2.5 rounded-full border-2 border-white bg-green-500 dark:border-[#0f1729]" />
+                  <span className="absolute -bottom-0.5 -right-0.5 size-2.5 rounded-full border-2 border-white bg-green-500 dark:border-[#141519]" />
                 )}
               </div>
               <div>
@@ -555,7 +555,7 @@ export default function EscritorioChat() {
       {/* Menú de acciones del mensaje */}
       {menuMsg && (
         <div className="fixed inset-0 z-[60] grid place-items-center bg-black/40 p-4" onClick={() => setMenuMsg(null)}>
-          <div className="w-full max-w-xs rounded-3xl bg-white p-2 shadow-2xl dark:bg-[#0f1729]" onClick={(e) => e.stopPropagation()}>
+          <div className="w-full max-w-xs rounded-3xl bg-white p-2 shadow-2xl dark:bg-[#141519]" onClick={(e) => e.stopPropagation()}>
             {!menuMsg.deleted && (
               <ReactionBar onPick={(e) => void reactToMessage(menuMsg, e)} />
             )}

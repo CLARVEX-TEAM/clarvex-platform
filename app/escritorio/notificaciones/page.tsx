@@ -85,7 +85,7 @@ export default function EscritorioNotificaciones() {
       </div>
 
       {loading ? (
-        <div className="animate-pulse space-y-3">{[0, 1, 2, 3].map((i) => <div key={i} className="h-20 rounded-3xl bg-slate-200 dark:bg-slate-800" />)}</div>
+        <div className="animate-pulse space-y-3">{[0, 1, 2, 3].map((i) => <div key={i} className="h-20 rounded-3xl bg-panel dark:bg-panel" />)}</div>
       ) : items.length === 0 ? (
         <Card><EmptyState icon={Bell} title="Sin notificaciones" description="Aquí aparecerán comunicados, pendientes y avisos del equipo." /></Card>
       ) : (

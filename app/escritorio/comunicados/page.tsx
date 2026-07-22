@@ -158,7 +158,7 @@ export default function EscritorioComunicados() {
                 value={announcementPrompt}
                 onChange={(e) => setAnnouncementPrompt(e.target.value)}
                 placeholder="Ej. Promoción Jeans 30% descuento este fin..."
-                className="flex-1 min-h-9 rounded-xl border border-white/10 bg-[#0A0A0A] px-3 text-xs text-white placeholder-slate-500 outline-none focus:border-[#2563EB]"
+                className="flex-1 min-h-9 rounded-xl border border-white/10 bg-[#0A0A0A] px-3 text-xs text-white placeholder-muted outline-none focus:border-[#2563EB]"
               />
               <button
                 type="button"

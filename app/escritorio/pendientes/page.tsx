@@ -72,8 +72,8 @@ export default function EscritorioPendientes() {
   if (!data) {
     return (
       <div className="grid animate-pulse grid-cols-5 gap-5">
-        <div className="col-span-2 h-96 rounded-3xl bg-slate-200 dark:bg-slate-800" />
-        <div className="col-span-3 space-y-3">{[0, 1, 2].map((i) => <div key={i} className="h-28 rounded-3xl bg-slate-200 dark:bg-slate-800" />)}</div>
+        <div className="col-span-2 h-96 rounded-3xl bg-panel dark:bg-panel" />
+        <div className="col-span-3 space-y-3">{[0, 1, 2].map((i) => <div key={i} className="h-28 rounded-3xl bg-panel dark:bg-panel" />)}</div>
       </div>
     );
   }
@@ -183,7 +183,7 @@ export default function EscritorioPendientes() {
           <AppDatePicker label="Fecha límite" value={dueDate} onChange={setDueDate} required />
           <div className="flex gap-2">
             {editId ? (
-              <button type="button" onClick={resetForm} className="tappable min-h-12 flex-1 rounded-2xl bg-slate-100 dark:bg-slate-800 text-sm font-semibold text-ink">Cancelar</button>
+              <button type="button" onClick={resetForm} className="tappable min-h-12 flex-1 rounded-2xl bg-panel dark:bg-panel text-sm font-semibold text-ink">Cancelar</button>
             ) : null}
             <SendButton type="submit" loading={submitting} success={saved} sentLabel="¡Listo!" className="flex-1">
               {editId ? "Guardar cambios" : "Crear pendiente"}
@@ -232,7 +232,7 @@ export default function EscritorioPendientes() {
                   <span className="text-muted"><span className="text-[11px] font-bold uppercase tracking-[0.08em]">Vence</span> {p.dueDate}</span>
                 </div>
                 <div className="mt-3 flex items-center gap-2">
-                  <button onClick={() => editPending(p)} className="tappable min-h-9 rounded-xl bg-slate-100 dark:bg-slate-800 px-3 text-sm font-bold text-ink">Editar</button>
+                  <button onClick={() => editPending(p)} className="tappable min-h-9 rounded-xl bg-panel dark:bg-panel px-3 text-sm font-bold text-ink">Editar</button>
                   <select
                     aria-label="Cambiar estado"
                     value={p.status === "en proceso" ? "EN_PROCESO" : p.status.toUpperCase()}
@@ -285,13 +285,13 @@ export default function EscritorioPendientes() {
                 </div>
                 <button
                   onClick={() => setShowOptModal(false)}
-                  className="rounded-full bg-white/5 p-1.5 text-slate-400 hover:text-white transition"
+                  className="rounded-full bg-white/5 p-1.5 text-muted hover:text-white transition"
                 >
                   <X size={18} />
                 </button>
               </div>
 
-              <div className="space-y-4 text-xs text-slate-300 leading-relaxed">
+              <div className="space-y-4 text-xs text-muted leading-relaxed">
                 <div>
                   <h4 className="font-bold text-[#2563EB] uppercase tracking-wider text-[10px] mb-1.5">⚡ Prioridades Recomendadas</h4>
                   <div className="space-y-2">
@@ -300,7 +300,7 @@ export default function EscritorioPendientes() {
                       return (
                         <div key={task.id} className="rounded-xl bg-white/5 border border-white/5 p-3 space-y-1">
                           <p className="font-semibold text-white">{orig?.title || "Tarea"}</p>
-                          <p className="text-slate-400">{task.justification}</p>
+                          <p className="text-muted">{task.justification}</p>
                         </div>
                       );
                     })}
@@ -314,7 +314,7 @@ export default function EscritorioPendientes() {
                       {optimization.duplicates.map((dup: any, idx: number) => (
                         <div key={idx} className="rounded-xl bg-yellow-500/5 border border-yellow-500/10 p-3">
                           <p className="font-semibold text-white">Fusión sugerida: &quot;{dup.suggestedTitle}&quot;</p>
-                          <p className="text-slate-400 mt-1 text-[11px]">Cubre {dup.taskIds.length} pendientes repetidos.</p>
+                          <p className="text-muted mt-1 text-[11px]">Cubre {dup.taskIds.length} pendientes repetidos.</p>
                         </div>
                       ))}
                     </div>
@@ -329,7 +329,7 @@ export default function EscritorioPendientes() {
                       return (
                         <div key={sug.taskId} className="rounded-xl bg-blue-500/5 border border-blue-500/10 p-3 space-y-1">
                           <p className="font-semibold text-white">{orig?.title || "Tarea"}</p>
-                          <p className="text-slate-400 leading-normal">
+                          <p className="text-muted leading-normal">
                             Asignar a: <strong className="text-blue-400">{sug.recommendedOwnerName}</strong> · {sug.reason}
                           </p>
                         </div>

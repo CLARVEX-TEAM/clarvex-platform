@@ -34,8 +34,8 @@ export default function EscritorioBitacora() {
   if (!data) {
     return (
       <div className="grid animate-pulse grid-cols-5 gap-5">
-        <div className="col-span-2 h-80 rounded-3xl bg-slate-200 dark:bg-slate-800" />
-        <div className="col-span-3 space-y-3">{[0, 1, 2].map((i) => <div key={i} className="h-24 rounded-3xl bg-slate-200 dark:bg-slate-800" />)}</div>
+        <div className="col-span-2 h-80 rounded-3xl bg-panel dark:bg-panel" />
+        <div className="col-span-3 space-y-3">{[0, 1, 2].map((i) => <div key={i} className="h-24 rounded-3xl bg-panel dark:bg-panel" />)}</div>
       </div>
     );
   }

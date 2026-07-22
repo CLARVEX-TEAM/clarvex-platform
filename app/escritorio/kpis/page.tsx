@@ -152,16 +152,16 @@ export default function EscritorioKpis() {
                 </div>
                 <button
                   onClick={() => setShowIaReportModal(false)}
-                  className="rounded-full bg-white/5 p-1.5 text-slate-400 hover:text-white transition"
+                  className="rounded-full bg-white/5 p-1.5 text-muted hover:text-white transition"
                 >
                   <X size={18} />
                 </button>
               </div>
 
-              <div className="space-y-4 text-xs text-slate-300 leading-relaxed">
+              <div className="space-y-4 text-xs text-muted leading-relaxed">
                 <div>
                   <h4 className="font-bold text-[#2563EB] uppercase tracking-wider text-[10px]">Resumen Ejecutivo</h4>
-                  <p className="mt-1 bg-white/[0.02] border border-white/5 rounded-xl p-3 text-slate-200 italic">{iaReport.executiveSummary}</p>
+                  <p className="mt-1 bg-white/[0.02] border border-white/5 rounded-xl p-3 text-muted italic">{iaReport.executiveSummary}</p>
                 </div>
 
                 <div>
@@ -172,13 +172,13 @@ export default function EscritorioKpis() {
                 <div className="grid grid-cols-2 gap-3">
                   <div className="rounded-xl bg-emerald-500/5 border border-emerald-500/10 p-3">
                     <span className="font-bold text-emerald-400">Fortalezas:</span>
-                    <ul className="list-disc list-inside mt-1.5 space-y-1 text-slate-300 text-[11px]">
+                    <ul className="list-disc list-inside mt-1.5 space-y-1 text-muted text-[11px]">
                       {iaReport.strengths.map((s: string, idx: number) => <li key={idx}>{s}</li>)}
                     </ul>
                   </div>
                   <div className="rounded-xl bg-rose-500/5 border border-rose-500/10 p-3">
                     <span className="font-bold text-rose-400">Oportunidades:</span>
-                    <ul className="list-disc list-inside mt-1.5 space-y-1 text-slate-300 text-[11px]">
+                    <ul className="list-disc list-inside mt-1.5 space-y-1 text-muted text-[11px]">
                       {iaReport.weaknesses.map((w: string, idx: number) => <li key={idx}>{w}</li>)}
                     </ul>
                   </div>
@@ -202,18 +202,18 @@ export default function EscritorioKpis() {
 function PeriodBar({ period, setPeriod, selectedDate, setSelectedDate, rangeLabel, availableWeeks, availableRetailMonths }: { period: KpiPeriod; setPeriod: (period: KpiPeriod) => void; selectedDate: string; setSelectedDate: (date: string) => void; rangeLabel: string; availableWeeks: Array<{ weekNumber: number; weekStart: string; weekEnd: string }>; availableRetailMonths: Array<{ label: string; start: string; end: string }> }) {
   return (
     <div className="flex flex-wrap items-center gap-3">
-      <div className="flex rounded-full bg-slate-100 p-1 dark:bg-[#1a2540]" role="group" aria-label="Periodo de KPIs">
+      <div className="flex rounded-full bg-panel p-1 dark:bg-[#141519]" role="group" aria-label="Periodo de KPIs">
         {(["week", "month"] as const).map((option) => (
-          <button key={option} type="button" onClick={() => setPeriod(option)} className={`min-h-9 rounded-full px-5 text-sm font-semibold transition ${period === option ? "bg-white text-volt shadow-sm dark:bg-[#2a3a5c]" : "text-muted"}`}>{option === "week" ? "Semana" : "Mes"}</button>
+          <button key={option} type="button" onClick={() => setPeriod(option)} className={`min-h-9 rounded-full px-5 text-sm font-semibold transition ${period === option ? "bg-white text-volt shadow-sm dark:bg-[#23242A]" : "text-muted"}`}>{option === "week" ? "Semana" : "Mes"}</button>
         ))}
       </div>
       <div className="flex items-center gap-2.5 rounded-2xl border border-line bg-panel px-3 py-2">
-        <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-blue-50 text-volt dark:bg-[#1a2540]"><CalendarDays size={17} /></span>
+        <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-blue-50 text-volt dark:bg-[#141519]"><CalendarDays size={17} /></span>
         <div className="min-w-0"><p className="text-[10px] font-bold uppercase tracking-[0.1em] text-muted">Período</p><p className="truncate text-sm font-semibold text-ink">{rangeLabel}</p></div>
         {period === "week" ? (
-          <select aria-label="Seleccionar semana RDV" value={selectedDate} onChange={(event) => setSelectedDate(event.target.value)} className="min-h-9 rounded-xl bg-slate-100 px-2 text-xs font-bold text-ink outline-none focus:ring-4 focus:ring-volt/20 dark:bg-[#1a2540]">{availableWeeks.map((week) => <option key={`${week.weekNumber}-${week.weekStart}`} value={week.weekStart}>Semana {week.weekNumber}</option>)}</select>
+          <select aria-label="Seleccionar semana RDV" value={selectedDate} onChange={(event) => setSelectedDate(event.target.value)} className="min-h-9 rounded-xl bg-panel px-2 text-xs font-bold text-ink outline-none focus:ring-4 focus:ring-volt/20 dark:bg-[#141519]">{availableWeeks.map((week) => <option key={`${week.weekNumber}-${week.weekStart}`} value={week.weekStart}>Semana {week.weekNumber}</option>)}</select>
         ) : (
-          <select aria-label="Seleccionar mes retail" value={availableRetailMonths.find((month) => selectedDate >= month.start && selectedDate <= month.end)?.start ?? availableRetailMonths.at(-1)?.start ?? selectedDate} onChange={(event) => setSelectedDate(event.target.value)} className="min-h-9 rounded-xl bg-slate-100 px-2 text-xs font-bold text-ink outline-none focus:ring-4 focus:ring-volt/20 dark:bg-[#1a2540]">{availableRetailMonths.map((month) => <option key={month.start} value={month.start}>{month.label}</option>)}</select>
+          <select aria-label="Seleccionar mes retail" value={availableRetailMonths.find((month) => selectedDate >= month.start && selectedDate <= month.end)?.start ?? availableRetailMonths.at(-1)?.start ?? selectedDate} onChange={(event) => setSelectedDate(event.target.value)} className="min-h-9 rounded-xl bg-panel px-2 text-xs font-bold text-ink outline-none focus:ring-4 focus:ring-volt/20 dark:bg-[#141519]">{availableRetailMonths.map((month) => <option key={month.start} value={month.start}>{month.label}</option>)}</select>
         )}
       </div>
     </div>
@@ -257,7 +257,7 @@ function ResumenView({ activeKpi, team, progress, periodLabel, hasDiscountSource
             </div>
             <div className="flex shrink-0 items-center gap-3">
               {isManager ? (
-                <motion.button onClick={onOpenTargets} whileTap={{ scale: 0.9 }} whileHover={{ scale: 1.08 }} className="grid size-10 place-items-center rounded-2xl bg-blue-100/70 text-volt dark:bg-[#1a2540]" aria-label="Configurar metas KPI">
+                <motion.button onClick={onOpenTargets} whileTap={{ scale: 0.9 }} whileHover={{ scale: 1.08 }} className="grid size-10 place-items-center rounded-2xl bg-blue-100/70 text-volt dark:bg-[#141519]" aria-label="Configurar metas KPI">
                   <Settings2 size={18} />
                 </motion.button>
               ) : null}
@@ -315,7 +315,7 @@ function TeamTable({ team }: { team: KpiReportItem[] }) {
           </thead>
           <tbody>
             {team.map((item) => (
-              <tr key={item.userId} className="border-t border-line transition-colors even:bg-slate-50/50 hover:bg-volt/[0.04] dark:even:bg-white/[0.02]">
+              <tr key={item.userId} className="border-t border-line transition-colors even:bg-panel/50 hover:bg-volt/[0.04] dark:even:bg-white/[0.02]">
                 <td className="px-4 py-2.5">
                   <div className="flex items-center gap-2.5">
                     <ProfileAvatar name={item.userName} photoUrl={item.photoUrl} size="sm" className="size-8 rounded-xl shadow-none" />
@@ -376,8 +376,8 @@ function MetricCard({ metric, value, detail, sparkData, trafficLight }: { metric
 function VentasView({ activeKpi, chartData, team, progress, periodLabel }: { activeKpi: KpiReportItem; chartData: Array<{ name: string; venta: number; meta: number }>; team: KpiReportItem[]; progress: number; periodLabel: string }) {
   const { isDark } = useTheme();
   const tooltipStyle = isDark
-    ? { background: "#1a2540", border: "1px solid #2a3a5c", borderRadius: 12, color: "#f0f4ff", boxShadow: "0 6px 14px rgb(0 0 0 / 0.3)" }
-    : { background: "#FFFFFF", border: "1px solid #E2E8F0", borderRadius: 12, color: "#0F172A", boxShadow: "0 6px 14px rgb(15 23 42 / 0.08)" };
+    ? { background: "#141519", border: "1px solid #23242A", borderRadius: 12, color: "#F2F3F5", boxShadow: "0 6px 14px rgb(0 0 0 / 0.3)" }
+    : { background: "#FFFFFF", border: "1px solid #ECECEF", borderRadius: 12, color: "#17181C", boxShadow: "0 6px 14px rgb(15 23 42 / 0.08)" };
   const data = chartData.length ? chartData : [{ name: activeKpi.userName, venta: activeKpi.sales, meta: activeKpi.goal }];
   return (
     <div className="space-y-4">
@@ -405,7 +405,7 @@ function VentasView({ activeKpi, chartData, team, progress, periodLabel }: { act
               <XAxis dataKey="name" tick={{ fill: isDark ? "#8899BB" : "#64748B", fontSize: 10 }} axisLine={false} tickLine={false} />
               <CartesianGrid strokeDasharray="3 3" stroke={isDark ? "rgba(255,255,255,0.08)" : "rgba(15,23,42,0.07)"} />
               <Tooltip contentStyle={tooltipStyle} formatter={(value) => [money(Number(value)), "Venta"]} />
-              <Area type="monotone" dataKey="venta" stroke="#2563EB" strokeWidth={2.5} fill="url(#kpiSalesD)" dot={{ r: 4, fill: "#2563EB", stroke: isDark ? "#1a2540" : "#FFFFFF", strokeWidth: 1.5 }} activeDot={{ r: 6, fill: "#3B82F6", stroke: isDark ? "#1a2540" : "#FFFFFF", strokeWidth: 2 }} animationDuration={800} />
+              <Area type="monotone" dataKey="venta" stroke="#2563EB" strokeWidth={2.5} fill="url(#kpiSalesD)" dot={{ r: 4, fill: "#2563EB", stroke: isDark ? "#141519" : "#FFFFFF", strokeWidth: 1.5 }} activeDot={{ r: 6, fill: "#3B82F6", stroke: isDark ? "#141519" : "#FFFFFF", strokeWidth: 2 }} animationDuration={800} />
             </AreaChart>
           </ResponsiveContainer>
         </div>
@@ -466,13 +466,13 @@ function ComisionView({ activeKpi, rules, simulatedSales, setSimulatedSales, act
         <Card className="premium-hero p-5">
           <div className="flex items-start justify-between gap-4">
             <div><p className="text-[11px] font-bold uppercase tracking-[0.13em] text-muted">Comisión estimada {periodLabel}</p><h2 className="mt-1 text-[2.1rem] font-semibold leading-none text-ink">{hasMinimum ? money(simulatedCommission) : "—"}</h2><p className={`mt-1 text-sm ${activeRule ? "text-muted" : "font-semibold text-rose-700"}`}>{activeRule ? `${activeRule.commissionPercent}% por nivel actual` : missingRuleMessage}</p></div>
-            <span className="grid size-12 place-items-center rounded-2xl bg-violet-50 text-purple dark:bg-[#1a2540]"><Trophy size={25} /></span>
+            <span className="grid size-12 place-items-center rounded-2xl bg-violet-50 text-purple dark:bg-[#141519]"><Trophy size={25} /></span>
           </div>
           <div className="mt-3 grid grid-cols-2 gap-2"><Mini label="Porcentaje" value={hasMinimum ? `${appliedPercent}%` : "—"} /><Mini label="Alcance vs mínimo" value={hasMinimum ? `${Math.round(simulatedAchievement)}%` : "—"} /></div>
         </Card>
         <Card className="p-5">
           <div className="mb-2.5 flex items-center gap-2"><Calculator className="text-volt" size={18} /><h2 className="text-lg font-semibold text-ink">Simulador {periodLabel}</h2></div>
-          <input value={simulatedSales} onChange={(event) => setSimulatedSales(event.target.value.replace(/[^\d.]/g, ""))} inputMode="decimal" placeholder={String(Math.round(activeKpi.sales))} aria-label={`Venta simulada ${periodLabel}`} className="min-h-14 w-full rounded-2xl border border-line bg-blue-50 px-4 text-xl font-semibold text-ink outline-none focus:border-volt focus:ring-4 focus:ring-volt/15 dark:bg-[#1a2540]" />
+          <input value={simulatedSales} onChange={(event) => setSimulatedSales(event.target.value.replace(/[^\d.]/g, ""))} inputMode="decimal" placeholder={String(Math.round(activeKpi.sales))} aria-label={`Venta simulada ${periodLabel}`} className="min-h-14 w-full rounded-2xl border border-line bg-blue-50 px-4 text-xl font-semibold text-ink outline-none focus:border-volt focus:ring-4 focus:ring-volt/15 dark:bg-[#141519]" />
         </Card>
       </div>
       <Card className="h-fit p-5">
@@ -501,8 +501,8 @@ function RankingView({ ranking, periodLabel, isAdvisor, currentUserId }: { ranki
   const [metricId, setMetricId] = useState<RankMetricId>("venta");
   const metric = RANK_METRICS.find((item) => item.id === metricId) ?? RANK_METRICS[0];
   const tooltipStyle = isDark
-    ? { background: "#1a2540", border: "1px solid #2a3a5c", borderRadius: 12, color: "#f0f4ff", boxShadow: "0 6px 14px rgb(0 0 0 / 0.3)" }
-    : { background: "#FFFFFF", border: "1px solid #E2E8F0", borderRadius: 12, color: "#0F172A", boxShadow: "0 6px 14px rgb(15 23 42 / 0.08)" };
+    ? { background: "#141519", border: "1px solid #23242A", borderRadius: 12, color: "#F2F3F5", boxShadow: "0 6px 14px rgb(0 0 0 / 0.3)" }
+    : { background: "#FFFFFF", border: "1px solid #ECECEF", borderRadius: 12, color: "#17181C", boxShadow: "0 6px 14px rgb(15 23 42 / 0.08)" };
   const ranked = useMemo(() => {
     if (isAdvisor) return ranking.map((item) => ({ item, position: item.ranking, value: item.achievement as number | null }));
     const withValue = ranking.map((item) => ({ item, value: metric.get(item) }));
@@ -657,10 +657,10 @@ function TargetSheet({ targets, period, onClose, onSave }: { targets: KpiTarget[
 
   return (
     <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm" onMouseDown={(event) => { if (event.currentTarget === event.target && !saving) onClose(); }}>
-      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} transition={{ duration: 0.2 }} className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl dark:bg-slate-900">
+      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} transition={{ duration: 0.2 }} className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl dark:bg-void">
         <div className="mb-5 flex items-center justify-between">
           <h2 className="text-lg font-semibold text-ink">Metas KPI — {period === "SEMANA" ? "Semana" : "Mes"}</h2>
-          <button onClick={onClose} className="grid size-9 place-items-center rounded-full bg-slate-100 text-ink dark:bg-slate-800"><X size={16} /></button>
+          <button onClick={onClose} className="grid size-9 place-items-center rounded-full bg-panel text-ink dark:bg-panel"><X size={16} /></button>
         </div>
         <div className="grid grid-cols-2 gap-3">
           {editableMetrics.map((metric) => {
@@ -668,7 +668,7 @@ function TargetSheet({ targets, period, onClose, onSave }: { targets: KpiTarget[
             return (
               <div key={metric}>
                 <label className="text-[11px] font-bold uppercase tracking-[0.1em] text-muted">{config?.targetLabel}</label>
-                <input type="number" min="0" step="0.01" value={form[metric]} onChange={(e) => setForm((prev) => ({ ...prev, [metric]: e.target.value }))} placeholder={metric === "upt" ? "Ej: 1.5" : metric === "conversion" ? "Ej: 25" : "Ej: 50000"} className="mt-1 min-h-11 w-full rounded-2xl border border-line bg-slate-50 px-4 text-sm font-bold text-ink outline-none focus:border-volt focus:ring-4 focus:ring-volt/15 dark:bg-slate-800/50" />
+                <input type="number" min="0" step="0.01" value={form[metric]} onChange={(e) => setForm((prev) => ({ ...prev, [metric]: e.target.value }))} placeholder={metric === "upt" ? "Ej: 1.5" : metric === "conversion" ? "Ej: 25" : "Ej: 50000"} className="mt-1 min-h-11 w-full rounded-2xl border border-line bg-panel px-4 text-sm font-bold text-ink outline-none focus:border-volt focus:ring-4 focus:ring-volt/15 dark:bg-panel" />
               </div>
             );
           })}

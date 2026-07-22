@@ -206,7 +206,7 @@ export default function EscritorioEncuestas() {
                                   return (
                                     <div key={star} className="flex items-center gap-2 text-[11px]">
                                       <span className="w-6 shrink-0 font-bold text-muted">{star}★</span>
-                                      <div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800"><div className="h-full rounded-full bg-amber-400" style={{ width: `${w}%` }} /></div>
+                                      <div className="h-2 flex-1 overflow-hidden rounded-full bg-panel dark:bg-panel"><div className="h-full rounded-full bg-amber-400" style={{ width: `${w}%` }} /></div>
                                       <span className="w-6 shrink-0 text-right font-bold text-muted">{n}</span>
                                     </div>
                                   );

@@ -113,19 +113,19 @@ export default function EscritorioHorarios() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         {isManager ? (
-          <div className="flex rounded-full bg-slate-100 p-1 dark:bg-slate-800" role="group" aria-label="Vista de horarios">
-            <button type="button" onClick={() => setView("team")} className={`min-h-9 rounded-full px-5 text-sm font-semibold transition ${view === "team" ? "bg-white text-volt shadow-sm dark:bg-slate-600" : "text-muted"}`}>Equipo</button>
-            <button type="button" onClick={() => setView("mine")} className={`min-h-9 rounded-full px-5 text-sm font-semibold transition ${view === "mine" ? "bg-white text-volt shadow-sm dark:bg-slate-600" : "text-muted"}`}>Mi horario</button>
+          <div className="flex rounded-full bg-panel p-1 dark:bg-panel" role="group" aria-label="Vista de horarios">
+            <button type="button" onClick={() => setView("team")} className={`min-h-9 rounded-full px-5 text-sm font-semibold transition ${view === "team" ? "bg-white text-volt shadow-sm dark:bg-panel" : "text-muted"}`}>Equipo</button>
+            <button type="button" onClick={() => setView("mine")} className={`min-h-9 rounded-full px-5 text-sm font-semibold transition ${view === "mine" ? "bg-white text-volt shadow-sm dark:bg-panel" : "text-muted"}`}>Mi horario</button>
           </div>
         ) : <span />}
 
         <div className="flex items-center gap-2">
-          <button type="button" onClick={() => moveWeek(-1)} className="grid size-10 place-items-center rounded-full bg-slate-100 text-ink transition hover:bg-slate-200 dark:bg-slate-800" aria-label="Semana anterior"><ChevronLeft size={18} /></button>
+          <button type="button" onClick={() => moveWeek(-1)} className="grid size-10 place-items-center rounded-full bg-panel text-ink transition hover:bg-black/[0.04] dark:bg-panel" aria-label="Semana anterior"><ChevronLeft size={18} /></button>
           <div className="min-w-44 text-center">
             <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-volt">Semana {isoWeekNumber(new Date(`${weekStart}T00:00:00Z`))}</p>
             <p className="text-xs font-semibold text-muted">{rangeLabel}</p>
           </div>
-          <button type="button" onClick={() => moveWeek(1)} className="grid size-10 place-items-center rounded-full bg-slate-100 text-ink transition hover:bg-slate-200 dark:bg-slate-800" aria-label="Semana siguiente"><ChevronRight size={18} /></button>
+          <button type="button" onClick={() => moveWeek(1)} className="grid size-10 place-items-center rounded-full bg-panel text-ink transition hover:bg-black/[0.04] dark:bg-panel" aria-label="Semana siguiente"><ChevronRight size={18} /></button>
           <Button variant={weekStart === currentWeek ? "primary" : "ghost"} className="min-h-9 px-3 text-xs" onClick={() => setWeekStart(currentWeek)}>Actual</Button>
           <select aria-label="Semanas disponibles" value={weekStart} onChange={(event) => setWeekStart(event.target.value)} className="min-h-9 rounded-full border border-line bg-panel px-3 text-xs font-semibold text-ink outline-none focus:ring-4 focus:ring-volt/20">
             {Array.from(new Set([weekStart, currentWeek, ...(payload?.availableWeeks ?? [])])).sort().reverse().map((week) => <option key={week} value={week}>{formatWeekRange(week)}</option>)}
@@ -135,7 +135,7 @@ export default function EscritorioHorarios() {
 
       <div className="grid grid-cols-4 gap-3">
         <Summary label="Laborando" value={summary.working} className="text-emerald-600" />
-        <Summary label="Descansos" value={summary.off} className="text-slate-600 dark:text-slate-300" />
+        <Summary label="Descansos" value={summary.off} className="text-muted dark:text-muted" />
         <Summary label="Vacaciones" value={summary.vacation} className="text-sky-600" />
         <Summary label="Pago día" value={summary.paid} className="text-amber-600" />
       </div>
