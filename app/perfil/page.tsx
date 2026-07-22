@@ -200,7 +200,7 @@ export default function ProfilePage() {
               </div>
             </Card>
 
-            <Card className="p-3.5">
+            <Card className="mb-3 p-3.5">
               <div className="flex items-center gap-3">
                 <span className="grid size-10 place-items-center rounded-2xl bg-violet-50 dark:bg-[#1a2540] text-purple"><Fingerprint size={19} /></span>
                 <div><h2 className="font-semibold text-ink">Acceso biometrico</h2><p className="text-xs text-muted">Face ID o huella dactilar para entrar sin PIN.</p></div>
