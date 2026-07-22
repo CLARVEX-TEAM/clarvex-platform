@@ -25,6 +25,7 @@ import { SalesTrendCard } from "@/components/home/SalesTrendCard";
 import { TeamCelebrationsCard } from "@/components/home/TeamCelebrationsCard";
 import { PaceCard } from "@/components/home/PaceCard";
 import { AchievementsCard } from "@/components/home/AchievementsCard";
+import { QuincenaCard } from "@/components/home/QuincenaCard";
 import { useAppData } from "@/lib/use-app-data";
 
 const cardAnim = (delay: number) => ({
@@ -299,6 +300,10 @@ export default function AdvisorDashboard() {
 
         <motion.div {...cardAnim(0.12)} className="mt-3">
           <PaceCard sales={daily.dailySales} goal={daily.dailyGoal} userId={user.id} />
+        </motion.div>
+
+        <motion.div {...cardAnim(0.13)} className="mt-3">
+          <QuincenaCard userId={user.id} />
         </motion.div>
 
         <div className="mt-3">
