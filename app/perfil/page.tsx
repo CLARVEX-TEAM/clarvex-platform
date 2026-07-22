@@ -220,7 +220,7 @@ export default function ProfilePage() {
               )}
             </Card>
 
-            <Link href="/soporte" className="block">
+            <Link href="/soporte" className="mb-3 block">
               <Card className="p-3.5 transition active:scale-[0.99]">
                 <div className="flex items-center gap-3">
                   <span className="grid size-10 place-items-center rounded-2xl bg-volt/12 text-volt"><LifeBuoy size={19} /></span>
@@ -230,7 +230,7 @@ export default function ProfilePage() {
               </Card>
             </Link>
 
-            <Link href="/legal" className="block">
+            <Link href="/legal" className="mb-3 block">
               <Card className="p-3.5 transition active:scale-[0.99]">
                 <div className="flex items-center gap-3">
                   <span className="grid size-10 place-items-center rounded-2xl bg-panel text-ink/70"><ScrollText size={19} /></span>
