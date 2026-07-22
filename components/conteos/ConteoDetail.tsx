@@ -43,13 +43,20 @@ export function ConteoDetailView({ countId: id, desktop = false }: { countId: st
   }, [router]);
 
   const load = useCallback(async () => {
-    const res = await fetch(`/api/conteos/${id}`, { cache: "no-store" });
-    if (res.status === 404) { setNotFound(true); return; }
-    const data = (await res.json()) as { count?: CountDetail; tags?: TagRow[]; entries?: SerializedEntry[] };
-    if (!data.count) return;
-    setCount(data.count);
-    setTags(data.tags ?? []);
-    setEntries(new Map((data.entries ?? []).map((entry) => [entry.tagId, entry])));
+    try {
+      const res = await fetch(`/api/conteos/${id}`, { cache: "no-store" });
+      if (res.status === 404) { setNotFound(true); return; }
+      const data = (await res.json()) as { count?: CountDetail; tags?: TagRow[]; entries?: SerializedEntry[] };
+      if (!data.count) return;
+      setCount(data.count);
+      setTags(data.tags ?? []);
+      setEntries(new Map((data.entries ?? []).map((entry) => [entry.tagId, entry])));
+    } catch {
+      // Fallo de red transitorio: el poll corre cada pocos segundos (señal
+      // intermitente, app en segundo plano, o navegó a otra pantalla a medio
+      // request). El siguiente poll reintenta solo; no es un error real, así que
+      // se ignora en vez de subir como "unhandledrejection" a Sentry.
+    }
   }, [id]);
 
   // Avance en vivo: varias personas capturan a la vez. Con el conteo abierto
@@ -107,12 +114,16 @@ export function ConteoDetailView({ countId: id, desktop = false }: { countId: st
     const closing = count.status === "OPEN";
     const pending = progress.PISO.pendingNumbers.length + progress.BODEGA.pendingNumbers.length;
     if (closing && pending > 0 && !confirm(`Faltan ${pending} marbetes por contar. ¿Cerrar de todos modos?`)) return;
-    await fetch(`/api/conteos/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status: closing ? "CLOSED" : "OPEN" })
-    });
-    await load();
+    try {
+      await fetch(`/api/conteos/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: closing ? "CLOSED" : "OPEN" })
+      });
+      await load();
+    } catch {
+      // Red intermitente: el estado no cambió. El poll mantiene el actual.
+    }
   }
 
   if (notFound) {
@@ -247,8 +258,12 @@ export function ConteoDetailView({ countId: id, desktop = false }: { countId: st
                 onChanged={load}
                 onToggleStatus={toggleStatus}
                 onDelete={async () => {
-                  const res = await fetch(`/api/conteos/${id}`, { method: "DELETE" });
-                  if (res.ok) router.replace(desktop ? "/escritorio/conteos" : "/conteos");
+                  try {
+                    const res = await fetch(`/api/conteos/${id}`, { method: "DELETE" });
+                    if (res.ok) router.replace(desktop ? "/escritorio/conteos" : "/conteos");
+                  } catch {
+                    // Red intermitente: no se eliminó. El usuario puede reintentar.
+                  }
                 }}
               />
             )}
@@ -500,6 +515,8 @@ function CaptureSheet({ countId, tag, entry, isOpen, onClose, onSaved }: {
       const data = (await res.json()) as { entry?: SerializedEntry; error?: string };
       if (data.error) { setError(data.error); return; }
       if (data.entry) onSaved(data.entry);
+    } catch {
+      setError("Sin conexión. Intenta de nuevo.");
     } finally {
       setSaving(false);
     }
@@ -615,6 +632,8 @@ function ManagerPanel({ countId, count, isOpen, canDelete, onChanged, onToggleSt
       setKardexSaved(true);
       setTimeout(() => setKardexSaved(false), 2000);
       await onChanged();
+    } catch {
+      // Red intermitente: no se guardó. El usuario puede reintentar.
     } finally {
       setBusy(false);
     }
@@ -633,18 +652,24 @@ function ManagerPanel({ countId, count, isOpen, canDelete, onChanged, onToggleSt
       setConcept("");
       setPieces("");
       await onChanged();
+    } catch {
+      // Red intermitente: no se agregó. El usuario puede reintentar.
     } finally {
       setBusy(false);
     }
   }
 
   async function removeNoUpc(itemId: string) {
-    await fetch(`/api/conteos/${countId}/no-upc`, {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ itemId })
-    });
-    await onChanged();
+    try {
+      await fetch(`/api/conteos/${countId}/no-upc`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ itemId })
+      });
+      await onChanged();
+    } catch {
+      // Red intermitente: no se quitó. El usuario puede reintentar.
+    }
   }
 
   return (
