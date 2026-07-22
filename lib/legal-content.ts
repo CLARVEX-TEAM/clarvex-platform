@@ -305,7 +305,7 @@ export const LEGAL_CONTENT: Record<string, LegalContent> = {
       },
       {
         "t": "p",
-        "x": "En cumplimiento de lo dispuesto por los artículos 15, 16 y 17 [Verificar la numeración de artículos conforme al texto de la LFPDPPP vigente publicada el 20-mar-2025] de la Ley Federal de Protección de Datos Personales en Posesión de los Particulares vigente, publicada en el Diario Oficial de la Federación el 20 de marzo de 2025 y en vigor a partir del 21 de marzo de 2025 (en lo sucesivo, la \"Ley\" o \"LFPDPPP\"), la cual abrogó la ley del mismo nombre de 2010, su Reglamento y los Lineamientos del Aviso de Privacidad aplicables, se pone a disposición del titular el presente Aviso de Privacidad. La autoridad competente en materia de protección de datos personales en posesión de los particulares es la Secretaría Anticorrupción y Buen Gobierno, tras la desaparición del Instituto Nacional de Transparencia, Acceso a la Información y Protección de Datos Personales (INAI) por virtud de la reforma constitucional de Simplificación Orgánica publicada en el Diario Oficial de la Federación el 20 de diciembre de 2024."
+        "x": "En cumplimiento de lo dispuesto por los artículos 15, 16 y 17 de la Ley Federal de Protección de Datos Personales en Posesión de los Particulares vigente, publicada en el Diario Oficial de la Federación el 20 de marzo de 2025 y en vigor a partir del 21 de marzo de 2025 (en lo sucesivo, la \"Ley\" o \"LFPDPPP\"), la cual abrogó la ley del mismo nombre de 2010, su Reglamento y los Lineamientos del Aviso de Privacidad aplicables, se pone a disposición del titular el presente Aviso de Privacidad. La autoridad competente en materia de protección de datos personales en posesión de los particulares es la Secretaría Anticorrupción y Buen Gobierno, tras la desaparición del Instituto Nacional de Transparencia, Acceso a la Información y Protección de Datos Personales (INAI) por virtud de la reforma constitucional de Simplificación Orgánica publicada en el Diario Oficial de la Federación el 20 de diciembre de 2024."
       },
       {
         "t": "p",
@@ -413,7 +413,7 @@ export const LEGAL_CONTENT: Record<string, LegalContent> = {
       },
       {
         "t": "p",
-        "x": "De conformidad con el artículo 9 [Verificar la numeración de artículos conforme al texto de la LFPDPPP vigente publicada el 20-mar-2025] de la Ley, los datos biométricos constituyen datos personales sensibles. En consecuencia, el tratamiento de dichos datos requiere el consentimiento expreso de su titular, el cual se recabará mediante la manifestación de voluntad afirmativa del titular al momento de activar dichos mecanismos de autenticación en la Plataforma."
+        "x": "De conformidad con el artículo 9 de la Ley, los datos biométricos constituyen datos personales sensibles. En consecuencia, el tratamiento de dichos datos requiere el consentimiento expreso de su titular, el cual se recabará mediante la manifestación de voluntad afirmativa del titular al momento de activar dichos mecanismos de autenticación en la Plataforma."
       },
       {
         "t": "p",
@@ -521,7 +521,7 @@ export const LEGAL_CONTENT: Record<string, LegalContent> = {
       },
       {
         "t": "p",
-        "x": "De conformidad con el artículo 37 [Verificar la numeración de artículos conforme al texto de la LFPDPPP vigente publicada el 20-mar-2025] de la Ley, ciertas transferencias podrán realizarse sin requerir el consentimiento del titular, entre ellas las necesarias para el cumplimiento de una relación jurídica, las requeridas por autoridad competente y aquellas realizadas a sociedades o proveedores que operan por cuenta del Responsable."
+        "x": "De conformidad con el artículo 37 de la Ley, ciertas transferencias podrán realizarse sin requerir el consentimiento del titular, entre ellas las necesarias para el cumplimiento de una relación jurídica, las requeridas por autoridad competente y aquellas realizadas a sociedades o proveedores que operan por cuenta del Responsable."
       },
       {
         "t": "h",
@@ -929,7 +929,7 @@ export const LEGAL_CONTENT: Record<string, LegalContent> = {
       },
       {
         "t": "p",
-        "x": "La presente Política complementa y desarrolla el Aviso de Privacidad de CLARVEX. Mientras que el Aviso de Privacidad constituye la notificación breve exigida por los artículos 15 a 17 [Verificar la numeración de artículos conforme al texto de la LFPDPPP vigente publicada el 20-mar-2025] de la Ley, la presente Política es un instrumento más extenso que detalla las prácticas internas de tratamiento y las medidas de seguridad aplicadas. En caso de discrepancia respecto de las menciones mínimas legalmente exigibles, prevalecerá el Aviso de Privacidad."
+        "x": "La presente Política complementa y desarrolla el Aviso de Privacidad de CLARVEX. Mientras que el Aviso de Privacidad constituye la notificación breve exigida por los artículos 15 a 17 de la Ley, la presente Política es un instrumento más extenso que detalla las prácticas internas de tratamiento y las medidas de seguridad aplicadas. En caso de discrepancia respecto de las menciones mínimas legalmente exigibles, prevalecerá el Aviso de Privacidad."
       },
       {
         "t": "h",
@@ -1053,7 +1053,7 @@ export const LEGAL_CONTENT: Record<string, LegalContent> = {
       },
       {
         "t": "p",
-        "x": "La autenticación en la Plataforma puede realizarse mediante datos biométricos (reconocimiento facial mediante Face ID y huella dactilar). Dichos datos constituyen datos personales sensibles y sólo se recaban previo consentimiento expreso del titular, conforme al artículo 9 [Verificar la numeración de artículos conforme al texto de la LFPDPPP vigente publicada el 20-mar-2025] de la Ley."
+        "x": "La autenticación en la Plataforma puede realizarse mediante datos biométricos (reconocimiento facial mediante Face ID y huella dactilar). Dichos datos constituyen datos personales sensibles y sólo se recaban previo consentimiento expreso del titular, conforme al artículo 9 de la Ley."
       },
       {
         "t": "p",
@@ -1149,7 +1149,7 @@ export const LEGAL_CONTENT: Record<string, LegalContent> = {
       },
       {
         "t": "p",
-        "x": "En caso de que ocurra una vulneración de seguridad que afecte de forma significativa los derechos patrimoniales o morales de los titulares, el Responsable informará dicha situación, sin dilación indebida, a los titulares afectados y, en su caso, a la Empresa Cliente correspondiente, a fin de que puedan tomar las medidas oportunas para la defensa de sus derechos, conforme a los artículos 20 de la Ley y 63 a 66 de su Reglamento [Verificar la numeración de artículos conforme al texto de la LFPDPPP vigente publicada el 20-mar-2025]."
+        "x": "En caso de que ocurra una vulneración de seguridad que afecte de forma significativa los derechos patrimoniales o morales de los titulares, el Responsable informará dicha situación, sin dilación indebida, a los titulares afectados y, en su caso, a la Empresa Cliente correspondiente, a fin de que puedan tomar las medidas oportunas para la defensa de sus derechos, conforme a los artículos 20 de la Ley y 63 a 66 de su Reglamento."
       },
       {
         "t": "p",
@@ -1189,7 +1189,7 @@ export const LEGAL_CONTENT: Record<string, LegalContent> = {
       },
       {
         "t": "p",
-        "x": "La eventual transferencia internacional derivada del almacenamiento de objetos en Cloudflare R2 se realiza al amparo del artículo 37 [Verificar la numeración de artículos conforme al texto de la LFPDPPP vigente publicada el 20-mar-2025] de la Ley y del principio de que los proveedores actúan por cuenta del Responsable, sin que se requiera el consentimiento del titular cuando la transferencia sea necesaria para el mantenimiento o cumplimiento de la relación jurídica."
+        "x": "La eventual transferencia internacional derivada del almacenamiento de objetos en Cloudflare R2 se realiza al amparo del artículo 37 de la Ley y del principio de que los proveedores actúan por cuenta del Responsable, sin que se requiera el consentimiento del titular cuando la transferencia sea necesaria para el mantenimiento o cumplimiento de la relación jurídica."
       },
       {
         "t": "p",
