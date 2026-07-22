@@ -6,7 +6,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { AlertTriangle, CheckCircle2, Download, Lock, LockOpen, Plus, ScanLine, Trash2, X } from "lucide-react";
 import { getSession } from "@/lib/auth";
 import type { User } from "@/lib/types";
-import { entryCountsDone, entryNeedsRecount, entryReal, parseTagQr, zoneProgress, type CycleZone, type SerializedEntry, type SerializedTag } from "@/lib/cycle-count";
+import { entryCountsDone, entryNeedsRecount, entryReal, entryResolved, parseTagQr, slotFilled, zoneProgress, type CycleZone, type SerializedEntry, type SerializedTag } from "@/lib/cycle-count";
 import { Badge, Card, ProgressBar } from "@/components/ui";
 
 // Captura del conteo. Compartida entre movil y escritorio.
@@ -153,18 +153,20 @@ export function ConteoDetailView({ countId: id, desktop = false }: { countId: st
                       <span className="text-xs font-semibold tabular-nums text-muted">{progress[z].counted}/{progress[z].total}</span>
                     </div>
                     <ProgressBar value={progress[z].total > 0 ? (progress[z].counted / progress[z].total) * 100 : 0} />
-                    <p className="mt-1 text-[11px] font-semibold text-muted">{progress[z].pieces.toLocaleString("es-MX")} pzas</p>
+                    {manager && <p className="mt-1 text-[11px] font-semibold text-muted">{progress[z].pieces.toLocaleString("es-MX")} pzas</p>}
                   </div>
                 ))}
               </div>
-              <p className="mt-2 border-t border-line pt-2 text-xs font-semibold text-ink">
-                Total: {totalPieces.toLocaleString("es-MX")} piezas
-                {count.theoretical !== null && (
-                  <span className={`ml-2 ${totalPieces - count.theoretical === 0 ? "text-emerald-500" : "text-rose-500"}`}>
-                    ({totalPieces - count.theoretical >= 0 ? "+" : ""}{(totalPieces - count.theoretical).toLocaleString("es-MX")} vs Kardex {count.theoretical.toLocaleString("es-MX")})
-                  </span>
-                )}
-              </p>
+              {manager && (
+                <p className="mt-2 border-t border-line pt-2 text-xs font-semibold text-ink">
+                  Total: {totalPieces.toLocaleString("es-MX")} piezas
+                  {count.theoretical !== null && (
+                    <span className={`ml-2 ${totalPieces - count.theoretical === 0 ? "text-emerald-500" : "text-rose-500"}`}>
+                      ({totalPieces - count.theoretical >= 0 ? "+" : ""}{(totalPieces - count.theoretical).toLocaleString("es-MX")} vs Kardex {count.theoretical.toLocaleString("es-MX")})
+                    </span>
+                  )}
+                </p>
+              )}
               {(progress.PISO.discrepancies + progress.BODEGA.discrepancies) > 0 && (
                 <p className="mt-1.5 flex items-center gap-1 text-[11px] font-bold text-amber-600">
                   <AlertTriangle size={12} /> {progress.PISO.discrepancies + progress.BODEGA.discrepancies} marbete(s) con diferencia esperan 3er conteo
@@ -206,6 +208,7 @@ export function ConteoDetailView({ countId: id, desktop = false }: { countId: st
                 {zoneTags.map((tag) => {
                   const entry = entries.get(tag.id) ?? null;
                   const real = entry ? entryReal(entry) : null;
+                  const resolved = entry ? entryResolved(entry) : false;
                   const needsRecount = entry ? entryNeedsRecount(entry) : false;
                   const countsDone = entry ? entryCountsDone(entry) : 0;
                   const counter = countingByNumber.get(tag.number);
@@ -219,7 +222,7 @@ export function ConteoDetailView({ countId: id, desktop = false }: { countId: st
                           ? "border-volt/60 bg-volt/10 ring-2 ring-volt/30"
                           : needsRecount
                             ? "border-amber-400/60 bg-amber-500/10"
-                            : real !== null
+                            : resolved
                               ? "border-emerald-400/40 bg-emerald-500/10"
                               : "border-line bg-panel"
                       }`}
@@ -240,8 +243,10 @@ export function ConteoDetailView({ countId: id, desktop = false }: { countId: st
                           {countsDone}
                         </span>
                       ) : null}
-                      <span className={`text-sm font-semibold ${real !== null ? "text-emerald-600 dark:text-emerald-400" : "text-ink"}`}>{tag.number}</span>
-                      <span className="text-[10px] font-bold text-muted">{needsRecount ? "⚠ recontar" : real !== null ? `${real} pzas` : "—"}</span>
+                      <span className={`text-sm font-semibold ${resolved ? "text-emerald-600 dark:text-emerald-400" : "text-ink"}`}>{tag.number}</span>
+                      <span className="text-[10px] font-bold text-muted">
+                        {needsRecount ? "⚠ recontar" : manager ? (real !== null ? `${real} pzas` : "—") : resolved ? "✓" : "—"}
+                      </span>
                     </button>
                   );
                 })}
@@ -292,6 +297,7 @@ export function ConteoDetailView({ countId: id, desktop = false }: { countId: st
             countId={id}
             tag={active}
             entry={entries.get(active.id) ?? null}
+            canSeePieces={manager}
             isOpen={!!isOpen}
             onClose={() => setActive(null)}
             onSaved={(entry) => {
@@ -463,17 +469,19 @@ function ScannerOverlay({ onScan, onClose }: { onScan: (number: number) => void;
 }
 
 // ── Captura de un marbete (bottom sheet con teclado numérico) ────────────────
-function CaptureSheet({ countId, tag, entry, isOpen, onClose, onSaved }: {
+function CaptureSheet({ countId, tag, entry, canSeePieces, isOpen, onClose, onSaved }: {
   countId: string;
   tag: TagRow;
   entry: SerializedEntry | null;
+  canSeePieces: boolean;
   isOpen: boolean;
   onClose: () => void;
   onSaved: (entry: SerializedEntry) => void;
 }) {
   // Slot sugerido: 1 si no hay conteo; con diferencia pendiente → 3; ya
-  // contado → corrección del 1ro (autor/gerencia) o 2do conteo.
-  const suggested = entry?.count1 === null || entry === null ? 1 : entryNeedsRecount(entry) ? 3 : 2;
+  // contado → corrección del 1ro (autor/gerencia) o 2do conteo. Usa slotFilled
+  // porque en conteo ciego las piezas vienen en null.
+  const suggested = !entry || !slotFilled(entry, 1) ? 1 : entryNeedsRecount(entry) ? 3 : 2;
   const [slot, setSlot] = useState<1 | 2 | 3>(suggested as 1 | 2 | 3);
   const [value, setValue] = useState("");
   const [error, setError] = useState("");
@@ -546,24 +554,37 @@ function CaptureSheet({ countId, tag, entry, isOpen, onClose, onSaved }: {
           <button type="button" onClick={onClose} aria-label="Cerrar" className="grid size-9 place-items-center rounded-full bg-slate-500/10 text-muted"><X size={16} /></button>
         </div>
 
-        {entry?.count1 !== null && entry !== null && (
+        {entry !== null && slotFilled(entry, 1) && (
           <div className="mt-2 rounded-2xl bg-slate-500/10 px-3 py-2 text-xs font-semibold text-muted">
-            1er conteo: <b className="text-ink">{entry.count1} pzas</b> · {entry.count1ByName}
-            {entry.count2 !== null && <> — 2do: <b className="text-ink">{entry.count2}</b> · {entry.count2ByName}</>}
-            {entry.count3 !== null && <> — 3ro: <b className="text-ink">{entry.count3}</b> · {entry.count3ByName}</>}
+            {canSeePieces ? (
+              <>
+                1er conteo: <b className="text-ink">{entry.count1} pzas</b> · {entry.count1ByName}
+                {entry.count2 !== null && <> — 2do: <b className="text-ink">{entry.count2}</b> · {entry.count2ByName}</>}
+                {entry.count3 !== null && <> — 3ro: <b className="text-ink">{entry.count3}</b> · {entry.count3ByName}</>}
+              </>
+            ) : (
+              // Conteo ciego: al asesor se le dice QUIÉN contó y cuál conteo va,
+              // pero NO las piezas, para que su conteo no copie al anterior.
+              <>
+                1er conteo: <b className="text-ink">{entry.count1ByName ?? "hecho"}</b>
+                {slotFilled(entry, 2) && <> — 2do: <b className="text-ink">{entry.count2ByName ?? "hecho"}</b></>}
+                {slotFilled(entry, 3) && <> — 3ro: <b className="text-ink">{entry.count3ByName ?? "hecho"}</b></>}
+                <span className="ml-1 opacity-70">· piezas ocultas</span>
+              </>
+            )}
           </div>
         )}
 
         {isOpen ? (
           <>
-            {entry?.count1 !== null && entry !== null && (
+            {entry !== null && slotFilled(entry, 1) && (
               <div className="mt-2.5 flex gap-1.5">
                 {([1, 2, 3] as const).map((s) => (
                   <button
                     key={s}
                     type="button"
                     onClick={() => setSlot(s)}
-                    disabled={(s === 2 && entry.count1 === null) || (s === 3 && entry.count2 === null)}
+                    disabled={(s === 2 && !slotFilled(entry, 1)) || (s === 3 && !slotFilled(entry, 2))}
                     className={`flex-1 rounded-full px-2 py-1.5 text-[11px] font-semibold transition disabled:opacity-35 ${slot === s ? "bg-volt text-white" : "bg-slate-500/10 text-muted"}`}
                   >
                     {s === 1 ? "Corregir 1er" : s === 2 ? "2do conteo" : "3er conteo"}

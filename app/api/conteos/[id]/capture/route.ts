@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireSession, isApiError, parseJson } from "@/lib/api";
+import { serializeEntry } from "@/lib/cycle-count";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -60,16 +61,14 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     update: stamp
   });
 
+  // Conteo CIEGO: al asesor se le regresa su avance sin las piezas de los otros
+  // conteos (mismo criterio que el GET). manager ya se calculó arriba.
   return NextResponse.json({
-    entry: {
+    entry: serializeEntry({
       tagId: entry.tagId,
-      count1: entry.count1,
-      count1ByName: entry.count1ByName,
-      count1At: entry.count1At?.toISOString() ?? null,
-      count2: entry.count2,
-      count2ByName: entry.count2ByName,
-      count3: entry.count3,
-      count3ByName: entry.count3ByName
-    }
+      count1: entry.count1, count1ByName: entry.count1ByName, count1At: entry.count1At?.toISOString() ?? null,
+      count2: entry.count2, count2ByName: entry.count2ByName,
+      count3: entry.count3, count3ByName: entry.count3ByName
+    }, manager)
   });
 }

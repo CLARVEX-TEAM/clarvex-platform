@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requirePlatformAdmin, requireSession, isApiError, parseJson } from "@/lib/api";
 import { recordAudit } from "@/lib/audit";
+import { serializeEntry } from "@/lib/cycle-count";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -27,26 +28,29 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   ]);
   if (!count) return NextResponse.json({ error: "Conteo no encontrado." }, { status: 404 });
 
+  // Conteo CIEGO: solo gerencia/subgerencia ve las piezas capturadas. El asesor
+  // ve su avance (qué conteo va) pero no lo que contó otra persona, para que un
+  // 2do/3er conteo no copie al anterior.
+  const canSeePieces = session.role === "GERENTE" || session.role === "SUBGERENTE";
+
   return NextResponse.json({
     count: {
       id: count.id,
       date: count.date.toISOString().slice(0, 10),
       status: count.status,
-      theoretical: count.theoretical,
+      // El teórico (Kardex) y los faltantes sin UPC son datos de gerencia.
+      theoretical: canSeePieces ? count.theoretical : null,
       notes: count.notes,
-      noUpcItems: count.noUpcItems.map((item) => ({ id: item.id, concept: item.concept, pieces: item.pieces }))
+      noUpcItems: canSeePieces ? count.noUpcItems.map((item) => ({ id: item.id, concept: item.concept, pieces: item.pieces })) : []
     },
+    canSeePieces,
     tags: tags.map((tag) => ({ id: tag.id, number: tag.number, zone: tag.zone, label: tag.label })),
-    entries: count.entries.map((entry) => ({
+    entries: count.entries.map((entry) => serializeEntry({
       tagId: entry.tagId,
-      count1: entry.count1,
-      count1ByName: entry.count1ByName,
-      count1At: entry.count1At?.toISOString() ?? null,
-      count2: entry.count2,
-      count2ByName: entry.count2ByName,
-      count3: entry.count3,
-      count3ByName: entry.count3ByName
-    }))
+      count1: entry.count1, count1ByName: entry.count1ByName, count1At: entry.count1At?.toISOString() ?? null,
+      count2: entry.count2, count2ByName: entry.count2ByName,
+      count3: entry.count3, count3ByName: entry.count3ByName
+    }, canSeePieces))
   });
 }
 
