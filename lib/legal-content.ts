@@ -1541,7 +1541,7 @@ export const LEGAL_CONTENT: Record<string, LegalContent> = {
       },
       {
         "t": "p",
-        "x": "El Servicio se contrata bajo la modalidad de Suscripción mensual, cuyo Periodo de Facturación tiene una duración de [PLACEHOLDER - DURACIÓN DEL PERIODO, p. ej. un (1) mes], con renovación automática en cada Fecha de Renovación."
+        "x": "El Servicio se contrata bajo la modalidad de Suscripción mensual, cuyo Periodo de Facturación tiene una duración de un (1) mes, con renovación automática en cada Fecha de Renovación."
       },
       {
         "t": "p",
@@ -1549,7 +1549,7 @@ export const LEGAL_CONTENT: Record<string, LegalContent> = {
       },
       {
         "t": "p",
-        "x": "El Proveedor informará al Cliente, con la debida antelación y por los medios pactados, las condiciones de la renovación y, en su caso, cualquier modificación en la Contraprestación aplicable al siguiente Periodo de Facturación. Toda modificación en la Contraprestación se comunicará con una antelación mínima de [PLACEHOLDER - PLAZO DE PREAVISO DE CAMBIO DE PRECIO] y no afectará el Periodo de Facturación en curso."
+        "x": "El Proveedor informará al Cliente, con la debida antelación y por los medios pactados, las condiciones de la renovación y, en su caso, cualquier modificación en la Contraprestación aplicable al siguiente Periodo de Facturación. Toda modificación en la Contraprestación se comunicará con una antelación mínima de treinta (30) días naturales y no afectará el Periodo de Facturación en curso."
       },
       {
         "t": "p",
@@ -1637,7 +1637,7 @@ export const LEGAL_CONTENT: Record<string, LegalContent> = {
       },
       {
         "t": "p",
-        "x": "La Suspensión por falta de pago se mantendrá hasta que el Cliente regularice los adeudos pendientes. De persistir la causa de Suspensión por un periodo de [PLACEHOLDER - PLAZO DE SUSPENSIÓN ANTES DE CANCELACIÓN], el Proveedor podrá proceder a la cancelación conforme a la Cláusula 5."
+        "x": "La Suspensión por falta de pago se mantendrá hasta que el Cliente regularice los adeudos pendientes. De persistir la causa de Suspensión por un periodo de treinta (30) días naturales, el Proveedor podrá proceder a la cancelación conforme a la Cláusula 5."
       },
       {
         "t": "p",
@@ -1661,11 +1661,11 @@ export const LEGAL_CONTENT: Record<string, LegalContent> = {
       },
       {
         "t": "p",
-        "x": "El porcentaje o proporción reembolsable, así como cualquier deducción por conceptos de servicios ya prestados, gastos administrativos o comisiones no recuperables, será de [PLACEHOLDER - % / FÓRMULA DE REEMBOLSO Y DEDUCCIONES APLICABLES]."
+        "x": "El porcentaje o proporción reembolsable, así como cualquier deducción por conceptos de servicios ya prestados, gastos administrativos o comisiones no recuperables, será de cero por ciento (0%): la Contraprestación correspondiente al Periodo de Facturación en curso no es reembolsable; la cancelación surte efectos al término de dicho Periodo, sin que se genere la renovación al Periodo de Facturación siguiente."
       },
       {
         "t": "p",
-        "x": "Cuando el Proveedor ofrezca un periodo de garantía de satisfacción o de prueba con derecho a reembolso, dicho reembolso procederá siempre que la solicitud se presente dentro de los [PLACEHOLDER - DÍAS DE GARANTÍA DE REEMBOLSO] días naturales siguientes a la contratación y conforme a las condiciones que en su caso se establezcan."
+        "x": "Cuando el Proveedor ofrezca un periodo de garantía de satisfacción o de prueba con derecho a reembolso, dicho reembolso procederá siempre que la solicitud se presente dentro de los siete (7) días naturales siguientes a la contratación y conforme a las condiciones que en su caso se establezcan."
       },
       {
         "t": "p",
@@ -1673,7 +1673,7 @@ export const LEGAL_CONTENT: Record<string, LegalContent> = {
       },
       {
         "t": "p",
-        "x": "El plazo para efectuar el reembolso, una vez aprobada su procedencia, será de [PLACEHOLDER - PLAZO DE DEVOLUCIÓN, p. ej. días hábiles], sin perjuicio de los plazos que apliquen las instituciones financieras o los procesadores de pago."
+        "x": "El plazo para efectuar el reembolso, una vez aprobada su procedencia, será de diez (10) días hábiles, sin perjuicio de los plazos que apliquen las instituciones financieras o los procesadores de pago."
       },
       {
         "t": "h",
@@ -1721,7 +1721,7 @@ export const LEGAL_CONTENT: Record<string, LegalContent> = {
       },
       {
         "t": "p",
-        "x": "El Proveedor analizará la procedencia de la solicitud y comunicará su resolución al Cliente dentro de un plazo razonable, que no excederá de [PLACEHOLDER - PLAZO DE RESOLUCIÓN DE SOLICITUD]."
+        "x": "El Proveedor analizará la procedencia de la solicitud y comunicará su resolución al Cliente dentro de un plazo razonable, que no excederá de diez (10) días hábiles."
       },
       {
         "t": "p",
@@ -2059,7 +2059,7 @@ export const LEGAL_CONTENT: Record<string, LegalContent> = {
       },
       {
         "t": "p",
-        "x": "El Responsable define objetivos de recuperación, incluyendo un objetivo de tiempo de recuperación (RTO) de [PLACEHOLDER - RTO] y un objetivo de punto de recuperación (RPO) de [PLACEHOLDER - RPO], los cuales revisa periódicamente."
+        "x": "El Responsable define objetivos de recuperación, incluyendo un objetivo de tiempo de recuperación (RTO) de veinticuatro (24) horas y un objetivo de punto de recuperación (RPO) de veinticuatro (24) horas, los cuales revisa periódicamente."
       },
       {
         "t": "p",
