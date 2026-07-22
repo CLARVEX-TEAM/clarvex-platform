@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { computeNextBracketGap, findCommissionRule, projectMonthlyCommission, resolveCommissionMinimum } from "../lib/commission";
+import { accruedCommission, computeNextBracketGap, findCommissionRule, projectMonthlyCommission, resolveCommissionMinimum } from "../lib/commission";
 import type { CommissionRule } from "../lib/types";
 
 const rules: CommissionRule[] = [
@@ -95,4 +95,24 @@ test("siguiente bracket: sin minimo o sin reglas devuelve null", () => {
   assert.equal(computeNextBracketGap({ sales: 80_000, minimum: 100_000, rules: [], role: "ASESOR" }), null);
   // Reglas de otro rol no aplican
   assert.equal(computeNextBracketGap({ sales: 80_000, minimum: 100_000, rules: advisorRules, role: "GERENTE" }), null);
+});
+
+test("comision acumulada: venta 99k / minimo 90k = 110% -> 1.91% del ASESOR", () => {
+  const c = accruedCommission({ sales: 99_000, goal: 103_500, minimum: 90_000, rules: advisorRules, role: "ASESOR" });
+  assert.equal(c.percent, 1.91);
+  assert.equal(Math.round(c.achievement), 110); // 99000/90000
+  assert.equal(c.amount, 1890.9); // round2(99000 * 0.0191)
+});
+
+test("comision acumulada: SUBGERENTE que supera el minimo no sale en 0", () => {
+  // minimo derivado de meta: 74_628.50 / 1.15 = 64_894.35 -> alcance 116% -> 1.39%
+  const c = accruedCommission({ sales: 75_846.96, goal: 74_628.5, minimum: null, rules, role: "SUBGERENTE" });
+  assert.equal(c.percent, 1.39);
+  assert.ok(c.amount > 0);
+});
+
+test("comision acumulada: sin venta da 0 sin reventar", () => {
+  const c = accruedCommission({ sales: 0, goal: 100_000, minimum: null, rules: advisorRules, role: "ASESOR" });
+  assert.equal(c.amount, 0);
+  assert.equal(c.percent, 1.53);
 });

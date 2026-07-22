@@ -21,6 +21,32 @@ export function resolveCommissionMinimum(commissionMinimum: number | null | unde
   return goal > 0 ? Math.round((goal / MINIMUM_TO_GOAL_FACTOR) * 100) / 100 : 0;
 }
 
+export type AccruedCommission = {
+  /** Comisión acumulada estimada (venta × tasa del bracket). */
+  amount: number;
+  /** Tasa del bracket vigente, en %. */
+  percent: number;
+  /** Alcance de comisión (venta ÷ mínimo), en %. */
+  achievement: number;
+  /** Mínimo usado (el sincronizado o el derivado de la meta). */
+  minimum: number;
+};
+
+/**
+ * Comisión ACUMULADA que lleva alguien, a partir de su venta y meta ya cargadas.
+ * Solo LEE el cálculo aprobado (resolveCommissionMinimum + findCommissionRule +
+ * venta × %), la misma fórmula que el simulador. NO modifica la lógica de
+ * comisión: sirve para mostrar "la comisión que llevo" sin depender de que el
+ * RDV traiga commissionAmount poblado (a veces llega en 0).
+ */
+export function accruedCommission(input: { sales: number; goal: number; minimum?: number | null; rules: CommissionRule[]; role: Role }): AccruedCommission {
+  const minimum = resolveCommissionMinimum(input.minimum, input.goal);
+  const achievement = minimum > 0 ? (input.sales / minimum) * 100 : 0;
+  const rule = findCommissionRule(input.rules, input.role, achievement);
+  const percent = rule?.commissionPercent ?? 0;
+  return { amount: round2(input.sales * (percent / 100)), percent, achievement, minimum };
+}
+
 export type NextBracketGap = {
   atTop: boolean;
   currentPercent: number;

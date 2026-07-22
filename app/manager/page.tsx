@@ -19,6 +19,7 @@ import {
   UsersRound
 } from "lucide-react";
 import { getSession, logout } from "@/lib/auth";
+import { accruedCommission } from "@/lib/commission";
 import { completion, money, performanceTextClass } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { computeDailyStreak } from "@/lib/streaks";
@@ -143,6 +144,13 @@ export default function ManagerDashboard() {
         ?? data.kpis.find((k) => k.userId === manager.id))
     : undefined;
   const myProgress = myKpi ? completion(myKpi.dailySales, myKpi.dailyGoal) : 0;
+  // Alcance del MES (venta ÷ meta) y comisión ACUMULADA estimada. La comisión se
+  // calcula en vivo (venta mes × tasa del bracket) porque el RDV a veces trae
+  // commissionAmount en 0; solo lee el cálculo aprobado, no lo cambia.
+  const myAlcanceMes = myKpi ? completion(myKpi.monthlySales, myKpi.monthlyGoal) : 0;
+  const myCommission = manager && myKpi
+    ? accruedCommission({ sales: myKpi.monthlySales, goal: myKpi.monthlyGoal, minimum: myKpi.commissionMinimum, rules: data.commissionRules, role: manager.role })
+    : null;
   const salesTrend = buildSalesTrend(data.kpis.map((k) => ({ date: k.date, dailySales: k.dailySales, dailyGoal: k.dailyGoal })), todayKey);
   const ventasSeries = buildDailySeries(data.kpis.map((k) => ({ date: k.date, value: k.dailySales })), todayKey, 7);
   const ticketsSeries = buildDailySeries(data.kpis.map((k) => ({ date: k.date, value: k.transactions })), todayKey, 7);
@@ -258,10 +266,11 @@ export default function ManagerDashboard() {
                 </span>
               </div>
               <div className="mt-2"><ProgressBar value={myProgress} /></div>
-              <div className="mt-3 grid grid-cols-3 gap-3 border-t border-line pt-3 text-sm">
+              <div className="mt-3 grid grid-cols-2 gap-3 border-t border-line pt-3 text-sm">
                 <Metric label="Meta mes" value={money(myKpi.monthlyGoal ?? 0)} />
                 <Metric label="Venta mes" value={money(myKpi.monthlySales ?? 0)} />
-                <Metric label="Comisión" value={money(myKpi.commissionAmount ?? 0)} />
+                <Metric label="Alcance" value={`${myAlcanceMes}%`} />
+                <Metric label={`Comisión${myCommission?.percent ? ` · ${myCommission.percent}%` : ""}`} value={money(myCommission?.amount ?? 0)} />
               </div>
             </Card>
           </motion.div>

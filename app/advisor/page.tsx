@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { Receipt, ShoppingBag, Target, Trophy, Sparkles } from "lucide-react";
 import { getSession, logout } from "@/lib/auth";
+import { accruedCommission } from "@/lib/commission";
 import { completion, money } from "@/lib/format";
 import { haptic } from "@/lib/haptics";
 import { computeDailyStreak } from "@/lib/streaks";
@@ -166,6 +167,16 @@ export default function AdvisorDashboard() {
   const currentLevelMinXp = Math.pow(level - 1, 2) * 100;
   const xpProgress = Math.round(((xp - currentLevelMinXp) / (nextLevelXp - currentLevelMinXp)) * 100);
 
+  // Comisión ACUMULADA del mes, calculada en vivo (venta mes × tasa del bracket)
+  // porque el RDV a veces trae commissionAmount en 0. Solo lee el cálculo aprobado.
+  const myCommission = accruedCommission({
+    sales: kpi?.monthlySales ?? 0,
+    goal: kpi?.monthlyGoal ?? 0,
+    minimum: kpi?.commissionMinimum,
+    rules: data.commissionRules,
+    role: user.role
+  });
+
   const salesTrend = buildSalesTrend(data.kpis.map((k) => ({ date: k.date, dailySales: k.dailySales, dailyGoal: k.dailyGoal })), todayKey);
   const ventasSeries = buildDailySeries(data.kpis.map((k) => ({ date: k.date, value: k.dailySales })), todayKey, 7);
   const ticketsSeries = buildDailySeries(data.kpis.map((k) => ({ date: k.date, value: k.transactions })), todayKey, 7);
@@ -197,8 +208,8 @@ export default function AdvisorDashboard() {
     },
     {
       label: "COMISIÓN",
-      value: money(kpi?.commissionAmount ?? 0),
-      detail: `${kpi?.commissionPercent ?? 0}% est.`,
+      value: money(myCommission.amount),
+      detail: `${myCommission.percent}% · ${completion(kpi?.monthlySales ?? 0, kpi?.monthlyGoal ?? 0)}% alcance`,
       icon: Trophy,
       color: "red"
     }
