@@ -18,7 +18,9 @@ export type LegalDoc = {
 };
 
 export const LEGAL_DOCUMENTS: readonly LegalDoc[] = [
-  { key: "terms", label: "Términos y Condiciones", version: "2026-07", url: "/terminos" },
+  // "terms" es el doc de USUARIO FINAL (empleados): no incluye lo comercial
+  // (planes/pagos), eso lo firma la Empresa Cliente en el contrato SaaS.
+  { key: "terms", label: "Términos de Uso", version: "2026-07", url: "/terminos" },
   { key: "privacy", label: "Aviso de Privacidad", version: "2026-07", url: "/privacidad" },
   { key: "acceptable_use", label: "Política de Uso Aceptable", version: "2026-07", url: "/uso-aceptable" }
 ] as const;

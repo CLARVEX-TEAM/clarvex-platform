@@ -11,7 +11,7 @@ import type { LegalDoc } from "@/lib/legal";
 // documentos pendientes antes de seguir usando la app. Cada aceptación se
 // registra en el servidor con documento, versión, fecha, IP y user-agent.
 
-const EXCLUDED = ["/login", "/terminos", "/privacidad", "/uso-aceptable", "/cookies", "/conteos/marbetes/imprimir", "/suspendida"];
+const EXCLUDED = ["/login", "/terminos", "/privacidad", "/uso-aceptable", "/politica-privacidad", "/cookies", "/reembolsos", "/seguridad", "/legal", "/conteos/marbetes/imprimir", "/suspendida"];
 
 export function TermsGate() {
   const pathname = usePathname();
