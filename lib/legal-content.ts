@@ -513,7 +513,7 @@ export const LEGAL_CONTENT: Record<string, LegalContent> = {
       },
       {
         "t": "p",
-        "x": "Almacenamiento de objetos y posible transferencia internacional. Únicamente el almacenamiento de objetos (archivos, fotografías y evidencias) se realiza en Cloudflare R2, servicio que podría implicar el tratamiento o la transferencia de dichos datos fuera del territorio nacional, sujeto a las salvaguardas previstas en el numeral 8.4. El Responsable no aloja datos personales en Amazon Web Services (AWS) ni en Vercel; el SDK de AWS (S3) se emplea exclusivamente como protocolo de comunicación compatible con S3 para acceder a Cloudflare R2, sin que los datos residan en infraestructura de AWS. [Confirmar con el equipo técnico la ubicación exacta de los datacenters de Cloudflare R2 aplicables]"
+        "x": "Almacenamiento de objetos y posible transferencia internacional. Únicamente el almacenamiento de objetos (archivos, fotografías y evidencias) se realiza en Cloudflare R2, servicio que podría implicar el tratamiento o la transferencia de dichos datos fuera del territorio nacional, sujeto a las salvaguardas previstas en el numeral 8.4. El Responsable no aloja datos personales en Amazon Web Services (AWS) ni en Vercel; el SDK de AWS (S3) se emplea exclusivamente como protocolo de comunicación compatible con S3 para acceder a Cloudflare R2, sin que los datos residan en infraestructura de AWS. El almacenamiento en Cloudflare R2 opera con la configuración predeterminada del servicio (sin jurisdicción restringida y con selección automática de región por parte de Cloudflare). Dado que Cloudflare no ofrece una región de almacenamiento en México, los objetos se alojan y replican en centros de datos ubicados fuera del territorio nacional, sin que se garantice una región específica ni su residencia en México."
       },
       {
         "t": "p",
@@ -1185,7 +1185,7 @@ export const LEGAL_CONTENT: Record<string, LegalContent> = {
       },
       {
         "t": "p",
-        "x": "El grueso de los datos personales se trata de manera nacional, toda vez que la base de datos PostgreSQL y el servidor de aplicación se alojan en un servidor privado virtual (VPS) de Vultr ubicado en la Ciudad de México, México. Únicamente el almacenamiento de objetos (archivos y fotografías) en Cloudflare R2 podría implicar el tratamiento o la transferencia de datos fuera del territorio nacional, sujeto a las salvaguardas del numeral 15.4. El Responsable no utiliza Amazon Web Services (AWS) ni Vercel para alojar datos; el SDK de AWS (S3) se emplea sólo como protocolo compatible con S3 para acceder a Cloudflare R2. [Confirmar con el equipo técnico la ubicación exacta de los datacenters de Cloudflare R2 aplicables]"
+        "x": "El grueso de los datos personales se trata de manera nacional, toda vez que la base de datos PostgreSQL y el servidor de aplicación se alojan en un servidor privado virtual (VPS) de Vultr ubicado en la Ciudad de México, México. Únicamente el almacenamiento de objetos (archivos y fotografías) en Cloudflare R2 podría implicar el tratamiento o la transferencia de datos fuera del territorio nacional, sujeto a las salvaguardas del numeral 15.4. El Responsable no utiliza Amazon Web Services (AWS) ni Vercel para alojar datos; el SDK de AWS (S3) se emplea sólo como protocolo compatible con S3 para acceder a Cloudflare R2. El almacenamiento en Cloudflare R2 opera con la configuración predeterminada del servicio (sin jurisdicción restringida y con selección automática de región por parte de Cloudflare). Dado que Cloudflare no ofrece una región de almacenamiento en México, los objetos se alojan y replican en centros de datos ubicados fuera del territorio nacional, sin que se garantice una región específica ni su residencia en México."
       },
       {
         "t": "p",
@@ -1419,7 +1419,7 @@ export const LEGAL_CONTENT: Record<string, LegalContent> = {
       },
       {
         "t": "p",
-        "x": "El grueso de los datos se trata de manera nacional, al residir la base de datos en México. Únicamente el almacenamiento de objetos en Cloudflare R2 podría implicar el tratamiento o la transferencia de datos fuera del territorio nacional, sujeto a las salvaguardas descritas en el Aviso de Privacidad y en la Política de Privacidad de CLARVEX. [Confirmar con el equipo técnico la ubicación exacta de los datacenters de Cloudflare R2 aplicables]"
+        "x": "El grueso de los datos se trata de manera nacional, al residir la base de datos en México. Únicamente el almacenamiento de objetos en Cloudflare R2 podría implicar el tratamiento o la transferencia de datos fuera del territorio nacional, sujeto a las salvaguardas descritas en el Aviso de Privacidad y en la Política de Privacidad de CLARVEX. El almacenamiento en Cloudflare R2 opera con la configuración predeterminada del servicio (sin jurisdicción restringida y con selección automática de región por parte de Cloudflare). Dado que Cloudflare no ofrece una región de almacenamiento en México, los objetos se alojan y replican en centros de datos ubicados fuera del territorio nacional, sin que se garantice una región específica ni su residencia en México."
       },
       {
         "t": "p",
