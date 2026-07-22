@@ -66,9 +66,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   return NextResponse.json({
     entry: serializeEntry({
       tagId: entry.tagId,
-      count1: entry.count1, count1ByName: entry.count1ByName, count1At: entry.count1At?.toISOString() ?? null,
-      count2: entry.count2, count2ByName: entry.count2ByName,
-      count3: entry.count3, count3ByName: entry.count3ByName
-    }, manager)
+      count1: entry.count1, count1ByName: entry.count1ByName, count1At: entry.count1At?.toISOString() ?? null, count1ById: entry.count1ById,
+      count2: entry.count2, count2ByName: entry.count2ByName, count2ById: entry.count2ById,
+      count3: entry.count3, count3ByName: entry.count3ByName, count3ById: entry.count3ById
+    }, manager, session.userId)
   });
 }

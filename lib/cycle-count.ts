@@ -80,18 +80,20 @@ export function slotFilled(entry: EntryLike, slot: 1 | 2 | 3): boolean {
 
 export type RawCountEntry = {
   tagId: string;
-  count1: number | null; count1ByName: string | null; count1At: string | null;
-  count2: number | null; count2ByName: string | null;
-  count3: number | null; count3ByName: string | null;
+  count1: number | null; count1ByName: string | null; count1At: string | null; count1ById: string | null;
+  count2: number | null; count2ByName: string | null; count2ById: string | null;
+  count3: number | null; count3ByName: string | null; count3ById: string | null;
 };
 
 /**
- * Serializa una captura según el rol (CONTEO CIEGO). A quien puede ver piezas
- * (gerente/subgerente) se le mandan los valores; a quien no (asesor) se le
- * ocultan (count1/2/3 = null) pero se le manda el avance derivado, para que
- * sepa qué conteo le toca sin poder copiar lo que capturó otra persona.
+ * Serializa una captura según el rol (CONTEO CIEGO).
+ *
+ * - Gerente/subgerente (canSeePieces): ve todas las piezas.
+ * - Asesor: ve SOLO las piezas que capturó ÉL MISMO (por slot: si count1ById es
+ *   suyo, ve count1; si no, va en null). Así sabe cuántas piezas puso en cada
+ *   marbete, pero no puede copiar lo que contó otra persona.
  */
-export function serializeEntry(entry: RawCountEntry, canSeePieces: boolean): SerializedEntry {
+export function serializeEntry(entry: RawCountEntry, canSeePieces: boolean, viewerId: string): SerializedEntry {
   const common = {
     tagId: entry.tagId,
     count1ByName: entry.count1ByName,
@@ -102,9 +104,16 @@ export function serializeEntry(entry: RawCountEntry, canSeePieces: boolean): Ser
     needsRecount: entryNeedsRecount(entry),
     resolved: entryReal(entry) !== null
   };
-  return canSeePieces
-    ? { ...common, count1: entry.count1, count2: entry.count2, count3: entry.count3 }
-    : { ...common, count1: null, count2: null, count3: null };
+  if (canSeePieces) {
+    return { ...common, count1: entry.count1, count2: entry.count2, count3: entry.count3 };
+  }
+  // El asesor solo ve el valor de los slots que capturó él.
+  return {
+    ...common,
+    count1: entry.count1ById === viewerId ? entry.count1 : null,
+    count2: entry.count2ById === viewerId ? entry.count2 : null,
+    count3: entry.count3ById === viewerId ? entry.count3 : null
+  };
 }
 
 // Contenido del QR impreso en cada marbete. Con prefijo propio para ignorar

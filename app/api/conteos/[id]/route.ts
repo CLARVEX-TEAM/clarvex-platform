@@ -47,10 +47,10 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     tags: tags.map((tag) => ({ id: tag.id, number: tag.number, zone: tag.zone, label: tag.label })),
     entries: count.entries.map((entry) => serializeEntry({
       tagId: entry.tagId,
-      count1: entry.count1, count1ByName: entry.count1ByName, count1At: entry.count1At?.toISOString() ?? null,
-      count2: entry.count2, count2ByName: entry.count2ByName,
-      count3: entry.count3, count3ByName: entry.count3ByName
-    }, canSeePieces))
+      count1: entry.count1, count1ByName: entry.count1ByName, count1At: entry.count1At?.toISOString() ?? null, count1ById: entry.count1ById,
+      count2: entry.count2, count2ByName: entry.count2ByName, count2ById: entry.count2ById,
+      count3: entry.count3, count3ByName: entry.count3ByName, count3ById: entry.count3ById
+    }, canSeePieces, session.userId))
   });
 }
 

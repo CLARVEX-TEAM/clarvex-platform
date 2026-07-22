@@ -23,41 +23,43 @@ test("diferencia y marbetes por recontar", () => {
   assert.equal(entryNeedsRecount({ count1: 100, count2: 100, count3: null }), false);
 });
 
-test("conteo CIEGO: al asesor se le ocultan las piezas pero se le manda el avance", () => {
+test("conteo CIEGO: el asesor NO ve el conteo de otro, pero sí el avance", () => {
   const raw = {
     tagId: "t1",
-    count1: 100, count1ByName: "Jazmín", count1At: "2026-07-21T10:00:00Z",
-    count2: null, count2ByName: null,
-    count3: null, count3ByName: null
+    count1: 100, count1ByName: "Jazmín", count1At: "2026-07-21T10:00:00Z", count1ById: "u-jazmin",
+    count2: null, count2ByName: null, count2ById: null,
+    count3: null, count3ByName: null, count3ById: null
   };
   // Gerencia ve las piezas.
-  const forManager = serializeEntry(raw, true);
-  assert.equal(forManager.count1, 100);
-  // Asesor: NO ve las piezas de Jazmín, pero sí quién contó y el avance.
-  const forAdvisor = serializeEntry(raw, false);
-  assert.equal(forAdvisor.count1, null);
-  assert.equal(forAdvisor.count2, null);
-  assert.equal(forAdvisor.count1ByName, "Jazmín");   // sabe quién hizo el 1ro
-  assert.deepEqual(forAdvisor.slotsFilled, [true, false, false]);
-  // Las funciones derivadas siguen funcionando con las piezas ocultas.
-  assert.equal(entryCountsDone(forAdvisor), 1);       // Alonso sabe que va el 2do
-  assert.equal(slotFilled(forAdvisor, 1), true);
-  assert.equal(slotFilled(forAdvisor, 2), false);
-  assert.equal(entryResolved(forAdvisor), true);      // 1 conteo → resuelto provisional
+  assert.equal(serializeEntry(raw, true, "u-gerente").count1, 100);
+  // Alonso (otro asesor) NO ve las piezas de Jazmín, pero sí quién contó y el avance.
+  const forAlonso = serializeEntry(raw, false, "u-alonso");
+  assert.equal(forAlonso.count1, null);
+  assert.equal(forAlonso.count1ByName, "Jazmín");   // sabe quién hizo el 1ro
+  assert.deepEqual(forAlonso.slotsFilled, [true, false, false]);
+  assert.equal(entryCountsDone(forAlonso), 1);       // Alonso sabe que va el 2do
+  assert.equal(slotFilled(forAlonso, 2), false);
+  assert.equal(entryResolved(forAlonso), true);
 });
 
-test("conteo ciego: needsRecount y resolved se conservan sin revelar piezas", () => {
-  // Diferencia entre 1ro y 2do: necesita 3er conteo. El asesor lo sabe, sin ver los números.
-  const diff = serializeEntry({
+test("conteo CIEGO: cada quien SÍ ve SU propio conteo", () => {
+  const raw = {
     tagId: "t2",
-    count1: 100, count1ByName: "Jazmín", count1At: null,
-    count2: 90, count2ByName: "Alonso",
-    count3: null, count3ByName: null
-  }, false);
-  assert.equal(diff.count1, null);
-  assert.equal(diff.count2, null);
-  assert.equal(entryNeedsRecount(diff), true);
-  assert.equal(entryCountsDone(diff), 2);
+    count1: 100, count1ByName: "Jazmín", count1At: null, count1ById: "u-jazmin",
+    count2: 90, count2ByName: "Alonso", count2ById: "u-alonso",
+    count3: null, count3ByName: null, count3ById: null
+  };
+  // Jazmín ve su 1er conteo (100) pero NO el 2do de Alonso.
+  const forJazmin = serializeEntry(raw, false, "u-jazmin");
+  assert.equal(forJazmin.count1, 100);
+  assert.equal(forJazmin.count2, null);
+  // Alonso ve su 2do conteo (90) pero NO el 1ro de Jazmín.
+  const forAlonso = serializeEntry(raw, false, "u-alonso");
+  assert.equal(forAlonso.count1, null);
+  assert.equal(forAlonso.count2, 90);
+  // El avance derivado (needsRecount) se conserva para ambos.
+  assert.equal(entryNeedsRecount(forAlonso), true);
+  assert.equal(entryCountsDone(forAlonso), 2);
 });
 
 test("avance por zona: contados, piezas y pendientes", () => {

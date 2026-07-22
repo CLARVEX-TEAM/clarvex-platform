@@ -208,6 +208,9 @@ export function ConteoDetailView({ countId: id, desktop = false }: { countId: st
                 {zoneTags.map((tag) => {
                   const entry = entries.get(tag.id) ?? null;
                   const real = entry ? entryReal(entry) : null;
+                  // En conteo ciego solo llegan no-null las piezas que capturó el
+                  // propio asesor: su conteo más reciente en este marbete.
+                  const myOwn = entry ? (entry.count3 ?? entry.count2 ?? entry.count1) : null;
                   const resolved = entry ? entryResolved(entry) : false;
                   const needsRecount = entry ? entryNeedsRecount(entry) : false;
                   const countsDone = entry ? entryCountsDone(entry) : 0;
@@ -245,7 +248,7 @@ export function ConteoDetailView({ countId: id, desktop = false }: { countId: st
                       ) : null}
                       <span className={`text-sm font-semibold ${resolved ? "text-emerald-600 dark:text-emerald-400" : "text-ink"}`}>{tag.number}</span>
                       <span className="text-[10px] font-bold text-muted">
-                        {needsRecount ? "⚠ recontar" : manager ? (real !== null ? `${real} pzas` : "—") : resolved ? "✓" : "—"}
+                        {needsRecount ? "⚠ recontar" : manager ? (real !== null ? `${real} pzas` : "—") : myOwn !== null ? `${myOwn} pzas` : resolved ? "✓" : "—"}
                       </span>
                     </button>
                   );
@@ -297,7 +300,6 @@ export function ConteoDetailView({ countId: id, desktop = false }: { countId: st
             countId={id}
             tag={active}
             entry={entries.get(active.id) ?? null}
-            canSeePieces={manager}
             isOpen={!!isOpen}
             onClose={() => setActive(null)}
             onSaved={(entry) => {
@@ -469,11 +471,10 @@ function ScannerOverlay({ onScan, onClose }: { onScan: (number: number) => void;
 }
 
 // ── Captura de un marbete (bottom sheet con teclado numérico) ────────────────
-function CaptureSheet({ countId, tag, entry, canSeePieces, isOpen, onClose, onSaved }: {
+function CaptureSheet({ countId, tag, entry, isOpen, onClose, onSaved }: {
   countId: string;
   tag: TagRow;
   entry: SerializedEntry | null;
-  canSeePieces: boolean;
   isOpen: boolean;
   onClose: () => void;
   onSaved: (entry: SerializedEntry) => void;
@@ -555,23 +556,13 @@ function CaptureSheet({ countId, tag, entry, canSeePieces, isOpen, onClose, onSa
         </div>
 
         {entry !== null && slotFilled(entry, 1) && (
+          // Conteo ciego: cada conteo muestra sus piezas SOLO a quien lo capturó
+          // (y a gerencia). El de otra persona sale como "oculto" con su nombre,
+          // para que el asesor vea SU propio conteo pero no copie el ajeno.
           <div className="mt-2 rounded-2xl bg-slate-500/10 px-3 py-2 text-xs font-semibold text-muted">
-            {canSeePieces ? (
-              <>
-                1er conteo: <b className="text-ink">{entry.count1} pzas</b> · {entry.count1ByName}
-                {entry.count2 !== null && <> — 2do: <b className="text-ink">{entry.count2}</b> · {entry.count2ByName}</>}
-                {entry.count3 !== null && <> — 3ro: <b className="text-ink">{entry.count3}</b> · {entry.count3ByName}</>}
-              </>
-            ) : (
-              // Conteo ciego: al asesor se le dice QUIÉN contó y cuál conteo va,
-              // pero NO las piezas, para que su conteo no copie al anterior.
-              <>
-                1er conteo: <b className="text-ink">{entry.count1ByName ?? "hecho"}</b>
-                {slotFilled(entry, 2) && <> — 2do: <b className="text-ink">{entry.count2ByName ?? "hecho"}</b></>}
-                {slotFilled(entry, 3) && <> — 3ro: <b className="text-ink">{entry.count3ByName ?? "hecho"}</b></>}
-                <span className="ml-1 opacity-70">· piezas ocultas</span>
-              </>
-            )}
+            1er conteo: {entry.count1 !== null ? <b className="text-ink">{entry.count1} pzas</b> : <span className="opacity-70">oculto</span>} · {entry.count1ByName}
+            {slotFilled(entry, 2) && <> — 2do: {entry.count2 !== null ? <b className="text-ink">{entry.count2} pzas</b> : <span className="opacity-70">oculto</span>} · {entry.count2ByName}</>}
+            {slotFilled(entry, 3) && <> — 3ro: {entry.count3 !== null ? <b className="text-ink">{entry.count3} pzas</b> : <span className="opacity-70">oculto</span>} · {entry.count3ByName}</>}
           </div>
         )}
 
