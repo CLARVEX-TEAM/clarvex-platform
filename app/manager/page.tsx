@@ -15,6 +15,7 @@ import {
   Megaphone,
   Receipt,
   ShoppingBag,
+  Trophy,
   UsersRound
 } from "lucide-react";
 import { getSession, logout } from "@/lib/auth";
@@ -33,6 +34,7 @@ import { QuickActions } from "@/components/home/QuickActions";
 import { UniformToday } from "@/components/home/UniformToday";
 import { SalesTrendCard } from "@/components/home/SalesTrendCard";
 import { TeamCelebrationsCard } from "@/components/home/TeamCelebrationsCard";
+import { QuincenaCard } from "@/components/home/QuincenaCard";
 import { buildSalesTrend, buildDailySeries } from "@/lib/trend";
 import { upcomingCelebrations } from "@/lib/celebrations";
 import { DesktopAutoRedirect } from "@/components/desktop/DesktopAutoRedirect";
@@ -134,6 +136,13 @@ export default function ManagerDashboard() {
       || (b.kpi?.dailySales ?? 0) - (a.kpi?.dailySales ?? 0)
     );
   const userName = (id: string) => data.users.find((u) => u.id === id)?.name ?? "Equipo";
+  // KPI INDIVIDUAL del gerente (su columna en el RDV), separado del de tienda.
+  // El gerente también vende y cobra comisión: aquí ve SU meta y SU venta.
+  const myKpi = manager
+    ? (data.kpis.find((k) => k.userId === manager.id && k.date !== undefined && k.date <= todayKey)
+        ?? data.kpis.find((k) => k.userId === manager.id))
+    : undefined;
+  const myProgress = myKpi ? completion(myKpi.dailySales, myKpi.dailyGoal) : 0;
   const salesTrend = buildSalesTrend(data.kpis.map((k) => ({ date: k.date, dailySales: k.dailySales, dailyGoal: k.dailyGoal })), todayKey);
   const ventasSeries = buildDailySeries(data.kpis.map((k) => ({ date: k.date, value: k.dailySales })), todayKey, 7);
   const ticketsSeries = buildDailySeries(data.kpis.map((k) => ({ date: k.date, value: k.transactions })), todayKey, 7);
@@ -227,6 +236,42 @@ export default function ManagerDashboard() {
         <div className="mt-3">
           <QuickKpiGrid cards={kpiCards} delay={0.16} />
         </div>
+
+        {manager && myKpi ? (
+          <motion.div {...cardAnim(0.18)} className="mt-3">
+            <Card>
+              <div className="mb-3 flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <Trophy className="text-muted" size={18} />
+                  <h2 className="text-[15px] font-semibold">Tu desempeño individual</h2>
+                </div>
+                <Badge tone="default">Gerencia</Badge>
+              </div>
+              <div className="flex items-end justify-between gap-3">
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-[0.13em] text-muted">Tu venta hoy</p>
+                  <p className="mt-1 text-2xl font-semibold leading-none text-ink">{money(myKpi.dailySales)}</p>
+                  <p className="mt-1 text-xs text-muted">Meta {money(myKpi.dailyGoal)}</p>
+                </div>
+                <span className={cn("text-[15px] font-semibold tabular-nums", performanceTextClass(myProgress))}>
+                  {myProgress}%
+                </span>
+              </div>
+              <div className="mt-2"><ProgressBar value={myProgress} /></div>
+              <div className="mt-3 grid grid-cols-3 gap-3 border-t border-line pt-3 text-sm">
+                <Metric label="Meta mes" value={money(myKpi.monthlyGoal ?? 0)} />
+                <Metric label="Venta mes" value={money(myKpi.monthlySales ?? 0)} />
+                <Metric label="Comisión" value={money(myKpi.commissionAmount ?? 0)} />
+              </div>
+            </Card>
+          </motion.div>
+        ) : null}
+
+        {manager ? (
+          <motion.div {...cardAnim(0.2)} className="mt-3">
+            <QuincenaCard userId={manager.id} />
+          </motion.div>
+        ) : null}
 
         <DesktopSwitchLink />
 
@@ -453,5 +498,14 @@ export default function ManagerDashboard() {
       </PullToRefresh>
       <BottomNav />
     </>
+  );
+}
+
+function Metric({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <p className="text-[11px] text-muted">{label}</p>
+      <p className="mt-0.5 text-sm font-semibold tabular-nums text-ink">{value}</p>
+    </div>
   );
 }
