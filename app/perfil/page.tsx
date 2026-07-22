@@ -1,7 +1,8 @@
 "use client";
 
 import { ChangeEvent, useEffect, useRef, useState } from "react";
-import { Cake, Camera, Fingerprint, ImageUp, Moon, Store, Sun, UserRound } from "lucide-react";
+import Link from "next/link";
+import { Cake, Camera, ChevronRight, Fingerprint, ImageUp, LifeBuoy, Moon, Store, Sun, UserRound } from "lucide-react";
 import { startRegistration } from "@simplewebauthn/browser";
 import { getBiometricRegistrationOptions, getSession, registerBiometric } from "@/lib/auth";
 import type { User } from "@/lib/types";
@@ -218,6 +219,16 @@ export default function ProfilePage() {
                 </div>
               )}
             </Card>
+
+            <Link href="/soporte" className="block">
+              <Card className="p-3.5 transition active:scale-[0.99]">
+                <div className="flex items-center gap-3">
+                  <span className="grid size-10 place-items-center rounded-2xl bg-volt/12 text-volt"><LifeBuoy size={19} /></span>
+                  <div className="min-w-0 flex-1"><h2 className="font-semibold text-ink">Ayuda y soporte</h2><p className="text-xs text-muted">¿Un problema o duda? Escríbenos.</p></div>
+                  <ChevronRight size={18} className="shrink-0 text-muted" />
+                </div>
+              </Card>
+            </Link>
           </>
         )}
       </AppFrame>

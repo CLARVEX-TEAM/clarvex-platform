@@ -26,7 +26,8 @@ const sharedRoutes = [
   "/uniformes",
   "/solicitudes",
   "/escritorio",
-  "/bitacora"
+  "/bitacora",
+  "/soporte"
 ];
 
 /** Rutas API públicas (sin cookie de sesión). Cron/webhooks usan su propio secreto. */
@@ -152,6 +153,7 @@ export const config = {
     "/capacitacion/:path*",
     "/asistencia/:path*",
     "/uniformes/:path*",
-    "/solicitudes/:path*"
+    "/solicitudes/:path*",
+    "/soporte/:path*"
   ]
 };
