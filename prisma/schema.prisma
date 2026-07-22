@@ -173,6 +173,7 @@ model User {
   surveyResponses       SurveyResponse[]       @relation("SurveyRespondent")
   authoredTraining      TrainingResource[]     @relation("TrainingAuthor")
   trainingViews         TrainingResourceView[] @relation("TrainingViewer")
+  legalAcceptances      LegalAcceptance[]
   store                 Store                  @relation(fields: [storeId], references: [id])
   webAuthnCredentials   WebAuthnCredential[]
   aiMemories             AiMemory[]
@@ -1255,4 +1256,22 @@ model AiUsageLog {
 
   @@index([storeId, createdAt])
   @@index([userId, createdAt])
+}
+
+/// Firma digital (click-wrap) de documentos legales. Un registro por usuario,
+/// documento y versión, con IP y user-agent: evidencia de consentimiento.
+model LegalAcceptance {
+  id         String   @id @default(cuid())
+  userId     String
+  storeId    String
+  document   String   // "terms" | "privacy" | "acceptable_use"
+  version    String
+  acceptedAt DateTime @default(now())
+  ip         String?
+  userAgent  String?
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, document, version])
+  @@index([userId, document])
+  @@index([storeId, document])
 }

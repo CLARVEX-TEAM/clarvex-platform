@@ -4,15 +4,18 @@ import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { getSession } from "@/lib/auth";
+import type { LegalDoc } from "@/lib/legal";
 
-// Compuerta de consentimiento: al primer ingreso (o al cambiar la versión de
-// los términos) el usuario debe aceptar Términos y Aviso de Privacidad antes
-// de seguir usando la app. La aceptación queda registrada (fecha + versión).
+// Compuerta de consentimiento (firma digital tipo click-wrap): al primer ingreso
+// —o al cambiar la versión de algún documento legal— el usuario debe aceptar los
+// documentos pendientes antes de seguir usando la app. Cada aceptación se
+// registra en el servidor con documento, versión, fecha, IP y user-agent.
 
-const EXCLUDED = ["/login", "/terminos", "/privacidad", "/conteos/marbetes/imprimir", "/suspendida"];
+const EXCLUDED = ["/login", "/terminos", "/privacidad", "/uso-aceptable", "/cookies", "/conteos/marbetes/imprimir", "/suspendida"];
 
 export function TermsGate() {
   const pathname = usePathname();
+  const [pending, setPending] = useState<LegalDoc[]>([]);
   const [show, setShow] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -30,8 +33,11 @@ export function TermsGate() {
         try {
           const res = await fetch("/api/legal/accept", { cache: "no-store" });
           if (!res.ok) throw new Error(String(res.status));
-          const data = (await res.json()) as { accepted?: boolean };
-          if (!cancelled) setShow(data.accepted === false);
+          const data = (await res.json()) as { accepted?: boolean; pending?: LegalDoc[] };
+          if (!cancelled) {
+            setPending(data.pending ?? []);
+            setShow(data.accepted === false);
+          }
           return;
         } catch {
           if (cancelled) return;
@@ -61,6 +67,10 @@ export function TermsGate() {
     }
   }
 
+  // Enlaces a los documentos pendientes (o a todos, si por alguna razón no llegó
+  // la lista pero igual hay que aceptar).
+  const docs = pending.length > 0 ? pending : [];
+
   return (
     <AnimatePresence>
       {show && (
@@ -82,19 +92,30 @@ export function TermsGate() {
             </span>
             <h2 className="text-lg font-semibold text-ink">Términos y privacidad</h2>
             <p className="mt-1.5 text-sm leading-relaxed text-muted">
-              Para usar Clarvex Team necesitas aceptar los{" "}
-              <a href="/terminos" target="_blank" rel="noreferrer" className="font-semibold text-volt underline">Términos de Servicio</a>{" "}
-              y el{" "}
-              <a href="/privacidad" target="_blank" rel="noreferrer" className="font-semibold text-volt underline">Aviso de Privacidad</a>.
-              Tu aceptación queda registrada con fecha y versión.
+              Para usar Clarvex Team necesitas aceptar los siguientes documentos. Tu aceptación queda registrada con la fecha, la versión y tu equipo.
             </p>
+            <ul className="mt-3 grid gap-1.5">
+              {docs.map((doc) => (
+                <li key={doc.key}>
+                  <a
+                    href={doc.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center justify-between rounded-2xl border border-line bg-panel px-3.5 py-2.5 text-sm font-semibold text-ink transition hover:border-volt/40"
+                  >
+                    <span>{doc.label}</span>
+                    <span className="text-xs font-bold text-volt">Leer →</span>
+                  </a>
+                </li>
+              ))}
+            </ul>
             <button
               type="button"
               onClick={() => void accept()}
               disabled={saving}
               className="mt-4 w-full rounded-2xl bg-volt py-3 text-sm font-semibold text-white transition active:scale-95 disabled:opacity-50"
             >
-              {saving ? "Guardando…" : "Acepto los términos y el aviso de privacidad"}
+              {saving ? "Guardando…" : docs.length > 1 ? "Acepto todos los documentos" : "Acepto"}
             </button>
           </motion.div>
         </motion.div>
