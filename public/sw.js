@@ -1,4 +1,4 @@
-const CACHE_NAME = "clarvex-team-v13";
+const CACHE_NAME = "clarvex-team-v14";
 // Solo assets estáticos con nombre fijo. NUNCA se cachea HTML: un shell viejo
 // apuntaría a chunks de JS ya borrados tras un deploy → pantalla en blanco.
 const CORE_ASSETS = ["/manifest.webmanifest", "/icon.svg"];
@@ -49,11 +49,16 @@ self.addEventListener("push", (event) => {
   let data = { title: "CLARVEX Team", body: "Tienes una nueva notificacion.", icon: "/icon-192.png", tag: "clarvex-notification", url: "/notificaciones" };
   try { data = { ...data, ...event.data.json() }; } catch (_) {}
 
+  // URLs ABSOLUTAS: con rutas relativas, Android/Chrome a veces no resuelve el
+  // ícono grande y muestra un monograma gris ("A"). Absolutas siempre cargan.
+  const iconUrl = new URL(data.icon || "/icon-192.png", self.location.origin).href;
+  const badgeUrl = new URL("/badge-72.png", self.location.origin).href;
+
   event.waitUntil(
     self.registration.showNotification(data.title, {
       body: data.body,
-      icon: data.icon || "/icon-192.png",
-      badge: "/badge-72.png",
+      icon: iconUrl,
+      badge: badgeUrl,
       tag: data.tag,
       data: { url: data.url || "/notificaciones" },
       renotify: true,
