@@ -20,6 +20,7 @@ export async function getServerSession() {
       name: true,
       storeId: true,
       platformAdmin: true,
+      isDemo: true,
       sessionVersion: true,
       store: { select: { billingExempt: true, subscriptionPaidUntil: true } }
     }
@@ -35,6 +36,7 @@ export async function getServerSession() {
   session.name = user.name;
   session.storeId = user.storeId;
   session.platformAdmin = user.platformAdmin;
+  session.demo = user.isDemo === true;
   // Paywall: la tienda sin suscripción vigente queda suspendida (los admins de
   // plataforma nunca se bloquean). requireSession responde 402 con esta marca.
   session.storeSuspended = !user.store.billingExempt

@@ -45,6 +45,8 @@ function isPublicApi(pathname: string): boolean {
   if (publicApiExact.has(pathname)) return true;
   if (pathname.startsWith("/api/cron/")) return true;
   if (pathname.startsWith("/api/webhooks/")) return true;
+  // Entrada pública al modo demo (crea la sesión demo; rate-limitada en el handler).
+  if (pathname.startsWith("/api/demo/")) return true;
   return false;
 }
 
@@ -68,6 +70,11 @@ export async function middleware(request: NextRequest) {
     // se corta aquí, además de que los handlers ya validan rol.
     if (session.checklistOnly && !pathname.startsWith("/api/checklist") && !pathname.startsWith("/api/auth/")) {
       return NextResponse.json({ error: "Sin permiso." }, { status: 403 });
+    }
+    // Sesión DEMO: SOLO LECTURA. Cualquier método que cambie estado se corta aquí
+    // (se permite /api/auth para poder cerrar la sesión demo). Es el candado real.
+    if (session.demo && request.method !== "GET" && !pathname.startsWith("/api/auth/")) {
+      return NextResponse.json({ error: "Modo demostración: solo lectura." }, { status: 403 });
     }
     return NextResponse.next();
   }

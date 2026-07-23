@@ -10,7 +10,7 @@ export async function GET() {
   if (!session) return NextResponse.json({ error: "Sesion requerida." }, { status: 401 });
   const user = await prisma.user.findFirst({ where: { id: session.userId, storeId: session.storeId }, include: { store: { select: { name: true } } } });
   if (!user) return NextResponse.json({ error: "Usuario no encontrado." }, { status: 404 });
-  return NextResponse.json({ user: { ...publicUser(user), storeName: user.store.name, platformAdmin: user.platformAdmin, checklistOnly: user.checklistOnly } }, { headers: { "Cache-Control": "private, no-store" } });
+  return NextResponse.json({ user: { ...publicUser(user), storeName: user.store.name, platformAdmin: user.platformAdmin, checklistOnly: user.checklistOnly, demo: user.isDemo } }, { headers: { "Cache-Control": "private, no-store" } });
 }
 
 export async function DELETE() {

@@ -132,6 +132,9 @@ model User {
   /// Usuario "kiosko" del celular de la tienda: SOLO ve el checklist (para los
   /// escaneos del cierre). El middleware lo encierra en /checklist.
   checklistOnly         Boolean                @default(false)
+  /// Usuario de DEMOSTRACIÓN (tienda demo pública). Su sesión es de SOLO
+  /// LECTURA: el middleware corta cualquier método que no sea GET.
+  isDemo                Boolean                @default(false)
   failedPinAttempts     Int                    @default(0)
   pinLockedUntil        DateTime?
   pinLockoutCount       Int                    @default(0)
