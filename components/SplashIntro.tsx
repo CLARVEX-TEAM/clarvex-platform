@@ -36,6 +36,12 @@ export function SplashIntro() {
   );
 
   useEffect(() => {
+    // App nativa (Capacitor/Android): oculta el splash NATIVO justo cuando la app
+    // web ya montó, para que el intro se vea completo SIN parpadeo del ícono. En
+    // web/PWA es no-op (el plugin no hace nada fuera de la app nativa).
+    void import("@capacitor/splash-screen")
+      .then(({ SplashScreen }) => SplashScreen.hide({ fadeOutDuration: 250 }))
+      .catch(() => undefined);
     try {
       if (sessionStorage.getItem("clarvex-splash")) return;
       sessionStorage.setItem("clarvex-splash", "1");
