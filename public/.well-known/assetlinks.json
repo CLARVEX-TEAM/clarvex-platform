@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "tech.clarvex.team",
+      "sha256_cert_fingerprints": [
+        "D5:43:D8:28:0E:47:D4:7F:C2:1E:DB:19:DC:48:B1:02:C3:7B:0D:58:BE:49:CB:42:63:B6:1E:92:E7:01:96:FB"
+      ]
+    }
+  }
+]
