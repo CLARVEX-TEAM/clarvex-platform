@@ -29,6 +29,9 @@ export function TermsGate() {
     void (async () => {
       const session = await getSession().catch(() => null);
       if (!session || cancelled) return;
+      // Modo demo: nunca se le pide aceptar términos (un visitante no firma nada
+      // legal, y además su sesión es de SOLO LECTURA: no podría guardar).
+      if ((session as { demo?: boolean }).demo) { if (!cancelled) setShow(false); return; }
       for (let attempt = 0; attempt < 4; attempt += 1) {
         try {
           const res = await fetch("/api/legal/accept", { cache: "no-store" });
