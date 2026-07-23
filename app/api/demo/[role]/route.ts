@@ -9,6 +9,17 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 /**
+ * Redirección RELATIVA (Location: "/ruta"). El navegador la resuelve contra el
+ * dominio público (app.adrianluna.mx), no contra la URL interna del proxy
+ * (localhost:3000) — que es lo que devuelve request.url detrás de Nginx.
+ */
+function redirectTo(path: string, token?: string) {
+  const response = new NextResponse(null, { status: 303, headers: { Location: path } });
+  if (token) response.cookies.set(SESSION_COOKIE, token, sessionCookieOptions);
+  return response;
+}
+
+/**
  * GET /api/demo/manager  |  /api/demo/advisor
  *
  * Entrada sin fricción al MODO DEMO: crea una sesión del usuario demo
@@ -23,7 +34,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ role
     : role === "advisor"
       ? DEMO_ADVISOR_EMPLOYEE
       : null;
-  if (!employeeNumber) return NextResponse.redirect(new URL("/login", request.url));
+  if (!employeeNumber) return redirectTo("/login");
 
   const rate = await rateLimitAuth(clientIp(request.headers));
   if (!rate.allowed) {
@@ -37,11 +48,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ role
     where: { employeeNumber, storeId: DEMO_STORE_ID, isDemo: true, active: true }
   });
   // Si aún no se ha sembrado la tienda demo, no reventamos: al login con aviso.
-  if (!user) return NextResponse.redirect(new URL("/login?demo=unavailable", request.url));
+  if (!user) return redirectTo("/login?demo=unavailable");
 
   const token = await createSessionToken(user);
-  const target = user.role === "ASESOR" ? "/advisor" : "/manager";
-  const response = NextResponse.redirect(new URL(target, request.url));
-  response.cookies.set(SESSION_COOKIE, token, sessionCookieOptions);
-  return response;
+  return redirectTo(user.role === "ASESOR" ? "/advisor" : "/manager", token);
 }
