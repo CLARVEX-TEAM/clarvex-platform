@@ -346,7 +346,10 @@ Debes responder estrictamente en formato JSON utilizando el siguiente esquema:
    * Coach IA - Detailed Strengths, Weaknesses, and Coaching recommendations for an advisor.
    */
   public static async getAdvisorProfile(session: Session, userId: string) {
-    const memoryKey = `advisor_profile_${userId}`;
+    // El sufijo de versión invalida el caché cuando cambia el prompt. Sin él, los
+    // perfiles ya guardados (algunos generados en inglés) seguirían mostrándose
+    // hasta 3 días. Súbelo cada vez que cambie el prompt de este coach.
+    const memoryKey = `advisor_profile_v2_${userId}`;
 
     // 1. Check if cached in memory in the last 3 days
     const cachedMemory = await prisma.aiMemory.findUnique({
@@ -422,6 +425,10 @@ Genera un perfil con:
 5. 3 técnicas de venta específicas para mejorar su desempeño
 6. Recomendación de productos a impulsar
 7. Nivel de riesgo operacional (Bajo, Medio, Alto) con justificación.
+
+IDIOMA: escribe TODOS los textos en español de México, dirigiéndote al asesor de
+tú. Las claves del JSON van en inglés tal como aparecen abajo, pero ni un solo
+valor puede salir en inglés: es lo que lee el asesor en la app.
 
 Responde estrictamente en formato JSON utilizando el siguiente esquema:
 {

@@ -369,8 +369,8 @@ export default function AdvisorDashboard() {
               {/* Reto 1: Meta de Ventas */}
               <div className="flex items-center justify-between gap-4 text-sm">
                 <div className="min-w-0">
-                  <p className="font-bold text-white">Objetivo de Venta</p>
-                  <p className="text-xs text-slate-400 mt-0.5">Alcanzar tu meta personal de {money(daily.dailyGoal)}</p>
+                  <p className="font-bold text-ink">Objetivo de Venta</p>
+                  <p className="text-xs text-muted mt-0.5">Alcanzar tu meta personal de {money(daily.dailyGoal)}</p>
                 </div>
                 <Badge tone={daily.dailySales >= daily.dailyGoal && daily.dailyGoal > 0 ? "success" : "warn"}>
                   {daily.dailySales >= daily.dailyGoal && daily.dailyGoal > 0 ? "Completado" : "Pendiente"}
@@ -378,10 +378,10 @@ export default function AdvisorDashboard() {
               </div>
 
               {/* Reto 2: Checklist */}
-              <div className="flex items-center justify-between gap-4 text-sm border-t border-white/[0.07] pt-3">
+              <div className="flex items-center justify-between gap-4 text-sm border-t border-line pt-3">
                 <div className="min-w-0">
-                  <p className="font-bold text-white">Checklist Operativo</p>
-                  <p className="text-xs text-slate-400 mt-0.5">Completar todas las tareas del plan de hoy ({planDone}/{planTotal})</p>
+                  <p className="font-bold text-ink">Checklist Operativo</p>
+                  <p className="text-xs text-muted mt-0.5">Completar todas las tareas del plan de hoy ({planDone}/{planTotal})</p>
                 </div>
                 <Badge tone={planTotal > 0 && planDone === planTotal ? "success" : "warn"}>
                   {planTotal > 0 && planDone === planTotal ? "Completado" : "Pendiente"}
@@ -389,10 +389,10 @@ export default function AdvisorDashboard() {
               </div>
 
               {/* Reto 3: UPT */}
-              <div className="flex items-center justify-between gap-4 text-sm border-t border-white/[0.07] pt-3">
+              <div className="flex items-center justify-between gap-4 text-sm border-t border-line pt-3">
                 <div className="min-w-0">
-                  <p className="font-bold text-white">UPT Imparable</p>
-                  <p className="text-xs text-slate-400 mt-0.5">Mantener tu ratio de artículos por ticket arriba de 2.0 (UPT actual: {kpi?.upt ?? 0})</p>
+                  <p className="font-bold text-ink">UPT Imparable</p>
+                  <p className="text-xs text-muted mt-0.5">Mantener tu ratio de artículos por ticket arriba de 2.0 (UPT actual: {kpi?.upt ?? 0})</p>
                 </div>
                 <Badge tone={(kpi?.upt ?? 0) >= 2.0 ? "success" : "warn"}>
                   {(kpi?.upt ?? 0) >= 2.0 ? "Completado" : "Bajo"}
@@ -447,10 +447,10 @@ export default function AdvisorDashboard() {
             ) : (
               <div className="space-y-4">
                 {profile && profile.operationalRisk && (
-                  <div className="rounded-xl bg-white/5 border border-white/5 p-3 flex items-center justify-between">
+                  <div className="rounded-xl bg-panel border border-line p-3 flex items-center justify-between">
                     <div className="min-w-0 pr-2">
-                      <p className="text-[10px] uppercase tracking-wider text-white/40 font-bold">Riesgo Operacional</p>
-                      <p className="text-xs text-slate-300 mt-0.5 leading-relaxed truncate">{profile.operationalRisk.reason}</p>
+                      <p className="text-[10px] uppercase tracking-wider text-muted font-bold">Riesgo Operacional</p>
+                      <p className="text-xs text-ink mt-0.5 leading-relaxed truncate">{profile.operationalRisk.reason}</p>
                     </div>
                     <Badge tone={
                       profile.operationalRisk.level === "Bajo" ? "success" :
@@ -464,24 +464,24 @@ export default function AdvisorDashboard() {
                 {profile && profile.strongestKpi && (
                   <div className="grid grid-cols-2 gap-3 text-xs">
                     <div className="rounded-xl bg-emerald-500/10 border border-emerald-500/20 p-2.5">
-                      <p className="font-bold text-emerald-400 text-[10px] uppercase tracking-wider">Fuerte 🚀</p>
-                      <p className="font-semibold text-white mt-1 text-[13px]">{profile.strongestKpi.name}</p>
-                      <p className="text-white/60 mt-0.5 leading-relaxed text-[11px]">{profile.strongestKpi.details}</p>
+                      <p className="font-bold text-emerald-600 dark:text-emerald-400 text-[10px] uppercase tracking-wider">Fuerte 🚀</p>
+                      <p className="font-semibold text-ink mt-1 text-[13px]">{profile.strongestKpi.name}</p>
+                      <p className="text-muted mt-0.5 leading-relaxed text-[11px]">{profile.strongestKpi.details}</p>
                     </div>
                     <div className="rounded-xl bg-rose-500/10 border border-rose-500/20 p-2.5">
-                      <p className="font-bold text-rose-400 text-[10px] uppercase tracking-wider">Mejora 🎯</p>
-                      <p className="font-semibold text-white mt-1 text-[13px]">{profile.weakestKpi.name}</p>
-                      <p className="text-white/60 mt-0.5 leading-relaxed text-[11px]">{profile.weakestKpi.details}</p>
+                      <p className="font-bold text-rose-600 dark:text-rose-400 text-[10px] uppercase tracking-wider">Mejora 🎯</p>
+                      <p className="font-semibold text-ink mt-1 text-[13px]">{profile.weakestKpi.name}</p>
+                      <p className="text-muted mt-0.5 leading-relaxed text-[11px]">{profile.weakestKpi.details}</p>
                     </div>
                   </div>
                 )}
 
                 {profile && profile.techniques && (
-                  <div className="rounded-xl bg-white/5 border border-white/5 p-3 space-y-2">
-                    <p className="text-[11px] font-semibold text-white uppercase tracking-wider text-white/40 flex items-center gap-1">
+                  <div className="rounded-xl bg-panel border border-line p-3 space-y-2">
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-muted flex items-center gap-1">
                       💡 Técnicas de Venta Recomendadas:
                     </p>
-                    <ul className="list-disc pl-4 space-y-1 text-xs text-white/70 leading-relaxed">
+                    <ul className="list-disc pl-4 space-y-1 text-xs text-ink leading-relaxed">
                       {profile.techniques.map((t: string, idx: number) => (
                         <li key={idx}>{t}</li>
                       ))}
@@ -490,8 +490,8 @@ export default function AdvisorDashboard() {
                 )}
 
                 {profile && profile.recommendedResources && profile.recommendedResources.length > 0 && (
-                  <div className="rounded-xl bg-white/5 border border-white/5 p-3 space-y-2">
-                    <p className="text-[11px] font-semibold uppercase tracking-wider text-[#2563EB] flex items-center gap-1">
+                  <div className="rounded-xl bg-panel border border-line p-3 space-y-2">
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-volt flex items-center gap-1">
                       📚 Capacitación Recomendada:
                     </p>
                     <div className="space-y-2">
@@ -499,9 +499,9 @@ export default function AdvisorDashboard() {
                         <Link
                           key={res.id}
                           href={`/capacitacion`}
-                          className="flex items-center justify-between gap-2 rounded-lg bg-white/[0.03] hover:bg-white/5 border border-white/5 p-2 transition"
+                          className="flex items-center justify-between gap-2 rounded-lg bg-panel border border-line p-2 transition hover:border-volt/40"
                         >
-                          <span className="text-xs text-white/90 font-semibold truncate">{res.title}</span>
+                          <span className="text-xs text-ink font-semibold truncate">{res.title}</span>
                           <span className="text-[10px] text-volt shrink-0 font-bold uppercase tracking-wider">Ver artículo</span>
                         </Link>
                       ))}
@@ -511,7 +511,7 @@ export default function AdvisorDashboard() {
 
                 <div className="space-y-3 pt-2">
                   {tips.map((tip, idx) => (
-                    <div key={idx} className="border-b border-white/[0.07] pb-3 last:border-0 last:pb-0">
+                    <div key={idx} className="border-b border-line pb-3 last:border-0 last:pb-0">
                       <p className="text-sm font-bold text-volt">{tip.title}</p>
                       <p className="mt-1 text-xs text-muted">{tip.description}</p>
                     </div>
@@ -564,7 +564,7 @@ export default function AdvisorDashboard() {
                 </Link>
               ))}
               {unread.length === 0 && (
-                <div className="border-t border-white/[0.07] py-2 text-[13px] text-muted">
+                <div className="border-t border-line py-2 text-[13px] text-muted">
                   Sin comunicados pendientes. Tu actividad está al día.
                 </div>
               )}
@@ -584,7 +584,7 @@ export default function AdvisorDashboard() {
 
 function Metric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="border-b border-white/[0.07] px-1 py-2 last:border-b-0">
+    <div className="border-b border-line px-1 py-2 last:border-b-0">
       <p className="text-ink/45">{label}</p>
       <p className="mt-1 text-lg font-semibold text-ink/90">{value}</p>
     </div>
