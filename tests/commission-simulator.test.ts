@@ -43,6 +43,32 @@ test("simulador: mover el deslizador sube la tasa sin tocar la comision real", (
   assert.equal(sim.real.amount, 1_910);
 });
 
+test("simulador: dice cuanto falta vender para llegar a la venta simulada", () => {
+  // Lleva 160k de un mes con minimo 300k, simula 300k -> le faltan 140k.
+  const sim = buildCommissionSimulation({ ...monthly, sales: 160_000, goal: 345_000, minimum: 300_000, simulatedSales: 300_000 });
+  assert.equal(sim.simulatedSales, 300_000); // dentro del rango, no se recorta
+  assert.equal(sim.salesToSimulated, 140_000);
+  // Y la comisión extra es la diferencia contra la que ya lleva, no la total.
+  assert.equal(sim.extraCommissionVsReal, sim.simulated.amount - sim.real.amount);
+  assert.ok(sim.extraCommissionVsReal > 0);
+});
+
+test("simulador: sin mover el deslizador no falta nada ni hay comision extra", () => {
+  const sim = buildCommissionSimulation(monthly);
+  assert.equal(sim.salesToSimulated, 0);
+  assert.equal(sim.extraCommissionVsReal, 0);
+});
+
+test("simulador: lo que falta se mide contra la venta simulada ya acotada", () => {
+  // Pedir menos que la venta real no da un faltante negativo.
+  const sim = buildCommissionSimulation({ ...monthly, simulatedSales: 10_000 });
+  assert.equal(sim.salesToSimulated, 0);
+  assert.equal(sim.extraCommissionVsReal, 0);
+  // Y contra el tope, el faltante es tope - venta real.
+  const tope = buildCommissionSimulation({ ...monthly, simulatedSales: 9_000_000 });
+  assert.equal(tope.salesToSimulated, tope.sliderMax - monthly.sales);
+});
+
 test("simulador: el tope del deslizador alcanza el bracket mas alto del rol", () => {
   const sim = buildCommissionSimulation(monthly);
   // El bracket más alto empieza en 115% -> 115_000 de venta. El tope debe pasarlo.

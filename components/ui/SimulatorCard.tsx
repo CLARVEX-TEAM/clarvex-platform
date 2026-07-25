@@ -29,7 +29,7 @@ export function SimulatorCard({
   // (que cambia al refrescar el dashboard).
   const [moved, setMoved] = useState<number | null>(null);
 
-  const { sliderMin, sliderMax, simulatedSales, real, simulated, gap } = buildCommissionSimulation({
+  const { sliderMin, sliderMax, simulatedSales, real, simulated, salesToSimulated, extraCommissionVsReal, gap } = buildCommissionSimulation({
     sales,
     goal,
     minimum,
@@ -114,6 +114,17 @@ export function SimulatorCard({
           <span className="text-slate-400">Tasa Simulada:</span>
           <span className="font-bold text-white">{simulated.percent}%</span>
         </div>
+
+        {salesToSimulated > 0 && (
+          <div className="border-t border-white/[0.08] pt-2 text-xs leading-normal">
+            <p className="text-slate-300">
+              Te faltan <span className="font-semibold text-white">{money(salesToSimulated)}</span> para llegar a esta venta,
+            </p>
+            <p className="text-slate-400 mt-0.5">
+              y te llevarías <span className="font-semibold text-[#00FF66]">+{money(extraCommissionVsReal)}</span> más de comisión que ahora.
+            </p>
+          </div>
+        )}
 
         {gap && !gap.atTop && (
           <div className="bg-[#00FF66]/5 border border-[#00FF66]/10 rounded-xl p-3 mt-2 flex items-start gap-2.5">

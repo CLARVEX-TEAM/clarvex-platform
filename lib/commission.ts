@@ -93,6 +93,10 @@ export type CommissionSimulation = {
   real: AccruedCommission;
   /** Comisión con la venta simulada. */
   simulated: AccruedCommission;
+  /** Cuánto falta vender para llegar a la venta simulada (0 si es la venta real). */
+  salesToSimulated: number;
+  /** Comisión extra que se llevaría al llegar a la venta simulada. */
+  extraCommissionVsReal: number;
   /** Cuánto falta, desde la venta simulada, para el siguiente bracket. */
   gap: NextBracketGap | null;
 };
@@ -127,12 +131,16 @@ export function buildCommissionSimulation(input: {
   const sliderMax = Math.max(sliderMin + 10_000, Math.round(input.goal * 1.5), Math.round(topSales * 1.1));
   const simulatedSales = Math.min(Math.max(input.simulatedSales ?? sliderMin, sliderMin), sliderMax);
   const scope = { goal: input.goal, minimum: input.minimum, rules: input.rules, role: input.role };
+  const real = accruedCommission({ ...scope, sales: input.sales });
+  const simulated = accruedCommission({ ...scope, sales: simulatedSales });
   return {
     sliderMin,
     sliderMax,
     simulatedSales,
-    real: accruedCommission({ ...scope, sales: input.sales }),
-    simulated: accruedCommission({ ...scope, sales: simulatedSales }),
+    real,
+    simulated,
+    salesToSimulated: round2(Math.max(0, simulatedSales - input.sales)),
+    extraCommissionVsReal: round2(Math.max(0, simulated.amount - real.amount)),
     gap: computeNextBracketGap({ sales: simulatedSales, minimum, rules: input.rules, role: input.role })
   };
 }
