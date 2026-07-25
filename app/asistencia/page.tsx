@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CalendarX2, ChevronLeft, ChevronRight, Clock, PartyPopper, Sun } from "lucide-react";
+import { BellRing, CalendarX2, ChevronLeft, ChevronRight, Clock, PartyPopper, Sun } from "lucide-react";
 import { getSession } from "@/lib/auth";
 import type { AttendanceStatus } from "@/lib/attendance";
 import type { User } from "@/lib/types";
@@ -31,6 +31,8 @@ import { cn } from "@/lib/utils";
 // no solo el del mes que se está viendo.
 type Teammate = { id: string; name: string; employeeNumber: string; role: string; photoUrl: string | null; hoursOwed: number; balanceMinutes: number };
 
+type ReportReminder = { kind: "QUINCENA" | "MES"; daysLeft: number; message: string; periodKey: string; dueDate: string };
+
 function shiftMonth(month: string, delta: number): string {
   const [year, monthNumber] = month.split("-").map(Number);
   const date = new Date(Date.UTC(year, monthNumber - 1 + delta, 1));
@@ -58,6 +60,9 @@ export default function AsistenciaPage() {
   const [tab, setTab] = useState<"dias" | "incidencias">("dias");
   // Las faltas se reportan por quincena; los retardos y festivos, por mes.
   const [period, setPeriod] = useState<1 | 2 | "mes">("mes");
+  const [reminder, setReminder] = useState<ReportReminder | null>(null);
+  const [confirming, setConfirming] = useState(false);
+  const [confirmError, setConfirmError] = useState("");
 
   useEffect(() => {
     getSession().then((current) => {
@@ -87,6 +92,43 @@ export default function AsistenciaPage() {
     if (!session) return;
     void load();
   }, [session, load]);
+
+  // El recordatorio solo aplica a gerencia (es quien captura en Blitz).
+  const loadReminder = useCallback(async () => {
+    if (!session || session.role === "ASESOR") return;
+    try {
+      const response = await fetch("/api/report-reminder", { cache: "no-store" });
+      if (!response.ok) return;
+      const payload = await response.json() as { reminder: ReportReminder | null };
+      setReminder(payload.reminder);
+    } catch {
+      // Sin conexión: no se pinta el aviso, pero el push ya llegó.
+    }
+  }, [session]);
+
+  useEffect(() => {
+    void loadReminder();
+  }, [loadReminder]);
+
+  async function confirmReminder() {
+    if (!reminder) return;
+    setConfirming(true);
+    setConfirmError("");
+    try {
+      const response = await fetch("/api/report-reminder", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ periodKey: reminder.periodKey })
+      });
+      const payload = await response.json().catch(() => ({})) as { error?: string };
+      if (!response.ok) throw new Error(payload.error || "No se pudo confirmar.");
+      setReminder(null);
+    } catch (error) {
+      setConfirmError(error instanceof Error ? error.message : "No se pudo confirmar.");
+    } finally {
+      setConfirming(false);
+    }
+  }
 
   const byUser = useMemo(() => totalsByUser(records, schedules), [records, schedules]);
   const totals = useMemo(() => totalsFor(records, schedules), [records, schedules]);
@@ -131,6 +173,30 @@ export default function AsistenciaPage() {
         backHref={session?.role === "ASESOR" ? "/advisor" : "/manager"}
       />
       <AppFrame>
+        {/* Recordatorio de entrega: el mismo que llega por push. Se puede
+            confirmar aquí para que deje de avisar por ese cierre. */}
+        {reminder && (
+          <Card className="mb-3 border border-amber-500/30 bg-amber-500/[0.07] p-3.5">
+            <div className="flex items-start gap-2.5">
+              <BellRing className="mt-0.5 shrink-0 text-amber-600 dark:text-amber-400" size={18} />
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold text-ink">
+                  {reminder.kind === "QUINCENA" ? "Cierre de quincena" : "Cierre del mes retail"}
+                </p>
+                <p className="mt-0.5 text-xs leading-relaxed text-muted">{reminder.message}</p>
+                <Button
+                  onClick={() => void confirmReminder()}
+                  disabled={confirming}
+                  className="mt-2.5 w-full"
+                >
+                  {confirming ? "Guardando…" : "Ya lo subí a Blitz"}
+                </Button>
+                {confirmError && <p className="mt-1.5 text-xs font-semibold text-rose-600 dark:text-rose-400">{confirmError}</p>}
+              </div>
+            </div>
+          </Card>
+        )}
+
         {/* Selector de mes */}
         <Card className="mb-3 flex items-center justify-between p-3">
           <button type="button" aria-label="Mes anterior" onClick={() => setMonth((m) => shiftMonth(m, -1))} className="grid size-9 place-items-center rounded-full text-muted transition active:scale-95">

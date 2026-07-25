@@ -8,13 +8,13 @@ datasource db {
 }
 
 model Store {
-  id                    String                @id @default(cuid())
+  id                    String                    @id @default(cuid())
   name                  String
-  createdAt             DateTime              @default(now())
-  updatedAt             DateTime              @updatedAt
-  billingExempt         Boolean               @default(true)
+  createdAt             DateTime                  @default(now())
+  updatedAt             DateTime                  @updatedAt
+  billingExempt         Boolean                   @default(true)
   subscriptionPaidUntil DateTime?
-  pricePerUserMxn       Decimal?              @db.Decimal(10, 2)
+  pricePerUserMxn       Decimal?                  @db.Decimal(10, 2)
   announcements         Announcement[]
   chatRooms             ChatRoom[]
   checklistEntries      ChecklistEntry[]
@@ -45,11 +45,12 @@ model Store {
   surveys               Survey[]
   trainingResources     TrainingResource[]
   users                 User[]
-  aiMemories             AiMemory[]
-  aiPlanHistories        AiPlanHistory[]
-  aiRecommendations      AiRecommendationHistory[]
-  aiDailySummaries       AiDailySummary[]
-  retailAlertLogs        RetailAlertLog[]
+  aiMemories            AiMemory[]
+  aiPlanHistories       AiPlanHistory[]
+  aiRecommendations     AiRecommendationHistory[]
+  aiDailySummaries      AiDailySummary[]
+  retailAlertLogs       RetailAlertLog[]
+  reportDeliveries      ReportDelivery[]
 }
 
 model StoreFixture {
@@ -103,42 +104,42 @@ model SyncLog {
 }
 
 model User {
-  id                    String                 @id @default(cuid())
+  id                    String                    @id @default(cuid())
   name                  String
-  email                 String                 @unique
-  employeeNumber        String                 @unique
+  email                 String                    @unique
+  employeeNumber        String                    @unique
   passwordHash          String?
   role                  Role
   storeId               String
-  createdAt             DateTime               @default(now())
-  updatedAt             DateTime               @updatedAt
+  createdAt             DateTime                  @default(now())
+  updatedAt             DateTime                  @updatedAt
   pinHash               String?
   photoUrl              String?
-  biometricEnabled      Boolean                @default(false)
+  biometricEnabled      Boolean                   @default(false)
   lastLoginAt           DateTime?
   birthDate             DateTime?
   hireDate              DateTime?
-  hoursOwed             Float                  @default(0)
+  hoursOwed             Float                     @default(0)
   /// Saldo de vacaciones capturado a mano. NO es el saldo real: el que manda lo
   /// calcula lib/vacation-account (este + lo ganado en aniversarios − lo tomado).
-  vacationDays          Float                  @default(0)
+  vacationDays          Float                     @default(0)
   /// Fecha de corte del saldo de arriba: lo anterior a ella YA está descontado.
   /// Sin esta frontera, las vacaciones viejas se restarían dos veces.
   vacationBaselineAt    DateTime?
-  paidDays              Float                  @default(0)
+  paidDays              Float                     @default(0)
   lastSeenAt            DateTime?
-  active                Boolean                @default(true)
-  platformAdmin         Boolean                @default(false)
+  active                Boolean                   @default(true)
+  platformAdmin         Boolean                   @default(false)
   /// Usuario "kiosko" del celular de la tienda: SOLO ve el checklist (para los
   /// escaneos del cierre). El middleware lo encierra en /checklist.
-  checklistOnly         Boolean                @default(false)
+  checklistOnly         Boolean                   @default(false)
   /// Usuario de DEMOSTRACIÓN (tienda demo pública). Su sesión es de SOLO
   /// LECTURA: el middleware corta cualquier método que no sea GET.
-  isDemo                Boolean                @default(false)
-  failedPinAttempts     Int                    @default(0)
+  isDemo                Boolean                   @default(false)
+  failedPinAttempts     Int                       @default(0)
   pinLockedUntil        DateTime?
-  pinLockoutCount       Int                    @default(0)
-  sessionVersion        Int                    @default(0)
+  pinLockoutCount       Int                       @default(0)
+  sessionVersion        Int                       @default(0)
   termsAcceptedAt       DateTime?
   termsAcceptedVersion  String?
   /// Qué columna del uniforme le toca: MUJER | HOMBRE. No registra identidad:
@@ -154,35 +155,36 @@ model User {
   chatMessageReactions  ChatMessageReaction[]
   chatMessageReads      ChatMessageRead[]
   choreAssignments      ChoreAssignment[]
-  comments              Comment[]              @relation("CommentAuthor")
+  comments              Comment[]                 @relation("CommentAuthor")
   plans                 DayPlan[]
   employeeNumberAliases EmployeeNumberAlias[]
-  evidences             Evidence[]             @relation("EvidenceAuthor")
-  inventoryReports      InventoryReport[]      @relation("InventoryReporter")
-  inventoryResolved     InventoryReport[]      @relation("InventoryResolver")
+  evidences             Evidence[]                @relation("EvidenceAuthor")
+  inventoryReports      InventoryReport[]         @relation("InventoryReporter")
+  inventoryResolved     InventoryReport[]         @relation("InventoryResolver")
   kpis                  Kpi[]
-  kudosSent             Kudo[]                 @relation("KudoFrom")
-  kudosReceived         Kudo[]                 @relation("KudoTo")
+  kudosSent             Kudo[]                    @relation("KudoFrom")
+  kudosReceived         Kudo[]                    @relation("KudoTo")
   notifications         Notification[]
-  assignedPendings      Pending[]              @relation("PendingOwner")
+  assignedPendings      Pending[]                 @relation("PendingOwner")
   pushSubscriptions     PushSubscription[]
   schedules             Schedule[]
   attendances           Attendance[]
-  shiftRequests         ShiftRequest[]         @relation("ShiftRequester")
-  swapsRequested        ShiftSwap[]            @relation("SwapRequester")
-  swapsReceived         ShiftSwap[]            @relation("SwapTarget")
+  shiftRequests         ShiftRequest[]            @relation("ShiftRequester")
+  swapsRequested        ShiftSwap[]               @relation("SwapRequester")
+  swapsReceived         ShiftSwap[]               @relation("SwapTarget")
   authoredLogs          StoreLog[]
-  authoredSurveys       Survey[]               @relation("SurveyAuthor")
-  surveyResponses       SurveyResponse[]       @relation("SurveyRespondent")
-  authoredTraining      TrainingResource[]     @relation("TrainingAuthor")
-  trainingViews         TrainingResourceView[] @relation("TrainingViewer")
+  authoredSurveys       Survey[]                  @relation("SurveyAuthor")
+  surveyResponses       SurveyResponse[]          @relation("SurveyRespondent")
+  authoredTraining      TrainingResource[]        @relation("TrainingAuthor")
+  trainingViews         TrainingResourceView[]    @relation("TrainingViewer")
   legalAcceptances      LegalAcceptance[]
-  store                 Store                  @relation(fields: [storeId], references: [id])
+  store                 Store                     @relation(fields: [storeId], references: [id])
   webAuthnCredentials   WebAuthnCredential[]
-  aiMemories             AiMemory[]
-  aiPlanHistories        AiPlanHistory[]
-  aiRecommendations      AiRecommendationHistory[]
-  retailAlertLogs        RetailAlertLog[]
+  aiMemories            AiMemory[]
+  aiPlanHistories       AiPlanHistory[]
+  aiRecommendations     AiRecommendationHistory[]
+  retailAlertLogs       RetailAlertLog[]
+  reportDeliveries      ReportDelivery[]
 }
 
 model TrainingResource {
@@ -366,19 +368,19 @@ model Schedule {
 /// Si una tienda no tiene filas, la app usa la tabla por defecto de
 /// lib/uniforms.ts. La primera edición las crea.
 model UniformDay {
-  id           String   @id @default(cuid())
-  storeId      String
+  id          String   @id @default(cuid())
+  storeId     String
   /// 0 = domingo … 6 = sábado (igual que Date.getUTCDay()).
-  weekday      Int
-  womanTop     String
-  womanBottom  String
-  manTop       String
-  manBottom    String
+  weekday     Int
+  womanTop    String
+  womanBottom String
+  manTop      String
+  manBottom   String
   /// Nota del día (p. ej. "El sábado es día formal").
-  note         String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-  store        Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  note        String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  store       Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
 
   @@unique([storeId, weekday])
 }
@@ -428,33 +430,33 @@ model ShiftSwap {
 /// día y la conserva aquí. De esta tabla salen los reportes de nómina (faltas
 /// quincenales; retardos, domingos y festivos mensuales).
 model Attendance {
-  id          String           @id @default(cuid())
-  storeId     String
-  userId      String
-  date        DateTime
+  id              String           @id @default(cuid())
+  storeId         String
+  userId          String
+  date            DateTime
   /// Hora que debía entrar ("10:30"), tomada del horario del día.
-  expectedAt  String?
+  expectedAt      String?
   /// Hora que marcó en el POS ("10:45"). null = no marcó entrada.
-  arrivedAt   String?
-  lunchStart  String?
-  leftAt      String?
+  arrivedAt       String?
+  lunchStart      String?
+  leftAt          String?
   /// Hora en que debía salir ("21:00"). Para el banco de horas.
   expectedLeaveAt String?
   /// Diferencia contra su horario. Negativo = llegó antes.
-  minutesLate Int              @default(0)
+  minutesLate     Int              @default(0)
   /// Saldo del día en minutos (ver lib/hours-balance). Positivo = a su favor.
-  minutesBalance Int           @default(0)
-  status      AttendanceStatus
+  minutesBalance  Int              @default(0)
+  status          AttendanceStatus
   /// Texto crudo de la celda de entrada cuando no era una hora ("VACACIONES").
-  entryText   String?
+  entryText       String?
   /// APERTURA_XLSX (del archivo) o MANUAL (corregido por gerencia).
-  source      String           @default("APERTURA_XLSX")
+  source          String           @default("APERTURA_XLSX")
   /// Nota de la corrección manual. Quién y cuándo va en AuditLog.
-  note        String?
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
-  store       Store            @relation(fields: [storeId], references: [id], onDelete: Cascade)
-  user        User             @relation(fields: [userId], references: [id])
+  note            String?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  store           Store            @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  user            User             @relation(fields: [userId], references: [id])
 
   @@unique([userId, date])
   @@index([storeId, date])
@@ -794,6 +796,24 @@ model RetailAlertLog {
   @@unique([storeId, userId, periodKey, alertType])
   @@index([storeId, periodKey])
   @@index([userId])
+}
+
+// Entregas de asistencia ya subidas a Blitz. Existir la fila = "ya lo subi", y el
+// recordatorio deja de avisar por ese periodo (no por los siguientes).
+// periodKey viene de reminderFor(): "MES-2026-08-01" o "QUINCENA-2026-07-15".
+model ReportDelivery {
+  id            String   @id @default(cuid())
+  storeId       String
+  kind          String
+  periodKey     String
+  dueDate       String
+  confirmedById String
+  createdAt     DateTime @default(now())
+  store         Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  confirmedBy   User     @relation(fields: [confirmedById], references: [id], onDelete: Cascade)
+
+  @@unique([storeId, periodKey])
+  @@index([storeId, createdAt])
 }
 
 model Survey {
@@ -1171,8 +1191,8 @@ model AiMemory {
   id        String   @id @default(cuid())
   storeId   String
   userId    String?
-  key       String   // e.g., "advisor_profile", "last_activities", "weekly_context"
-  content   String   // JSON string containing stored memory/data
+  key       String // e.g., "advisor_profile", "last_activities", "weekly_context"
+  content   String // JSON string containing stored memory/data
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   store     Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
@@ -1187,7 +1207,7 @@ model AiPlanHistory {
   storeId        String
   userId         String
   date           DateTime
-  kpisUsed       String   // JSON snapshot of KPIs at that moment
+  kpisUsed       String // JSON snapshot of KPIs at that moment
   focus          String
   message        String
   activities     String[] // Specific activities generated
@@ -1205,8 +1225,8 @@ model AiRecommendationHistory {
   id             String   @id @default(cuid())
   storeId        String
   userId         String?
-  type           String   // e.g., "KPI_ALERT", "TASK_SUGGESTION", "COACHING"
-  recommendation String   // Text/JSON of recommendation
+  type           String // e.g., "KPI_ALERT", "TASK_SUGGESTION", "COACHING"
+  recommendation String // Text/JSON of recommendation
   outcomeSuccess Boolean?
   createdAt      DateTime @default(now())
   store          Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
@@ -1243,17 +1263,17 @@ model AiUsageLog {
   id               String   @id @default(cuid())
   storeId          String
   userId           String?
-  feature          String   // p.ej. "copilot"
-  provider         String   // p.ej. "groq", "cloudflare", "mock"
+  feature          String // p.ej. "copilot"
+  provider         String // p.ej. "groq", "cloudflare", "mock"
   model            String
-  modelTier        String   // "fast" | "advanced"
+  modelTier        String // "fast" | "advanced"
   promptTokens     Int      @default(0)
   completionTokens Int      @default(0)
   totalTokens      Int      @default(0)
   toolCalls        Int      @default(0)
   iterations       Int      @default(0)
   latencyMs        Int      @default(0)
-  status           String   // "success" | "error"
+  status           String // "success" | "error"
   errorMessage     String?
   createdAt        DateTime @default(now())
 
@@ -1267,7 +1287,7 @@ model LegalAcceptance {
   id         String   @id @default(cuid())
   userId     String
   storeId    String
-  document   String   // "terms" | "privacy" | "acceptable_use"
+  document   String // "terms" | "privacy" | "acceptable_use"
   version    String
   acceptedAt DateTime @default(now())
   ip         String?
