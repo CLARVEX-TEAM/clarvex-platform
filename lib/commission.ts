@@ -82,6 +82,61 @@ export function computeNextBracketGap(input: { sales: number; minimum: number; r
 
 function round2(value: number) { return Math.round(value * 100) / 100; }
 
+export type CommissionSimulation = {
+  /** Extremo inferior del deslizador: la venta ya hecha (no se puede simular menos). */
+  sliderMin: number;
+  /** Extremo superior: siempre alcanza el bracket más alto del rol. */
+  sliderMax: number;
+  /** Venta simulada, ya acotada al rango del deslizador. */
+  simulatedSales: number;
+  /** Comisión con la venta REAL del periodo. */
+  real: AccruedCommission;
+  /** Comisión con la venta simulada. */
+  simulated: AccruedCommission;
+  /** Cuánto falta, desde la venta simulada, para el siguiente bracket. */
+  gap: NextBracketGap | null;
+};
+
+/**
+ * Estado completo del simulador de comisión de un PERIODO.
+ *
+ * Venta, meta y mínimo tienen que ser del MISMO periodo: el alcance es
+ * venta ÷ mínimo, así que mezclar la venta de un día con el mínimo del mes da un
+ * alcance falso y clava la tasa en el bracket más bajo.
+ *
+ * Solo compone el cálculo aprobado (resolveCommissionMinimum + findCommissionRule
+ * + accruedCommission + computeNextBracketGap). No cambia ninguna fórmula.
+ */
+export function buildCommissionSimulation(input: {
+  sales: number;
+  goal: number;
+  minimum?: number | null;
+  rules: CommissionRule[];
+  role: Role;
+  /** Venta que mueve el usuario. Sin valor, el simulador arranca en la venta real. */
+  simulatedSales?: number;
+}): CommissionSimulation {
+  const minimum = resolveCommissionMinimum(input.minimum, input.goal);
+  const sliderMin = Math.round(Math.max(0, input.sales));
+  // El deslizador tiene que poder llegar al bracket más alto del rol. Si se queda
+  // corto, moverlo de tope a tope nunca cambia la tasa y el simulador no simula.
+  const topAchievement = input.rules
+    .filter((rule) => rule.active && rule.role === input.role)
+    .reduce((top, rule) => Math.max(top, rule.minAchievement), 0);
+  const topSales = minimum > 0 && topAchievement > 0 ? minimum * (topAchievement / 100) : 0;
+  const sliderMax = Math.max(sliderMin + 10_000, Math.round(input.goal * 1.5), Math.round(topSales * 1.1));
+  const simulatedSales = Math.min(Math.max(input.simulatedSales ?? sliderMin, sliderMin), sliderMax);
+  const scope = { goal: input.goal, minimum: input.minimum, rules: input.rules, role: input.role };
+  return {
+    sliderMin,
+    sliderMax,
+    simulatedSales,
+    real: accruedCommission({ ...scope, sales: input.sales }),
+    simulated: accruedCommission({ ...scope, sales: simulatedSales }),
+    gap: computeNextBracketGap({ sales: simulatedSales, minimum, rules: input.rules, role: input.role })
+  };
+}
+
 export type MonthlyCommissionProjection = {
   projectedSales: number;
   projectedCommission: number;

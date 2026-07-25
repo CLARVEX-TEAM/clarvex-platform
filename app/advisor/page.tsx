@@ -327,9 +327,12 @@ export default function AdvisorDashboard() {
         </div>
 
         <motion.div {...cardAnim(0.26)} className="mt-3">
+          {/* Cifras MENSUALES: la comisión se paga por mes y el alcance se mide
+              contra el mínimo del mes. Con la venta del día contra ese mínimo el
+              alcance sale falso y la tasa se queda clavada en el bracket más bajo. */}
           <SimulatorCard
-            sales={daily.dailySales}
-            goal={daily.dailyGoal}
+            sales={kpi?.monthlySales ?? 0}
+            goal={kpi?.monthlyGoal ?? 0}
             minimum={kpi?.commissionMinimum}
             rules={data.commissionRules}
             role={user.role}

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { isApiError, requireSession } from "@/lib/api";
 import { buildUserDashboardKpi, dashboardDateKey, dashboardDateRange } from "@/lib/dashboard-kpi";
+import { toKpiPayload } from "@/lib/kpi-payload";
 import { prisma } from "@/lib/prisma";
 import { signR2Url } from "@/lib/r2";
 import { vacationBalances } from "@/lib/vacation-account";
@@ -95,7 +96,7 @@ export async function GET(request: Request) {
         checklistOnly: user.checklistOnly
       };
     }),
-    kpis: kpis.map((kpi) => ({ userId: kpi.userId, date: kpi.date.toISOString().slice(0, 10), dailySales: Number(kpi.dailySales), monthlySales: Number(kpi.monthlySales), dailyGoal: Number(kpi.dailyGoal), monthlyGoal: Number(kpi.monthlyGoal), avgTicket: Number(kpi.avgTicket), upt: Number(kpi.upt), conversion: kpi.conversion === null ? null : Number(kpi.conversion), traffic: kpi.traffic, pieces: kpi.pieces, transactions: kpi.transactions, ranking: kpi.ranking, grossSales: kpi.grossSales === null ? null : Number(kpi.grossSales), discountAmount: kpi.discountAmount === null ? null : Number(kpi.discountAmount), discountMargin: kpi.discountMargin === null ? null : Number(kpi.discountMargin), discountLimit: kpi.discountLimit === null ? null : Number(kpi.discountLimit), commissionAmount: Number(kpi.commissionAmount), commissionPercent: Number(kpi.commissionPercent) })),
+    kpis: kpis.map(toKpiPayload),
     dashboardDaily,
     plans: plans.map((plan) => ({ id: plan.id, userId: plan.userId, date: plan.date.toISOString().slice(0, 10), dailyGoal: Number(plan.dailyGoal), focus: plan.focus, message: plan.message, published: plan.publishedAt !== null, activities: plan.activities.map((activity) => ({ id: activity.id, title: activity.title, completed: activity.completed, autoKey: activity.autoKey })) })),
     pendings: pendings.map((pending) => ({ id: pending.id, title: pending.title, description: pending.description, category: lower(pending.category), priority: lower(pending.priority), ownerId: pending.ownerId, status: lower(pending.status), dueDate: pending.dueDate.toISOString().slice(0, 10) })),
