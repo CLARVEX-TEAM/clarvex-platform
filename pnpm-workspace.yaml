@@ -1,17 +1,23 @@
 # pnpm 10+ lee los overrides desde aquí (ya no del campo "pnpm" de package.json).
 # Parches de seguridad de subdependencias transitivas:
-#  - postcss <8.5.10: XSS en el stringify (vía next)
+#  - postcss <8.5.18: XSS en el stringify (<8.5.10, vía next) y GHSA-r28c-9q8g-f849
 #  - uuid <11.1.1: bounds check de buffer en v3/v5/v6 (vía exceljs; no explotable
 #    con el v4 que usa exceljs, pero se fija para dejar el audit en cero)
-#  - brace-expansion (GHSA-3jxr-9vmj-r5cp): ReDoS. Tres majors en el árbol,
-#    cada uno fijado a su parche (no cruzar de major).
+#  - brace-expansion (GHSA-3jxr-9vmj-r5cp y GHSA-mh99-v99m-4gvg): ReDoS. Tres
+#    majors en el árbol, cada uno fijado a su parche (no cruzar de major).
+#    GHSA-mh99-v99m-4gvg solo tiene parche en la línea 5 (5.0.8): 1.1.16 y 2.1.2
+#    son las últimas de sus majors y siguen afectadas. NO subirlas a 5.x: desde la
+#    v3 el paquete exporta un objeto { expand } y minimatch@3 / @5 hacen
+#    `require('brace-expansion')(patrón)`, así que cruzar el major rompe exceljs
+#    (parseo del RDV) y eslint en tiempo de ejecución. El residual queda anotado
+#    con fecha de revisión en osv-scanner.toml.
 #  - js-yaml <4.3.0 (GHSA-52cp-r559-cp3m)
 overrides:
-  postcss@<8.5.10: ">=8.5.10"
+  postcss@<8.5.18: ">=8.5.18"
   exceljs>uuid: ">=11.1.1"
   brace-expansion@1: 1.1.16
   brace-expansion@2: 2.1.2
-  brace-expansion@5: 5.0.7
+  brace-expansion@5: 5.0.8
   js-yaml@4: 4.3.0
   fast-uri@<3.1.4: ">=3.1.4 <4"
   sharp@<0.35.0: ">=0.35.0 <0.36"

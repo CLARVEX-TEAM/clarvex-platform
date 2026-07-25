@@ -1,0 +1,18 @@
+# Vulnerabilidades conocidas SIN parche disponible, anotadas con fecha de revisión.
+# Todo lo que sí tiene parche se fija en los overrides de pnpm-workspace.yaml:
+# esta lista es el residual, no un atajo para no actualizar.
+
+[[IgnoredVulns]]
+id = "GHSA-mh99-v99m-4gvg"
+ignoreUntil = 2026-10-25
+reason = """
+ReDoS en brace-expansion. La línea 5 ya está parcheada en el override (5.0.8).
+Quedan las líneas 1.x y 2.x, que NO tienen versión parcheada: 1.1.16 y 2.1.2 son
+las últimas publicadas de sus majors. Subirlas a 5.x rompe la app: desde la v3 el
+paquete exporta un objeto { expand } en lugar de la función, y minimatch@3 y @5
+hacen `require('brace-expansion')(patrón)` — se caerían exceljs (parseo del RDV) y
+eslint. Llegan por dependencias transitivas (exceljs>archiver>glob>minimatch@3 y
+eslint>minimatch@3) y solo se expanden patrones glob que vienen del propio código,
+nunca de entrada de usuario, así que no hay superficie de ReDoS explotable.
+Revisar en la fecha de arriba por si publican 1.1.17 / 2.1.3.
+"""
