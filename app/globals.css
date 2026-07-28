@@ -67,54 +67,9 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-.animated-background {
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  overflow: hidden;
-  pointer-events: none;
-}
-
-/* Blobs de ambiente: forma orgánica ESTÁTICA. Antes morfaban border-radius,
-   lo que re-rasterizaba el blur(80px) en cada frame (GPU constante en Android
-   de gama media). El movimiento lo aporta GSAP solo con transform (barato). */
-.ambient-blob {
-  position: absolute;
-  display: block;
-  /* Rediseño minimalista: ambiente MUY sutil (apenas perceptible) que se mueve
-     lento con GSAP. Da vida al fondo claro sin romper la limpieza. */
-  opacity: 0.09;
-  filter: blur(90px);
-  transform: translate3d(0, 0, 0);
-  will-change: transform;
-}
-
-.ambient-blob-one {
-  top: -12rem;
-  left: -10rem;
-  width: 28rem;
-  height: 28rem;
-  background: #2563EB;
-  border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
-}
-
-.ambient-blob-two {
-  top: 18%;
-  right: -13rem;
-  width: 30rem;
-  height: 30rem;
-  background: #0ea5e9;
-  border-radius: 40% 60% 60% 40% / 70% 30% 60% 40%;
-}
-
-.ambient-blob-three {
-  bottom: -14rem;
-  left: 14%;
-  width: 32rem;
-  height: 32rem;
-  background: #6366f1;
-  border-radius: 50% 50% 40% 60% / 40% 60% 50% 50%;
-}
+/* Los blobs de ambiente (.animated-background / .ambient-blob) se retiraron:
+   el fondo de la app lo llevan ahora los meteoritos, y dos sistemas animados
+   de forma continua competían por GPU en teléfonos de gama media. */
 
 body > * {
   position: relative;
@@ -347,13 +302,6 @@ button.solid-card:hover {
   }
 }
 
-/* Ambient blobs — menos visibles en dark mode */
-.dark .ambient-blob-one,
-.dark .ambient-blob-two,
-.dark .ambient-blob-three {
-  opacity: 0.18;
-}
-
 /* ─── Magic UI ────────────────────────────────────────────────────────────
    Keyframes de los componentes de components/magic/. Van aquí y no en
    tailwind.config.ts porque se invocan desde utilidades arbitrarias
@@ -379,8 +327,9 @@ button.solid-card:hover {
   to { background-position: -220% 0; }
 }
 
-/* Meteors: estelas de fondo, globales. Van bajo el contenido (z-index 0 con
-   .animated-background) y NUNCA capturan toques (pointer-events:none). */
+/* Meteors: estelas de fondo, globales y único fondo animado de la app. Van
+   bajo el contenido (z-index 0, mientras `body > *` sube a 1) y NUNCA capturan
+   toques (pointer-events:none). */
 .meteors {
   position: fixed;
   inset: 0;
@@ -460,9 +409,5 @@ button.solid-card:hover {
     animation-iteration-count: 1 !important;
     scroll-behavior: auto !important;
     transition-duration: 0.001ms !important;
-  }
-
-  .ambient-blob {
-    will-change: auto;
   }
 }

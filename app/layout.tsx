@@ -2,7 +2,6 @@ import type { Metadata, Viewport } from "next";
 import { Geist } from "next/font/google";
 import "./globals.css";
 import { PwaRegister } from "@/components/PwaRegister";
-import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { PageTransition } from "@/components/PageTransition";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { ToastProvider } from "@/components/Toast";
@@ -59,11 +58,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <ThemeProvider>
           <ToastProvider>
             <SplashIntro />
-            {/* Fondo ambiente. AnimatedBackground (blobs GSAP) y Meteors corren
-                los dos de forma continua: si en pruebas se nota el consumo en
-                Android de gama media, quitar uno de los dos, no bajarles la
-                opacidad. Ambos respetan prefers-reduced-motion. */}
-            <AnimatedBackground />
+            {/* Único fondo animado de la app. Antes había además blobs con GSAP;
+                se retiraron para no tener dos sistemas continuos compitiendo por
+                GPU durante toda la jornada. Respeta prefers-reduced-motion y se
+                apaga con la pestaña oculta. */}
             <Meteors />
             <PwaRegister />
             <UpdatePrompt />
