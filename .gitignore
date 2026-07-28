@@ -1,12 +1,16 @@
 .next/
 node_modules/
 # Playwright: los resultados y el informe son artefactos de cada corrida.
-# Las capturas de referencia (tests/visual/__screenshots__) SÍ se versionan:
-# son la base contra la que se compara.
 test-results/
 playwright-report/
 blob-report/
 .playwright/
+# Solo se versionan las capturas de LINUX, que es donde corre el CI. Las de
+# Windows o macOS nunca coincidirían con las suyas (fuentes y antialiasing
+# distintos) y solo añaden ruido al repositorio. En local se generan con
+# `pnpm test:visual:update` y se quedan fuera del control de versiones.
+tests/visual/__screenshots__/**/win32/
+tests/visual/__screenshots__/**/darwin/
 .env
 .env.local
 .env*.local
