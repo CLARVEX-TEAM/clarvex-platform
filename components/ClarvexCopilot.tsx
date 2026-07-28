@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Send, X } from "lucide-react";
@@ -9,6 +9,7 @@ import { toCopilotApiMessages } from "@/lib/ai/copilot-messages";
 import { getSession } from "@/lib/auth";
 import type { User } from "@/lib/types";
 import { CopilotAvatar } from "@/components/CopilotAvatar";
+import { TypingText } from "@/components/magic/TypingText";
 
 type PendingAction = { proposalId: string; type: string; summary: string };
 type ChatMessage = {
@@ -79,11 +80,15 @@ export function ClarvexCopilot() {
     });
   }, [pathname, isOpen, lockUpdate]);
 
+  // `useCallback` para que TypingText no reinicie el efecto en cada render al
+  // recibirla como prop: sin esto, el texto volvería a empezar constantemente.
+  const scrollToEnd = useCallback(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, []);
+
   useEffect(() => {
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
-    }
-  }, [messages, loading]);
+    scrollToEnd();
+  }, [messages, loading, scrollToEnd]);
 
   if (!user) return null;
 
@@ -246,7 +251,15 @@ export function ClarvexCopilot() {
                             : "bg-white/5 text-white/90 border border-white/5 rounded-tl-none"
                         }`}
                       >
-                        {msg.content}
+                        {/* Solo se escribe la ÚLTIMA respuesta del Copilot: el
+                            historial ya se leyó y re-escribirlo al abrir el
+                            panel sería insufrible. Los mensajes del usuario
+                            aparecen enteros, que es lo que él acaba de teclear. */}
+                        {msg.role === "assistant" && index === messages.length - 1 ? (
+                          <TypingText text={msg.content} onTick={scrollToEnd} />
+                        ) : (
+                          msg.content
+                        )}
                         {msg.actions && msg.actions.length > 0 && (
                           <div className="mt-3 space-y-2 border-t border-white/10 pt-3">
                             {msg.actions.map((action) => (
