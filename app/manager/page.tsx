@@ -26,6 +26,7 @@ import type { User } from "@/lib/types";
 import { AppFrame, Badge, BottomNav, Card, ProfileAvatar, ProgressBar, priorityTone } from "@/components/ui";
 import { PullToRefresh } from "@/components/PullToRefresh";
 import { HomeHeader } from "@/components/home/HomeHeader";
+import { ShineBorder } from "@/components/magic/ShineBorder";
 import { DailySalesCard } from "@/components/home/DailySalesCard";
 import { QuickKpiGrid, type KpiCardData } from "@/components/home/QuickKpiGrid";
 import { StoreStatusCard } from "@/components/home/StoreStatusCard";
@@ -199,11 +200,14 @@ export default function ManagerDashboard() {
       />
       <PullToRefresh onRefresh={load}>
       <AppFrame>
+        {/* ShineBorder: esto está SIN ATENDER y el contorno lo pide. Se apaga
+            solo cuando no quedan comunicados sin confirmar. */}
         {data.announcements.filter((item) => !item.readBy.includes(manager?.id ?? "")).length > 0 && (
+          <ShineBorder className="mb-3" tone="ember">
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="card-3d mb-3 flex items-center justify-between gap-3 rounded-2xl border border-line bg-card p-3.5"
+            className="card-3d flex items-center justify-between gap-3 rounded-2xl border border-line bg-card p-3.5"
           >
             <div className="flex items-center gap-3">
               <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-[#EEF3FF] text-[#2563EB] dark:bg-[#172134] dark:text-[#6B9BFF]">
@@ -223,13 +227,16 @@ export default function ManagerDashboard() {
               Leer
             </Link>
           </motion.div>
+          </ShineBorder>
         )}
 
+        {/* `beam` solo en esta: es la tarjeta principal de la pantalla. */}
         <DailySalesCard
           sales={store?.dailySales ?? 0}
           goal={store?.dailyGoal ?? 0}
           label="Venta diaria tienda"
           delay={0.08}
+          beam
         />
 
         <div className="mt-3">
