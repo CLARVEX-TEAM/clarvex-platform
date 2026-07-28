@@ -1,5 +1,12 @@
 .next/
 node_modules/
+# Playwright: los resultados y el informe son artefactos de cada corrida.
+# Las capturas de referencia (tests/visual/__screenshots__) SÍ se versionan:
+# son la base contra la que se compara.
+test-results/
+playwright-report/
+blob-report/
+.playwright/
 .env
 .env.local
 .env*.local

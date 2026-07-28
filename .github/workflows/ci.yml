@@ -41,6 +41,74 @@ jobs:
       - name: Run tests
         run: pnpm test
 
+  visual:
+    name: Regresión visual
+    runs-on: ubuntu-latest
+    # NO BLOQUEA todavía, y es a propósito: las capturas de referencia son por
+    # sistema operativo, y en el repo solo están las de Windows (win32). Este
+    # trabajo genera las de Linux y las sube como artefacto.
+    #
+    # PARA ACTIVARLO DE VERDAD: descargar el artefacto `capturas-linux` de la
+    # primera ejecución, copiar la carpeta a tests/visual/__screenshots__/,
+    # commitearla y borrar la línea `continue-on-error` de abajo. A partir de
+    # ahí, cualquier cambio visual no intencionado rompe el CI.
+    continue-on-error: true
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.12.1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma client
+        run: pnpm exec prisma generate
+
+      - name: Install Chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Build
+        # Valores de relleno: ninguna de las pantallas bajo prueba consulta la
+        # base de datos, pero lib/webauthn exige sus variables en un build de
+        # producción y sin ellas el build falla en "Collecting page data".
+        env:
+          AUTH_SECRET: clave-de-ci-con-al-menos-32-caracteres
+          DATABASE_URL: postgresql://user:pass@127.0.0.1:5432/none
+          WEBAUTHN_RP_ID: localhost
+          WEBAUTHN_RP_NAME: Clarvex Team
+          WEBAUTHN_ORIGIN: http://127.0.0.1:3100
+        run: pnpm run build
+
+      - name: Pruebas visuales
+        run: pnpm exec playwright test
+
+      - name: Subir capturas generadas
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: capturas-linux
+          path: tests/visual/__screenshots__/
+          retention-days: 14
+
+      - name: Subir informe de diferencias
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: informe-visual
+          path: playwright-report/
+          retention-days: 14
+
   audit:
     name: Dependency security audit
     runs-on: ubuntu-latest

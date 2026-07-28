@@ -13,7 +13,11 @@ export function DotPattern({ className }: { className?: string }) {
   return (
     <div
       aria-hidden="true"
-      className={className}
+      // La clase `dot-pattern` no estiliza nada: es un punto de anclaje para
+      // poder ocultarlo en las pruebas visuales. Al ser `position: fixed`, en
+      // una captura de página completa se desplaza con el scroll y la imagen
+      // nunca se estabiliza.
+      className={className ? `dot-pattern ${className}` : "dot-pattern"}
       style={{
         position: "fixed",
         inset: 0,
