@@ -51,7 +51,11 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   });
   if (!member) return NextResponse.json({ error: "No tienes acceso a este chat." }, { status: 403 });
 
-  await touchPresence(session.userId);
+  // Demo: se leen los mensajes, pero no se marca presencia ni se generan recibos
+  // de entrega/lectura. Los usuarios demo son compartidos entre visitantes.
+  const readOnly = session.demo === true;
+
+  if (!readOnly) await touchPresence(session.userId);
 
   const messages = await prisma.chatMessage.findMany({
     where: {
@@ -66,8 +70,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 
   // Al abrir la conversación: los mensajes ajenos quedan entregados y vistos.
   const incoming = messages.filter((m) => m.senderId !== session.userId);
-  const toDeliver = incoming.filter((m) => !m.deliveredTo.some((d) => d.userId === session.userId)).map((m) => m.id);
-  const toRead = incoming.filter((m) => !m.readBy.some((r) => r.userId === session.userId)).map((m) => m.id);
+  const toDeliver = readOnly ? [] : incoming.filter((m) => !m.deliveredTo.some((d) => d.userId === session.userId)).map((m) => m.id);
+  const toRead = readOnly ? [] : incoming.filter((m) => !m.readBy.some((r) => r.userId === session.userId)).map((m) => m.id);
 
   if (toDeliver.length > 0) {
     await prisma.chatMessageDelivery.createMany({

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { enforceAiRateLimit, requireSession, isApiError } from "@/lib/api";
+import { denyDemo, enforceAiRateLimit, requireSession, isApiError } from "@/lib/api";
 import { ClarvexIntelligence } from "@/lib/clarvex-intelligence";
 
 export const dynamic = "force-dynamic";
@@ -7,6 +7,8 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   const session = await requireSession(["GERENTE", "SUBGERENTE"]);
   if (isApiError(session)) return session;
+  const demo = denyDemo(session);
+  if (demo) return demo;
   const limited = await enforceAiRateLimit(session.userId);
   if (limited) return limited;
 

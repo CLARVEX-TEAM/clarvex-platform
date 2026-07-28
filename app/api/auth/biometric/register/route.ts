@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { verifyRegistrationResponse } from "@simplewebauthn/server";
 import type { RegistrationResponseJSON } from "@simplewebauthn/server";
-import { isApiError, requireSession } from "@/lib/api";
+import { denyDemo, isApiError, requireSession } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
 import { ORIGIN, RP_ID } from "@/lib/webauthn";
 
@@ -11,6 +11,10 @@ export const runtime = "nodejs";
 export async function POST(request: Request) {
   const session = await requireSession();
   if (isApiError(session)) return session;
+  // El middleware exceptúa /api/auth/* del candado demo para permitir el logout,
+  // así que este POST hay que cerrarlo aquí.
+  const demo = denyDemo(session);
+  if (demo) return demo;
 
   let body: RegistrationResponseJSON;
   try {

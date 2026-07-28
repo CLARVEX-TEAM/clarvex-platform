@@ -21,6 +21,21 @@ export async function requireSession(
   return session;
 }
 
+/**
+ * Corta una sesión de demostración. El middleware ya bloquea todo método que no
+ * sea GET, pero ese candado no alcanza para tres casos que sí hay que cerrar aquí:
+ *
+ *  - GET que escriben (presencia del chat, recibos de entrega, challenges WebAuthn).
+ *  - GET que cuestan dinero (IA): un visitante anónimo no debe quemar tokens del LLM.
+ *  - Todo `/api/auth/*`, que el middleware exceptúa para poder cerrar sesión.
+ *
+ * Devuelve la respuesta 403 si la sesión es demo, o null si puede continuar.
+ */
+export function denyDemo(session: Session): NextResponse | null {
+  if (!session.demo) return null;
+  return NextResponse.json({ error: "Modo demostración: solo lectura." }, { status: 403 });
+}
+
 export async function requirePlatformAdmin(): Promise<Session | NextResponse> {
   const session = await getServerSession();
   if (!session) return NextResponse.json({ error: "Sesion requerida." }, { status: 401 });

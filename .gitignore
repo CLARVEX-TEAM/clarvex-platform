@@ -5,6 +5,11 @@ node_modules/
 .env*.local
 .env.test
 .env.test.local
+# Respaldos de .env: mismo contenido sensible, y sin esta linea `git add .`
+# los subiria al repositorio.
+.env.bak*
+.env.backup*
+*.env.bak
 dist/
 build/
 dev.log

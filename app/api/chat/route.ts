@@ -10,10 +10,18 @@ export async function GET() {
   const session = await requireSession();
   if (isApiError(session)) return session;
 
-  // Asegurar que el usuario esté en el room "Todos" de la tienda
-  await ensureGroupRoom(session.storeId, session.userId);
+  // Demo: la lista se LEE, pero sin efectos secundarios. Este GET escribe (crea
+  // el room "Todos", marca presencia y genera recibos de entrega) y los usuarios
+  // demo son compartidos, así que un visitante marcaría como entregados los
+  // mensajes de los demás. Bloquear el endpoint entero dejaría el chat roto en
+  // la demo, que es justo lo que se quiere enseñar: se desactivan las escrituras.
+  const readOnly = session.demo === true;
 
-  await touchPresence(session.userId);
+  if (!readOnly) {
+    // Asegurar que el usuario esté en el room "Todos" de la tienda
+    await ensureGroupRoom(session.storeId, session.userId);
+    await touchPresence(session.userId);
+  }
 
   const memberships = await prisma.chatMember.findMany({
     where: { userId: session.userId },
@@ -34,7 +42,7 @@ export async function GET() {
 
   // Marcar como entregados todos los mensajes ajenos pendientes (estando en la lista).
   const roomIds = memberships.map((m) => m.roomId);
-  if (roomIds.length > 0) {
+  if (!readOnly && roomIds.length > 0) {
     const undelivered = await prisma.chatMessage.findMany({
       where: {
         roomId: { in: roomIds },

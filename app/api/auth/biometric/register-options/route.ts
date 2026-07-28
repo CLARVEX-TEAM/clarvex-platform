@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { generateRegistrationOptions } from "@simplewebauthn/server";
 import { isoUint8Array } from "@simplewebauthn/server/helpers";
-import { isApiError, requireSession } from "@/lib/api";
+import { denyDemo, isApiError, requireSession } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
 import { RP_ID, RP_NAME } from "@/lib/webauthn";
 
@@ -11,6 +11,10 @@ export const runtime = "nodejs";
 export async function GET() {
   const session = await requireSession();
   if (isApiError(session)) return session;
+  // Los usuarios demo son compartidos: registrar una huella ahí se la daría a
+  // todos los visitantes. Además este GET escribe (crea el challenge).
+  const demo = denyDemo(session);
+  if (demo) return demo;
 
   const existingCredentials = await prisma.webAuthnCredential.findMany({
     where: { userId: session.userId },
