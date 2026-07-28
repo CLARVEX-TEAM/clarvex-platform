@@ -43,6 +43,7 @@ export function OfflineBanner() {
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: -48, opacity: 0 }}
           transition={{ type: "spring", stiffness: 420, damping: 32 }}
+          data-transient
           className="fixed inset-x-0 top-0 z-[90] flex items-center justify-center gap-2 bg-rose-500 px-4 text-center text-[13px] font-bold text-white shadow-md"
           style={{ paddingTop: "calc(env(safe-area-inset-top) + 0.45rem)", paddingBottom: "0.45rem" }}
         >
@@ -55,6 +56,7 @@ export function OfflineBanner() {
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: -48, opacity: 0 }}
           transition={{ type: "spring", stiffness: 420, damping: 32 }}
+          data-transient
           className="fixed inset-x-0 top-0 z-[90] flex items-center justify-center gap-2 bg-emerald-500 px-4 text-center text-[13px] font-bold text-white shadow-md"
           style={{ paddingTop: "calc(env(safe-area-inset-top) + 0.45rem)", paddingBottom: "0.45rem" }}
         >

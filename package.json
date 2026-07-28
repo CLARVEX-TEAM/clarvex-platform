@@ -12,7 +12,6 @@
     "test:integration": "NODE_ENV=test ALLOW_INTEGRATION_TEST_DATABASE=true tsx --test tests/integration/*.test.ts",
     "test:security-protection": "NODE_ENV=test tsx --test tests/security-protection.test.ts",
     "test:visual": "playwright test",
-    "test:visual:update": "playwright test --update-snapshots",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:seed": "tsx prisma/seed.ts",

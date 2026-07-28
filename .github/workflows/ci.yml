@@ -42,15 +42,12 @@ jobs:
         run: pnpm test
 
   visual:
-    name: Regresión visual
+    name: Pantallas públicas
     runs-on: ubuntu-latest
-    # BLOQUEA. Si este trabajo se pone rojo, algo cambió de aspecto: mira el
-    # artefacto `informe-visual` para ver exactamente qué píxeles difieren.
-    #
-    # Si el cambio era INTENCIONADO, lanza a mano el workflow «Generar capturas
-    # de referencia» desde la pestaña Actions: regenera las referencias y las
-    # commitea. Nunca lo lances sin revisar antes el informe, o convertirás una
-    # regresión real en la nueva verdad.
+    # BLOQUEA, y es fiable: son comprobaciones deterministas, no comparación de
+    # píxeles. Verifican que los tokens de color produzcan colores válidos, que
+    # los keyframes de los efectos lleguen al CSS servido, que el fondo animado
+    # no capture toques y que las pantallas públicas rendericen sin excepciones.
 
     steps:
       - name: Checkout
@@ -88,14 +85,14 @@ jobs:
           WEBAUTHN_ORIGIN: http://127.0.0.1:3100
         run: pnpm run build
 
-      - name: Pruebas visuales
+      - name: Comprobaciones de pantallas públicas
         run: pnpm exec playwright test
 
-      - name: Subir informe de diferencias
+      - name: Subir informe
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: informe-visual
+          name: informe-playwright
           path: playwright-report/
           retention-days: 14
 

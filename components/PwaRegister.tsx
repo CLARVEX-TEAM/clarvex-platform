@@ -124,7 +124,9 @@ export function PwaRegister() {
   if (!showBanner) return null;
 
   return (
-    <div className="fixed bottom-20 left-4 right-4 z-50 flex items-center gap-3 rounded-2xl border border-volt/30 bg-panel px-4 py-3 shadow-lg">
+    // `data-transient`: ver UpdatePrompt. Depende del estado del navegador, no
+    // del diseño, así que las pruebas visuales lo ocultan.
+    <div data-transient className="fixed bottom-20 left-4 right-4 z-50 flex items-center gap-3 rounded-2xl border border-volt/30 bg-panel px-4 py-3 shadow-lg">
       <Bell size={18} className="shrink-0 text-volt" />
       <p className="flex-1 text-sm font-semibold text-ink">Activa las notificaciones push</p>
       <button

@@ -8,41 +8,29 @@ import { defineConfig, devices } from "@playwright/test";
  * otro aplicado en la pantalla equivocada. El build, el lint y los 403 tests
  * pasaban en verde mientras tanto. Nada de eso mira píxeles.
  *
- * ALCANCE ACTUAL: solo pantallas que renderizan SIN base de datos. El CI no
- * levanta Postgres, y las pantallas con sesión necesitan datos. Para ampliarlo
- * a /advisor o /manager hace falta añadir un servicio de Postgres al workflow y
- * entrar por el modo demo (`/api/demo/manager`), que no pide PIN.
+ * ALCANCE ACTUAL: comprobaciones DETERMINISTAS sobre las pantallas públicas —
+ * las únicas que renderizan sin base de datos, porque el CI no levanta Postgres.
  *
- * ⚠️ Las capturas de referencia son POR SISTEMA OPERATIVO: las generadas en
- * Windows no coinciden con las de Linux (fuentes y antialiasing distintos). Por
- * eso el nombre del archivo incluye la plataforma, y el CI necesita las suyas
- * propias generadas en Linux.
+ * ⚠️ La comparación de capturas se intentó y se retiró: no se consiguió
+ * estabilizar (ver el comentario largo en tests/visual/public-pages.spec.ts).
+ * Lo que queda no compara píxeles, pero sí atrapa los fallos que se colaron
+ * durante el rediseño: tokens de color rotos, keyframes que no llegan al CSS y
+ * un fondo a pantalla completa capturando toques.
  */
 export default defineConfig({
   testDir: "./tests/visual",
-  // Cada prueba compara contra su referencia; sin reintentos para no enmascarar
-  // una diferencia real como si fuera intermitencia.
-  retries: 0,
+  // UN reintento. No enmascara regresiones: una diferencia real es determinista
+  // y falla las dos veces. Lo que absorbe es el tropiezo de estabilización —
+  // Playwright exige dos capturas consecutivas idénticas y de vez en cuando no
+  // lo consigue dentro del plazo, sin que nada del diseño haya cambiado.
+  retries: 1,
   fullyParallel: true,
   reporter: process.env.CI ? [["github"], ["html", { open: "never" }]] : [["list"]],
 
-  // `{projectName}` es OBLIGATORIO: sin él, los proyectos claro y oscuro
-  // escriben en el mismo archivo y se pisan la referencia mutuamente (falla uno
-  // de cada dos, con ~85% de píxeles distintos: un tema contra el otro).
-  // `{platform}` permite que convivan las referencias de Windows y de Linux,
-  // que nunca coinciden por el renderizado de fuentes.
+  // Si algún día se retoman las capturas: separar por {projectName} es
+  // OBLIGATORIO (claro y oscuro escriben el mismo archivo y se pisan la
+  // referencia), y por {platform} también (Windows y Linux nunca coinciden).
   snapshotPathTemplate: "{testDir}/__screenshots__/{projectName}/{platform}/{arg}{ext}",
-
-  expect: {
-    toHaveScreenshot: {
-      // Calibrado, no elegido a ojo. Con 0.01 (1%) un cambio de color de texto
-      // NO se detectaba: las letras de un título ocupan menos del 1% de los
-      // píxeles de la tarjeta y la regresión pasaba por debajo del umbral.
-      // 0.002 sí la caza y aguanta dos corridas limpias seguidas sin ruido.
-      maxDiffPixelRatio: 0.002,
-      animations: "disabled"
-    }
-  },
 
   use: {
     baseURL: process.env.PLAYWRIGHT_BASE_URL ?? "http://127.0.0.1:3100",

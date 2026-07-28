@@ -138,25 +138,28 @@ pnpm run build
 > variable puesta, la guarda de `lib/prisma.ts` lanza al importarse y el build
 > falla al recolectar datos de página, con un error que no señala la causa.
 
-## Regresión visual
+## Pantallas públicas (Playwright)
 
 ```bash
-pnpm test:visual          # compara contra las referencias
-pnpm test:visual:update   # regenera las referencias (solo tras un cambio intencionado)
+pnpm test:visual
 ```
 
-Cubre login y mantenimiento, en móvil, **claro y oscuro**. Existe porque ni el
-build, ni el lint, ni los 403 tests miran un solo píxel: un efecto que no se
-renderiza o un token de color roto pasan todos los controles y llegan a
-producción.
+Corre en navegador real, móvil, **claro y oscuro**, sobre `/login` y
+`/mantenimiento` — las únicas que renderizan sin base de datos. Comprueba cosas
+que ni el build, ni el lint, ni los 403 tests pueden ver:
 
-Las referencias son **por sistema operativo**; en el repositorio viven solo las
-de Linux, que es donde corre el CI. Para regenerarlas ahí hay un flujo manual,
-**«Generar capturas de referencia»**, en la pestaña Actions.
+- Que los tokens de color produzcan **colores válidos** y no canales sueltos
+- Que los `@keyframes` de los efectos **lleguen al CSS servido**
+- Que el fondo animado **no capture toques**
+- Que las pantallas **rendericen sin excepciones**
 
-> Si el CI falla por esto, mira primero el artefacto `informe-visual` para ver
-> qué cambió. Regenerar las referencias sin revisarlas convierte una regresión
-> real en la nueva verdad.
+> **Sobre comparar capturas de pantalla:** se intentó y se retiró. La app tiene
+> demasiada actividad en el cliente (service worker, avisos de PWA,
+> framer-motion, intro de apertura) y Playwright nunca conseguía dos capturas
+> consecutivas idénticas: fallaba una de cada dos sin que nada hubiera cambiado.
+> Hacerlo bien requiere un **modo de pruebas** en el build que apague todo eso.
+> Está documentado en `tests/visual/public-pages.spec.ts` con los ocho enfoques
+> que se probaron, por si alguien lo retoma.
 
 ## Despliegue (VPS)
 
