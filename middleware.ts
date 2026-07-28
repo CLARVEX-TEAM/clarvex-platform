@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { canManageDataSources } from "@/lib/access-control";
-import { SESSION_COOKIE, verifySessionToken } from "@/lib/session-token";
+import { SESSION_COOKIE, verifySessionToken, type Session } from "@/lib/session-token";
 
 const managerRoutes = ["/manager", "/pendientes", "/bitacora", "/comunicados", "/datos", "/escritorio"];
 const advisorRoutes = ["/advisor", "/kpis", "/horarios", "/actividad"];
@@ -54,10 +54,43 @@ function startsWithRoute(pathname: string, routes: string[]) {
   return routes.some((route) => pathname === route || pathname.startsWith(`${route}/`));
 }
 
+/**
+ * Ventana de mantenimiento. Se activa poniendo MAINTENANCE_MODE=1 en el .env y
+ * reiniciando con `pm2 restart clarvex-team --update-env`.
+ *
+ * Deja pasar dos cosas a propósito:
+ *  - `/api/health`, para que Uptime Kuma no dispare alertas falsas durante la
+ *    ventana (la app SÍ está sana; solo está cerrada al público).
+ *  - Los administradores de plataforma, para poder verificar el despliegue con
+ *    la app cerrada al resto.
+ */
+function maintenanceResponse(request: NextRequest, session: Session | null): NextResponse | null {
+  if (process.env.MAINTENANCE_MODE !== "1") return null;
+  const { pathname } = request.nextUrl;
+  if (pathname === "/api/health") return null;
+  if (session?.platformAdmin === true) return null;
+
+  if (pathname.startsWith("/api/")) {
+    return NextResponse.json(
+      { error: "En mantenimiento. Volvemos en unos minutos." },
+      { status: 503, headers: { "Retry-After": "600" } }
+    );
+  }
+  // Rewrite (no redirect): la URL del usuario no cambia, así que al terminar la
+  // ventana basta con recargar. /mantenimiento no está en el matcher: no hay bucle.
+  return NextResponse.rewrite(new URL("/mantenimiento", request.url), {
+    status: 503,
+    headers: { "Retry-After": "600" }
+  });
+}
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const token = request.cookies.get(SESSION_COOKIE)?.value;
   const session = token ? await verifySessionToken(token) : null;
+
+  const maintenance = maintenanceResponse(request, session);
+  if (maintenance) return maintenance;
 
   // API: gate global con allowlist pública. Los handlers siguen haciendo
   // requireSession / requireCron / roles (sessionVersion, store, etc.).
