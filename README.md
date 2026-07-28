@@ -1,10 +1,39 @@
-# CLARVEX Team
+<p align="center">
+  <img src="docs/assets/cover.png" alt="Clarvex Team" width="100%">
+</p>
 
-Aplicación web (PWA) para la operación diaria de una tienda retail: KPIs, comisiones, horarios, plan del día, pendientes, chat, comunicados y más.
+<p align="center">
+  <a href="https://github.com/jhernandezl2c-hash/app/actions/workflows/ci.yml">
+    <img src="https://github.com/jhernandezl2c-hash/app/actions/workflows/ci.yml/badge.svg" alt="CI">
+  </a>
+  <img src="https://img.shields.io/badge/Next.js-15.5-000000?logo=nextdotjs&logoColor=white" alt="Next.js 15.5">
+  <img src="https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white" alt="TypeScript strict">
+  <img src="https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql&logoColor=white" alt="PostgreSQL 16">
+  <img src="https://img.shields.io/badge/tests-403-16A34A" alt="403 tests">
+</p>
 
-**Producción:** https://app.adrianluna.mx
+<p align="center">
+  <b>La operación diaria de una tienda retail, en el teléfono del equipo.</b><br>
+  KPIs, comisiones, horarios, plan del día, pendientes, chat y comunicados.
+</p>
 
-Es **mobile-first** (los asesores la usan desde el piso de venta) y tiene además una interfaz de **escritorio** para gerencia en `/escritorio/*`.
+<p align="center">
+  <a href="https://app.adrianluna.mx">app.adrianluna.mx</a>
+</p>
+
+---
+
+Es **móvil primero** — los asesores la usan desde el piso de venta, entre cliente y cliente — y tiene además una interfaz de **escritorio** para gerencia en `/escritorio/*`.
+
+<p align="center">
+  <img src="docs/assets/app-claro.png" alt="Pantalla de acceso en tema claro" width="45%">
+  &nbsp;&nbsp;
+  <img src="docs/assets/app-oscuro.png" alt="Pantalla de acceso en tema oscuro" width="45%">
+</p>
+
+<p align="center">
+  <sub>Tema claro y oscuro. Las dos capturas las genera el propio CI en cada ejecución: son las referencias contra las que se comparan las pruebas de regresión visual.</sub>
+</p>
 
 ---
 
@@ -14,12 +43,14 @@ Es **mobile-first** (los asesores la usan desde el piso de venta) y tiene ademá
 |---|---|
 | Framework | Next.js 15.5 (App Router) |
 | Lenguaje | TypeScript (strict) |
-| Estilos | Tailwind CSS |
-| Base de datos | PostgreSQL + Prisma 5.22 |
+| Estilos | Tailwind CSS 3.4 |
+| Componentes | Base UI (headless) + componentes propios |
+| Movimiento | framer-motion |
+| Base de datos | PostgreSQL 16 + Prisma 5.22 |
 | Sesión | JWT (HS256) con `jose` |
 | Archivos | Cloudflare R2 (bucket privado) |
 | Errores | Sentry |
-| Node | 22.x · **pnpm** |
+| Runtime | Node 22.23 · **pnpm 10.12** |
 
 ---
 
@@ -99,17 +130,55 @@ docker exec -i clarvex_postgres pg_restore -d "$DB" --clean --if-exists < archiv
 ```bash
 pnpm exec tsc --noEmit
 pnpm exec eslint . --max-warnings 0
-NODE_ENV=test pnpm exec tsx --test tests/*.test.ts   # 243 tests
+NODE_ENV=test pnpm exec tsx --test tests/*.test.ts   # 403 tests
 pnpm run build
 ```
+
+> ⚠️ **`NODE_ENV=test` solo para los tests, nunca antes del `build`.** Con esa
+> variable puesta, la guarda de `lib/prisma.ts` lanza al importarse y el build
+> falla al recolectar datos de página, con un error que no señala la causa.
+
+## Regresión visual
+
+```bash
+pnpm test:visual          # compara contra las referencias
+pnpm test:visual:update   # regenera las referencias (solo tras un cambio intencionado)
+```
+
+Cubre login y mantenimiento, en móvil, **claro y oscuro**. Existe porque ni el
+build, ni el lint, ni los 403 tests miran un solo píxel: un efecto que no se
+renderiza o un token de color roto pasan todos los controles y llegan a
+producción.
+
+Las referencias son **por sistema operativo**; en el repositorio viven solo las
+de Linux, que es donde corre el CI. Para regenerarlas ahí hay un flujo manual,
+**«Generar capturas de referencia»**, en la pestaña Actions.
+
+> Si el CI falla por esto, mira primero el artefacto `informe-visual` para ver
+> qué cambió. Regenerar las referencias sin revisarlas convierte una regresión
+> real en la nueva verdad.
 
 ## Despliegue (VPS)
 
 ```bash
-cd /home/ubuntu/clarvex-app && git pull && pnpm install && pnpm exec prisma generate && pnpm run build && pm2 restart clarvex-team --update-env
+cd /root/clarvex-app && git pull && pnpm install && pnpm exec prisma generate && pnpm run build && pm2 reload clarvex-team --update-env
 ```
 
-Si el pull toca `prisma/`, añade `pnpm exec prisma migrate deploy` antes del build.
+`pm2 reload` en vez de `restart`: recarga rodante entre las dos instancias del
+cluster, sin caída. Si el pull toca `prisma/`, añade `pnpm exec prisma migrate
+deploy` antes del build.
+
+### Ventana de mantenimiento
+
+Para cerrar la app al equipo mientras se despliega algo delicado:
+
+```bash
+echo "MAINTENANCE_MODE=1" >> .env && pm2 reload clarvex-team --update-env   # cerrar
+sed -i '/^MAINTENANCE_MODE=/d' .env && pm2 reload clarvex-team --update-env # abrir
+```
+
+`/api/health` sigue respondiendo 200 (para que Uptime Kuma no alerte) y los
+`platformAdmin` entran igual, para poder verificar con la app cerrada al resto.
 
 ---
 
