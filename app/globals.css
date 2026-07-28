@@ -374,6 +374,56 @@ button.solid-card:hover {
   62%, 100% { left: 110%; }
 }
 
+/* GradientText: el brillo recorre el título. Solo títulos, nunca cifras. */
+@keyframes gradient-sweep {
+  to { background-position: -220% 0; }
+}
+
+/* Meteors: estelas de fondo, globales. Van bajo el contenido (z-index 0 con
+   .animated-background) y NUNCA capturan toques (pointer-events:none). */
+.meteors {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.meteor {
+  position: absolute;
+  top: -12%;
+  width: 1px;
+  height: 58px;
+  background: linear-gradient(180deg, transparent, rgb(37 99 235 / 0.55));
+  transform: rotate(215deg);
+  animation-name: meteor-fall;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+  will-change: transform, opacity;
+}
+.dark .meteor {
+  background: linear-gradient(180deg, transparent, rgb(107 155 255 / 0.6));
+}
+.meteor::after {
+  content: "";
+  position: absolute;
+  top: 58px;
+  left: -1.5px;
+  width: 4px;
+  height: 4px;
+  border-radius: 999px;
+  background: #2563EB;
+  box-shadow: 0 0 8px rgb(37 99 235 / 0.7);
+}
+.dark .meteor::after {
+  background: #6B9BFF;
+  box-shadow: 0 0 8px rgb(107 155 255 / 0.7);
+}
+@keyframes meteor-fall {
+  0%        { transform: translate3d(0, 0, 0) rotate(215deg); opacity: 0; }
+  10%       { opacity: 1; }
+  70%, 100% { transform: translate3d(-60vw, 60vh, 0) rotate(215deg); opacity: 0; }
+}
+
 /* ─── Skeleton shimmer — barrido de luz que recorre los bloques de carga.
    Más premium que un pulse y se propaga a todos los <Skeleton /> de la app. */
 @keyframes skeletonShimmer {

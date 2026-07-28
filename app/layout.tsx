@@ -14,6 +14,7 @@ import { DesktopRouteGuard } from "@/components/desktop/DesktopRouteGuard";
 import { ClarvexCopilot } from "@/components/ClarvexCopilot";
 import { DemoBanner } from "@/components/DemoBanner";
 import { SplashIntro } from "@/components/SplashIntro";
+import { Meteors } from "@/components/magic/Meteors";
 
 // Auto-alojada por next/font en el build: cero peticiones externas en runtime
 // (compatible con el CSP font-src 'self') y sin FOUT en Android.
@@ -58,7 +59,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <ThemeProvider>
           <ToastProvider>
             <SplashIntro />
+            {/* Fondo ambiente. AnimatedBackground (blobs GSAP) y Meteors corren
+                los dos de forma continua: si en pruebas se nota el consumo en
+                Android de gama media, quitar uno de los dos, no bajarles la
+                opacidad. Ambos respetan prefers-reduced-motion. */}
             <AnimatedBackground />
+            <Meteors />
             <PwaRegister />
             <UpdatePrompt />
             <OfflineBanner />

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ArrowLeft, Bell } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { GradientText } from "@/components/magic/GradientText";
 import { ProfileAvatar } from "./ProfileAvatar";
 
 function NotificationBell() {
@@ -84,7 +85,9 @@ export function AppHeader({
           ) : null}
           <div className="min-w-0">
             <p className={cn("font-bold uppercase tracking-[0.16em] text-volt/90 transition-all duration-300", scrolled ? "text-[9px] opacity-70" : "text-[10px] opacity-100")}>CLARVEX Team</p>
-            <h1 className="text-[1.15rem] font-semibold leading-tight tracking-[-0.035em] text-ink">{title}</h1>
+            <h1 className="text-[1.15rem] font-semibold leading-tight tracking-[-0.035em] text-ink">
+              <GradientText>{title}</GradientText>
+            </h1>
             <p className={cn("overflow-hidden text-[11px] leading-4 text-muted transition-all duration-300", scrolled ? "max-h-0 opacity-0" : "max-h-5 opacity-100")}>{subtitle}</p>
           </div>
         </div>
