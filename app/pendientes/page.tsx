@@ -13,6 +13,7 @@ import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { useToast } from "@/components/Toast";
 import { AppDatePicker, AppInput, AppSelect, AppTextarea, type SelectOption } from "@/components/forms";
 import { PullToRefresh } from "@/components/PullToRefresh";
+import { RippleButton } from "@/components/magic/RippleButton";
 
 type Filter = "todos" | "urgentes" | "hoy";
 
@@ -182,14 +183,14 @@ export default function PendientesPage() {
       <PullToRefresh onRefresh={load}>
       <AppFrame>
         {!isAdvisor && (
-          <button
+          <RippleButton
             onClick={() => void fetchTaskOptimization()}
             disabled={loadingOpt}
             className="mb-3 w-full flex min-h-11 items-center justify-center gap-2 rounded-2xl border border-line bg-card text-sm font-semibold text-ink/80 transition hover:border-volt active:scale-95 disabled:opacity-50"
           >
             <Sparkles size={16} className="text-volt" />
             {loadingOpt ? "Optimizando Handover..." : "Optimizar Pendientes con IA"}
-          </button>
+          </RippleButton>
         )}
 
         <div className="no-scrollbar tab-glass-shell -mx-1 mb-3 flex gap-1 overflow-x-auto overflow-y-hidden p-1 scroll-px-4">
@@ -256,7 +257,7 @@ export default function PendientesPage() {
                 placeholder="Selecciona responsable"
               />
               <AppDatePicker label="Fecha límite" value={dueDate} onChange={setDueDate} required />
-              <SaveButton type="submit" loading={submitting} success={saved} savedLabel="¡Listo!" className="w-full">
+              <SaveButton type="submit" loading={submitting} success={saved} savedLabel="¡Listo!" className="w-full" shimmer>
                 {editId ? "Guardar cambios" : "Crear pendiente"}
               </SaveButton>
             </form>

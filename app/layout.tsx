@@ -14,6 +14,7 @@ import { ClarvexCopilot } from "@/components/ClarvexCopilot";
 import { DemoBanner } from "@/components/DemoBanner";
 import { SplashIntro } from "@/components/SplashIntro";
 import { Meteors } from "@/components/magic/Meteors";
+import { DotPattern } from "@/components/magic/DotPattern";
 
 // Auto-alojada por next/font en el build: cero peticiones externas en runtime
 // (compatible con el CSP font-src 'self') y sin FOUT en Android.
@@ -62,6 +63,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 se retiraron para no tener dos sistemas continuos compitiendo por
                 GPU durante toda la jornada. Respeta prefers-reduced-motion y se
                 apaga con la pestaña oculta. */}
+            {/* DotPattern es estático y Server Component: da profundidad sin
+                sumar JavaScript ni animación continua. Va debajo de Meteors. */}
+            <DotPattern />
             <Meteors />
             <PwaRegister />
             <UpdatePrompt />

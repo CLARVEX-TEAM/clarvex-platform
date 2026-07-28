@@ -7,6 +7,7 @@ import { getSession } from "@/lib/auth";
 import type { User } from "@/lib/types";
 import { AppFrame, AppHeader, Badge, BottomNav, Button, Card } from "@/components/ui";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { AnimatedList } from "@/components/magic/AnimatedList";
 
 type NotificationType = "PLAN_READY" | "NEW_ANNOUNCEMENT" | "PENDING_ASSIGNED" | "TASK_COMPLETED" | "KPI_GOAL_REACHED" | "COMMENT_ADDED" | "EVIDENCE_ADDED" | "DAILY_SUMMARY" | "ANNOUNCEMENT_REACTION" | "CELEBRATION" | "KUDO" | "SHIFT_REQUEST" | "INVENTORY_REPORT" | "NEW_TRAINING";
 type NotificationItem = { id: string; type: NotificationType; title: string; body: string; readAt: string | null; createdAt: string };
@@ -144,7 +145,7 @@ export default function NotificationsPage() {
       />
       <AppFrame>
         {error ? <Card className="mb-3 text-sm font-semibold text-rose-700">{error}</Card> : null}
-        {loading ? <Card className="text-sm font-semibold text-muted">Cargando notificaciones...</Card> : items.length === 0 ? <Card className="py-8 text-center"><Target className="mx-auto text-volt" size={28} /><h2 className="mt-3 font-semibold text-ink">Sin notificaciones</h2><p className="mt-1 text-sm text-muted">Los planes, comunicados y pendientes apareceran aqui.</p></Card> : <div className="space-y-2.5">{items.map((item) => <NotificationRow key={item.id} item={item} onRead={markRead} onDelete={deleteOne} />)}</div>}
+        {loading ? <Card className="text-sm font-semibold text-muted">Cargando notificaciones...</Card> : items.length === 0 ? <Card className="py-8 text-center"><Target className="mx-auto text-volt" size={28} /><h2 className="mt-3 font-semibold text-ink">Sin notificaciones</h2><p className="mt-1 text-sm text-muted">Los planes, comunicados y pendientes apareceran aqui.</p></Card> : <AnimatedList className="space-y-2.5">{items.map((item) => <NotificationRow key={item.id} item={item} onRead={markRead} onDelete={deleteOne} />)}</AnimatedList>}
       </AppFrame>
       <BottomNav />
       <ConfirmDialog

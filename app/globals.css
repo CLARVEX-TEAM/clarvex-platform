@@ -327,6 +327,12 @@ button.solid-card:hover {
   to { background-position: -220% 0; }
 }
 
+/* RippleButton: la onda parte del punto tocado y se desvanece al crecer. */
+@keyframes ripple-out {
+  from { transform: scale(0);   opacity: 0.55; }
+  to   { transform: scale(1);   opacity: 0; }
+}
+
 /* Meteors: estelas de fondo, globales y único fondo animado de la app. Van
    bajo el contenido (z-index 0, mientras `body > *` sube a 1) y NUNCA capturan
    toques (pointer-events:none). */

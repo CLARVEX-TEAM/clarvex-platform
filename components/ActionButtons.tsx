@@ -98,6 +98,7 @@ export function SaveButton({
   loading = false,
   success = false,
   savedLabel,
+  shimmer = false,
   className = "",
   ...props
 }: Omit<HTMLMotionProps<"button">, "children"> & {
@@ -105,8 +106,18 @@ export function SaveButton({
   loading?: boolean;
   success?: boolean;
   savedLabel?: React.ReactNode;
+  /**
+   * Destello continuo (Magic UI). Distinto de `btn-sheen`, que solo brilla al
+   * pulsar: este llama la atención sin que nadie lo toque. UNO por pantalla —
+   * si dos botones brillan a la vez, ninguno destaca.
+   */
+  shimmer?: boolean;
 }) {
   const phase = success ? "saved" : loading ? "saving" : "idle";
+  const reduceMotion = useReducedMotion();
+  // Se calla mientras guarda o al terminar: ahí el botón ya tiene su propia
+  // señal (spinner o ✓) y el brillo solo competiría con ella.
+  const showShimmer = shimmer && !reduceMotion && phase === "idle";
 
   useEffect(() => {
     if (success) haptic("success");
@@ -127,6 +138,13 @@ export function SaveButton({
         className
       )}
     >
+      {showShimmer ? (
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-y-0 w-2/5 animate-[shimmer-sweep_2.8s_cubic-bezier(0.16,1,0.3,1)_infinite]"
+          style={{ background: "linear-gradient(100deg, transparent, rgb(255 255 255 / 0.35), transparent)" }}
+        />
+      ) : null}
       <span className="relative grid size-[18px] place-items-center">
         <AnimatePresence mode="popLayout" initial={false}>
           {phase === "saving" ? (

@@ -3,8 +3,8 @@
 import { motion } from "framer-motion";
 import { money } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { AnimatedNumber } from "@/components/AnimatedNumber";
 import { BorderBeam } from "@/components/magic/BorderBeam";
-import { NumberTicker } from "@/components/magic/NumberTicker";
 
 interface DailySalesCardProps {
   sales: number;
@@ -43,7 +43,7 @@ export function DailySalesCard({ sales, goal, label = "Ventas de hoy", delay = 0
       </div>
 
       <p className="mt-2.5 text-[2.15rem] font-semibold leading-none tracking-[-0.03em] text-ink">
-        <NumberTicker value={sales} format={money} delayMs={Math.round(delay * 1000)} />
+        <AnimatedNumber value={money(sales)} />
       </p>
 
       {goal > 0 ? (

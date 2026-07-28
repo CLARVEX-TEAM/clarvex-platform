@@ -252,7 +252,9 @@ export default function AdvisorDashboard() {
           </motion.div>
         )}
 
-        <DailySalesCard sales={daily.dailySales} goal={daily.dailyGoal} delay={0.08} />
+        {/* `beam` solo aquí: es la tarjeta principal de la pantalla. Si lo lleva
+            más de una, ninguna destaca y el efecto pierde su función. */}
+        <DailySalesCard sales={daily.dailySales} goal={daily.dailyGoal} delay={0.08} beam />
 
         {/* Gamificación (Nivel, XP y Retos) */}
         <motion.div {...cardAnim(0.1)} className="mt-3">
