@@ -11,25 +11,41 @@
 
 ## Stack y versiones
 
-| Tecnología | Versión |
+Verificado contra el `package.json` y contra lo que realmente corre en el VPS
+(28 de julio de 2026).
+
+### Runtime
+
+| Tecnología | Versión | Nota |
+|---|---|---|
+| Node.js | 22.23.1 | Misma versión en VPS y en local |
+| pnpm | **10.12.1** | Fijado por `packageManager` en `package.json` |
+| Ubuntu | 26.04 LTS | En el VPS |
+| PostgreSQL | 16 | Imagen `postgres:16` en Docker |
+
+⚠️ **Usar siempre pnpm vía `corepack`**, que respeta el `packageManager`. Un `pnpm`
+global de otra versión instala un árbol de dependencias distinto al del servidor.
+
+### Dependencias
+
+| Paquete | Versión en `package.json` |
 |---|---|
-| Next.js | 15.5.21 |
-| React | 18.3.x |
-| TypeScript | 5.7.x |
-| Prisma | 5.22.0 |
-| @prisma/client | 5.22.0 |
-| Node.js | 22.23.1 (en el VPS) |
-| pnpm | 11.14.0 (en el VPS) |
-| Tailwind CSS | 3.4.x |
-| web-push | 3.6.7 |
-| @simplewebauthn/server | 13.3.1 |
-| @simplewebauthn/browser | 13.3.0 |
-| recharts | 3.8.x |
-| zod | 4.4.x |
-| framer-motion | 12.x |
-| bcryptjs | 2.4.3 |
-| jose | 6.x |
-| @aws-sdk/client-s3 | 3.x (para R2) |
+| next | 15.5.21 |
+| react | ^18.3.1 |
+| typescript | ^5.7.2 |
+| prisma / @prisma/client | 5.22.0 (ambos fijos, sin `^`) |
+| tailwindcss | ^3.4.16 |
+| web-push | ^3.6.7 |
+| @simplewebauthn/server | ^13.3.1 |
+| @simplewebauthn/browser | ^13.3.0 |
+| recharts | ^3.8.1 |
+| zod | ^4.4.3 |
+| framer-motion | ^12.40.0 |
+| bcryptjs | ^2.4.3 |
+| jose | ^6.2.3 |
+| @aws-sdk/client-s3 | ^3.1086.0 (para R2) |
+| @sentry/nextjs | ^10.65.0 |
+| exceljs | ^4.4.0 (parser del RDV) |
 
 ---
 
@@ -86,7 +102,9 @@ el valor dentro de la propia opción.
 la herencia desactivada:
 
 ```powershell
-icacls "$env:USERPROFILE\.ssh\clarvex_vultr" /inheritance:r /grant:r "$env:USERDOMAIN\$env:USERNAME:F"
+# Las llaves ${...} son obligatorias: sin ellas PowerShell interpreta
+# "$env:USERNAME:F" como un nombre de variable e icacls falla con "Parametro no valido".
+icacls "$env:USERPROFILE\.ssh\clarvex_vultr" /inheritance:r /grant:r "${env:USERDOMAIN}\${env:USERNAME}:F"
 ```
 
 Si el archivo pertenece a `BUILTIN\Administradores`, `icacls` falla con «Acceso denegado» sin
@@ -105,7 +123,13 @@ pnpm install
 pnpm exec prisma generate
 pnpm run build
 pnpm exec eslint . --max-warnings 0
-git add . && git commit -m "descripcion" && git push origin main
+pnpm test                      # 403 tests; deben pasar todos
+
+# Preferir SIEMPRE archivos explicitos sobre `git add .`:
+git status --short              # revisar que no haya .env, respaldos ni volcados
+git add <archivo> [<archivo>...]
+git commit -m "descripcion"
+git push origin main
 
 # 2. En el VPS
 ssh -i ~/.ssh/clarvex_vultr root@216.238.88.93
@@ -145,24 +169,100 @@ Están en el **crontab de `root`** (`crontab -l`), no en el repositorio. Casi to
 
 ---
 
-## Variables de entorno requeridas
+## Variables de entorno
+
+Inventario real del `.env` del VPS (28 de julio de 2026): **37 variables**. La lista
+anterior de este documento solo cubría 14 — faltaban Mercado Pago, Power BI, los
+proveedores de IA, Zendesk y el bucket de respaldos.
+
+### Núcleo — sin esto la app no arranca
 
 ```env
 DATABASE_URL=
-EXCEL_PROXY_WORKER_URL=
-AUTH_SECRET=
+AUTH_SECRET=            # >= 32 caracteres; en produccion se valida y lanza si es corto
+CRON_SECRET=            # Bearer de todas las rutas /api/cron/*
+EXCEL_PROXY_WORKER_URL= # Worker que sirve el XLSX del RDV
+```
+
+### Cloudflare R2 — fotos y evidencias
+
+```env
 R2_ACCOUNT_ID=
 R2_ACCESS_KEY_ID=
 R2_SECRET_ACCESS_KEY=
 R2_BUCKET_NAME=
 R2_PUBLIC_URL=
+CLOUDFLARE_ACCOUNT_ID=
+```
+
+### Respaldos — bucket y token SEPARADOS de los de la app
+
+```env
+BACKUP_R2_ACCESS_KEY_ID=
+BACKUP_R2_SECRET_ACCESS_KEY=
+BACKUP_R2_BUCKET_NAME=
+```
+
+### Notificaciones push (VAPID)
+
+```env
 VAPID_PUBLIC_KEY=
 VAPID_PRIVATE_KEY=
 VAPID_SUBJECT=
+```
+
+### Biometría (WebAuthn)
+
+```env
 WEBAUTHN_RP_ID=
 WEBAUTHN_RP_NAME=
 WEBAUTHN_ORIGIN=
-CRON_SECRET=
+```
+
+⚠️ `lib/webauthn.ts` **lanza al importarse** si faltan `WEBAUTHN_RP_ID` u
+`WEBAUTHN_ORIGIN` con `NODE_ENV=production` — y `next build` lo es. Sin ellas el
+**build falla** en «Collecting page data», aunque el código esté bien. Para compilar
+en local basta con ponerlas en `.env.local` con valores de `localhost`.
+
+### Mercado Pago — suscripciones
+
+```env
+MP_ACCESS_TOKEN=
+MERCADOPAGO_WEBHOOK_SECRET=   # ⚠️ FALTA EN EL VPS — ver aviso abajo
+```
+
+> 🔴 **`MERCADOPAGO_WEBHOOK_SECRET` no está configurada en producción.**
+> `lib/mercadopago-webhook.ts` es *fail-closed*: si el secreto falta y
+> `NODE_ENV=production`, la verificación de firma devuelve `false` y
+> `app/api/webhooks/mercadopago/route.ts` responde **401 a todo webhook entrante**.
+> Es decir: los pagos de suscripción no se procesan solos. Hay que darla de alta
+> desde el panel de Mercado Pago y añadirla al `.env`.
+
+### Inteligencia artificial
+
+```env
+AI_PROVIDER=            # selecciona el proveedor activo
+GEMINI_API_KEY=
+GROQ_API_KEY=
+CLOUDFLARE_AI_TOKEN=
+```
+
+### Power BI
+
+```env
+POWER_BI_APP_TENANT_ID=
+POWER_BI_CLIENT_ID=
+POWER_BI_CLIENT_SECRET=
+POWER_BI_REDIRECT_URI=
+POWER_BI_TOKEN_ENCRYPTION_KEY=
+```
+
+### Zendesk — soporte
+
+```env
+ZENDESK_SUBDOMAIN=
+ZENDESK_EMAIL=
+ZENDESK_API_TOKEN=
 ```
 
 ### Opcionales
@@ -178,7 +278,14 @@ SENTRY_AUTH_TOKEN=   # solo para subir source maps
 WEBHOOK_URL=
 WEBHOOK_STORE_IDS=   # obligatorio para activarlo: lista de storeId separados por coma
 WEBHOOK_SECRET=      # se manda como header X-Clarvex-Secret
+
+# Otras presentes en el VPS
+FOOTBALL_API_KEY=
 ```
+
+⚠️ **Nunca respaldar el `.env` dentro del repositorio.** `.gitignore` ya cubre
+`.env.bak*`, pero antes no lo hacía: un `git add .` habría subido todos estos
+secretos a GitHub.
 
 ## Fotos a Telegram (n8n)
 
@@ -325,7 +432,15 @@ El % de comisión difiere por puesto pero el mínimo de referencia es el mismo p
 
 ---
 
-## Estado actual del proyecto — Junio 2026
+## Estado actual del proyecto — 28 de julio de 2026
+
+### 🔴 Abierto — requiere acción
+
+- **`MERCADOPAGO_WEBHOOK_SECRET` sin configurar en el VPS.** El webhook de Mercado
+  Pago responde 401 a todo: las suscripciones no se procesan automáticamente.
+  Ver [Variables de entorno](#variables-de-entorno).
+- **Respaldo de `.env` suelto en el servidor:** `/root/clarvex-app/.env.bak-1784486367`.
+  Ya está cubierto por `.gitignore`, pero conviene sacarlo del directorio del repo.
 
 ### ✅ Resuelto y funcionando
 
@@ -345,6 +460,8 @@ El % de comisión difiere por puesto pero el mínimo de referencia es el mismo p
 - Push Notifications funcionando con app cerrada (Android + PWA)
 - Botón eliminar para gerente/subgerente en comunicados, planes y pendientes
 - Producción estable en app.adrianluna.mx
+- Modo demo público de solo lectura (`/api/demo/manager`, `/api/demo/advisor`),
+  con el candado cerrado también en los GET que escriben y en los que gastan IA
 
 ### ⚠️ Áreas a no tocar sin revisión previa
 
@@ -352,6 +469,30 @@ El % de comisión difiere por puesto pero el mínimo de referencia es el mismo p
 - Fuente de datos KPIs (columnas del RDV) — ya correcta
 - Vista Mes de KPIs — ya correcta
 - Push Notifications — ya funcional
+
+---
+
+## Modo demo público
+
+Entrada sin PIN para enseñar la app: `GET /api/demo/manager` o `/api/demo/advisor`
+crean una sesión sobre la tienda ficticia `demo-showcase` (`lib/demo.ts`).
+
+**Los usuarios demo son COMPARTIDOS** (`DEMO-100` y `DEMO-201`): todos los visitantes
+entran con la misma cuenta. De ahí salen dos reglas que no son evidentes:
+
+1. **El logout demo no debe subir `sessionVersion`.** Si lo sube, expulsa a todos los
+   visitantes conectados a la vez — cualquiera podría tumbar la demo cerrando sesión
+   (`app/api/auth/session/route.ts`).
+2. **El middleware NO alcanza.** Solo filtra por método HTTP, y eso deja fuera:
+   - GET que escriben (presencia del chat, recibos, challenges de WebAuthn)
+   - GET que cuestan dinero (`/api/ai/*`)
+   - Todo `/api/auth/*`, exceptuado para permitir el logout
+
+Para esos casos existe **`denyDemo(session)`** en `lib/api.ts`. Al añadir un endpoint
+nuevo que escriba o gaste IA, aplicarlo explícitamente.
+
+En el chat se optó por **desactivar las escrituras en vez de bloquear el GET**: cortarlo
+entero dejaría roto justo lo que la demo pretende enseñar.
 
 ---
 
