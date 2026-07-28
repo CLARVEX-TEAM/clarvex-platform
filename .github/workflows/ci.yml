@@ -44,17 +44,13 @@ jobs:
   visual:
     name: Regresión visual
     runs-on: ubuntu-latest
-    # NO BLOQUEA mientras no existan las capturas de referencia de Linux.
+    # BLOQUEA. Si este trabajo se pone rojo, algo cambió de aspecto: mira el
+    # artefacto `informe-visual` para ver exactamente qué píxeles difieren.
     #
-    # Playwright NO escribe capturas ausentes cuando corre en CI (deliberado:
-    # así una referencia no se acepta sola sin que nadie la mire), de modo que
-    # este trabajo falla hasta que existan.
-    #
-    # PARA ACTIVARLO: lanzar a mano el workflow «Generar capturas de referencia»
-    # desde la pestaña Actions. Las crea y las commitea. Después, borrar la
-    # línea `continue-on-error` de abajo: a partir de ahí cualquier cambio
-    # visual no intencionado rompe el CI.
-    continue-on-error: true
+    # Si el cambio era INTENCIONADO, lanza a mano el workflow «Generar capturas
+    # de referencia» desde la pestaña Actions: regenera las referencias y las
+    # commitea. Nunca lo lances sin revisar antes el informe, o convertirás una
+    # regresión real en la nueva verdad.
 
     steps:
       - name: Checkout
