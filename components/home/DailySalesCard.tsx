@@ -70,5 +70,7 @@ export function DailySalesCard({ sales, goal, label = "Ventas de hoy", delay = 0
 
   // El haz envuelve la tarjeta ya montada: así el resto del componente no
   // cambia y activarlo o no es una decisión de quien lo usa, no de la tarjeta.
-  return beam ? <BorderBeam radius="rounded-2xl">{card}</BorderBeam> : card;
+  // Sin `radius`: el anillo de 2px pide un radio exterior 2px mayor que el
+  // rounded-2xl (16px) de la tarjeta, y ese es justo el valor por defecto.
+  return beam ? <BorderBeam>{card}</BorderBeam> : card;
 }

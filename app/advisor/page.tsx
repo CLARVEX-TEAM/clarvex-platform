@@ -28,6 +28,8 @@ import { PaceCard } from "@/components/home/PaceCard";
 import { AchievementsCard } from "@/components/home/AchievementsCard";
 import { QuincenaCard } from "@/components/home/QuincenaCard";
 import { useAppData } from "@/lib/use-app-data";
+import { BlurFade } from "@/components/magic/BlurFade";
+import { ShineBorder } from "@/components/magic/ShineBorder";
 
 const cardAnim = (delay: number) => ({
   initial: { opacity: 0, y: 12 },
@@ -228,11 +230,15 @@ export default function AdvisorDashboard() {
       <Confetti show={celebrate} />
       <PullToRefresh onRefresh={load}>
       <AppFrame>
+        {/* ShineBorder aquí y no BorderBeam: esto está SIN ATENDER, y este
+            efecto insiste. El haz marca importancia; el brillo del contorno
+            pide acción. Desaparece solo cuando ya no hay comunicados sin leer. */}
         {unread.length > 0 && (
+          <ShineBorder className="mb-3" tone="ember">
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="card-3d mb-3 flex items-center justify-between gap-3 rounded-2xl border border-line bg-card p-3.5"
+            className="card-3d flex items-center justify-between gap-3 rounded-2xl border border-line bg-card p-3.5"
           >
             <div className="flex items-center gap-3">
               <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-[#EEF3FF] text-base dark:bg-[#172134]">📢</span>
@@ -250,14 +256,19 @@ export default function AdvisorDashboard() {
               Leer
             </Link>
           </motion.div>
+          </ShineBorder>
         )}
 
         {/* `beam` solo aquí: es la tarjeta principal de la pantalla. Si lo lleva
             más de una, ninguna destaca y el efecto pierde su función. */}
         <DailySalesCard sales={daily.dailySales} goal={daily.dailyGoal} delay={0.08} beam />
 
-        {/* Gamificación (Nivel, XP y Retos) */}
-        <motion.div {...cardAnim(0.1)} className="mt-3">
+        {/* Gamificación (Nivel, XP y Retos).
+            BlurFade SUSTITUYE aquí a cardAnim, no se suma: dos entradas sobre
+            el mismo bloque se pisan. Solo en este y en el siguiente; el resto
+            de tarjetas mantiene cardAnim porque BlurFade anima `filter`, caro
+            en GPU, y hay más de diez en esta pantalla. */}
+        <BlurFade delay={0.1} className="mt-3">
           <Card className="border border-white/10 bg-[#0A0A0A]/60 backdrop-blur-xl p-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
@@ -309,7 +320,7 @@ export default function AdvisorDashboard() {
               </div>
             </div>
           </Card>
-        </motion.div>
+        </BlurFade>
 
         <motion.div {...cardAnim(0.12)} className="mt-3">
           <PaceCard sales={daily.dailySales} goal={daily.dailyGoal} userId={user.id} />

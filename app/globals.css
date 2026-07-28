@@ -327,6 +327,12 @@ button.solid-card:hover {
   to { background-position: -220% 0; }
 }
 
+/* ShineBorder: el gradiente recorre el contorno completo. Más insistente que
+   BorderBeam: para lo que está sin atender, no para lo que es importante. */
+@keyframes shine-border {
+  to { background-position: 200% 0; }
+}
+
 /* RippleButton: la onda parte del punto tocado y se desvanece al crecer. */
 @keyframes ripple-out {
   from { transform: scale(0);   opacity: 0.55; }
