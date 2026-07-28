@@ -3,6 +3,8 @@
 import { motion } from "framer-motion";
 import { money } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { BorderBeam } from "@/components/magic/BorderBeam";
+import { NumberTicker } from "@/components/magic/NumberTicker";
 
 interface DailySalesCardProps {
   sales: number;
@@ -10,6 +12,8 @@ interface DailySalesCardProps {
   label?: string;
   delay?: number;
   className?: string;
+  /** Haz de luz en el borde. Reservado para la tarjeta principal de la pantalla. */
+  beam?: boolean;
 }
 
 /** Color del pill de alcance — semántico (verde / ámbar / rojo), no el acento. */
@@ -19,10 +23,10 @@ function pillTone(p: number): string {
   return "text-[#DC2626] bg-[#FCECEC] dark:text-[#F26B6B] dark:bg-[#2A1717]";
 }
 
-export function DailySalesCard({ sales, goal, label = "Ventas de hoy", delay = 0.08, className }: DailySalesCardProps) {
+export function DailySalesCard({ sales, goal, label = "Ventas de hoy", delay = 0.08, className, beam = false }: DailySalesCardProps) {
   const progress = goal > 0 ? Math.round((sales / goal) * 100) : 0;
 
-  return (
+  const card = (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
@@ -39,7 +43,7 @@ export function DailySalesCard({ sales, goal, label = "Ventas de hoy", delay = 0
       </div>
 
       <p className="mt-2.5 text-[2.15rem] font-semibold leading-none tracking-[-0.03em] text-ink">
-        {money(sales)}
+        <NumberTicker value={sales} format={money} delayMs={Math.round(delay * 1000)} />
       </p>
 
       {goal > 0 ? (
@@ -63,4 +67,8 @@ export function DailySalesCard({ sales, goal, label = "Ventas de hoy", delay = 0
       </div>
     </motion.div>
   );
+
+  // El haz envuelve la tarjeta ya montada: así el resto del componente no
+  // cambia y activarlo o no es una decisión de quien lo usa, no de la tarjeta.
+  return beam ? <BorderBeam radius="rounded-2xl">{card}</BorderBeam> : card;
 }

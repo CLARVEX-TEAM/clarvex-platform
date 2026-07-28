@@ -354,6 +354,26 @@ button.solid-card:hover {
   opacity: 0.18;
 }
 
+/* ─── Magic UI ────────────────────────────────────────────────────────────
+   Keyframes de los componentes de components/magic/. Van aquí y no en
+   tailwind.config.ts porque se invocan desde utilidades arbitrarias
+   (animate-[...]), y Tailwind no emite keyframes del config para esas.
+   Los tres respetan prefers-reduced-motion: los componentes no llegan a
+   renderizar el elemento animado cuando el usuario lo pide. */
+
+/* BorderBeam: el arco de luz gira detrás de la tarjeta. El translate va dentro
+   del keyframe porque la animación sobreescribe `transform` por completo. */
+@keyframes beam-spin {
+  from { transform: translate(-50%, -50%) rotate(0deg); }
+  to   { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+/* ShimmerButton: el destello cruza y descansa antes de volver a entrar. */
+@keyframes shimmer-sweep {
+  0%        { left: -45%; }
+  62%, 100% { left: 110%; }
+}
+
 /* ─── Skeleton shimmer — barrido de luz que recorre los bloques de carga.
    Más premium que un pulse y se propaga a todos los <Skeleton /> de la app. */
 @keyframes skeletonShimmer {
