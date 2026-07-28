@@ -13,13 +13,13 @@
 
 | Tecnología | Versión |
 |---|---|
-| Next.js | 15.5.18 |
+| Next.js | 15.5.21 |
 | React | 18.3.x |
 | TypeScript | 5.7.x |
 | Prisma | 5.22.0 |
 | @prisma/client | 5.22.0 |
-| Node.js | ~22.x |
-| pnpm | (usar versión del proyecto) |
+| Node.js | 22.23.1 (en el VPS) |
+| pnpm | 11.14.0 (en el VPS) |
 | Tailwind CSS | 3.4.x |
 | web-push | 3.6.7 |
 | @simplewebauthn/server | 13.3.1 |
@@ -35,15 +35,113 @@
 
 ## Infraestructura
 
-- VPS Ubuntu (AWS)
-- PM2 — proceso: `clarvex-team`
-- Docker — contenedor PostgreSQL: `clarvex_postgres`
+- **VPS Ubuntu en Vultr** — `216.238.88.93` (no es AWS; la documentación anterior estaba desactualizada)
+- PM2 — proceso: `clarvex-team`, modo **cluster con 2 instancias**
+- Docker — contenedor PostgreSQL: `clarvex_postgres` (imagen `postgres:16`)
 - PostgreSQL — base: `clarvex_team`, host: `localhost`, puerto: `5432`
-- Nginx Proxy Manager
+- Nginx Proxy Manager (contenedor `npm`)
 - Cloudflare R2 (fotos de perfil y evidencias)
 - Cloudflare DNS
 
-**Ruta VPS:** `/home/ubuntu/clarvex-app`
+**Ruta de la app en el VPS:** `/root/clarvex-app`
+
+### Contenedores Docker en el mismo servidor
+
+| Contenedor | Imagen | Para qué |
+|---|---|---|
+| `clarvex_postgres` | postgres:16 | Base de datos de la app |
+| `npm` | jc21/nginx-proxy-manager | Proxy inverso + TLS |
+| `n8n` | n8nio/n8n | Webhook de fotos → Telegram |
+| `uptime-kuma` | louislam/uptime-kuma:2 | Monitoreo de `/api/health` |
+| `vaultwarden` | vaultwarden/server | Gestor de contraseñas |
+| `portainer` | portainer/portainer-ce | Administración de Docker |
+
+⚠️ El VPS aloja **más servicios que esta app**. Un `docker compose down` o un reinicio a la ligera tumba también el proxy, el monitoreo y el gestor de contraseñas.
+
+---
+
+## Acceso al servidor
+
+> ⚠️ **Este archivo se commitea al repositorio.** Aquí van solo rutas y nombres de host —
+> **nunca** llaves privadas, tokens ni contenido de `.env`.
+
+| Dato | Valor |
+|---|---|
+| Host | `216.238.88.93` (Vultr) |
+| Usuario | `root` |
+| Llave privada | `~/.ssh/clarvex_vultr` (Windows: `C:\Users\<usuario>\.ssh\clarvex_vultr`) |
+| Alias en `~/.ssh/config` | `clarvex` |
+
+```bash
+ssh -i ~/.ssh/clarvex_vultr root@216.238.88.93
+```
+
+**Nota para Windows:** si la ruta del perfil lleva espacios (`C:\Users\Adrian L\...`), **no** la pases
+en `-o UserKnownHostsFile=`: esa opción admite varios archivos separados por espacios y ssh parte
+la ruta en dos, fallando con `Host key verification failed`. Usa una ruta sin espacios o entrecomilla
+el valor dentro de la propia opción.
+
+**Permisos de la llave:** OpenSSH rechaza llaves privadas accesibles por otros usuarios
+(`UNPROTECTED PRIVATE KEY FILE`). En Windows, la llave debe ser **propiedad de tu usuario** y tener
+la herencia desactivada:
+
+```powershell
+icacls "$env:USERPROFILE\.ssh\clarvex_vultr" /inheritance:r /grant:r "$env:USERDOMAIN\$env:USERNAME:F"
+```
+
+Si el archivo pertenece a `BUILTIN\Administradores`, `icacls` falla con «Acceso denegado» sin
+elevación. Atajo sin necesidad de administrador: **copiar** el archivo a tu perfil — la copia nace
+siendo tuya y ya puedes cerrarle los permisos.
+
+---
+
+## Actualizar la app en producción
+
+**Fuente de verdad: GitHub (`main`).** El VPS solo consume; nunca se edita código directamente ahí.
+
+```bash
+# 1. En local — verificaciones obligatorias ANTES de subir
+pnpm install
+pnpm exec prisma generate
+pnpm run build
+pnpm exec eslint . --max-warnings 0
+git add . && git commit -m "descripcion" && git push origin main
+
+# 2. En el VPS
+ssh -i ~/.ssh/clarvex_vultr root@216.238.88.93
+cd /root/clarvex-app
+git pull
+pnpm install
+pnpm exec prisma generate
+pnpm run build
+pm2 restart clarvex-team --update-env
+
+# 3. Verificar
+pm2 list
+curl -s https://app.adrianluna.mx/api/health
+```
+
+Tras cambios en datos del RDV: ejecutar **«Sincronizar ahora»** desde el Centro de Datos en la app.
+
+### Comandos útiles en el VPS
+
+```bash
+pm2 logs clarvex-team --lines 100   # logs de la app
+pm2 restart clarvex-team --update-env
+docker ps                            # estado de contenedores
+ls /root/logs/                       # logs de los crons
+df -h /                              # espacio en disco
+```
+
+### Crons
+
+Están en el **crontab de `root`** (`crontab -l`), no en el repositorio. Casi todos son `curl` a
+`/api/cron/*` con `Authorization: Bearer $CRON_SECRET`. Los dos que no son curl:
+
+- `30 9 * * *` — `pnpm exec tsx scripts/backup-db.ts` (respaldo diario a R2)
+- `/root/clarvex-app/cron-plan-reminder.sh` y `cron-pending-overdue-managers.sh`
+
+⚠️ Los horarios del crontab están en **UTC**; los comentarios se refieren a hora de Monterrey.
 
 ---
 
@@ -261,28 +359,12 @@ El % de comisión difiere por puesto pero el mínimo de referencia es el mismo p
 
 **Fuente de verdad: GitHub (`main`). Nunca usar VPS como fuente principal.**
 
-```bash
-# Local — antes de cada commit:
-pnpm install
-pnpm exec prisma generate
-pnpm run build
-pnpm exec eslint . --max-warnings 0
+El procedimiento completo (local → GitHub → VPS) está en
+[Actualizar la app en producción](#actualizar-la-app-en-producción).
 
-# Luego:
-git add .
-git commit -m "descripción"
-git push origin main
-
-# En VPS — después de push:
-git pull
-pnpm install
-pnpm exec prisma generate
-pnpm run build
-pm2 restart clarvex-team --update-env
-
-# Después de cambios en datos del RDV:
-# Ejecutar "Sincronizar ahora" desde el Centro de Datos en la app
-```
+Regla que no se salta: **build y lint en verde ANTES de commitear**. Desplegar código que no
+compiló localmente deja la producción a merced de un error de tipado que se descubre recién al
+reiniciar PM2.
 
 ---
 
@@ -303,7 +385,7 @@ pm2 restart clarvex-team --update-env
 
 ## Base de datos — Notas conocidas
 
-- Volumen PostgreSQL: `/home/ubuntu/clarvex-team/postgres`
+- Volumen PostgreSQL: `/root/stack/postgres`
 - Error previo resuelto: `could not open file global/pg_filenode.map Permission denied` — no repetir cambios destructivos.
 - Se ejecutó `UPDATE "Kpi" SET conversion = 0 WHERE conversion IS NULL` — 22 registros corregidos.
 
