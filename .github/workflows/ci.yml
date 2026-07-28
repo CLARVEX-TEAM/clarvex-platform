@@ -44,14 +44,16 @@ jobs:
   visual:
     name: Regresión visual
     runs-on: ubuntu-latest
-    # NO BLOQUEA todavía, y es a propósito: las capturas de referencia son por
-    # sistema operativo, y en el repo solo están las de Windows (win32). Este
-    # trabajo genera las de Linux y las sube como artefacto.
+    # NO BLOQUEA mientras no existan las capturas de referencia de Linux.
     #
-    # PARA ACTIVARLO DE VERDAD: descargar el artefacto `capturas-linux` de la
-    # primera ejecución, copiar la carpeta a tests/visual/__screenshots__/,
-    # commitearla y borrar la línea `continue-on-error` de abajo. A partir de
-    # ahí, cualquier cambio visual no intencionado rompe el CI.
+    # Playwright NO escribe capturas ausentes cuando corre en CI (deliberado:
+    # así una referencia no se acepta sola sin que nadie la mire), de modo que
+    # este trabajo falla hasta que existan.
+    #
+    # PARA ACTIVARLO: lanzar a mano el workflow «Generar capturas de referencia»
+    # desde la pestaña Actions. Las crea y las commitea. Después, borrar la
+    # línea `continue-on-error` de abajo: a partir de ahí cualquier cambio
+    # visual no intencionado rompe el CI.
     continue-on-error: true
 
     steps:
@@ -92,14 +94,6 @@ jobs:
 
       - name: Pruebas visuales
         run: pnpm exec playwright test
-
-      - name: Subir capturas generadas
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: capturas-linux
-          path: tests/visual/__screenshots__/
-          retention-days: 14
 
       - name: Subir informe de diferencias
         if: failure()
