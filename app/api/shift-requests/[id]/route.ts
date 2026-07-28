@@ -26,9 +26,9 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   const existing = await prisma.shiftRequest.findFirst({ where: { id, storeId: session.storeId } });
   if (!existing) return NextResponse.json({ error: "Solicitud no encontrada." }, { status: 404 });
 
-  // Solo se descuenta al aprobar por primera vez, y se DEVUELVE si esa aprobacion
-  // se revierte. Sin la devolucion, el ciclo aprobar -> rechazar -> aprobar cobraba
-  // el dia dos veces (el saldo solo bajaba, nunca volvia a subir).
+  // Solo se descuenta al aprobar por primera vez, y se DEVUELVE si esa aprobación
+  // se revierte. Sin la devolución, el ciclo aprobar → rechazar → aprobar cobraba
+  // el día dos veces (el saldo solo bajaba, nunca volvía a subir).
   const wasApproved = existing.status === "APROBADO";
   const firstApproval = status === "APROBADO" && !wasApproved;
   const approvalRevoked = status === "RECHAZADO" && wasApproved;

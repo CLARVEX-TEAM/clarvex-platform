@@ -17,11 +17,11 @@ export async function DELETE() {
   // Invalida el token actual (y otras sesiones del usuario) subiendo
   // sessionVersion: un token robado deja de servir tras el logout.
   //
-  // EXCEPCION demo: los usuarios del demo publico son COMPARTIDOS (DEMO-100 /
-  // DEMO-201), asi que subir la version echaria de la app a todos los visitantes
-  // conectados en ese momento - cualquiera podria tumbar el demo con solo cerrar
-  // sesion. Ahi basta con borrar la cookie: no hay nada que proteger en una
-  // sesion de solo lectura sobre datos ficticios.
+  // EXCEPCIÓN demo: los usuarios del demo público son COMPARTIDOS (DEMO-100 /
+  // DEMO-201), así que subir la versión echaría de la app a todos los visitantes
+  // conectados en ese momento — cualquiera podría tumbar el demo con solo cerrar
+  // sesión. Ahí basta con borrar la cookie: no hay nada que proteger en una
+  // sesión de solo lectura sobre datos ficticios.
   const session = await getServerSession();
   if (session && !session.demo) {
     await prisma.user.update({ where: { id: session.userId }, data: { sessionVersion: { increment: 1 } } }).catch(() => undefined);
