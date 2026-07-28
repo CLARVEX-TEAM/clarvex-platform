@@ -26,8 +26,12 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   const existing = await prisma.shiftRequest.findFirst({ where: { id, storeId: session.storeId } });
   if (!existing) return NextResponse.json({ error: "Solicitud no encontrada." }, { status: 404 });
 
-  // Solo se descuenta al aprobar por primera vez.
-  const firstApproval = status === "APROBADO" && existing.status !== "APROBADO";
+  // Solo se descuenta al aprobar por primera vez, y se DEVUELVE si esa aprobacion
+  // se revierte. Sin la devolucion, el ciclo aprobar -> rechazar -> aprobar cobraba
+  // el dia dos veces (el saldo solo bajaba, nunca volvia a subir).
+  const wasApproved = existing.status === "APROBADO";
+  const firstApproval = status === "APROBADO" && !wasApproved;
+  const approvalRevoked = status === "RECHAZADO" && wasApproved;
   // ⚠️ Ni las HORAS (entrar tarde / salir temprano) ni las VACACIONES se descuentan
   // aquí. El saldo real lo lleva la ASISTENCIA: cuando la persona marca 13:00 con
   // permiso, el banco de horas ya resta esas 2:30 (lib/hours-balance); y las
@@ -36,16 +40,16 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   // Aprobar es la INTENCIÓN; el hecho lo registra la asistencia/el horario, que en
   // esta app siempre mandan. El "pago de día" sí es un saldo aparte que nada
   // calcula solo, así que ese se sigue descontando aquí.
-  const dayField = firstApproval ? dayBalanceField(existing.type) : null;
-  const deductDayField = dayField === "paidDays" ? dayField : null;
+  const affectsPaidDays = dayBalanceField(existing.type) === "paidDays";
+  const paidDaysDelta = affectsPaidDays && firstApproval ? -1 : affectsPaidDays && approvalRevoked ? 1 : 0;
 
   await prisma.$transaction(async (tx) => {
     await tx.shiftRequest.update({
       where: { id },
       data: { status, managerNote: managerNote || null, resolvedById: session.userId, resolvedAt: new Date() }
     });
-    if (deductDayField) {
-      await tx.user.update({ where: { id: existing.requesterId }, data: { [deductDayField]: { decrement: 1 } } });
+    if (paidDaysDelta !== 0) {
+      await tx.user.update({ where: { id: existing.requesterId }, data: { paidDays: { increment: paidDaysDelta } } });
     }
   });
 
