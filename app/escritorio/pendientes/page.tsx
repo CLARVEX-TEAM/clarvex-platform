@@ -2,18 +2,28 @@
 
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { AlertTriangle, ClipboardCheck, Search, Sparkles, Trash2, X } from "lucide-react";
+import { ClipboardCheck, Search, Sparkles, Trash2, X } from "lucide-react";
 import type { Pending } from "@/lib/types";
-import { Badge, Card, EmptyState, ProfileAvatar, priorityTone, statusTone } from "@/components/ui";
+import { Badge, ProfileAvatar, priorityTone, statusTone } from "@/components/ui";
 import { AppDatePicker, AppInput, AppSelect, AppTextarea, type SelectOption } from "@/components/forms";
-import { SendButton } from "@/components/SendButton";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { useToast } from "@/components/Toast";
 import { useDesktopData } from "@/components/desktop/useDesktopData";
 import { DesktopError } from "@/components/desktop/DesktopError";
 import { useUnsavedGuard } from "@/components/desktop/useUnsavedGuard";
+import {
+  DeskButton, DeskEmpty, DeskPanel, DeskPrimaryButton, DeskReveal, DeskSection, DeskSkeleton, deskInput
+} from "@/components/desktop/DeskUI";
+import { ShineBorder } from "@/components/magic/ShineBorder";
 
 type Filter = "todos" | "urgentes" | "abiertos";
+
+/** Respuesta de /api/ai/tasks-optimize. Tipada de verdad y no `any`. */
+type TaskOptimization = {
+  prioritizedTasks: { id: string; justification: string }[];
+  duplicates?: { suggestedTitle: string; taskIds: string[] }[];
+  suggestions: { taskId: string; recommendedOwnerName: string; reason: string }[];
+};
 
 const categoryOptions: SelectOption[] = [
   { value: "OPERACION", label: "Operación" },
@@ -30,6 +40,8 @@ const priorityOptions: SelectOption[] = [
   { value: "BAJA", label: "Baja" }
 ];
 
+const todayKey = () => new Date().toISOString().slice(0, 10);
+
 export default function EscritorioPendientes() {
   const { data, setData, error, reload } = useDesktopData();
   const toast = useToast();
@@ -39,14 +51,14 @@ export default function EscritorioPendientes() {
   const [category, setCategory] = useState("OPERACION");
   const [priority, setPriority] = useState("MEDIA");
   const [ownerId, setOwnerId] = useState("");
-  const [dueDate, setDueDate] = useState(new Date().toISOString().slice(0, 10));
+  const [dueDate, setDueDate] = useState(todayKey());
   const [editId, setEditId] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [saved, setSaved] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [query, setQuery] = useState("");
-  const [optimization, setOptimization] = useState<any | null>(null);
+  const [optimization, setOptimization] = useState<TaskOptimization | null>(null);
   const [loadingOpt, setLoadingOpt] = useState(false);
   const [showOptModal, setShowOptModal] = useState(false);
 
@@ -54,12 +66,12 @@ export default function EscritorioPendientes() {
     setLoadingOpt(true);
     try {
       const res = await fetch("/api/ai/tasks-optimize");
-      const payload = await res.json();
-      if (!res.ok) throw new Error(payload.error || "No se pudo obtener la optimización.");
+      const payload = await res.json() as TaskOptimization & { error?: string };
+      if (!res.ok) throw new Error(payload.error ?? "No se pudo obtener la optimización.");
       setOptimization(payload);
       setShowOptModal(true);
-    } catch (err: any) {
-      toast(err.message || "Error al conectar con la optimización IA.", "error");
+    } catch (err) {
+      toast(err instanceof Error ? err.message : "Error al conectar con la optimización IA.", "error");
     } finally {
       setLoadingOpt(false);
     }
@@ -71,9 +83,12 @@ export default function EscritorioPendientes() {
   if (error && !data) return <DesktopError onRetry={reload} />;
   if (!data) {
     return (
-      <div className="grid animate-pulse grid-cols-5 gap-5">
-        <div className="col-span-2 h-96 rounded-3xl bg-panel dark:bg-panel" />
-        <div className="col-span-3 space-y-3">{[0, 1, 2].map((i) => <div key={i} className="h-28 rounded-3xl bg-panel dark:bg-panel" />)}</div>
+      <div className="grid gap-10 xl:grid-cols-[22rem_minmax(0,1fr)]">
+        <DeskSkeleton className="h-[30rem]" />
+        <div className="space-y-3">
+          <DeskSkeleton className="h-9 w-72" />
+          {[0, 1, 2, 3].map((i) => <DeskSkeleton key={i} className="h-24" />)}
+        </div>
       </div>
     );
   }
@@ -96,7 +111,7 @@ export default function EscritorioPendientes() {
 
   function resetForm() {
     setTitle(""); setDescription(""); setCategory("OPERACION"); setPriority("MEDIA");
-    setOwnerId(data?.users[0]?.id ?? ""); setDueDate(new Date().toISOString().slice(0, 10)); setEditId(null);
+    setOwnerId(data?.users[0]?.id ?? ""); setDueDate(todayKey()); setEditId(null);
   }
 
   function editPending(p: Pending) {
@@ -164,94 +179,158 @@ export default function EscritorioPendientes() {
     }
   }
 
+  const today = todayKey();
+
   return (
-    <div className="grid grid-cols-5 gap-5">
-      {/* Crear / editar */}
-      <Card className="col-span-2 h-fit p-5">
-        <div className="mb-4 flex items-center gap-2">
-          <AlertTriangle className="text-volt" size={18} />
-          <h2 className="text-lg font-semibold text-ink">{editId ? "Editar pendiente" : "Nuevo pendiente"}</h2>
-        </div>
-        <form className="grid gap-3" onSubmit={savePending}>
-          <AppInput label="Título" value={title} onChange={(e) => setTitle(e.target.value)} required />
-          <AppTextarea label="Descripción" value={description} onChange={(e) => setDescription(e.target.value)} required />
-          <div className="grid grid-cols-2 gap-3">
-            <AppSelect label="Categoría" value={category} onChange={setCategory} options={categoryOptions} />
-            <AppSelect label="Prioridad" value={priority} onChange={setPriority} options={priorityOptions} />
-          </div>
-          <AppSelect label="Responsable" value={ownerId} onChange={setOwnerId} options={userOptions} placeholder="Selecciona responsable" />
-          <AppDatePicker label="Fecha límite" value={dueDate} onChange={setDueDate} required />
-          <div className="flex gap-2">
-            {editId ? (
-              <button type="button" onClick={resetForm} className="tappable min-h-12 flex-1 rounded-2xl bg-panel dark:bg-panel text-sm font-semibold text-ink">Cancelar</button>
-            ) : null}
-            <SendButton type="submit" loading={submitting} success={saved} sentLabel="¡Listo!" className="flex-1">
-              {editId ? "Guardar cambios" : "Crear pendiente"}
-            </SendButton>
-          </div>
-        </form>
-      </Card>
-
-      {/* Lista */}
-      <div className="col-span-3 space-y-3">
-        <div className="flex items-center gap-2">
-          <div className="flex gap-1.5">
-            {([["todos", "Todos"], ["urgentes", "Urgentes"], ["abiertos", "Abiertos"]] as const).map(([value, label]) => (
-              <button key={value} onClick={() => setFilter(value)} className={`tappable min-h-9 rounded-full px-4 text-[13px] font-bold transition ${filter === value ? "bg-volt text-white" : "bg-panel text-muted ring-1 ring-line hover:text-ink"}`}>{label}</button>
-            ))}
-          </div>
-          <button
-            onClick={() => void fetchTaskOptimization()}
-            disabled={loadingOpt}
-            className="flex min-h-9 items-center justify-center gap-2 rounded-full bg-[#2563EB] px-4 text-[13px] font-semibold text-white transition active:scale-95 disabled:opacity-50"
-          >
-            <Sparkles size={14} />
-            {loadingOpt ? "Optimizando..." : "Optimizar con IA"}
-          </button>
-          <div className="relative ml-auto w-56">
-            <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
-            <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar…" className="min-h-9 w-full rounded-full border border-line bg-panel pl-9 pr-3 text-[13px] font-semibold text-ink outline-none transition focus:border-volt focus:ring-4 focus:ring-volt/10" />
-          </div>
-        </div>
-
-        <AnimatePresence initial={false}>
-          {shown.map((p) => (
-            <motion.div key={p.id} layout exit={{ opacity: 0, scale: 0.96, x: 40 }}>
-              <Card className="p-5">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <h3 className="font-semibold text-ink">{p.title}</h3>
-                    <p className="mt-1 text-[13px] leading-5 text-muted">{p.description}</p>
+    <>
+      {/* Formulario fijo a la izquierda, cola a la derecha. Por debajo de 1280px
+          se apilan: un formulario de seis campos en media columna estrecha es
+          peor que uno completo arriba. */}
+      <div className="grid gap-10 xl:grid-cols-[22rem_minmax(0,1fr)]">
+        <DeskReveal index={0}>
+          <div className="xl:sticky xl:top-20">
+            <DeskSection title={editId ? "Editar pendiente" : "Nuevo pendiente"}>
+              <DeskPanel>
+                <form className="grid gap-3" onSubmit={savePending}>
+                  <AppInput label="Título" value={title} onChange={(e) => setTitle(e.target.value)} required />
+                  <AppTextarea label="Descripción" value={description} onChange={(e) => setDescription(e.target.value)} required />
+                  <div className="grid grid-cols-2 gap-3">
+                    <AppSelect label="Categoría" value={category} onChange={setCategory} options={categoryOptions} />
+                    <AppSelect label="Prioridad" value={priority} onChange={setPriority} options={priorityOptions} />
                   </div>
-                  <Badge tone={priorityTone(p.priority)}>{p.priority}</Badge>
-                </div>
-                <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 border-y border-line py-2.5 text-[13px]">
-                  <span className="flex items-center gap-1.5 text-muted"><span className="font-bold uppercase tracking-[0.08em] text-[11px]">Categoría</span> {p.category}</span>
-                  <span className="flex items-center gap-1.5"><span className="text-[11px] font-bold uppercase tracking-[0.08em] text-muted">Estado</span> <Badge tone={statusTone(p.status)}>{p.status}</Badge></span>
-                  <span className="flex items-center gap-1.5 text-ink"><ProfileAvatar name={userName(p.ownerId)} photoUrl={data.users.find((u) => u.id === p.ownerId)?.photoUrl} size="sm" className="size-6 rounded-lg shadow-none" /> {userName(p.ownerId)}</span>
-                  <span className="text-muted"><span className="text-[11px] font-bold uppercase tracking-[0.08em]">Vence</span> {p.dueDate}</span>
-                </div>
-                <div className="mt-3 flex items-center gap-2">
-                  <button onClick={() => editPending(p)} className="tappable min-h-9 rounded-xl bg-panel dark:bg-panel px-3 text-sm font-bold text-ink">Editar</button>
-                  <select
-                    aria-label="Cambiar estado"
-                    value={p.status === "en proceso" ? "EN_PROCESO" : p.status.toUpperCase()}
-                    onChange={(e) => void changeStatus(p.id, e.target.value as "PENDIENTE" | "EN_PROCESO" | "COMPLETADO")}
-                    className="min-h-9 rounded-xl border border-line bg-panel px-3 text-sm font-bold text-ink outline-none focus:ring-2 focus:ring-volt/20"
+                  <AppSelect label="Responsable" value={ownerId} onChange={setOwnerId} options={userOptions} placeholder="Selecciona responsable" />
+                  <AppDatePicker label="Fecha límite" value={dueDate} onChange={setDueDate} required />
+                  <div className="flex gap-2">
+                    {editId ? (
+                      <DeskButton type="button" onClick={resetForm} className="flex-1">Cancelar</DeskButton>
+                    ) : null}
+                    {/* La ÚNICA acción con destello de la pantalla. */}
+                    <DeskPrimaryButton type="submit" disabled={submitting} className="flex-1">
+                      {submitting ? "Guardando…" : saved ? "¡Listo!" : editId ? "Guardar cambios" : "Crear pendiente"}
+                    </DeskPrimaryButton>
+                  </div>
+                </form>
+              </DeskPanel>
+            </DeskSection>
+          </div>
+        </DeskReveal>
+
+        <DeskReveal index={1}>
+          <DeskSection title={`Pendientes · ${shown.length}`}>
+            {/* Filtros en una sola fila sobre la lista. */}
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="flex gap-1.5">
+                {([["todos", "Todos"], ["urgentes", "Urgentes"], ["abiertos", "Abiertos"]] as const).map(([value, label]) => (
+                  <button
+                    key={value}
+                    onClick={() => setFilter(value)}
+                    aria-pressed={filter === value}
+                    className={`min-h-9 rounded-lg px-3.5 text-ui font-medium transition-colors ${
+                      filter === value ? "bg-accent text-on-accent" : "border border-line bg-panel text-muted hover:text-ink"
+                    }`}
                   >
-                    <option value="PENDIENTE">Pendiente</option>
-                    <option value="EN_PROCESO">En proceso</option>
-                    <option value="COMPLETADO">Cerrar</option>
-                  </select>
-                  <button onClick={() => setDeleteTargetId(p.id)} aria-label="Eliminar" className="tappable ml-auto grid size-9 place-items-center rounded-xl text-muted transition hover:bg-rose-50 hover:text-rose-500 dark:hover:bg-rose-950/30">
-                    <Trash2 size={16} />
+                    {label}
                   </button>
-                </div>
-              </Card>
-            </motion.div>
-          ))}
-        </AnimatePresence>
-        {shown.length === 0 ? <Card><EmptyState icon={ClipboardCheck} title={term ? "Sin resultados" : "Sin pendientes"} description={term ? `Nada coincide con “${query}”.` : "Cambia el filtro o crea uno nuevo."} /></Card> : null}
+                ))}
+              </div>
+
+              <DeskButton onClick={() => void fetchTaskOptimization()} disabled={loadingOpt} className="min-h-9">
+                <Sparkles size={14} className="text-accent" />
+                {loadingOpt ? "Optimizando…" : "Optimizar con IA"}
+              </DeskButton>
+
+              <div className="relative ml-auto w-64">
+                <label className="sr-only" htmlFor="buscar-pendientes">Buscar pendientes</label>
+                <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
+                <input
+                  id="buscar-pendientes"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Buscar…"
+                  className={`${deskInput} min-h-9 pl-9`}
+                />
+              </div>
+            </div>
+
+            <div className="mt-4">
+              {shown.length === 0 ? (
+                <DeskEmpty
+                  icon={ClipboardCheck}
+                  title={term ? "Sin resultados" : "Sin pendientes"}
+                  hint={term ? `Nada coincide con “${query}”.` : "Crea uno con el formulario de la izquierda, o cambia el filtro."}
+                />
+              ) : (
+                <AnimatePresence initial={false}>
+                  {shown.map((p) => {
+                    const overdue = p.status !== "completado" && p.dueDate < today;
+                    const row = (
+                      <article className="rounded-xl border border-line bg-card p-4">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <h3 className="text-ui font-semibold text-ink">{p.title}</h3>
+                            <p className="mt-1 text-ui leading-6 text-muted">{p.description}</p>
+                          </div>
+                          <Badge tone={priorityTone(p.priority)}>{p.priority}</Badge>
+                        </div>
+
+                        <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-line pt-3 text-caption">
+                          <span className="flex items-center gap-1.5 text-ink">
+                            <ProfileAvatar
+                              name={userName(p.ownerId)}
+                              photoUrl={data.users.find((u) => u.id === p.ownerId)?.photoUrl}
+                              size="sm"
+                              className="size-5 rounded-md text-[9px] shadow-none"
+                            />
+                            {userName(p.ownerId)}
+                          </span>
+                          <span className="text-muted">{p.category}</span>
+                          <Badge tone={statusTone(p.status)}>{p.status}</Badge>
+                          {/* Lo vencido lleva palabra, no solo color. */}
+                          <span className={overdue ? "font-medium text-danger" : "text-muted"}>
+                            {overdue ? `Vencido · ${p.dueDate}` : `Vence ${p.dueDate}`}
+                          </span>
+
+                          <div className="ml-auto flex items-center gap-2">
+                            <DeskButton onClick={() => editPending(p)} className="min-h-8 px-3 text-caption">Editar</DeskButton>
+                            <label className="sr-only" htmlFor={`estado-${p.id}`}>Cambiar estado de {p.title}</label>
+                            <select
+                              id={`estado-${p.id}`}
+                              value={p.status === "en proceso" ? "EN_PROCESO" : p.status.toUpperCase()}
+                              onChange={(e) => void changeStatus(p.id, e.target.value as "PENDIENTE" | "EN_PROCESO" | "COMPLETADO")}
+                              className={`${deskInput} min-h-8 w-auto py-0 text-caption`}
+                            >
+                              <option value="PENDIENTE">Pendiente</option>
+                              <option value="EN_PROCESO">En proceso</option>
+                              <option value="COMPLETADO">Cerrar</option>
+                            </select>
+                            <button
+                              onClick={() => setDeleteTargetId(p.id)}
+                              aria-label={`Eliminar ${p.title}`}
+                              className="grid size-8 place-items-center rounded-lg text-muted transition-colors hover:bg-danger/10 hover:text-danger"
+                            >
+                              <Trash2 size={15} />
+                            </button>
+                          </div>
+                        </div>
+                      </article>
+                    );
+
+                    return (
+                      <motion.div key={p.id} layout exit={{ opacity: 0, scale: 0.96, x: 40 }} className="mb-3">
+                        {/* ShineBorder solo en lo VENCIDO: es exactamente "lo que
+                            está sin atender", que es para lo que sirve. Si se
+                            encendiera en todos, dejaría de señalar nada. */}
+                        {overdue ? (
+                          <ShineBorder radius="rounded-[14px]" ringPx={1.5} tone="ember">{row}</ShineBorder>
+                        ) : row}
+                      </motion.div>
+                    );
+                  })}
+                </AnimatePresence>
+              )}
+            </div>
+          </DeskSection>
+        </DeskReveal>
       </div>
 
       <ConfirmDialog
@@ -263,85 +342,90 @@ export default function EscritorioPendientes() {
         onCancel={() => setDeleteTargetId(null)}
       />
 
-      {/* Modal Optimización IA */}
+      {/* Optimización con IA. Antes iba con negros y blancos fijos
+          (bg-[#0A0A0A], text-white): en tema claro quedaba ilegible. Ahora usa
+          los tokens del escritorio y funciona en los dos temas. */}
       <AnimatePresence>
-        {showOptModal && optimization && (
+        {showOptModal && optimization ? (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+            className="fixed inset-0 z-[var(--z-overlay)] flex items-center justify-center bg-black/55 p-4 backdrop-blur-sm"
+            onClick={() => setShowOptModal(false)}
           >
             <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              className="w-full max-w-xl rounded-2xl bg-[#0A0A0A] border border-white/10 p-6 space-y-4 max-h-[85vh] overflow-y-auto no-scrollbar shadow-2xl"
+              role="dialog"
+              aria-label="Priorización y handover sugeridos por IA"
+              initial={{ scale: 0.97, opacity: 0, y: -8 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.97, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="desk-floating max-h-[85vh] w-full max-w-xl overflow-y-auto rounded-2xl p-6"
             >
-              <div className="flex items-center justify-between border-b border-white/5 pb-3">
-                <div className="flex items-center gap-2">
-                  <Sparkles className="text-[#2563EB]" size={20} />
-                  <h3 className="text-sm font-semibold text-white">Priorización & Handover IA</h3>
-                </div>
+              <div className="flex items-center justify-between gap-4 border-b border-line pb-3">
+                <h3 className="flex items-center gap-2 text-ui font-semibold text-ink">
+                  <Sparkles className="text-accent" size={18} />
+                  Priorización y handover
+                </h3>
                 <button
                   onClick={() => setShowOptModal(false)}
-                  className="rounded-full bg-white/5 p-1.5 text-muted hover:text-white transition"
+                  aria-label="Cerrar"
+                  className="grid size-8 place-items-center rounded-lg text-muted transition-colors hover:bg-panel hover:text-ink"
                 >
-                  <X size={18} />
+                  <X size={17} />
                 </button>
               </div>
 
-              <div className="space-y-4 text-xs text-muted leading-relaxed">
-                <div>
-                  <h4 className="font-bold text-[#2563EB] uppercase tracking-wider text-[10px] mb-1.5">⚡ Prioridades Recomendadas</h4>
-                  <div className="space-y-2">
-                    {optimization.prioritizedTasks.map((task: any) => {
-                      const orig = data.pendings.find((p) => p.id === task.id);
-                      return (
-                        <div key={task.id} className="rounded-xl bg-white/5 border border-white/5 p-3 space-y-1">
-                          <p className="font-semibold text-white">{orig?.title || "Tarea"}</p>
-                          <p className="text-muted">{task.justification}</p>
-                        </div>
-                      );
-                    })}
+              <div className="mt-4 space-y-5">
+                <section>
+                  <h4 className="text-caption font-medium text-muted">Prioridades recomendadas</h4>
+                  <div className="mt-2 space-y-2">
+                    {optimization.prioritizedTasks.map((task) => (
+                      <div key={task.id} className="rounded-xl border border-line bg-panel p-3">
+                        <p className="text-ui font-medium text-ink">
+                          {data.pendings.find((p) => p.id === task.id)?.title ?? "Tarea"}
+                        </p>
+                        <p className="mt-1 text-caption leading-5 text-muted">{task.justification}</p>
+                      </div>
+                    ))}
                   </div>
-                </div>
+                </section>
 
-                {optimization.duplicates && optimization.duplicates.length > 0 && (
-                  <div>
-                    <h4 className="font-bold text-yellow-500 uppercase tracking-wider text-[10px] mb-1.5">👯 Tareas Duplicadas Detectadas</h4>
-                    <div className="space-y-2">
-                      {optimization.duplicates.map((dup: any, idx: number) => (
-                        <div key={idx} className="rounded-xl bg-yellow-500/5 border border-yellow-500/10 p-3">
-                          <p className="font-semibold text-white">Fusión sugerida: &quot;{dup.suggestedTitle}&quot;</p>
-                          <p className="text-muted mt-1 text-[11px]">Cubre {dup.taskIds.length} pendientes repetidos.</p>
+                {optimization.duplicates && optimization.duplicates.length > 0 ? (
+                  <section>
+                    <h4 className="text-caption font-medium text-muted">Duplicados detectados</h4>
+                    <div className="mt-2 space-y-2">
+                      {optimization.duplicates.map((dup, idx) => (
+                        <div key={idx} className="rounded-xl border border-warn/30 bg-warn/[0.07] p-3">
+                          <p className="text-ui font-medium text-ink">Fusión sugerida: “{dup.suggestedTitle}”</p>
+                          <p className="mt-1 text-caption text-muted">Cubre {dup.taskIds.length} pendientes repetidos.</p>
                         </div>
                       ))}
                     </div>
-                  </div>
-                )}
+                  </section>
+                ) : null}
 
-                <div>
-                  <h4 className="font-bold text-blue-400 uppercase tracking-wider text-[10px] mb-1.5">👤 Asignación de Responsables sugerida</h4>
-                  <div className="space-y-2">
-                    {optimization.suggestions.map((sug: any) => {
-                      const orig = data.pendings.find((p) => p.id === sug.taskId);
-                      return (
-                        <div key={sug.taskId} className="rounded-xl bg-blue-500/5 border border-blue-500/10 p-3 space-y-1">
-                          <p className="font-semibold text-white">{orig?.title || "Tarea"}</p>
-                          <p className="text-muted leading-normal">
-                            Asignar a: <strong className="text-blue-400">{sug.recommendedOwnerName}</strong> · {sug.reason}
-                          </p>
-                        </div>
-                      );
-                    })}
+                <section>
+                  <h4 className="text-caption font-medium text-muted">Responsables sugeridos</h4>
+                  <div className="mt-2 space-y-2">
+                    {optimization.suggestions.map((sug) => (
+                      <div key={sug.taskId} className="rounded-xl border border-line bg-panel p-3">
+                        <p className="text-ui font-medium text-ink">
+                          {data.pendings.find((p) => p.id === sug.taskId)?.title ?? "Tarea"}
+                        </p>
+                        <p className="mt-1 text-caption leading-5 text-muted">
+                          Asignar a <strong className="font-medium text-accent">{sug.recommendedOwnerName}</strong> · {sug.reason}
+                        </p>
+                      </div>
+                    ))}
                   </div>
-                </div>
+                </section>
               </div>
             </motion.div>
           </motion.div>
-        )}
+        ) : null}
       </AnimatePresence>
-    </div>
+    </>
   );
 }

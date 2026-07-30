@@ -3,15 +3,17 @@
 import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { BookOpen, CalendarClock, ImagePlus, PenLine, X } from "lucide-react";
+import { BookOpen, CalendarClock, ImagePlus, X } from "lucide-react";
 import type { AppData } from "@/lib/app-data";
-import { Badge, Card, EmptyState } from "@/components/ui";
-import { SendButton } from "@/components/SendButton";
+import { Badge } from "@/components/ui";
 import { ResourceDiscussion } from "@/components/ResourceDiscussion";
 import { useToast } from "@/components/Toast";
 import { useDesktopData } from "@/components/desktop/useDesktopData";
 import { DesktopError } from "@/components/desktop/DesktopError";
 import { useUnsavedGuard } from "@/components/desktop/useUnsavedGuard";
+import {
+  DeskEmpty, DeskPanel, DeskPrimaryButton, DeskReveal, DeskSection, DeskSkeleton, deskInput
+} from "@/components/desktop/DeskUI";
 
 type LogEntry = AppData["logEntries"][number];
 
@@ -33,9 +35,9 @@ export default function EscritorioBitacora() {
   if (error && !data) return <DesktopError onRetry={reload} />;
   if (!data) {
     return (
-      <div className="grid animate-pulse grid-cols-5 gap-5">
-        <div className="col-span-2 h-80 rounded-3xl bg-panel dark:bg-panel" />
-        <div className="col-span-3 space-y-3">{[0, 1, 2].map((i) => <div key={i} className="h-24 rounded-3xl bg-panel dark:bg-panel" />)}</div>
+      <div className="grid gap-10 xl:grid-cols-[22rem_minmax(0,1fr)]">
+        <DeskSkeleton className="h-[28rem]" />
+        <div className="space-y-3">{[0, 1, 2].map((i) => <DeskSkeleton key={i} className="h-28" />)}</div>
       </div>
     );
   }
@@ -73,70 +75,126 @@ export default function EscritorioBitacora() {
     }
   }
 
-  const inputClass = "w-full rounded-2xl border border-line bg-panel px-3.5 py-3 text-sm font-semibold text-ink outline-none transition focus:border-volt focus:ring-4 focus:ring-volt/10";
-
   return (
-    <div className="grid grid-cols-5 gap-5">
+    <div className="grid gap-10 xl:grid-cols-[22rem_minmax(0,1fr)]">
       {/* Nuevo registro */}
-      <Card className="col-span-2 h-fit p-5">
-        <div className="mb-4 flex items-center gap-2"><PenLine className="text-volt" size={18} /><h2 className="text-lg font-semibold text-ink">Nuevo registro</h2></div>
-        <form className="grid gap-3" onSubmit={createLog}>
-          <label className="grid gap-1.5">
-            <span className="text-[11px] font-bold uppercase tracking-[0.1em] text-muted">Categoría</span>
-            <select value={category} onChange={(e) => setCategory(e.target.value)} className={inputClass}>
-              <option>Apertura</option><option>Cliente</option><option>Inventario</option><option>Equipo</option><option>Cierre</option>
-            </select>
-          </label>
-          <label className="grid gap-1.5">
-            <span className="text-[11px] font-bold uppercase tracking-[0.1em] text-muted">Descripción</span>
-            <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={3} required placeholder="Evento relevante de apertura, cliente, inventario o cierre…" className={`${inputClass} resize-none`} />
-          </label>
-          <label className="grid gap-1.5">
-            <span className="text-[11px] font-bold uppercase tracking-[0.1em] text-muted">Comentario (opcional)</span>
-            <textarea value={comment} onChange={(e) => setComment(e.target.value)} maxLength={1000} rows={2} className={`${inputClass} resize-none`} />
-          </label>
-          {preview ? (
-            <div className="relative h-44 overflow-hidden rounded-2xl border border-line">
-              <Image src={preview} alt="Vista previa de evidencia" fill sizes="360px" className="object-cover" unoptimized />
-              <button type="button" onClick={() => setEvidence(null)} className="absolute right-2 top-2 grid size-8 place-items-center rounded-full bg-black/55 text-white" aria-label="Quitar evidencia"><X size={15} /></button>
-            </div>
-          ) : null}
-          <label className="tappable flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-2xl border border-dashed border-line bg-panel text-sm font-bold text-muted transition hover:border-volt/40 hover:text-volt">
-            <ImagePlus size={17} /> {evidence ? "Cambiar evidencia" : "Agregar evidencia (opcional)"}
-            <input type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={(e) => setEvidence(e.target.files?.[0] ?? null)} />
-          </label>
-          {evidence ? <input value={evidenceNote} onChange={(e) => setEvidenceNote(e.target.value)} maxLength={500} placeholder="Nota de evidencia (opcional)" className={inputClass} /> : null}
-          <SendButton type="submit" loading={submitting} success={saved} sentLabel="¡Guardado!" className="w-full">Guardar registro</SendButton>
-        </form>
-      </Card>
+      <DeskReveal index={0}>
+        <div className="xl:sticky xl:top-20">
+          <DeskSection title="Nuevo registro">
+            <DeskPanel>
+              <form className="grid gap-3" onSubmit={createLog}>
+                <label className="grid gap-1">
+                  <span className="text-caption font-medium text-muted">Categoría</span>
+                  <select value={category} onChange={(e) => setCategory(e.target.value)} className={deskInput}>
+                    <option>Apertura</option>
+                    <option>Cliente</option>
+                    <option>Inventario</option>
+                    <option>Equipo</option>
+                    <option>Cierre</option>
+                  </select>
+                </label>
+
+                <label className="grid gap-1">
+                  <span className="text-caption font-medium text-muted">Descripción</span>
+                  <textarea
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    rows={3}
+                    required
+                    placeholder="Evento relevante de apertura, cliente, inventario o cierre…"
+                    className={`${deskInput} resize-none py-2.5`}
+                  />
+                </label>
+
+                <label className="grid gap-1">
+                  <span className="text-caption font-medium text-muted">Comentario (opcional)</span>
+                  <textarea
+                    value={comment}
+                    onChange={(e) => setComment(e.target.value)}
+                    maxLength={1000}
+                    rows={2}
+                    className={`${deskInput} resize-none py-2.5`}
+                  />
+                </label>
+
+                {preview ? (
+                  <div className="relative h-44 overflow-hidden rounded-xl border border-line">
+                    <Image src={preview} alt="Vista previa de la evidencia" fill sizes="360px" className="object-cover" unoptimized />
+                    <button
+                      type="button"
+                      onClick={() => setEvidence(null)}
+                      className="absolute right-2 top-2 grid size-8 place-items-center rounded-lg bg-black/55 text-white"
+                      aria-label="Quitar evidencia"
+                    >
+                      <X size={15} />
+                    </button>
+                  </div>
+                ) : null}
+
+                <label className="flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-line bg-panel text-ui font-medium text-muted transition-colors hover:border-accent/40 hover:text-accent">
+                  <ImagePlus size={16} /> {evidence ? "Cambiar evidencia" : "Agregar evidencia (opcional)"}
+                  <input type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={(e) => setEvidence(e.target.files?.[0] ?? null)} />
+                </label>
+
+                {evidence ? (
+                  <input
+                    value={evidenceNote}
+                    onChange={(e) => setEvidenceNote(e.target.value)}
+                    maxLength={500}
+                    placeholder="Nota de la evidencia (opcional)"
+                    aria-label="Nota de la evidencia"
+                    className={deskInput}
+                  />
+                ) : null}
+
+                <DeskPrimaryButton type="submit" disabled={submitting} className="w-full">
+                  {submitting ? "Guardando…" : saved ? "¡Guardado!" : "Guardar registro"}
+                </DeskPrimaryButton>
+              </form>
+            </DeskPanel>
+          </DeskSection>
+        </div>
+      </DeskReveal>
 
       {/* Línea de tiempo */}
-      <div className="col-span-3 space-y-3">
-        {entries.length === 0 ? (
-          <Card><EmptyState icon={BookOpen} title="Sin registros aún" description="Captura el primer evento de operación desde el panel de la izquierda." /></Card>
-        ) : (
-          <AnimatePresence initial={false}>
-            {entries.map((entry) => (
-              <motion.div key={entry.id} layout initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
-                <Card className="p-5">
+      <DeskReveal index={1}>
+        <DeskSection title={`Registro cronológico · ${entries.length}`}>
+          {entries.length === 0 ? (
+            <DeskEmpty
+              icon={BookOpen}
+              title="Sin registros todavía"
+              hint="Captura el primer evento de operación desde el panel de la izquierda. Queda con autor y hora."
+            />
+          ) : (
+            <AnimatePresence initial={false}>
+              {entries.map((entry) => (
+                <motion.article
+                  key={entry.id}
+                  layout
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="mb-3 rounded-xl border border-line bg-card p-5"
+                >
                   <div className="flex gap-3">
-                    <span className="mt-0.5 grid size-10 shrink-0 place-items-center rounded-2xl border border-success/25 bg-success/10 text-success"><CalendarClock size={17} /></span>
+                    <span className="mt-0.5 grid size-9 shrink-0 place-items-center rounded-lg border border-line bg-panel text-muted">
+                      <CalendarClock size={16} />
+                    </span>
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <Badge>{entry.category}</Badge>
-                        <p className="text-xs text-muted">{new Date(entry.date).toLocaleString("es-MX")}</p>
+                        <p className="text-caption text-muted">{new Date(entry.date).toLocaleString("es-MX")}</p>
                       </div>
-                      <p className="mt-2 text-sm leading-6 text-ink/80">{entry.description}</p>
-                      <p className="mt-1 text-xs font-bold text-success">{userName(entry.authorId)}</p>
+                      <p className="mt-2 max-w-[70ch] text-ui leading-6 text-ink-2">{entry.description}</p>
+                      <p className="mt-1 text-caption text-muted">{userName(entry.authorId)}</p>
                       <ResourceDiscussion target={{ logEntryId: entry.id }} />
                     </div>
                   </div>
-                </Card>
-              </motion.div>
-            ))}
-          </AnimatePresence>
-        )}
-      </div>
+                </motion.article>
+              ))}
+            </AnimatePresence>
+          )}
+        </DeskSection>
+      </DeskReveal>
     </div>
   );
 }

@@ -1,0 +1,385 @@
+/* ─── Sistema visual del escritorio ───────────────────────────────────────────
+   Ámbito: TODO vive bajo [data-surface="desk"]. No se toca app/globals.css ni
+   components/ui — los importan 69 archivos y cualquier cambio ahí movería la
+   versión móvil, que ya está dada por buena.
+
+   El truco que lo hace barato: tailwind.config.ts mapea void/panel/card/line/
+   ink/muted a variables CSS. Al redefinir esas variables dentro del ámbito, las
+   clases que ya usan las páginas (bg-card, text-ink, border-line) se
+   re-tematizan solas, sin editar una sola página.
+
+   Paleta elegida en OKLCH (perceptualmente uniforme) y convertida a tripletas
+   RGB porque el patrón `rgb(var(--x) / <alpha-value>)` de Tailwind las exige.
+   Hue 263 = el azul de marca (#2563EB ≈ oklch 0.546 0.219 263). Los neutros se
+   tintan hacia ESE azul con croma 0.008–0.014: no se percibe como "azulado",
+   pero cose la superficie con la marca.
+
+   Todos los pares de contraste están verificados contra WCAG AA por cálculo,
+   no a ojo. Los ratios van anotados al lado de cada token.
+   ────────────────────────────────────────────────────────────────────────── */
+
+/* ─── Tema claro (interruptor) ─────────────────────────────────────────────── */
+[data-surface="desk"] {
+  /* Remapeo de los tokens que ya consume Tailwind */
+  --color-void: 249 250 251;   /* oklch(0.985 0.002 263) — lienzo */
+  --color-panel: 244 245 248;  /* oklch(0.970 0.004 263) — fila elevada */
+  --color-card: 255 255 255;   /* superficie de tarjeta */
+  --color-line: 224 226 230;   /* oklch(0.912 0.006 263) */
+  --color-ink: 21 25 32;       /* oklch(0.212 0.016 263) — 16.90:1 sobre lienzo */
+  --color-muted: 99 104 114;   /* oklch(0.516 0.017 263) —  5.37:1 sobre lienzo */
+
+  /* Superficies compartidas de globals.css, realineadas al ámbito */
+  --glass-border: #E0E2E6;
+  --glass: rgb(255 255 255 / 0.88);
+
+  /* Tokens propios del escritorio */
+  --desk-surface-3: 255 255 255;   /* paleta de comandos, popovers */
+  --desk-line-strong: 204 207 213;
+  --desk-ink-2: 61 67 76;          /*  9.59:1 — texto secundario */
+
+  --desk-accent: 30 90 226;        /* oklch(0.520 0.215 263) — 5.55:1 */
+  --desk-accent-hover: 12 70 201;
+  --desk-accent-quiet: 234 240 253; /* lavado de fondo del acento */
+  --desk-on-accent: 249 250 251;   /* etiqueta SOBRE el acento — 5.55:1 */
+
+  --desk-success: 19 125 65;       /* 4.96:1 — apto para texto */
+  --desk-warn: 169 96 0;           /* 4.63:1 — apto para texto */
+  --desk-danger: 205 31 42;        /* 5.28:1 */
+
+  /* Profundidad: en claro la da la sombra */
+  --desk-elev-1: 0 1px 2px rgb(16 20 27 / 0.06);
+  --desk-elev-2: 0 4px 12px rgb(16 20 27 / 0.08);
+  --desk-elev-3: 0 16px 40px rgb(16 20 27 / 0.14);
+}
+
+/* ─── Tema oscuro (por defecto en escritorio) ──────────────────────────────────
+   El oscuro no es el claro invertido: aquí la profundidad la da la LUMINOSIDAD
+   de la superficie, no la sombra. Escala de tres pasos, mismo hue y croma,
+   solo cambia la L. */
+.dark [data-surface="desk"] {
+  --color-void: 11 13 17;      /* oklch(0.160 0.008 263) — lienzo */
+  --color-panel: 26 29 33;     /* oklch(0.228 0.010 263) — fila elevada */
+  --color-card: 19 21 25;      /* oklch(0.196 0.009 263) — superficie */
+  --color-line: 44 47 53;      /* oklch(0.305 0.012 263) */
+  --color-ink: 241 242 245;    /* oklch(0.962 0.004 263) — 17.38:1 sobre lienzo */
+  --color-muted: 146 150 158;  /* oklch(0.672 0.013 263) —  6.53:1 sobre lienzo */
+
+  --glass-border: #2C2F35;
+  --glass: rgb(19 21 25 / 0.88);
+
+  --desk-surface-3: 34 37 42;      /* oklch(0.262 0.011 263) */
+  --desk-line-strong: 65 69 77;
+  --desk-ink-2: 189 192 199;       /* 10.68:1 */
+
+  --desk-accent: 112 157 246;      /* oklch(0.702 0.140 263) — 7.23:1
+                                      OJO: el #2563EB de marca da 2.8:1 sobre
+                                      este lienzo y NO pasa. Por eso el acento
+                                      se aclara en oscuro en vez de reusarse. */
+  --desk-accent-hover: 146 182 249;
+  --desk-accent-quiet: 27 41 69;
+  --desk-on-accent: 11 13 17;      /* etiqueta SOBRE el acento — 7.23:1.
+                                      Nunca usar ink aquí: da 2.40:1 y falla. */
+
+  --desk-success: 82 196 121;      /* 8.78:1 */
+  --desk-warn: 239 177 70;         /* 10.23:1 */
+  --desk-danger: 244 103 105;      /* 6.46:1 */
+
+  /* En oscuro las sombras casi no se leen; se mantienen mínimas y la jerarquía
+     la carga la escala de superficies. */
+  --desk-elev-1: 0 1px 2px rgb(0 0 0 / 0.4);
+  --desk-elev-2: 0 4px 12px rgb(0 0 0 / 0.5);
+  --desk-elev-3: 0 16px 40px rgb(0 0 0 / 0.6);
+}
+
+/* ─── Tokens sin tema (idénticos en claro y oscuro) ────────────────────────── */
+[data-surface="desk"] {
+  /* Anchos del rail de navegación */
+  --desk-rail: 4rem;      /* 64px  — solo iconos */
+  --desk-rail-open: 15rem; /* 240px — expandido */
+
+  /* Escala tipográfica fija en rem, ratio ~1.2. Nada de clamp: en UI de
+     producto la predictibilidad espacial vale más que el escalado fluido.
+     El suelo sube a 12px; la maqueta anterior bajaba a 10px. */
+  --text-caption: 0.75rem;    /* 12px — metadatos, pies */
+  --text-ui: 0.875rem;        /* 14px — etiquetas, celdas, navegación */
+  --text-body: 1rem;          /* 16px — prosa */
+  --text-lead: 1.125rem;      /* 18px */
+  --text-h3: 1.25rem;         /* 20px */
+  --text-h2: 1.5rem;          /* 24px */
+  --text-h1: 1.875rem;        /* 30px */
+  --text-metric: 2.75rem;     /* 44px — la cifra del día, una sola por pantalla */
+
+  /* z-index semántico. Nunca 999. */
+  --z-rail: 20;
+  --z-header: 30;
+  --z-popover: 40;
+  --z-overlay: 50;
+  --z-palette: 60;
+  --z-toast: 70;
+
+  /* Motion: ease-out exponencial, sin rebote. 150–250ms como manda el
+     registro de producto: el usuario está en una tarea, no viendo una función. */
+  --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
+  --dur-fast: 150ms;
+  --dur-base: 200ms;
+  --dur-slow: 260ms;
+}
+
+/* ─── Base de la superficie ────────────────────────────────────────────────── */
+[data-surface="desk"] {
+  background: rgb(var(--color-void));
+  color: rgb(var(--color-ink));
+  /* Cifras alineadas en columna: obligatorio en tablas de venta. */
+  font-variant-numeric: tabular-nums;
+}
+
+/* Texto claro sobre fondo oscuro se percibe MÁS pesado y más apretado. Se
+   compensa en los tres ejes que recomienda la referencia: interlineado,
+   tracking y peso. */
+.dark [data-surface="desk"] {
+  --desk-body-weight: 380;
+  letter-spacing: 0.006em;
+}
+[data-surface="desk"] {
+  --desk-body-weight: 400;
+}
+
+/* ─── Anillo de foco único para toda la superficie ─────────────────────────── */
+[data-surface="desk"] :is(a, button, [role="button"], [role="option"], input, select, summary, [tabindex]):focus-visible {
+  outline: 2px solid rgb(var(--desk-accent));
+  outline-offset: 2px;
+  border-radius: 0.5rem;
+}
+
+/* ─── Enlace de salto: invisible hasta que el teclado lo enfoca ────────────── */
+[data-surface="desk"] .desk-skip {
+  position: absolute;
+  left: 0.75rem;
+  top: -3rem;
+  z-index: var(--z-toast);
+  padding: 0.5rem 0.875rem;
+  border-radius: 0.75rem;
+  background: rgb(var(--desk-accent));
+  color: rgb(var(--desk-on-accent));
+  font-size: var(--text-ui);
+  font-weight: 600;
+  transition: top var(--dur-fast) var(--ease-out-quint);
+}
+[data-surface="desk"] .desk-skip:focus {
+  top: 0.75rem;
+}
+
+/* ─── Regla divisoria: separa secciones sin encerrarlas en una tarjeta ─────── */
+[data-surface="desk"] .desk-rule {
+  border: 0;
+  border-top: 1px solid rgb(var(--color-line));
+  margin: 0;
+}
+
+/* ─── Fila de datos: la unidad de la tabla de equipo ───────────────────────── */
+[data-surface="desk"] .desk-row {
+  transition: background-color var(--dur-fast) ease;
+}
+[data-surface="desk"] .desk-row:hover {
+  background: rgb(var(--color-panel));
+}
+
+/* ─── Superficie flotante (paleta de comandos, popovers) ──────────────────── */
+[data-surface="desk"] .desk-floating {
+  background: rgb(var(--desk-surface-3));
+  border: 1px solid rgb(var(--desk-line-strong));
+  box-shadow: var(--desk-elev-3);
+}
+
+/* ─── Fondo del escritorio ───────────────────────────────────────────────────
+   El fondo global de la app (meteoritos + puntos) se apaga aquí y se sustituye
+   por el propio del escritorio, que tiene su propia densidad y capas.
+
+   Se apaga con :has() y no con un selector descendente porque esos fondos se
+   renderizan en app/layout.tsx COMO HERMANOS de <PageTransition>, es decir,
+   fuera del subárbol del escritorio: un `[data-surface="desk"] .meteors` no los
+   alcanza nunca. Fuera del escritorio siguen intactos. */
+body:has([data-surface="desk"]) .meteors,
+body:has([data-surface="desk"]) .dot-pattern {
+  display: none;
+}
+
+[data-surface="desk"] .desk-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+/* Los meteoritos propios del escritorio SÍ se pintan: la regla de arriba apaga
+   los del layout global, esta vuelve a encender los de esta capa. */
+[data-surface="desk"] .desk-backdrop .meteors {
+  display: block;
+}
+
+/* Rejilla: estructura de instrumento. Se desvanece hacia abajo para no competir
+   con la tabla de equipo, que es donde el ojo lee datos finos. */
+[data-surface="desk"] .desk-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(to right, rgb(var(--color-ink) / 0.07) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(var(--color-ink) / 0.07) 1px, transparent 1px);
+  background-size: 56px 56px;
+  mask-image: radial-gradient(ellipse 95% 75% at 50% 0%, #000 12%, transparent 78%);
+  -webkit-mask-image: radial-gradient(ellipse 95% 75% at 50% 0%, #000 12%, transparent 78%);
+}
+
+/* Resplandores del acento. Van muy difuminados y a baja opacidad: aportan
+   profundidad sin teñir el texto que va encima. */
+[data-surface="desk"] .desk-glow {
+  position: absolute;
+  border-radius: 999px;
+  filter: blur(90px);
+  will-change: transform;
+}
+/* Arrancaba en left:-12rem y quedaba casi entero DETRÁS del rail, que es opaco:
+   el resplandor no se veía. Ahora nace ya dentro de la zona de contenido. */
+[data-surface="desk"] .desk-glow-a {
+  top: -16rem;
+  left: 14%;
+  width: 48rem;
+  height: 34rem;
+  background: radial-gradient(circle, rgb(var(--desk-accent) / 0.20), transparent 70%);
+  animation: desk-drift-a 26s ease-in-out infinite alternate;
+}
+[data-surface="desk"] .desk-glow-b {
+  right: -14rem;
+  bottom: -24rem;
+  width: 44rem;
+  height: 32rem;
+  background: radial-gradient(circle, rgb(var(--desk-accent) / 0.11), transparent 70%);
+  animation: desk-drift-b 34s ease-in-out infinite alternate;
+}
+/* En claro el resplandor se nota mucho más sobre blanco: se baja bastante. */
+[data-surface="desk"] .desk-glow-a { opacity: 0.45; }
+[data-surface="desk"] .desk-glow-b { opacity: 0.4; }
+.dark [data-surface="desk"] .desk-glow-a { opacity: 1; }
+.dark [data-surface="desk"] .desk-glow-b { opacity: 1; }
+
+@keyframes desk-drift-a {
+  from { transform: translate3d(0, 0, 0) scale(1); }
+  to   { transform: translate3d(4rem, 2.5rem, 0) scale(1.12); }
+}
+@keyframes desk-drift-b {
+  from { transform: translate3d(0, 0, 0) scale(1.08); }
+  to   { transform: translate3d(-3.5rem, -2rem, 0) scale(1); }
+}
+
+/* ─── Rail de navegación ──────────────────────────────────────────────────────
+   Colapsado a 64px muestra solo iconos. Se expande a 240px al pasar el puntero,
+   al recibir foco de teclado, o de forma permanente si el usuario lo fija.
+
+   Dos comportamientos distintos a propósito:
+   · hover / foco  → el panel se superpone al contenido. No hay reflujo, así que
+     el dashboard no se recompone cada vez que el puntero roza el borde.
+   · fijado        → el contenido SÍ se recorre, porque el rail se queda abierto
+     y superponerlo taparía la primera columna de forma permanente.
+
+   Al expandirse aparecen las etiquetas, así que no hacen falta tooltips por
+   icono: el rail con overflow-y quitaría el recorte de cualquier tooltip. */
+[data-surface="desk"] {
+  --desk-gutter: var(--desk-rail);
+}
+[data-surface="desk"][data-rail-pinned="true"] {
+  --desk-gutter: var(--desk-rail-open);
+}
+
+[data-surface="desk"] .desk-rail-inner {
+  width: var(--desk-rail);
+  transition: width var(--dur-base) var(--ease-out-quint);
+}
+[data-surface="desk"] .desk-rail:hover .desk-rail-inner,
+[data-surface="desk"] .desk-rail:focus-within .desk-rail-inner {
+  width: var(--desk-rail-open);
+  box-shadow: var(--desk-elev-3);
+}
+[data-surface="desk"][data-rail-pinned="true"] .desk-rail-inner {
+  width: var(--desk-rail-open);
+  box-shadow: none;
+}
+
+/* La lista de secciones no cabe entera en pantallas de 1080p o menos. El
+   difuminado inferior avisa de que sigue habiendo secciones abajo.
+   Funciona sin JS y sin falsos positivos: la máscara solo afecta a lo que se
+   pinta, así que cuando la lista SÍ cabe, la zona de abajo está vacía y el
+   difuminado no se ve. */
+[data-surface="desk"] .desk-rail-scroll {
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 1.75rem), transparent 100%);
+}
+
+/* Las etiquetas siguen en el árbol de accesibilidad aunque no se vean: un
+   lector de pantalla las anuncia siempre. Solo se ocultan visualmente. */
+[data-surface="desk"] .desk-rail-label {
+  white-space: nowrap;
+  opacity: 0;
+  transform: translateX(-0.25rem);
+  transition: opacity var(--dur-fast) var(--ease-out-quint),
+              transform var(--dur-fast) var(--ease-out-quint);
+}
+[data-surface="desk"] .desk-rail:hover .desk-rail-label,
+[data-surface="desk"] .desk-rail:focus-within .desk-rail-label,
+[data-surface="desk"][data-rail-pinned="true"] .desk-rail-label {
+  opacity: 1;
+  transform: none;
+}
+
+/* ─── Paleta de comandos ─────────────────────────────────────────────────────
+   Va sobre <dialog> nativo: capa superior real, trampa de foco y cierre con Esc
+   sin escribir una línea de JS para ello, y sin guerra de z-index. */
+[data-surface="desk"] .desk-palette {
+  width: min(40rem, calc(100vw - 2rem));
+  padding: 0;
+  border: 1px solid rgb(var(--desk-line-strong));
+  border-radius: 1rem;
+  background: rgb(var(--desk-surface-3));
+  color: rgb(var(--color-ink));
+  box-shadow: var(--desk-elev-3);
+  /* Anclada al tercio superior: es donde el ojo la busca. */
+  margin: 12vh auto auto;
+}
+/* El campo de la paleta se enfoca solo al abrir y es lo único enfocable del
+   diálogo; el anillo dibujaba una caja dentro de otra caja. El foco lo comunican
+   el cursor y la opción resaltada.
+   Va aquí y no con `focus-visible:outline-none` de Tailwind porque la regla
+   global de foco de esta hoja tiene especificidad (0,3,0) y la clase de Tailwind
+   solo (0,2,0): la clase perdía. Esta selecciona con (0,3,1) y gana. */
+[data-surface="desk"] .desk-palette input:focus-visible {
+  outline: none;
+}
+
+[data-surface="desk"] .desk-palette::backdrop {
+  background: rgb(0 0 0 / 0.45);
+  backdrop-filter: blur(2px);
+}
+[data-surface="desk"] .desk-palette[open] {
+  animation: desk-palette-in var(--dur-base) var(--ease-out-quint);
+}
+@keyframes desk-palette-in {
+  from { opacity: 0; transform: translateY(-0.5rem) scale(0.98); }
+  to   { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-surface="desk"] .desk-skip,
+  [data-surface="desk"] .desk-rail-inner,
+  [data-surface="desk"] .desk-rail-label {
+    transition: none;
+  }
+  [data-surface="desk"] .desk-palette[open] {
+    animation: none;
+  }
+  /* Los resplandores se quedan quietos, pero no desaparecen: la profundidad no
+     depende del movimiento. Los meteoritos sí se apagan solos (lo hace el
+     propio componente Meteors). */
+  [data-surface="desk"] .desk-glow-a,
+  [data-surface="desk"] .desk-glow-b {
+    animation: none;
+  }
+}

@@ -5,10 +5,12 @@ import { Cake, Camera, Fingerprint, ImageUp, Moon, Store, Sun, UserRound } from 
 import { startRegistration } from "@simplewebauthn/browser";
 import { getBiometricRegistrationOptions, getSession, registerBiometric } from "@/lib/auth";
 import type { User } from "@/lib/types";
-import { Badge, Button, Card, ProfileAvatar } from "@/components/ui";
-import { SaveButton } from "@/components/ActionButtons";
+import { Badge, ProfileAvatar } from "@/components/ui";
 import { useToast } from "@/components/Toast";
 import { useTheme, type Theme } from "@/components/ThemeProvider";
+import {
+  DeskButton, DeskPanel, DeskPrimaryButton, DeskReveal, DeskSection, DeskSkeleton, deskInput
+} from "@/components/desktop/DeskUI";
 
 const roleLabels = { GERENTE: "Gerente", SUBGERENTE: "Subgerente", ASESOR: "Asesor" } as const;
 const acceptedTypes = ["image/jpeg", "image/png", "image/webp"];
@@ -114,97 +116,146 @@ export default function EscritorioPerfil() {
     }
   }
 
-  if (loading) return <Card className="text-sm font-semibold text-muted">Cargando perfil…</Card>;
-  if (!user) return <Card className="text-sm font-semibold text-rose-700">No fue posible cargar tu perfil.</Card>;
+  if (loading) {
+    return (
+      <div className="grid gap-10 xl:grid-cols-[20rem_minmax(0,1fr)]">
+        <DeskSkeleton className="h-96" />
+        <div className="space-y-4">{[0, 1, 2].map((i) => <DeskSkeleton key={i} className="h-32" />)}</div>
+      </div>
+    );
+  }
+  if (!user) {
+    return (
+      <p role="alert" className="rounded-xl border border-danger/30 bg-danger/[0.07] px-4 py-3 text-ui text-danger">
+        No fue posible cargar tu perfil.
+      </p>
+    );
+  }
 
   return (
-    <div className="grid grid-cols-3 gap-5">
+    <div className="grid gap-10 xl:grid-cols-[20rem_minmax(0,1fr)]">
       {/* Identidad */}
-      <Card className="col-span-1 h-fit p-6 text-center">
-        <div className="relative mx-auto w-fit">
-          <ProfileAvatar name={user.name} photoUrl={previewUrl ?? user.photoUrl} size="lg" className="size-32 rounded-full ring-4 ring-white dark:ring-[#23242A]" />
-          <button type="button" onClick={() => inputRef.current?.click()} aria-label="Cambiar foto de perfil" className="absolute bottom-1 right-1 grid size-9 place-items-center rounded-full bg-volt text-white ring-4 ring-white dark:ring-[#23242A] transition active:scale-95"><Camera size={16} /></button>
-        </div>
-        <h2 className="mt-4 text-xl font-semibold text-ink">{user.name}</h2>
-        <div className="mt-1 flex justify-center"><Badge>{roleLabels[user.role]}</Badge></div>
+      <DeskReveal index={0}>
+        <div className="xl:sticky xl:top-20">
+          <DeskPanel className="text-center">
+            <div className="relative mx-auto w-fit">
+              <ProfileAvatar
+                name={user.name}
+                photoUrl={previewUrl ?? user.photoUrl}
+                size="lg"
+                className="size-28 rounded-2xl ring-1 ring-line"
+              />
+              <button
+                type="button"
+                onClick={() => inputRef.current?.click()}
+                aria-label="Cambiar foto de perfil"
+                className="absolute -bottom-1 -right-1 grid size-9 place-items-center rounded-xl bg-accent text-on-accent ring-4 ring-[rgb(var(--color-card))]"
+              >
+                <Camera size={16} />
+              </button>
+            </div>
 
-        <div className="mt-5 divide-y divide-line text-left">
-          <ProfileField icon={<UserRound size={17} />} label="Número de empleado" value={user.employeeNumber} />
-          <ProfileField icon={<Store size={17} />} label="Tienda" value={user.storeName ?? "CLARVEX Team"} />
+            <h2 className="mt-4 text-lead font-semibold text-ink">{user.name}</h2>
+            <div className="mt-1 flex justify-center"><Badge>{roleLabels[user.role]}</Badge></div>
+
+            <dl className="mt-6 text-left">
+              <ProfileField icon={<UserRound size={16} />} label="Número de empleado" value={user.employeeNumber} />
+              <ProfileField icon={<Store size={16} />} label="Tienda" value={user.storeName ?? "CLARVEX Team"} />
+            </dl>
+          </DeskPanel>
         </div>
-      </Card>
+      </DeskReveal>
 
       {/* Ajustes */}
-      <div className="col-span-2 space-y-4">
-        <Card className="p-5">
-          <div className="flex items-center gap-3">
-            <span className="grid size-10 place-items-center rounded-2xl bg-pink-50 text-pink-500 dark:bg-[#2a1a2a]"><Cake size={19} /></span>
-            <div><h2 className="font-semibold text-ink">Datos personales</h2><p className="text-xs text-muted">Para felicitarte en tu día 🎂</p></div>
-          </div>
-          <div className="mt-4 grid grid-cols-2 gap-3">
-            <label className="grid gap-1">
-              <span className="text-xs font-bold text-muted">Cumpleaños</span>
-              <input type="date" value={birthDate} onChange={(event) => setBirthDate(event.target.value)} className="min-h-11 rounded-2xl border border-line bg-panel px-3 text-sm font-bold text-ink outline-none focus:border-volt" />
-            </label>
-            <label className="grid gap-1">
-              <span className="text-xs font-bold text-muted">Fecha de ingreso</span>
-              <input type="date" value={hireDate} onChange={(event) => setHireDate(event.target.value)} className="min-h-11 rounded-2xl border border-line bg-panel px-3 text-sm font-bold text-ink outline-none focus:border-volt" />
-            </label>
-          </div>
-          <div className="mt-3"><SaveButton type="button" onClick={() => void saveDates()} loading={savingDates} success={savedDates} savedLabel="¡Guardado!">Guardar datos</SaveButton></div>
-        </Card>
+      <DeskReveal index={1}>
+        <div className="grid gap-8 2xl:grid-cols-2">
+          <DeskSection title="Datos personales" hint="Sirven para felicitarte en tu cumpleaños y tu aniversario.">
+            <DeskPanel>
+              <div className="grid grid-cols-2 gap-3">
+                <label className="grid gap-1">
+                  <span className="flex items-center gap-1.5 text-caption font-medium text-muted"><Cake size={13} /> Cumpleaños</span>
+                  <input type="date" value={birthDate} onChange={(event) => setBirthDate(event.target.value)} className={deskInput} />
+                </label>
+                <label className="grid gap-1">
+                  <span className="text-caption font-medium text-muted">Fecha de ingreso</span>
+                  <input type="date" value={hireDate} onChange={(event) => setHireDate(event.target.value)} className={deskInput} />
+                </label>
+              </div>
+              <div className="mt-3">
+                <DeskButton type="button" onClick={() => void saveDates()} disabled={savingDates}>
+                  {savingDates ? "Guardando…" : savedDates ? "¡Guardado!" : "Guardar datos"}
+                </DeskButton>
+              </div>
+            </DeskPanel>
+          </DeskSection>
 
-        <Card className="p-5">
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <span className="grid size-10 place-items-center rounded-2xl bg-panel text-muted dark:bg-[#141519]">{isDark ? <Moon size={19} /> : <Sun size={19} />}</span>
-              <div><h2 className="font-semibold text-ink">Apariencia</h2><p className="text-xs text-muted">Tema de la aplicación</p></div>
-            </div>
-            <div className="flex gap-1.5">
-              {(["light", "system", "dark"] as Theme[]).map((t) => (
-                <button key={t} type="button" onClick={() => setTheme(t)} className={`rounded-xl px-3 py-1.5 text-[11px] font-semibold transition ${theme === t ? "bg-volt text-white shadow-sm" : "bg-panel text-muted dark:bg-[#141519]"}`}>
-                  {t === "light" ? "Claro" : t === "dark" ? "Oscuro" : "Auto"}
-                </button>
-              ))}
-            </div>
-          </div>
-        </Card>
+          <DeskSection title="Apariencia" hint="El escritorio arranca en oscuro; aquí lo cambias para siempre.">
+            <DeskPanel>
+              <div className="flex items-center justify-between gap-3">
+                <span className="flex items-center gap-2 text-ui text-ink">
+                  {isDark ? <Moon size={16} className="text-muted" /> : <Sun size={16} className="text-muted" />}
+                  Tema de la aplicación
+                </span>
+                <div className="flex gap-1.5" role="group" aria-label="Tema">
+                  {(["light", "system", "dark"] as Theme[]).map((t) => (
+                    <button
+                      key={t}
+                      type="button"
+                      onClick={() => setTheme(t)}
+                      aria-pressed={theme === t}
+                      className={`min-h-8 rounded-lg px-2.5 text-caption font-medium transition-colors ${
+                        theme === t ? "bg-accent text-on-accent" : "border border-line bg-panel text-muted hover:text-ink"
+                      }`}
+                    >
+                      {t === "light" ? "Claro" : t === "dark" ? "Oscuro" : "Auto"}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </DeskPanel>
+          </DeskSection>
 
-        <Card className="p-5">
-          <div className="flex items-center gap-3"><span className="grid size-10 place-items-center rounded-2xl bg-blue-50 text-volt dark:bg-[#141519]"><ImageUp size={19} /></span><div><h2 className="font-semibold text-ink">Foto de perfil</h2><p className="text-xs text-muted">JPG, PNG o WEBP. Máximo 5 MB.</p></div></div>
-          <input ref={inputRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={selectPhoto} className="sr-only" />
-          {/* Sin botón de guardar: al elegir la imagen se sube sola. */}
-          <div className="mt-4">
-            <Button type="button" variant="ghost" onClick={() => inputRef.current?.click()} disabled={saving} className="w-full">
-              {saving ? "Subiendo…" : user.photoUrl ? "Cambiar foto" : "Elegir foto"}
-            </Button>
-          </div>
-        </Card>
+          <DeskSection title="Foto de perfil" hint="JPG, PNG o WEBP. Máximo 5 MB. Se sube sola al elegirla.">
+            <DeskPanel>
+              <input ref={inputRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={selectPhoto} className="sr-only" />
+              <DeskButton type="button" onClick={() => inputRef.current?.click()} disabled={saving} className="w-full">
+                <ImageUp size={15} />
+                {saving ? "Subiendo…" : user.photoUrl ? "Cambiar foto" : "Elegir foto"}
+              </DeskButton>
+            </DeskPanel>
+          </DeskSection>
 
-        <Card className="p-5">
-          <div className="flex items-center gap-3">
-            <span className="grid size-10 place-items-center rounded-2xl bg-violet-50 text-purple dark:bg-[#141519]"><Fingerprint size={19} /></span>
-            <div><h2 className="font-semibold text-ink">Acceso biométrico</h2><p className="text-xs text-muted">Face ID o huella dactilar para entrar sin PIN.</p></div>
-          </div>
-          {user.biometricEnabled ? (
-            <div className="mt-4 flex items-center justify-between rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 dark:border-emerald-800 dark:bg-emerald-950/30">
-              <span className="text-sm font-semibold text-emerald-700 dark:text-emerald-400">Face ID / Huella activos</span>
-              <Badge tone="done">activo</Badge>
-            </div>
-          ) : (
-            <div className="mt-4 grid gap-3">
-              <p className="text-xs text-muted">Inicia sesión rápido con tu huella o Face ID sin escribir tu PIN.</p>
-              <Button type="button" variant="primary" onClick={() => void handleBiometricSetup()} disabled={biometricBusy} className="w-fit">
-                {biometricBusy ? "Activando…" : "Activar Face ID / Huella"}
-              </Button>
-            </div>
-          )}
-        </Card>
-      </div>
+          <DeskSection title="Acceso biométrico" hint="Face ID o huella para entrar sin escribir el PIN.">
+            <DeskPanel>
+              {user.biometricEnabled ? (
+                <div className="flex items-center justify-between gap-3 rounded-xl border border-ok/30 bg-ok/[0.08] px-4 py-3">
+                  <span className="flex items-center gap-2 text-ui font-medium text-ok">
+                    <Fingerprint size={16} /> Face ID / Huella activos
+                  </span>
+                  <Badge tone="done">activo</Badge>
+                </div>
+              ) : (
+                <DeskPrimaryButton type="button" onClick={() => void handleBiometricSetup()} disabled={biometricBusy}>
+                  <Fingerprint size={15} />
+                  {biometricBusy ? "Activando…" : "Activar Face ID / Huella"}
+                </DeskPrimaryButton>
+              )}
+            </DeskPanel>
+          </DeskSection>
+        </div>
+      </DeskReveal>
     </div>
   );
 }
 
 function ProfileField({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
-  return <div className="flex items-center gap-3 py-3 first:pt-0 last:pb-0"><span className="grid size-9 place-items-center rounded-2xl bg-panel text-muted dark:bg-panel">{icon}</span><div><p className="text-xs font-semibold text-muted">{label}</p><p className="font-semibold text-ink">{value}</p></div></div>;
+  return (
+    <div className="flex items-center gap-3 border-b border-line py-3 last:border-b-0">
+      <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-panel text-muted">{icon}</span>
+      <div className="min-w-0">
+        <dt className="text-caption text-muted">{label}</dt>
+        <dd className="truncate text-ui text-ink">{value}</dd>
+      </div>
+    </div>
+  );
 }

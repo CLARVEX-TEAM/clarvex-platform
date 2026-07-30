@@ -43,7 +43,7 @@ function MessageBody({ msg, isMe, onImageClick }: { msg: Message; isMe: boolean;
     return (
       <div className={cn(
         "flex items-center gap-1.5 rounded-2xl border border-dashed px-4 py-2.5 text-sm italic",
-        isMe ? "border-white/40 text-white/80" : "border-line text-muted"
+        isMe ? "border-on-accent/40 text-on-accent/80" : "border-line text-muted"
       )}>
         <Trash2 size={13} /> Se eliminó este mensaje
       </div>
@@ -82,7 +82,7 @@ function MessageBody({ msg, isMe, onImageClick }: { msg: Message; isMe: boolean;
     return <span className="text-5xl leading-none">{msg.body}</span>;
   }
   return (
-    <div className={cn("rounded-2xl px-4 py-2.5 text-sm leading-relaxed shadow-sm", isMe ? "rounded-br-sm bg-volt text-white" : "rounded-bl-sm bg-white/90 text-ink dark:bg-white/10")}>
+    <div className={cn("rounded-2xl px-4 py-2.5 text-sm leading-relaxed shadow-sm", isMe ? "rounded-br-sm bg-accent text-on-accent" : "rounded-bl-sm bg-panel text-ink")}>
       {msg.body}
     </div>
   );
@@ -202,8 +202,8 @@ export default function EscritorioChat() {
     const el = document.getElementById(`dmsg-${messageId}`);
     if (el) {
       el.scrollIntoView({ behavior: "smooth", block: "center" });
-      el.classList.add("ring-2", "ring-volt", "rounded-2xl");
-      setTimeout(() => el.classList.remove("ring-2", "ring-volt", "rounded-2xl"), 1200);
+      el.classList.add("ring-2", "ring-accent", "rounded-2xl");
+      setTimeout(() => el.classList.remove("ring-2", "ring-accent", "rounded-2xl"), 1200);
     }
   }
 
@@ -272,12 +272,12 @@ export default function EscritorioChat() {
       : "";
 
   return (
-    <div className="flex h-[calc(100vh-0px)] overflow-hidden rounded-2xl border border-line bg-white/60 dark:bg-[#141519]/60">
+    <div className="flex h-[calc(100vh-0px)] overflow-hidden rounded-2xl border border-line bg-card">
       {/* ─── Panel izquierdo: lista de rooms ─── */}
       <div className="flex w-72 shrink-0 flex-col border-r border-line">
         <div className="border-b border-line px-4 py-3.5">
           <div className="flex items-center gap-2">
-            <MessageSquare className="text-volt" size={18} />
+            <MessageSquare className="text-accent" size={18} />
             <h2 className="text-base font-semibold">Chat</h2>
           </div>
         </div>
@@ -294,22 +294,22 @@ export default function EscritorioChat() {
                   onClick={() => void openRoom(room.id)}
                   className={cn(
                     "flex w-full items-center gap-3 border-b border-line/40 px-4 py-3 text-left transition-colors",
-                    activeRoomId === room.id ? "bg-volt/10" : "hover:bg-volt/5"
+                    activeRoomId === room.id ? "bg-accent/10" : "hover:bg-accent/5"
                   )}
                 >
                   <div className="relative shrink-0">
                     {room.type === "GROUP" ? (
-                      <span className="grid size-10 place-items-center rounded-2xl bg-volt/15 text-volt">
+                      <span className="grid size-10 place-items-center rounded-2xl bg-accent/15 text-accent">
                         <Users size={18} />
                       </span>
                     ) : (
                       <ProfileAvatar name={room.other?.name ?? "?"} photoUrl={room.other?.photoUrl} size="sm" className="size-10 rounded-2xl" />
                     )}
                     {room.type === "DIRECT" && room.other?.online && (
-                      <span className="absolute -bottom-0.5 -right-0.5 size-3 rounded-full border-2 border-white bg-green-500 dark:border-[#141519]" />
+                      <span className="absolute -bottom-0.5 -right-0.5 size-3 rounded-full border-2 border-[rgb(var(--color-card))] bg-ok" />
                     )}
                     {room.unreadCount > 0 && (
-                      <span className="absolute -right-1 -top-1 grid size-4 place-items-center rounded-full bg-volt text-[9px] font-semibold text-white">
+                      <span className="absolute -right-1 -top-1 grid size-4 place-items-center rounded-full bg-accent text-[9px] font-semibold text-on-accent">
                         {room.unreadCount > 9 ? "9+" : room.unreadCount}
                       </span>
                     )}
@@ -337,7 +337,7 @@ export default function EscritorioChat() {
               {/* Iniciar directo */}
               {team.filter((t) => t.id !== user?.id && !rooms.some((r) => r.type === "DIRECT" && r.other?.id === t.id)).length > 0 && (
                 <div className="px-4 py-2">
-                  <p className="mb-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-muted">Nuevo mensaje</p>
+                  <p className="mb-1.5 text-caption font-medium text-muted">Nuevo mensaje</p>
                   {team
                     .filter((t) => t.id !== user?.id && !rooms.some((r) => r.type === "DIRECT" && r.other?.id === t.id))
                     .map((member) => (
@@ -345,7 +345,7 @@ export default function EscritorioChat() {
                         key={member.id}
                         type="button"
                         onClick={() => void openDirect(member.id)}
-                        className="flex w-full items-center gap-2.5 rounded-xl px-2 py-2 transition-colors hover:bg-volt/8"
+                        className="flex w-full items-center gap-2.5 rounded-xl px-2 py-2 transition-colors hover:bg-accent/8"
                       >
                         <ProfileAvatar name={member.name} photoUrl={member.photoUrl} size="sm" className="size-8 rounded-xl text-xs" />
                         <span className="text-sm font-semibold text-ink">{member.name}</span>
@@ -362,7 +362,7 @@ export default function EscritorioChat() {
       <div className="flex flex-1 flex-col">
         {!activeRoomId ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center">
-            <span className="grid size-16 place-items-center rounded-[28px] bg-volt/12 text-volt">
+            <span className="grid size-16 place-items-center rounded-2xl bg-accent/12 text-accent">
               <MessageSquare size={28} />
             </span>
             <p className="text-base font-semibold text-ink">Selecciona un chat</p>
@@ -374,7 +374,7 @@ export default function EscritorioChat() {
             <div className="flex items-center gap-3 border-b border-line px-5 py-3.5">
               <div className="relative">
                 {roomInfo?.type === "GROUP" ? (
-                  <span className="grid size-9 place-items-center rounded-2xl bg-volt/12 text-volt">
+                  <span className="grid size-9 place-items-center rounded-2xl bg-accent/12 text-accent">
                     <Users size={17} />
                   </span>
                 ) : roomInfo ? (
@@ -386,7 +386,7 @@ export default function EscritorioChat() {
                   />
                 ) : null}
                 {roomInfo?.type === "DIRECT" && otherMember?.online && (
-                  <span className="absolute -bottom-0.5 -right-0.5 size-2.5 rounded-full border-2 border-white bg-green-500 dark:border-[#141519]" />
+                  <span className="absolute -bottom-0.5 -right-0.5 size-2.5 rounded-full border-2 border-[rgb(var(--color-card))] bg-ok" />
                 )}
               </div>
               <div>
@@ -450,7 +450,7 @@ export default function EscritorioChat() {
                             <button
                               type="button"
                               onClick={() => setMenuMsg(msg)}
-                              className="grid size-7 place-items-center rounded-full text-muted transition hover:bg-volt/10 hover:text-ink"
+                              className="grid size-7 place-items-center rounded-full text-muted transition hover:bg-accent/10 hover:text-ink"
                               title="Reaccionar"
                             >
                               <Smile size={15} />
@@ -458,7 +458,7 @@ export default function EscritorioChat() {
                             <button
                               type="button"
                               onClick={() => { setReplyTo(msg); inputRef.current?.focus(); }}
-                              className="grid size-7 place-items-center rounded-full text-muted transition hover:bg-volt/10 hover:text-ink"
+                              className="grid size-7 place-items-center rounded-full text-muted transition hover:bg-accent/10 hover:text-ink"
                               title="Responder"
                             >
                               <Reply size={15} />
@@ -466,7 +466,7 @@ export default function EscritorioChat() {
                             <button
                               type="button"
                               onClick={() => setMenuMsg(msg)}
-                              className="grid size-7 place-items-center rounded-full text-muted transition hover:bg-volt/10 hover:text-ink"
+                              className="grid size-7 place-items-center rounded-full text-muted transition hover:bg-accent/10 hover:text-ink"
                               title="Opciones"
                             >
                               <MoreVertical size={15} />
@@ -498,13 +498,13 @@ export default function EscritorioChat() {
                 onChange={(e) => { const f = e.target.files?.[0]; if (f) void uploadImage(f); e.target.value = ""; }}
               />
               {replyTo && (
-                <div className="mb-2 flex items-center gap-2 rounded-2xl border-l-[3px] border-volt bg-volt/8 px-3 py-1.5">
-                  <Reply size={15} className="shrink-0 text-volt" />
+                <div className="mb-2 flex items-center gap-2 rounded-2xl border-l-[3px] border-accent bg-accent/8 px-3 py-1.5">
+                  <Reply size={15} className="shrink-0 text-accent" />
                   <div className="min-w-0 flex-1">
-                    <p className="text-[11px] font-bold text-volt">Respondiendo a {replyTo.senderId === user?.id ? "ti" : replyTo.senderName}</p>
+                    <p className="text-[11px] font-bold text-accent">Respondiendo a {replyTo.senderId === user?.id ? "ti" : replyTo.senderName}</p>
                     <p className="truncate text-[11px] text-muted">{chatPreview(replyTo.body, replyTo.deleted)}</p>
                   </div>
-                  <button type="button" onClick={() => setReplyTo(null)} className="grid size-7 shrink-0 place-items-center rounded-full text-muted transition hover:bg-volt/10">
+                  <button type="button" onClick={() => setReplyTo(null)} className="grid size-7 shrink-0 place-items-center rounded-full text-muted transition hover:bg-accent/10">
                     <X size={15} />
                   </button>
                 </div>
@@ -513,7 +513,7 @@ export default function EscritorioChat() {
                 <button
                   type="button"
                   onClick={() => setPickerOpen((v) => !v)}
-                  className={cn("grid size-10 shrink-0 place-items-center rounded-2xl transition", pickerOpen ? "bg-volt/15 text-volt" : "bg-panel text-muted hover:text-ink")}
+                  className={cn("grid size-10 shrink-0 place-items-center rounded-2xl transition", pickerOpen ? "bg-accent/15 text-accent" : "bg-panel text-muted hover:text-ink")}
                 >
                   <Smile size={18} />
                 </button>
@@ -535,14 +535,14 @@ export default function EscritorioChat() {
                   placeholder="Escribe un mensaje…"
                   rows={1}
                   maxLength={1000}
-                  className="flex-1 resize-none rounded-2xl border border-line bg-panel px-4 py-2.5 text-sm font-semibold text-ink outline-none focus:border-volt"
+                  className="flex-1 resize-none rounded-2xl border border-line bg-panel px-4 py-2.5 text-sm font-semibold text-ink outline-none focus:border-accent"
                   style={{ maxHeight: "120px", overflowY: "auto" }}
                 />
                 <button
                   type="button"
                   onClick={handleSend}
                   disabled={!input.trim() || sending}
-                  className="grid size-10 shrink-0 place-items-center rounded-2xl bg-volt text-white shadow-md transition hover:bg-volt/90 active:scale-95 disabled:opacity-40"
+                  className="grid size-10 shrink-0 place-items-center rounded-2xl bg-accent text-on-accent shadow-md transition hover:bg-accent/90 active:scale-95 disabled:opacity-40"
                 >
                   <Send size={16} />
                 </button>
@@ -555,7 +555,7 @@ export default function EscritorioChat() {
       {/* Menú de acciones del mensaje */}
       {menuMsg && (
         <div className="fixed inset-0 z-[60] grid place-items-center bg-black/40 p-4" onClick={() => setMenuMsg(null)}>
-          <div className="w-full max-w-xs rounded-3xl bg-white p-2 shadow-2xl dark:bg-[#141519]" onClick={(e) => e.stopPropagation()}>
+          <div className="w-full max-w-xs desk-floating rounded-2xl p-2" onClick={(e) => e.stopPropagation()}>
             {!menuMsg.deleted && (
               <ReactionBar onPick={(e) => void reactToMessage(menuMsg, e)} />
             )}
@@ -563,9 +563,9 @@ export default function EscritorioChat() {
               <button
                 type="button"
                 onClick={() => { setReplyTo(menuMsg); setMenuMsg(null); inputRef.current?.focus(); }}
-                className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-bold text-ink transition hover:bg-volt/8"
+                className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-bold text-ink transition hover:bg-accent/8"
               >
-                <Reply size={18} className="text-volt" /> Responder
+                <Reply size={18} className="text-accent" /> Responder
               </button>
             )}
             {!menuMsg.deleted && (menuMsg.senderId === user?.id || isManager) && (
@@ -580,14 +580,14 @@ export default function EscritorioChat() {
             <button
               type="button"
               onClick={() => void deleteMessage(menuMsg, "me")}
-              className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-bold text-ink transition hover:bg-volt/8"
+              className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-bold text-ink transition hover:bg-accent/8"
             >
               <Trash2 size={18} className="text-muted" /> Eliminar para mí
             </button>
             <button
               type="button"
               onClick={() => setMenuMsg(null)}
-              className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-semibold text-muted transition hover:bg-volt/8"
+              className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-semibold text-muted transition hover:bg-accent/8"
             >
               <X size={18} /> Cancelar
             </button>

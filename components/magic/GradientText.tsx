@@ -21,12 +21,17 @@ export function GradientText({
   children,
   className,
   durationSec = 4.5,
-  as: Tag = "span"
+  as: Tag = "span",
+  // Colores por los que pasa el brillo. El valor por omisión es el azul de
+  // marca sobre fondo claro; sobre un lienzo oscuro hay que aclararlos o el
+  // barrido abre un bache oscuro en mitad de un título claro.
+  via = ["#2563EB", "#93BBFF"]
 }: {
   children: React.ReactNode;
   className?: string;
   durationSec?: number;
   as?: "span" | "h1" | "h2" | "h3";
+  via?: [string, string];
 }) {
   const reduce = useReducedMotion();
 
@@ -37,7 +42,7 @@ export function GradientText({
       className={cn("bg-clip-text text-transparent animate-[gradient-sweep_var(--grad-dur)_linear_infinite]", className)}
       style={{
         backgroundImage:
-          "linear-gradient(90deg, rgb(var(--color-ink)) 20%, #2563EB 42%, #93BBFF 52%, rgb(var(--color-ink)) 74%)",
+          `linear-gradient(90deg, rgb(var(--color-ink)) 20%, ${via[0]} 42%, ${via[1]} 52%, rgb(var(--color-ink)) 74%)`,
         backgroundSize: "220% 100%",
         ["--grad-dur" as string]: `${durationSec}s`
       }}

@@ -4,9 +4,12 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import NextImage from "next/image";
 import { Camera, CheckCircle2, Circle, Image as ImageIcon, Moon, SlidersHorizontal, Sun } from "lucide-react";
-import { Badge, Card, ProgressBar } from "@/components/ui";
+import { Badge } from "@/components/ui";
 import { useToast } from "@/components/Toast";
 import { compressImage } from "@/lib/image-compress";
+import {
+  DeskEmpty, DeskMeter, DeskReveal, DeskSection, DeskSkeleton
+} from "@/components/desktop/DeskUI";
 
 type Section = "APERTURA" | "CIERRE";
 type ChecklistItem = {
@@ -98,45 +101,62 @@ export default function EscritorioChecklist() {
     : "";
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        {dateLabel ? <p className="text-sm font-bold capitalize text-muted">{dateLabel}</p> : <span />}
-        <Link href="/checklist/config" className="flex items-center gap-1.5 rounded-full border border-line px-3 py-1.5 text-xs font-semibold text-muted transition hover:text-volt">
-          <SlidersHorizontal size={14} />Editar puntos
+    <div className="space-y-8">
+      <div className="flex items-center justify-between gap-4">
+        {dateLabel ? (
+          <p className="text-ui lowercase text-muted first-letter:uppercase">{dateLabel}</p>
+        ) : <span />}
+        <Link
+          href="/checklist/config"
+          className="flex items-center gap-1.5 rounded-lg border border-line bg-panel px-3 py-1.5 text-caption font-medium text-muted transition-colors hover:border-line-strong hover:text-ink"
+        >
+          <SlidersHorizontal size={14} /> Editar puntos
         </Link>
       </div>
+
       {loading ? (
-        <Card className="text-sm font-semibold text-muted">Cargando checklist…</Card>
+        <div className="grid gap-10 lg:grid-cols-2">
+          {[0, 1].map((i) => <DeskSkeleton key={i} className="h-96" />)}
+        </div>
+      ) : items.length === 0 ? (
+        <DeskEmpty
+          title="Sin puntos de checklist configurados"
+          hint="Define los puntos de apertura y cierre en «Editar puntos» para que el equipo pueda marcarlos."
+        />
       ) : (
-        <div className="grid grid-cols-2 gap-5">
-          {SECTIONS.map((section) => {
+        <div className="grid gap-10 lg:grid-cols-2">
+          {SECTIONS.map((section, index) => {
             const sectionItems = items.filter((item) => item.section === section.id);
             const done = sectionItems.filter((item) => item.completed).length;
             const total = sectionItems.length;
             const progress = total ? Math.round((done / total) * 100) : 0;
             const SectionIcon = section.icon;
             return (
-              <Card key={section.id} className="h-fit p-5">
-                <div className="mb-3 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <SectionIcon className="text-volt" size={20} />
-                    <h2 className="text-lg font-semibold text-ink">{section.label}</h2>
+              <DeskReveal key={section.id} index={index}>
+                <DeskSection title={section.label}>
+                  <div className="flex items-center gap-3">
+                    <SectionIcon size={16} className="shrink-0 text-muted" aria-hidden />
+                    <DeskMeter value={progress} className="flex-1" />
+                    <Badge tone={done === total && total > 0 ? "success" : "default"}>{done}/{total}</Badge>
                   </div>
-                  <Badge tone={done === total && total > 0 ? "success" : "default"}>{done}/{total}</Badge>
-                </div>
-                <ProgressBar value={progress} />
-                <div className="mt-2 divide-y divide-line">
-                  {sectionItems.map((item) => (
-                    <ChecklistRow
-                      key={item.key}
-                      item={item}
-                      busy={busyKey === item.key}
-                      onToggle={() => void toggle(item)}
-                      onPhoto={(file) => void attachPhoto(item, file)}
-                    />
-                  ))}
-                </div>
-              </Card>
+
+                  {sectionItems.length === 0 ? (
+                    <p className="mt-4 text-caption text-muted">Sin puntos en esta sección.</p>
+                  ) : (
+                    <ul className="mt-2">
+                      {sectionItems.map((item) => (
+                        <ChecklistRow
+                          key={item.key}
+                          item={item}
+                          busy={busyKey === item.key}
+                          onToggle={() => void toggle(item)}
+                          onPhoto={(file) => void attachPhoto(item, file)}
+                        />
+                      ))}
+                    </ul>
+                  )}
+                </DeskSection>
+              </DeskReveal>
             );
           })}
         </div>
@@ -149,27 +169,55 @@ function ChecklistRow({ item, busy, onToggle, onPhoto }: { item: ChecklistItem; 
   const cameraRef = useRef<HTMLInputElement>(null);
   const galleryRef = useRef<HTMLInputElement>(null);
   return (
-    <div className="flex items-center gap-3 py-2.5">
-      <button type="button" onClick={onToggle} disabled={busy} aria-pressed={item.completed} className="shrink-0 transition active:scale-90 disabled:opacity-50">
-        {item.completed ? <CheckCircle2 className="text-emerald-500" size={24} /> : <Circle className="text-muted" size={24} />}
+    <li className="desk-row flex items-center gap-3 rounded-lg border-b border-line py-2.5 pr-1 last:border-b-0">
+      <button
+        type="button"
+        onClick={onToggle}
+        disabled={busy}
+        aria-pressed={item.completed}
+        aria-label={item.completed ? `Desmarcar ${item.label}` : `Marcar ${item.label}`}
+        className="shrink-0 disabled:opacity-50"
+      >
+        {item.completed ? <CheckCircle2 className="text-ok" size={22} /> : <Circle className="text-muted" size={22} />}
       </button>
+
       <div className="min-w-0 flex-1">
-        <p className={`text-sm font-bold ${item.completed ? "text-muted line-through" : "text-ink"}`}>{item.label}</p>
-        {item.completedAt ? <p className="text-[11px] text-muted">✓ {new Date(item.completedAt).toLocaleTimeString("es-MX", { hour: "numeric", minute: "2-digit" })}</p> : null}
+        <p className={`text-ui ${item.completed ? "text-muted line-through" : "text-ink"}`}>{item.label}</p>
+        {item.completedAt ? (
+          <p className="text-caption text-muted">
+            {new Date(item.completedAt).toLocaleTimeString("es-MX", { hour: "numeric", minute: "2-digit" })}
+            {item.completedBy ? ` · ${item.completedBy}` : ""}
+          </p>
+        ) : null}
       </div>
+
       {item.evidenceUrl ? (
-        <a href={item.evidenceUrl} target="_blank" rel="noreferrer" className="shrink-0">
-          <NextImage src={item.evidenceUrl} alt="Evidencia" width={40} height={40} className="size-10 rounded-lg object-cover" unoptimized />
+        <a href={item.evidenceUrl} target="_blank" rel="noreferrer" className="shrink-0" aria-label={`Ver evidencia de ${item.label}`}>
+          <NextImage src={item.evidenceUrl} alt="" width={36} height={36} className="size-9 rounded-lg object-cover" unoptimized />
         </a>
       ) : null}
-      <button type="button" onClick={() => cameraRef.current?.click()} disabled={busy} aria-label="Tomar foto" className="grid size-9 shrink-0 place-items-center rounded-xl border border-line text-muted transition hover:border-volt hover:text-volt active:scale-90 disabled:opacity-50">
-        <Camera size={16} />
+
+      <button
+        type="button"
+        onClick={() => cameraRef.current?.click()}
+        disabled={busy}
+        aria-label={`Tomar foto de ${item.label}`}
+        className="grid size-8 shrink-0 place-items-center rounded-lg border border-line text-muted transition-colors hover:border-accent/50 hover:text-accent disabled:opacity-50"
+      >
+        <Camera size={15} />
       </button>
-      <button type="button" onClick={() => galleryRef.current?.click()} disabled={busy} aria-label="Elegir de galería" className="grid size-9 shrink-0 place-items-center rounded-xl border border-line text-muted transition hover:border-volt hover:text-volt active:scale-90 disabled:opacity-50">
-        <ImageIcon size={16} />
+      <button
+        type="button"
+        onClick={() => galleryRef.current?.click()}
+        disabled={busy}
+        aria-label={`Elegir imagen para ${item.label}`}
+        className="grid size-8 shrink-0 place-items-center rounded-lg border border-line text-muted transition-colors hover:border-accent/50 hover:text-accent disabled:opacity-50"
+      >
+        <ImageIcon size={15} />
       </button>
+
       <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(event) => { const file = event.target.files?.[0]; if (file) onPhoto(file); event.target.value = ""; }} />
       <input ref={galleryRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(event) => { const file = event.target.files?.[0]; if (file) onPhoto(file); event.target.value = ""; }} />
-    </div>
+    </li>
   );
 }

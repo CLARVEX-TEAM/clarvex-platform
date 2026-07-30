@@ -6,8 +6,13 @@ import { getSession } from "@/lib/auth";
 import { fetchAppData } from "@/lib/app-data";
 import { KUDO_OPTIONS } from "@/lib/kudos";
 import type { User } from "@/lib/types";
-import { Button, Card, EmptyState, ProfileAvatar } from "@/components/ui";
+import { ProfileAvatar } from "@/components/ui";
 import { useToast } from "@/components/Toast";
+import {
+  DeskEmpty, DeskPanel, DeskPrimaryButton, DeskReveal, DeskSection, DeskSkeleton, deskInput
+} from "@/components/desktop/DeskUI";
+import { BorderBeam } from "@/components/magic/BorderBeam";
+import { AnimatedList } from "@/components/magic/AnimatedList";
 
 type KudoItem = { id: string; emoji: string; message: string | null; from: { name: string; photoUrl?: string | null }; to: { name: string; photoUrl?: string | null }; createdAt: string };
 type TopWeek = { name: string; photoUrl: string | null; count: number } | null;
@@ -64,7 +69,7 @@ export default function EscritorioKudos() {
       });
       const payload = await response.json() as { error?: string };
       if (!response.ok) throw new Error(payload.error ?? "No se pudo enviar.");
-      toast("¡Reconocimiento enviado! 🎉", "success");
+      toast("Reconocimiento enviado.", "success");
       setMessage("");
       setToUserId("");
       await refreshFeed();
@@ -76,90 +81,117 @@ export default function EscritorioKudos() {
   }
 
   return (
-    <div className="grid grid-cols-5 gap-5">
-      {/* Formulario */}
-      <div className="col-span-2 space-y-4">
-        {topWeek ? (
-          <Card className="border border-amber-300/40 bg-gradient-to-br from-amber-50 to-orange-50 p-4 dark:from-[#2a2410] dark:to-[#2a1c10]">
-            <div className="flex items-center gap-3">
-              <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-amber-100 text-amber-600 dark:bg-[#3a2e10]"><Trophy size={24} /></span>
-              <div className="min-w-0">
-                <p className="text-[11px] font-bold uppercase tracking-[0.13em] text-muted">Reconocido de la semana</p>
-                <div className="mt-0.5 flex items-center gap-2">
-                  <ProfileAvatar name={topWeek.name} photoUrl={topWeek.photoUrl} size="sm" />
-                  <p className="truncate font-semibold text-ink">{topWeek.name}</p>
+    <div className="grid gap-10 xl:grid-cols-[22rem_minmax(0,1fr)]">
+      <DeskReveal index={0}>
+        <div className="space-y-8 xl:sticky xl:top-20">
+          {topWeek ? (
+            <DeskSection title="Reconocido de la semana">
+              {/* BorderBeam y no ShineBorder: esto es IMPORTANTE, no algo sin
+                  atender. El haz jerarquiza; el otro reclamaría acción. */}
+              <BorderBeam radius="rounded-[18px]" ringPx={1.5}>
+                <div className="rounded-2xl border border-line bg-card p-4">
+                  <div className="flex items-center gap-3">
+                    <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-warn/15 text-warn">
+                      <Trophy size={22} />
+                    </span>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <ProfileAvatar name={topWeek.name} photoUrl={topWeek.photoUrl} size="sm" className="size-6 shrink-0 rounded-md text-[9px] shadow-none" />
+                        <p className="truncate text-ui font-semibold text-ink">{topWeek.name}</p>
+                      </div>
+                      <p className="mt-0.5 text-caption text-muted">
+                        {topWeek.count} {topWeek.count === 1 ? "reconocimiento" : "reconocimientos"} esta semana
+                      </p>
+                    </div>
+                  </div>
                 </div>
-                <p className="mt-0.5 text-xs text-muted">{topWeek.count} {topWeek.count === 1 ? "reconocimiento" : "reconocimientos"} esta semana 🎉</p>
+              </BorderBeam>
+            </DeskSection>
+          ) : null}
+
+          <DeskSection title="Reconocer a alguien">
+            <DeskPanel>
+              <div className="grid gap-3">
+                <label className="grid gap-1">
+                  <span className="text-caption font-medium text-muted">¿A quién?</span>
+                  <select value={toUserId} onChange={(event) => setToUserId(event.target.value)} className={deskInput}>
+                    <option value="">Elige un integrante…</option>
+                    {team.map((member) => <option key={member.id} value={member.id}>{member.name}</option>)}
+                  </select>
+                </label>
+
+                <fieldset className="grid gap-1.5">
+                  <legend className="text-caption font-medium text-muted">Motivo</legend>
+                  <div className="flex flex-wrap gap-1.5">
+                    {KUDO_OPTIONS.map((option) => (
+                      <button
+                        key={option.emoji}
+                        type="button"
+                        onClick={() => setEmoji(option.emoji)}
+                        aria-pressed={emoji === option.emoji}
+                        className={`flex min-h-9 items-center gap-1.5 rounded-lg border px-2.5 text-caption font-medium transition-colors ${
+                          emoji === option.emoji
+                            ? "border-accent/45 bg-accent-quiet text-ink"
+                            : "border-line bg-panel text-muted hover:text-ink"
+                        }`}
+                      >
+                        <span aria-hidden>{option.emoji}</span>{option.label}
+                      </button>
+                    ))}
+                  </div>
+                </fieldset>
+
+                <label className="grid gap-1">
+                  <span className="text-caption font-medium text-muted">Mensaje (opcional)</span>
+                  <textarea
+                    value={message}
+                    onChange={(event) => setMessage(event.target.value)}
+                    maxLength={280}
+                    rows={3}
+                    placeholder="Qué hizo y por qué importó…"
+                    className={`${deskInput} py-2.5`}
+                  />
+                </label>
+
+                <DeskPrimaryButton type="button" onClick={() => void send()} disabled={sending} className="w-full">
+                  <Send size={15} /> {sending ? "Enviando…" : "Enviar reconocimiento"}
+                </DeskPrimaryButton>
               </div>
-            </div>
-          </Card>
-        ) : null}
+            </DeskPanel>
+          </DeskSection>
+        </div>
+      </DeskReveal>
 
-        <Card className="h-fit p-5">
-          <div className="mb-4 flex items-center gap-2">
-            <HeartHandshake className="text-volt" size={18} />
-            <h2 className="text-lg font-semibold text-ink">Reconocer a alguien</h2>
-          </div>
-          <div className="grid gap-3">
-            <label className="grid gap-1">
-              <span className="text-xs font-bold text-muted">¿A quién?</span>
-              <select value={toUserId} onChange={(event) => setToUserId(event.target.value)} className="min-h-12 rounded-2xl border border-line bg-panel px-3 text-sm font-bold text-ink outline-none focus:border-volt">
-                <option value="">Elige un integrante…</option>
-                {team.map((member) => <option key={member.id} value={member.id}>{member.name}</option>)}
-              </select>
-            </label>
-            <div className="flex flex-wrap gap-1.5">
-              {KUDO_OPTIONS.map((option) => (
-                <button
-                  key={option.emoji}
-                  type="button"
-                  onClick={() => setEmoji(option.emoji)}
-                  aria-pressed={emoji === option.emoji}
-                  className={`flex min-h-10 items-center gap-1.5 rounded-full px-3 text-sm font-bold transition active:scale-95 ${emoji === option.emoji ? "bg-volt/15 text-ink ring-1 ring-volt/40" : "bg-panel text-muted ring-1 ring-line"}`}
-                >
-                  <span>{option.emoji}</span><span className="text-xs">{option.label}</span>
-                </button>
-              ))}
-            </div>
-            <textarea
-              value={message}
-              onChange={(event) => setMessage(event.target.value)}
-              maxLength={280}
-              rows={3}
-              placeholder="Mensaje (opcional)…"
-              className="rounded-2xl border border-line bg-panel px-3 py-2.5 text-sm font-semibold text-ink outline-none focus:border-volt"
-            />
-            <Button type="button" variant="primary" icon={<Send size={16} />} onClick={() => void send()} disabled={sending} className="w-full">
-              {sending ? "Enviando…" : "Enviar reconocimiento"}
-            </Button>
-          </div>
-        </Card>
-      </div>
-
-      {/* Feed */}
-      <div className="col-span-3">
-        <Card className="p-5">
-          <h2 className="mb-3 text-lg font-semibold text-ink">Reconocimientos recientes</h2>
+      <DeskReveal index={1}>
+        <DeskSection title={`Reconocimientos recientes · ${kudos.length}`}>
           {loading ? (
-            <p className="py-4 text-sm font-semibold text-muted">Cargando…</p>
+            <div className="space-y-3">{[0, 1, 2, 3].map((i) => <DeskSkeleton key={i} className="h-16" />)}</div>
           ) : kudos.length === 0 ? (
-            <EmptyState icon={HeartHandshake} title="Aún no hay reconocimientos" description="¡Sé el primero en reconocer a tu equipo! 👏" />
+            <DeskEmpty
+              icon={HeartHandshake}
+              title="Todavía no hay reconocimientos"
+              hint="Sé el primero. Al reconocido le llega una notificación y aparece en el resumen semanal."
+            />
           ) : (
-            <div className="divide-y divide-line">
+            <AnimatedList className="max-w-3xl">
               {kudos.map((kudo) => (
-                <div key={kudo.id} className="flex items-start gap-3 py-3">
-                  <span className="mt-0.5 text-2xl">{kudo.emoji}</span>
+                <div key={kudo.id} className="flex items-start gap-3 border-b border-line py-3 last:border-b-0">
+                  <span className="mt-0.5 text-xl" aria-hidden>{kudo.emoji}</span>
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-bold text-ink"><span className="text-volt">{kudo.from.name}</span> → {kudo.to.name}</p>
-                    {kudo.message ? <p className="mt-0.5 text-sm text-muted">{kudo.message}</p> : null}
-                    <p className="mt-0.5 text-[11px] text-muted">{new Date(kudo.createdAt).toLocaleString("es-MX", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" })}</p>
+                    <p className="text-ui text-ink">
+                      <span className="font-medium text-accent">{kudo.from.name}</span> reconoció a {kudo.to.name}
+                    </p>
+                    {kudo.message ? <p className="mt-0.5 max-w-[70ch] text-ui text-muted">{kudo.message}</p> : null}
+                    <p className="mt-0.5 text-caption text-muted">
+                      {new Date(kudo.createdAt).toLocaleString("es-MX", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" })}
+                    </p>
                   </div>
                 </div>
               ))}
-            </div>
+            </AnimatedList>
           )}
-        </Card>
-      </div>
+        </DeskSection>
+      </DeskReveal>
     </div>
   );
 }

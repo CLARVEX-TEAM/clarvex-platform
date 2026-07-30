@@ -2,20 +2,30 @@
 
 import { createContext, useContext, useEffect, useState } from "react";
 
+/** Persona mínima que necesita la paleta de comandos para ofrecer un salto. */
+export type ChromePerson = { id: string; name: string; role: string; photoUrl?: string | null };
+
 type ChromeContextValue = {
   lastUpdated: Date | null;
   setLastUpdated: (date: Date) => void;
+  /** Padrón del equipo, publicado por useDesktopData. La paleta de comandos lo
+      lee de aquí en vez de disparar su propia petición. */
+  people: ChromePerson[];
+  setPeople: (people: ChromePerson[]) => void;
 };
 
 const DesktopChromeContext = createContext<ChromeContextValue>({
   lastUpdated: null,
-  setLastUpdated: () => {}
+  setLastUpdated: () => {},
+  people: [],
+  setPeople: () => {}
 });
 
 export function DesktopChromeProvider({ children }: { children: React.ReactNode }) {
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [people, setPeople] = useState<ChromePerson[]>([]);
   return (
-    <DesktopChromeContext.Provider value={{ lastUpdated, setLastUpdated }}>
+    <DesktopChromeContext.Provider value={{ lastUpdated, setLastUpdated, people, setPeople }}>
       {children}
     </DesktopChromeContext.Provider>
   );

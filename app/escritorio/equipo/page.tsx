@@ -1,14 +1,18 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { CalendarClock, CalendarHeart, CheckCircle2, Clock3, UsersRound } from "lucide-react";
+import { CalendarHeart, CheckCircle2, Clock3, UsersRound } from "lucide-react";
 import { completion } from "@/lib/format";
 import { dateKey, startOfWeek } from "@/lib/schedule-week";
 import type { Role } from "@/lib/types";
-import { achievementTone, Badge, Button, Card, ProgressBar, ProfileAvatar } from "@/components/ui";
+import { Badge, ProfileAvatar } from "@/components/ui";
 import { useToast } from "@/components/Toast";
 import { useDesktopData } from "@/components/desktop/useDesktopData";
 import { DesktopError } from "@/components/desktop/DesktopError";
+import {
+  DeskButton, DeskEmpty, DeskMeter, DeskReveal, DeskRule, DeskSection, DeskSkeleton,
+  deskInput, deskTd, deskTdMuted, deskTh, deskThead, deskTr
+} from "@/components/desktop/DeskUI";
 
 type EditRow = { id: string; name: string; photoUrl?: string | null; birthDate: string; hireDate: string; hoursOwed: string; vacationDays: string; paidDays: string };
 
@@ -55,6 +59,16 @@ export default function EscritorioEquipo() {
     const now = new Date();
     return dateKey(new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate())));
   }, []);
+  // Los siete días de la semana en curso: son las columnas de la matriz de
+  // horarios, y deben existir aunque alguien no tenga turno ese día.
+  const weekDates = useMemo(
+    () => Array.from({ length: 7 }, (_, i) => {
+      const day = new Date(`${weekStart}T00:00:00Z`);
+      day.setUTCDate(day.getUTCDate() + i);
+      return dateKey(day);
+    }),
+    [weekStart]
+  );
 
   useEffect(() => {
     fetch(`/api/schedules?weekStart=${weekStart}`, { cache: "no-store" })
@@ -100,9 +114,17 @@ export default function EscritorioEquipo() {
   if (error && !data) return <DesktopError onRetry={reload} />;
   if (!data) {
     return (
-      <div className="grid animate-pulse grid-cols-5 gap-5">
-        <div className="col-span-3 h-96 rounded-3xl bg-panel dark:bg-panel" />
-        <div className="col-span-2 h-96 rounded-3xl bg-panel dark:bg-panel" />
+      <div className="space-y-9">
+        <div className="grid gap-10 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+          <div className="space-y-3">
+            <DeskSkeleton className="h-4 w-32" />
+            {[0, 1, 2, 3, 4].map((i) => <DeskSkeleton key={i} className="h-12" />)}
+          </div>
+          <div className="space-y-3">
+            <DeskSkeleton className="h-4 w-40" />
+            {[0, 1, 2].map((i) => <DeskSkeleton key={i} className="h-24" />)}
+          </div>
+        </div>
       </div>
     );
   }
@@ -118,145 +140,217 @@ export default function EscritorioEquipo() {
   const todayStatus = (id: string) => schedules.find((s) => s.userId === id && s.date === todayKey)?.status ?? null;
   const weekFor = (id: string) => schedules.filter((s) => s.userId === id).sort((a, b) => a.date.localeCompare(b.date));
 
-  const inputClass = "min-h-10 w-full rounded-xl border border-line bg-panel px-2.5 text-sm font-bold text-ink outline-none focus:border-volt";
-
   return (
-    <div className="space-y-5">
-    <div className="grid grid-cols-5 gap-5">
-      {/* Equipo */}
-      <Card className="col-span-3 h-fit p-5">
-        <div className="mb-3 flex items-center gap-2"><UsersRound className="text-volt" size={18} /><h2 className="text-lg font-semibold text-ink">Equipo ({members.length})</h2></div>
-        <div className="overflow-hidden rounded-2xl border border-line">
-          <table className="w-full text-sm">
-            <thead className="bg-panel text-left text-[11px] font-bold uppercase tracking-[0.1em] text-muted">
-              <tr>
-                <th className="px-4 py-2.5">Colaborador</th>
-                <th className="px-4 py-2.5">Hoy</th>
-                <th className="px-4 py-2.5 w-36">Alcance hoy</th>
-              </tr>
-            </thead>
-            <tbody>
-              {members.map((u) => {
-                const progress = progressFor(u.id);
-                const status = todayStatus(u.id);
-                return (
-                  <tr key={u.id} className="border-t border-line transition-colors hover:bg-volt/[0.04] even:bg-panel/50 dark:even:bg-white/[0.02]">
-                    <td className="px-4 py-2.5">
-                      <div className="flex items-center gap-2.5">
-                        <ProfileAvatar name={u.name} photoUrl={u.photoUrl} size="sm" className="size-9 rounded-xl shadow-none" />
-                        <div>
-                          <p className="font-bold text-ink">{u.name}</p>
-                          <div className="mt-0.5 flex items-center gap-1.5">
-                            <Badge tone={roleTone(u.role)}>{roleLabel[u.role] ?? u.role}</Badge>
-                            <span className="text-[11px] text-muted">#{u.employeeNumber}</span>
+    <div className="space-y-9">
+      <DeskReveal index={0}>
+          <DeskSection title={`Equipo · ${members.length} personas`}>
+            {/* Tope de ancho: con solo tres columnas repartidas sobre 1536px,
+                nombre y alcance quedaban tan lejos que dejaban de leerse como
+                la misma fila. La matriz de horarios de abajo sí usa todo el
+                ancho, porque ahí las columnas son siete. */}
+            <table className="w-full max-w-5xl">
+              <caption className="sr-only">Colaboradores, su estado de hoy y su alcance</caption>
+              <thead className={deskThead}>
+                <tr>
+                  <th scope="col" className={deskTh}>Colaborador</th>
+                  <th scope="col" className={deskTh}>Hoy</th>
+                  <th scope="col" className={`${deskTh} w-40 pl-4`}>Alcance</th>
+                </tr>
+              </thead>
+              <tbody>
+                {members.map((u) => {
+                  const progress = progressFor(u.id);
+                  const status = todayStatus(u.id);
+                  return (
+                    <tr key={u.id} className={deskTr}>
+                      <td className={deskTd}>
+                        <div className="flex min-w-0 items-center gap-2.5">
+                          <ProfileAvatar name={u.name} photoUrl={u.photoUrl} size="sm" className="size-8 shrink-0 rounded-lg text-[10px] shadow-none" />
+                          <div className="min-w-0">
+                            <p className="truncate text-ink">{u.name}</p>
+                            <p className="text-caption text-muted">
+                              {roleLabel[u.role] ?? u.role} · #{u.employeeNumber}
+                            </p>
                           </div>
                         </div>
+                      </td>
+                      <td className={deskTd}>
+                        {status ? <Badge tone={statusConfig[status].tone}>{statusConfig[status].label}</Badge> : <span className="text-caption text-muted">—</span>}
+                      </td>
+                      <td className={`${deskTd} pl-4`}>
+                        {u.role !== "ASESOR" ? <span className="text-caption text-muted">Meta de tienda</span>
+                          : status && status !== "WORKING" ? <span className="text-caption text-muted">{statusConfig[status].label}</span>
+                          : progress === null ? <span className="text-caption text-muted">—</span> : (
+                            <div className="flex items-center gap-2.5">
+                              <DeskMeter value={progress} className="flex-1" />
+                              <span className="w-10 shrink-0 text-right text-caption font-medium text-ink">{progress}%</span>
+                            </div>
+                          )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </DeskSection>
+        </DeskReveal>
+
+      <DeskRule />
+
+      {/* Matriz personas × días. En columna estrecha esto eran seis listas
+          apiladas de 7 chips cada una: 900px de alto y 400px de vacío al lado
+          de la tabla de equipo. En escritorio un horario semanal ES una
+          cuadrícula, y así además se comparan turnos entre personas de un
+          vistazo, que es justo lo que el gerente necesita. */}
+      <DeskReveal index={1}>
+        <DeskSection
+          title="Horarios de la semana"
+          hint="Una fila por persona, una columna por día. El día de hoy va resaltado."
+        >
+          {schedules.length === 0 ? (
+            <DeskEmpty
+              icon={UsersRound}
+              title="Sin horarios cargados para esta semana"
+              hint="Aparecen en cuanto se sincroniza el archivo de horarios desde el Centro de Datos."
+            />
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[940px]">
+                <caption className="sr-only">Horario semanal de cada colaborador</caption>
+                <thead className={deskThead}>
+                  <tr>
+                    <th scope="col" className={`${deskTh} w-56`}>Colaborador</th>
+                    {weekDates.map((date) => {
+                      const day = new Date(`${date}T00:00:00Z`);
+                      const isToday = date === todayKey;
+                      return (
+                        <th
+                          key={date}
+                          scope="col"
+                          className={`${deskTh} pl-3 ${isToday ? "text-accent" : ""}`}
+                        >
+                          {dayAbbr[day.getUTCDay()]} {day.getUTCDate()}
+                          {isToday ? <span className="sr-only"> (hoy)</span> : null}
+                        </th>
+                      );
+                    })}
+                  </tr>
+                </thead>
+                <tbody>
+                  {members.map((u) => {
+                    const byDate = new Map(weekFor(u.id).map((s) => [s.date, s]));
+                    if (byDate.size === 0) return null;
+                    return (
+                      <tr key={u.id} className={deskTr}>
+                        <td className={deskTd}>
+                          <div className="flex min-w-0 items-center gap-2.5">
+                            <ProfileAvatar name={u.name} photoUrl={u.photoUrl} size="sm" className="size-7 shrink-0 rounded-lg text-[10px] shadow-none" />
+                            <span className="truncate">{u.name}</span>
+                          </div>
+                        </td>
+                        {weekDates.map((date) => {
+                          const shift = byDate.get(date);
+                          const isToday = date === todayKey;
+                          return (
+                            <td key={date} className={`py-2.5 pl-3 ${isToday ? "bg-accent-quiet" : ""}`}>
+                              {!shift ? (
+                                <span className="text-caption text-muted">—</span>
+                              ) : shift.status === "WORKING" && shift.startTime ? (
+                                <span className="flex items-center gap-1 whitespace-nowrap text-caption text-ink">
+                                  <Clock3 size={11} className="shrink-0 text-muted" />
+                                  {shift.startTime}{shift.endTime ? `–${shift.endTime}` : ""}
+                                </span>
+                              ) : (
+                                <Badge tone={statusConfig[shift.status].tone}>{statusConfig[shift.status].label}</Badge>
+                              )}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </DeskSection>
+      </DeskReveal>
+
+      <DeskRule />
+
+      <DeskReveal index={2}>
+        <DeskSection
+          title="Fechas y saldos del equipo"
+          hint="Cumpleaños, ingreso y saldos. Se guarda persona por persona."
+        >
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[820px]">
+              <caption className="sr-only">Fechas y saldos editables de cada colaborador</caption>
+              <thead className={deskThead}>
+                <tr>
+                  <th scope="col" className={deskTh}>Colaborador</th>
+                  <th scope="col" className={`${deskTh} pl-3`}>Cumpleaños</th>
+                  <th scope="col" className={`${deskTh} pl-3`}>Ingreso</th>
+                  <th scope="col" className={`${deskTh} pl-3`}>Horas saldo</th>
+                  <th scope="col" className={`${deskTh} pl-3`}>Vacaciones</th>
+                  <th scope="col" className={`${deskTh} pl-3`}>Pago día</th>
+                  <th scope="col" className={`${deskTh} pl-3`}><span className="sr-only">Guardar</span></th>
+                </tr>
+              </thead>
+              <tbody>
+                {editRows.map((row) => (
+                  <tr key={row.id} className="border-b border-line align-middle last:border-b-0">
+                    <td className={deskTd}>
+                      <div className="flex min-w-0 items-center gap-2.5">
+                        <ProfileAvatar name={row.name} photoUrl={row.photoUrl} size="sm" className="size-7 shrink-0 rounded-lg text-[10px] shadow-none" />
+                        <span className="truncate text-ink">{row.name}</span>
                       </div>
                     </td>
-                    <td className="px-4 py-2.5">
-                      {status ? <Badge tone={statusConfig[status].tone}>{statusConfig[status].label}</Badge> : <span className="text-xs text-muted">—</span>}
+                    <td className="py-2 pl-3">
+                      <label className="sr-only" htmlFor={`birth-${row.id}`}>Cumpleaños de {row.name}</label>
+                      <input id={`birth-${row.id}`} type="date" value={row.birthDate} onChange={(e) => updateRow(row.id, "birthDate", e.target.value)} className={deskInput} />
                     </td>
-                    <td className="px-4 py-2.5">
-                      {u.role !== "ASESOR" ? <span className="text-xs text-muted">—</span>
-                        : status && status !== "WORKING" ? <span className="text-xs text-muted">{statusConfig[status].label}</span>
-                        : progress === null ? <span className="text-xs text-muted">—</span> : (
-                        <div className="flex items-center gap-2">
-                          <div className="flex-1"><ProgressBar value={progress} tone={achievementTone(progress)} /></div>
-                          <span className="w-9 shrink-0 text-right text-xs font-semibold text-ink">{progress}%</span>
-                        </div>
+                    <td className="py-2 pl-3">
+                      <label className="sr-only" htmlFor={`hire-${row.id}`}>Ingreso de {row.name}</label>
+                      <input id={`hire-${row.id}`} type="date" value={row.hireDate} onChange={(e) => updateRow(row.id, "hireDate", e.target.value)} className={deskInput} />
+                    </td>
+                    <td className="py-2 pl-3">
+                      <label className="sr-only" htmlFor={`hours-${row.id}`}>Horas saldo de {row.name}</label>
+                      <input id={`hours-${row.id}`} type="number" step="0.5" inputMode="decimal" value={row.hoursOwed} onChange={(e) => updateRow(row.id, "hoursOwed", e.target.value)} className={`${deskInput} w-24`} />
+                    </td>
+                    <td className="py-2 pl-3">
+                      <label className="sr-only" htmlFor={`vac-${row.id}`}>Vacaciones de {row.name}</label>
+                      <input id={`vac-${row.id}`} type="number" step="1" min="0" inputMode="numeric" value={row.vacationDays} onChange={(e) => updateRow(row.id, "vacationDays", e.target.value)} className={`${deskInput} w-24`} />
+                    </td>
+                    <td className="py-2 pl-3">
+                      <label className="sr-only" htmlFor={`paid-${row.id}`}>Pago día de {row.name}</label>
+                      <input id={`paid-${row.id}`} type="number" step="1" min="0" inputMode="numeric" value={row.paidDays} onChange={(e) => updateRow(row.id, "paidDays", e.target.value)} className={`${deskInput} w-24`} />
+                    </td>
+                    <td className="py-2 pl-3">
+                      {savedId === row.id ? (
+                        <span className="flex items-center gap-1 whitespace-nowrap text-caption font-medium text-ok">
+                          <CheckCircle2 size={15} /> Guardado
+                        </span>
+                      ) : (
+                        <DeskButton type="button" onClick={() => void saveRow(row)} disabled={savingId === row.id}>
+                          {savingId === row.id ? "Guardando…" : "Guardar"}
+                        </DeskButton>
                       )}
                     </td>
                   </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </Card>
-
-      {/* Horarios de la semana */}
-      <Card className="col-span-2 h-fit p-5">
-        <div className="mb-3 flex items-center gap-2"><CalendarClock className="text-volt" size={18} /><h2 className="text-lg font-semibold text-ink">Horarios de la semana</h2></div>
-        <div className="space-y-3">
-          {members.map((u) => {
-            const week = weekFor(u.id);
-            if (week.length === 0) return null;
-            return (
-              <div key={u.id} className="rounded-2xl border border-line p-3">
-                <div className="mb-2 flex items-center gap-2.5">
-                  <ProfileAvatar name={u.name} photoUrl={u.photoUrl} size="sm" className="size-7 rounded-lg shadow-none" />
-                  <p className="text-sm font-semibold text-ink">{u.name}</p>
-                </div>
-                <div className="grid grid-cols-2 gap-1.5">
-                  {week.map((s) => {
-                    const config = statusConfig[s.status];
-                    const isToday = s.date === todayKey;
-                    const dow = dayAbbr[new Date(`${s.date}T00:00:00Z`).getUTCDay()];
-                    return (
-                      <div key={s.id} className={`flex items-center justify-between gap-1.5 rounded-xl border px-2.5 py-1.5 text-[11px] ${isToday ? "border-volt/40 bg-volt/[0.06]" : "border-line bg-panel"}`}>
-                        <span className="font-semibold text-ink">{dow}</span>
-                        {s.status === "WORKING" && s.startTime ? (
-                          <span className="flex items-center gap-1 text-muted"><Clock3 size={11} />{s.startTime}{s.endTime ? `–${s.endTime}` : ""}</span>
-                        ) : (
-                          <Badge tone={config.tone}>{config.label}</Badge>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          })}
-          {schedules.length === 0 ? <p className="py-6 text-center text-sm text-muted">Sin horarios para esta semana.</p> : null}
-        </div>
-      </Card>
-    </div>
-
-      {/* Fechas y saldos del equipo (editable) */}
-      <Card className="p-5">
-        <div className="mb-3 flex items-center gap-2"><CalendarHeart className="text-volt" size={18} /><h2 className="text-lg font-semibold text-ink">Fechas y saldos del equipo</h2></div>
-        <div className="overflow-x-auto rounded-2xl border border-line">
-          <table className="w-full min-w-[760px] text-sm">
-            <thead className="bg-panel text-left text-[11px] font-bold uppercase tracking-[0.1em] text-muted">
-              <tr>
-                <th className="px-4 py-2.5">Colaborador</th>
-                <th className="px-3 py-2.5">Cumpleaños</th>
-                <th className="px-3 py-2.5">Ingreso</th>
-                <th className="px-3 py-2.5">Horas saldo</th>
-                <th className="px-3 py-2.5">Vacaciones</th>
-                <th className="px-3 py-2.5">Pago día</th>
-                <th className="px-3 py-2.5"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {editRows.map((row) => (
-                <tr key={row.id} className="border-t border-line align-middle">
-                  <td className="px-4 py-2">
-                    <div className="flex items-center gap-2.5">
-                      <ProfileAvatar name={row.name} photoUrl={row.photoUrl} size="sm" className="size-8 rounded-xl shadow-none" />
-                      <span className="font-bold text-ink">{row.name}</span>
-                    </div>
-                  </td>
-                  <td className="px-3 py-2"><input type="date" value={row.birthDate} onChange={(e) => updateRow(row.id, "birthDate", e.target.value)} className={inputClass} /></td>
-                  <td className="px-3 py-2"><input type="date" value={row.hireDate} onChange={(e) => updateRow(row.id, "hireDate", e.target.value)} className={inputClass} /></td>
-                  <td className="px-3 py-2"><input type="number" step="0.5" inputMode="decimal" value={row.hoursOwed} onChange={(e) => updateRow(row.id, "hoursOwed", e.target.value)} className={`${inputClass} w-20`} /></td>
-                  <td className="px-3 py-2"><input type="number" step="1" min="0" inputMode="numeric" value={row.vacationDays} onChange={(e) => updateRow(row.id, "vacationDays", e.target.value)} className={`${inputClass} w-20`} /></td>
-                  <td className="px-3 py-2"><input type="number" step="1" min="0" inputMode="numeric" value={row.paidDays} onChange={(e) => updateRow(row.id, "paidDays", e.target.value)} className={`${inputClass} w-20`} /></td>
-                  <td className="px-3 py-2">
-                    {savedId === row.id ? (
-                      <span className="flex items-center gap-1 text-xs font-bold text-emerald-600"><CheckCircle2 size={15} />Guardado</span>
-                    ) : (
-                      <Button type="button" variant="ghost" onClick={() => void saveRow(row)} disabled={savingId === row.id} className="min-h-9 px-3 text-xs">
-                        {savingId === row.id ? "Guardando…" : "Guardar"}
-                      </Button>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </Card>
+                ))}
+                {editRows.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="py-8">
+                      <DeskEmpty icon={CalendarHeart} title="Sin colaboradores todavía" hint="Se cargan desde el Centro de Datos." />
+                    </td>
+                  </tr>
+                ) : null}
+              </tbody>
+            </table>
+          </div>
+        </DeskSection>
+      </DeskReveal>
     </div>
   );
 }

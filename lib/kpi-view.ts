@@ -54,7 +54,10 @@ export const METRIC_CONFIG: Record<string, MetricConfig> = {
 // en el chip del ícono y color de la sparkline. El valor va en tinta — el color
 // señala la métrica, no compite con la cifra.
 export const METRIC_ACCENT: Record<string, { chip: string; spark: string }> = {
-  upt:         { chip: "bg-volt/10 text-volt",       spark: "#2563EB" },
+  // bg-accent/text-accent en vez de volt: dentro del escritorio resuelven al
+  // acento aclarado (7.23:1 sobre el lienzo oscuro); fuera, el valor de reserva
+  // de tailwind.config es exactamente #2563EB, así que el móvil no cambia.
+  upt:         { chip: "bg-accent/10 text-accent",   spark: "#2563EB" },
   aur:         { chip: "bg-sky/10 text-sky",         spark: "#0EA5E9" },
   ept:         { chip: "bg-purple/10 text-purple",   spark: "#4F46E5" },
   conversion:  { chip: "bg-ember/10 text-ember",     spark: "#F59E0B" },

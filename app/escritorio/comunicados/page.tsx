@@ -5,14 +5,17 @@ import NextImage from "next/image";
 import { AnimatePresence, motion } from "framer-motion";
 import { ImagePlus, Megaphone, Search, Sparkles, Trash2, X } from "lucide-react";
 import type { Announcement } from "@/lib/types";
-import { Badge, Card, EmptyState, ProfileAvatar } from "@/components/ui";
+import { Badge, ProfileAvatar } from "@/components/ui";
 import { AppInput, AppTextarea } from "@/components/forms";
-import { SendButton } from "@/components/SendButton";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { useToast } from "@/components/Toast";
 import { useDesktopData } from "@/components/desktop/useDesktopData";
 import { DesktopError } from "@/components/desktop/DesktopError";
 import { useUnsavedGuard } from "@/components/desktop/useUnsavedGuard";
+import {
+  DeskButton, DeskEmpty, DeskPanel, DeskPrimaryButton, DeskReveal, DeskSection, DeskSkeleton, deskInput
+} from "@/components/desktop/DeskUI";
+import { ShineBorder } from "@/components/magic/ShineBorder";
 
 export default function EscritorioComunicados() {
   const { data, error, reload } = useDesktopData();
@@ -41,15 +44,15 @@ export default function EscritorioComunicados() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prompt: announcementPrompt })
       });
-      const payload = await response.json();
-      if (!response.ok) throw new Error(payload.error || "No se pudo generar el comunicado.");
-      setTitle(payload.title || "");
-      setBody(payload.body || "");
+      const payload = await response.json() as { title?: string; body?: string; error?: string };
+      if (!response.ok) throw new Error(payload.error ?? "No se pudo generar el comunicado.");
+      setTitle(payload.title ?? "");
+      setBody(payload.body ?? "");
       setShowAnnouncementPrompt(false);
       setAnnouncementPrompt("");
-      toast("Comunicado profesional generado con éxito. ¡Revísalo!", "success");
-    } catch (err: any) {
-      toast(err.message || "Error al generar el comunicado con IA.", "error");
+      toast("Borrador generado. Revísalo antes de publicar.", "success");
+    } catch (err) {
+      toast(err instanceof Error ? err.message : "Error al generar el comunicado con IA.", "error");
     } finally {
       setGeneratingAnnouncement(false);
     }
@@ -129,125 +132,175 @@ export default function EscritorioComunicados() {
   if (error && !data) return <DesktopError onRetry={reload} />;
 
   return (
-    <div className="grid grid-cols-5 gap-5">
-      {/* Crear comunicado */}
-      <Card className="col-span-2 h-fit p-5">
-        <div className="mb-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Megaphone className="text-volt" size={18} />
-            <h2 className="text-lg font-semibold text-ink">Nuevo comunicado</h2>
-          </div>
-          <button
-            type="button"
-            onClick={() => setShowAnnouncementPrompt((prev) => !prev)}
-            className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider bg-[#2563EB] text-white px-3 py-1 rounded-xl active:scale-95 transition"
-          >
-            <Sparkles size={11} />
-            IA
-          </button>
-        </div>
+    <>
+      <div className="grid gap-10 xl:grid-cols-[24rem_minmax(0,1fr)]">
+        <DeskReveal index={0}>
+          <div className="xl:sticky xl:top-20">
+            <DeskSection title="Nuevo comunicado">
+              <DeskPanel>
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <p className="text-caption text-muted">
+                    Llega a {advisors.length} {advisors.length === 1 ? "asesor" : "asesores"} por push y notificación interna.
+                  </p>
+                  <DeskButton
+                    type="button"
+                    onClick={() => setShowAnnouncementPrompt((prev) => !prev)}
+                    aria-expanded={showAnnouncementPrompt}
+                    className="min-h-8 px-2.5 text-caption"
+                  >
+                    <Sparkles size={13} className="text-accent" /> IA
+                  </DeskButton>
+                </div>
 
-        {showAnnouncementPrompt && (
-          <div className="mb-3 rounded-2xl border border-[#2563EB]/20 bg-[#2563EB]/5 p-3 space-y-2">
-            <p className="text-[11px] font-semibold text-white flex items-center gap-1">
-              <Sparkles size={12} className="text-[#2563EB]" /> Redactar con IA:
-            </p>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={announcementPrompt}
-                onChange={(e) => setAnnouncementPrompt(e.target.value)}
-                placeholder="Ej. Promoción Jeans 30% descuento este fin..."
-                className="flex-1 min-h-9 rounded-xl border border-white/10 bg-[#0A0A0A] px-3 text-xs text-white placeholder-muted outline-none focus:border-[#2563EB]"
-              />
-              <button
-                type="button"
-                onClick={() => void handleGenerateAnnouncement()}
-                disabled={generatingAnnouncement || !announcementPrompt.trim()}
-                className="rounded-xl bg-[#2563EB] px-3 text-xs font-semibold text-white active:scale-95 transition disabled:opacity-50"
-              >
-                {generatingAnnouncement ? "Generando..." : "Generar"}
-              </button>
-            </div>
-          </div>
-        )}
-
-        <form className="grid gap-3" onSubmit={publish}>
-          <AppInput label="Título" value={title} onChange={(e) => setTitle(e.target.value)} required />
-          <AppTextarea label="Mensaje" value={body} onChange={(e) => setBody(e.target.value)} required />
-
-          <div>
-            <p className="mb-1.5 text-[11px] font-bold uppercase tracking-[0.1em] text-muted">Imagen (opcional)</p>
-            {imagePreview ? (
-              <div className="relative overflow-hidden rounded-2xl border border-line">
-                <NextImage src={imagePreview} alt="Previsualización" width={600} height={300} className="max-h-52 w-full object-cover" />
-                <button type="button" onClick={removeImage} className="absolute right-2 top-2 grid size-8 place-items-center rounded-full bg-black/55 text-white backdrop-blur">
-                  <X size={15} />
-                </button>
-              </div>
-            ) : (
-              <button type="button" onClick={() => fileInputRef.current?.click()} className="tappable flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-line bg-panel text-sm font-bold text-muted transition hover:border-volt/40 hover:text-volt">
-                <ImagePlus size={17} /> Adjuntar imagen
-              </button>
-            )}
-            <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={handleImageChange} className="hidden" />
-          </div>
-
-          <SendButton type="submit" loading={submitting} success={saved} sentLabel="¡Enviado!" className="w-full">
-            Publicar comunicado
-          </SendButton>
-          <p className="text-center text-[11px] text-muted">Se notificará a {advisors.length} {advisors.length === 1 ? "asesor" : "asesores"} (push + interna).</p>
-        </form>
-      </Card>
-
-      {/* Lista de comunicados */}
-      <div className="col-span-3 space-y-3">
-        {announcements.length > 0 ? (
-          <div className="relative">
-            <Search size={16} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-muted" />
-            <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar comunicado…" className="min-h-11 w-full rounded-2xl border border-line bg-panel pl-10 pr-3 text-sm font-semibold text-ink outline-none transition focus:border-volt focus:ring-4 focus:ring-volt/10" />
-          </div>
-        ) : null}
-        <AnimatePresence initial={false}>
-          {filtered.map((item) => {
-            const reads = item.readBy.length;
-            const readPct = advisors.length ? Math.round((reads / advisors.length) * 100) : 0;
-            const reactionCount = item.reactions.length;
-            return (
-              <motion.div key={item.id} layout exit={{ opacity: 0, scale: 0.96, x: 40 }}>
-                <Card className="p-5">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-start gap-3">
-                      <ProfileAvatar name={authorName(item.authorId)} photoUrl={authorPhoto(item.authorId)} size="sm" className="size-9 rounded-full shadow-none" />
-                      <div>
-                        <h3 className="text-[15px] font-semibold leading-tight text-ink">{item.title}</h3>
-                        <p className="text-[11px] text-muted">{authorName(item.authorId)} · {item.date}</p>
-                      </div>
+                {/* Panel de redacción con IA. Antes iba con blancos y negros
+                    fijos (bg-[#0A0A0A], text-white): en tema claro era ilegible. */}
+                {showAnnouncementPrompt ? (
+                  <div className="mb-3 space-y-2 rounded-xl border border-accent/25 bg-accent-quiet p-3">
+                    <label htmlFor="prompt-ia" className="flex items-center gap-1.5 text-caption font-medium text-ink">
+                      <Sparkles size={12} className="text-accent" /> ¿De qué trata el comunicado?
+                    </label>
+                    <div className="flex gap-2">
+                      <input
+                        id="prompt-ia"
+                        type="text"
+                        value={announcementPrompt}
+                        onChange={(e) => setAnnouncementPrompt(e.target.value)}
+                        placeholder="Promoción de jeans 30% este fin de semana…"
+                        className={`${deskInput} min-h-9 flex-1 text-caption`}
+                      />
+                      <DeskButton
+                        type="button"
+                        onClick={() => void handleGenerateAnnouncement()}
+                        disabled={generatingAnnouncement || !announcementPrompt.trim()}
+                        className="min-h-9 shrink-0 px-3 text-caption"
+                      >
+                        {generatingAnnouncement ? "Generando…" : "Generar"}
+                      </DeskButton>
                     </div>
-                    <button onClick={() => setPendingDeleteId(item.id)} aria-label="Eliminar comunicado" className="tappable grid size-9 place-items-center rounded-full text-muted transition hover:bg-rose-50 hover:text-rose-500 dark:hover:bg-rose-950/30">
-                      <Trash2 size={16} />
-                    </button>
                   </div>
-                  <p className="mt-2.5 whitespace-pre-line text-sm leading-6 text-ink/80">{item.body}</p>
-                  {item.imageUrl ? (
-                    <a href={item.imageUrl} target="_blank" rel="noopener noreferrer" className="mt-3 block overflow-hidden rounded-2xl border border-line">
-                      <NextImage src={item.imageUrl} alt="Imagen del comunicado" width={900} height={400} className="max-h-72 w-full object-cover" />
-                    </a>
-                  ) : null}
-                  <div className="mt-3 flex items-center gap-2 border-t border-line pt-3">
-                    <Badge tone={readPct >= 100 ? "success" : "default"}>{reads}/{advisors.length} leído{reads === 1 ? "" : "s"} · {readPct}%</Badge>
-                    {reactionCount > 0 ? <Badge tone="info">{reactionCount} reacción{reactionCount === 1 ? "" : "es"}</Badge> : null}
+                ) : null}
+
+                <form className="grid gap-3" onSubmit={publish}>
+                  <AppInput label="Título" value={title} onChange={(e) => setTitle(e.target.value)} required />
+                  <AppTextarea label="Mensaje" value={body} onChange={(e) => setBody(e.target.value)} required />
+
+                  <div>
+                    <p className="mb-1.5 text-caption font-medium text-muted">Imagen (opcional)</p>
+                    {imagePreview ? (
+                      <div className="relative overflow-hidden rounded-xl border border-line">
+                        <NextImage src={imagePreview} alt="Previsualización del comunicado" width={600} height={300} className="max-h-52 w-full object-cover" />
+                        <button
+                          type="button"
+                          onClick={removeImage}
+                          aria-label="Quitar imagen"
+                          className="absolute right-2 top-2 grid size-8 place-items-center rounded-lg bg-black/55 text-white backdrop-blur"
+                        >
+                          <X size={15} />
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-dashed border-line bg-panel text-ui font-medium text-muted transition-colors hover:border-accent/40 hover:text-accent"
+                      >
+                        <ImagePlus size={16} /> Adjuntar imagen
+                      </button>
+                    )}
+                    <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={handleImageChange} className="hidden" />
                   </div>
-                </Card>
-              </motion.div>
-            );
-          })}
-        </AnimatePresence>
-        {announcements.length === 0 && data ? (
-          <Card><EmptyState icon={Megaphone} title="Sin comunicados" description="Crea el primero para tu equipo desde el panel de la izquierda." /></Card>
-        ) : filtered.length === 0 ? (
-          <Card className="p-8 text-center text-sm text-muted">Sin resultados para “{query}”.</Card>
-        ) : null}
+
+                  <DeskPrimaryButton type="submit" disabled={submitting} className="w-full">
+                    {submitting ? "Publicando…" : saved ? "¡Enviado!" : "Publicar comunicado"}
+                  </DeskPrimaryButton>
+                </form>
+              </DeskPanel>
+            </DeskSection>
+          </div>
+        </DeskReveal>
+
+        <DeskReveal index={1}>
+          <DeskSection title={`Publicados · ${filtered.length}`}>
+            {announcements.length > 0 ? (
+              <div className="relative mb-4 max-w-md">
+                <label className="sr-only" htmlFor="buscar-comunicado">Buscar comunicado</label>
+                <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
+                <input
+                  id="buscar-comunicado"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Buscar comunicado…"
+                  className={`${deskInput} pl-9`}
+                />
+              </div>
+            ) : null}
+
+            {!data ? (
+              <div className="space-y-3">{[0, 1, 2].map((i) => <DeskSkeleton key={i} className="h-36" />)}</div>
+            ) : announcements.length === 0 ? (
+              <DeskEmpty
+                icon={Megaphone}
+                title="Sin comunicados todavía"
+                hint="Publica el primero desde el panel de la izquierda. Al equipo le llega como notificación push."
+              />
+            ) : filtered.length === 0 ? (
+              <DeskEmpty title="Sin resultados" hint={`Nada coincide con “${query}”.`} />
+            ) : (
+              <AnimatePresence initial={false}>
+                {filtered.map((item) => {
+                  const reads = item.readBy.length;
+                  const readPct = advisors.length ? Math.round((reads / advisors.length) * 100) : 0;
+                  const reactionCount = item.reactions.length;
+                  // Sin leer por todo el equipo = "sin atender". Es exactamente
+                  // el caso para el que existe ShineBorder.
+                  const unread = advisors.length > 0 && reads < advisors.length;
+
+                  const card = (
+                    <article className="rounded-xl border border-line bg-card p-5">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex min-w-0 items-start gap-3">
+                          <ProfileAvatar name={authorName(item.authorId)} photoUrl={authorPhoto(item.authorId)} size="sm" className="size-8 shrink-0 rounded-lg text-[10px] shadow-none" />
+                          <div className="min-w-0">
+                            <h3 className="text-ui font-semibold leading-tight text-ink">{item.title}</h3>
+                            <p className="text-caption text-muted">{authorName(item.authorId)} · {item.date}</p>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => setPendingDeleteId(item.id)}
+                          aria-label={`Eliminar ${item.title}`}
+                          className="grid size-8 shrink-0 place-items-center rounded-lg text-muted transition-colors hover:bg-danger/10 hover:text-danger"
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      </div>
+
+                      <p className="mt-3 max-w-[70ch] whitespace-pre-line text-ui leading-6 text-ink-2">{item.body}</p>
+
+                      {item.imageUrl ? (
+                        <a href={item.imageUrl} target="_blank" rel="noopener noreferrer" className="mt-3 block max-w-2xl overflow-hidden rounded-xl border border-line">
+                          <NextImage src={item.imageUrl} alt="Imagen del comunicado" width={900} height={400} className="max-h-72 w-full object-cover" />
+                        </a>
+                      ) : null}
+
+                      <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-line pt-3">
+                        <Badge tone={readPct >= 100 ? "success" : "default"}>
+                          {reads}/{advisors.length} leído{reads === 1 ? "" : "s"} · {readPct}%
+                        </Badge>
+                        {reactionCount > 0 ? <Badge tone="info">{reactionCount} reacción{reactionCount === 1 ? "" : "es"}</Badge> : null}
+                      </div>
+                    </article>
+                  );
+
+                  return (
+                    <motion.div key={item.id} layout exit={{ opacity: 0, scale: 0.96, x: 40 }} className="mb-3">
+                      {unread ? <ShineBorder radius="rounded-[14px]" ringPx={1.5}>{card}</ShineBorder> : card}
+                    </motion.div>
+                  );
+                })}
+              </AnimatePresence>
+            )}
+          </DeskSection>
+        </DeskReveal>
       </div>
 
       <ConfirmDialog
@@ -258,6 +311,6 @@ export default function EscritorioComunicados() {
         onConfirm={() => void confirmDelete()}
         onCancel={() => setPendingDeleteId(null)}
       />
-    </div>
+    </>
   );
 }

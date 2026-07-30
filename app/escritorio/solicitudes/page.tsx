@@ -5,8 +5,12 @@ import { CalendarOff, Check, Send, X } from "lucide-react";
 import { getSession } from "@/lib/auth";
 import { DAY_BALANCE_LABELS, SHIFT_TYPE_LABELS, dayBalanceField, formatRequestDate, isHourType } from "@/lib/shift-requests";
 import type { User } from "@/lib/types";
-import { Badge, Button, Card, EmptyState, ProfileAvatar, Skeleton } from "@/components/ui";
+import { Badge, ProfileAvatar } from "@/components/ui";
 import { useToast } from "@/components/Toast";
+import {
+  DeskButton, DeskEmpty, DeskPanel, DeskPrimaryButton, DeskReveal, DeskSection, DeskSkeleton, deskInput
+} from "@/components/desktop/DeskUI";
+import { ShineBorder } from "@/components/magic/ShineBorder";
 
 type ShiftRequest = {
   id: string;
@@ -91,7 +95,7 @@ export default function EscritorioSolicitudes() {
       });
       const payload = await response.json() as { error?: string };
       if (!response.ok) throw new Error(payload.error ?? "No se pudo enviar la solicitud.");
-      toast("Solicitud enviada. ✅", "success");
+      toast("Solicitud enviada.", "success");
       setDate("");
       setReason("");
       setHours("");
@@ -127,114 +131,168 @@ export default function EscritorioSolicitudes() {
   const dayBalance = dayField === "vacationDays" ? vacationDays : dayField === "paidDays" ? paidDays : 0;
   const dayBlocked = dayField !== null && dayBalance < 1;
   const hourBlocked = isHourType(type) && (balance <= 0 || (Number(hours) || 0) > balance);
-  const inputClass = "min-h-11 rounded-2xl border border-line bg-panel px-3 text-sm font-bold text-ink outline-none focus:border-volt";
 
   return (
-    <div className="grid grid-cols-5 gap-5">
+    <div className="grid gap-10 xl:grid-cols-[22rem_minmax(0,1fr)]">
       {/* Formulario */}
-      <Card className="col-span-2 h-fit p-5">
-        <div className="mb-3 flex items-center gap-2">
-          <CalendarOff className="text-volt" size={18} />
-          <h2 className="text-lg font-semibold text-ink">Solicitar</h2>
+      <DeskReveal index={0}>
+        <div className="xl:sticky xl:top-20">
+          <DeskSection title="Solicitar">
+            <DeskPanel>
+              <div className="mb-4 flex flex-wrap gap-1.5">
+                <Badge tone={balance > 0 ? "success" : "default"}>Horas: {balance} h</Badge>
+                <Badge tone={vacationDays > 0 ? "success" : "default"}>Vacaciones: {vacationDays} d</Badge>
+                <Badge tone={paidDays > 0 ? "success" : "default"}>Pago de día: {paidDays} d</Badge>
+              </div>
+
+              <div className="grid gap-3">
+                <div className="grid grid-cols-2 gap-2">
+                  <label className="grid gap-1">
+                    <span className="text-caption font-medium text-muted">Fecha</span>
+                    <input type="date" value={date} onChange={(event) => setDate(event.target.value)} className={deskInput} />
+                  </label>
+                  <label className="grid gap-1">
+                    <span className="text-caption font-medium text-muted">Tipo</span>
+                    <select value={type} onChange={(event) => setType(event.target.value)} className={deskInput}>
+                      <optgroup label="Día completo">
+                        <option value="VACACIONES">Vacaciones</option>
+                        <option value="DESCANSO">Descanso</option>
+                        <option value="PAGO_DIA">Pago de día</option>
+                      </optgroup>
+                      <optgroup label="Permiso de horas">
+                        <option value="SALIR_TEMPRANO">Salir temprano</option>
+                        <option value="ENTRAR_TARDE">Entrar tarde</option>
+                      </optgroup>
+                    </select>
+                  </label>
+                </div>
+
+                {isHourType(type) ? (
+                  <label className="grid gap-1">
+                    <span className="text-caption font-medium text-muted">Horas (de tu saldo de {balance} h)</span>
+                    <input
+                      type="number" step="0.5" min="0.5" inputMode="decimal"
+                      value={hours} onChange={(event) => setHours(event.target.value)}
+                      placeholder="2" className={deskInput}
+                      aria-describedby={balance <= 0 || (Number(hours) || 0) > balance ? "aviso-horas" : undefined}
+                    />
+                    {balance <= 0 ? (
+                      <span id="aviso-horas" className="text-caption font-medium text-danger">No tienes saldo de horas.</span>
+                    ) : (Number(hours) || 0) > balance ? (
+                      <span id="aviso-horas" className="text-caption font-medium text-danger">Máximo {balance} h disponibles.</span>
+                    ) : null}
+                  </label>
+                ) : null}
+
+                {dayBlocked ? (
+                  <p className="text-caption font-medium text-danger">
+                    No tienes saldo de {DAY_BALANCE_LABELS[dayField!]} disponible.
+                  </p>
+                ) : null}
+
+                <label className="grid gap-1">
+                  <span className="text-caption font-medium text-muted">Motivo (opcional)</span>
+                  <textarea
+                    value={reason}
+                    onChange={(event) => setReason(event.target.value)}
+                    maxLength={280}
+                    rows={2}
+                    placeholder="Cita médica, trámite…"
+                    className={`${deskInput} py-2.5`}
+                  />
+                </label>
+
+                <DeskPrimaryButton
+                  type="button"
+                  onClick={() => void submit()}
+                  disabled={sending || hourBlocked || dayBlocked}
+                  className="w-full"
+                >
+                  <Send size={15} /> {sending ? "Enviando…" : "Enviar solicitud"}
+                </DeskPrimaryButton>
+              </div>
+            </DeskPanel>
+          </DeskSection>
         </div>
-        <div className="mb-3 flex flex-wrap gap-1.5">
-          <Badge tone={balance > 0 ? "success" : "default"}>Horas: {balance} h</Badge>
-          <Badge tone={vacationDays > 0 ? "success" : "default"}>Vacaciones: {vacationDays} d</Badge>
-          <Badge tone={paidDays > 0 ? "success" : "default"}>Pago de día: {paidDays} d</Badge>
-        </div>
-        <div className="grid gap-3">
-          <div className="grid grid-cols-2 gap-2">
-            <label className="grid gap-1">
-              <span className="text-xs font-bold text-muted">Fecha</span>
-              <input type="date" value={date} onChange={(event) => setDate(event.target.value)} className={inputClass} />
-            </label>
-            <label className="grid gap-1">
-              <span className="text-xs font-bold text-muted">Tipo</span>
-              <select value={type} onChange={(event) => setType(event.target.value)} className={inputClass}>
-                <optgroup label="Día completo">
-                  <option value="VACACIONES">Vacaciones</option>
-                  <option value="DESCANSO">Descanso</option>
-                  <option value="PAGO_DIA">Pago de día</option>
-                </optgroup>
-                <optgroup label="Permiso de horas">
-                  <option value="SALIR_TEMPRANO">Salir temprano</option>
-                  <option value="ENTRAR_TARDE">Entrar tarde</option>
-                </optgroup>
-              </select>
-            </label>
-          </div>
-          {isHourType(type) ? (
-            <label className="grid gap-1">
-              <span className="text-xs font-bold text-muted">Horas (de tu saldo de {balance} h)</span>
-              <input type="number" step="0.5" min="0.5" inputMode="decimal" value={hours} onChange={(event) => setHours(event.target.value)} placeholder="Ej. 2" className={inputClass} />
-              {balance <= 0 ? (
-                <span className="text-xs font-semibold text-rose-600">No tienes saldo de horas.</span>
-              ) : (Number(hours) || 0) > balance ? (
-                <span className="text-xs font-semibold text-rose-600">Máximo {balance} h disponibles.</span>
-              ) : null}
-            </label>
-          ) : null}
-          {dayBlocked ? (
-            <span className="text-xs font-semibold text-rose-600">No tienes saldo de {DAY_BALANCE_LABELS[dayField!]} disponible.</span>
-          ) : null}
-          <textarea value={reason} onChange={(event) => setReason(event.target.value)} maxLength={280} rows={2} placeholder="Motivo (opcional)…" className="rounded-2xl border border-line bg-panel px-3 py-2.5 text-sm font-semibold text-ink outline-none focus:border-volt" />
-          <Button type="button" variant="primary" icon={<Send size={16} />} onClick={() => void submit()} disabled={sending || hourBlocked || dayBlocked} className="w-full">{sending ? "Enviando…" : "Enviar solicitud"}</Button>
-        </div>
-      </Card>
+      </DeskReveal>
 
       {/* Listas */}
-      <div className="col-span-3 space-y-4">
-        {isManager && pending.length > 0 ? (
-          <Card className="p-5">
-            <h2 className="mb-3 text-lg font-semibold text-ink">Pendientes por aprobar <span className="text-volt">({pending.length})</span></h2>
-            <div className="grid gap-2.5 md:grid-cols-2">
-              {pending.map((request) => (
-                <div key={request.id} className="rounded-2xl border border-line p-3">
-                  <div className="flex items-center gap-2.5">
-                    <ProfileAvatar name={request.requester.name} photoUrl={request.requester.photoUrl} size="sm" />
-                    <div className="min-w-0">
-                      <p className="truncate font-semibold text-ink">{request.requester.name}</p>
-                      <p className="text-xs text-muted">{typeLabel(request)} · {formatRequestDate(request.date)}</p>
-                    </div>
-                  </div>
-                  {request.reason ? <p className="mt-2 text-sm text-muted">“{request.reason}”</p> : null}
-                  <div className="mt-3 grid grid-cols-2 gap-2">
-                    <Button type="button" variant="primary" icon={<Check size={16} />} onClick={() => void resolve(request.id, "APROBADO")} disabled={busyId === request.id} className="min-h-10">Aprobar</Button>
-                    <Button type="button" variant="ghost" icon={<X size={16} />} onClick={() => void resolve(request.id, "RECHAZADO")} disabled={busyId === request.id} className="min-h-10 text-rose-600">Rechazar</Button>
+      <DeskReveal index={1}>
+        <div className="space-y-8">
+          {isManager && pending.length > 0 ? (
+            <DeskSection title={`Pendientes por aprobar · ${pending.length}`}>
+              {/* Sin atender y bloqueando a alguien del equipo: es el caso
+                  exacto de ShineBorder. */}
+              <ShineBorder radius="rounded-[18px]" ringPx={1.5} tone="ember">
+                <div className="rounded-2xl border border-line bg-card p-5">
+                  <div className="grid gap-3 md:grid-cols-2 2xl:grid-cols-3">
+                    {pending.map((request) => (
+                      <article key={request.id} className="rounded-xl border border-line bg-panel p-3">
+                        <div className="flex min-w-0 items-center gap-2.5">
+                          <ProfileAvatar name={request.requester.name} photoUrl={request.requester.photoUrl} size="sm" className="size-8 shrink-0 rounded-lg text-[10px] shadow-none" />
+                          <div className="min-w-0">
+                            <p className="truncate text-ui font-medium text-ink">{request.requester.name}</p>
+                            <p className="truncate text-caption text-muted">{typeLabel(request)} · {formatRequestDate(request.date)}</p>
+                          </div>
+                        </div>
+                        {request.reason ? <p className="mt-2 text-caption text-muted">“{request.reason}”</p> : null}
+                        <div className="mt-3 grid grid-cols-2 gap-2">
+                          <DeskButton
+                            type="button"
+                            onClick={() => void resolve(request.id, "APROBADO")}
+                            disabled={busyId === request.id}
+                            className="border-ok/40 text-ok hover:border-ok"
+                          >
+                            <Check size={15} /> Aprobar
+                          </DeskButton>
+                          <DeskButton
+                            type="button"
+                            onClick={() => void resolve(request.id, "RECHAZADO")}
+                            disabled={busyId === request.id}
+                            className="text-danger hover:border-danger/50"
+                          >
+                            <X size={15} /> Rechazar
+                          </DeskButton>
+                        </div>
+                      </article>
+                    ))}
                   </div>
                 </div>
-              ))}
-            </div>
-          </Card>
-        ) : null}
+              </ShineBorder>
+            </DeskSection>
+          ) : null}
 
-        <Card className="p-5">
-          <h2 className="mb-3 text-lg font-semibold text-ink">{isManager ? "Historial" : "Mis solicitudes"}</h2>
-          {loading ? (
-            <div className="space-y-2.5 py-2"><Skeleton className="h-12" /><Skeleton className="h-12" /><Skeleton className="h-12" /></div>
-          ) : (isManager ? history : requests).length === 0 ? (
-            <EmptyState
-              icon={CalendarOff}
-              title="Sin solicitudes todavía"
-              description={isManager ? "Cuando el equipo solicite días o permisos, aparecerán aquí." : "Usa el formulario para pedir vacaciones, descanso o permisos."}
-            />
-          ) : (
-            <div className="divide-y divide-line">
-              {(isManager ? history : requests).map((request) => (
-                <div key={request.id} className="flex items-start justify-between gap-3 py-2.5">
-                  <div className="min-w-0">
-                    <p className="text-sm font-bold text-ink">{isManager ? `${request.requester.name} · ` : ""}{typeLabel(request)}</p>
-                    <p className="text-xs text-muted">{formatRequestDate(request.date)}</p>
-                    {request.reason ? <p className="mt-0.5 text-xs text-muted">“{request.reason}”</p> : null}
-                    {request.managerNote ? <p className="mt-0.5 text-xs text-muted">Nota: {request.managerNote}</p> : null}
-                  </div>
-                  <Badge tone={statusTone[request.status]}>{statusLabel[request.status]}</Badge>
-                </div>
-              ))}
-            </div>
-          )}
-        </Card>
-      </div>
+          <DeskSection title={isManager ? "Historial" : "Mis solicitudes"}>
+            {loading ? (
+              <div className="space-y-2.5">{[0, 1, 2].map((i) => <DeskSkeleton key={i} className="h-12" />)}</div>
+            ) : (isManager ? history : requests).length === 0 ? (
+              <DeskEmpty
+                icon={CalendarOff}
+                title="Sin solicitudes todavía"
+                hint={isManager
+                  ? "Cuando el equipo pida días o permisos, aparecerán aquí para aprobar o rechazar."
+                  : "Usa el formulario de la izquierda para pedir vacaciones, descanso o permisos de horas."}
+              />
+            ) : (
+              <ul className="max-w-4xl">
+                {(isManager ? history : requests).map((request) => (
+                  <li key={request.id} className="flex items-start justify-between gap-3 border-b border-line py-3 last:border-b-0">
+                    <div className="min-w-0">
+                      <p className="text-ui text-ink">
+                        {isManager ? `${request.requester.name} · ` : ""}{typeLabel(request)}
+                      </p>
+                      <p className="text-caption text-muted">{formatRequestDate(request.date)}</p>
+                      {request.reason ? <p className="mt-0.5 text-caption text-muted">“{request.reason}”</p> : null}
+                      {request.managerNote ? <p className="mt-0.5 text-caption text-muted">Nota: {request.managerNote}</p> : null}
+                    </div>
+                    <Badge tone={statusTone[request.status]}>{statusLabel[request.status]}</Badge>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </DeskSection>
+        </div>
+      </DeskReveal>
     </div>
   );
 }

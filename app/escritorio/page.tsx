@@ -1,21 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import { motion } from "framer-motion";
-import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis } from "recharts";
-import { AlertTriangle, ArrowRight, Megaphone, Receipt, ShoppingBag, Target, TrendingUp, UsersRound } from "lucide-react";
-import type { LucideIcon } from "lucide-react";
+import { Cake, ChevronRight } from "lucide-react";
 import { completion, money } from "@/lib/format";
-import { buildSalesTrend } from "@/lib/trend";
+import { buildDailySeries, buildSalesTrend } from "@/lib/trend";
 import { cn } from "@/lib/utils";
 import { isRestingToday, restLabel, scheduleStatusByUser } from "@/lib/working-today";
-import { achievementTone, Badge, Card, ProgressBar, ProgressRing, ProfileAvatar, priorityTone } from "@/components/ui";
-import { TeamCelebrationsCard } from "@/components/home/TeamCelebrationsCard";
+import { ProfileAvatar } from "@/components/ui";
 import { useTheme } from "@/components/ThemeProvider";
 import { useDesktopData } from "@/components/desktop/useDesktopData";
 import { DesktopError } from "@/components/desktop/DesktopError";
+import { DeskTrendChart, Sparkline } from "@/components/desktop/DeskCharts";
+import { DeskMeter, DeskReveal } from "@/components/desktop/DeskUI";
 
-// Días hasta el próximo cumpleaños (para ordenar por más cercano).
+/** Días hasta el próximo cumpleaños (para ordenar por más cercano). */
 function daysUntilBirthday(birthDate?: string | null): number {
   if (!birthDate) return 9999;
   const d = new Date(`${birthDate}T00:00:00Z`);
@@ -26,198 +24,346 @@ function daysUntilBirthday(birthDate?: string | null): number {
   return Math.round((next.getTime() - today.getTime()) / 86_400_000);
 }
 
+/**
+ * Regla del proyecto: si un divisor es 0, null o undefined se muestra “—”.
+ * Nunca 0, porque un cero se lee como un dato real y aquí significa "sin dato".
+ */
+function ratio(numerator?: number | null, denominator?: number | null) {
+  if (!numerator || !denominator) return null;
+  return numerator / denominator;
+}
+
+/** "2026-08-01" → "1 ago". Sin esto la fecha cruda parte la fila en dos renglones. */
+function shortDate(value?: string | null) {
+  if (!value) return "Sin fecha";
+  const date = new Date(`${value}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleDateString("es-MX", { day: "numeric", month: "short" }).replace(".", "");
+}
+
+
 export default function EscritorioDashboard() {
   const { data, error, reload } = useDesktopData();
   const { isDark } = useTheme();
 
   if (error && !data) return <DesktopError onRetry={reload} />;
-  if (!data) {
-    return (
-      <div className="animate-pulse space-y-5">
-        <div className="grid grid-cols-4 gap-4">{[0, 1, 2, 3].map((i) => <div key={i} className="h-28 rounded-3xl bg-panel" />)}</div>
-        <div className="grid grid-cols-3 gap-4"><div className="col-span-2 h-72 rounded-3xl bg-panel" /><div className="h-72 rounded-3xl bg-panel" /></div>
-      </div>
-    );
-  }
+  if (!data) return <DashboardSkeleton />;
 
   const store = data.dashboardDaily;
-  const advisors = data.users.filter((u) => u.role === "ASESOR");
-  const storeProgress = completion(store?.dailySales ?? 0, store?.dailyGoal ?? 0);
+  const sales = store?.dailySales ?? 0;
+  const goal = store?.dailyGoal ?? 0;
+  const progress = completion(sales, goal);
+  const remaining = Math.max(0, goal - sales);
   const todayKey = store.date;
-  const critical = data.pendings
-    .filter((p) => (p.priority === "critica" || p.priority === "alta") && p.status !== "completado")
-    .slice(0, 6);
-  const userName = (id: string) => data.users.find((u) => u.id === id)?.name ?? "Equipo";
 
-  // Mismo criterio que /manager: manda el archivo de HORARIOS (lib/working-today).
+  const advisors = data.users.filter((u) => u.role === "ASESOR");
   const statusToday = scheduleStatusByUser(data.schedules, todayKey);
+
   const ranking = advisors
-    .map((a) => {
-      const kpi = data.kpis.find((k) => k.userId === a.id && k.date === todayKey);
-      const status = statusToday.get(a.id);
+    .map((advisor) => {
+      const kpi = data.kpis.find((k) => k.userId === advisor.id && k.date === todayKey);
+      const status = statusToday.get(advisor.id);
       const resting = isRestingToday(status, kpi);
-      const progress = completion(kpi?.dailySales ?? 0, kpi?.dailyGoal ?? 0);
-      return { advisor: a, sales: kpi?.dailySales ?? 0, goal: kpi?.dailyGoal ?? 0, progress, resting, restText: restLabel(status) };
+      return {
+        advisor,
+        sales: kpi?.dailySales ?? 0,
+        goal: kpi?.dailyGoal ?? 0,
+        progress: completion(kpi?.dailySales ?? 0, kpi?.dailyGoal ?? 0),
+        resting,
+        restText: restLabel(status),
+        // Forma de sus últimos 7 días: el alcance de hoy no dice si viene
+        // subiendo o cayendo, y eso es justo lo que decide a quién empujar.
+        series: buildDailySeries(
+          data.kpis.filter((k) => k.userId === advisor.id).map((k) => ({ date: k.date, value: k.dailySales })),
+          todayKey,
+          7
+        )
+      };
     })
     .sort((a, b) => Number(a.resting) - Number(b.resting) || b.progress - a.progress || b.sales - a.sales);
 
-  const celebrationMembers = [...data.users]
-    .filter((u) => u.birthDate || u.hireDate)
-    .sort((a, b) => daysUntilBirthday(a.birthDate) - daysUntilBirthday(b.birthDate))
-    .slice(0, 6)
-    .map((u) => ({ id: u.id, name: u.name, photoUrl: u.photoUrl, birthDate: u.birthDate, hireDate: u.hireDate }));
+  // Cola de atención: lo crítico y lo alto que sigue abierto, lo vencido primero.
+  const attention = data.pendings
+    .filter((p) => (p.priority === "critica" || p.priority === "alta") && p.status !== "completado")
+    .map((p) => ({ ...p, overdue: Boolean(p.dueDate) && p.dueDate < todayKey }))
+    .sort((a, b) => Number(b.overdue) - Number(a.overdue) || (a.dueDate ?? "").localeCompare(b.dueDate ?? ""))
+    .slice(0, 5);
+
+  const userName = (id: string) => data.users.find((u) => u.id === id)?.name ?? "Equipo";
+
+  const celebrations = [...data.users]
+    .filter((u) => u.birthDate)
+    .map((u) => ({ ...u, days: daysUntilBirthday(u.birthDate) }))
+    .filter((u) => u.days <= 30)
+    .sort((a, b) => a.days - b.days)
+    .slice(0, 4);
 
   const trend = buildSalesTrend(
     data.kpis.map((k) => ({ date: k.date, dailySales: k.dailySales, dailyGoal: k.dailyGoal })),
     todayKey
   );
-  const tooltipStyle = isDark
-    ? { background: "#141519", border: "1px solid #23242A", borderRadius: 12, color: "#F2F3F5" }
-    : { background: "#FFFFFF", border: "1px solid #ECECEF", borderRadius: 12, color: "#17181C" };
+
+  // Fórmulas del proyecto: UPT = piezas / tickets, AUR = venta / piezas.
+  // DashboardDailyKpi no las trae precalculadas, solo los crudos.
+  const upt = ratio(store?.pieces, store?.transactions);
+  const aur = ratio(sales, store?.pieces);
 
   return (
-    <div className="space-y-5">
-      {/* KPIs de tienda */}
-      <div className="grid grid-cols-4 gap-4">
-        <KpiTile icon={ShoppingBag} label="Venta hoy" value={money(store?.dailySales ?? 0)} tone="text-volt" />
-        <KpiTile icon={Target} label="Meta hoy" value={money(store?.dailyGoal ?? 0)} tone="text-sky-500" />
-        <KpiTile icon={TrendingUp} label="Conversión" value={store?.conversion == null ? "—" : `${store.conversion}%`} tone="text-purple-500" />
-        <KpiTile icon={Receipt} label="Tickets" value={String(store?.transactions ?? 0)} tone="text-emerald-500" />
-      </div>
+    <div className="space-y-9">
+      {/* ─── Franja partida: la cifra del día y lo que requiere acción, mismo peso ──
+           Las entradas van escalonadas por bandas, no por elemento: escalonar
+           cada fila de la tabla se percibiría como lentitud, no como pulido. */}
+      <DeskReveal index={0} className="grid gap-8 lg:grid-cols-2 lg:gap-12">
+        <div>
+          <h2 className="text-ui font-medium text-muted">Venta de hoy</h2>
+          <p className="mt-2 text-metric font-semibold text-ink">{money(sales)}</p>
+          <p className="mt-2 text-ui text-ink-2">
+            {goal > 0 ? (
+              <>
+                <span className={cn("font-semibold", progress >= 100 ? "text-ok" : "text-ink")}>{progress}%</span>
+                {" de la meta · "}
+                {remaining > 0 ? `faltan ${money(remaining)}` : `superada por ${money(sales - goal)}`}
+              </>
+            ) : (
+              "Sin meta cargada para hoy"
+            )}
+          </p>
+          <DeskMeter value={progress} className="mt-4" />
+          <p className="mt-2 text-caption text-muted">Meta {goal > 0 ? money(goal) : "—"}</p>
 
-      <div className="grid grid-cols-3 gap-4">
-        {/* Tendencia de ventas */}
-        <Card className="col-span-2 p-5">
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-ink">Tendencia de ventas</h2>
-            <Badge>Últimos {trend.length} días</Badge>
-          </div>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={trend} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="deskSales" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#2563EB" stopOpacity={0.4} />
-                    <stop offset="95%" stopColor="#2563EB" stopOpacity={0.04} />
-                  </linearGradient>
-                  <linearGradient id="deskGoal" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#94A3B8" stopOpacity={0.18} />
-                    <stop offset="95%" stopColor="#94A3B8" stopOpacity={0.02} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke={isDark ? "rgba(255,255,255,0.06)" : "rgba(15,23,42,0.06)"} vertical={false} />
-                <XAxis dataKey="label" tick={{ fill: "#94A3B8", fontSize: 11 }} axisLine={false} tickLine={false} />
-                <Tooltip contentStyle={tooltipStyle} formatter={(value, name) => [money(Number(value)), name === "sales" ? "Venta" : "Meta"]} labelFormatter={(l) => `Día ${l}`} />
-                <Area type="monotone" dataKey="goal" stroke="#94A3B8" strokeWidth={1.5} strokeDasharray="4 4" fill="url(#deskGoal)" dot={false} />
-                <Area type="monotone" dataKey="sales" stroke="#2563EB" strokeWidth={2.5} fill="url(#deskSales)" dot={false} activeDot={{ r: 5 }} />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </Card>
+          {/* La tendencia vive aquí y no en su propia banda: separada dejaba
+              ~200px de vacío bajo la cifra, porque esta columna se estira para
+              igualar la altura de la cola de atención. */}
+          {/* Sin días sincronizados no se pinta la gráfica: dejaba 180px vacíos
+              bajo el título "Tendencia · últimos 0 días", que además no
+              significa nada. */}
+          {trend.length === 0 ? (
+            <p className="mt-8 text-caption text-muted">
+              La tendencia aparece en cuanto el RDV sincroniza el primer día del período.
+            </p>
+          ) : (
+            <div className="mt-8">
+              <DeskTrendChart data={trend} isDark={isDark} />
+            </div>
+          )}
+        </div>
 
-        {/* Alcance del día + accesos */}
-        <Card className="flex flex-col items-center justify-center p-5 text-center">
-          <p className="text-[11px] font-bold uppercase tracking-[0.13em] text-muted">Alcance del día</p>
-          <div className="my-3"><ProgressRing value={storeProgress} tone={achievementTone(storeProgress)} size={120} /></div>
-          <p className="text-sm text-muted">{money(store?.dailySales ?? 0)} de {money(store?.dailyGoal ?? 0)}</p>
-          <div className="mt-4 grid w-full gap-2">
-            <QuickAction href="/escritorio/comunicados" icon={Megaphone} label="Nuevo comunicado" />
-            <QuickAction href="/escritorio/pendientes" icon={AlertTriangle} label="Nuevo pendiente" />
+        <div className="lg:border-l lg:border-line lg:pl-12">
+          <div className="flex items-baseline justify-between gap-4">
+            <h2 className="text-ui font-medium text-muted">Requiere atención</h2>
+            <Link
+              href="/escritorio/pendientes"
+              className="flex items-center gap-1 text-caption font-medium text-accent hover:underline"
+            >
+              Ver pendientes <ChevronRight size={13} />
+            </Link>
           </div>
-        </Card>
-      </div>
 
-      <div className="grid grid-cols-3 gap-4">
-        {/* Ranking del equipo */}
-        <Card className="col-span-2 p-5">
-          <div className="mb-3 flex items-center gap-2">
-            <UsersRound className="text-volt" size={18} />
-            <h2 className="text-lg font-semibold text-ink">Equipo hoy</h2>
+          {attention.length === 0 ? (
+            <div className="mt-4 rounded-xl border border-dashed border-line px-4 py-8 text-center">
+              <p className="text-ui font-medium text-ink">Nada crítico abierto</p>
+              <p className="mt-1 text-caption text-muted">
+                Los pendientes de prioridad alta y crítica aparecen aquí en cuanto se crean.
+              </p>
+            </div>
+          ) : (
+            <ul className="mt-3">
+              {attention.map((item) => (
+                <li key={item.id} className="border-b border-line last:border-b-0">
+                  <Link
+                    href="/escritorio/pendientes"
+                    className="desk-row flex items-center gap-3 rounded-lg py-2.5 pl-2 pr-1"
+                  >
+                    <span
+                      aria-hidden
+                      className={cn(
+                        "size-1.5 shrink-0 rounded-full",
+                        item.overdue ? "bg-danger" : item.priority === "critica" ? "bg-warn" : "bg-muted"
+                      )}
+                    />
+                    <span className="min-w-0 flex-1 truncate text-ui text-ink">{item.title}</span>
+                    <span className="shrink-0 text-caption text-muted">{userName(item.ownerId)}</span>
+                    {/* El color nunca es la única señal: lo vencido lleva palabra. */}
+                    <span
+                      className={cn(
+                        "w-16 shrink-0 whitespace-nowrap text-right text-caption",
+                        item.overdue ? "font-medium text-danger" : "text-muted"
+                      )}
+                    >
+                      {item.overdue ? "Vencido" : shortDate(item.dueDate)}
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </DeskReveal>
+
+      <hr className="desk-rule" />
+
+      {/* ─── Indicadores secundarios: una fila separada por reglas, no cuatro
+           tarjetas de cuatro colores distintos. ─────────────────────────────── */}
+      <DeskReveal index={1}>
+        <section aria-label="Indicadores del día">
+        <dl className="grid grid-cols-2 gap-y-6 sm:grid-cols-3 xl:grid-cols-5 xl:gap-y-0">
+          <Metric label="Tickets" value={store?.transactions ? String(store.transactions) : "—"} />
+          <Metric label="Piezas" value={store?.pieces ? String(store.pieces) : "—"} />
+          <Metric label="UPT" value={upt ? upt.toFixed(2) : "—"} hint="Piezas por ticket" />
+          <Metric label="AUR" value={aur ? money(aur) : "—"} hint="Venta por pieza" />
+          <Metric
+            label="Conversión"
+            value={store?.conversion == null ? "—" : `${store.conversion}%`}
+            hint={store?.traffic ? `${store.traffic} de tráfico` : "Sin tráfico registrado"}
+          />
+        </dl>
+        </section>
+      </DeskReveal>
+
+      <hr className="desk-rule" />
+
+      {/* ─── Equipo + celebraciones ─────────────────────────────────────────── */}
+      <DeskReveal index={2} className="grid gap-10 xl:grid-cols-[minmax(0,1fr)_18rem]">
+        <div className="min-w-0">
+          <div className="flex items-baseline justify-between gap-4">
+            <h2 className="text-ui font-medium text-muted">Equipo hoy</h2>
+            <Link
+              href="/escritorio/equipo"
+              className="flex items-center gap-1 text-caption font-medium text-accent hover:underline"
+            >
+              Ver equipo <ChevronRight size={13} />
+            </Link>
           </div>
-          <div className="overflow-hidden rounded-2xl border border-line">
-            <table className="w-full text-sm">
-              <thead className="bg-panel text-left text-[11px] font-bold uppercase tracking-[0.1em] text-muted">
-                <tr>
-                  <th className="px-4 py-2.5">Asesor</th>
-                  <th className="px-4 py-2.5 text-right">Venta</th>
-                  <th className="px-4 py-2.5 text-right">Meta</th>
-                  <th className="px-4 py-2.5 w-40">Alcance</th>
+
+          {ranking.length === 0 ? (
+            <div className="mt-4 rounded-xl border border-dashed border-line px-4 py-10 text-center">
+              <p className="text-ui font-medium text-ink">Todavía no hay asesores con datos de hoy</p>
+              <p className="mt-1 text-caption text-muted">
+                Los números aparecen en cuanto el RDV sincroniza la venta del día.
+              </p>
+            </div>
+          ) : (
+            <table className="mt-3 w-full">
+              <caption className="sr-only">Venta, meta y alcance de cada asesor el día de hoy</caption>
+              <thead>
+                <tr className="border-b border-line text-caption font-medium text-muted">
+                  <th scope="col" className="py-2 text-left font-medium">Asesor</th>
+                  <th scope="col" className="hidden py-2 pl-3 text-left font-medium xl:table-cell">7 días</th>
+                  <th scope="col" className="py-2 text-right font-medium">Venta</th>
+                  <th scope="col" className="hidden py-2 text-right font-medium sm:table-cell">Meta</th>
+                  {/* pl-8: sin esa separación "Meta" y "Alcance" se tocan y se
+                      leen como una sola etiqueta. */}
+                  <th scope="col" className="w-48 py-2 pl-8 text-left font-medium">Alcance</th>
                 </tr>
               </thead>
               <tbody>
-                {ranking.map((r, i) => (
-                  <tr key={r.advisor.id} className="border-t border-line transition-colors hover:bg-volt/[0.04] even:bg-black/[0.02] dark:even:bg-white/[0.02]">
-                    <td className="px-4 py-2.5">
-                      <div className="flex items-center gap-2.5">
-                        <ProfileAvatar name={r.advisor.name} photoUrl={r.advisor.photoUrl} size="sm" className="size-8 rounded-xl shadow-none" />
-                        <span className="font-bold text-ink">{i === 0 && !r.resting ? "👑 " : ""}{r.advisor.name}</span>
+                {ranking.map((row) => (
+                  <tr key={row.advisor.id} className="desk-row border-b border-line last:border-b-0">
+                    <td className="py-2.5 pr-3">
+                      <div className="flex min-w-0 items-center gap-2.5">
+                        <ProfileAvatar
+                          name={row.advisor.name}
+                          photoUrl={row.advisor.photoUrl}
+                          size="sm"
+                          className="size-7 shrink-0 rounded-lg text-[10px] shadow-none"
+                        />
+                        <span className="truncate text-ui text-ink">{row.advisor.name}</span>
                       </div>
                     </td>
-                    <td className="px-4 py-2.5 text-right font-semibold text-ink">{money(r.sales)}</td>
-                    <td className="px-4 py-2.5 text-right text-muted">{money(r.goal)}</td>
-                    <td className="px-4 py-2.5">
-                      {r.resting ? <Badge>{r.restText}</Badge> : (
-                        <div className="flex items-center gap-2">
-                          <div className="flex-1"><ProgressBar value={r.progress} tone={achievementTone(r.progress)} /></div>
-                          <span className="w-9 shrink-0 text-right text-xs font-semibold text-ink">{r.progress}%</span>
+                    <td className="hidden py-2.5 pl-3 xl:table-cell">
+                      <Sparkline values={row.series} isDark={isDark} />
+                    </td>
+                    <td className="py-2.5 text-right text-ui font-medium text-ink">{money(row.sales)}</td>
+                    <td className="hidden py-2.5 text-right text-ui text-muted sm:table-cell">
+                      {row.goal > 0 ? money(row.goal) : "—"}
+                    </td>
+                    <td className="py-2.5 pl-8">
+                      {row.resting ? (
+                        <span className="text-caption text-muted">{row.restText}</span>
+                      ) : (
+                        <div className="flex items-center gap-2.5">
+                          <DeskMeter value={row.progress} className="flex-1" />
+                          <span className="w-10 shrink-0 text-right text-caption font-medium text-ink">
+                            {row.goal > 0 ? `${row.progress}%` : "—"}
+                          </span>
                         </div>
                       )}
                     </td>
                   </tr>
                 ))}
-                {ranking.length === 0 ? <tr><td colSpan={4} className="px-4 py-6 text-center text-muted">Sin asesores con datos hoy.</td></tr> : null}
               </tbody>
             </table>
-          </div>
-        </Card>
-
-        {/* Críticos + celebraciones */}
-        <div className="space-y-4">
-          <Card className="p-5">
-            <div className="mb-3 flex items-center justify-between">
-              <div className="flex items-center gap-2"><AlertTriangle className="text-orchid" size={18} /><h2 className="text-lg font-semibold text-ink">Críticos</h2></div>
-              <Link href="/escritorio/pendientes" className="text-xs font-bold text-volt hover:underline">Ver todos</Link>
-            </div>
-            <div className="space-y-2.5">
-              {critical.map((p) => (
-                <div key={p.id} className="rounded-2xl border border-line p-3">
-                  <div className="flex items-start justify-between gap-2">
-                    <p className="text-sm font-bold text-ink">{p.title}</p>
-                    <Badge tone={priorityTone(p.priority)}>{p.priority}</Badge>
-                  </div>
-                  <p className="mt-1 text-xs text-muted">{userName(p.ownerId)} · vence {p.dueDate}</p>
-                </div>
-              ))}
-              {critical.length === 0 ? <p className="py-6 text-center text-sm text-muted">Sin pendientes críticos. 🎉</p> : null}
-            </div>
-          </Card>
-
-          {celebrationMembers.length > 0 ? (
-            <TeamCelebrationsCard members={celebrationMembers} manageHref="/escritorio/equipo" />
-          ) : null}
+          )}
         </div>
-      </div>
+
+        <aside className="min-w-0">
+          <h2 className="text-ui font-medium text-muted">Próximas celebraciones</h2>
+          {celebrations.length === 0 ? (
+            <p className="mt-3 text-caption text-muted">Sin cumpleaños en los próximos 30 días.</p>
+          ) : (
+            <ul className="mt-3">
+              {celebrations.map((person) => (
+                <li key={person.id} className="flex items-center gap-3 border-b border-line py-2.5 last:border-b-0">
+                  <ProfileAvatar
+                    name={person.name}
+                    photoUrl={person.photoUrl}
+                    size="sm"
+                    className="size-7 shrink-0 rounded-lg text-[10px] shadow-none"
+                  />
+                  <span className="min-w-0 flex-1 truncate text-ui text-ink">{person.name}</span>
+                  <span className="flex shrink-0 items-center gap-1 text-caption text-muted">
+                    <Cake size={13} />
+                    {person.days === 0 ? "Hoy" : person.days === 1 ? "Mañana" : `${person.days} d`}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </aside>
+      </DeskReveal>
     </div>
   );
 }
 
-function KpiTile({ icon: Icon, label, value, tone }: { icon: LucideIcon; label: string; value: string; tone: string }) {
+function Metric({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
-    <Card className="p-4">
-      <div className="flex items-center justify-between">
-        <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-muted">{label}</p>
-        <span className={cn("grid size-9 place-items-center rounded-2xl bg-panel", tone)}><Icon size={17} /></span>
-      </div>
-      <p className={cn("mt-3 text-[1.7rem] font-semibold leading-none tracking-[-0.03em]", tone)}>{value}</p>
-    </Card>
+    <div className="xl:border-l xl:border-line xl:pl-5 xl:first:border-l-0 xl:first:pl-0">
+      <dt className="text-caption font-medium text-muted">{label}</dt>
+      <dd className="mt-1 text-h2 font-semibold tabular-nums text-ink">{value}</dd>
+      {hint ? <p className="mt-0.5 text-caption text-muted">{hint}</p> : null}
+    </div>
   );
 }
 
-function QuickAction({ href, icon: Icon, label }: { href: string; icon: LucideIcon; label: string }) {
+/** Esqueleto que calca la maqueta real, no un spinner en medio del contenido. */
+function DashboardSkeleton() {
   return (
-    <Link href={href} className="tappable group flex min-h-11 items-center justify-between rounded-2xl border border-line bg-panel px-3.5 text-sm font-bold text-ink transition hover:border-volt/40 hover:text-volt">
-      <span className="flex items-center gap-2.5"><Icon size={17} className="text-volt" /> {label}</span>
-      <motion.span className="text-muted transition group-hover:text-volt" whileHover={{ x: 3 }}><ArrowRight size={16} /></motion.span>
-    </Link>
+    <div className="space-y-9" aria-busy="true" aria-label="Cargando el resumen del día">
+      <section className="grid animate-pulse gap-8 lg:grid-cols-2 lg:gap-12">
+        <div>
+          <div className="h-4 w-24 rounded bg-panel" />
+          <div className="mt-3 h-11 w-56 rounded bg-panel" />
+          <div className="mt-3 h-4 w-64 rounded bg-panel" />
+          <div className="mt-4 h-1.5 rounded-full bg-panel" />
+        </div>
+        <div className="lg:border-l lg:border-line lg:pl-12">
+          <div className="h-4 w-32 rounded bg-panel" />
+          <div className="mt-4 space-y-3">
+            {[0, 1, 2, 3].map((i) => <div key={i} className="h-8 rounded bg-panel" />)}
+          </div>
+        </div>
+      </section>
+      <hr className="desk-rule" />
+      <section className="grid animate-pulse grid-cols-2 gap-y-6 sm:grid-cols-3 xl:grid-cols-5">
+        {[0, 1, 2, 3, 4].map((i) => (
+          <div key={i}>
+            <div className="h-3 w-16 rounded bg-panel" />
+            <div className="mt-2 h-6 w-20 rounded bg-panel" />
+          </div>
+        ))}
+      </section>
+      <hr className="desk-rule" />
+      <div className="h-56 animate-pulse rounded-xl bg-panel" />
+    </div>
   );
 }

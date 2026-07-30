@@ -12,11 +12,18 @@ import { useDesktopChrome } from "@/components/desktop/DesktopChrome";
 export function useDesktopData(pollMs = 5 * 60 * 1000) {
   const [data, setData] = useState<AppData | null>(null);
   const [error, setError] = useState(false);
-  const { setLastUpdated } = useDesktopChrome();
+  const { setLastUpdated, setPeople } = useDesktopChrome();
 
   const reload = useCallback(
-    () => fetchAppData().then((payload) => { setData(payload); setError(false); setLastUpdated(new Date()); }).catch(() => setError(true)),
-    [setLastUpdated]
+    () => fetchAppData().then((payload) => {
+      setData(payload);
+      setError(false);
+      setLastUpdated(new Date());
+      // Publicar el padrón para la paleta de comandos: así el salto a persona
+      // no cuesta una petición extra en las páginas que ya cargaron los datos.
+      setPeople(payload.users.map((u) => ({ id: u.id, name: u.name, role: u.role, photoUrl: u.photoUrl })));
+    }).catch(() => setError(true)),
+    [setLastUpdated, setPeople]
   );
 
   useEffect(() => {

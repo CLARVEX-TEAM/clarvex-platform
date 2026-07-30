@@ -2,14 +2,15 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AnimatePresence, motion } from "framer-motion";
 import {
   Bell, Cake, CalendarClock, Check, CheckCheck, ClipboardCheck, GraduationCap,
   HeartHandshake, ImagePlus, Megaphone, MessageCircle, PackageSearch, Sparkles, Trophy
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Badge, Button, Card, EmptyState } from "@/components/ui";
+import { Badge } from "@/components/ui";
+import { DeskButton, DeskEmpty, DeskSkeleton } from "@/components/desktop/DeskUI";
+import { AnimatedList } from "@/components/magic/AnimatedList";
 
 type NotificationItem = { id: string; type: string; title: string; body: string; readAt: string | null; createdAt: string };
 
@@ -78,43 +79,60 @@ export default function EscritorioNotificaciones() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl space-y-3">
-      <div className="flex items-center justify-between">
-        <p className="text-sm font-bold text-muted">{unread ? `${unread} sin leer` : "Todo al día"}</p>
-        {unread > 0 ? <Button variant="ghost" className="min-h-10 px-3 text-sm" onClick={() => void markAllRead()}><CheckCheck size={16} /> Marcar todas</Button> : null}
+    <div className="mx-auto max-w-3xl space-y-5">
+      <div className="flex items-center justify-between gap-4">
+        <p className="text-ui text-muted">{unread ? `${unread} sin leer` : "Todo al día"}</p>
+        {unread > 0 ? (
+          <DeskButton onClick={() => void markAllRead()}>
+            <CheckCheck size={15} /> Marcar todas
+          </DeskButton>
+        ) : null}
       </div>
 
       {loading ? (
-        <div className="animate-pulse space-y-3">{[0, 1, 2, 3].map((i) => <div key={i} className="h-20 rounded-3xl bg-panel dark:bg-panel" />)}</div>
+        <div className="space-y-3">{[0, 1, 2, 3].map((i) => <DeskSkeleton key={i} className="h-20" />)}</div>
       ) : items.length === 0 ? (
-        <Card><EmptyState icon={Bell} title="Sin notificaciones" description="Aquí aparecerán comunicados, pendientes y avisos del equipo." /></Card>
+        <DeskEmpty
+          icon={Bell}
+          title="Sin notificaciones"
+          hint="Aquí llegan los comunicados, los pendientes que te asignan y los avisos del equipo."
+        />
       ) : (
-        <AnimatePresence initial={false}>
+        // AnimatedList escalona solo los primeros ocho: nadie ve entrar el
+        // número treinta, pero el navegador sí pagaría por animarlo.
+        <AnimatedList className="space-y-3">
           {items.map((item) => {
             const meta = typeMeta[item.type] ?? { label: "Aviso", icon: Bell };
             const Icon = meta.icon;
             const unreadItem = !item.readAt;
             return (
-              <motion.div key={item.id} layout initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}>
-                <Card onClick={() => openItem(item)} className={cn("cursor-pointer p-4", unreadItem && "ring-1 ring-volt/20")}>
-                  <div className="flex items-start gap-3">
-                    <span className={cn("grid size-10 shrink-0 place-items-center rounded-2xl", unreadItem ? "bg-volt/12 text-volt" : "bg-panel text-muted")}>
-                      <Icon size={18} />
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-start justify-between gap-3">
-                        <h2 className="text-sm font-semibold text-ink">{item.title}</h2>
-                        <Badge tone={unreadItem ? "info" : "default"}>{unreadItem ? meta.label : "Leída"}</Badge>
-                      </div>
-                      <p className="mt-1.5 text-sm leading-5 text-muted">{item.body}</p>
-                      <p className="mt-1 text-[11px] text-muted">{formatDate(item.createdAt)}</p>
-                    </div>
-                  </div>
-                </Card>
-              </motion.div>
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => openItem(item)}
+                className={cn(
+                  "flex w-full items-start gap-3 rounded-xl border bg-card p-4 text-left transition-colors hover:border-line-strong",
+                  unreadItem ? "border-accent/35" : "border-line"
+                )}
+              >
+                <span className={cn(
+                  "grid size-9 shrink-0 place-items-center rounded-lg",
+                  unreadItem ? "bg-accent/15 text-accent" : "bg-panel text-muted"
+                )}>
+                  <Icon size={17} />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="flex items-start justify-between gap-3">
+                    <span className="text-ui font-semibold text-ink">{item.title}</span>
+                    <Badge tone={unreadItem ? "info" : "default"}>{unreadItem ? meta.label : "Leída"}</Badge>
+                  </span>
+                  <span className="mt-1.5 block text-ui leading-5 text-muted">{item.body}</span>
+                  <span className="mt-1 block text-caption text-muted">{formatDate(item.createdAt)}</span>
+                </span>
+              </button>
             );
           })}
-        </AnimatePresence>
+        </AnimatedList>
       )}
     </div>
   );

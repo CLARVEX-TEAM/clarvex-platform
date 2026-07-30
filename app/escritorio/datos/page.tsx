@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   ArrowRight,
-  CalendarClock,
   CalendarDays,
   CircleDollarSign,
   Database,
@@ -30,23 +29,28 @@ import {
   type DataSourceType,
   type SheetSummary
 } from "@/lib/data-source";
-import { Badge, Button, Card } from "@/components/ui";
+import { Badge } from "@/components/ui";
 import { cn } from "@/lib/utils";
-// Cada tono lleva SU variante oscura. El banner tenia bg-blue-50 fijo: en modo
-// oscuro el texto (claro) quedaba sobre un fondo casi blanco = ilegible.
+import {
+  DeskButton, DeskPrimaryButton, DeskReveal, DeskRule, DeskSection, DeskSkeleton, deskInput
+} from "@/components/desktop/DeskUI";
+import { ShineBorder } from "@/components/magic/ShineBorder";
+
+// Cada tono con los tokens del escritorio. Antes llevaba bg-blue-50 / bg-rose-50
+// fijos y sus variantes dark duplicadas; ahora sale del mismo sistema de color.
 const toneClass = {
-  info: "border-line bg-blue-50 text-ink/75 dark:border-blue-900/40 dark:bg-blue-950/40 dark:text-blue-100",
-  warn: "border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-800/50 dark:bg-amber-950/40 dark:text-amber-100",
-  error: "border-rose-300 bg-rose-50 text-rose-900 dark:border-rose-800/50 dark:bg-rose-950/40 dark:text-rose-100"
+  info: "border-line bg-panel text-ink-2",
+  warn: "border-warn/35 bg-warn/[0.08] text-warn",
+  error: "border-danger/35 bg-danger/[0.08] text-danger"
 } as const;
 
 const modules: Record<DataSourceType, { label: string; icon: typeof CalendarDays; description: string }> = {
   HORARIOS: { label: "Horarios", icon: CalendarDays, description: "Turnos, descansos y zonas." },
-  KPIS: { label: "KPIs", icon: Gauge, description: "Venta, conversion y productividad." },
+  KPIS: { label: "KPIs", icon: Gauge, description: "Venta, conversión y productividad." },
   METAS: { label: "Metas", icon: Target, description: "Objetivos diarios y mensuales." },
   COMISIONES: { label: "Comisiones", icon: CircleDollarSign, description: "Reglas, niveles y resultados." },
   COMUNICADOS: { label: "Comunicados", icon: Megaphone, description: "Avisos y confirmaciones de lectura." },
-  DESCUENTOS_POS: { label: "Descuentos POS", icon: Tags, description: "Venta bruta, descuentos y limite permitido." },
+  DESCUENTOS_POS: { label: "Descuentos POS", icon: Tags, description: "Venta bruta, descuentos y límite permitido." },
   ASISTENCIA: { label: "Asistencia", icon: Clock, description: "Hora de llegada, retardos y faltas (hoja APERTURA)." }
 };
 
@@ -66,9 +70,9 @@ type ConfigState = {
 
 const frequencies: Array<{ value: DataSourceFrequency; label: string; detail: string }> = [
   { value: "MANUAL", label: "Manual", detail: "Solo bajo demanda" },
-  { value: "HOURLY", label: "Cada hora", detail: "Actualizacion continua" },
+  { value: "HOURLY", label: "Cada hora", detail: "Actualización continua" },
   { value: "DAILY", label: "Diaria", detail: "Cada 24 horas" },
-  { value: "WEEKLY", label: "Semanal", detail: "Cada 7 dias" }
+  { value: "WEEKLY", label: "Semanal", detail: "Cada 7 días" }
 ];
 
 export default function EscritorioDatos() {
@@ -149,7 +153,7 @@ export default function EscritorioDatos() {
       setTestedRecords((current) => omitSourceResult(current, payload.dataSource!.id));
       await fetchSources();
       setConfig(null);
-      setTone("info"); setMessage("Configuracion guardada en PostgreSQL.");
+      setTone("info"); setMessage("Configuración guardada.");
     } catch (error) {
       setTone("error"); setMessage(error instanceof Error ? error.message : "No se pudo guardar la fuente.");
     } finally {
@@ -159,14 +163,14 @@ export default function EscritorioDatos() {
 
   async function syncSource(source: DataSourceRecord) {
     setSyncingId(source.id);
-    setTone("info"); setMessage(`Sincronizando ${modules[source.type].label}...`);
+    setTone("info"); setMessage(`Sincronizando ${modules[source.type].label}…`);
     try {
       const response = await fetch(`/api/data-sources/${source.id}/sync`, { method: "POST" });
       const payload = await response.json() as { dataSource?: DataSourceRecord; message?: string; warning?: boolean; error?: string };
       if (!response.ok || !payload.dataSource) throw new Error(payload.error ?? "No se pudo sincronizar.");
       setSources((current) => current.map((item) => item.id === source.id ? payload.dataSource! : item));
       setTone(payload.warning ? "warn" : "info");
-      setMessage(payload.message ?? "Sincronizacion completada");
+      setMessage(payload.message ?? "Sincronización completada.");
     } catch (error) {
       setTone("error"); setMessage(error instanceof Error ? error.message : "No se pudo sincronizar.");
       await fetchSources();
@@ -177,7 +181,7 @@ export default function EscritorioDatos() {
 
   async function testConnection(source: DataSourceRecord) {
     setTestingId(source.id);
-    setMessage(`Probando conexion de ${modules[source.type].label}...`);
+    setMessage(`Probando conexión de ${modules[source.type].label}…`);
     try {
       const response = await fetch(`/api/data-sources/${source.id}/test`, { method: "POST" });
       const payload = await response.json() as {
@@ -187,14 +191,14 @@ export default function EscritorioDatos() {
         error?: string;
       };
       if (!response.ok || !payload.dataSource || !payload.workbook) {
-        throw new Error(payload.error ?? "No se pudo probar la conexion.");
+        throw new Error(payload.error ?? "No se pudo probar la conexión.");
       }
       setSources((current) => current.map((item) => item.id === source.id ? payload.dataSource! : item));
       setTestedSheets((current) => ({ ...current, [source.id]: payload.workbook!.sheets }));
       setTestedRecords((current) => ({ ...current, [source.id]: payload.workbook!.recordsProcessed }));
-      setMessage(payload.message ?? "Conexion correcta.");
+      setMessage(payload.message ?? "Conexión correcta.");
     } catch (error) {
-      setTone("error"); setMessage(error instanceof Error ? error.message : "No se pudo probar la conexion.");
+      setTone("error"); setMessage(error instanceof Error ? error.message : "No se pudo probar la conexión.");
       await fetchSources();
     } finally {
       setTestingId(null);
@@ -202,168 +206,216 @@ export default function EscritorioDatos() {
   }
 
   return (
-    <div className="space-y-4">
-      <section className="manager-sales-hero rounded-[28px] border border-volt/25 px-5 py-5">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-volt">Integraciones de tienda</p>
-            <h2 className="mt-1 text-2xl font-semibold tracking-[-0.035em] text-ink">{connectedCount} de {dataSourceTypes.length} vinculadas</h2>
-            <p className="mt-1 max-w-md text-[13px] leading-5 text-muted">Prepara Excel y SharePoint sin alterar la operación actual.</p>
-          </div>
-          <Button type="button" variant="primary" icon={<Link2 size={17} />} onClick={() => openConfig(dataSourceTypes.find((type) => !sourceByType.has(type)) ?? "HORARIOS")}>
-            Vincular fuente
-          </Button>
+    <div className="space-y-8">
+      {/* Encabezado: la cifra que importa es cuántas fuentes están vivas. */}
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h2 className="text-ui font-medium text-muted">Integraciones de tienda</h2>
+          <p className="mt-2 text-h1 font-semibold text-ink">
+            {connectedCount} <span className="text-muted">de {dataSourceTypes.length} vinculadas</span>
+          </p>
+          <p className="mt-1 max-w-lg text-ui text-muted">
+            Excel y SharePoint alimentan KPIs, horarios y comisiones sin tocar la operación del día.
+          </p>
         </div>
-      </section>
+        <DeskPrimaryButton
+          type="button"
+          onClick={() => openConfig(dataSourceTypes.find((type) => !sourceByType.has(type)) ?? "HORARIOS")}
+        >
+          <Link2 size={15} /> Vincular fuente
+        </DeskPrimaryButton>
+      </div>
 
-      {message ? <p className={cn("rounded-2xl border px-3 py-2 text-[13px] font-semibold", toneClass[tone])}>{message}</p> : null}
+      {message ? (
+        <p role="status" className={cn("rounded-xl border px-4 py-2.5 text-ui", toneClass[tone])}>{message}</p>
+      ) : null}
 
-      <section className="grid grid-cols-2 gap-4" aria-label="Modulos de datos">
-        {dataSourceTypes.map((type) => {
-          const item = modules[type];
-          const source = sourceByType.get(type);
-          const status = source?.status ?? "DISCONNECTED";
-          const sheets = source ? testedSheets[source.id] ?? source.latestLog?.sheets ?? [] : [];
-          const recordsProcessed = source ? source.latestLog?.recordsProcessed ?? testedRecords[source.id] : undefined;
-          const kpiMetrics = source?.type === "KPIS" && isKpiSyncMetrics(source.latestLog?.details) ? source.latestLog.details : null;
-          const canConnect = Boolean(source?.url && source.provider !== "MANUAL");
-          const Icon = item.icon;
-          return (
-            <Card key={type} className="p-4">
-              <div className="flex items-start gap-3">
-                <span className="grid size-10 shrink-0 place-items-center rounded-[16px] border border-line bg-blue-50 text-volt dark:bg-blue-950/40">
-                  <Icon size={18} />
-                </span>
-                <div className="min-w-0 flex-1">
+      <DeskRule />
+
+      <DeskReveal index={0}>
+        <section className="grid gap-4 xl:grid-cols-2 2xl:grid-cols-3" aria-label="Módulos de datos">
+          {loading
+            ? dataSourceTypes.map((type) => <DeskSkeleton key={type} className="h-72" />)
+            : dataSourceTypes.map((type) => {
+              const item = modules[type];
+              const source = sourceByType.get(type);
+              const status = source?.status ?? "DISCONNECTED";
+              const sheets = source ? testedSheets[source.id] ?? source.latestLog?.sheets ?? [] : [];
+              const recordsProcessed = source ? source.latestLog?.recordsProcessed ?? testedRecords[source.id] : undefined;
+              const kpiMetrics = source?.type === "KPIS" && isKpiSyncMetrics(source.latestLog?.details) ? source.latestLog.details : null;
+              const canConnect = Boolean(source?.url && source.provider !== "MANUAL");
+              const Icon = item.icon;
+
+              const card = (
+                <article className="h-full rounded-xl border border-line bg-card p-4">
                   <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <h2 className="font-semibold tracking-[-0.02em] text-ink">{item.label}</h2>
-                      <p className="text-[11px] text-muted">{item.description}</p>
+                    <div className="flex min-w-0 items-start gap-3">
+                      <span className="grid size-9 shrink-0 place-items-center rounded-lg border border-line bg-panel text-muted">
+                        <Icon size={17} />
+                      </span>
+                      <div className="min-w-0">
+                        <h3 className="text-ui font-semibold text-ink">{item.label}</h3>
+                        <p className="text-caption text-muted">{item.description}</p>
+                      </div>
                     </div>
                     <SourceStatus status={status} />
                   </div>
-                  <div className="mt-2 flex items-center gap-2 border-y border-line py-2">
-                    <span className="grid size-8 shrink-0 place-items-center rounded-xl bg-blue-50 text-volt dark:bg-blue-950/40">
-                      <FileSpreadsheet size={15} />
-                    </span>
+
+                  <div className="mt-3 flex items-center gap-2 border-y border-line py-2.5">
+                    <FileSpreadsheet size={15} className="shrink-0 text-muted" />
                     <div className="min-w-0 flex-1">
-                      <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-muted">Archivo vinculado</p>
-                      <p className="truncate text-xs font-semibold text-ink/85">{source?.name ?? "Sin archivo configurado"}</p>
-                      {source?.url ? <p className="truncate text-[10px] text-muted">{linkedFileReference(source.url)}</p> : null}
+                      <p className="truncate text-ui text-ink">{source?.name ?? "Sin archivo configurado"}</p>
+                      {source?.url ? <p className="truncate text-caption text-muted">{linkedFileReference(source.url)}</p> : null}
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 py-1 text-[11px]">
+
+                  <dl className="grid grid-cols-2 gap-x-4 gap-y-2 py-3">
                     <DataPoint label="Origen" value={providerLabel(source?.provider ?? "MANUAL")} />
-                    <DataPoint label="Ultima sync" value={formatDate(source?.lastSyncAt)} />
+                    <DataPoint label="Última sync" value={formatDate(source?.lastSyncAt)} />
                     <DataPoint label="Resultado" value={syncResult(source)} />
                     <DataPoint label="Registros" value={recordsProcessed !== undefined ? `${recordsProcessed.toLocaleString("es-MX")} sincronizados` : "Sin procesar"} />
-                  </div>
+                  </dl>
+
                   {kpiMetrics ? (
                     <>
-                      <div className="mt-1 grid grid-cols-2 gap-px overflow-hidden rounded-2xl bg-line">
-                        <MetricDetail label="Filas leidas" value={kpiMetrics.rowsRead} />
+                      <dl className="grid grid-cols-4 gap-3 border-t border-line pt-3">
+                        <MetricDetail label="Leídas" value={kpiMetrics.rowsRead} />
                         <MetricDetail label="Creados" value={kpiMetrics.recordsCreated} />
-                        <MetricDetail label="Actualizados" value={kpiMetrics.recordsUpdated} />
+                        <MetricDetail label="Actualiz." value={kpiMetrics.recordsUpdated} />
                         <MetricDetail label="Ignoradas" value={kpiMetrics.ignoredRows} />
-                      </div>
+                      </dl>
                       {"ttlsMeta" in kpiMetrics ? (
-                        <div className="mt-1 rounded-2xl border border-line bg-panel px-3 py-2 dark:bg-panel">
-                          <p className="mb-1.5 text-[10px] font-bold uppercase tracking-[0.1em] text-muted">Totales fila TTLS</p>
-                          <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-[11px]">
-                            <span className="text-muted">Tráfico</span><span className="font-bold text-ink">{(kpiMetrics as KpiSyncMetrics).ttlsTraffic?.toLocaleString("es-MX") ?? "—"}</span>
-                            <span className="text-muted">Meta</span><span className="font-bold text-ink">${(kpiMetrics as KpiSyncMetrics).ttlsMeta?.toLocaleString("es-MX") ?? "—"}</span>
-                            <span className="text-muted">Venta</span><span className="font-bold text-ink">${(kpiMetrics as KpiSyncMetrics).ttlsSales?.toLocaleString("es-MX") ?? "—"}</span>
-                            <span className="text-muted">TX</span><span className="font-bold text-ink">{(kpiMetrics as KpiSyncMetrics).ttlsTransactions?.toLocaleString("es-MX") ?? "—"}</span>
-                            <span className="text-muted">Piezas</span><span className="font-bold text-ink">{(kpiMetrics as KpiSyncMetrics).ttlsPieces?.toLocaleString("es-MX") ?? "—"}</span>
-                          </div>
+                        <div className="mt-3 rounded-lg border border-line bg-panel px-3 py-2">
+                          <p className="text-caption font-medium text-muted">Totales de la fila TTLS</p>
+                          <dl className="mt-1 grid grid-cols-2 gap-x-4 gap-y-0.5 text-caption">
+                            <dt className="text-muted">Tráfico</dt>
+                            <dd className="text-right tabular-nums text-ink">{(kpiMetrics as KpiSyncMetrics).ttlsTraffic?.toLocaleString("es-MX") ?? "—"}</dd>
+                            <dt className="text-muted">Meta</dt>
+                            <dd className="text-right tabular-nums text-ink">${(kpiMetrics as KpiSyncMetrics).ttlsMeta?.toLocaleString("es-MX") ?? "—"}</dd>
+                            <dt className="text-muted">Venta</dt>
+                            <dd className="text-right tabular-nums text-ink">${(kpiMetrics as KpiSyncMetrics).ttlsSales?.toLocaleString("es-MX") ?? "—"}</dd>
+                            <dt className="text-muted">TX</dt>
+                            <dd className="text-right tabular-nums text-ink">{(kpiMetrics as KpiSyncMetrics).ttlsTransactions?.toLocaleString("es-MX") ?? "—"}</dd>
+                            <dt className="text-muted">Piezas</dt>
+                            <dd className="text-right tabular-nums text-ink">{(kpiMetrics as KpiSyncMetrics).ttlsPieces?.toLocaleString("es-MX") ?? "—"}</dd>
+                          </dl>
                         </div>
                       ) : null}
                     </>
                   ) : null}
+
                   {sheets.length > 0 ? (
-                    <div className="mt-2 rounded-2xl border border-line bg-panel px-3 py-2 dark:bg-panel">
-                      <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-muted">Hojas detectadas</p>
-                      <div className="mt-1.5 grid gap-1">
+                    <div className="mt-3 rounded-lg border border-line bg-panel px-3 py-2">
+                      <p className="text-caption font-medium text-muted">Hojas detectadas</p>
+                      <dl className="mt-1 grid gap-0.5">
                         {sheets.map((sheet) => (
-                          <div key={sheet.name} className="flex items-center justify-between gap-3 text-[11px]">
-                            <span className="truncate font-bold text-ink/80">{sheet.name}</span>
-                            <span className="shrink-0 font-semibold text-muted">{sheet.rowCount} filas</span>
+                          <div key={sheet.name} className="flex items-center justify-between gap-3 text-caption">
+                            <dt className="truncate text-ink">{sheet.name}</dt>
+                            <dd className="shrink-0 tabular-nums text-muted">{sheet.rowCount} filas</dd>
                           </div>
                         ))}
-                      </div>
+                      </dl>
                     </div>
                   ) : null}
-                  <div className="mt-2 grid grid-cols-2 gap-2">
-                    <button
+
+                  <div className="mt-4 grid grid-cols-2 gap-2">
+                    <DeskButton
                       type="button"
                       onClick={() => source && void testConnection(source)}
                       disabled={!canConnect || testingId === source?.id || syncingId === source?.id}
-                      className="col-span-2 flex min-h-10 items-center justify-center gap-2 rounded-xl border border-line bg-white text-xs font-semibold text-ink/75 transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-panel"
+                      className="col-span-2 min-h-9"
                     >
-                      <Wifi size={14} className={testingId === source?.id ? "animate-pulse" : "text-volt"} />
-                      {testingId === source?.id ? "Probando conexion" : "Probar conexion"}
-                    </button>
-                    <button
+                      <Wifi size={14} className={testingId === source?.id ? "animate-pulse text-accent" : "text-accent"} />
+                      {testingId === source?.id ? "Probando conexión…" : "Probar conexión"}
+                    </DeskButton>
+                    <DeskButton
                       type="button"
                       onClick={() => source && void syncSource(source)}
                       disabled={!canConnect || syncingId === source?.id || testingId === source?.id}
-                      className="flex min-h-10 items-center justify-center gap-2 rounded-xl bg-volt/12 text-xs font-semibold text-volt transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
+                      className="min-h-9 border-accent/35 text-accent"
                     >
                       <RefreshCw size={14} className={syncingId === source?.id ? "animate-spin" : ""} />
-                      {syncingId === source?.id ? "Sincronizando" : "Sincronizar ahora"}
-                    </button>
-                    <button type="button" onClick={() => openConfig(type)} className="flex min-h-10 items-center justify-center gap-2 rounded-xl bg-panel text-xs font-semibold text-ink/80 transition active:scale-95 dark:bg-panel">
+                      {syncingId === source?.id ? "Sincronizando…" : "Sincronizar"}
+                    </DeskButton>
+                    <DeskButton type="button" onClick={() => openConfig(type)} className="min-h-9">
                       <Settings2 size={14} /> Configurar
-                    </button>
+                    </DeskButton>
                   </div>
-                </div>
-              </div>
-            </Card>
-          );
-        })}
-      </section>
+                </article>
+              );
 
-      <Card className="p-5">
-        <div className="flex items-center gap-2">
-          <CalendarClock size={18} className="text-volt" />
-          <div>
-            <h2 className="font-semibold text-ink">Automatizaciones programadas</h2>
-            <p className="text-[11px] text-muted">Siguiente ejecución por fuente vinculada.</p>
-          </div>
-        </div>
-        <div className="mt-2 divide-y divide-line">
-          {scheduledSources.map((source) => (
-            <div key={source.id} className="flex items-center justify-between py-2.5 text-sm">
-              <div>
-                <p className="font-bold text-ink">{modules[source.type].label}</p>
-                <p className="max-w-md truncate text-xs text-muted">{source.name} · {frequencyLabel(source.frequency)}</p>
-              </div>
-              <div className="flex items-center gap-2 text-xs font-bold text-ink/70">
-                {formatDate(source.nextSyncAt)} <ArrowRight size={14} className="text-volt" />
-              </div>
-            </div>
-          ))}
-          {!loading && scheduledSources.length === 0 ? <p className="py-3 text-[13px] text-muted">Vincula una fuente para crear su primera automatización diaria.</p> : null}
-          {loading ? <p className="py-3 text-[13px] text-muted">Cargando fuentes…</p> : null}
-        </div>
-      </Card>
+              // Una fuente en ERROR es literalmente algo sin atender: el RDV
+              // dejó de alimentar KPIs y nadie se ha enterado.
+              return status === "ERROR" ? (
+                <ShineBorder key={type} radius="rounded-[14px]" ringPx={1.5} tone="ember">{card}</ShineBorder>
+              ) : (
+                <div key={type}>{card}</div>
+              );
+            })}
+        </section>
+      </DeskReveal>
 
+      <DeskRule />
+
+      <DeskReveal index={1}>
+        <DeskSection title="Automatizaciones programadas" hint="Siguiente ejecución de cada fuente vinculada.">
+          {loading ? (
+            <div className="space-y-2">{[0, 1].map((i) => <DeskSkeleton key={i} className="h-12" />)}</div>
+          ) : scheduledSources.length === 0 ? (
+            <p className="text-ui text-muted">
+              Vincula una fuente y elige una frecuencia para crear su primera automatización.
+            </p>
+          ) : (
+            <ul className="max-w-3xl">
+              {scheduledSources.map((source) => (
+                <li key={source.id} className="flex items-center justify-between gap-4 border-b border-line py-3 last:border-b-0">
+                  <div className="min-w-0">
+                    <p className="text-ui text-ink">{modules[source.type].label}</p>
+                    <p className="truncate text-caption text-muted">{source.name} · {frequencyLabel(source.frequency)}</p>
+                  </div>
+                  <span className="flex shrink-0 items-center gap-2 text-caption text-muted">
+                    {formatDate(source.nextSyncAt)} <ArrowRight size={13} className="text-accent" />
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </DeskSection>
+      </DeskReveal>
+
+      {/* Configuración de fuente */}
       {config ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-void/40 px-3 py-10 backdrop-blur-md" onMouseDown={(event) => { if (event.currentTarget === event.target && !saving) setConfig(null); }}>
-          <section role="dialog" aria-modal="true" aria-labelledby="source-config-title" className="liquid-glass max-h-[calc(100dvh-5rem)] w-full max-w-md overflow-y-auto rounded-[30px] border-volt/25 p-5 shadow-[0_20px_60px_rgb(15_23_42_/_0.22)]">
+        <div
+          className="fixed inset-0 z-[var(--z-overlay)] flex items-center justify-center bg-black/55 px-3 py-10 backdrop-blur-sm"
+          onMouseDown={(event) => { if (event.currentTarget === event.target && !saving) setConfig(null); }}
+        >
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="source-config-title"
+            className="desk-floating max-h-[calc(100dvh-5rem)] w-full max-w-md overflow-y-auto rounded-2xl p-5"
+          >
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-[11px] font-bold uppercase tracking-[0.13em] text-volt">Configurar fuente</p>
-                <h2 id="source-config-title" className="mt-1 text-xl font-semibold tracking-[-0.03em] text-ink">{modules[config.type].label}</h2>
-                <p className="mt-1 text-xs text-muted">Los cambios se guardan para esta tienda.</p>
+                <h2 id="source-config-title" className="text-lead font-semibold text-ink">
+                  Configurar {modules[config.type].label}
+                </h2>
+                <p className="mt-1 text-caption text-muted">Los cambios se guardan para esta tienda.</p>
               </div>
-              <button type="button" onClick={() => setConfig(null)} disabled={saving} className="grid size-10 shrink-0 place-items-center rounded-[16px] bg-panel text-muted transition hover:text-ink disabled:opacity-40 dark:bg-panel" aria-label="Cerrar configuracion">
-                <X size={18} />
+              <button
+                type="button"
+                onClick={() => setConfig(null)}
+                disabled={saving}
+                className="grid size-8 shrink-0 place-items-center rounded-lg text-muted transition-colors hover:bg-panel hover:text-ink disabled:opacity-40"
+                aria-label="Cerrar configuración"
+              >
+                <X size={17} />
               </button>
             </div>
-            <form className="mt-4 grid gap-3" onSubmit={saveSource}>
+
+            <form className="mt-5 grid gap-4" onSubmit={saveSource}>
               <fieldset>
-                <legend className="mb-2 text-xs font-semibold text-ink/75">Origen de datos</legend>
+                <legend className="mb-2 text-caption font-medium text-muted">Origen de datos</legend>
                 <div className="grid grid-cols-3 gap-2">
                   {providers.map((provider) => {
                     const Icon = provider.icon;
@@ -372,45 +424,73 @@ export default function EscritorioDatos() {
                         key={provider.value}
                         type="button"
                         onClick={() => setConfig({ ...config, provider: provider.value })}
-                        className={`grid min-h-16 place-items-center rounded-2xl border text-[11px] font-semibold transition active:scale-[0.98] ${config.provider === provider.value ? "border-volt/40 bg-volt/12 text-volt" : "border-line bg-panel text-muted dark:bg-panel"}`}
                         aria-pressed={config.provider === provider.value}
+                        className={`grid min-h-16 place-items-center gap-1 rounded-xl border text-caption font-medium transition-colors ${
+                          config.provider === provider.value
+                            ? "border-accent/45 bg-accent-quiet text-accent"
+                            : "border-line bg-panel text-muted hover:text-ink"
+                        }`}
                       >
-                        <Icon size={18} />{provider.label}
+                        <Icon size={17} />{provider.label}
                       </button>
                     );
                   })}
                 </div>
               </fieldset>
 
-              <label className="grid gap-1.5 text-xs font-semibold text-ink/75">
-                Nombre de la fuente
-                <input autoFocus value={config.name} onChange={(event) => setConfig({ ...config, name: event.target.value })} className="min-h-11 rounded-2xl border border-line bg-panel px-3 text-sm font-semibold text-ink outline-none focus:border-volt focus:ring-4 focus:ring-volt/15" placeholder="Nombre de la fuente" required />
+              <label className="grid gap-1">
+                <span className="text-caption font-medium text-muted">Nombre de la fuente</span>
+                <input
+                  autoFocus
+                  value={config.name}
+                  onChange={(event) => setConfig({ ...config, name: event.target.value })}
+                  className={deskInput}
+                  placeholder="RDV de la tienda"
+                  required
+                />
               </label>
 
-              <label className="grid gap-1.5 text-xs font-semibold text-ink/75">
-                URL {config.provider === "MANUAL" ? "(opcional)" : ""}
-                <input type="url" value={config.url} onChange={(event) => setConfig({ ...config, url: event.target.value })} className="min-h-11 rounded-2xl border border-line bg-panel px-3 text-sm font-semibold text-ink outline-none focus:border-volt focus:ring-4 focus:ring-volt/15" placeholder="https://..." required={config.provider !== "MANUAL"} />
+              <label className="grid gap-1">
+                <span className="text-caption font-medium text-muted">
+                  URL {config.provider === "MANUAL" ? "(opcional)" : ""}
+                </span>
+                <input
+                  type="url"
+                  value={config.url}
+                  onChange={(event) => setConfig({ ...config, url: event.target.value })}
+                  className={deskInput}
+                  placeholder="https://…"
+                  required={config.provider !== "MANUAL"}
+                />
               </label>
 
               <fieldset>
-                <legend className="mb-2 text-xs font-semibold text-ink/75">Frecuencia de sincronizacion</legend>
+                <legend className="mb-2 text-caption font-medium text-muted">Frecuencia de sincronización</legend>
                 <div className="grid grid-cols-2 gap-2">
                   {frequencies.map((frequency) => (
                     <button
                       key={frequency.value}
                       type="button"
                       onClick={() => setConfig({ ...config, frequency: frequency.value })}
-                      className={`min-h-14 rounded-2xl border px-3 text-left transition active:scale-[0.98] ${config.frequency === frequency.value ? "border-volt/40 bg-volt/12" : "border-line bg-panel dark:bg-panel"}`}
                       aria-pressed={config.frequency === frequency.value}
+                      className={`min-h-14 rounded-xl border px-3 text-left transition-colors ${
+                        config.frequency === frequency.value
+                          ? "border-accent/45 bg-accent-quiet"
+                          : "border-line bg-panel hover:border-line-strong"
+                      }`}
                     >
-                      <span className={`block text-xs font-semibold ${config.frequency === frequency.value ? "text-volt" : "text-ink"}`}>{frequency.label}</span>
-                      <span className="mt-0.5 block text-[10px] text-muted">{frequency.detail}</span>
+                      <span className={`block text-ui font-medium ${config.frequency === frequency.value ? "text-accent" : "text-ink"}`}>
+                        {frequency.label}
+                      </span>
+                      <span className="mt-0.5 block text-caption text-muted">{frequency.detail}</span>
                     </button>
                   ))}
                 </div>
               </fieldset>
 
-              <Button type="submit" variant="primary" loading={saving} className="w-full" icon={<Link2 size={17} />}>Guardar configuracion</Button>
+              <DeskPrimaryButton type="submit" disabled={saving} className="w-full">
+                <Link2 size={15} /> {saving ? "Guardando…" : "Guardar configuración"}
+              </DeskPrimaryButton>
             </form>
           </section>
         </div>
@@ -421,19 +501,29 @@ export default function EscritorioDatos() {
 
 function SourceStatus({ status }: { status: DataSourceStatus }) {
   const config = {
-    CONNECTED: { label: "CONNECTED", tone: "success" as const, dot: "bg-volt" },
-    DISCONNECTED: { label: "DISCONNECTED", tone: "default" as const, dot: "bg-muted" },
-    ERROR: { label: "ERROR", tone: "danger" as const, dot: "bg-orchid" }
+    CONNECTED: { label: "Vinculada", tone: "success" as const },
+    DISCONNECTED: { label: "Sin vincular", tone: "default" as const },
+    ERROR: { label: "Con error", tone: "danger" as const }
   }[status];
-  return <Badge tone={config.tone}><span className={`mr-1.5 size-1.5 rounded-full ${config.dot}`} />{config.label}</Badge>;
+  return <Badge tone={config.tone}>{config.label}</Badge>;
 }
 
 function DataPoint({ label, value }: { label: string; value: string }) {
-  return <div className="px-2 py-1"><p className="font-bold uppercase tracking-[0.08em] text-muted">{label}</p><p className="mt-0.5 truncate font-semibold text-ink/80">{value}</p></div>;
+  return (
+    <div className="min-w-0">
+      <dt className="text-caption text-muted">{label}</dt>
+      <dd className="truncate text-ui text-ink">{value}</dd>
+    </div>
+  );
 }
 
 function MetricDetail({ label, value }: { label: string; value: number }) {
-  return <div className="bg-panel px-3 py-2 dark:bg-panel"><p className="text-[10px] font-bold text-muted">{label}</p><p className="mt-0.5 text-sm font-semibold text-ink">{value.toLocaleString("es-MX")}</p></div>;
+  return (
+    <div className="min-w-0">
+      <dt className="truncate text-caption text-muted">{label}</dt>
+      <dd className="text-ui font-medium tabular-nums text-ink">{value.toLocaleString("es-MX")}</dd>
+    </div>
+  );
 }
 
 function isKpiSyncMetrics(value: unknown): value is KpiSyncMetrics {
@@ -449,7 +539,7 @@ function frequencyLabel(frequency: DataSourceFrequency) {
 }
 
 function syncResult(source?: DataSourceRecord) {
-  if (!source?.latestLog) return source?.status === "ERROR" ? "Error de conexion" : "Sin validar";
+  if (!source?.latestLog) return source?.status === "ERROR" ? "Error de conexión" : "Sin validar";
   if (source.latestLog.status === "SUCCESS") return "Completado";
   if (source.latestLog.status === "RUNNING") return "En proceso";
   return source.latestLog.message || "Error";

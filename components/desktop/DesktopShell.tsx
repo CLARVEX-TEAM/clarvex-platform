@@ -1,115 +1,27 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import { motion } from "framer-motion";
-import {
-  AlertTriangle,
-  BarChart3,
-  BookOpen,
-  Boxes,
-  Building2,
-  CalendarClock,
-  CalendarDays,
-  CheckSquare,
-  ClipboardCheck,
-  Database,
-  GraduationCap,
-  HeartHandshake,
-  LayoutDashboard,
-  ListChecks,
-  LogOut,
-  Megaphone,
-  MessageSquare,
-  Moon,
-  PackageSearch,
-  Smartphone,
-  Sun,
-  UsersRound
-} from "lucide-react";
-import type { LucideIcon } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
+import { Moon, Sun } from "lucide-react";
 import { getSession, logout } from "@/lib/auth";
-import { cn } from "@/lib/utils";
 import type { User } from "@/lib/types";
-import { ProfileAvatar } from "@/components/ui";
 import { useTheme } from "@/components/ThemeProvider";
 import { DesktopChromeProvider, FreshnessPill } from "@/components/desktop/DesktopChrome";
 import { DesktopNotifications } from "@/components/desktop/DesktopNotifications";
 import { DesktopLock } from "@/components/desktop/DesktopLock";
+import { DeskRail } from "@/components/desktop/DeskRail";
+import { DeskBackdrop } from "@/components/desktop/DeskBackdrop";
+import { GradientText } from "@/components/magic/GradientText";
+import { CommandPalette } from "@/components/desktop/CommandPalette";
+import { resolveSection } from "@/components/desktop/nav";
 import { consumeDesktopFreshLogin } from "@/lib/desktop-profiles";
 import { noteViewRedirect, prefersDesktop, setViewPreference } from "@/lib/view-mode";
 
 // Ancho mínimo para considerar "escritorio". Por debajo, gerencia usa la app móvil.
 export const DESKTOP_MIN_WIDTH = 1024;
 
-const navGroups: { label: string; items: { href: string; label: string; icon: LucideIcon; adminOnly?: boolean }[] }[] = [
-  {
-    label: "Operación",
-    items: [
-      { href: "/escritorio", label: "Dashboard", icon: LayoutDashboard },
-      { href: "/escritorio/kpis", label: "KPIs", icon: BarChart3 },
-      { href: "/escritorio/equipo", label: "Equipo", icon: UsersRound },
-      { href: "/escritorio/horarios", label: "Horarios", icon: CalendarDays }
-    ]
-  },
-  {
-    label: "Día a día",
-    items: [
-      { href: "/escritorio/plan", label: "Plan del día", icon: ListChecks },
-      { href: "/escritorio/pendientes", label: "Pendientes", icon: AlertTriangle },
-      { href: "/escritorio/checklist", label: "Checklist", icon: CheckSquare },
-      { href: "/escritorio/comunicados", label: "Comunicados", icon: Megaphone },
-      { href: "/escritorio/chat", label: "Chat", icon: MessageSquare },
-      { href: "/escritorio/bitacora", label: "Bitácora", icon: BookOpen }
-    ]
-  },
-  {
-    label: "Gestión",
-    items: [
-      { href: "/escritorio/solicitudes", label: "Solicitudes", icon: CalendarClock },
-      { href: "/escritorio/conteos", label: "Conteos", icon: Boxes },
-      { href: "/escritorio/faltantes", label: "Faltantes", icon: PackageSearch },
-      { href: "/escritorio/kudos", label: "Reconocimientos", icon: HeartHandshake },
-      { href: "/escritorio/encuestas", label: "Encuestas", icon: ClipboardCheck },
-      { href: "/escritorio/capacitacion", label: "Capacitación", icon: GraduationCap },
-      { href: "/escritorio/datos", label: "Centro de Datos", icon: Database },
-      { href: "/admin", label: "Administración", icon: Building2, adminOnly: true }
-    ]
-  }
-];
-
-const sectionTitles: Record<string, { title: string; subtitle: string }> = {
-  "/escritorio": { title: "Dashboard", subtitle: "Resumen operativo de la tienda" },
-  "/escritorio/comunicados": { title: "Comunicados", subtitle: "Envía y administra comunicados del equipo" },
-  "/escritorio/pendientes": { title: "Pendientes", subtitle: "Handover, responsables y fechas límite" },
-  "/escritorio/kpis": { title: "KPIs", subtitle: "Venta, metas y desempeño del equipo" },
-  "/escritorio/equipo": { title: "Equipo", subtitle: "Colaboradores y horarios" },
-  "/escritorio/horarios": { title: "Horarios", subtitle: "Agenda semanal del equipo" },
-  "/escritorio/plan": { title: "Plan del día", subtitle: "Actividades y enfoque del equipo" },
-  "/escritorio/checklist": { title: "Checklist de tienda", subtitle: "Apertura y cierre con evidencia" },
-  "/escritorio/solicitudes": { title: "Solicitudes", subtitle: "Permisos, turnos y aprobaciones" },
-  "/escritorio/faltantes": { title: "Faltantes", subtitle: "Inventario y reportes de producto" },
-  "/escritorio/kudos": { title: "Reconocimientos", subtitle: "Reconoce el buen trabajo del equipo" },
-  "/escritorio/encuestas": { title: "Encuestas", subtitle: "Clima laboral y feedback del equipo" },
-  "/escritorio/datos": { title: "Centro de Datos", subtitle: "Fuentes RDV y sincronización" },
-  "/escritorio/bitacora": { title: "Bitácora", subtitle: "Registro cronológico de operación de tienda" },
-  "/escritorio/capacitacion": { title: "Capacitación", subtitle: "Biblioteca de recursos y archivos del equipo" },
-  "/escritorio/chat": { title: "Chat", subtitle: "Mensajes directos y del equipo" },
-  "/escritorio/notificaciones": { title: "Notificaciones", subtitle: "Avisos del equipo" },
-  "/escritorio/perfil": { title: "Mi perfil", subtitle: "Tus datos y preferencias" },
-  "/escritorio/conteos": { title: "Conteos", subtitle: "Inventario físico por marbete" },
-  "/escritorio/conteos/marbetes": { title: "Marbetes", subtitle: "Catálogo fijo de tienda y bodega" }
-};
-
-// Título por prefijo para rutas dinámicas (p. ej. /escritorio/conteos/[id]).
-function resolveSection(pathname: string) {
-  if (sectionTitles[pathname]) return sectionTitles[pathname];
-  const prefix = Object.keys(sectionTitles)
-    .filter((key) => key !== "/escritorio" && pathname.startsWith(`${key}/`))
-    .sort((a, b) => b.length - a.length)[0];
-  return prefix ? sectionTitles[prefix] : { title: "Escritorio", subtitle: "" };
-}
+const PIN_KEY = "desk-rail-pinned";
 
 // Sesión desbloqueada cacheada a nivel de módulo. Sobrevive a la navegación
 // entre páginas del escritorio (mismo contexto JS). sessionStorage
@@ -124,6 +36,18 @@ export function DesktopShell({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(unlockedSession);
   const [checking, setChecking] = useState(unlockedSession === null);
   const [unlocked, setUnlocked] = useState(unlockedSession !== null);
+  const [pinned, setPinned] = useState(false);
+  const [paletteOpen, setPaletteOpen] = useState(false);
+
+  // El escritorio arranca en oscuro, pero solo si el usuario NUNCA ha elegido
+  // tema. Se usa la preferencia global (misma llave que el móvil) a propósito:
+  // Tailwind está en darkMode:"class" y todas las utilidades dark: de las
+  // páginas cuelgan de la clase .dark del <html>. Con una llave aparte, el
+  // escritorio se vería oscuro pero esas utilidades no dispararían.
+  useEffect(() => {
+    if (localStorage.getItem("clarvex-theme") === null) setTheme("dark");
+    setPinned(localStorage.getItem(PIN_KEY) === "true");
+  }, [setTheme]);
 
   // Guard de tamaño + bloqueo diario. El escritorio pide PIN al abrir una pestaña
   // nueva (sin desktop_unlocked en sessionStorage). Dentro de la misma pestaña se
@@ -168,6 +92,25 @@ export function DesktopShell({ children }: { children: React.ReactNode }) {
     setChecking(false);
   }, [router]);
 
+  // Ctrl+K en Windows, ⌘K en Mac. Se ignora mientras la pantalla está bloqueada.
+  useEffect(() => {
+    function onKey(event: KeyboardEvent) {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        setPaletteOpen((value) => !value);
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  const togglePin = useCallback(() => {
+    setPinned((value) => {
+      localStorage.setItem(PIN_KEY, String(!value));
+      return !value;
+    });
+  }, []);
+
   function handleUnlock(unlockedUser: User) {
     if (unlockedUser.role === "ASESOR") {
       router.replace("/advisor");
@@ -197,121 +140,97 @@ export function DesktopShell({ children }: { children: React.ReactNode }) {
   }
 
   const section = resolveSection(pathname);
-  const roleLabel = user?.role === "GERENTE" ? "Gerente" : user?.role === "SUBGERENTE" ? "Subgerente" : "";
   const todayLabel = new Date().toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long" });
 
   if (checking) {
-    return <div className="grid min-h-screen place-items-center text-sm font-bold text-muted">Cargando escritorio…</div>;
+    return (
+      <div data-surface="desk" className="grid min-h-screen place-items-center">
+        <p className="text-ui text-muted">Cargando escritorio…</p>
+      </div>
+    );
   }
 
   if (!unlocked || !user) {
-    return <DesktopLock onUnlock={handleUnlock} />;
+    return (
+      <div data-surface="desk" className="min-h-screen">
+        <DesktopLock onUnlock={handleUnlock} />
+      </div>
+    );
   }
 
   return (
-    <div className="flex min-h-screen">
-      {/* ─── Barra lateral ─────────────────────────────────────────── */}
-      <aside className="sticky top-0 flex h-screen w-64 shrink-0 flex-col border-r border-line bg-card/85 px-4 py-5 backdrop-blur-xl">
-        <Link href="/escritorio" className="flex items-center gap-2.5 px-2">
-          <span className="grid size-10 place-items-center rounded-2xl bg-volt text-white shadow-[0_8px_20px_rgb(37_99_235_/_0.28)]">
-            <LayoutDashboard size={20} />
-          </span>
-          <div className="leading-tight">
-            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-volt/90">CLARVEX</p>
-            <p className="text-[15px] font-semibold tracking-[-0.02em] text-ink">Escritorio</p>
-          </div>
-        </Link>
+    <DesktopChromeProvider>
+      <div data-surface="desk" data-rail-pinned={pinned} className="relative min-h-screen">
+        <DeskBackdrop />
+        <a href="#desk-main" className="desk-skip">Saltar al contenido</a>
 
-        <nav className="mt-6 flex flex-1 flex-col gap-4 overflow-y-auto pr-1">
-          {navGroups.map((group) => (
-            <div key={group.label} className="flex flex-col gap-0.5">
-              <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted/70">{group.label}</p>
-              {group.items.filter((item) => !item.adminOnly || user?.platformAdmin).map((item) => {
-                const active = pathname === item.href || (item.href !== "/escritorio" && pathname.startsWith(`${item.href}/`));
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    aria-current={active ? "page" : undefined}
-                    className={cn(
-                      "tappable relative flex min-h-10 items-center gap-3 rounded-2xl px-3 text-[13.5px] font-bold tracking-[-0.01em] transition-colors",
-                      active ? "text-volt" : "text-muted hover:bg-black/[0.04] hover:text-ink dark:hover:bg-white/[0.06]"
-                    )}
-                  >
-                    {active ? (
-                      <motion.span
-                        layoutId="desktop-nav-active"
-                        className="absolute inset-0 rounded-2xl bg-volt/12 ring-1 ring-volt/25"
-                        transition={{ type: "spring", stiffness: 480, damping: 34 }}
-                      />
-                    ) : null}
-                    <span className={cn("relative grid place-items-center", active && "icon-bold")}>
-                      <item.icon size={18} />
-                    </span>
-                    <span className="relative">{item.label}</span>
-                  </Link>
-                );
-              })}
-            </div>
-          ))}
-        </nav>
+        <DeskRail
+          user={user}
+          pinned={pinned}
+          onTogglePin={togglePin}
+          onOpenPalette={() => setPaletteOpen(true)}
+          onRelock={relock}
+          onLogout={() => void handleLogout()}
+          onSwitchToMobile={() => { setViewPreference("mobile"); router.replace("/manager"); }}
+        />
 
-        <div className="mt-4 space-y-2 border-t border-line pt-4">
-          <Link href="/escritorio/perfil" className="flex items-center gap-2.5 rounded-2xl px-1 py-1 transition hover:bg-black/[0.04] dark:hover:bg-white/[0.06]">
-            <ProfileAvatar name={user?.name ?? "Gerencia"} photoUrl={user?.photoUrl} size="sm" className="size-9 rounded-2xl shadow-none" />
-            <div className="min-w-0 leading-tight">
-              <p className="truncate text-sm font-semibold text-ink">{user?.name}</p>
-              <p className="text-[11px] font-bold text-muted">{roleLabel}</p>
+        {/* El desplazamiento del contenido es instantáneo al fijar el rail: es
+            una acción deliberada del usuario y animar una propiedad de maqueta
+            solo añadiría jank sin comunicar nada. */}
+        {/* relative z-10: el fondo es `fixed` con z-index 0, lo que crea un
+            contexto de apilamiento; sin esto, el contenido estático quedaría
+            pintado por DEBAJO de los resplandores. */}
+        <div className="relative z-10 flex min-h-screen flex-col pl-[var(--desk-gutter)]">
+          <header className="sticky top-0 z-[var(--z-header)] flex h-14 items-center gap-4 border-b border-line bg-card/85 px-6 backdrop-blur-xl xl:px-10">
+            <div className="min-w-0 flex-1">
+              {/* El título de sección es el ÚNICO texto con degradado de toda
+                  la superficie, y por eso funciona: aparece en las 18 páginas
+                  como firma, no como adorno repetido. Los colores se aclaran en
+                  oscuro para que el barrido no abra un bache de contraste. */}
+              <GradientText
+                as="h1"
+                via={isDark ? ["#709DF6", "#C7DBFF"] : ["#2563EB", "#93BBFF"]}
+                className="block truncate text-lead font-semibold leading-tight tracking-[-0.02em]"
+              >
+                {section.title}
+              </GradientText>
+              {section.subtitle ? (
+                <p className="truncate text-caption text-muted">{section.subtitle}</p>
+              ) : null}
             </div>
-          </Link>
-          <button
-            type="button"
-            onClick={() => { setViewPreference("mobile"); router.replace("/manager"); }}
-            className="tappable flex min-h-10 w-full items-center gap-2.5 rounded-2xl px-3 text-[13px] font-bold text-muted transition hover:bg-black/[0.04] hover:text-ink dark:hover:bg-white/[0.06]"
-          >
-            <Smartphone size={16} /> Ver versión móvil
-          </button>
-          <button onClick={relock} className="tappable flex min-h-10 w-full items-center gap-2.5 rounded-2xl px-3 text-[13px] font-bold text-muted transition hover:bg-black/[0.04] hover:text-ink dark:hover:bg-white/[0.06]">
-            <UsersRound size={16} /> Cambiar de usuario
-          </button>
-          <button onClick={() => void handleLogout()} className="tappable flex min-h-10 w-full items-center gap-2.5 rounded-2xl px-3 text-[13px] font-bold text-rose-500 transition hover:bg-rose-50 dark:hover:bg-rose-950/30">
-            <LogOut size={16} /> Cerrar sesión
-          </button>
-        </div>
-      </aside>
 
-      {/* ─── Contenido ─────────────────────────────────────────────── */}
-      <DesktopChromeProvider>
-        <div className="flex min-w-0 flex-1 flex-col">
-          <header className="sticky top-0 z-20 flex items-center justify-between gap-4 border-b border-line bg-card/80 px-8 py-3.5 backdrop-blur-xl">
-            <div className="min-w-0">
-              <h1 className="text-[1.4rem] font-semibold leading-tight tracking-[-0.03em] text-ink">{section.title}</h1>
-              {section.subtitle ? <p className="truncate text-sm text-muted">{section.subtitle}</p> : null}
-            </div>
             <div className="flex shrink-0 items-center gap-3">
-              <div className="hidden text-right xl:block">
-                {user?.storeName ? <p className="text-sm font-semibold leading-tight text-ink">{user.storeName}</p> : null}
-                <p className="text-[11px] capitalize text-muted">{todayLabel}</p>
+              <div className="hidden text-right leading-tight xl:block">
+                {user.storeName ? (
+                  <p className="text-ui font-medium text-ink">{user.storeName}</p>
+                ) : null}
+                {/* first-letter y no `capitalize`: capitalize pone mayúscula en
+                    CADA palabra y deja "Jueves, 30 De Julio". */}
+                <p className="text-caption lowercase text-muted first-letter:uppercase">{todayLabel}</p>
               </div>
               <FreshnessPill />
               <button
+                type="button"
                 onClick={() => setTheme(isDark ? "light" : "dark")}
                 aria-label={isDark ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
-                className="tappable grid size-10 place-items-center rounded-2xl border border-line bg-panel text-ink/70 transition hover:text-volt"
+                className="grid size-9 place-items-center rounded-xl border border-line bg-panel text-muted transition-colors hover:border-line-strong hover:text-ink"
               >
-                {isDark ? <Sun size={18} /> : <Moon size={18} />}
+                {isDark ? <Sun size={17} /> : <Moon size={17} />}
               </button>
               <DesktopNotifications />
             </div>
           </header>
-          <main className="mx-auto w-full max-w-6xl flex-1 px-8 py-6">
+
+          <main id="desk-main" tabIndex={-1} className="mx-auto w-full max-w-[1600px] flex-1 px-6 py-7 xl:px-10">
             {children}
-            <p className="pt-8 text-center text-[11px] font-semibold text-muted/70">
+            <p className="pt-10 text-center text-caption text-muted">
               © {new Date().getFullYear()} CLARVEX · Jesús Adrián Hernández Luna. Todos los derechos reservados.
             </p>
           </main>
         </div>
-      </DesktopChromeProvider>
-    </div>
+
+        <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} user={user} />
+      </div>
+    </DesktopChromeProvider>
   );
 }

@@ -6,7 +6,8 @@ import { getSession } from "@/lib/auth";
 import { addWeeks, dateKey, startOfWeek } from "@/lib/schedule-week";
 import { SHIFT_TYPE_LABELS } from "@/lib/shift-requests";
 import type { Role, User } from "@/lib/types";
-import { Badge, Button, Card, ProfileAvatar, Skeleton } from "@/components/ui";
+import { Badge, ProfileAvatar } from "@/components/ui";
+import { DeskButton, DeskEmpty, DeskReveal, DeskRule, DeskSkeleton, deskInput } from "@/components/desktop/DeskUI";
 
 type ScheduleStatus = "WORKING" | "OFF" | "VACATION" | "PAID_DAY" | "INVENTORY" | "TERMINATED" | "UNKNOWN";
 type ScheduleItem = {
@@ -30,12 +31,12 @@ type ScheduleResponse = {
   schedules: ScheduleItem[];
 };
 
-const dayNames = ["Domingo", "Lunes", "Martes", "Miercoles", "Jueves", "Viernes", "Sabado"];
+const dayNames = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
 const statusConfig: Record<ScheduleStatus, { label: string; tone: "success" | "default" | "warn" | "danger" | "info" }> = {
   WORKING: { label: "Laborando", tone: "success" },
   OFF: { label: "Descanso", tone: "default" },
   VACATION: { label: "Vacaciones", tone: "info" },
-  PAID_DAY: { label: "Pago dia", tone: "warn" },
+  PAID_DAY: { label: "Pago día", tone: "warn" },
   INVENTORY: { label: "Conteo", tone: "warn" },
   TERMINATED: { label: "Baja", tone: "danger" },
   UNKNOWN: { label: "Sin horario", tone: "default" }
@@ -110,72 +111,142 @@ export default function EscritorioHorarios() {
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+    <div className="space-y-8">
+      {/* Barra de control de la semana */}
+      <div className="flex flex-wrap items-center justify-between gap-4">
         {isManager ? (
-          <div className="flex rounded-full bg-panel p-1 dark:bg-panel" role="group" aria-label="Vista de horarios">
-            <button type="button" onClick={() => setView("team")} className={`min-h-9 rounded-full px-5 text-sm font-semibold transition ${view === "team" ? "bg-white text-volt shadow-sm dark:bg-panel" : "text-muted"}`}>Equipo</button>
-            <button type="button" onClick={() => setView("mine")} className={`min-h-9 rounded-full px-5 text-sm font-semibold transition ${view === "mine" ? "bg-white text-volt shadow-sm dark:bg-panel" : "text-muted"}`}>Mi horario</button>
+          <div className="flex gap-1.5" role="group" aria-label="Vista de horarios">
+            {([["team", "Equipo"], ["mine", "Mi horario"]] as const).map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setView(value)}
+                aria-pressed={view === value}
+                className={`min-h-9 rounded-lg px-4 text-ui font-medium transition-colors ${
+                  view === value ? "bg-accent text-on-accent" : "border border-line bg-panel text-muted hover:text-ink"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
           </div>
         ) : <span />}
 
         <div className="flex items-center gap-2">
-          <button type="button" onClick={() => moveWeek(-1)} className="grid size-10 place-items-center rounded-full bg-panel text-ink transition hover:bg-black/[0.04] dark:bg-panel" aria-label="Semana anterior"><ChevronLeft size={18} /></button>
-          <div className="min-w-44 text-center">
-            <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-volt">Semana {isoWeekNumber(new Date(`${weekStart}T00:00:00Z`))}</p>
-            <p className="text-xs font-semibold text-muted">{rangeLabel}</p>
+          <button
+            type="button"
+            onClick={() => moveWeek(-1)}
+            className="grid size-9 place-items-center rounded-lg border border-line bg-panel text-ink transition-colors hover:border-line-strong"
+            aria-label="Semana anterior"
+          >
+            <ChevronLeft size={17} />
+          </button>
+          <div className="min-w-44 text-center leading-tight">
+            <p className="text-ui font-medium text-ink">Semana {isoWeekNumber(new Date(`${weekStart}T00:00:00Z`))}</p>
+            <p className="text-caption text-muted">{rangeLabel}</p>
           </div>
-          <button type="button" onClick={() => moveWeek(1)} className="grid size-10 place-items-center rounded-full bg-panel text-ink transition hover:bg-black/[0.04] dark:bg-panel" aria-label="Semana siguiente"><ChevronRight size={18} /></button>
-          <Button variant={weekStart === currentWeek ? "primary" : "ghost"} className="min-h-9 px-3 text-xs" onClick={() => setWeekStart(currentWeek)}>Actual</Button>
-          <select aria-label="Semanas disponibles" value={weekStart} onChange={(event) => setWeekStart(event.target.value)} className="min-h-9 rounded-full border border-line bg-panel px-3 text-xs font-semibold text-ink outline-none focus:ring-4 focus:ring-volt/20">
-            {Array.from(new Set([weekStart, currentWeek, ...(payload?.availableWeeks ?? [])])).sort().reverse().map((week) => <option key={week} value={week}>{formatWeekRange(week)}</option>)}
+          <button
+            type="button"
+            onClick={() => moveWeek(1)}
+            className="grid size-9 place-items-center rounded-lg border border-line bg-panel text-ink transition-colors hover:border-line-strong"
+            aria-label="Semana siguiente"
+          >
+            <ChevronRight size={17} />
+          </button>
+          <DeskButton
+            onClick={() => setWeekStart(currentWeek)}
+            className={`min-h-9 ${weekStart === currentWeek ? "border-accent/40 text-accent" : ""}`}
+          >
+            Actual
+          </DeskButton>
+          <label className="sr-only" htmlFor="semanas">Semanas disponibles</label>
+          <select
+            id="semanas"
+            value={weekStart}
+            onChange={(event) => setWeekStart(event.target.value)}
+            className={`${deskInput} min-h-9 w-auto text-caption`}
+          >
+            {Array.from(new Set([weekStart, currentWeek, ...(payload?.availableWeeks ?? [])])).sort().reverse().map((week) => (
+              <option key={week} value={week}>{formatWeekRange(week)}</option>
+            ))}
           </select>
         </div>
       </div>
 
-      <div className="grid grid-cols-4 gap-3">
-        <Summary label="Laborando" value={summary.working} className="text-emerald-600" />
-        <Summary label="Descansos" value={summary.off} className="text-muted dark:text-muted" />
-        <Summary label="Vacaciones" value={summary.vacation} className="text-sky-600" />
-        <Summary label="Pago día" value={summary.paid} className="text-amber-600" />
-      </div>
+      {/* Resumen: una fila separada por reglas, con el mismo lenguaje que la
+          tira de indicadores del dashboard. */}
+      <dl className="grid grid-cols-2 gap-y-5 sm:grid-cols-4">
+        <Summary label="Laborando" value={summary.working} />
+        <Summary label="Descansos" value={summary.off} />
+        <Summary label="Vacaciones" value={summary.vacation} />
+        <Summary label="Pago día" value={summary.paid} />
+      </dl>
 
-      {error ? <Card className="border-rose-200 bg-rose-50 text-sm font-semibold text-rose-700">{error}</Card> : null}
+      <DeskRule />
+
+      {error ? (
+        <p role="alert" className="rounded-xl border border-danger/30 bg-danger/[0.07] px-4 py-3 text-ui text-danger">
+          {error}
+        </p>
+      ) : null}
+
       {loading ? (
-        <div className="grid grid-cols-2 gap-3">{[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-28 rounded-[28px]" />)}</div>
-      ) : (
-        <div className="grid grid-cols-2 gap-3 xl:grid-cols-3" aria-label="Agenda semanal">
-          {days.map((day) => {
-            const current = day.key === today;
-            const requests = shiftRequests.filter((request) => request.date === day.key);
-            return (
-              <Card key={day.key} className={`p-4 ${current ? "ring-2 ring-volt/30" : ""}`}>
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-3">
-                    <span className={`grid size-10 place-items-center rounded-2xl text-sm font-semibold ${current ? "bg-volt text-white" : "bg-blue-50 text-volt dark:bg-blue-950/40"}`}>{day.date.getUTCDate()}</span>
-                    <div><h3 className="font-semibold text-ink">{day.name}</h3><p className="text-[11px] text-muted">{formatLongDate(day.date)}{current ? " · Hoy" : ""}</p></div>
-                  </div>
-                  <CalendarDays size={18} className={current ? "text-volt" : "text-muted"} />
-                </div>
-                <div className="mt-3 border-t border-line pt-2.5">
-                  {day.schedules.length === 0 && requests.length === 0 ? (
-                    <p className="py-1 text-[12px] text-muted">Sin registros</p>
-                  ) : null}
-                  {day.schedules.map((item) => <ScheduleRow key={item.id} item={item} showUser={Boolean(isManager && view === "team")} />)}
-                  {requests.map((request, index) => (
-                    <div key={index} className="mt-1 flex items-center gap-1.5 text-[11px] font-bold">
-                      <CalendarClock size={12} className={request.status === "APROBADO" ? "text-emerald-600" : "text-amber-600"} />
-                      <span className={request.status === "APROBADO" ? "text-emerald-700" : "text-amber-700"}>
-                        {SHIFT_TYPE_LABELS[request.type] ?? request.type} {request.status === "APROBADO" ? "aprobado" : "(pendiente)"}{isManager && view === "team" ? ` · ${request.requester.name}` : ""}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </Card>
-            );
-          })}
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          {[0, 1, 2, 3, 4, 5, 6].map((i) => <DeskSkeleton key={i} className="h-44" />)}
         </div>
+      ) : (
+        <DeskReveal index={0}>
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-7" aria-label="Agenda semanal">
+            {days.map((day) => {
+              const current = day.key === today;
+              const requests = shiftRequests.filter((request) => request.date === day.key);
+              return (
+                <section
+                  key={day.key}
+                  className={`rounded-xl border p-4 ${current ? "border-accent/40 bg-accent-quiet" : "border-line bg-card"}`}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <h3 className="truncate text-ui font-semibold text-ink">{day.name}</h3>
+                      <p className="text-caption text-muted">
+                        {formatLongDate(day.date)}{current ? " · hoy" : ""}
+                      </p>
+                    </div>
+                    <CalendarDays size={16} className={current ? "shrink-0 text-accent" : "shrink-0 text-muted"} />
+                  </div>
+
+                  <div className="mt-3 border-t border-line pt-2">
+                    {day.schedules.length === 0 && requests.length === 0 ? (
+                      <p className="py-2 text-caption text-muted">Sin registros</p>
+                    ) : null}
+                    {day.schedules.map((item) => (
+                      <ScheduleRow key={item.id} item={item} showUser={Boolean(isManager && view === "team")} />
+                    ))}
+                    {requests.map((request, index) => (
+                      <p key={index} className="mt-1.5 flex items-start gap-1.5 text-caption">
+                        <CalendarClock size={12} className={`mt-0.5 shrink-0 ${request.status === "APROBADO" ? "text-ok" : "text-warn"}`} />
+                        <span className={request.status === "APROBADO" ? "text-ok" : "text-warn"}>
+                          {SHIFT_TYPE_LABELS[request.type] ?? request.type}{" "}
+                          {request.status === "APROBADO" ? "aprobado" : "(pendiente)"}
+                          {isManager && view === "team" ? ` · ${request.requester.name}` : ""}
+                        </span>
+                      </p>
+                    ))}
+                  </div>
+                </section>
+              );
+            })}
+          </div>
+        </DeskReveal>
       )}
+
+      {!loading && !error && days.every((day) => day.schedules.length === 0) ? (
+        <DeskEmpty
+          icon={CalendarDays}
+          title="Sin horarios para esta semana"
+          hint="Se cargan desde el archivo de horarios en el Centro de Datos. Prueba también con otra semana."
+        />
+      ) : null}
     </div>
   );
 }
@@ -183,21 +254,33 @@ export default function EscritorioHorarios() {
 function ScheduleRow({ item, showUser }: { item: ScheduleItem; showUser: boolean }) {
   const config = statusConfig[item.status];
   return (
-    <div className="flex min-h-10 items-center justify-between gap-3 py-1.5">
-      <div className="flex min-w-0 items-center gap-2.5">
-        {showUser ? <ProfileAvatar name={item.userName} photoUrl={item.photoUrl} size="sm" className="size-8 rounded-full shadow-none" /> : null}
+    <div className="flex items-center justify-between gap-2 py-1.5">
+      <div className="flex min-w-0 items-center gap-2">
+        {showUser ? (
+          <ProfileAvatar name={item.userName} photoUrl={item.photoUrl} size="sm" className="size-6 shrink-0 rounded-md text-[9px] shadow-none" />
+        ) : null}
         <div className="min-w-0">
-          <p className="truncate text-sm font-semibold text-ink">{showUser ? item.userName : config.label}</p>
-          <p className="mt-0.5 flex items-center gap-1.5 text-[11px] text-muted">{item.startTime ? <><Clock3 size={12} />{item.startTime}{item.endTime ? ` - ${item.endTime}` : ""}</> : item.statusRaw ?? config.label}{showUser && item.zone ? ` · ${item.zone}` : ""}</p>
+          <p className="truncate text-caption font-medium text-ink">{showUser ? item.userName : config.label}</p>
+          <p className="flex items-center gap-1 truncate text-caption text-muted">
+            {item.startTime ? (
+              <><Clock3 size={11} className="shrink-0" />{item.startTime}{item.endTime ? `–${item.endTime}` : ""}</>
+            ) : (item.statusRaw ?? config.label)}
+            {showUser && item.zone ? ` · ${item.zone}` : ""}
+          </p>
         </div>
       </div>
-      <Badge tone={config.tone}>{config.label}</Badge>
+      {item.status !== "WORKING" ? <Badge tone={config.tone}>{config.label}</Badge> : null}
     </div>
   );
 }
 
-function Summary({ label, value, className }: { label: string; value: number; className: string }) {
-  return <Card className="px-3 py-3 text-center"><p className={`text-2xl font-semibold ${className}`}>{value}</p><p className="mt-0.5 text-[11px] font-bold text-muted">{label}</p></Card>;
+function Summary({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="sm:border-l sm:border-line sm:pl-5 sm:first:border-l-0 sm:first:pl-0">
+      <dt className="text-caption font-medium text-muted">{label}</dt>
+      <dd className="mt-1 text-h2 font-semibold tabular-nums text-ink">{value}</dd>
+    </div>
+  );
 }
 
 function formatWeekRange(value: string) {
