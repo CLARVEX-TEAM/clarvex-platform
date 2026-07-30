@@ -85,7 +85,10 @@ export function DeskRail({
         </div>
 
         {/* Secciones */}
-        <div className="desk-rail-scroll no-scrollbar min-h-0 flex-1 overflow-y-auto px-3 pb-3">
+        {/* Sin `no-scrollbar`: esa clase global mata también el
+            ::-webkit-scrollbar, así que la barra fina del estado expandido
+            nunca llegaba a dibujarse. El colapsado la oculta desde desktop.css. */}
+        <div className="desk-rail-scroll min-h-0 flex-1 overflow-y-auto px-3 pb-3 pt-1">
           {navGroups.map((group, groupIndex) => {
             const items = group.items.filter((item) => !item.adminOnly || user.platformAdmin);
             if (items.length === 0) return null;

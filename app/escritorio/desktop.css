@@ -295,8 +295,14 @@ body:has([data-surface="desk"]) .dot-pattern {
   width: var(--desk-rail);
   transition: width var(--dur-base) var(--ease-out-quint);
 }
+/* :has(:focus-visible) y NO :focus-within.
+   Con :focus-within, al hacer clic en una sección el enlace se quedaba con el
+   foco: quitabas el puntero, :hover desaparecía, pero :focus-within seguía
+   verdadero y el rail no se cerraba hasta que clicabas dentro de la página.
+   :focus-visible solo se activa con teclado, así que el clic de ratón ya no lo
+   deja abierto y la navegación por teclado sigue funcionando igual. */
 [data-surface="desk"] .desk-rail:hover .desk-rail-inner,
-[data-surface="desk"] .desk-rail:focus-within .desk-rail-inner {
+[data-surface="desk"] .desk-rail:has(:focus-visible) .desk-rail-inner {
   width: var(--desk-rail-open);
   box-shadow: var(--desk-elev-3);
 }
@@ -311,7 +317,49 @@ body:has([data-surface="desk"]) .dot-pattern {
    pinta, así que cuando la lista SÍ cabe, la zona de abajo está vacía y el
    difuminado no se ve. */
 [data-surface="desk"] .desk-rail-scroll {
-  mask-image: linear-gradient(to bottom, #000 calc(100% - 1.75rem), transparent 100%);
+  /* Difuminado en LOS DOS bordes: con el fade solo abajo, al desplazarse a
+     media lista no quedaba ninguna señal de que hubiera secciones por encima.
+     Cuando la lista cabe entera, la máscara solo afecta a lo que se pinta, así
+     que sobre el relleno vacío no se nota. */
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    #000 1.25rem,
+    #000 calc(100% - 1.75rem),
+    transparent 100%
+  );
+  /* Colapsado no lleva barra: en 64px se comería un octavo del ancho y
+     descentraría los iconos. */
+  scrollbar-width: none;
+}
+[data-surface="desk"] .desk-rail-scroll::-webkit-scrollbar {
+  width: 0;
+}
+
+/* Expandido SÍ lleva barra, y es lo que arregla el fallo de fondo: en un
+   portátil de 768px la lista mide 836px dentro de 463px, así que nueve
+   secciones quedan por debajo del corte. Sin barra visible no hay ninguna
+   señal de que existan, y el difuminado solo no basta. */
+[data-surface="desk"] .desk-rail:hover .desk-rail-scroll,
+[data-surface="desk"] .desk-rail:has(:focus-visible) .desk-rail-scroll,
+[data-surface="desk"][data-rail-pinned="true"] .desk-rail-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(var(--desk-line-strong)) transparent;
+  /* stable reserva el carril: sin esto, en los navegadores que pintan la barra
+     superpuesta no ocupa ancho y vuelve a no haber señal de que hay más. */
+  scrollbar-gutter: stable;
+}
+[data-surface="desk"] .desk-rail:hover .desk-rail-scroll::-webkit-scrollbar,
+[data-surface="desk"] .desk-rail:has(:focus-visible) .desk-rail-scroll::-webkit-scrollbar,
+[data-surface="desk"][data-rail-pinned="true"] .desk-rail-scroll::-webkit-scrollbar {
+  width: 8px;
+}
+[data-surface="desk"] .desk-rail .desk-rail-scroll::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgb(var(--desk-line-strong));
+}
+[data-surface="desk"] .desk-rail .desk-rail-scroll::-webkit-scrollbar-track {
+  background: transparent;
 }
 
 /* Las etiquetas siguen en el árbol de accesibilidad aunque no se vean: un
@@ -324,7 +372,7 @@ body:has([data-surface="desk"]) .dot-pattern {
               transform var(--dur-fast) var(--ease-out-quint);
 }
 [data-surface="desk"] .desk-rail:hover .desk-rail-label,
-[data-surface="desk"] .desk-rail:focus-within .desk-rail-label,
+[data-surface="desk"] .desk-rail:has(:focus-visible) .desk-rail-label,
 [data-surface="desk"][data-rail-pinned="true"] .desk-rail-label {
   opacity: 1;
   transform: none;
