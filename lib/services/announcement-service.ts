@@ -19,6 +19,11 @@ export async function createAnnouncement(session: Session, input: CreateAnnounce
       data: { storeId: session.storeId, authorId: session.userId, title: input.title, body: input.body, imageUrl: input.imageUrl ?? null },
       include: { reads: true }
     });
+    // El autor cuenta como leído desde el momento en que lo publica. Sin esto,
+    // el panel de gerencia le reclamaba "confirma la lectura" de un comunicado
+    // que acababa de escribir él mismo.
+    await tx.announcementRead.create({ data: { announcementId: created.id, userId: session.userId } });
+
     const advisors = await tx.user.findMany({ where: { storeId: session.storeId, role: "ASESOR", active: true }, select: { id: true } });
     await createNotifications(tx, advisors.map((advisor) => ({
       storeId: session.storeId,
@@ -39,7 +44,7 @@ export async function createAnnouncement(session: Session, input: CreateAnnounce
     imageUrl: announcement.imageUrl ?? null,
     authorId: announcement.authorId,
     date: announcement.createdAt.toISOString().slice(0, 10),
-    readBy: [] as string[],
+    readBy: [session.userId],
     reactions: [] as unknown[]
   };
 }

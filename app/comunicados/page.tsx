@@ -343,7 +343,11 @@ export default function ComunicadosPage() {
                     </div>
                     <ProgressBar value={readProgress} />
                     <div className="mt-2 grid gap-0 divide-y divide-white/[0.07] border-t border-white/[0.07]">
-                      {session?.role === "ASESOR" && session ? (
+                      {/* Antes solo lo veía el ASESOR. El panel de gerencia sí
+                          reclamaba "N comunicados sin confirmar lectura" y
+                          enlazaba aquí, pero aquí no había con qué confirmar:
+                          el aviso no se podía quitar nunca. */}
+                      {session ? (
                         <button
                           onClick={() => void toggleRead(item.id)}
                           className="flex min-h-11 items-center justify-between py-2"

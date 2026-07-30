@@ -79,6 +79,11 @@ const mockPrisma = {
     findMany: async () => [],
     create: async (args: any) => ({ id: "ann-1", ...args.data, createdAt: new Date(), reads: [] })
   },
+  // El autor se marca como lector al publicar, para que el panel de gerencia no
+  // le reclame confirmar la lectura de un comunicado que escribió él mismo.
+  announcementRead: {
+    create: async (args: any) => ({ id: "read-1", readAt: new Date(), ...args.data })
+  },
   notification: { createMany: async () => ({ count: 0 }) },
   auditLog: { create: async (args: any) => ({ id: `audit-${Math.random()}`, ...args.data }) },
   aiRecommendationHistory: {

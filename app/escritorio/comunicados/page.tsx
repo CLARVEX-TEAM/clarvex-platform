@@ -3,8 +3,9 @@
 import { useEffect, useRef, useState } from "react";
 import NextImage from "next/image";
 import { AnimatePresence, motion } from "framer-motion";
-import { ImagePlus, Megaphone, Search, Sparkles, Trash2, X } from "lucide-react";
-import type { Announcement } from "@/lib/types";
+import { Check, ImagePlus, Megaphone, Search, Sparkles, Trash2, X } from "lucide-react";
+import { getSession } from "@/lib/auth";
+import type { Announcement, User } from "@/lib/types";
 import { Badge, ProfileAvatar } from "@/components/ui";
 import { AppInput, AppTextarea } from "@/components/forms";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
@@ -64,6 +65,35 @@ export default function EscritorioComunicados() {
   const filtered = term ? announcements.filter((a) => `${a.title} ${a.body}`.toLowerCase().includes(term)) : announcements;
 
   useUnsavedGuard(Boolean(title.trim() || body.trim() || imageFile));
+
+  const [session, setSession] = useState<User | null>(null);
+  useEffect(() => { void getSession().then(setSession); }, []);
+
+  /**
+   * Confirmar la propia lectura. Gerencia también la necesita: el panel les
+   * avisa de "comunicados sin confirmar lectura" y hasta ahora no había forma
+   * de confirmarla desde aquí.
+   */
+  async function toggleOwnRead(id: string) {
+    if (!session) return;
+    const item = announcements.find((a) => a.id === id);
+    if (!item) return;
+    const read = !item.readBy.includes(session.id);
+    setAnnouncements((current) => current.map((a) => a.id === id
+      ? { ...a, readBy: read ? [...a.readBy, session.id] : a.readBy.filter((u) => u !== session.id) }
+      : a));
+    try {
+      const response = await fetch(`/api/announcements/${id}/read`, {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ read })
+      });
+      if (!response.ok) throw new Error();
+    } catch {
+      setAnnouncements((current) => current.map((a) => a.id === id
+        ? { ...a, readBy: read ? a.readBy.filter((u) => u !== session.id) : [...a.readBy, session.id] }
+        : a));
+      toast("No se pudo guardar tu lectura.", "error");
+    }
+  }
 
   const advisors = data?.users.filter((u) => u.role === "ASESOR") ?? [];
   const authorName = (id: string) => data?.users.find((u) => u.id === id)?.name ?? "Gerencia";
@@ -287,6 +317,16 @@ export default function EscritorioComunicados() {
                           {reads}/{advisors.length} leído{reads === 1 ? "" : "s"} · {readPct}%
                         </Badge>
                         {reactionCount > 0 ? <Badge tone="info">{reactionCount} reacción{reactionCount === 1 ? "" : "es"}</Badge> : null}
+
+                        {session ? (
+                          <DeskButton
+                            onClick={() => void toggleOwnRead(item.id)}
+                            className={`ml-auto min-h-8 px-3 text-caption ${item.readBy.includes(session.id) ? "border-ok/40 text-ok" : ""}`}
+                          >
+                            <Check size={14} />
+                            {item.readBy.includes(session.id) ? "Lectura confirmada" : "Confirmar mi lectura"}
+                          </DeskButton>
+                        ) : null}
                       </div>
                     </article>
                   );
