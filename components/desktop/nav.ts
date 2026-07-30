@@ -51,7 +51,7 @@ export const navGroups: NavGroup[] = [
       { href: "/escritorio/encuestas", label: "Encuestas", icon: ClipboardList, keywords: "clima feedback opinion" },
       { href: "/escritorio/capacitacion", label: "Capacitación", icon: GraduationCap, keywords: "cursos biblioteca recursos archivos" },
       { href: "/escritorio/datos", label: "Centro de Datos", icon: Database, keywords: "rdv sincronizar excel fuentes sharepoint" },
-      { href: "/admin", label: "Administración", icon: ShieldCheck, adminOnly: true, keywords: "tiendas usuarios plataforma" }
+      { href: "/escritorio/admin", label: "Administración", icon: ShieldCheck, adminOnly: true, keywords: "tiendas usuarios plataforma comisiones suscripcion auditoria" }
     ]
   }
 ];
@@ -78,6 +78,7 @@ export const sectionTitles: Record<string, { title: string; subtitle: string }> 
   "/escritorio/chat": { title: "Chat", subtitle: "Mensajes directos y del equipo" },
   "/escritorio/notificaciones": { title: "Notificaciones", subtitle: "Avisos del equipo" },
   "/escritorio/perfil": { title: "Mi perfil", subtitle: "Tus datos y preferencias" },
+  "/escritorio/admin": { title: "Administración", subtitle: "Tiendas, comisiones y suscripciones de la plataforma" },
   "/escritorio/conteos": { title: "Conteos", subtitle: "Inventario físico por marbete" },
   "/escritorio/conteos/marbetes": { title: "Marbetes", subtitle: "Catálogo fijo de tienda y bodega" }
 };

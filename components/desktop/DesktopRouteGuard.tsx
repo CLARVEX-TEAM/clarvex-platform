@@ -7,12 +7,15 @@ import { noteViewRedirect, prefersDesktop } from "@/lib/view-mode";
 
 // Rutas de gerencia que tienen equivalente en el escritorio (/escritorio/<seg>).
 const MIRRORED = new Set([
-  "bitacora", "capacitacion", "chat", "checklist", "comunicados", "conteos", "datos",
+  "admin", "bitacora", "capacitacion", "chat", "checklist", "comunicados", "conteos", "datos",
   "encuestas", "equipo", "faltantes", "horarios", "kpis", "kudos",
   "pendientes", "perfil", "plan", "solicitudes", "notificaciones"
 ]);
-// Nunca redirigir: público, admin de plataforma (sin versión escritorio) y vistas de impresión.
-const NEVER = ["/login", "/privacidad", "/terminos", "/suspendida", "/admin", "/conteos/marbetes/imprimir"];
+// Nunca redirigir: público y vistas de impresión.
+// `/admin` ya NO está aquí: tenía su excepción porque carecía de versión de
+// escritorio, así que en una computadora caía en la maqueta móvil (con la barra
+// inferior del teléfono incluida). Ahora existe /escritorio/admin.
+const NEVER = ["/login", "/privacidad", "/terminos", "/suspendida", "/conteos/marbetes/imprimir"];
 
 /**
  * Lleva a gerencia a la versión de ESCRITORIO desde CUALQUIER ruta cuando abren
