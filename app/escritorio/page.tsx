@@ -6,6 +6,7 @@ import { completion, money } from "@/lib/format";
 import { buildDailySeries, buildSalesTrend } from "@/lib/trend";
 import { cn } from "@/lib/utils";
 import { isRestingToday, restLabel, scheduleStatusByUser } from "@/lib/working-today";
+import { isOpenPending } from "@/lib/types";
 import { ProfileAvatar } from "@/components/ui";
 import { useTheme } from "@/components/ThemeProvider";
 import { useDesktopData } from "@/components/desktop/useDesktopData";
@@ -84,7 +85,7 @@ export default function EscritorioDashboard() {
 
   // Cola de atención: lo crítico y lo alto que sigue abierto, lo vencido primero.
   const attention = data.pendings
-    .filter((p) => (p.priority === "critica" || p.priority === "alta") && p.status !== "completado")
+    .filter((p) => isOpenPending(p) && (p.priority === "critica" || p.priority === "alta"))
     .map((p) => ({ ...p, overdue: Boolean(p.dueDate) && p.dueDate < todayKey }))
     .sort((a, b) => Number(b.overdue) - Number(a.overdue) || (a.dueDate ?? "").localeCompare(b.dueDate ?? ""))
     .slice(0, 5);

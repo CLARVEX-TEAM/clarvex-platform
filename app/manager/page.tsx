@@ -22,7 +22,7 @@ import { completion, money, performanceTextClass } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { computeDailyStreak } from "@/lib/streaks";
 import { isRestingToday, restLabel, scheduleStatusByUser } from "@/lib/working-today";
-import type { User } from "@/lib/types";
+import { isOpenPending, type User } from "@/lib/types";
 import { AppFrame, Badge, BottomNav, Card, ProfileAvatar, ProgressBar, priorityTone } from "@/components/ui";
 import { PullToRefresh } from "@/components/PullToRefresh";
 import { HomeHeader } from "@/components/home/HomeHeader";
@@ -111,7 +111,9 @@ export default function ManagerDashboard() {
 
   const advisors = data.users.filter((u) => u.role === "ASESOR");
   const store = data.dashboardDaily;
-  const critical = data.pendings.filter((p) => p.priority === "critica" || p.priority === "alta");
+  // Mismo descuido que en /pendientes: sin filtrar por estado, la tarjeta de
+  // "Pendientes de gerencia" seguía listando lo ya cerrado.
+  const critical = data.pendings.filter((p) => isOpenPending(p) && (p.priority === "critica" || p.priority === "alta"));
   const doneActivities = data.plans.flatMap((p) => p.activities).filter((a) => a.completed).length;
   const allActivities = data.plans.flatMap((p) => p.activities).length;
   const storeProgress = completion(store?.dailySales ?? 0, store?.dailyGoal ?? 0);

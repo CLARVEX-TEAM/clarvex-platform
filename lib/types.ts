@@ -2,6 +2,23 @@ export type Role = "GERENTE" | "SUBGERENTE" | "ASESOR" | "REGIONAL";
 export type Priority = "baja" | "media" | "alta" | "critica";
 export type PendingStatus = "pendiente" | "en proceso" | "completado";
 
+/**
+ * ¿Sigue abierto este pendiente?
+ *
+ * Existe porque el mismo descuido apareció TRES veces: la tarjeta "Pendientes
+ * de gerencia" de /pendientes y la de /manager listaban lo ya cerrado, y los
+ * avisos de vencido seguían en la campana después de cerrarlo. La causa fue
+ * siempre la misma: filtrar por prioridad o por responsable y olvidar el estado.
+ *
+ * Vive aquí y no en lib/pending.ts a propósito: ese módulo importa enums de
+ * @prisma/client, que son objetos en tiempo de ejecución, y usarlo desde un
+ * componente cliente arrastraría Prisma al bundle del navegador. Este archivo
+ * es solo tipos y no arrastra nada.
+ */
+export function isOpenPending(pending: { status: string }): boolean {
+  return pending.status !== "completado";
+}
+
 export type User = {
   id: string;
   name: string;

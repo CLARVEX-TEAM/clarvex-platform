@@ -5,7 +5,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { AlertTriangle, ClipboardCheck, Plus, Sparkles, UserRound, X } from "lucide-react";
 import { fetchAppData, type AppData } from "@/lib/app-data";
 import { getSession } from "@/lib/auth";
-import type { Pending, User } from "@/lib/types";
+import { isOpenPending, type Pending, type User } from "@/lib/types";
 import { AppFrame, AppHeader, Badge, BottomNav, Card, EmptyState, FloatingActionButton, priorityTone, Skeleton, statusTone } from "@/components/ui";
 import { ResourceDiscussion } from "@/components/ResourceDiscussion";
 import { DeleteButton, SaveButton } from "@/components/ActionButtons";
@@ -98,13 +98,22 @@ export default function PendientesPage() {
   }));
 
   const managers = data.users.filter((user) => user.role === "GERENTE" || user.role === "SUBGERENTE").map((user) => user.id);
-  const management = data.pendings.filter((pending) => managers.includes(pending.ownerId) || pending.priority === "critica");
+  // isOpenPending: sin filtrar por estado, un pendiente ya cerrado seguía
+  // apareciendo en la tarjeta de gerencia. La lista completa de abajo sí
+  // muestra los completados a propósito, pero este resumen es de lo que queda
+  // por hacer.
+  const management = data.pendings.filter((pending) =>
+    isOpenPending(pending) && (managers.includes(pending.ownerId) || pending.priority === "critica")
+  );
   const userName = (id: string) => data.users.find((user) => user.id === id)?.name ?? "Equipo";
   const isAdvisor = session?.role === "ASESOR";
   const basePendings = isAdvisor && session ? data.pendings.filter((pending) => pending.ownerId === session.id) : data.pendings;
+  // El filtro "Hoy" traía una fecha FIJA de junio ("2026-06-05") con un OR que
+  // dejaba pasar todo lo no completado: la pestaña nunca mostró los de hoy.
+  const todayKey = new Date().toISOString().slice(0, 10);
   const visiblePendings = basePendings.filter((pending) => {
     if (filter === "urgentes") return pending.priority === "critica" || pending.priority === "alta";
-    if (filter === "hoy") return pending.dueDate.includes("2026-06-05") || pending.status !== "completado";
+    if (filter === "hoy") return isOpenPending(pending) && pending.dueDate === todayKey;
     return true;
   });
 
