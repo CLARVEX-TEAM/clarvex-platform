@@ -45,9 +45,15 @@ const config: Config = {
       fontSize: {
         // Escala fija en rem (ratio ~1.2). Mapea 1:1 con las variables del
         // escritorio para poder usarlas como clases.
+        // h1/h2/h3 faltaban: estaban declaradas como variables CSS en
+        // desktop.css pero NO aquí, así que `text-h2` no generaba nada y trece
+        // títulos salían al tamaño heredado en vez de al suyo.
         caption: ["0.75rem", { lineHeight: "1rem" }],
         ui: ["0.875rem", { lineHeight: "1.25rem" }],
         lead: ["1.125rem", { lineHeight: "1.6rem" }],
+        h3: ["1.25rem", { lineHeight: "1.75rem", letterSpacing: "-0.01em" }],
+        h2: ["1.5rem", { lineHeight: "2rem", letterSpacing: "-0.02em" }],
+        h1: ["1.875rem", { lineHeight: "2.25rem", letterSpacing: "-0.025em" }],
         metric: ["2.75rem", { lineHeight: "1", letterSpacing: "-0.03em" }]
       },
       transitionTimingFunction: {

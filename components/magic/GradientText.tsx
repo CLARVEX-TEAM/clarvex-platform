@@ -41,9 +41,17 @@ export function GradientText({
     <Tag
       className={cn("bg-clip-text text-transparent animate-[gradient-sweep_var(--grad-dur)_linear_infinite]", className)}
       style={{
+        // La franja de color va ANCHA (18%→82%): con la anterior (42%→52%) el
+        // brillo cruzaba tan rápido que el título se veía blanco casi siempre.
         backgroundImage:
-          `linear-gradient(90deg, rgb(var(--color-ink)) 20%, ${via[0]} 42%, ${via[1]} 52%, rgb(var(--color-ink)) 74%)`,
+          `linear-gradient(90deg, rgb(var(--color-ink)) 6%, ${via[0]} 30%, ${via[1]} 50%, ${via[0]} 70%, rgb(var(--color-ink)) 94%)`,
         backgroundSize: "220% 100%",
+        // La transparencia va en estilo y NO solo en la clase `text-transparent`:
+        // si quien llama pasa cualquier `text-*`, tailwind-merge se queda con esa
+        // y descarta la transparente, dejando el texto opaco encima del degradado
+        // — que es justo lo que estaba pasando.
+        color: "transparent",
+        WebkitTextFillColor: "transparent",
         ["--grad-dur" as string]: `${durationSec}s`
       }}
     >
