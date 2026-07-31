@@ -12,6 +12,7 @@ import { TermsGate } from "@/components/TermsGate";
 import { DesktopRouteGuard } from "@/components/desktop/DesktopRouteGuard";
 import { ClarvexCopilot } from "@/components/ClarvexCopilot";
 import { DemoBanner } from "@/components/DemoBanner";
+import { EmailBanner } from "@/components/EmailBanner";
 import { SplashIntro } from "@/components/SplashIntro";
 import { Meteors } from "@/components/magic/Meteors";
 import { DotPattern } from "@/components/magic/DotPattern";
@@ -72,6 +73,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <OfflineBanner />
             <DesktopRouteGuard />
             <DemoBanner />
+            <EmailBanner />
             <TermsGate />
             <PageTransition>{children}</PageTransition>
             <WhatsNewModal />

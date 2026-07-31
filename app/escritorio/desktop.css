@@ -19,7 +19,13 @@
    ────────────────────────────────────────────────────────────────────────── */
 
 /* ─── Tema claro (interruptor) ─────────────────────────────────────────────── */
-[data-surface="desk"] {
+/* `.desk-adopt` es para los avisos globales que viven en el layout raíz
+   (EmailBanner, y los que vengan después). Están FUERA del subárbol
+   [data-surface="desk"], así que no heredarían estos tokens y se pintarían con
+   la paleta del móvil encima del lienzo del escritorio. Es el mismo caso que
+   obligó a ocultar los Meteors con `body:has(...)`. */
+[data-surface="desk"],
+body:has([data-surface="desk"]) .desk-adopt {
   /* Remapeo de los tokens que ya consume Tailwind */
   --color-void: 249 250 251;   /* oklch(0.985 0.002 263) — lienzo */
   --color-panel: 244 245 248;  /* oklch(0.970 0.004 263) — fila elevada */
@@ -56,7 +62,8 @@
    El oscuro no es el claro invertido: aquí la profundidad la da la LUMINOSIDAD
    de la superficie, no la sombra. Escala de tres pasos, mismo hue y croma,
    solo cambia la L. */
-.dark [data-surface="desk"] {
+.dark [data-surface="desk"],
+.dark body:has([data-surface="desk"]) .desk-adopt {
   --color-void: 11 13 17;      /* oklch(0.160 0.008 263) — lienzo */
   --color-panel: 26 29 33;     /* oklch(0.228 0.010 263) — fila elevada */
   --color-card: 19 21 25;      /* oklch(0.196 0.009 263) — superficie */
