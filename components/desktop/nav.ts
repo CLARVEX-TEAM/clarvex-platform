@@ -1,6 +1,6 @@
 import {
   Award, Boxes, CalendarRange, ChartColumn, ClipboardCheck, ClipboardList, Database,
-  FileClock, Gauge, GraduationCap, Megaphone, MessagesSquare, NotebookPen, PackageSearch,
+  CalendarCheck, FileClock, Gauge, GraduationCap, Megaphone, MessagesSquare, NotebookPen, PackageSearch,
   ShieldCheck, Target, TriangleAlert, Users
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -27,7 +27,8 @@ export const navGroups: NavGroup[] = [
       { href: "/escritorio", label: "Dashboard", icon: Gauge, keywords: "inicio resumen panel home" },
       { href: "/escritorio/kpis", label: "KPIs", icon: ChartColumn, keywords: "venta meta upt aur ept conversion alcance" },
       { href: "/escritorio/equipo", label: "Equipo", icon: Users, keywords: "asesores colaboradores personal gente" },
-      { href: "/escritorio/horarios", label: "Horarios", icon: CalendarRange, keywords: "turnos agenda semana descanso" }
+      { href: "/escritorio/horarios", label: "Horarios", icon: CalendarRange, keywords: "turnos agenda semana descanso" },
+      { href: "/escritorio/asistencia", label: "Asistencia", icon: CalendarCheck, keywords: "llegadas retardos faltas checada banco de horas nomina blitz incidencias" }
     ]
   },
   {
@@ -66,6 +67,7 @@ export const sectionTitles: Record<string, { title: string; subtitle: string }> 
   "/escritorio/kpis": { title: "KPIs", subtitle: "Venta, metas y desempeño del equipo" },
   "/escritorio/equipo": { title: "Equipo", subtitle: "Colaboradores y horarios" },
   "/escritorio/horarios": { title: "Horarios", subtitle: "Agenda semanal del equipo" },
+  "/escritorio/asistencia": { title: "Asistencia", subtitle: "Llegadas, retardos y banco de horas" },
   "/escritorio/plan": { title: "Plan del día", subtitle: "Actividades y enfoque del equipo" },
   "/escritorio/checklist": { title: "Checklist de tienda", subtitle: "Apertura y cierre con evidencia" },
   "/escritorio/solicitudes": { title: "Solicitudes", subtitle: "Permisos, turnos y aprobaciones" },
