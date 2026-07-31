@@ -9,6 +9,8 @@ import type { ProviderChatParams, ProviderChatResult } from "@/lib/ai/types";
 const MAX_SAME_PROVIDER_ATTEMPTS = 3;
 const DEFAULT_RETRY_MS = 2_000;
 const MAX_RETRY_MS = 15_000;
+/** Por encima de esto no se espera al mismo proveedor: se salta al respaldo. */
+const SHORT_RETRY_MS = 3_000;
 
 function sleep(ms: number) {
   return new Promise<void>((resolve) => setTimeout(resolve, ms));
@@ -76,12 +78,22 @@ export class ProviderRouter {
         } catch (error) {
           lastError = error;
           const providerError = error instanceof ProviderError ? error : null;
+          const hasFallback = index < this.chain.length - 1;
           const canRetrySame = providerError?.status === 429 && attempt < MAX_SAME_PROVIDER_ATTEMPTS - 1;
           if (canRetrySame && providerError) {
             const waitMs = retryDelayMs(providerError, attempt);
-            console.warn(`[ai] Proveedor "${provider.name}" en rate limit; reintento en ${waitMs}ms.`);
-            await sleep(waitMs);
-            continue;
+            // Esperar al MISMO proveedor solo si la espera es corta o si no hay
+            // a quién más recurrir. Antes se dormían hasta 15 s siempre: con un
+            // presupuesto total de 30 s, una sola espera larga lo consumía y la
+            // petición moría por tiempo agotado sin haber probado el respaldo,
+            // que podía contestar de inmediato.
+            if (waitMs <= SHORT_RETRY_MS || !hasFallback) {
+              console.warn(`[ai] Proveedor "${provider.name}" en rate limit; reintento en ${waitMs}ms.`);
+              await sleep(waitMs);
+              continue;
+            }
+            console.warn(`[ai] Proveedor "${provider.name}" en rate limit (${waitMs}ms); se salta al respaldo en vez de esperar.`);
+            break;
           }
 
           const retryable = providerError?.retryable ?? false;

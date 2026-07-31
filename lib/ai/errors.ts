@@ -72,6 +72,19 @@ export function toUserFacingCopilotError(error: unknown): UserFacingCopilotError
     };
   }
   if (error instanceof ProviderError) {
+    // 402 = el proveedor de IA se quedó sin saldo o sin cuota.
+    //
+    // Antes caía en «no pudimos conectar», que hacía pensar en un problema de
+    // red y llevaba a reintentar en balde: la cuota no se repone reintentando.
+    // El mensaje separa lo que el usuario puede hacer (esperar) de lo que solo
+    // puede resolver quien administra la app.
+    if (error.status === 402) {
+      return {
+        message: "El asistente agotó su cuota de uso. Vuelve a intentarlo más tarde; si sigue igual, avisa a quien administra la app.",
+        status: 503,
+        retryable: false
+      };
+    }
     if (error.status === 429) {
       return {
         message: "El asistente está muy solicitado ahora mismo. Espera unos segundos e intenta de nuevo.",

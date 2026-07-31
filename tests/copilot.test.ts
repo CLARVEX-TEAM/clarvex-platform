@@ -397,3 +397,21 @@ test("CLARVEX Copilot — Fase 1 (solo lectura)", async (t) => {
     assert.equal(usageCreateCount, before + 1);
   });
 });
+
+test("Cuando el proveedor de IA se queda sin cuota", async (t) => {
+  const { toUserFacingCopilotError, ProviderError } = await import("../lib/ai/errors");
+
+  await t.test("402 se explica como cuota agotada, no como fallo de red", () => {
+    // Antes caia en «no pudimos conectar», que hace pensar en un problema de
+    // red y lleva a reintentar en balde: la cuota no se repone reintentando.
+    const facing = toUserFacingCopilotError(new ProviderError("cloudflare", "respondio 402", { status: 402, retryable: false }));
+    assert.match(facing.message, /cuota/i);
+    assert.equal(facing.retryable, false, "reintentar no lo arregla");
+    assert.equal(facing.status, 503, "hacia el cliente es indisponibilidad, no un 402 que confunda al proxy");
+  });
+
+  await t.test("429 si es reintentable: es saturacion momentanea", () => {
+    const facing = toUserFacingCopilotError(new ProviderError("groq", "rate limit", { status: 429, retryable: true }));
+    assert.equal(facing.retryable, true);
+  });
+});
