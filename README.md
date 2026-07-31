@@ -211,3 +211,16 @@ sed -i '/^MAINTENANCE_MODE=/d' .env && pm2 reload clarvex-team --update-env # ab
 ```
 
 Más contexto para trabajar en el repo: **`CLAUDE.md`**.
+
+---
+
+## Propiedad
+
+**Copyright © 2026 Adrian Luna. Todos los derechos reservados.**
+
+Software propietario. No es de código abierto. Queda prohibida su copia,
+modificación, distribución o uso sin autorización previa y por escrito del
+titular. Ver [`LICENSE`](LICENSE).
+
+El acceso concedido para evaluación o auditoría es temporal, revocable, limitado
+a la lectura y no transfiere derecho alguno sobre el software.
