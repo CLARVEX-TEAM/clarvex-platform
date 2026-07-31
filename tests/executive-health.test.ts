@@ -125,7 +125,9 @@ test("getExecutiveHealth usa getKpiReport y no inventa conversión", async () =>
             discountLimit: null,
             commissionAmount: 0,
             commissionPercent: 0,
-            commissionMinimum: null
+            commissionMinimum: null,
+            crmTransactions: null,
+            posTransactions: null
           }
         : null,
       own: null,
@@ -155,7 +157,9 @@ test("getExecutiveHealth usa getKpiReport y no inventa conversión", async () =>
         discountLimit: null,
         commissionAmount: 0,
         commissionPercent: 0,
-        commissionMinimum: null
+        commissionMinimum: null,
+        crmTransactions: null,
+        posTransactions: null
       })),
       hasDiscountSource: false,
       latestDiscountWeek: null,

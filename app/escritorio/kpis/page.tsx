@@ -16,6 +16,8 @@ import type { KpiPeriod } from "@/lib/kpi-period";
 import type { KpiReportItem } from "@/lib/kpi-report";
 import type { CommissionRule, Role, User } from "@/lib/types";
 import { KPI_TABS as tabs, METRIC_ACCENT, METRIC_CONFIG, formatWeeksElapsed, localDateKey, type KpiTab as Tab, type KpiTarget, type MonthProjection, type MonthSalesProjection, type ReceiptLine, type ReceiptMonth } from "@/lib/kpi-view";
+import { ElectronicTicketsPanel } from "@/components/ElectronicTicketsPanel";
+import { targetValue } from "@/lib/electronic-tickets";
 import { useKpiDerived, useKpiReceipts, useKpiReport, useKpiTargets } from "@/lib/use-kpis";
 import { Badge, Card, ProfileAvatar, ProgressBar } from "@/components/ui";
 import { KpiHistoryView } from "@/components/KpiHistory";
@@ -145,7 +147,19 @@ export default function EscritorioKpis() {
       ) : activeKpi ? (
         <AnimatePresence mode="wait">
           <motion.div key={`${activeTab}-${period}-${selectedDate}`} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}>
-            {activeTab === "resumen" ? <ResumenView activeKpi={activeKpi} team={report?.team ?? []} progress={progress} periodLabel={periodLabel} hasDiscountSource={report?.hasDiscountSource ?? false} latestDiscountWeek={report?.latestDiscountWeek ?? null} targets={periodTargets} isManager={isManager} onOpenTargets={() => setShowTargetSheet(true)} salesProjection={monthSalesProjection} /> : null}
+            {activeTab === "resumen" ? (
+              <>
+                <ResumenView activeKpi={activeKpi} team={report?.team ?? []} progress={progress} periodLabel={periodLabel} hasDiscountSource={report?.hasDiscountSource ?? false} latestDiscountWeek={report?.latestDiscountWeek ?? null} targets={periodTargets} isManager={isManager} onOpenTargets={() => setShowTargetSheet(true)} salesProjection={monthSalesProjection} />
+                <ElectronicTicketsPanel
+                  own={report?.own ?? null}
+                  store={report?.store ?? null}
+                  team={report?.team ?? []}
+                  isAdvisor={isAdvisor}
+                  storeTarget={targetValue(periodTargets, "ticketElectronicoTienda")}
+                  advisorTarget={targetValue(periodTargets, "ticketElectronicoAsesor")}
+                />
+              </>
+            ) : null}
             {activeTab === "ventas" ? <VentasView activeKpi={activeKpi} team={report?.team ?? []} progress={progress} periodLabel={periodLabel} /> : null}
             {activeTab === "comision" ? <ComisionView activeKpi={commissionKpi ?? activeKpi} rules={report?.commissionRules ?? []} simulatedSales={simulatedSales} setSimulatedSales={setSimulatedSales} activeRule={activeRule} appliedPercent={appliedPercent} simulatedCommission={simulatedCommission} simulatedAchievement={simulatedAchievement} commissionRole={commissionRole} periodLabel={periodLabel} projection={monthProjection} hasMinimum={hasCommissionMinimum} /> : null}
             {activeTab === "ranking" ? <RankingView ranking={report?.team ?? []} periodLabel={periodLabel} isAdvisor={isAdvisor} currentUserId={report?.currentUserId} /> : null}

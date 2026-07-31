@@ -175,10 +175,19 @@ export async function PUT(request: Request) {
 
     // Fila ancla: ahí y solo ahí vive el total semanal. Si se repitiera en los
     // siete días, sumar la semana multiplicaría por siete.
+    //
+    // `posTransactions` guarda SIEMPRE el denominador efectivo, aunque gerencia
+    // no haya capturado uno del POS: entonces se congela la suma del RDV de esa
+    // semana. Es lo que hace correcta la tasa del mes.
+    //
+    // Sin esto, agregar el mes sumaría el numerador solo de las semanas
+    // capturadas contra un denominador de TODOS los días, capturados o no, y la
+    // tasa saldría hundida fingiendo ceros donde no se ha medido.
+    const denominator = entry.crmTransactions === null ? null : entry.posTransactions ?? rdvTransactions;
     await prisma.$transaction(async (tx) => {
       await tx.kpi.update({
         where: { id: weekKpis[0].id },
-        data: { crmTransactions: entry.crmTransactions, posTransactions: entry.posTransactions }
+        data: { crmTransactions: entry.crmTransactions, posTransactions: denominator }
       });
       const restIds = weekKpis.slice(1).map((kpi) => kpi.id);
       if (restIds.length > 0) {

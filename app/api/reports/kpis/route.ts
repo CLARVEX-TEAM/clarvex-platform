@@ -114,7 +114,7 @@ export async function GET(request: Request) {
         upt: null, aur: null, ept: null, conversion: null, traffic: null, ranking: 0,
         grossSales: null, orkestraSales: null, orkestraTransactions: null, orkestraPieces: null,
         discountAmount: null, discountMargin: null, discountLimit: null,
-        commissionAmount: 0, commissionPercent: 0, commissionMinimum: null
+        commissionAmount: 0, commissionPercent: 0, commissionMinimum: null, crmTransactions: null, posTransactions: null
       }))
     ];
     // Meta WhatsApp repartida por días laborados (horarios sincronizados)

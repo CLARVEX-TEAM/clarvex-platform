@@ -7,7 +7,13 @@ import {
   qualifiesForRanking,
   validateCapture,
   weekLabel,
-  MIN_TICKETS_FOR_RANKING
+  MIN_TICKETS_FOR_RANKING,
+  reportedRate,
+  rateStatus,
+  sumTickets,
+  targetForRole,
+  targetValue,
+  formatRate
 } from "../lib/electronic-tickets";
 
 const row = (over: Partial<Parameters<typeof captureRate>[0]> = {}) => ({
@@ -150,5 +156,83 @@ test("etiqueta de la semana", async (t) => {
   await t.test("a caballo entre dos meses los nombra los dos", () => {
     const label = weekLabel(31, new Date("2026-07-26T00:00:00Z"), new Date("2026-08-01T00:00:00Z"));
     assert.equal(label, "Sem 31 · 26 jul – 1 ago");
+  });
+});
+
+test("tasa del reporte", async (t) => {
+  await t.test("divide entre el denominador congelado, no entre todos los tickets", () => {
+    // El denominador cubre SOLO las semanas capturadas. Si se dividiera entre
+    // los tickets de todo el mes, una semana sin medir hundiría la tasa.
+    assert.equal(reportedRate({ crmTransactions: 42, posTransactions: 100 }), 42);
+  });
+
+  await t.test("sin captura devuelve null, no cero", () => {
+    assert.equal(reportedRate({ crmTransactions: null, posTransactions: 100 }), null);
+    assert.equal(reportedRate(null), null);
+  });
+
+  await t.test("denominador en cero no revienta", () => {
+    assert.equal(reportedRate({ crmTransactions: 5, posTransactions: 0 }), null);
+  });
+});
+
+test("meta según el rol", async (t) => {
+  await t.test("el asesor va contra la suya y gerencia contra la de tienda", () => {
+    assert.equal(targetForRole("ASESOR", 80, 60), 60);
+    assert.equal(targetForRole("GERENTE", 80, 60), 80);
+    assert.equal(targetForRole("SUBGERENTE", 80, 60), 80);
+  });
+});
+
+test("estado contra la meta", async (t) => {
+  await t.test("igualar la meta ya es cumplir", () => {
+    assert.equal(rateStatus(60, 60), "cumple");
+    assert.equal(rateStatus(75, 60), "cumple");
+  });
+
+  await t.test("a menos de 5 puntos es «cerca», no rojo", () => {
+    // Un rojo que sale siempre deja de leerse en piso.
+    assert.equal(rateStatus(56, 60), "cerca");
+    assert.equal(rateStatus(55, 60), "cerca");
+    assert.equal(rateStatus(54.9, 60), "abajo");
+  });
+
+  await t.test("sin dato y sin meta se distinguen", () => {
+    assert.equal(rateStatus(null, 60), "sin-dato");
+    assert.equal(rateStatus(50, null), "sin-meta");
+    assert.equal(rateStatus(50, 0), "sin-meta");
+  });
+});
+
+test("suma de renglones", async (t) => {
+  await t.test("ignora a quien no tiene captura", () => {
+    const total = sumTickets([
+      { crmTransactions: 30, posTransactions: 100 },
+      { crmTransactions: 50, posTransactions: 100 },
+      { crmTransactions: null, posTransactions: 200 }
+    ]);
+    assert.equal(total.crmTransactions, 80);
+    // Los 200 del tercero NO entran: no se ha medido, no es un cero.
+    assert.equal(total.posTransactions, 200);
+    assert.equal(reportedRate(total), 40);
+  });
+
+  await t.test("si nadie capturó, el total es null", () => {
+    assert.equal(sumTickets([{ crmTransactions: null, posTransactions: 10 }]).crmTransactions, null);
+  });
+});
+
+test("lectura de metas y formato", async (t) => {
+  const targets = [{ metric: "ticketElectronicoTienda", value: 80 }, { metric: "upt", value: 1.7 }];
+
+  await t.test("encuentra la meta y devuelve null si no está puesta", () => {
+    assert.equal(targetValue(targets, "ticketElectronicoTienda"), 80);
+    assert.equal(targetValue(targets, "ticketElectronicoAsesor"), null);
+  });
+
+  await t.test("formatea con un decimal y «—» cuando no hay dato", () => {
+    assert.equal(formatRate(42.35), "42.4%");
+    assert.equal(formatRate(null), "—");
+    assert.equal(formatRate(0), "0.0%", "cero capturado SÍ es cero");
   });
 });

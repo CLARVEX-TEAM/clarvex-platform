@@ -21,6 +21,10 @@ export type KpiReportItem = {
   orkestraSales: number | null;
   orkestraTransactions: number | null;
   orkestraPieces: number | null;
+  /** Tickets electronicos del periodo. null = no se ha capturado. */
+  crmTransactions: number | null;
+  /** Denominador que le corresponde, congelado al capturar. */
+  posTransactions: number | null;
   discountAmount: number | null;
   discountMargin: number | null;
   discountLimit: number | null;
@@ -44,6 +48,9 @@ export type RawKpi = {
   orkestraSales?: unknown | null;
   orkestraTransactions?: number | null;
   orkestraPieces?: number | null;
+  /** Ticket electronico: viven SOLO en la fila ancla de la semana (ver CLAUDE.md). */
+  crmTransactions?: number | null;
+  posTransactions?: number | null;
   discountAmount: unknown | null;
   discountLimit: unknown | null;
   commissionAmount: unknown;
@@ -106,6 +113,10 @@ export function aggregateKpis(rows: RawKpi[], useMonthlyGoal = false, workingKey
       orkestraSales: nullableNumberSum(items.map((item) => item.orkestraSales === null || item.orkestraSales === undefined ? null : number(item.orkestraSales))),
       orkestraTransactions: nullableIntegerSum(items.map((item) => item.orkestraTransactions ?? null)),
       orkestraPieces: nullableIntegerSum(items.map((item) => item.orkestraPieces ?? null)),
+      // Solo viven en la fila ancla de cada semana, asi que sumar los dias del
+      // periodo da el total del periodo sin duplicar.
+      crmTransactions: nullableIntegerSum(items.map((item) => item.crmTransactions ?? null)),
+      posTransactions: nullableIntegerSum(items.map((item) => item.posTransactions ?? null)),
       discountAmount,
       discountMargin,
       discountLimit: latestNullable(items, "discountLimit"),
@@ -157,6 +168,8 @@ export function aggregateStore(
     orkestraSales: nullableNumberSum(items.map((item) => item.orkestraSales)),
     orkestraTransactions: nullableIntegerSum(items.map((item) => item.orkestraTransactions)),
     orkestraPieces: nullableIntegerSum(items.map((item) => item.orkestraPieces)),
+    crmTransactions: nullableIntegerSum(items.map((item) => item.crmTransactions ?? null)),
+    posTransactions: nullableIntegerSum(items.map((item) => item.posTransactions ?? null)),
     discountAmount,
     discountMargin: grossSales && discountAmount !== null ? round((discountAmount / grossSales) * 100) : null,
     discountLimit: null,
