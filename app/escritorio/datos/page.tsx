@@ -233,6 +233,14 @@ export default function EscritorioDatos() {
 
       <DeskRule />
 
+      {/* Arriba y no al final: es lo único de esta pantalla que se usa cada
+          semana. Las fuentes se configuran una vez y no se vuelven a tocar. */}
+      <DeskReveal index={0}>
+        <ElectronicTicketsCapture />
+      </DeskReveal>
+
+      <DeskRule />
+
       <DeskReveal index={0}>
         <section className="grid gap-4 xl:grid-cols-2 2xl:grid-cols-3" aria-label="Módulos de datos">
           {loading
@@ -382,12 +390,6 @@ export default function EscritorioDatos() {
             </ul>
           )}
         </DeskSection>
-      </DeskReveal>
-
-      {/* El POS no exporta: este dato se teclea. Mismo componente que en móvil,
-          para no mantener dos copias que se separan con el tiempo. */}
-      <DeskReveal>
-        <ElectronicTicketsCapture />
       </DeskReveal>
 
       {/* Configuración de fuente */}

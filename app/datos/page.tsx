@@ -234,6 +234,13 @@ export default function DataCenterPage() {
 
         {message ? <p className={cn("mt-3 rounded-2xl border px-3 py-2 text-[13px] font-semibold", toneClass[tone])}>{message}</p> : null}
 
+        {/* Arriba y no al final: es lo único de esta pantalla que se usa cada
+            semana. Las fuentes de abajo se configuran una vez y no se vuelven a
+            tocar; enterrar la captura tras ellas la vuelve invisible. */}
+        <div className="mt-3">
+          <ElectronicTicketsCapture />
+        </div>
+
         <section className="mt-3 space-y-2.5" aria-label="Modulos de datos">
           {dataSourceTypes.map((type) => {
             const item = modules[type];
@@ -389,11 +396,6 @@ export default function DataCenterPage() {
           </div>
         </Card>
 
-        {/* El POS no exporta: este dato se teclea. Vive junto a las fuentes
-            automáticas porque conceptualmente es una fuente más. */}
-        <div className="mt-3">
-          <ElectronicTicketsCapture />
-        </div>
       </AppFrame>
       {config ? (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/30 px-3 pb-3 pt-16 backdrop-blur-md sm:items-center" onMouseDown={(event) => {
