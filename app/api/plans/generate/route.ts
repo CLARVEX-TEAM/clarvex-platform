@@ -1,3 +1,4 @@
+import { ADVISOR_WHERE } from "@/lib/store-people";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { isApiError, parseJson, requireSession } from "@/lib/api";
@@ -27,7 +28,7 @@ export async function POST(request: Request) {
 
   const generated = await prisma.$transaction(async (tx) => {
     // 1. Asesores que trabajan ese día (Schedule WORKING). Sin horarios → todos.
-    const advisors = await tx.user.findMany({ where: { storeId, role: "ASESOR" }, orderBy: { name: "asc" }, select: { id: true } });
+    const advisors = await tx.user.findMany({ where: { storeId, ...ADVISOR_WHERE }, orderBy: { name: "asc" }, select: { id: true } });
     const schedules = await tx.schedule.findMany({ where: { storeId, date: { gte: dayStart, lt: dayEnd } }, select: { userId: true, status: true } });
     let workingIds: string[];
     if (schedules.length === 0) {

@@ -234,8 +234,13 @@ export default function EscritorioAsistencia() {
                           <ProfileAvatar name={user.name} photoUrl={user.photoUrl} size="sm" />
                           <div className="min-w-0 flex-1">
                             <p className="truncate text-ui font-semibold text-ink">{user.name}</p>
+                            {/* Domingos y festivos también: se reportan a nómina
+                                igual que las faltas, y omitirlos obligaba a
+                                abrir a cada persona para verlos. */}
                             <p className="text-caption text-muted">
                               {userTotals?.absences ?? 0} faltas · {userTotals?.lates ?? 0} retardos
+                              {userTotals?.sundaysWorked ? ` · ${userTotals.sundaysWorked} domingos` : ""}
+                              {userTotals?.holidaysWorked ? ` · ${userTotals.holidaysWorked} festivos` : ""}
                             </p>
                             <p className="mt-0.5 text-caption text-muted">
                               Mes{" "}

@@ -1,3 +1,4 @@
+import { PERSON_WHERE } from "@/lib/store-people";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { recordAudit } from "@/lib/audit";
@@ -41,7 +42,7 @@ export async function GET(request: Request) {
 
   const [users, records, schedules] = await Promise.all([
     prisma.user.findMany({
-      where: { storeId: session.storeId, active: true, ...(manager ? {} : { id: session.userId }) },
+      where: { storeId: session.storeId, ...PERSON_WHERE, ...(manager ? {} : { id: session.userId }) },
       // hoursOwed: el saldo que traían del Excel. Es el punto de partida del
       // banco de horas — la app solo suma lo que registra a partir de ahora.
       select: { id: true, name: true, employeeNumber: true, role: true, photoUrl: true, hoursOwed: true },

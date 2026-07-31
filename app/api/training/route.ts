@@ -1,3 +1,4 @@
+import { ADVISOR_WHERE } from "@/lib/store-people";
 import { NextResponse } from "next/server";
 import { enforceUploadRateLimit, isApiError, requireSession } from "@/lib/api";
 import { isTrainingCategory } from "@/lib/training";
@@ -28,7 +29,7 @@ export async function GET() {
       include: { author: { select: { name: true } }, views: { include: { user: { select: { id: true, name: true } } } } },
       orderBy: { createdAt: "desc" }
     }),
-    prisma.user.count({ where: { storeId: session.storeId, role: "ASESOR", active: true } })
+    prisma.user.count({ where: { storeId: session.storeId, ...ADVISOR_WHERE } })
   ]);
 
   // fileUrl vive en R2 (bucket privado) → se firma. linkUrl es un enlace externo:
@@ -106,7 +107,7 @@ export async function POST(request: Request) {
         data: { storeId: session.storeId, authorId: session.userId, title, description: description || null, category, linkUrl: linkUrl || null, fileUrl, fileName },
         include: { author: { select: { name: true } } }
       });
-      const advisors = await tx.user.findMany({ where: { storeId: session.storeId, role: "ASESOR", active: true }, select: { id: true } });
+      const advisors = await tx.user.findMany({ where: { storeId: session.storeId, ...ADVISOR_WHERE }, select: { id: true } });
       await createNotifications(tx, advisors.map((advisor) => ({
         storeId: session.storeId,
         userId: advisor.id,

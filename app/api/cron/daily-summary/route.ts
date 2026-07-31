@@ -1,3 +1,4 @@
+import { ADVISOR_WHERE } from "@/lib/store-people";
 import { NextResponse } from "next/server";
 import { requireCron } from "@/lib/cron-auth";
 import { NotificationType } from "@prisma/client";
@@ -39,7 +40,7 @@ export async function POST(request: Request) {
 
   for (const store of stores) {
     const [advisors, managers, dayKpis, daySchedules, sentLogs] = await Promise.all([
-      prisma.user.findMany({ where: { storeId: store.id, role: "ASESOR" }, select: { id: true, name: true } }),
+      prisma.user.findMany({ where: { storeId: store.id, ...ADVISOR_WHERE }, select: { id: true, name: true } }),
       prisma.user.findMany({ where: { storeId: store.id, role: { in: ["GERENTE", "SUBGERENTE"] } }, select: { id: true } }),
       prisma.kpi.findMany({ where: { storeId: store.id, date: utcDate }, select: { userId: true, dailySales: true, dailyGoal: true } }),
       prisma.schedule.findMany({ where: { storeId: store.id, date: utcDate }, select: { userId: true, status: true } }),

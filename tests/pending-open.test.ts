@@ -45,3 +45,35 @@ test("isOpenPending — qué cuenta como pendiente abierto", async (t) => {
     assert.equal(isOpenPending({ status: "completado" }), false);
   });
 });
+
+import { ADVISOR_WHERE, PERSON_WHERE, isRealPerson } from "../lib/store-people";
+
+/**
+ * El usuario "kiosko" (el celular de la tienda para los escaneos del cierre)
+ * está dado de alta con rol ASESOR. Filtrar por rol a secas lo incluía, y se
+ * coló en DOCE consultas: salía en la plantilla de Asistencia como si fuera
+ * alguien, y contaba como un asesor con cero venta en el resumen de cierre.
+ *
+ * Eso produjo un «Abajo: 1 asesores» una noche en que solo trabajó una persona
+ * y sí llegó a su meta. El aparato era el que estaba «abajo».
+ */
+test("quién cuenta como persona de la tienda", async (t) => {
+  await t.test("el filtro de asesores excluye kiosko e inactivos", () => {
+    assert.equal(ADVISOR_WHERE.role, "ASESOR");
+    assert.equal(ADVISOR_WHERE.checklistOnly, false, "un aparato no es un asesor");
+    assert.equal(ADVISOR_WHERE.active, true);
+  });
+
+  await t.test("el filtro de personas no mira el puesto, solo que sea alguien", () => {
+    assert.equal(PERSON_WHERE.checklistOnly, false);
+    assert.equal(PERSON_WHERE.active, true);
+    assert.ok(!("role" in PERSON_WHERE), "gerencia también es persona");
+  });
+
+  await t.test("isRealPerson descarta el kiosko y las cuentas apagadas", () => {
+    assert.equal(isRealPerson({ active: true, checklistOnly: true }), false, "el caso CIERRE SAN AGUSTIN");
+    assert.equal(isRealPerson({ active: false, checklistOnly: false }), false);
+    assert.equal(isRealPerson({ active: true, checklistOnly: false }), true);
+    assert.equal(isRealPerson({}), true, "sin banderas se asume persona");
+  });
+});

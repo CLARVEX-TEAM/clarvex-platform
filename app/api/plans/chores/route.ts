@@ -1,3 +1,4 @@
+import { ADVISOR_WHERE } from "@/lib/store-people";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { isApiError, parseJson, requireSession } from "@/lib/api";
@@ -29,7 +30,7 @@ export async function PATCH(request: Request) {
   const planDate = new Date(`${date}T12:00:00.000Z`);
   const weekday = weekdayOf(date);
 
-  const target = await prisma.user.findFirst({ where: { id: toUserId, storeId, role: "ASESOR" }, select: { id: true } });
+  const target = await prisma.user.findFirst({ where: { id: toUserId, storeId, ...ADVISOR_WHERE }, select: { id: true } });
   if (!target) return NextResponse.json({ error: "El asesor no pertenece a tu tienda." }, { status: 400 });
 
   const assignment = await prisma.choreAssignment.findUnique({ where: { storeId_date_choreKey: { storeId, date: planDate, choreKey } } });

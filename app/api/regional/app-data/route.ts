@@ -1,3 +1,4 @@
+import { ADVISOR_WHERE } from "@/lib/store-people";
 import { NextResponse } from "next/server";
 import { isApiError, requireSession } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
@@ -76,7 +77,7 @@ export async function GET(request: Request) {
 
     // 4. Obtener cantidad de asesores activos por tienda
     const activeUsers = await prisma.user.findMany({
-      where: { active: true, role: "ASESOR" },
+      where: ADVISOR_WHERE,
       select: { storeId: true }
     });
 
@@ -108,7 +109,7 @@ export async function GET(request: Request) {
     const topAdvisorsRaw = await prisma.kpi.findMany({
       where: {
         date: { gte: retailMonthStart, lt: dashboardRange.end },
-        user: { role: "ASESOR", active: true }
+        user: ADVISOR_WHERE
       },
       include: {
         user: {

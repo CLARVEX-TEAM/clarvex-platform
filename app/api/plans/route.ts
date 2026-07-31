@@ -1,3 +1,4 @@
+import { ADVISOR_WHERE } from "@/lib/store-people";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { isApiError, parseJson, requireSession } from "@/lib/api";
@@ -21,7 +22,7 @@ export async function POST(request: Request) {
   if (isApiError(session)) return session;
   const parsed = await parseJson(request, planSchema);
   if ("response" in parsed) return parsed.response;
-  const user = await prisma.user.findFirst({ where: { id: parsed.data.userId, storeId: session.storeId, role: "ASESOR" } });
+  const user = await prisma.user.findFirst({ where: { id: parsed.data.userId, storeId: session.storeId, ...ADVISOR_WHERE } });
   if (!user) return NextResponse.json({ error: "El asesor no pertenece a tu tienda." }, { status: 400 });
   const plan = await prisma.$transaction(async (tx) => {
     const created = await tx.dayPlan.create({
