@@ -679,7 +679,15 @@ function RankingView({ ranking, periodLabel, isAdvisor, currentUserId }: { ranki
             <BarChart data={data} margin={{ top: 12, right: 12, left: 8, bottom: 0 }}>
               <XAxis dataKey="name" tick={{ fill: isDark ? "#8899BB" : "#64748B", fontSize: 11 }} axisLine={false} tickLine={false} />
               <CartesianGrid strokeDasharray="3 3" stroke={isDark ? "rgba(255,255,255,0.08)" : "rgba(15,23,42,0.07)"} vertical={false} />
-              <Tooltip contentStyle={tooltipStyle} formatter={(value) => isAdvisor ? [`${value}%`, "Cumplimiento"] : [metric.fmt(Number(value)), metric.label]} />
+              {/* El `cursor` es OBLIGATORIO aquí. Sin él, recharts pinta por
+                  omisión una franja gris muy clara del alto de toda la barra,
+                  que sobre el lienzo oscuro se ve como un recuadro blanco que
+                  tapa la barra al pasar el ratón. */}
+              <Tooltip
+                contentStyle={tooltipStyle}
+                cursor={{ fill: isDark ? "rgba(255,255,255,0.05)" : "rgba(21,25,32,0.05)" }}
+                formatter={(value) => isAdvisor ? [`${value}%`, "Cumplimiento"] : [metric.fmt(Number(value)), metric.label]}
+              />
               <Bar dataKey="valor" fill={isDark ? "#709DF6" : "#1E5AE2"} radius={[8, 8, 8, 8]} animationDuration={800} />
             </BarChart>
           </ResponsiveContainer>
