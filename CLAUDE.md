@@ -614,6 +614,38 @@ Fuente: archivo XLSX separado vinculado en Centro de Datos (SharePoint).
 
 ---
 
+## ⚠️ `Kpi.weekStart` NO es el inicio de la semana
+
+En la tabla `Kpi`, los campos `weekStart` y `weekEnd` valen **lo mismo que `date`**
+en cada fila. No son los límites de la semana, pese al nombre.
+
+```
+date       | weekStart  | weekEnd    | weekNumber
+2026-08-01 | 2026-08-01 | 2026-08-01 | 30
+2026-07-31 | 2026-07-31 | 2026-07-31 | 30
+```
+
+**Agrupar por `weekStart` produce una "semana" por día.** Para agrupar por semana
+se usa **`weekNumber`**, que sí es constante — es lo que ya hace la sincronización
+del margen DTO. Los límites reales se derivan del mínimo y máximo `date` del grupo.
+
+## Datos SEMANALES en la tabla Kpi — patrón de fila ancla
+
+`Kpi` es diaria. Un dato semanal (margen DTO, ticket electrónico) se guarda en la
+**primera fila de la semana** y en el resto queda `null`. Si se repitiera en los
+siete días, sumar la semana multiplicaría por siete.
+
+Ver `lib/data-source-sync.ts:597` y `app/api/electronic-tickets/route.ts`.
+
+## Avisos globales y la paleta del escritorio
+
+Los componentes montados en `app/layout.tsx` (`EmailBanner`, `WhatsNewModal`…)
+viven **fuera** del subárbol `[data-surface="desk"]`, así que no heredan los
+tokens del escritorio y se pintarían con la paleta del móvil sobre el lienzo
+oscuro. Solución: la clase **`desk-adopt`**, definida en `app/escritorio/desktop.css`.
+
+Mismo motivo por el que los Meteors se ocultan con `body:has([data-surface="desk"])`.
+
 ## ⚠️ Bug conocido excelJS — Arrays Sparse
 
 `row.values` en excelJS es un **array sparse**. NUNCA usar `.map()` directo — preserva huecos y causa crashes.
