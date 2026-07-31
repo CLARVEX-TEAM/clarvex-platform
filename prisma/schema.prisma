@@ -333,6 +333,15 @@ model Kpi {
   orkestraSales        Decimal?  @db.Decimal(12, 2)
   orkestraTransactions Int?
   orkestraPieces       Int?
+  /// Tickets electrónicos de la SEMANA (captura manual de gerencia desde Centro
+  /// de Datos; el POS no exporta). Como el margen DTO, vive SOLO en la fila
+  /// ancla —el primer día de la semana— y en el resto queda null: si se
+  /// repitiera en los 7 días, sumar la semana multiplicaría por siete.
+  crmTransactions      Int?
+  /// Tickets totales de la semana SEGÚN EL POS. Normalmente se deja vacío y
+  /// manda la suma de `transactions` del RDV; se captura solo cuando el POS no
+  /// cuadra con el RDV, para que la tasa no mezcle dos fuentes.
+  posTransactions      Int?
   store                Store     @relation(fields: [storeId], references: [id])
   user                 User      @relation(fields: [userId], references: [id])
 

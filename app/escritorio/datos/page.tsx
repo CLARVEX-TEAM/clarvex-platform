@@ -34,6 +34,7 @@ import { cn } from "@/lib/utils";
 import {
   DeskButton, DeskPrimaryButton, DeskReveal, DeskRule, DeskSection, DeskSkeleton, deskInput
 } from "@/components/desktop/DeskUI";
+import { ElectronicTicketsCapture } from "@/components/ElectronicTicketsCapture";
 import { ShineBorder } from "@/components/magic/ShineBorder";
 
 // Cada tono con los tokens del escritorio. Antes llevaba bg-blue-50 / bg-rose-50
@@ -381,6 +382,12 @@ export default function EscritorioDatos() {
             </ul>
           )}
         </DeskSection>
+      </DeskReveal>
+
+      {/* El POS no exporta: este dato se teclea. Mismo componente que en móvil,
+          para no mantener dos copias que se separan con el tiempo. */}
+      <DeskReveal>
+        <ElectronicTicketsCapture />
       </DeskReveal>
 
       {/* Configuración de fuente */}

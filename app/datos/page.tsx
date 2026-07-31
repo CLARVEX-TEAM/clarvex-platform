@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { ElectronicTicketsCapture } from "@/components/ElectronicTicketsCapture";
 import {
   AlertTriangle,
   ArrowRight,
@@ -387,6 +388,12 @@ export default function DataCenterPage() {
             {loading ? <p className="py-3 text-[13px] text-muted">Cargando fuentes...</p> : null}
           </div>
         </Card>
+
+        {/* El POS no exporta: este dato se teclea. Vive junto a las fuentes
+            automáticas porque conceptualmente es una fuente más. */}
+        <div className="mt-3">
+          <ElectronicTicketsCapture />
+        </div>
       </AppFrame>
       {config ? (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/30 px-3 pb-3 pt-16 backdrop-blur-md sm:items-center" onMouseDown={(event) => {
