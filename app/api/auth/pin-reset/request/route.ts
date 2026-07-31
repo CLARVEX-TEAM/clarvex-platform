@@ -71,11 +71,14 @@ export async function POST(request: Request) {
     }
 
     const token = await issueResetToken(user.id, ip || null);
-    const url = `${appUrl()}/recuperar/${encodeURIComponent(token)}`;
+    const base = appUrl();
     const { subject, html, text } = pinResetEmail({
       name: user.name,
-      url,
-      minutes: Math.round(TOKEN_TTL_MS / 60000)
+      url: `${base}/recuperar/${encodeURIComponent(token)}`,
+      minutes: Math.round(TOKEN_TTL_MS / 60000),
+      // PNG y no el icon.svg: Gmail no renderiza SVG.
+      logoUrl: `${base}/icon-192.png`,
+      privacyUrl: `${base}/privacidad`
     });
 
     const sent = await sendEmail({ to: user.email, subject, html, text });
