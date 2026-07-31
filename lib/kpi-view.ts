@@ -1,7 +1,7 @@
 // Capa compartida (sin JSX) entre la vista móvil (app/kpis) y la de
 // escritorio (app/escritorio/kpis). Tipos, constantes y cálculos derivados
 // viven aquí para que un arreglo aplique a ambas versiones a la vez.
-import { BarChart3, MessageCircle, Percent, Receipt, ShoppingBag, Target, TrendingUp } from "lucide-react";
+import { BarChart3, Mail, MessageCircle, Percent, Receipt, ShoppingBag, Target, TrendingUp } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { findCommissionRule, resolveCommissionMinimum } from "@/lib/commission";
 import { periodDateKey, type KpiPeriod } from "@/lib/kpi-period";
@@ -48,6 +48,11 @@ export const METRIC_CONFIG: Record<string, MetricConfig> = {
   margen:      { label: "Margen DTO",   gradient: "from-rose-500 to-pink-700",     glow: "rgba(244,63,94,0.32)",   Icon: Percent,     targetLabel: "Límite DTO (%)"     },
   achievement: { label: "Cumplimiento", gradient: "from-emerald-500 to-teal-700",  glow: "rgba(16,185,129,0.32)",  Icon: TrendingUp,  targetLabel: "Meta cumplimiento (%)" },
   whatsapp:    { label: "WhatsApp",     gradient: "from-green-500 to-emerald-700", glow: "rgba(34,197,94,0.32)",   Icon: MessageCircle, targetLabel: "PPTO WhatsApp semanal ($)" },
+  // Ticket electrónico: DOS metas, no una. Gerencia se mide contra la de tienda
+  // y el asesor contra la suya, igual que ya ocurre con el mínimo de comisión.
+  // La de asesor es la misma para todos, no una por persona.
+  ticketElectronicoTienda: { label: "Ticket electrónico tienda", gradient: "from-indigo-500 to-blue-700", glow: "rgba(99,102,241,0.32)", Icon: Mail, targetLabel: "Meta ticket electrónico — tienda (%)" },
+  ticketElectronicoAsesor: { label: "Ticket electrónico asesor", gradient: "from-blue-400 to-indigo-600", glow: "rgba(96,165,250,0.32)", Icon: Mail, targetLabel: "Meta ticket electrónico — asesor (%)" },
 };
 
 // Acento por métrica para las tarjetas del sistema (móvil y escritorio): tinte

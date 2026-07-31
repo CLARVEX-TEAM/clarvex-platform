@@ -809,8 +809,8 @@ function TargetSheet({ targets, period, onClose, onSave }: { targets: KpiTarget[
 
   // El PPTO de WhatsApp alimenta el reporte de cierre semanal (sección WHATSAPP).
   const editableMetrics = period === "SEMANA"
-    ? (["upt", "aur", "ept", "conversion", "achievement", "whatsapp"] as const)
-    : (["upt", "aur", "ept", "conversion", "achievement"] as const);
+    ? (["upt", "aur", "ept", "conversion", "achievement", "whatsapp", "ticketElectronicoTienda", "ticketElectronicoAsesor"] as const)
+    : (["upt", "aur", "ept", "conversion", "achievement", "ticketElectronicoTienda", "ticketElectronicoAsesor"] as const);
 
   return (
     <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm" onMouseDown={(event) => { if (event.currentTarget === event.target && !saving) onClose(); }}>
