@@ -45,7 +45,11 @@ export async function inspectEmployee(employeeNumber: string) {
 }
 
 export async function loginWithPin(employeeNumber: string, pin: string) {
-  return request<{ user: User }>("/api/auth/employee-login", {
+  // `needsEmail`: la cuenta no tiene correo real (la app le puso un relleno al
+  // darla de alta). Se pide AQUÍ, con la sesión ya creada, porque en la pantalla
+  // de recuperación no se puede: cualquiera pondría el correo de otro y se
+  // quedaría con su cuenta.
+  return request<{ user: User; needsEmail?: boolean }>("/api/auth/employee-login", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ action: "login", employeeNumber, pin })

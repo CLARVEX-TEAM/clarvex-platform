@@ -6,6 +6,7 @@ import { rateLimitAuth, rateLimitInspect } from "@/lib/rate-limit";
 import { clientIp } from "@/lib/request-ip";
 import { hashPin, publicUser, publicUserPreAuth, verifyPin, canSetupPin } from "@/lib/security";
 import { createSessionToken, SESSION_COOKIE, sessionCookieOptions, getServerSession } from "@/lib/session";
+import { hasRealEmail } from "@/lib/email";
 
 export const dynamic = "force-dynamic";
 
@@ -96,7 +97,10 @@ export async function POST(request: Request) {
     data: { pinHash: user.pinHash, lastLoginAt: new Date(), failedPinAttempts: 0, pinLockedUntil: null, pinLockoutCount: 0 }
   });
   const token = await createSessionToken(updated);
-  const response = NextResponse.json({ user: publicUser(updated) });
+  // Se pide el correo al ENTRAR, no al recuperar. En la pantalla de recuperación
+  // no hay sesión: aceptar ahí el correo que teclee quien sea permitiría que
+  // cualquiera con un número de empleado se apoderara de esa cuenta.
+  const response = NextResponse.json({ user: publicUser(updated), needsEmail: !hasRealEmail(updated.email) });
   response.cookies.set(SESSION_COOKIE, token, sessionCookieOptions);
   return response;
 }

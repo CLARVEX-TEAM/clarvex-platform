@@ -26,8 +26,9 @@ import { PinStep } from "./PinStep";
 import { ConfirmStep } from "./ConfirmStep";
 import { ProfileStep } from "./ProfileStep";
 import { ReadyStep } from "./ReadyStep";
+import { EmailStep } from "./EmailStep";
 
-type Step = "employee" | "greeting" | "pin" | "confirm" | "profile" | "ready";
+type Step = "employee" | "greeting" | "pin" | "confirm" | "profile" | "ready" | "email";
 
 function getGreeting() {
   const h = new Date().getHours();
@@ -123,14 +124,44 @@ export default function LoginPage() {
       const result = await loginWithPin(employeeNumber, pinValue);
       await saveProfileWithAvatar(result.user);
       markDesktopFreshLogin();
-      router.replace(result.user.role === "ASESOR" ? "/advisor" : "/manager");
-      router.refresh();
+      // Sin correo real no puede recuperar su PIN solo. Se le pide AQUÍ, con la
+      // sesión ya creada: en /recuperar no hay sesión y aceptar el correo que
+      // teclee cualquiera seria regalar la cuenta a quien sepa el número.
+      if (result.needsEmail) {
+        setUser(result.user);
+        setStep("email");
+        return;
+      }
+      goToDashboard(result.user.role);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "No fue posible iniciar sesión.");
       setStep("pin");
     } finally {
       setBusy(false);
     }
+  }
+
+  function goToDashboard(role: string) {
+    router.replace(role === "ASESOR" ? "/advisor" : "/manager");
+    router.refresh();
+  }
+
+  /**
+   * Guarda el correo y entra. Si falla el guardado NO se bloquea el acceso: la
+   * persona ya se autenticó y el correo es un extra, no un requisito para usar
+   * la app. El error se muestra y puede posponerlo.
+   */
+  async function saveEmailAndContinue(email: string) {
+    const response = await fetch("/api/profile", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email })
+    });
+    if (!response.ok) {
+      const payload = (await response.json().catch(() => ({}))) as { error?: string };
+      throw new Error(payload.error || "No se pudo guardar el correo.");
+    }
+    goToDashboard(user?.role ?? "ASESOR");
   }
 
   function updatePin(value: string) {
@@ -342,6 +373,16 @@ export default function LoginPage() {
                 router.replace(destination);
                 router.refresh();
               }}
+            />
+          ) : null}
+
+          {step === "email" ? (
+            <EmailStep
+              name={user?.name.split(" ")[0] ?? ""}
+              isDark={isDark}
+              card={card}
+              onSave={saveEmailAndContinue}
+              onSkip={() => goToDashboard(user?.role ?? "ASESOR")}
             />
           ) : null}
         </AnimatePresence>
