@@ -9,12 +9,28 @@ type CopilotAvatarProps = {
   pulse?: boolean;
 };
 
-/** Icono del agente Copilot: barras KPI + nodo IA, estilo CLARVEX (volt sobre negro). */
+/**
+ * Marca del Copilot.
+ *
+ * Antes era verde neón (#00FF66) sobre un círculo casi negro: estética de
+ * terminal que no tenía relación con el azul de Clarvex y que en modo claro se
+ * veía como una pastilla negra pegada encima de la app.
+ *
+ * Ahora usa el degradado azul del logo del acceso, para que se lea como parte
+ * del producto y no como un widget de otro sitio.
+ *
+ * El símbolo se conserva a propósito —barras en ascenso con una línea de
+ * tendencia— porque dice lo que el Copilot hace: leer la venta y señalar hacia
+ * dónde va. Un destello genérico habría servido para cualquier cosa.
+ *
+ * El `pulse` ya no es `animate-pulse` (que apaga y enciende el icono entero, y
+ * cansa en una pieza que vive en pantalla toda la jornada): ahora es un aro que
+ * late alrededor, y respeta `prefers-reduced-motion`.
+ */
 export function CopilotAvatar({ size = 40, className, pulse = false }: CopilotAvatarProps) {
   const rawId = useId().replace(/:/g, "");
   const bgId = `copilot-bg-${rawId}`;
-  const ringId = `copilot-ring-${rawId}`;
-  const shineId = `copilot-shine-${rawId}`;
+  const markId = `copilot-mark-${rawId}`;
 
   return (
     <svg
@@ -23,57 +39,46 @@ export function CopilotAvatar({ size = 40, className, pulse = false }: CopilotAv
       viewBox="0 0 48 48"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
-      className={cn(pulse && "animate-pulse", className)}
+      className={cn(className)}
       aria-hidden
     >
       <defs>
+        {/* Mismo degradado que el logo del acceso: es la misma marca. */}
         <linearGradient id={bgId} x1="6" y1="4" x2="42" y2="44" gradientUnits="userSpaceOnUse">
-          <stop offset="0%" stopColor="#0f1f14" />
-          <stop offset="55%" stopColor="#0a0f0c" />
-          <stop offset="100%" stopColor="#050505" />
+          <stop offset="0%" stopColor="#3B82F6" />
+          <stop offset="100%" stopColor="#1D4ED8" />
         </linearGradient>
-        <linearGradient id={ringId} x1="0" y1="0" x2="48" y2="48" gradientUnits="userSpaceOnUse">
-          <stop offset="0%" stopColor="#00FF66" stopOpacity="0.35" />
-          <stop offset="50%" stopColor="#00FF66" />
-          <stop offset="100%" stopColor="#34d399" stopOpacity="0.5" />
+        <linearGradient id={markId} x1="29" y1="36" x2="34" y2="17" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0.75" />
+          <stop offset="100%" stopColor="#FFFFFF" />
         </linearGradient>
-        <filter id={shineId} x="-20%" y="-20%" width="140%" height="140%">
-          <feGaussianBlur stdDeviation="1.2" result="blur" />
-          <feMerge>
-            <feMergeNode in="blur" />
-            <feMergeNode in="SourceGraphic" />
-          </feMerge>
-        </filter>
       </defs>
 
-      <circle cx="24" cy="24" r="22" fill={`url(#${bgId})`} stroke={`url(#${ringId})`} strokeWidth="1.5" />
-      <circle cx="24" cy="24" r="20" stroke="#00FF66" strokeOpacity="0.08" strokeWidth="0.5" />
+      <circle cx="24" cy="24" r="23" fill={`url(#${bgId})`} />
+      {/* Aro interior tenue: define el borde sin necesitar un halo de sombra. */}
+      <circle cx="24" cy="24" r="22.2" stroke="#FFFFFF" strokeOpacity="0.2" strokeWidth="0.9" />
 
-      {/* Barras KPI */}
-      <rect x="13" y="27" width="5" height="9" rx="1.5" fill="#00FF66" fillOpacity="0.45" />
-      <rect x="20" y="21" width="5" height="15" rx="1.5" fill="#00FF66" fillOpacity="0.7" />
-      <rect x="27" y="15" width="5" height="21" rx="1.5" fill="#00FF66" />
+      {pulse ? (
+        <circle cx="24" cy="24" r="22.5" className="copilot-ring" stroke="#FFFFFF" strokeWidth="1.2" fill="none" />
+      ) : null}
 
-      {/* Tendencia */}
+      {/* Barras en ascenso. La opacidad creciente ya narra el avance: no hace
+          falta meterle un segundo color encima. */}
+      <rect x="13" y="28" width="5" height="8" rx="2" fill="#FFFFFF" fillOpacity="0.45" />
+      <rect x="21" y="23" width="5" height="13" rx="2" fill="#FFFFFF" fillOpacity="0.72" />
+      <rect x="29" y="17" width="5" height="19" rx="2" fill={`url(#${markId})`} />
+
+      {/* Línea de tendencia con su punta. */}
       <path
-        d="M12 30 L19 24 L26 26 L34 16"
-        stroke="#00FF66"
-        strokeWidth="1.8"
+        d="M13 21 L20.5 16.5 L26.5 19.5 L34.5 12.5"
+        stroke="#FFFFFF"
+        strokeWidth="1.9"
         strokeLinecap="round"
         strokeLinejoin="round"
-        strokeOpacity="0.85"
+        strokeOpacity="0.92"
         fill="none"
       />
-
-      {/* Nodo IA */}
-      <circle cx="35" cy="13" r="3.2" fill="#00FF66" filter={`url(#${shineId})`} />
-      <path
-        d="M35 8.5v2.2M35 15.3v2.2M30.5 13h2.2M37.3 13h2.2M31.8 9.8l1.6 1.6M36.6 14.6l1.6 1.6M31.8 16.2l1.6-1.6M36.6 11.4l1.6-1.6"
-        stroke="#00FF66"
-        strokeWidth="1.1"
-        strokeLinecap="round"
-        strokeOpacity="0.9"
-      />
+      <circle cx="34.5" cy="12.5" r="2.5" fill="#FFFFFF" />
     </svg>
   );
 }

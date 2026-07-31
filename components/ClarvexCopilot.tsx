@@ -189,16 +189,20 @@ export function ClarvexCopilot() {
 
   return (
     <>
-      <div className="fixed bottom-20 right-4 z-50">
+      {/* En móvil se sube por encima de la barra inferior; en escritorio no hay
+          barra, así que baja. Antes era `bottom-20` en ambos y en el monitor
+          quedaba flotando a media pantalla sin motivo. */}
+      <div className="fixed bottom-[calc(84px+env(safe-area-inset-bottom))] right-4 z-50 lg:bottom-6 lg:right-6">
         <motion.button
           onClick={() => setIsOpen(true)}
           aria-label="Abrir Clarvex Copilot"
-          className="relative flex h-14 w-14 items-center justify-center rounded-full border border-[#00FF66]/25 bg-[#0A0A0A]/95 shadow-[0_0_24px_rgba(0,255,102,0.22)] backdrop-blur-xl transition-all hover:scale-105 hover:border-[#00FF66]/50 hover:shadow-[0_0_32px_rgba(0,255,102,0.35)] active:scale-95"
+          className="flex size-14 items-center justify-center rounded-full shadow-[0_8px_24px_rgba(37,99,235,0.35)] transition-shadow hover:shadow-[0_10px_32px_rgba(37,99,235,0.45)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-volt focus-visible:ring-offset-2"
           whileHover={{ y: -2 }}
           whileTap={{ scale: 0.95 }}
         >
-          <span className="absolute inset-0 rounded-full bg-[#00FF66]/5" />
-          <CopilotAvatar size={44} pulse />
+          {/* La marca ES el botón: sin cápsula alrededor. El aro que late ya
+              señala que está vivo, sin necesitar borde ni fondo extra. */}
+          <CopilotAvatar size={56} pulse />
         </motion.button>
       </div>
 
@@ -212,21 +216,21 @@ export function ClarvexCopilot() {
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: 100, opacity: 0 }}
               transition={{ type: "spring", damping: 25, stiffness: 220 }}
-              className="relative flex h-[80vh] w-full max-w-lg flex-col rounded-[28px] border border-white/10 bg-[#0A0A0A] shadow-2xl overflow-hidden"
+              className="desk-adopt relative flex h-[80vh] w-full max-w-lg flex-col overflow-hidden rounded-[28px] border border-line bg-card shadow-2xl sm:max-w-xl lg:h-[70vh] lg:max-w-2xl"
             >
-              <div className="flex items-center justify-between border-b border-white/10 p-4 bg-gradient-to-r from-[#0A0A0A] to-[#121212]">
+              <div className="flex items-center justify-between border-b border-line p-4 bg-panel">
                 <div className="flex items-center space-x-3">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-[#00FF66]/20 bg-[#00FF66]/5 shadow-[0_0_20px_rgba(0,255,102,0.12)]">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-volt/25 bg-volt/[0.07] ">
                     <CopilotAvatar size={36} />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-white">Clarvex Copilot</h3>
-                    <p className="text-xs text-white/50">Inteligencia Operativa en Retail</p>
+                    <h3 className="font-semibold text-ink">Clarvex Copilot</h3>
+                    <p className="text-xs text-muted">Inteligencia Operativa en Retail</p>
                   </div>
                 </div>
                 <button
                   onClick={() => setIsOpen(false)}
-                  className="rounded-full p-2 text-white/40 hover:bg-white/5 hover:text-white transition-colors"
+                  className="rounded-full p-2 text-muted hover:bg-line/60 hover:text-ink transition-colors"
                 >
                   <X className="h-5 w-5" />
                 </button>
@@ -247,8 +251,8 @@ export function ClarvexCopilot() {
                       <div
                         className={`max-w-[85%] rounded-[20px] px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap ${
                           msg.role === "user"
-                            ? "bg-[#00FF66]/10 text-white border border-[#00FF66]/20 rounded-tr-none"
-                            : "bg-white/5 text-white/90 border border-white/5 rounded-tl-none"
+                            ? "bg-volt/10 text-white border border-volt/25 rounded-tr-none"
+                            : "bg-panel text-white/90 border border-line/60 rounded-tl-none"
                         }`}
                       >
                         {/* Solo se escribe la ÚLTIMA respuesta del Copilot: el
@@ -261,14 +265,14 @@ export function ClarvexCopilot() {
                           msg.content
                         )}
                         {msg.actions && msg.actions.length > 0 && (
-                          <div className="mt-3 space-y-2 border-t border-white/10 pt-3">
+                          <div className="mt-3 space-y-2 border-t border-line pt-3">
                             {msg.actions.map((action) => (
-                              <div key={action.proposalId} className="rounded-xl border border-[#00FF66]/20 bg-[#00FF66]/5 p-2.5">
-                                <p className="text-[11px] text-white/70 mb-2">{action.summary}</p>
+                              <div key={action.proposalId} className="rounded-xl border border-volt/25 bg-volt/[0.07] p-2.5">
+                                <p className="text-[11px] text-muted mb-2">{action.summary}</p>
                                 <button
                                   onClick={() => confirmAction(index, action.proposalId)}
                                   disabled={msg.actionStatus === "confirming" || msg.actionStatus === "done"}
-                                  className="w-full rounded-lg bg-[#00FF66] px-3 py-2 text-xs font-semibold uppercase tracking-wider text-black transition active:scale-95 disabled:opacity-50"
+                                  className="w-full rounded-lg bg-volt px-3 py-2 text-xs font-semibold text-white transition active:scale-95 disabled:opacity-50"
                                 >
                                   {msg.actionStatus === "done"
                                     ? "Publicado ✓"
@@ -281,15 +285,15 @@ export function ClarvexCopilot() {
                           </div>
                         )}
                         {showDraftPublish && (
-                          <div className="mt-3 space-y-2 border-t border-white/10 pt-3">
-                            <div className="rounded-xl border border-[#00FF66]/20 bg-[#00FF66]/5 p-2.5">
-                              <p className="text-[11px] text-white/70 mb-2">
+                          <div className="mt-3 space-y-2 border-t border-line pt-3">
+                            <div className="rounded-xl border border-volt/25 bg-volt/[0.07] p-2.5">
+                              <p className="text-[11px] text-muted mb-2">
                                 Borrador listo{draft ? `: «${draft.title}»` : ""}. ¿Lo publicamos al equipo?
                               </p>
                               <button
                                 onClick={() => publishDraftFromMessage(index, msg.content)}
                                 disabled={msg.draftPublishStatus === "proposing"}
-                                className="w-full rounded-lg bg-[#00FF66] px-3 py-2 text-xs font-semibold uppercase tracking-wider text-black transition active:scale-95 disabled:opacity-50"
+                                className="w-full rounded-lg bg-volt px-3 py-2 text-xs font-semibold text-white transition active:scale-95 disabled:opacity-50"
                               >
                                 {msg.draftPublishStatus === "proposing" ? "Preparando..." : "Preparar publicación"}
                               </button>
@@ -303,10 +307,10 @@ export function ClarvexCopilot() {
 
                 {loading && (
                   <div className="flex justify-start">
-                    <div className="max-w-[85%] rounded-[20px] rounded-tl-none px-4 py-3 bg-white/5 border border-white/5 text-[#00FF66] flex items-center space-x-2">
-                      <span className="h-2 w-2 animate-bounce rounded-full bg-[#00FF66] [animation-delay:-0.3s]" />
-                      <span className="h-2 w-2 animate-bounce rounded-full bg-[#00FF66] [animation-delay:-0.15s]" />
-                      <span className="h-2 w-2 animate-bounce rounded-full bg-[#00FF66]" />
+                    <div className="max-w-[85%] rounded-[20px] rounded-tl-none px-4 py-3 bg-panel border border-line/60 text-volt flex items-center space-x-2">
+                      <span className="h-2 w-2 animate-bounce rounded-full bg-volt [animation-delay:-0.3s]" />
+                      <span className="h-2 w-2 animate-bounce rounded-full bg-volt [animation-delay:-0.15s]" />
+                      <span className="h-2 w-2 animate-bounce rounded-full bg-volt" />
                     </div>
                   </div>
                 )}
@@ -314,12 +318,12 @@ export function ClarvexCopilot() {
               </div>
 
               {messages.length <= 2 && (
-                <div className="px-4 py-2 flex flex-wrap gap-2 border-t border-white/5 bg-[#0d0d0d]">
+                <div className="px-4 py-2 flex flex-wrap gap-2 border-t border-line/60 bg-panel">
                   {quickPrompts.map((qp, index) => (
                     <button
                       key={index}
                       onClick={() => handleSend(qp.prompt)}
-                      className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-white/70 hover:bg-white/10 hover:text-white transition-colors"
+                      className="rounded-full border border-line bg-panel px-3 py-1.5 text-xs text-muted hover:bg-white/10 hover:text-ink transition-colors"
                     >
                       {qp.label}
                     </button>
@@ -332,19 +336,19 @@ export function ClarvexCopilot() {
                   e.preventDefault();
                   handleSend(input);
                 }}
-                className="flex items-center space-x-2 border-t border-white/10 p-3 bg-[#0A0A0A]"
+                className="flex items-center space-x-2 border-t border-line p-3 bg-card"
               >
                 <input
                   type="text"
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   placeholder="Pregúntale a Copilot..."
-                  className="flex-1 rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder-white/40 outline-none focus:border-[#00FF66]/50 focus:bg-white/10 transition-colors"
+                  className="flex-1 rounded-xl border border-line bg-panel px-4 py-2.5 text-sm text-white placeholder-white/40 outline-none focus:border-volt/60 focus:bg-white/10 transition-colors"
                 />
                 <button
                   type="submit"
                   disabled={!input.trim() || loading}
-                  className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#00FF66] text-black shadow-lg shadow-[#00FF66]/20 transition-all hover:scale-105 active:scale-95 disabled:scale-100 disabled:opacity-40"
+                  className="flex h-10 w-10 items-center justify-center rounded-xl bg-volt text-white transition-all hover:bg-[#1D4ED8] active:scale-95 disabled:opacity-40"
                 >
                   <Send className="h-4 w-4" />
                 </button>

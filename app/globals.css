@@ -423,3 +423,20 @@ button.solid-card:hover {
     transition-duration: 0.001ms !important;
   }
 }
+
+/* Aro que late alrededor de la marca del Copilot.
+   Antes se usaba `animate-pulse`, que apaga y enciende el icono entero: en una
+   pieza que vive en pantalla toda la jornada, cansa y llama más de la cuenta.
+   Un aro que se expande y se desvanece señala igual sin parpadear el símbolo. */
+@keyframes copilot-ring {
+  0%   { r: 22.5; stroke-opacity: 0.5; }
+  70%  { r: 26;   stroke-opacity: 0; }
+  100% { r: 26;   stroke-opacity: 0; }
+}
+.copilot-ring {
+  transform-origin: center;
+  animation: copilot-ring 2.6s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .copilot-ring { animation: none; stroke-opacity: 0.28; }
+}
