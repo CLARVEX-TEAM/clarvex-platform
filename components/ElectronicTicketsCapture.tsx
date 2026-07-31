@@ -37,7 +37,9 @@ function percent(rate: number | null): string {
 
 export function ElectronicTicketsCapture() {
   const [data, setData] = useState<Payload | null>(null);
-  const [week, setWeek] = useState<string>("");
+  // Se indexa por `weekNumber` y NO por `weekStart`: en esta base weekStart vale
+  // lo mismo que la fecha de la fila, así que agruparlo daría una semana por día.
+  const [week, setWeek] = useState<number | null>(null);
   const [draft, setDraft] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -52,7 +54,7 @@ export function ElectronicTicketsCapture() {
       const payload = (await response.json()) as Payload;
       setData(payload);
       // Arranca en la última semana con datos, que es la que se va a capturar.
-      setWeek((current) => current || payload.weeks[payload.weeks.length - 1]?.weekStart || "");
+      setWeek((current) => current ?? payload.weeks[payload.weeks.length - 1]?.weekNumber ?? null);
     } catch {
       setError("No se pudieron cargar las semanas.");
     } finally {
@@ -64,7 +66,7 @@ export function ElectronicTicketsCapture() {
     void load();
   }, [load]);
 
-  const rows = useMemo(() => (data && week ? data.rows[week] ?? [] : []), [data, week]);
+  const rows = useMemo(() => (data && week !== null ? data.rows[String(week)] ?? [] : []), [data, week]);
 
   // Al cambiar de semana, el borrador se rellena con lo ya guardado.
   useEffect(() => {
@@ -85,7 +87,7 @@ export function ElectronicTicketsCapture() {
     if (!data) return { crm: 0, tickets: 0, rate: null as number | null };
     // Todas las semanas del mes, con la que se está editando en su valor actual.
     const all = Object.entries(data.rows).flatMap(([weekKey, weekRows]) =>
-      weekKey === week ? weekRows.map(liveRow) : weekRows
+      weekKey === String(week) ? weekRows.map(liveRow) : weekRows
     );
     return monthTotals(all);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -103,7 +105,7 @@ export function ElectronicTicketsCapture() {
       const response = await fetch("/api/electronic-tickets", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ weekStart: week, entries })
+        body: JSON.stringify({ weekNumber: week, entries })
       });
       const payload = (await response.json().catch(() => ({}))) as { error?: string };
       if (!response.ok) throw new Error(payload.error);
@@ -164,11 +166,11 @@ export function ElectronicTicketsCapture() {
       <div className="mt-4 flex flex-wrap gap-1.5">
         {data.weeks.map((option) => (
           <button
-            key={option.weekStart}
+            key={option.weekNumber}
             type="button"
-            onClick={() => setWeek(option.weekStart)}
+            onClick={() => setWeek(option.weekNumber)}
             className={`rounded-lg px-2.5 py-1.5 text-xs font-semibold transition ${
-              option.weekStart === week
+              option.weekNumber === week
                 ? "bg-volt text-white"
                 : "bg-line/50 text-muted hover:bg-line hover:text-ink"
             }`}

@@ -14,13 +14,17 @@ export const runtime = "nodejs";
  * El denominador (tickets totales) sale del RDV, que ya se sincroniza solo: por
  * eso se captura UN dato y no dos.
  *
- * Las semanas ofrecidas son las que de verdad existen en `Kpi` para el mes
- * retail en curso. No se inventan: el mes retail lo define el propio RDV y
- * puede cruzar meses de calendario.
+ * ⚠️ SE AGRUPA POR `weekNumber`, NUNCA POR `weekStart`.
+ *
+ * En esta base `weekStart` y `weekEnd` valen lo mismo que `date` en cada fila:
+ * no son los límites de la semana pese al nombre. Agrupar por `weekStart`
+ * produciría una "semana" por día. `weekNumber` sí es correcto y constante, y
+ * es lo que ya usa la sincronización del margen DTO (data-source-sync.ts:584).
+ * Los límites reales se derivan del mínimo y máximo `date` de cada grupo.
  */
 
 const saveSchema = z.object({
-  weekStart: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Semana inválida."),
+  weekNumber: z.number().int().min(1).max(53),
   entries: z
     .array(
       z.object({
@@ -32,38 +36,14 @@ const saveSchema = z.object({
     .max(100)
 });
 
-/** Las semanas del mes retail en curso, según lo que hay sincronizado. */
-async function retailMonthWeeks(storeId: string) {
-  // La última semana con datos marca el mes retail vigente. Se toman esa y las
-  // anteriores del mismo mes retail; como el RDV cubre un mes, un margen de
-  // seis semanas hacia atrás lo abarca de sobra sin colarse en el anterior.
-  const latest = await prisma.kpi.findFirst({
-    where: { storeId, weekStart: { not: null } },
-    orderBy: { weekStart: "desc" },
-    select: { weekStart: true }
-  });
-  if (!latest?.weekStart) return [];
-
-  const floor = new Date(latest.weekStart);
-  floor.setUTCDate(floor.getUTCDate() - 42);
-
-  const weeks = await prisma.kpi.findMany({
-    where: { storeId, weekStart: { gte: floor } },
-    distinct: ["weekStart"],
-    orderBy: { weekStart: "asc" },
-    select: { weekStart: true, weekEnd: true, weekNumber: true }
-  });
-
-  return weeks
-    .filter((week): week is { weekStart: Date; weekEnd: Date; weekNumber: number } =>
-      Boolean(week.weekStart && week.weekEnd && week.weekNumber !== null))
-    .map((week) => ({
-      weekStart: week.weekStart.toISOString().slice(0, 10),
-      weekEnd: week.weekEnd.toISOString().slice(0, 10),
-      weekNumber: week.weekNumber,
-      label: weekLabel(week.weekNumber, week.weekStart, week.weekEnd)
-    }));
-}
+type Row = {
+  userId: string;
+  name: string;
+  employeeNumber: string;
+  rdvTransactions: number;
+  crmTransactions: number | null;
+  posTransactions: number | null;
+};
 
 export async function GET() {
   const session = await requireSession();
@@ -71,19 +51,27 @@ export async function GET() {
   // Es captura de gerencia: un asesor no edita el indicador con el que se le mide.
   if (session.role === "ASESOR") return NextResponse.json({ error: "No tienes permiso." }, { status: 403 });
 
-  const weeks = await retailMonthWeeks(session.storeId);
-  if (weeks.length === 0) {
-    return NextResponse.json({ weeks: [], rows: {}, message: "Aún no hay semanas sincronizadas del RDV." });
+  const latest = await prisma.kpi.findFirst({
+    where: { storeId: session.storeId },
+    orderBy: { date: "desc" },
+    select: { date: true }
+  });
+  if (!latest) {
+    return NextResponse.json({ weeks: [], rows: {}, message: "Aún no hay datos sincronizados del RDV." });
   }
 
-  const from = new Date(`${weeks[0].weekStart}T00:00:00.000Z`);
+  // Seis semanas hacia atrás: cubre de sobra el mes retail en curso, que el RDV
+  // define y puede cruzar meses de calendario.
+  const floor = new Date(latest.date);
+  floor.setUTCDate(floor.getUTCDate() - 42);
+
   const kpis = await prisma.kpi.findMany({
-    where: { storeId: session.storeId, weekStart: { gte: from } },
-    orderBy: [{ userId: "asc" }, { date: "asc" }],
+    where: { storeId: session.storeId, date: { gte: floor }, weekNumber: { not: null } },
+    orderBy: { date: "asc" },
     select: {
       userId: true,
       date: true,
-      weekStart: true,
+      weekNumber: true,
       transactions: true,
       crmTransactions: true,
       posTransactions: true,
@@ -91,24 +79,24 @@ export async function GET() {
     }
   });
 
-  // Se agrega por (semana, asesor): los tickets del RDV se suman de los días, y
-  // los capturados viven solo en la fila ancla, así que basta con quedarse con
-  // el primer valor no nulo.
-  type Row = {
-    userId: string;
-    name: string;
-    employeeNumber: string;
-    rdvTransactions: number;
-    crmTransactions: number | null;
-    posTransactions: number | null;
-  };
-  const byWeek = new Map<string, Map<string, Row>>();
+  const weekBounds = new Map<number, { start: Date; end: Date }>();
+  const byWeek = new Map<number, Map<string, Row>>();
 
   for (const kpi of kpis) {
-    if (!kpi.weekStart || !kpi.user.active) continue;
-    const weekKey = kpi.weekStart.toISOString().slice(0, 10);
-    if (!byWeek.has(weekKey)) byWeek.set(weekKey, new Map());
-    const week = byWeek.get(weekKey)!;
+    if (kpi.weekNumber === null) continue;
+
+    // Los límites reales de la semana salen de las fechas presentes, porque los
+    // campos weekStart/weekEnd no los contienen (ver el aviso de arriba).
+    const bounds = weekBounds.get(kpi.weekNumber);
+    if (!bounds) weekBounds.set(kpi.weekNumber, { start: kpi.date, end: kpi.date });
+    else {
+      if (kpi.date < bounds.start) bounds.start = kpi.date;
+      if (kpi.date > bounds.end) bounds.end = kpi.date;
+    }
+
+    if (!kpi.user.active) continue;
+    if (!byWeek.has(kpi.weekNumber)) byWeek.set(kpi.weekNumber, new Map());
+    const week = byWeek.get(kpi.weekNumber)!;
     const current = week.get(kpi.userId) ?? {
       userId: kpi.userId,
       name: kpi.user.name,
@@ -118,14 +106,24 @@ export async function GET() {
       posTransactions: null
     };
     current.rdvTransactions += kpi.transactions;
+    // Los capturados viven solo en la fila ancla: basta el primer valor no nulo.
     if (kpi.crmTransactions !== null) current.crmTransactions = kpi.crmTransactions;
     if (kpi.posTransactions !== null) current.posTransactions = kpi.posTransactions;
     week.set(kpi.userId, current);
   }
 
+  const weeks = Array.from(weekBounds.entries())
+    .sort((a, b) => a[1].start.getTime() - b[1].start.getTime())
+    .map(([weekNumber, bounds]) => ({
+      weekNumber,
+      weekStart: bounds.start.toISOString().slice(0, 10),
+      weekEnd: bounds.end.toISOString().slice(0, 10),
+      label: weekLabel(weekNumber, bounds.start, bounds.end)
+    }));
+
   const rows: Record<string, (Row & { rate: number | null })[]> = {};
-  for (const [weekKey, week] of byWeek) {
-    rows[weekKey] = Array.from(week.values())
+  for (const [weekNumber, week] of byWeek) {
+    rows[String(weekNumber)] = Array.from(week.values())
       .map((row) => ({ ...row, rate: captureRate(row) }))
       .sort((a, b) => a.name.localeCompare(b.name, "es"));
   }
@@ -143,36 +141,33 @@ export async function PUT(request: Request) {
   const parsed = await parseJson(request, saveSchema);
   if ("response" in parsed) return parsed.response;
 
-  const weekStart = new Date(`${parsed.data.weekStart}T00:00:00.000Z`);
-  if (Number.isNaN(weekStart.getTime())) {
-    return NextResponse.json({ error: "Semana inválida." }, { status: 400 });
-  }
-
+  const { weekNumber } = parsed.data;
   let saved = 0;
   const rejected: { name: string; reason: string }[] = [];
 
   for (const entry of parsed.data.entries) {
     // Las filas de ESE asesor en ESA semana, en orden: la primera es el ancla.
     const weekKpis = await prisma.kpi.findMany({
-      where: { storeId: session.storeId, userId: entry.userId, weekStart },
+      where: { storeId: session.storeId, userId: entry.userId, weekNumber },
       orderBy: { date: "asc" },
       select: { id: true, transactions: true }
     });
     if (weekKpis.length === 0) continue;
 
     const rdvTransactions = weekKpis.reduce((total, kpi) => total + kpi.transactions, 0);
-    const issue = validateCapture({
+    const candidate = {
       rdvTransactions,
       posTransactions: entry.posTransactions,
       crmTransactions: entry.crmTransactions
-    });
+    };
+    const issue = validateCapture(candidate);
     if (issue) {
       const user = await prisma.user.findUnique({ where: { id: entry.userId }, select: { name: true } });
       rejected.push({
         name: user?.name ?? entry.userId,
         reason:
           issue === "excede"
-            ? `no puede tener más tickets electrónicos (${entry.crmTransactions}) que tickets totales (${captureDenominator({ rdvTransactions, posTransactions: entry.posTransactions, crmTransactions: entry.crmTransactions })})`
+            ? `tiene más tickets electrónicos (${entry.crmTransactions}) que tickets totales (${captureDenominator(candidate)})`
             : "el número no puede ser negativo"
       });
       continue;
@@ -198,7 +193,7 @@ export async function PUT(request: Request) {
 
   if (rejected.length > 0) {
     return NextResponse.json(
-      { error: `No se guardó ${rejected.map((r) => `${r.name}: ${r.reason}`).join("; ")}.`, saved },
+      { error: `No se guardó — ${rejected.map((r) => `${r.name} ${r.reason}`).join("; ")}.`, saved },
       { status: 400 }
     );
   }

@@ -108,6 +108,39 @@ test("total del mes", async (t) => {
   });
 });
 
+/**
+ * Descubierto al verificar en producción: en la tabla `Kpi` los campos
+ * `weekStart` y `weekEnd` valen LO MISMO que `date` en cada fila. No son los
+ * límites de la semana, pese al nombre.
+ *
+ * Agrupar por `weekStart` produciría una "semana" por día. Lo correcto es
+ * `weekNumber`, que sí es constante dentro de la semana y es lo que ya usa la
+ * sincronización del margen DTO. Esta prueba deja el hallazgo por escrito.
+ */
+test("agrupar semanas: weekNumber, nunca weekStart", async (t) => {
+  const filas = [
+    { date: "2026-07-27", weekStart: "2026-07-27", weekNumber: 30 },
+    { date: "2026-07-28", weekStart: "2026-07-28", weekNumber: 30 },
+    { date: "2026-07-29", weekStart: "2026-07-29", weekNumber: 30 }
+  ];
+
+  await t.test("weekStart NO es constante dentro de una semana", () => {
+    const porWeekStart = new Set(filas.map((fila) => fila.weekStart));
+    assert.equal(porWeekStart.size, 3, "tres 'semanas' distintas para tres días de la MISMA semana");
+  });
+
+  await t.test("weekNumber sí lo es", () => {
+    const porWeekNumber = new Set(filas.map((fila) => fila.weekNumber));
+    assert.equal(porWeekNumber.size, 1, "una sola semana, que es la verdad");
+  });
+
+  await t.test("los límites reales se derivan del mínimo y máximo date", () => {
+    const fechas = filas.map((fila) => fila.date).sort();
+    assert.equal(fechas[0], "2026-07-27");
+    assert.equal(fechas[fechas.length - 1], "2026-07-29");
+  });
+});
+
 test("etiqueta de la semana", async (t) => {
   await t.test("dentro del mismo mes no repite el mes", () => {
     const label = weekLabel(31, new Date("2026-07-05T00:00:00Z"), new Date("2026-07-11T00:00:00Z"));
