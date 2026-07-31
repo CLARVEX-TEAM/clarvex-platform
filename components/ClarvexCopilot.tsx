@@ -178,14 +178,30 @@ export function ClarvexCopilot() {
     }
   }
 
-  const quickPrompts = [
-    { label: "¿Cómo voy hoy?", prompt: "¿Cómo voy con mis KPIs de hoy?" },
-    { label: "Faltante semanal", prompt: "¿Cuánto le falta a la tienda para llegar al 100% de su meta semanal?" },
-    { label: "Mis pendientes", prompt: "Resume mis tareas pendientes prioritarias" },
-    { label: "Comisiones", prompt: "¿Quién está más cerca de comisionar o qué comisiones tenemos activas?" },
-  ];
-
   const isManager = canManageAnnouncements(user.role);
+
+  /**
+   * Accesos rápidos por ROL. Antes eran los mismos para todos, y a un asesor le
+   * ofrecían «¿cuánto le falta a la tienda?», que no puede consultar: pulsarlo
+   * solo conseguía que el Copilot le explicara que no tiene permiso.
+   *
+   * Están redactados como la pregunta que de verdad se hace en piso, no como el
+   * nombre del indicador.
+   */
+  const quickPrompts = isManager
+    ? [
+        { label: "¿Cómo va la tienda?", prompt: "¿Cómo va la tienda hoy y cuánto falta para la meta?" },
+        { label: "Ticket electrónico", prompt: "¿Cómo vamos en ticket electrónico? Dime quién está por debajo de la meta." },
+        { label: "Quién necesita apoyo", prompt: "¿Qué asesor necesita más apoyo hoy y qué le recomiendas trabajar?" },
+        { label: "Comisiones", prompt: "¿Quién está más cerca de subir de escalón de comisión?" },
+        { label: "Pendientes", prompt: "Resume los pendientes abiertos de la tienda por prioridad." }
+      ]
+    : [
+        { label: "¿Cómo voy?", prompt: "¿Cómo voy con mis KPIs y cuánto me falta para mi meta?" },
+        { label: "Mi ticket electrónico", prompt: "¿Cómo voy en ticket electrónico contra mi meta?" },
+        { label: "Mi comisión", prompt: "¿Cuánto llevo de comisión y cuánto me falta para el siguiente escalón?" },
+        { label: "Mis pendientes", prompt: "Resume mis pendientes por prioridad." }
+      ];
 
   return (
     <>

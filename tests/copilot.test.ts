@@ -141,15 +141,23 @@ test("CLARVEX Copilot — Fase 1 (solo lectura)", async (t) => {
     assert.equal(modelForTier("advanced"), "openai/gpt-oss-120b");
   });
 
-  await t.test("El registro expone 7 herramientas de lectura (ninguna mutante)", () => {
+  await t.test("El registro expone 8 herramientas de lectura (ninguna mutante)", () => {
     const tools = selectTools(advisorCtx, 1);
-    assert.equal(tools.length, 7);
+    assert.equal(tools.length, 8);
     assert.ok(tools.every((tool) => tool.mutates === false));
     const schemas = toolSchemas(tools);
     assert.ok(schemas.every((schema) => typeof schema.name === "string" && typeof schema.parameters === "object"));
     assert.ok(schemas.some((schema) => schema.name === "getStoreDailyResults"));
     assert.ok(schemas.some((schema) => schema.name === "getStorePerformance"));
     assert.ok(schemas.some((schema) => schema.name === "getCommissions"));
+    assert.ok(schemas.some((schema) => schema.name === "getElectronicTickets"), "el ticket electronico es consultable");
+    // La descripcion decide si el modelo la llama. Si solo dijera el nombre del
+    // campo, no se activaria cuando alguien pregunta "como vamos en ticket
+    // electronico", que es como se pregunta en piso.
+    const ticket = schemas.find((schema) => schema.name === "getElectronicTickets");
+    assert.ok(ticket && /ticket electr/i.test(ticket.description ?? ""));
+    assert.ok(ticket && /crm/i.test(ticket.description ?? ""));
+    assert.ok(ticket && /meta/i.test(ticket.description ?? ""));
   });
 
   await t.test("executeTool rechaza herramienta desconocida y argumentos inválidos", async () => {
@@ -333,10 +341,10 @@ test("CLARVEX Copilot — Fase 1 (solo lectura)", async (t) => {
   await t.test("FASE 2: los borradores solo se exponen a gerencia (nunca a asesor)", () => {
     const mgrTools = selectTools(managerCtx, 2);
     const advTools = selectTools(advisorCtx, 2);
-    assert.equal(mgrTools.length, 10);
+    assert.equal(mgrTools.length, 11);
     assert.ok(mgrTools.some((tool) => tool.name === "prepareAnnouncementDraft"));
     // El asesor sigue con 7 herramientas de lectura: ningún borrador.
-    assert.equal(advTools.length, 7);
+    assert.equal(advTools.length, 8);
     assert.ok(!advTools.some((tool) => tool.name.startsWith("prepare")));
     // Ninguna herramienta de borrador escribe en la BD.
     assert.ok(mgrTools.every((tool) => tool.mutates === false));

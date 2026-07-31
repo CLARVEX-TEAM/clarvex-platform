@@ -6,6 +6,7 @@ import { preparePendingDraftTool } from "@/lib/ai/tools/draft/prepare-pending-dr
 import { comparePeriodsTool } from "@/lib/ai/tools/read/compare-periods";
 import { getAdvisorPerformanceTool } from "@/lib/ai/tools/read/get-advisor-performance";
 import { getCommissionsTool } from "@/lib/ai/tools/read/get-commissions";
+import { getElectronicTicketsTool } from "@/lib/ai/tools/read/get-electronic-tickets";
 import { getOpenPendingsTool } from "@/lib/ai/tools/read/get-open-pendings";
 import { getSchedulesTool } from "@/lib/ai/tools/read/get-schedules";
 import { getStoreDailyResultsTool } from "@/lib/ai/tools/read/get-store-daily-results";
@@ -23,6 +24,7 @@ const ALL_TOOLS: CopilotTool[] = [
   getOpenPendingsTool as CopilotTool,
   getSchedulesTool as CopilotTool,
   comparePeriodsTool as CopilotTool,
+  getElectronicTicketsTool as CopilotTool,
   // Fase 2 — preparación de borradores (no escriben; solo reúnen contexto).
   prepareAnnouncementDraftTool as CopilotTool,
   prepareDailyPlanDraftTool as CopilotTool,

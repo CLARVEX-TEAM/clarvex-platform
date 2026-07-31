@@ -236,3 +236,4 @@ test("lectura de metas y formato", async (t) => {
     assert.equal(formatRate(0), "0.0%", "cero capturado SÍ es cero");
   });
 });
+
