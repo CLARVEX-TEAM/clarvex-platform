@@ -3,6 +3,7 @@ import { z } from "zod";
 import { isApiError, parseJson, requireSession } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
 import { hashPin } from "@/lib/security";
+import { hasRealEmail, PLACEHOLDER_EMAIL_DOMAIN } from "@/lib/email";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -17,7 +18,11 @@ const schema = z.object({
   paidDays: z.number().min(-1000).max(1000).optional(), // solo gerencia
   active: z.boolean().optional(), // solo gerencia, sobre otro integrante
   checklistOnly: z.boolean().optional(), // solo gerencia, sobre otro integrante (kiosko)
-  pin: z.string().regex(/^\d{4}$/, "El PIN debe tener 4 dígitos.").optional() // solo gerencia, reset PIN
+  pin: z.string().regex(/^\d{4}$/, "El PIN debe tener 4 dígitos.").optional(), // solo gerencia, reset PIN
+  // Correo real. Cualquiera puede poner el suyo (es su propio dato, no un
+  // privilegio); gerencia puede ponérselo a su equipo. Sin esto, el
+  // restablecimiento del PIN por correo no tiene a dónde escribir.
+  email: z.string().trim().toLowerCase().email("El correo no es válido.").max(120).optional()
 });
 
 function toDate(value: string | null | undefined): Date | null | undefined {
@@ -25,20 +30,23 @@ function toDate(value: string | null | undefined): Date | null | undefined {
   return value === null ? null : new Date(`${value}T00:00:00.000Z`);
 }
 
-function serialize(user: { birthDate: Date | null; hireDate: Date | null; hoursOwed: number; vacationDays: number; paidDays: number }) {
+function serialize(user: { birthDate: Date | null; hireDate: Date | null; hoursOwed: number; vacationDays: number; paidDays: number; email?: string }) {
   return {
     birthDate: user.birthDate ? user.birthDate.toISOString().slice(0, 10) : null,
     hireDate: user.hireDate ? user.hireDate.toISOString().slice(0, 10) : null,
     hoursOwed: user.hoursOwed,
     vacationDays: user.vacationDays,
-    paidDays: user.paidDays
+    paidDays: user.paidDays,
+    // Vacío en vez del relleno: la interfaz debe pedirlo, no mostrar un correo
+    // falso que parece configurado.
+    email: hasRealEmail(user.email) ? user.email ?? "" : ""
   };
 }
 
 export async function GET() {
   const session = await requireSession();
   if (isApiError(session)) return session;
-  const user = await prisma.user.findUnique({ where: { id: session.userId }, select: { birthDate: true, hireDate: true, hoursOwed: true, vacationDays: true, paidDays: true } });
+  const user = await prisma.user.findUnique({ where: { id: session.userId }, select: { birthDate: true, hireDate: true, hoursOwed: true, vacationDays: true, paidDays: true, email: true } });
   return NextResponse.json(serialize(user ?? { birthDate: null, hireDate: null, hoursOwed: 0, vacationDays: 0, paidDays: 0 }));
 }
 
@@ -57,11 +65,19 @@ export async function PUT(request: Request) {
     targetUserId = target.id;
   }
 
-  const data: { birthDate?: Date | null; hireDate?: Date | null; hoursOwed?: number; vacationDays?: number; vacationBaselineAt?: Date; paidDays?: number; active?: boolean; checklistOnly?: boolean; pinHash?: string; sessionVersion?: { increment: number } } = {};
+  const data: { birthDate?: Date | null; hireDate?: Date | null; hoursOwed?: number; vacationDays?: number; vacationBaselineAt?: Date; paidDays?: number; active?: boolean; checklistOnly?: boolean; pinHash?: string; email?: string; sessionVersion?: { increment: number } } = {};
   const birth = toDate(parsed.data.birthDate);
   const hire = toDate(parsed.data.hireDate);
   if (birth !== undefined) data.birthDate = birth;
   if (hire !== undefined) data.hireDate = hire;
+  if (parsed.data.email !== undefined) {
+    // El dominio de relleno es marca interna de "sin correo": aceptarlo aquí
+    // dejaría una cuenta que parece tener correo y nunca recibe nada.
+    if (!hasRealEmail(parsed.data.email)) {
+      return NextResponse.json({ error: `No se puede usar el dominio ${PLACEHOLDER_EMAIL_DOMAIN}.` }, { status: 400 });
+    }
+    data.email = parsed.data.email;
+  }
   // Solo gerencia puede ajustar los saldos (horas, vacaciones y pago de días) y PIN.
   if (session.role !== "ASESOR") {
     if (parsed.data.hoursOwed !== undefined) data.hoursOwed = parsed.data.hoursOwed;
@@ -91,10 +107,19 @@ export async function PUT(request: Request) {
 
   // Cambiar el PIN invalida las sesiones previas del usuario (sube sessionVersion).
   const pinChanged = data.pinHash !== undefined;
-  const user = await prisma.user.update({
-    where: { id: targetUserId },
-    data: { ...data, ...(pinChanged ? { sessionVersion: { increment: 1 } } : {}) },
-    select: { birthDate: true, hireDate: true, hoursOwed: true, vacationDays: true, paidDays: true }
-  });
-  return NextResponse.json(serialize(user));
+  try {
+    const user = await prisma.user.update({
+      where: { id: targetUserId },
+      data: { ...data, ...(pinChanged ? { sessionVersion: { increment: 1 } } : {}) },
+      select: { birthDate: true, hireDate: true, hoursOwed: true, vacationDays: true, paidDays: true, email: true }
+    });
+    return NextResponse.json(serialize(user));
+  } catch (error) {
+    // El correo es único en la tabla. Sin este mensaje, poner uno ya usado
+    // devolvería un error de Prisma que no le dice nada a quien lo teclea.
+    if (typeof error === "object" && error !== null && (error as { code?: string }).code === "P2002") {
+      return NextResponse.json({ error: "Ese correo ya está registrado en otra cuenta." }, { status: 409 });
+    }
+    throw error;
+  }
 }

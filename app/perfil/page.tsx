@@ -26,6 +26,7 @@ export default function ProfilePage() {
   const [biometricBusy, setBiometricBusy] = useState(false);
   const [birthDate, setBirthDate] = useState("");
   const [hireDate, setHireDate] = useState("");
+  const [email, setEmail] = useState("");
   const [savingDates, setSavingDates] = useState(false);
   const [savedDates, setSavedDates] = useState(false);
 
@@ -35,25 +36,35 @@ export default function ProfilePage() {
 
   useEffect(() => {
     fetch("/api/profile")
-      .then((response) => response.json() as Promise<{ birthDate?: string | null; hireDate?: string | null }>)
-      .then((data) => { setBirthDate(data.birthDate ?? ""); setHireDate(data.hireDate ?? ""); })
+      .then((response) => response.json() as Promise<{ birthDate?: string | null; hireDate?: string | null; email?: string | null }>)
+      .then((data) => { setBirthDate(data.birthDate ?? ""); setHireDate(data.hireDate ?? ""); setEmail(data.email ?? ""); })
       .catch(() => undefined);
   }, []);
 
   async function saveDates() {
+    const trimmedEmail = email.trim();
     setSavingDates(true);
     try {
       const response = await fetch("/api/profile", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ birthDate: birthDate || null, hireDate: hireDate || null })
+        body: JSON.stringify({
+          birthDate: birthDate || null,
+          hireDate: hireDate || null,
+          // Solo se manda si hay algo: el campo es opcional en el endpoint y
+          // enviar "" lo haría fallar la validación de correo.
+          ...(trimmedEmail ? { email: trimmedEmail } : {})
+        })
       });
-      if (!response.ok) throw new Error();
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => ({}))) as { error?: string };
+        throw new Error(payload.error);
+      }
       toast("Datos guardados.", "success");
       setSavedDates(true);
       window.setTimeout(() => setSavedDates(false), 2000);
-    } catch {
-      toast("No se pudieron guardar.", "error");
+    } catch (saveError) {
+      toast(saveError instanceof Error && saveError.message ? saveError.message : "No se pudieron guardar.", "error");
     } finally {
       setSavingDates(false);
     }
@@ -158,6 +169,23 @@ export default function ProfilePage() {
                 <label className="grid gap-1">
                   <span className="text-xs font-bold text-muted">Fecha de ingreso</span>
                   <input type="date" value={hireDate} onChange={(event) => setHireDate(event.target.value)} className="min-h-11 rounded-2xl border border-line bg-panel px-3 text-sm font-bold text-ink outline-none focus:border-volt" />
+                </label>
+                <label className="grid gap-1">
+                  <span className="text-xs font-bold text-muted">Correo</span>
+                  <input
+                    type="email"
+                    inputMode="email"
+                    autoComplete="email"
+                    value={email}
+                    onChange={(event) => setEmail(event.target.value)}
+                    placeholder="tucorreo@ejemplo.com"
+                    className="min-h-11 rounded-2xl border border-line bg-panel px-3 text-sm font-bold text-ink outline-none focus:border-volt"
+                  />
+                  <span className="text-[11px] text-muted">
+                    {email
+                      ? "Aquí te llega el enlace si olvidas tu PIN."
+                      : "Sin correo no podrás recuperar tu PIN solo: tendrá que restablecerlo tu gerente."}
+                  </span>
                 </label>
                 <SaveButton type="button" onClick={() => void saveDates()} loading={savingDates} success={savedDates} savedLabel="¡Guardado!">Guardar datos</SaveButton>
               </div>

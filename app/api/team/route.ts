@@ -5,6 +5,7 @@ import { isApiError, parseJson, requireSession } from "@/lib/api";
 import { recordAudit } from "@/lib/audit";
 import { prisma } from "@/lib/prisma";
 import { hashPin } from "@/lib/security";
+import { PLACEHOLDER_EMAIL_DOMAIN } from "@/lib/email";
 
 export const dynamic = "force-dynamic";
 
@@ -29,7 +30,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Solo un gerente puede crear otro gerente." }, { status: 403 });
   }
 
-  const email = `${employeeNumber}@clarvex.local`;
+  // Relleno: la app no pide el correo al dar de alta. Quien quiera restablecer
+  // el PIN por correo tendrá que poner el suyo real luego (perfil o /equipo).
+  const email = `${employeeNumber}@${PLACEHOLDER_EMAIL_DOMAIN}`;
   const conflict = await prisma.user.findFirst({
     where: { OR: [{ employeeNumber }, { email }, { employeeNumberAliases: { some: { employeeNumber } } }] },
     select: { name: true, active: true }

@@ -4,6 +4,7 @@ import { Role } from "@prisma/client";
 import { isApiError, parseJson, requirePlatformAdmin } from "@/lib/api";
 import { recordAudit } from "@/lib/audit";
 import { resolveMonterreyDate, retailWeekRange } from "@/lib/cron-time";
+import { PLACEHOLDER_EMAIL_DOMAIN } from "@/lib/email";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -109,7 +110,7 @@ export async function POST(request: Request) {
   if ("response" in parsed) return parsed.response;
   const { name, manager } = parsed.data;
 
-  const email = manager.email ?? `${manager.employeeNumber}@clarvex.local`;
+  const email = manager.email ?? `${manager.employeeNumber}@${PLACEHOLDER_EMAIL_DOMAIN}`;
   const conflict = await prisma.user.findFirst({
     where: { OR: [{ employeeNumber: manager.employeeNumber }, { email }, { employeeNumberAliases: { some: { employeeNumber: manager.employeeNumber } } }] },
     select: { name: true }

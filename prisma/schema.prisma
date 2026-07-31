@@ -185,6 +185,7 @@ model User {
   aiRecommendations     AiRecommendationHistory[]
   retailAlertLogs       RetailAlertLog[]
   reportDeliveries      ReportDelivery[]
+  pinResetTokens        PinResetToken[]
 }
 
 model TrainingResource {
@@ -662,6 +663,30 @@ model WebAuthnChallenge {
   userId    String?
   expiresAt DateTime
 
+  @@index([expiresAt])
+}
+
+/// Enlace de un solo uso para restablecer el PIN por correo.
+///
+/// Se guarda el SHA-256 del token, NUNCA el token en claro: quien logre leer
+/// esta tabla (un volcado, un respaldo filtrado, un SELECT de más) no puede
+/// fabricar el enlace. Es el mismo criterio que con el PIN — la base guarda una
+/// huella, no la credencial.
+///
+/// `usedAt` no se borra al consumirlo a propósito: deja rastro de que el enlace
+/// se usó y cuándo, y evita que un reintento del mismo enlace vuelva a servir.
+model PinResetToken {
+  id        String    @id @default(cuid())
+  tokenHash String    @unique
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+  /// Para auditar de dónde salió la solicitud. No identifica por sí solo.
+  requestIp String?
+
+  @@index([userId])
   @@index([expiresAt])
 }
 

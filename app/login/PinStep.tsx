@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { motion } from "framer-motion";
 import { ShieldCheck } from "lucide-react";
 import { ClarvexIcon } from "@/components/ClarvexIcon";
@@ -58,8 +59,13 @@ export function PinStep({
           {error ? <p className="mt-3 text-center text-sm font-semibold text-red-500">{error}</p> : null}
 
           {!requiresPinSetup ? (
-            <p className={`mt-4 text-center text-xs ${isDark ? "text-slate-600" : "text-slate-400"}`}>
-              ¿Olvidaste tu PIN? Contacta al administrador
+            <p className={`mt-4 text-center text-xs ${isDark ? "text-slate-500" : "text-slate-400"}`}>
+              <Link
+                href="/recuperar"
+                className="font-semibold text-blue-600 underline-offset-2 hover:underline focus-visible:underline focus-visible:outline-none"
+              >
+                ¿Olvidaste tu PIN?
+              </Link>
             </p>
           ) : null}
         </div>

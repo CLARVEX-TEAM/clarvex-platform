@@ -36,6 +36,9 @@ const publicApiExact = new Set([
   "/api/version",
   "/api/auth/employee-login",
   "/api/auth/session",
+  // Restablecer el PIN por correo: por definición se pide SIN poder entrar.
+  "/api/auth/pin-reset/request",
+  "/api/auth/pin-reset/confirm",
   "/api/auth/biometric/authenticate",
   "/api/auth/biometric/authenticate-options",
   "/api/push/vapid-public-key"

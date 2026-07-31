@@ -137,6 +137,7 @@ cd /root/clarvex-app
 git pull
 pnpm install
 pnpm exec prisma generate
+pnpm exec prisma migrate deploy   # SOLO si el cambio trae migración nueva
 pnpm run build
 pm2 restart clarvex-team --update-env
 
@@ -210,6 +211,27 @@ VAPID_PUBLIC_KEY=
 VAPID_PRIVATE_KEY=
 VAPID_SUBJECT=
 ```
+
+### Correo transaccional (Resend) — restablecer el PIN
+
+```env
+RESEND_API_KEY=
+RESEND_FROM=          # Ej. "Clarvex Team <no-reply@adrianluna.mx>"
+APP_URL=              # Opcional: si falta, se usa WEBAUTHN_ORIGIN
+```
+
+⚠️ **El dominio de `RESEND_FROM` tiene que estar verificado en Resend.** Sin
+verificar, la API responde 403 y el correo no sale. El fallo se registra en los
+logs (`[pin-reset]`) pero **al usuario NO se le dice**: contárselo revelaría que
+ese número de empleado existe.
+
+Sin estas variables la app sigue funcionando: el restablecimiento por correo
+simplemente no manda nada (y lo registra en el log). El login no se rompe.
+
+⚠️ **La mayoría de los usuarios NO tiene correo real.** La app inventa
+`<numero>@clarvex.local` al dar de alta a alguien, y a ese dominio no llega
+nada. Hay que capturar los correos reales desde el perfil de cada quien o desde
+`/equipo`. `hasRealEmail()` en `lib/email.ts` es quien distingue uno del otro.
 
 ### Biometría (WebAuthn)
 

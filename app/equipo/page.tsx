@@ -300,6 +300,7 @@ export default function TeamDatesPage() {
                   {savedId === row.id ? <span className="flex items-center gap-1 text-sm font-semibold text-emerald-700"><CheckCircle2 size={15} />Guardado</span> : null}
                 </div>
                 {row.id !== currentUserId ? <PinSetter userId={row.id} name={row.name} /> : null}
+                <EmailSetter userId={row.id} name={row.name} />
               </Card>
             ))}
           </div>
@@ -357,6 +358,63 @@ function PinSetter({ userId, name }: { userId: string; name: string }) {
         />
         <Button type="button" variant="primary" onClick={() => void save()} disabled={busy || pin.length !== 4} className="min-h-10 px-4">
           {busy ? "..." : "Configurar PIN"}
+        </Button>
+        {done ? <span className="flex items-center gap-1 text-sm font-semibold text-emerald-700"><CheckCircle2 size={15} />Listo</span> : null}
+      </div>
+      {error ? <p className="mt-1 text-xs font-semibold text-rose-600">{error}</p> : null}
+    </div>
+  );
+}
+
+/**
+ * Gerencia registra el correo real de un integrante.
+ *
+ * Es el prerrequisito del restablecimiento por correo: la app inventa un
+ * `@clarvex.local` al dar de alta a alguien, y a ese dominio no llega nada.
+ * Sin un correo de verdad aquí, esa persona depende siempre de que gerencia le
+ * restablezca el PIN a mano.
+ */
+function EmailSetter({ userId, name }: { userId: string; name: string }) {
+  const [email, setEmail] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [done, setDone] = useState(false);
+  const [error, setError] = useState("");
+
+  async function save() {
+    const value = email.trim();
+    if (!value.includes("@")) { setError("Escribe un correo válido."); return; }
+    setBusy(true); setError(""); setDone(false);
+    try {
+      const response = await fetch("/api/profile", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, email: value })
+      });
+      const payload = await response.json().catch(() => ({})) as { error?: string };
+      if (!response.ok) throw new Error(payload.error);
+      setDone(true); setEmail("");
+    } catch (saveError) {
+      setError(saveError instanceof Error && saveError.message ? saveError.message : "No se pudo guardar el correo.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="mt-3 rounded-2xl border border-line/70 p-3">
+      <p className="text-xs font-bold text-muted">Correo</p>
+      <p className="mb-2 text-[11px] text-muted">Aquí le llega el enlace si {name.split(" ")[0]} olvida su PIN. Sin correo, tendrás que restablecérselo tú.</p>
+      <div className="flex items-center gap-2">
+        <input
+          value={email}
+          onChange={(event) => { setEmail(event.target.value); setDone(false); }}
+          type="email"
+          inputMode="email"
+          placeholder="correo@ejemplo.com"
+          className="min-h-11 flex-1 rounded-2xl border border-line bg-panel px-3 text-sm font-bold text-ink outline-none focus:border-volt"
+        />
+        <Button type="button" variant="primary" onClick={() => void save()} disabled={busy || !email.trim()} className="min-h-10 px-4">
+          {busy ? "..." : "Guardar"}
         </Button>
         {done ? <span className="flex items-center gap-1 text-sm font-semibold text-emerald-700"><CheckCircle2 size={15} />Listo</span> : null}
       </div>
