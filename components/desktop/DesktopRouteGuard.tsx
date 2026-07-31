@@ -7,6 +7,7 @@ import { noteViewRedirect, prefersDesktop } from "@/lib/view-mode";
 
 // Rutas de gerencia que tienen equivalente en el escritorio (/escritorio/<seg>).
 const MIRRORED = new Set([
+  "asistencia",
   "admin", "bitacora", "capacitacion", "chat", "checklist", "comunicados", "conteos", "datos",
   "encuestas", "equipo", "faltantes", "horarios", "kpis", "kudos",
   "pendientes", "perfil", "plan", "solicitudes", "notificaciones"
