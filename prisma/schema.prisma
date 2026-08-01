@@ -857,6 +857,9 @@ model Survey {
   title       String
   description String?
   anonymous   Boolean          @default(true)
+  /// A quien va dirigida: "ALL" (todo el equipo) o "ADVISORS" (solo asesores).
+  /// Por omision ALL, que es como se comportaban las encuestas ya existentes.
+  audience    String           @default("ALL")
   active      Boolean          @default(true)
   createdAt   DateTime         @default(now())
   author      User             @relation("SurveyAuthor", fields: [authorId], references: [id], onDelete: Cascade)

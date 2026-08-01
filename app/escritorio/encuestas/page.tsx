@@ -1,22 +1,27 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { BarChart3, ClipboardCheck, Lock, Plus, Star, Trash2, X } from "lucide-react";
+import { BarChart3, ClipboardCheck, Lock, Plus, Star, Trash2, Users, X } from "lucide-react";
 import { Badge } from "@/components/ui";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { useToast } from "@/components/Toast";
+import { cn } from "@/lib/utils";
+import {
+  AUDIENCE_LABEL, climateIndex, indexLevel, LEVEL_LABEL, ratingLevel, responseRate, worstQuestions,
+  type ClimateLevel, type SurveyAudience
+} from "@/lib/survey-climate";
 import {
   DeskButton, DeskEmpty, DeskMeter, DeskPanel, DeskPrimaryButton, DeskReveal, DeskSection,
   DeskSkeleton, deskInput
 } from "@/components/desktop/DeskUI";
 
 type Question = { id: string; text: string; type: "RATING" | "TEXT"; order: number };
-type Survey = { id: string; title: string; description: string | null; anonymous: boolean; active: boolean; createdAt: string; questions: Question[]; responded: boolean; responseCount: number };
+type Survey = { id: string; title: string; description: string | null; anonymous: boolean; audience?: SurveyAudience; active: boolean; createdAt: string; questions: Question[]; responded: boolean; responseCount: number };
 type DraftQuestion = { text: string; type: "RATING" | "TEXT" };
 type ResultQuestion =
-  | { id: string; text: string; type: "RATING"; average: number | null; count: number; distribution: number[] }
+  | { id: string; text: string; type: "RATING"; average: number | null; count: number; distribution: number[]; split?: boolean }
   | { id: string; text: string; type: "TEXT"; texts: { text: string; name: string | null }[] };
-type Results = { id: string; title: string; anonymous: boolean; responseCount: number; totalRecipients: number; questions: ResultQuestion[] };
+type Results = { id: string; title: string; anonymous: boolean; audience?: SurveyAudience; climateIndex?: number | null; responseCount: number; totalRecipients: number; questions: ResultQuestion[] };
 
 export default function EscritorioEncuestas() {
   const toast = useToast();
@@ -26,6 +31,7 @@ export default function EscritorioEncuestas() {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [anonymous, setAnonymous] = useState(true);
+  const [audience, setAudience] = useState<SurveyAudience>("ALL");
   const [questions, setQuestions] = useState<DraftQuestion[]>([{ text: "", type: "RATING" }]);
   const [submitting, setSubmitting] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
@@ -64,7 +70,7 @@ export default function EscritorioEncuestas() {
       const response = await fetch("/api/surveys", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: title.trim(), description: description.trim() || undefined, anonymous, questions: cleanQuestions })
+        body: JSON.stringify({ title: title.trim(), description: description.trim() || undefined, anonymous, audience, questions: cleanQuestions })
       });
       const data = await response.json() as { error?: string };
       if (!response.ok) throw new Error(data.error ?? "No se pudo crear.");
@@ -134,6 +140,28 @@ export default function EscritorioEncuestas() {
                   </span>
                   <input type="checkbox" checked={anonymous} onChange={(e) => setAnonymous(e.target.checked)} className="size-4 accent-[rgb(var(--desk-accent))]" />
                 </label>
+
+                {/* A quien va dirigida. Una encuesta de clima para asesores no
+                    deberia llegarle a gerencia ni contar en su tasa de respuesta. */}
+                <fieldset className="grid gap-2">
+                  <legend className="text-caption font-medium text-muted">¿Para quién es?</legend>
+                  <div className="flex gap-1.5">
+                    {(["ALL", "ADVISORS"] as const).map((value) => (
+                      <button
+                        key={value}
+                        type="button"
+                        onClick={() => setAudience(value)}
+                        className={cn(
+                          "min-h-9 flex-1 rounded-lg px-3 text-ui font-medium transition",
+                          audience === value ? "bg-accent text-on-accent" : "bg-panel text-muted ring-1 ring-line hover:text-ink"
+                        )}
+                      >
+                        <Users size={14} className="mr-1.5 inline" />
+                        {AUDIENCE_LABEL[value]}
+                      </button>
+                    ))}
+                  </div>
+                </fieldset>
 
                 <fieldset className="grid gap-2">
                   <legend className="text-caption font-medium text-muted">Preguntas</legend>
@@ -257,7 +285,11 @@ export default function EscritorioEncuestas() {
                         ) : results.responseCount === 0 ? (
                           <p className="text-ui text-muted">Todavía nadie ha respondido.</p>
                         ) : (
-                          <div className="grid gap-6 md:grid-cols-2">
+                          <div className="grid gap-6">
+                            {/* El indice primero: es la lectura de un vistazo.
+                                El desglose por pregunta es para actuar. */}
+                            <ClimateHeadline results={results} />
+                            <div className="grid gap-6 md:grid-cols-2">
                             {results.questions.map((q) => (
                               <div key={q.id}>
                                 <p className="text-ui font-medium text-ink">{q.text}</p>
@@ -271,7 +303,13 @@ export default function EscritorioEncuestas() {
                                       <span className="text-caption text-muted">
                                         promedio · {q.count} respuesta{q.count === 1 ? "" : "s"}
                                       </span>
+                                      <LevelChip level={ratingLevel(q.average)} />
                                     </div>
+                                    {q.split ? (
+                                      <p className="mt-1.5 text-caption text-warn">
+                                        El equipo está dividido en esta: el promedio no representa a nadie.
+                                      </p>
+                                    ) : null}
                                     <div className="mt-2 space-y-1">
                                       {[5, 4, 3, 2, 1].map((star) => {
                                         const n = q.distribution[star - 1] ?? 0;
@@ -301,6 +339,7 @@ export default function EscritorioEncuestas() {
                                 )}
                               </div>
                             ))}
+                            </div>
                           </div>
                         )}
                       </div>
@@ -321,6 +360,90 @@ export default function EscritorioEncuestas() {
         onConfirm={() => void confirmDelete()}
         onCancel={() => setPendingDeleteId(null)}
       />
+    </div>
+  );
+}
+
+const LEVEL_STYLE: Record<ClimateLevel, string> = {
+  bueno: "bg-ok/12 text-ok",
+  atencion: "bg-warn/12 text-warn",
+  critico: "bg-danger/12 text-danger",
+  "sin-dato": "bg-panel text-muted"
+};
+
+/** Etiqueta de semáforo. Lleva el texto además del color: quien no distingue
+ *  bien los colores tiene que poder leerlo igual. */
+function LevelChip({ level }: { level: ClimateLevel }) {
+  if (level === "sin-dato") return null;
+  return (
+    <span className={cn("rounded-full px-2 py-0.5 text-caption font-semibold", LEVEL_STYLE[level])}>
+      {LEVEL_LABEL[level]}
+    </span>
+  );
+}
+
+/**
+ * Cabecera de resultados: el índice de clima, su semáforo, la tasa de respuesta
+ * y las preguntas peor calificadas.
+ *
+ * Las peores van aquí arriba a propósito: con doce preguntas, lo que importa no
+ * es el promedio general sino por dónde empezar.
+ */
+function ClimateHeadline({ results }: { results: Results }) {
+  const ratings = results.questions.filter(
+    (q): q is Extract<ResultQuestion, { type: "RATING" }> => q.type === "RATING"
+  );
+  const index = results.climateIndex ?? climateIndex(ratings);
+  const level = indexLevel(index);
+  const rate = responseRate(results.responseCount, results.totalRecipients);
+  const worst = worstQuestions(ratings, 3);
+
+  return (
+    <div className="rounded-xl border border-line bg-panel p-4">
+      <div className="flex flex-wrap items-end gap-x-10 gap-y-4">
+        <div>
+          <p className="text-caption font-medium text-muted">Índice de clima</p>
+          <div className="mt-1 flex items-baseline gap-2">
+            <span className="text-h1 font-semibold tabular-nums text-ink">{index ?? "—"}</span>
+            <span className="text-ui text-muted">/ 100</span>
+            <LevelChip level={level} />
+          </div>
+        </div>
+        <div>
+          <p className="text-caption font-medium text-muted">Respondieron</p>
+          <p className="mt-1 text-h3 font-semibold tabular-nums text-ink">
+            {results.responseCount}/{results.totalRecipients}
+            {rate !== null ? <span className="ml-1.5 text-ui font-normal text-muted">{rate}%</span> : null}
+          </p>
+        </div>
+        {results.audience ? (
+          <div>
+            <p className="text-caption font-medium text-muted">Dirigida a</p>
+            <p className="mt-1 text-h3 font-semibold text-ink">{AUDIENCE_LABEL[results.audience]}</p>
+          </div>
+        ) : null}
+      </div>
+
+      {worst.length > 0 ? (
+        <div className="mt-4 border-t border-line pt-3">
+          <p className="text-caption font-medium text-muted">Por dónde empezar</p>
+          <ul className="mt-1.5 grid gap-1">
+            {worst.map((q) => (
+              <li key={q.id} className="flex items-baseline justify-between gap-3 text-ui">
+                <span className="text-ink">{q.text}</span>
+                <span className="shrink-0 tabular-nums text-muted">{q.average?.toFixed(1) ?? "—"}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
+      {results.responseCount > 0 && results.responseCount < 3 ? (
+        <p className="mt-3 text-caption text-muted">
+          Con {results.responseCount} respuesta{results.responseCount === 1 ? "" : "s"} el índice todavía dice poco.
+          Espera a que conteste más gente antes de sacar conclusiones.
+        </p>
+      ) : null}
     </div>
   );
 }

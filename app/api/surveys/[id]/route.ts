@@ -1,4 +1,5 @@
-import { PERSON_WHERE } from "@/lib/store-people";
+import { ADVISOR_WHERE, PERSON_WHERE } from "@/lib/store-people";
+import { climateIndex, isSplit } from "@/lib/survey-climate";
 import { NextResponse } from "next/server";
 import { isApiError, requireSession } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
@@ -28,7 +29,12 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   });
   if (!survey) return NextResponse.json({ error: "Encuesta no encontrada." }, { status: 404 });
 
-  const totalRecipients = await prisma.user.count({ where: { storeId: session.storeId, ...PERSON_WHERE } });
+  const totalRecipients = await prisma.user.count({
+    where: {
+      storeId: session.storeId,
+      ...(survey.audience === "ADVISORS" ? ADVISOR_WHERE : PERSON_WHERE)
+    }
+  });
 
   const questions = survey.questions.map((question) => {
     const answers = survey.responses.flatMap((response) =>
@@ -40,7 +46,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
       const ratings = answers.map((entry) => entry.answer.rating).filter((value): value is number => value !== null);
       const distribution = [1, 2, 3, 4, 5].map((star) => ratings.filter((value) => value === star).length);
       const average = ratings.length ? ratings.reduce((sum, value) => sum + value, 0) / ratings.length : null;
-      return { id: question.id, text: question.text, type: "RATING" as const, average, count: ratings.length, distribution };
+      return { id: question.id, text: question.text, type: "RATING" as const, average, count: ratings.length, distribution, split: isSplit(distribution) };
     }
     const texts = answers
       .map((entry) => ({ text: entry.answer.text ?? "", name: survey.anonymous ? null : entry.response.user.name }))
@@ -53,6 +59,9 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     title: survey.title,
     description: survey.description,
     anonymous: survey.anonymous,
+    audience: survey.audience,
+    // Índice de clima 0-100 sobre las preguntas de escala.
+    climateIndex: climateIndex(questions.filter((q): q is Extract<typeof q, { type: "RATING" }> => q.type === "RATING")),
     active: survey.active,
     responseCount: survey.responses.length,
     totalRecipients,

@@ -1,3 +1,4 @@
+import { ADVISOR_WHERE, PERSON_WHERE } from "@/lib/store-people";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { isApiError, parseJson, requireSession } from "@/lib/api";
@@ -22,7 +23,7 @@ export async function GET() {
         responses: { select: { userId: true } }
       }
     }),
-    prisma.user.count({ where: { storeId: session.storeId, active: true } })
+    prisma.user.count({ where: { storeId: session.storeId, ...PERSON_WHERE } })
   ]);
 
   return NextResponse.json({
@@ -33,9 +34,14 @@ export async function GET() {
       title: survey.title,
       description: survey.description,
       anonymous: survey.anonymous,
+      audience: survey.audience,
       active: survey.active,
       createdAt: survey.createdAt.toISOString(),
       questions: survey.questions,
+      // Si a ESTA persona le toca contestarla. Gerencia ve las encuestas de
+      // solo-asesores para poder leer resultados, pero NO le salen como
+      // pendientes: no son suyas.
+      targeted: survey.audience === "ALL" || !isManager,
       responded: survey.responses.some((response) => response.userId === session.userId),
       responseCount: survey.responses.length
     }))
@@ -46,6 +52,7 @@ const createSchema = z.object({
   title: z.string().trim().min(2, "Escribe un título.").max(140),
   description: z.string().trim().max(500).optional(),
   anonymous: z.boolean().optional().default(true),
+  audience: z.enum(["ALL", "ADVISORS"]).optional().default("ALL"),
   questions: z.array(z.object({
     text: z.string().trim().min(2, "Cada pregunta necesita texto.").max(200),
     type: z.enum(["RATING", "TEXT"]).default("RATING")
@@ -59,7 +66,7 @@ export async function POST(request: Request) {
 
   const parsed = await parseJson(request, createSchema);
   if ("response" in parsed) return parsed.response;
-  const { title, description, anonymous, questions } = parsed.data;
+  const { title, description, anonymous, audience, questions } = parsed.data;
 
   const survey = await prisma.survey.create({
     data: {
@@ -68,12 +75,17 @@ export async function POST(request: Request) {
       title,
       description: description || null,
       anonymous,
+      audience,
       questions: { create: questions.map((question, index) => ({ text: question.text, type: question.type, order: index })) }
     }
   });
 
   const recipients = await prisma.user.findMany({
-    where: { storeId: session.storeId, active: true, id: { not: session.userId } },
+    where: {
+      storeId: session.storeId,
+      ...(audience === "ADVISORS" ? ADVISOR_WHERE : PERSON_WHERE),
+      id: { not: session.userId }
+    },
     select: { id: true }
   });
   const recipientIds = recipients.map((recipient) => recipient.id);
