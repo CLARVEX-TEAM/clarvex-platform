@@ -1,3 +1,4 @@
+import { PERSON_WHERE } from "@/lib/store-people";
 import { NextResponse } from "next/server";
 import { requireSession, isApiError } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
@@ -157,7 +158,7 @@ export async function POST(request: Request) {
 async function ensureGroupRoom(storeId: string, userId: string) {
   let group = await prisma.chatRoom.findFirst({ where: { storeId, type: "GROUP" } });
   if (!group) {
-    const allUsers = await prisma.user.findMany({ where: { storeId, active: true }, select: { id: true } });
+    const allUsers = await prisma.user.findMany({ where: { storeId, ...PERSON_WHERE }, select: { id: true } });
     group = await prisma.chatRoom.create({
       data: {
         storeId,

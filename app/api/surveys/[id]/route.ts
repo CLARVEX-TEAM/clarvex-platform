@@ -1,3 +1,4 @@
+import { PERSON_WHERE } from "@/lib/store-people";
 import { NextResponse } from "next/server";
 import { isApiError, requireSession } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
@@ -27,7 +28,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   });
   if (!survey) return NextResponse.json({ error: "Encuesta no encontrada." }, { status: 404 });
 
-  const totalRecipients = await prisma.user.count({ where: { storeId: session.storeId, active: true } });
+  const totalRecipients = await prisma.user.count({ where: { storeId: session.storeId, ...PERSON_WHERE } });
 
   const questions = survey.questions.map((question) => {
     const answers = survey.responses.flatMap((response) =>
