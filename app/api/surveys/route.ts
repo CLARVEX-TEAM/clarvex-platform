@@ -16,7 +16,9 @@ export async function GET() {
 
   const [surveys, totalRecipients] = await Promise.all([
     prisma.survey.findMany({
-      where: { storeId: session.storeId },
+      // Un asesor no ve borradores: para él la encuesta existe cuando se
+      // publica. Gerencia sí los ve, para poder terminarlos y publicarlos.
+      where: { storeId: session.storeId, ...(isManager ? {} : { active: true }) },
       orderBy: { createdAt: "desc" },
       include: {
         questions: { orderBy: { order: "asc" }, select: { id: true, text: true, type: true, order: true } },
@@ -53,6 +55,8 @@ const createSchema = z.object({
   description: z.string().trim().max(500).optional(),
   anonymous: z.boolean().optional().default(true),
   audience: z.enum(["ALL", "ADVISORS"]).optional().default("ALL"),
+  // false = queda en BORRADOR: se guarda pero nadie se entera hasta publicar.
+  publish: z.boolean().optional().default(true),
   questions: z.array(z.object({
     text: z.string().trim().min(2, "Cada pregunta necesita texto.").max(200),
     type: z.enum(["RATING", "TEXT"]).default("RATING")
@@ -66,7 +70,7 @@ export async function POST(request: Request) {
 
   const parsed = await parseJson(request, createSchema);
   if ("response" in parsed) return parsed.response;
-  const { title, description, anonymous, audience, questions } = parsed.data;
+  const { title, description, anonymous, audience, publish, questions } = parsed.data;
 
   const survey = await prisma.survey.create({
     data: {
@@ -76,9 +80,13 @@ export async function POST(request: Request) {
       description: description || null,
       anonymous,
       audience,
+      active: publish,
       questions: { create: questions.map((question, index) => ({ text: question.text, type: question.type, order: index })) }
     }
   });
+
+  // Un borrador no avisa a nadie: el aviso sale al publicar (PATCH).
+  if (!publish) return NextResponse.json({ id: survey.id, draft: true }, { status: 201 });
 
   const recipients = await prisma.user.findMany({
     where: {
@@ -93,7 +101,7 @@ export async function POST(request: Request) {
     await createNotifications(prisma, recipientIds.map((id) => ({
       storeId: session.storeId, userId: id, type: "SURVEY" as const, title: "Nueva encuesta", body: title
     })));
-    dispatchPushToUsers(recipientIds, { title: "📝 Nueva encuesta", body: title, tag: "encuesta", url: "/encuestas" }).catch(() => undefined);
+    dispatchPushToUsers(recipientIds, { title: "📝 Nueva encuesta", body: title, tag: "encuesta", url: `/encuestas?encuesta=${survey.id}` }).catch(() => undefined);
   }
 
   return NextResponse.json({ id: survey.id }, { status: 201 });

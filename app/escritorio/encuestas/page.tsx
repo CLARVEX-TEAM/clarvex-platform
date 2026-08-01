@@ -32,6 +32,7 @@ export default function EscritorioEncuestas() {
   const [description, setDescription] = useState("");
   const [anonymous, setAnonymous] = useState(true);
   const [audience, setAudience] = useState<SurveyAudience>("ALL");
+  const [publishingId, setPublishingId] = useState<string | null>(null);
   const [questions, setQuestions] = useState<DraftQuestion[]>([{ text: "", type: "RATING" }]);
   const [submitting, setSubmitting] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
@@ -61,6 +62,26 @@ export default function EscritorioEncuestas() {
     setQuestions((prev) => prev.map((q, i) => (i === index ? { ...q, ...patch } : q)));
   }
 
+  /** Publica un borrador. Es el único momento en que se avisa al equipo. */
+  async function publish(survey: Survey) {
+    setPublishingId(survey.id);
+    try {
+      const response = await fetch(`/api/surveys/${survey.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "publish" })
+      });
+      const payload = await response.json().catch(() => ({})) as { error?: string; notified?: number };
+      if (!response.ok) throw new Error(payload.error);
+      toast(payload.notified ? `Publicada. Se avisó a ${payload.notified} persona${payload.notified === 1 ? "" : "s"}.` : "Publicada.", "success");
+      await load();
+    } catch (error) {
+      toast(error instanceof Error && error.message ? error.message : "No se pudo publicar.", "error");
+    } finally {
+      setPublishingId(null);
+    }
+  }
+
   async function create() {
     const cleanQuestions = questions.map((q) => ({ ...q, text: q.text.trim() })).filter((q) => q.text.length >= 2);
     if (title.trim().length < 2) { toast("Escribe un título.", "error"); return; }
@@ -70,7 +91,7 @@ export default function EscritorioEncuestas() {
       const response = await fetch("/api/surveys", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: title.trim(), description: description.trim() || undefined, anonymous, audience, questions: cleanQuestions })
+        body: JSON.stringify({ title: title.trim(), description: description.trim() || undefined, anonymous, audience, publish: false, questions: cleanQuestions })
       });
       const data = await response.json() as { error?: string };
       if (!response.ok) throw new Error(data.error ?? "No se pudo crear.");
@@ -216,6 +237,9 @@ export default function EscritorioEncuestas() {
                   ) : null}
                 </fieldset>
 
+                {/* Se guarda como BORRADOR. Publicar es un segundo paso, en la
+                    tarjeta: mandar un push a la tienda con una encuesta a medio
+                    escribir no tiene vuelta atras. */}
                 <DeskPrimaryButton type="button" onClick={() => void create()} disabled={submitting} className="w-full">
                   {submitting ? "Publicando…" : "Publicar encuesta"}
                 </DeskPrimaryButton>
@@ -247,7 +271,9 @@ export default function EscritorioEncuestas() {
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
                           <h3 className="text-ui font-semibold text-ink">{survey.title}</h3>
+                          {!survey.active ? <Badge tone="warn">Borrador</Badge> : null}
                           {survey.anonymous ? <Badge tone="success"><Lock size={11} /> Anónima</Badge> : null}
+                          {survey.audience === "ADVISORS" ? <Badge><Users size={11} /> Solo asesores</Badge> : null}
                         </div>
                         {survey.description ? <p className="mt-1 max-w-[70ch] text-ui text-muted">{survey.description}</p> : null}
                         <p className="mt-1 text-caption text-muted">
@@ -264,10 +290,26 @@ export default function EscritorioEncuestas() {
                       </button>
                     </div>
 
-                    <div className="mt-3 flex items-center gap-3">
-                      <DeskMeter value={pct} className="flex-1" />
-                      <span className="w-10 shrink-0 text-right text-caption font-medium text-ink">{pct}%</span>
-                    </div>
+                    {!survey.active ? (
+                      <div className="mt-3 flex flex-wrap items-center gap-3">
+                        <DeskPrimaryButton
+                          type="button"
+                          onClick={() => void publish(survey)}
+                          disabled={publishingId === survey.id}
+                        >
+                          {publishingId === survey.id ? "Publicando…" : "Publicar y avisar"}
+                        </DeskPrimaryButton>
+                        <span className="text-caption text-muted">
+                          Nadie la ve todavía. Al publicarla le llega un aviso a{" "}
+                          {survey.audience === "ADVISORS" ? "los asesores" : "todo el equipo"}.
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="mt-3 flex items-center gap-3">
+                        <DeskMeter value={pct} className="flex-1" />
+                        <span className="w-10 shrink-0 text-right text-caption font-medium text-ink">{pct}%</span>
+                      </div>
+                    )}
 
                     <DeskButton
                       type="button"

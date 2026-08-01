@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import { ClipboardCheck, Lock, Star } from "lucide-react";
 import { getSession } from "@/lib/auth";
@@ -19,6 +21,15 @@ export default function EncuestasPage() {
   const [loading, setLoading] = useState(true);
   const [answers, setAnswers] = useState<Record<string, Record<string, { rating?: number; text?: string }>>>({});
   const [sendingId, setSendingId] = useState<string | null>(null);
+  // `?encuesta=<id>`: lo pone el aviso para llevar a ESA encuesta y no a la lista.
+  const focusId = useSearchParams().get("encuesta");
+
+  // Al llegar desde el aviso, traer la encuesta a la vista. Con varias en la
+  // lista, aterrizar arriba del todo obliga a buscarla a mano.
+  useEffect(() => {
+    if (!focusId || loading) return;
+    document.getElementById(`encuesta-${focusId}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [focusId, loading]);
 
   useEffect(() => {
     getSession().then((current) => { if (!current) router.replace("/login"); else setSession(current); });
@@ -88,7 +99,11 @@ export default function EncuestasPage() {
         ) : (
           <div className="space-y-3">
             {pending.map((survey) => (
-              <Card key={survey.id} className="p-3.5">
+              <Card
+                key={survey.id}
+                id={`encuesta-${survey.id}`}
+                className={cn("p-3.5", focusId === survey.id && "ring-2 ring-volt")}
+              >
                 <div className="mb-1 flex items-center gap-2">
                   <ClipboardCheck className="text-volt" size={18} />
                   <h2 className="text-lg font-semibold">{survey.title}</h2>
