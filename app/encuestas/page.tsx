@@ -13,7 +13,7 @@ import { AppFrame, AppHeader, Badge, BottomNav, Button, Card, EmptyState } from 
 import { useToast } from "@/components/Toast";
 
 type Question = { id: string; text: string; type: "RATING" | "TEXT"; order: number };
-type Survey = { id: string; title: string; description: string | null; anonymous: boolean; active: boolean; createdAt: string; questions: Question[]; responded: boolean; responseCount: number };
+type Survey = { id: string; title: string; description: string | null; anonymous: boolean; active: boolean; audience?: "ALL" | "ADVISORS"; targeted?: boolean; createdAt: string; questions: Question[]; responded: boolean; responseCount: number };
 
 function EncuestasContent() {
   const router = useRouter();
@@ -87,8 +87,10 @@ function EncuestasContent() {
     }
   }
 
-  const pending = surveys.filter((s) => s.active && !s.responded);
-  const done = surveys.filter((s) => s.responded || !s.active);
+  const pending = surveys.filter((s) => s.active && s.targeted !== false && !s.responded);
+  // Las que no son para esta persona se listan pero no se contestan: gerencia
+  // necesita verlas para consultar resultados.
+  const done = surveys.filter((s) => s.responded || !s.active || s.targeted === false);
 
   return (
     <>
@@ -149,7 +151,7 @@ function EncuestasContent() {
                         <p className="truncate font-semibold text-ink">{survey.title}</p>
                         <p className="text-xs text-muted">{survey.questions.length} pregunta{survey.questions.length === 1 ? "" : "s"}</p>
                       </div>
-                      <Badge tone={survey.responded ? "success" : "default"}>{survey.responded ? "Respondida" : "Cerrada"}</Badge>
+                      <Badge tone={survey.responded ? "success" : "default"}>{survey.responded ? "Respondida" : !survey.active ? "Borrador" : survey.targeted === false ? "Solo asesores" : "Cerrada"}</Badge>
                     </Card>
                   ))}
                 </div>
