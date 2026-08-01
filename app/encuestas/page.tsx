@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils";
+
+
 import { useRouter } from "next/navigation";
 import { ClipboardCheck, Lock, Star } from "lucide-react";
 import { getSession } from "@/lib/auth";
@@ -13,7 +15,7 @@ import { useToast } from "@/components/Toast";
 type Question = { id: string; text: string; type: "RATING" | "TEXT"; order: number };
 type Survey = { id: string; title: string; description: string | null; anonymous: boolean; active: boolean; createdAt: string; questions: Question[]; responded: boolean; responseCount: number };
 
-export default function EncuestasPage() {
+function EncuestasContent() {
   const router = useRouter();
   const toast = useToast();
   const [session, setSession] = useState<User | null>(null);
@@ -158,5 +160,18 @@ export default function EncuestasPage() {
       </AppFrame>
       <BottomNav />
     </>
+  );
+}
+
+/**
+ * `useSearchParams()` obliga a un límite de Suspense: sin él, el build falla al
+ * prerenderizar («Export encountered an error on /encuestas»). El `fallback` es
+ * nulo porque el contenido ya trae su propio estado de carga.
+ */
+export default function EncuestasPage() {
+  return (
+    <Suspense fallback={null}>
+      <EncuestasContent />
+    </Suspense>
   );
 }
