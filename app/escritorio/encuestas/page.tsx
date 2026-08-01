@@ -62,6 +62,23 @@ export default function EscritorioEncuestas() {
     setQuestions((prev) => prev.map((q, i) => (i === index ? { ...q, ...patch } : q)));
   }
 
+  /** Cambia el destinatario de un borrador. Después de publicar ya no se puede. */
+  async function setSurveyAudience(survey: Survey, value: SurveyAudience) {
+    if ((survey.audience ?? "ALL") === value) return;
+    try {
+      const response = await fetch(`/api/surveys/${survey.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "audience", audience: value })
+      });
+      const payload = await response.json().catch(() => ({})) as { error?: string };
+      if (!response.ok) throw new Error(payload.error);
+      await load();
+    } catch (error) {
+      toast(error instanceof Error && error.message ? error.message : "No se pudo cambiar.", "error");
+    }
+  }
+
   /** Publica un borrador. Es el único momento en que se avisa al equipo. */
   async function publish(survey: Survey) {
     setPublishingId(survey.id);
@@ -241,7 +258,7 @@ export default function EscritorioEncuestas() {
                     tarjeta: mandar un push a la tienda con una encuesta a medio
                     escribir no tiene vuelta atras. */}
                 <DeskPrimaryButton type="button" onClick={() => void create()} disabled={submitting} className="w-full">
-                  {submitting ? "Publicando…" : "Publicar encuesta"}
+                  {submitting ? "Publicando…" : "Guardar borrador"}
                 </DeskPrimaryButton>
               </div>
             </DeskPanel>
@@ -299,6 +316,24 @@ export default function EscritorioEncuestas() {
                         >
                           {publishingId === survey.id ? "Publicando…" : "Publicar y avisar"}
                         </DeskPrimaryButton>
+                        <div className="flex items-center gap-1.5">
+                          {(["ALL", "ADVISORS"] as const).map((value) => (
+                            <button
+                              key={value}
+                              type="button"
+                              onClick={() => void setSurveyAudience(survey, value)}
+                              disabled={publishingId === survey.id}
+                              className={cn(
+                                "min-h-8 rounded-lg px-3 text-caption font-semibold transition disabled:opacity-50",
+                                (survey.audience ?? "ALL") === value
+                                  ? "bg-accent text-on-accent"
+                                  : "bg-panel text-muted ring-1 ring-line hover:text-ink"
+                              )}
+                            >
+                              {AUDIENCE_LABEL[value]}
+                            </button>
+                          ))}
+                        </div>
                         <span className="text-caption text-muted">
                           Nadie la ve todavía. Al publicarla le llega un aviso a{" "}
                           {survey.audience === "ADVISORS" ? "los asesores" : "todo el equipo"}.

@@ -85,7 +85,10 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
   return NextResponse.json({ ok: true });
 }
 
-const patchSchema = z.object({ action: z.literal("publish") });
+const patchSchema = z.discriminatedUnion("action", [
+  z.object({ action: z.literal("publish") }),
+  z.object({ action: z.literal("audience"), audience: z.enum(["ALL", "ADVISORS"]) })
+]);
 
 /**
  * Publica un borrador: lo hace visible y AHORA SÍ avisa a quien le toca.
@@ -110,6 +113,18 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     select: { id: true, title: true, active: true, audience: true }
   });
   if (!survey) return NextResponse.json({ error: "Encuesta no encontrada." }, { status: 404 });
+
+  // Cambiar el destinatario SOLO mientras sea borrador. Despues de publicar ya
+  // hay gente avisada: moverlo dejaria a unos con la encuesta y a otros sin
+  // enterarse, y la tasa de respuesta pasaria a medir contra otro universo.
+  if (parsed.data.action === "audience") {
+    if (survey.active) {
+      return NextResponse.json({ error: "Ya está publicada: no se puede cambiar a quién va dirigida." }, { status: 409 });
+    }
+    await prisma.survey.update({ where: { id: survey.id }, data: { audience: parsed.data.audience } });
+    return NextResponse.json({ id: survey.id, audience: parsed.data.audience });
+  }
+
   if (survey.active) return NextResponse.json({ id: survey.id, alreadyPublished: true });
 
   await prisma.survey.update({ where: { id: survey.id }, data: { active: true } });
