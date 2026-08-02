@@ -1,4 +1,5 @@
 import { PERSON_WHERE } from "@/lib/store-people";
+import { retailMonthBoundsFor } from "@/lib/report-deadlines";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { recordAudit } from "@/lib/audit";
@@ -13,13 +14,30 @@ export const runtime = "nodejs";
 
 const MONTH_RE = /^\d{4}-\d{2}$/;
 
-/** Rango [inicio, fin) del mes en UTC, igual que se guardan las fechas. */
+/** Rango [inicio, fin) del mes NATURAL en UTC, igual que se guardan las fechas. */
 function monthRange(month: string) {
   const [year, monthNumber] = month.split("-").map(Number);
   return {
     start: new Date(Date.UTC(year, monthNumber - 1, 1)),
     end: new Date(Date.UTC(year, monthNumber, 1))
   };
+}
+
+/**
+ * Rango del mes RETAIL correspondiente a ese mes natural.
+ *
+ * Hace falta porque no son lo mismo y la diferencia va a nomina: agosto 2026
+ * natural trae CINCO domingos (2, 9, 16, 23 y 30) y el retail solo CUATRO,
+ * porque el 30 ya pertenece a septiembre retail. Reportar por mes natural
+ * pagaria una prima dominical de mas por persona.
+ *
+ * El dia 15 siempre cae dentro de su mes retail: estos empiezan entre el 28
+ * del mes anterior y el 5, y terminan entre el 27 y el 3 del siguiente.
+ */
+function retailRange(month: string) {
+  const [year, monthNumber] = month.split("-").map(Number);
+  const bounds = retailMonthBoundsFor(new Date(Date.UTC(year, monthNumber - 1, 15)));
+  return { start: bounds.start, end: new Date(bounds.end.getTime() + 86_400_000) };
 }
 
 /**
@@ -37,7 +55,10 @@ export async function GET(request: Request) {
   if (!MONTH_RE.test(month)) {
     return NextResponse.json({ error: "Indica el mes en formato YYYY-MM." }, { status: 400 });
   }
-  const { start, end } = monthRange(month);
+  const natural = monthRange(month);
+  const retail = retailRange(month);
+  const start = natural.start < retail.start ? natural.start : retail.start;
+  const end = natural.end > retail.end ? natural.end : retail.end;
   const manager = session.role === "GERENTE" || session.role === "SUBGERENTE";
 
   const [users, records, schedules] = await Promise.all([
@@ -68,6 +89,9 @@ export async function GET(request: Request) {
 
   return NextResponse.json({
     month,
+    // Los dos rangos, para que el cliente filtre segun lo que este mirando.
+    naturalRange: { start: natural.start.toISOString().slice(0, 10), end: new Date(natural.end.getTime() - 86_400_000).toISOString().slice(0, 10) },
+    retailRange: { start: retail.start.toISOString().slice(0, 10), end: new Date(retail.end.getTime() - 86_400_000).toISOString().slice(0, 10) },
     canEdit: manager,
     users: users.map((user) => ({ ...user, balanceMinutes: balances.get(user.id) ?? 0 })),
     schedules: schedules.map((day) => ({

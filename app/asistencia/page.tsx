@@ -32,6 +32,7 @@ import { cn } from "@/lib/utils";
 // no solo el del mes que se está viendo.
 type Teammate = { id: string; name: string; employeeNumber: string; role: string; photoUrl: string | null; hoursOwed: number; balanceMinutes: number };
 
+type DateRange = { start: string; end: string };
 type ReportReminder = { kind: "QUINCENA" | "MES"; daysLeft: number; message: string; periodKey: string; dueDate: string };
 
 function shiftMonth(month: string, delta: number): string {
@@ -62,6 +63,8 @@ export default function AsistenciaPage() {
   // Las faltas se reportan por quincena; los retardos y festivos, por mes.
   const [period, setPeriod] = useState<1 | 2 | "mes">("mes");
   const [reminder, setReminder] = useState<ReportReminder | null>(null);
+  const [retailRange, setRetailRange] = useState<DateRange | null>(null);
+  const [naturalRange, setNaturalRange] = useState<DateRange | null>(null);
   const [confirming, setConfirming] = useState(false);
   const [confirmError, setConfirmError] = useState("");
 
@@ -77,11 +80,13 @@ export default function AsistenciaPage() {
     try {
       const response = await fetch(`/api/attendance?month=${month}`, { cache: "no-store" });
       if (!response.ok) throw new Error();
-      const payload = await response.json() as { users: Teammate[]; records: AttendanceRecord[]; schedules: ScheduleDay[]; canEdit: boolean };
+      const payload = await response.json() as { users: Teammate[]; records: AttendanceRecord[]; schedules: ScheduleDay[]; canEdit: boolean; retailRange?: DateRange; naturalRange?: DateRange };
       setUsers(payload.users);
       setRecords(payload.records);
       setSchedules(payload.schedules ?? []);
       setCanEdit(payload.canEdit);
+      setRetailRange(payload.retailRange ?? null);
+      setNaturalRange(payload.naturalRange ?? null);
     } catch {
       // Sin conexión: se deja lo que ya estaba en pantalla.
     } finally {
@@ -131,17 +136,42 @@ export default function AsistenciaPage() {
     }
   }
 
-  const byUser = useMemo(() => totalsByUser(records, schedules), [records, schedules]);
-  const totals = useMemo(() => totalsFor(records, schedules), [records, schedules]);
+  // Las cifras que se reportan a nómina van por mes RETAIL: es el periodo con
+  // el que se capturan retardos, domingos y festivos en Blitz.
+  const retailRecords = useMemo(
+    () => (retailRange ? records.filter((r) => r.date >= retailRange.start && r.date <= retailRange.end) : records),
+    [records, retailRange]
+  );
+  const retailSchedules = useMemo(
+    () => (retailRange ? schedules.filter((d) => d.date >= retailRange.start && d.date <= retailRange.end) : schedules),
+    [schedules, retailRange]
+  );
+  // El día a día se navega por mes natural, que es como lo lee una persona.
+  const naturalRecords = useMemo(
+    () => (naturalRange ? records.filter((r) => r.date >= naturalRange.start && r.date <= naturalRange.end) : records),
+    [records, naturalRange]
+  );
+  const byUser = useMemo(() => totalsByUser(retailRecords, retailSchedules), [retailRecords, retailSchedules]);
+  const totals = useMemo(() => totalsFor(retailRecords, retailSchedules), [retailRecords, retailSchedules]);
 
   // Incidencias del periodo elegido: es lo que se teclea en Blitz.
+  const inRetail = useCallback(
+    (date: string) => !retailRange || (date >= retailRange.start && date <= retailRange.end),
+    [retailRange]
+  );
+  // «Mes completo» = mes RETAIL. Agosto natural trae cinco domingos y el
+  // retail cuatro: por natural se pagaria una prima dominical de mas.
   const scoped = useMemo(
-    () => (period === "mes" ? records : records.filter((record) => fortnightOf(record.date) === period)),
-    [records, period]
+    () => (period === "mes"
+      ? records.filter((record) => inRetail(record.date))
+      : records.filter((record) => fortnightOf(record.date) === period && (!naturalRange || (record.date >= naturalRange.start && record.date <= naturalRange.end)))),
+    [records, period, inRetail, naturalRange]
   );
   const scopedSchedules = useMemo(
-    () => (period === "mes" ? schedules : schedules.filter((day) => fortnightOf(day.date) === period)),
-    [schedules, period]
+    () => (period === "mes"
+      ? schedules.filter((day) => inRetail(day.date))
+      : schedules.filter((day) => fortnightOf(day.date) === period && (!naturalRange || (day.date >= naturalRange.start && day.date <= naturalRange.end)))),
+    [schedules, period, inRetail, naturalRange]
   );
   const incidents = useMemo(() => incidentsFor(scoped, scopedSchedules), [scoped, scopedSchedules]);
   const nameById = useMemo(() => new Map(users.map((user) => [user.id, user.name])), [users]);
@@ -160,7 +190,7 @@ export default function AsistenciaPage() {
   // Un asesor solo se ve a sí mismo: se le abre su detalle directo.
   const soloUser = users.length === 1 ? users[0].id : null;
   const expanded = soloUser ?? openUser;
-  const detail = expanded ? records.filter((record) => record.userId === expanded) : [];
+  const detail = expanded ? naturalRecords.filter((record) => record.userId === expanded) : [];
 
   // Corrección manual de gerencia: solo si puede editar (GERENTE/SUBGERENTE).
   const [editing, setEditing] = useState<AttendanceRecord | null>(null);

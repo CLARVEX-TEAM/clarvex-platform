@@ -142,3 +142,54 @@ test("un día cualquiera no molesta a nadie", () => {
   assert.equal(reminderFor(day("2026-07-08")), null);
   assert.equal(reminderFor(day("2026-07-20")), null);
 });
+
+import { retailMonthBoundsFor as boundsFor } from "../lib/report-deadlines";
+
+/**
+ * Primas dominicales: el mes natural y el retail NO traen los mismos domingos, y
+ * la diferencia se paga.
+ *
+ * Agosto 2026 es el caso real que lo destapó: natural trae CINCO domingos
+ * (2, 9, 16, 23 y 30) y retail solo CUATRO, porque el 30 ya pertenece a
+ * septiembre retail. Reportar por natural pagaría una prima de más por persona.
+ *
+ * En julio los dos daban los mismos cuatro domingos: por eso el fallo estuvo
+ * meses invisible.
+ */
+test("mes retail vs natural — domingos que se pagan", async (t) => {
+  function domingos(start: Date, end: Date): string[] {
+    const out: string[] = [];
+    for (let t = start.getTime(); t <= end.getTime(); t += 86_400_000) {
+      const day = new Date(t);
+      if (day.getUTCDay() === 0) out.push(day.toISOString().slice(0, 10));
+    }
+    return out;
+  }
+
+  await t.test("agosto 2026: el retail deja fuera el domingo 30", () => {
+    const bounds = boundsFor(new Date("2026-08-15T00:00:00Z"));
+    assert.equal(bounds.start.toISOString().slice(0, 10), "2026-08-02");
+    assert.equal(bounds.end.toISOString().slice(0, 10), "2026-08-29");
+
+    const retail = domingos(bounds.start, bounds.end);
+    const natural = domingos(new Date("2026-08-01T00:00:00Z"), new Date("2026-08-31T00:00:00Z"));
+
+    assert.equal(retail.length, 4, "cuatro primas dominicales");
+    assert.equal(natural.length, 5, "por natural saldrían cinco");
+    assert.ok(!retail.includes("2026-08-30"), "el 30 es septiembre retail, no agosto");
+  });
+
+  await t.test("el 1 de agosto pertenece a JULIO retail, no a agosto", () => {
+    // Si se contara en agosto se reportaría dos veces: ya fue en el cierre de julio.
+    const bounds = boundsFor(new Date("2026-08-01T00:00:00Z"));
+    assert.equal(bounds.start.toISOString().slice(0, 10), "2026-07-05");
+    assert.equal(bounds.end.toISOString().slice(0, 10), "2026-08-01");
+  });
+
+  await t.test("julio 2026 coincidía: por eso el fallo pasó desapercibido", () => {
+    const bounds = boundsFor(new Date("2026-07-15T00:00:00Z"));
+    const retail = domingos(bounds.start, bounds.end);
+    const natural = domingos(new Date("2026-07-01T00:00:00Z"), new Date("2026-07-31T00:00:00Z"));
+    assert.deepEqual(retail, natural, "mismos domingos: la diferencia era invisible");
+  });
+});

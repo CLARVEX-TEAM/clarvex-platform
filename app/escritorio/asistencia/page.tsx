@@ -33,6 +33,7 @@ import {
  */
 
 type Teammate = { id: string; name: string; employeeNumber: string; role: string; photoUrl: string | null; hoursOwed: number; balanceMinutes: number };
+type DateRange = { start: string; end: string };
 type ReportReminder = { kind: "QUINCENA" | "MES"; daysLeft: number; message: string; periodKey: string; dueDate: string };
 
 function shiftMonth(month: string, delta: number): string {
@@ -58,6 +59,8 @@ export default function EscritorioAsistencia() {
   const [tab, setTab] = useState<"dias" | "incidencias">("dias");
   const [period, setPeriod] = useState<1 | 2 | "mes">("mes");
   const [reminder, setReminder] = useState<ReportReminder | null>(null);
+  const [retailRange, setRetailRange] = useState<DateRange | null>(null);
+  const [naturalRange, setNaturalRange] = useState<DateRange | null>(null);
   const [confirming, setConfirming] = useState(false);
   const [confirmError, setConfirmError] = useState("");
   const [editing, setEditing] = useState<AttendanceRecord | null>(null);
@@ -69,11 +72,13 @@ export default function EscritorioAsistencia() {
     try {
       const response = await fetch(`/api/attendance?month=${month}`, { cache: "no-store" });
       if (!response.ok) throw new Error();
-      const payload = await response.json() as { users: Teammate[]; records: AttendanceRecord[]; schedules: ScheduleDay[]; canEdit: boolean };
+      const payload = await response.json() as { users: Teammate[]; records: AttendanceRecord[]; schedules: ScheduleDay[]; canEdit: boolean; retailRange?: DateRange; naturalRange?: DateRange };
       setUsers(payload.users);
       setRecords(payload.records);
       setSchedules(payload.schedules);
       setCanEdit(payload.canEdit);
+      setRetailRange(payload.retailRange ?? null);
+      setNaturalRange(payload.naturalRange ?? null);
       setLastUpdated(new Date());
     } catch {
       setRecords([]);
@@ -110,16 +115,41 @@ export default function EscritorioAsistencia() {
     }
   }
 
-  const byUser = useMemo(() => totalsByUser(records, schedules), [records, schedules]);
-  const totals = useMemo(() => totalsFor(records, schedules), [records, schedules]);
+  // Las cifras que se reportan a nomina van por mes RETAIL: es el periodo
+  // con el que se capturan retardos, domingos y festivos en Blitz.
+  const retailRecords = useMemo(
+    () => (retailRange ? records.filter((r) => r.date >= retailRange.start && r.date <= retailRange.end) : records),
+    [records, retailRange]
+  );
+  const retailSchedules = useMemo(
+    () => (retailRange ? schedules.filter((d) => d.date >= retailRange.start && d.date <= retailRange.end) : schedules),
+    [schedules, retailRange]
+  );
+  // El dia a dia se navega por mes natural, que es como lo lee una persona.
+  const naturalRecords = useMemo(
+    () => (naturalRange ? records.filter((r) => r.date >= naturalRange.start && r.date <= naturalRange.end) : records),
+    [records, naturalRange]
+  );
+  const byUser = useMemo(() => totalsByUser(retailRecords, retailSchedules), [retailRecords, retailSchedules]);
+  const totals = useMemo(() => totalsFor(retailRecords, retailSchedules), [retailRecords, retailSchedules]);
 
+  const inRetail = useCallback(
+    (date: string) => !retailRange || (date >= retailRange.start && date <= retailRange.end),
+    [retailRange]
+  );
+  // «Mes completo» = mes RETAIL. Agosto natural trae cinco domingos y el
+  // retail cuatro: por natural se pagaria una prima dominical de mas.
   const scoped = useMemo(
-    () => (period === "mes" ? records : records.filter((record) => fortnightOf(record.date) === period)),
-    [records, period]
+    () => (period === "mes"
+      ? records.filter((record) => inRetail(record.date))
+      : records.filter((record) => fortnightOf(record.date) === period && (!naturalRange || (record.date >= naturalRange.start && record.date <= naturalRange.end)))),
+    [records, period, inRetail, naturalRange]
   );
   const scopedSchedules = useMemo(
-    () => (period === "mes" ? schedules : schedules.filter((day) => fortnightOf(day.date) === period)),
-    [schedules, period]
+    () => (period === "mes"
+      ? schedules.filter((day) => inRetail(day.date))
+      : schedules.filter((day) => fortnightOf(day.date) === period && (!naturalRange || (day.date >= naturalRange.start && day.date <= naturalRange.end)))),
+    [schedules, period, inRetail, naturalRange]
   );
   const incidents = useMemo(() => incidentsFor(scoped, scopedSchedules), [scoped, scopedSchedules]);
   const nameById = useMemo(() => new Map(users.map((user) => [user.id, user.name])), [users]);
@@ -127,15 +157,15 @@ export default function EscritorioAsistencia() {
   // Ver el comentario de la versión móvil: el mes NO se muestra en negativo. El
   // descuento de un mes con saldo negativo ya vive en el acumulado.
   const balanceFor = useCallback(
-    (userId: string) => Math.max(0, balanceOf(records.filter((record) => record.userId === userId))),
-    [records]
+    (userId: string) => Math.max(0, balanceOf(naturalRecords.filter((record) => record.userId === userId))),
+    [naturalRecords]
   );
 
   const isAdvisor = session?.role === "ASESOR";
   // El asesor solo se ve a sí mismo: no hay a quién seleccionar.
   const soloUser = users.length === 1 ? users[0].id : null;
   const active = soloUser ?? selected ?? users[0]?.id ?? null;
-  const detail = active ? records.filter((record) => record.userId === active) : [];
+  const detail = active ? naturalRecords.filter((record) => record.userId === active) : [];
 
   return (
     <div className="space-y-6">
