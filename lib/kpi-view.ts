@@ -159,3 +159,62 @@ export function computeMonthWeeks(report: KpiResponse | null, now = new Date()):
 export function formatWeeksElapsed(weeks: number) {
   return Number.isInteger(weeks) ? String(weeks) : (Math.round(weeks * 10) / 10).toFixed(1);
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Alcance contra la meta de cada indicador.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Indicadores en los que MENOS ES MEJOR.
+ *
+ * El Margen DTO no es una meta que perseguir: es un TECHO de descuento. Pasarse
+ * es malo. Sin esta distinción se pintaba en verde justo cuando se excedía el
+ * límite, y un 120% se leía como un logro cuando significa descontar de más.
+ */
+export const LOWER_IS_BETTER = new Set(["margen"]);
+
+/** ¿La meta de este indicador es un techo en vez de un objetivo? */
+export function isCeiling(metric: string): boolean {
+  return LOWER_IS_BETTER.has(metric);
+}
+
+/**
+ * Alcance en porcentaje: cuánto del objetivo se lleva.
+ *
+ * Devuelve `null` —que se pinta «—»— cuando falta el valor o la meta. Nunca 0:
+ * un 0% diría que no se vendió nada, y lo que pasa es que no hay con qué
+ * compararlo.
+ */
+export function metricAchievement(value: number | null, target: number | null): number | null {
+  if (value === null || value === undefined) return null;
+  if (target === null || target === undefined || target <= 0) return null;
+  return Math.round((value / target) * 100);
+}
+
+export type MetricStatus = "green" | "yellow" | "red" | "none";
+
+/**
+ * Semáforo del indicador contra su meta.
+ *
+ * En los de techo (Margen DTO) la comparación se invierte: verde es estar por
+ * DEBAJO. La franja amarilla avisa cuando se acerca al límite, para poder
+ * corregir antes de pasarse.
+ */
+export function metricStatus(value: number | null, target: number | null, metric: string): MetricStatus {
+  if (value === null || value === undefined || target === null || target === undefined) return "none";
+  if (isCeiling(metric)) {
+    if (value <= target) return value >= target * 0.9 ? "yellow" : "green";
+    return "red";
+  }
+  if (value >= target) return "green";
+  return value >= target * 0.85 ? "yellow" : "red";
+}
+
+/** Texto del estado, para no depender solo del color. */
+export function metricStatusText(status: MetricStatus, metric: string): string {
+  if (status === "none") return "sin meta definida";
+  if (isCeiling(metric)) {
+    return { green: "dentro del límite", yellow: "cerca del límite", red: "fuera del límite" }[status];
+  }
+  return { green: "sobre la meta", yellow: "cerca de la meta", red: "bajo la meta" }[status];
+}

@@ -15,7 +15,7 @@ const compactMoney = new Intl.NumberFormat("es-MX", {
 import type { KpiPeriod } from "@/lib/kpi-period";
 import type { KpiReportItem } from "@/lib/kpi-report";
 import type { CommissionRule, Role, User } from "@/lib/types";
-import { KPI_TABS as tabs, METRIC_ACCENT, METRIC_CONFIG, formatWeeksElapsed, localDateKey, type KpiTab as Tab, type KpiTarget, type MonthProjection, type MonthSalesProjection, type ReceiptLine, type ReceiptMonth } from "@/lib/kpi-view";
+import { KPI_TABS as tabs, METRIC_ACCENT, METRIC_CONFIG, metricAchievement, metricStatus, metricStatusText, isCeiling, formatWeeksElapsed, localDateKey, type KpiTab as Tab, type KpiTarget, type MonthProjection, type MonthSalesProjection, type ReceiptLine, type ReceiptMonth } from "@/lib/kpi-view";
 import { ElectronicTicketsPanel } from "@/components/ElectronicTicketsPanel";
 import { targetValue } from "@/lib/electronic-tickets";
 import { useKpiDerived, useKpiReceipts, useKpiReport, useKpiTargets } from "@/lib/use-kpis";
@@ -285,13 +285,8 @@ function ResumenView({ activeKpi, team, progress, periodLabel, hasDiscountSource
     : hasDiscountSource ? "Sin datos este periodo" : "Vincula Descuentos POS";
 
   const getTarget = (metric: string) => targets.find((t) => t.metric === metric)?.value ?? null;
-  function semaphore(value: number | null, metric: string): "green" | "yellow" | "red" | "none" {
-    const target = getTarget(metric);
-    if (value === null || target === null) return "none";
-    if (value >= target) return "green";
-    if (value >= target * 0.85) return "yellow";
-    return "red";
-  }
+  // Delegado a lib/kpi-view: el Margen DTO es un TECHO y su semáforo va al revés.
+  const semaphore = (value: number | null, metric: string) => metricStatus(value, getTarget(metric), metric);
   const spark = (extractor: (m: KpiReportItem) => number | null) => team.map((m, i) => ({ i, v: extractor(m) ?? 0 }));
   const remaining = Math.max(0, activeKpi.goal - activeKpi.sales);
 
@@ -368,27 +363,27 @@ function ResumenView({ activeKpi, team, progress, periodLabel, hasDiscountSource
       <DeskReveal index={1}>
         <section aria-label={`Indicadores ${periodLabel}`}>
           <dl className="grid grid-cols-2 gap-x-6 gap-y-7 sm:grid-cols-3 xl:grid-cols-6 xl:gap-y-0">
-            <MetricItem metric="upt" isDark={isDark}
+            <MetricItem metric="upt" isDark={isDark} raw={activeKpi.upt}
               value={activeKpi.upt === null ? "—" : activeKpi.upt.toFixed(2)}
               detail="Unidades por ticket" target={getTarget("upt")}
               sparkData={spark((m) => m.upt)} trafficLight={semaphore(activeKpi.upt, "upt")} />
-            <MetricItem metric="aur" isDark={isDark}
+            <MetricItem metric="aur" isDark={isDark} raw={activeKpi.aur}
               value={activeKpi.aur === null ? "—" : money(activeKpi.aur)}
               detail="Precio promedio por pieza" target={getTarget("aur")}
               sparkData={spark((m) => m.aur)} trafficLight={semaphore(activeKpi.aur, "aur")} />
-            <MetricItem metric="ept" isDark={isDark}
+            <MetricItem metric="ept" isDark={isDark} raw={activeKpi.ept}
               value={activeKpi.ept === null ? "—" : money(activeKpi.ept)}
               detail="Venta por transacción" target={getTarget("ept")}
               sparkData={spark((m) => m.ept)} trafficLight={semaphore(activeKpi.ept, "ept")} />
-            <MetricItem metric="conversion" isDark={isDark}
+            <MetricItem metric="conversion" isDark={isDark} raw={activeKpi.conversion}
               value={activeKpi.conversion === null ? "—" : `${activeKpi.conversion}%`}
               detail={activeKpi.conversion === null ? "Sin tráfico registrado" : "Tickets sobre tráfico"}
               target={getTarget("conversion")}
               sparkData={spark((m) => m.conversion)} trafficLight={semaphore(activeKpi.conversion, "conversion")} />
-            <MetricItem metric="margen" isDark={isDark}
+            <MetricItem metric="margen" isDark={isDark} raw={activeKpi.discountMargin}
               value={discountValue} detail={discountDetail} target={getTarget("margen")}
               sparkData={spark((m) => m.discountMargin)} trafficLight={semaphore(activeKpi.discountMargin, "margen")} />
-            <MetricItem metric="achievement" isDark={isDark}
+            <MetricItem metric="achievement" isDark={isDark} raw={progress}
               value={`${progress}%`} detail={`Objetivo ${periodLabel}`} target={getTarget("achievement")}
               sparkData={team.map((m, i) => ({ i, v: m.achievement }))} trafficLight={semaphore(progress, "achievement")} />
           </dl>
@@ -454,15 +449,17 @@ function TeamTable({ team }: { team: KpiReportItem[] }) {
   );
 }
 
-function MetricItem({ metric, value, detail, target, sparkData, trafficLight, isDark }: {
-  metric: string; value: string; detail: string; target: number | null;
+function MetricItem({ metric, value, raw, detail, target, sparkData, trafficLight, isDark }: {
+  metric: string; value: string; raw?: number | null; detail: string; target: number | null;
   sparkData: Array<{ i: number; v: number }>; trafficLight: "green" | "yellow" | "red" | "none"; isDark: boolean;
 }) {
   const config = METRIC_CONFIG[metric];
   if (!config) return null;
 
   const dotClass = { green: "bg-ok", yellow: "bg-warn", red: "bg-danger", none: "bg-line" }[trafficLight];
-  const statusText = { green: "sobre la meta", yellow: "cerca de la meta", red: "bajo la meta", none: "sin meta definida" }[trafficLight];
+  const statusText = metricStatusText(trafficLight, metric);
+  const achievement = metricAchievement(raw ?? null, target);
+  const toneClass = { green: "text-ok", yellow: "text-warn", red: "text-danger", none: "text-muted" }[trafficLight];
 
   return (
     <div className="min-w-0 xl:border-l xl:border-line xl:pl-5 xl:first:border-l-0 xl:first:pl-0">
@@ -470,10 +467,18 @@ function MetricItem({ metric, value, detail, target, sparkData, trafficLight, is
         <span className={cn("size-1.5 shrink-0 rounded-full", dotClass)} aria-hidden />
         <span className="truncate">{config.label}</span>
       </dt>
-      <dd className="mt-1 text-h2 font-semibold tabular-nums text-ink">{value}</dd>
+      <dd className="flex items-baseline gap-2">
+        <span className="mt-1 text-h2 font-semibold tabular-nums text-ink">{value}</span>
+        {/* El alcance, que es lo que se pregunta: «¿voy bien?». */}
+        {achievement !== null ? (
+          <span className={cn("text-ui font-semibold tabular-nums", toneClass)}>{achievement}%</span>
+        ) : null}
+      </dd>
       {/* La meta va escrita: el semáforo deja de ser una señal solo de color. */}
       <p className="mt-0.5 text-caption text-muted">
-        {target !== null ? <>Meta {target} · <span className="text-ink-2">{statusText}</span></> : detail}
+        {target !== null
+          ? <>{isCeiling(metric) ? "Límite" : "Meta"} {target} · <span className="text-ink-2">{statusText}</span></>
+          : detail}
       </p>
       {sparkData.length > 2 ? (
         <div className="mt-2 h-7" aria-hidden>

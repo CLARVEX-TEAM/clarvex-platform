@@ -10,7 +10,7 @@ import { money } from "@/lib/format";
 import type { KpiPeriod } from "@/lib/kpi-period";
 import type { KpiReportItem } from "@/lib/kpi-report";
 import type { CommissionRule, Role, User } from "@/lib/types";
-import { KPI_TABS as tabs, METRIC_ACCENT, METRIC_CONFIG, formatWeeksElapsed, localDateKey, type KpiTab as Tab, type KpiTarget, type MonthProjection, type MonthSalesProjection, type ReceiptLine, type ReceiptMonth } from "@/lib/kpi-view";
+import { KPI_TABS as tabs, metricAchievement, metricStatus, metricStatusText, isCeiling, METRIC_ACCENT, METRIC_CONFIG, formatWeeksElapsed, localDateKey, type KpiTab as Tab, type KpiTarget, type MonthProjection, type MonthSalesProjection, type ReceiptLine, type ReceiptMonth } from "@/lib/kpi-view";
 import { ElectronicTicketsPanel } from "@/components/ElectronicTicketsPanel";
 import { targetValue } from "@/lib/electronic-tickets";
 import { useKpiDerived, useKpiReceipts, useKpiReport, useKpiTargets } from "@/lib/use-kpis";
@@ -252,13 +252,8 @@ function ResumenView({ activeKpi, team, progress, periodLabel, hasDiscountSource
 
   const getTarget = (metric: string) => targets.find((t) => t.metric === metric)?.value ?? null;
 
-  function semaphore(value: number | null, metric: string): "green" | "yellow" | "red" | "none" {
-    const target = getTarget(metric);
-    if (value === null || target === null) return "none";
-    if (value >= target) return "green";
-    if (value >= target * 0.85) return "yellow";
-    return "red";
-  }
+  // Delegado a lib/kpi-view: el Margen DTO es un TECHO y su semáforo va al revés.
+  const semaphore = (value: number | null, metric: string) => metricStatus(value, getTarget(metric), metric);
 
   const spark = (extractor: (m: KpiReportItem) => number | null) =>
     team.map((m, i) => ({ i, v: extractor(m) ?? 0 }));
@@ -313,18 +308,18 @@ function ResumenView({ activeKpi, team, progress, periodLabel, hasDiscountSource
       ) : null}
 
       <div className="grid grid-cols-2 gap-3">
-        <MetricCard metric="upt"         value={activeKpi.upt === null ? "—" : String(activeKpi.upt)}                                   detail="Unidades por ticket"               sparkData={spark((m) => m.upt)}            trafficLight={semaphore(activeKpi.upt, "upt")} />
-        <MetricCard metric="aur"         value={activeKpi.aur === null ? "—" : money(activeKpi.aur)}                                    detail="Precio promedio pieza"             sparkData={spark((m) => m.aur)}            trafficLight={semaphore(activeKpi.aur, "aur")} />
-        <MetricCard metric="ept"         value={activeKpi.ept === null ? "—" : money(activeKpi.ept)}                                    detail="Venta por transacción"             sparkData={spark((m) => m.ept)}            trafficLight={semaphore(activeKpi.ept, "ept")} />
-        <MetricCard metric="conversion"  value={activeKpi.conversion === null ? "—" : `${activeKpi.conversion}%`}                       detail={activeKpi.conversion === null ? "Sin tráfico" : "Tickets / Tráfico"}  sparkData={spark((m) => m.conversion)}     trafficLight={semaphore(activeKpi.conversion, "conversion")} />
-        <MetricCard metric="margen"      value={discountValue}                                                                          detail={discountDetail}                    sparkData={spark((m) => m.discountMargin)} trafficLight={semaphore(activeKpi.discountMargin, "margen")} />
-        <MetricCard metric="achievement" value={`${progress}%`}                                                                        detail={`Objetivo ${periodLabel}`}         sparkData={team.map((m, i) => ({ i, v: m.achievement }))} trafficLight={semaphore(progress, "achievement")} />
+        <MetricCard metric="upt" raw={activeKpi.upt} target={getTarget("upt")}         value={activeKpi.upt === null ? "—" : String(activeKpi.upt)}                                   detail="Unidades por ticket"               sparkData={spark((m) => m.upt)}            trafficLight={semaphore(activeKpi.upt, "upt")} />
+        <MetricCard metric="aur" raw={activeKpi.aur} target={getTarget("aur")}         value={activeKpi.aur === null ? "—" : money(activeKpi.aur)}                                    detail="Precio promedio pieza"             sparkData={spark((m) => m.aur)}            trafficLight={semaphore(activeKpi.aur, "aur")} />
+        <MetricCard metric="ept" raw={activeKpi.ept} target={getTarget("ept")}         value={activeKpi.ept === null ? "—" : money(activeKpi.ept)}                                    detail="Venta por transacción"             sparkData={spark((m) => m.ept)}            trafficLight={semaphore(activeKpi.ept, "ept")} />
+        <MetricCard metric="conversion" raw={activeKpi.conversion} target={getTarget("conversion")}  value={activeKpi.conversion === null ? "—" : `${activeKpi.conversion}%`}                       detail={activeKpi.conversion === null ? "Sin tráfico" : "Tickets / Tráfico"}  sparkData={spark((m) => m.conversion)}     trafficLight={semaphore(activeKpi.conversion, "conversion")} />
+        <MetricCard metric="margen" raw={activeKpi.discountMargin} target={getTarget("margen")}      value={discountValue}                                                                          detail={discountDetail}                    sparkData={spark((m) => m.discountMargin)} trafficLight={semaphore(activeKpi.discountMargin, "margen")} />
+        <MetricCard metric="achievement" raw={progress} target={getTarget("achievement")} value={`${progress}%`}                                                                        detail={`Objetivo ${periodLabel}`}         sparkData={team.map((m, i) => ({ i, v: m.achievement }))} trafficLight={semaphore(progress, "achievement")} />
       </div>
     </>
   );
 }
 
-function MetricCard({ metric, value, detail, sparkData, trafficLight }: { metric: string; value: string; detail: string; sparkData: Array<{ i: number; v: number }>; trafficLight: "green" | "yellow" | "red" | "none" }) {
+function MetricCard({ metric, value, raw, target, detail, sparkData, trafficLight }: { metric: string; value: string; raw?: number | null; target?: number | null; detail: string; sparkData: Array<{ i: number; v: number }>; trafficLight: "green" | "yellow" | "red" | "none" }) {
   const config = METRIC_CONFIG[metric];
   const accent = METRIC_ACCENT[metric];
   if (!config || !accent) return null;
@@ -338,6 +333,9 @@ function MetricCard({ metric, value, detail, sparkData, trafficLight }: { metric
     none: "bg-line",
   }[trafficLight];
 
+  const achievement = metricAchievement(raw ?? null, target ?? null);
+  const toneClass = { green: "text-success", yellow: "text-ember", red: "text-orchid", none: "text-muted" }[trafficLight];
+
   return (
     <div className="solid-card relative min-h-[118px] overflow-hidden rounded-[28px] p-3.5">
       <span className={cn("absolute right-3 top-3 size-2.5 rounded-full", dotClass)} />
@@ -347,8 +345,18 @@ function MetricCard({ metric, value, detail, sparkData, trafficLight }: { metric
       </span>
 
       <p className="mt-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-muted">{label}</p>
-      <p className="mt-0.5 text-[1.36rem] font-semibold leading-none tracking-[-0.03em] text-ink">{value}</p>
-      <p className="mt-0.5 text-[11px] leading-4 text-muted">{detail}</p>
+      <div className="mt-0.5 flex items-baseline gap-1.5">
+        <p className="text-[1.36rem] font-semibold leading-none tracking-[-0.03em] text-ink">{value}</p>
+        {/* El alcance, que es lo que se pregunta: «¿voy bien?». */}
+        {achievement !== null ? (
+          <span className={cn("text-[13px] font-bold tabular-nums", toneClass)}>{achievement}%</span>
+        ) : null}
+      </div>
+      <p className="mt-0.5 text-[11px] leading-4 text-muted">
+        {target !== null && target !== undefined
+          ? `${isCeiling(metric) ? "Límite" : "Meta"} ${target} · ${metricStatusText(trafficLight, metric)}`
+          : detail}
+      </p>
 
       {sparkData.length > 2 ? (
         <div className="pointer-events-none absolute bottom-0 right-0 h-10 w-20 opacity-60">
