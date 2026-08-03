@@ -96,7 +96,10 @@ export function ManagerPerformanceCard({ role, dailySales, dailyGoal, monthlySal
               ? "No se pudo cargar la venta de tienda."
               : !commission || !store
                 ? "Calculando sobre la venta de tienda…"
-                : <>Sobre venta de tienda <span className="font-semibold text-ink">{money(store.sales)}</span> · tasa {commission.percent}%</>}
+                : <>Sobre venta de tienda <span className="font-semibold text-ink">{money(store.sales)}</span>
+                    {/* Con un bracket de importe fijo no hay tasa que enseñar:
+                        decir "tasa 0 %" junto a un bono real confunde. */}
+                    {commission.payoutType === "FIXED" ? " · importe fijo del nivel" : <> · tasa {commission.percent}%</>}</>}
           </p>
         </div>
         <span className="shrink-0 text-lg font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">

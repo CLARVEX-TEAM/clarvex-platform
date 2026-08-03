@@ -10,7 +10,10 @@ import type { CommissionRule, Role } from "@/lib/types";
 
 export type KpiTab = "resumen" | "ventas" | "comision" | "ranking" | "historico" | "recibo";
 export type KpiTarget = { id: string; metric: string; value: number; period: string };
-export type MonthProjection = { weeksElapsed: number; totalWeeks: number; projectedSales: number; projectedCommission: number; percent: number; achievement: number };
+// `levelLabel` viene de projectMonthlyCommission: es el rótulo ya resuelto del
+// nivel —la tasa, o el importe si el bracket paga fijo—. Sin él, la proyección
+// anunciaba "0 %" en los escalones de importe fijo del esquema GUESS.
+export type MonthProjection = { weeksElapsed: number; totalWeeks: number; projectedSales: number; projectedCommission: number; percent: number; achievement: number; levelLabel: string };
 export type MonthSalesProjection = { weeksElapsed: number; totalWeeks: number; projectedSales: number; goal: number; achievement: number };
 export type KpiResponse = {
   period: KpiPeriod;

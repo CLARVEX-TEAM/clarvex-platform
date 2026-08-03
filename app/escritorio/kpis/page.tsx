@@ -6,7 +6,7 @@ import { Bar, BarChart, CartesianGrid, LabelList, Line, LineChart, ResponsiveCon
 import { barCursor, ChartTooltip, lineCursor, shortName } from "@/components/ChartTooltip";
 import { Calculator, CalendarDays, Download, Receipt, Settings2, ShoppingBag, Sparkles, Target, TrendingUp, Trophy, UsersRound, X } from "lucide-react";
 import { getSession } from "@/lib/auth";
-import { computeNextBracketGap, resolveCommissionMinimum } from "@/lib/commission";
+import { computeNextBracketGap, formatCommissionLevel, resolveCommissionMinimum } from "@/lib/commission";
 import { money } from "@/lib/format";
 
 /** Eje Y de las gráficas: "$450 k" en vez de "450,000.00", que no cabe. */
@@ -25,7 +25,15 @@ import { Badge, Card, ProfileAvatar, ProgressBar } from "@/components/ui";
 import { KpiHistoryView } from "@/components/KpiHistory";
 import { useTheme } from "@/components/ThemeProvider";
 import { useDesktopChrome } from "@/components/desktop/DesktopChrome";
+import { SegmentedTabs, type SegmentedTabOption } from "@/components/animate-ui/SegmentedTabs";
 import { cn } from "@/lib/utils";
+
+// Constante de módulo: dentro del render sería un array nuevo cada vez y la
+// pastilla del selector se remontaría en lugar de deslizarse.
+const PERIOD_TABS: ReadonlyArray<SegmentedTabOption<KpiPeriod>> = [
+  { value: "week", label: "Semana" },
+  { value: "month", label: "Mes" }
+];
 import {
   DeskEmpty, DeskMeter, DeskReveal, DeskSection, DeskSkeleton,
   deskTd, deskTdMuted, deskTh, deskThRight, deskThead, deskTr
@@ -258,11 +266,13 @@ export default function EscritorioKpis() {
 function PeriodBar({ period, setPeriod, selectedDate, setSelectedDate, rangeLabel, availableWeeks, availableRetailMonths }: { period: KpiPeriod; setPeriod: (period: KpiPeriod) => void; selectedDate: string; setSelectedDate: (date: string) => void; rangeLabel: string; availableWeeks: Array<{ weekNumber: number; weekStart: string; weekEnd: string }>; availableRetailMonths: Array<{ label: string; start: string; end: string }> }) {
   return (
     <div className="flex flex-wrap items-center gap-3">
-      <div className="flex rounded-full bg-panel p-1" role="group" aria-label="Periodo de KPIs">
-        {(["week", "month"] as const).map((option) => (
-          <button key={option} type="button" onClick={() => setPeriod(option)} className={`min-h-9 rounded-full px-5 text-sm font-semibold transition ${period === option ? "bg-accent text-on-accent" : "text-muted"}`}>{option === "week" ? "Semana" : "Mes"}</button>
-        ))}
-      </div>
+      <SegmentedTabs
+        surface="desk"
+        ariaLabel="Periodo de KPIs"
+        value={period}
+        onChange={setPeriod}
+        options={PERIOD_TABS}
+      />
       <div className="flex items-center gap-2.5 rounded-2xl border border-line bg-panel px-3 py-2">
         <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-panel text-accent"><CalendarDays size={17} /></span>
         <div className="min-w-0"><p className="text-caption font-medium text-muted">Período</p><p className="truncate text-sm font-semibold text-ink">{rangeLabel}</p></div>
@@ -634,15 +644,15 @@ function ComisionView({ activeKpi, rules, simulatedSales, setSimulatedSales, act
               <div><p className="text-caption font-medium text-muted">Proyección de cierre de mes</p><h2 className="mt-1 text-[2rem] font-semibold leading-none text-ink">{money(projection.projectedCommission)}</h2><p className="mt-1.5 text-sm text-muted">Al ritmo de tus semanas con datos 💰</p></div>
               <span className="grid size-12 place-items-center rounded-2xl bg-emerald-100 text-emerald-600 dark:bg-[#10301f]"><TrendingUp size={25} /></span>
             </div>
-            <div className="mt-3 grid grid-cols-3 gap-2"><Mini label="Venta proy." value={money(projection.projectedSales)} /><Mini label="Nivel actual" value={`${projection.percent}%`} /><Mini label="Semanas" value={`${formatWeeksElapsed(projection.weeksElapsed)}/${projection.totalWeeks}`} /></div>
+            <div className="mt-3 grid grid-cols-3 gap-2"><Mini label="Venta proy." value={money(projection.projectedSales)} /><Mini label="Nivel actual" value={projection.levelLabel} /><Mini label="Semanas" value={`${formatWeeksElapsed(projection.weeksElapsed)}/${projection.totalWeeks}`} /></div>
           </Card>
         ) : null}
         <Card className="premium-hero p-5">
           <div className="flex items-start justify-between gap-4">
-            <div><p className="text-caption font-medium text-muted">Comisión estimada {periodLabel}</p><h2 className="mt-1 text-[2.1rem] font-semibold leading-none text-ink">{hasMinimum ? money(simulatedCommission) : "—"}</h2><p className={`mt-1 text-sm ${activeRule ? "text-muted" : "font-semibold text-rose-700"}`}>{activeRule ? `${activeRule.commissionPercent}% por nivel actual` : missingRuleMessage}</p></div>
+            <div><p className="text-caption font-medium text-muted">Comisión estimada {periodLabel}</p><h2 className="mt-1 text-[2.1rem] font-semibold leading-none text-ink">{hasMinimum ? money(simulatedCommission) : "—"}</h2><p className={`mt-1 text-sm ${activeRule ? "text-muted" : "font-semibold text-rose-700"}`}>{activeRule ? `${formatCommissionLevel(activeRule)} por nivel actual` : missingRuleMessage}</p></div>
             <span className="grid size-12 place-items-center rounded-2xl bg-panel text-accent"><Trophy size={25} /></span>
           </div>
-          <div className="mt-3 grid grid-cols-2 gap-2"><Mini label="Porcentaje" value={hasMinimum ? `${appliedPercent}%` : "—"} /><Mini label="Alcance vs mínimo" value={hasMinimum ? `${Math.round(simulatedAchievement)}%` : "—"} /></div>
+          <div className="mt-3 grid grid-cols-2 gap-2"><Mini label={activeRule?.payoutType === "FIXED" ? "Importe del nivel" : "Porcentaje"} value={hasMinimum ? formatCommissionLevel(activeRule) : "—"} /><Mini label="Alcance vs mínimo" value={hasMinimum ? `${Math.round(simulatedAchievement)}%` : "—"} /></div>
         </Card>
         <Card className="p-5">
           <div className="mb-2.5 flex items-center gap-2"><Calculator className="text-accent" size={18} /><h2 className="text-lg font-semibold text-ink">Simulador {periodLabel}</h2></div>
@@ -654,7 +664,7 @@ function ComisionView({ activeKpi, rules, simulatedSales, setSimulatedSales, act
         {rules.filter((rule) => rule.active && rule.role === commissionRole).map((rule) => (
           <div key={rule.id} className="flex items-center justify-between border-t border-line py-3 first:border-0">
             <div><p className="font-semibold text-ink">{rule.minAchievement}% a {rule.maxAchievement ?? "más"}%</p><p className="text-xs text-muted">Regla por cumplimiento</p></div>
-            <Badge tone={rule.id === activeRule?.id ? "success" : "default"}>{rule.commissionPercent}%</Badge>
+            <Badge tone={rule.id === activeRule?.id ? "success" : "default"}>{formatCommissionLevel(rule)}</Badge>
           </div>
         ))}
       </Card>

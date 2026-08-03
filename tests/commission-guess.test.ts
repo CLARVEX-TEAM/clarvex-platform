@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   accruedCommission,
   computeNextBracketGap,
+  formatCommissionLevel,
   isHighSeason,
   projectMonthlyCommission,
   rulePayout
@@ -126,4 +127,32 @@ test("isHighSeason: los extremos del rango entran", () => {
 
 test("isHighSeason: sin rangos capturados, temporada regular", () => {
   assert.equal(isHighSeason([], "2026-12-24"), false);
+});
+
+test("un bracket de importe fijo NO se rotula como 0 %", () => {
+  // El fallo que esto previene: `commissionPercent` vale 0 en las filas de
+  // importe fijo, así que pintarlo tal cual anunciaba "0 %" junto a un bono de
+  // miles de pesos. El importe salía bien; el rótulo mentía.
+  const fijo = guessAdvisor[2]!; // 90–94.99 %: $2 649 regular, $7 138 alta
+  assert.equal(formatCommissionLevel(fijo), "$2,649");
+  assert.equal(formatCommissionLevel(fijo, true), "$7,138");
+  assert.doesNotMatch(formatCommissionLevel(fijo), /0\s*%/);
+});
+
+test("un bracket de porcentaje se sigue rotulando con su tasa", () => {
+  assert.equal(formatCommissionLevel(guessAdvisor[5]!), "2.427%");
+  assert.equal(formatCommissionLevel(legacyAdvisor[2]!), "2.29%");
+  // Sin bracket que case (por debajo del 80 %) no hay nivel que enseñar.
+  assert.equal(formatCommissionLevel(null), "—");
+});
+
+test("la proyección de cierre trae el rótulo ya resuelto", () => {
+  const p = projectMonthlyCommission({
+    salesToDate: 46_000, minimumToDate: 50_000, weeksElapsed: 2, totalWeeks: 4,
+    rules: guessAdvisor, role: "ASESOR"
+  });
+  assert.ok(p);
+  assert.equal(p.levelLabel, "$2,649");
+  // La tasa sigue siendo 0 en un bracket fijo: por eso hace falta el rótulo.
+  assert.equal(p.percent, 0);
 });

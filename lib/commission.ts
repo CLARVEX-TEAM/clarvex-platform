@@ -33,6 +33,32 @@ export function rulePayout(
   return round2(sales * ((rule.commissionPercent ?? 0) / 100));
 }
 
+/**
+ * Cómo se ROTULA un bracket en pantalla.
+ *
+ * Un bracket de importe fijo no tiene tasa, y `commissionPercent` vale 0 en esas
+ * filas. Pintar ese 0 tal cual anunciaba «0 %» justo donde hay un bono de miles
+ * de pesos: el importe salía bien y el rótulo mentía. Aquí se decide una sola
+ * vez qué texto corresponde, para que los cinco sitios que lo muestran no
+ * puedan divergir.
+ */
+export function formatCommissionLevel(
+  rule: Pick<CommissionRule, "commissionPercent" | "payoutType" | "fixedAmount" | "fixedAmountHigh"> | null | undefined,
+  highSeason = false
+): string {
+  if (!rule) return "—";
+  if (rule.payoutType === "FIXED") {
+    const amount = highSeason ? rule.fixedAmountHigh ?? rule.fixedAmount ?? 0 : rule.fixedAmount ?? 0;
+    return new Intl.NumberFormat("es-MX", {
+      style: "currency",
+      currency: "MXN",
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    }).format(amount);
+  }
+  return `${rule.commissionPercent ?? 0}%`;
+}
+
 /** Tasa a mostrar de un bracket. Los brackets de importe fijo no tienen tasa. */
 function rulePercent(rule: { commissionPercent?: number; payoutType?: CommissionPayoutType | null } | null | undefined): number {
   if (!rule || rule.payoutType === "FIXED") return 0;
@@ -231,8 +257,11 @@ export function buildCommissionSimulation(input: {
 export type MonthlyCommissionProjection = {
   projectedSales: number;
   projectedCommission: number;
+  /** Tasa del bracket. Vale 0 si el bracket paga importe fijo. */
   percent: number;
   achievement: number;
+  /** Rótulo ya listo para pantalla: la tasa, o el importe si el bracket es fijo. */
+  levelLabel: string;
 };
 
 /**
@@ -263,6 +292,7 @@ export function projectMonthlyCommission(input: {
     projectedSales,
     projectedCommission: rulePayout(rule, projectedSales, input.highSeason),
     percent: rulePercent(rule),
-    achievement
+    achievement,
+    levelLabel: formatCommissionLevel(rule, input.highSeason)
   };
 }
