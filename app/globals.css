@@ -217,12 +217,25 @@ svg.lucide {
   transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
 }
 
-/* Los charts (recharts) no deben mostrar el recuadro de foco al tocarlos. */
+/* Los charts (recharts) no deben mostrar el recuadro de foco al tocarlos.
+
+   La regla global `[tabindex]:focus-visible` de arriba les pintaba un marco
+   al tocar un punto en el móvil: recharts 3 pone `tabindex` en elementos
+   INTERNOS del svg, no solo en el contenedor, así que suprimirlo únicamente
+   en .recharts-wrapper y .recharts-surface no bastaba. Sobre lienzo oscuro
+   ese marco se ve blanco y grueso, y tapa la gráfica.
+
+   Es seguro: la gráfica no es un control operable con teclado y sus datos
+   están también en la tabla de abajo. */
 .recharts-wrapper:focus,
 .recharts-wrapper:focus-visible,
 .recharts-surface:focus,
-.recharts-surface:focus-visible {
-  outline: none;
+.recharts-surface:focus-visible,
+.recharts-wrapper *:focus,
+.recharts-wrapper *:focus-visible,
+.recharts-wrapper [tabindex]:focus,
+.recharts-wrapper [tabindex]:focus-visible {
+  outline: none !important;
 }
 
 .solid-card > * {

@@ -48,9 +48,28 @@ export function KpiHistoryView() {
   if (!weeks) return <div className="space-y-3"><Skeleton className="h-52" /><Skeleton className="h-24" /></div>;
   if (weeks.length === 0) return <Card className="p-4"><p className="text-sm font-semibold text-muted">Aún no hay semanas sincronizadas para comparar.</p></Card>;
 
-  const tooltipStyle = isDark
-    ? { background: "#1a2540", border: "1px solid #2a3a5c", borderRadius: 12, color: "#f0f4ff", boxShadow: "0 6px 14px rgb(0 0 0 / 0.3)" }
-    : { background: "#FFFFFF", border: "1px solid #E2E8F0", borderRadius: 12, color: "#0F172A", boxShadow: "0 6px 14px rgb(15 23 42 / 0.08)" };
+  /**
+   * Tooltip compacto y propio.
+   *
+   * El de serie pintaba una caja grande con el periodo en una linea y
+   * «Venta : $182,802.21» en otra, y en un telefono tapaba media curva. Aqui
+   * va todo en un renglon, con el dato en negrita y el periodo en tinta
+   * apagada: se lee igual de rapido y no esconde lo que se esta mirando.
+   */
+  function CompactTooltip({ active, payload, label }: { active?: boolean; payload?: Array<{ value?: number }>; label?: string }) {
+    if (!active || !payload?.length) return null;
+    const value = payload[0]?.value;
+    if (value === undefined) return null;
+    return (
+      <div className={cn(
+        "pointer-events-none rounded-lg px-2.5 py-1.5 text-[12px] leading-none shadow-lg",
+        isDark ? "bg-[#0f1729]/95 text-white ring-1 ring-white/12" : "bg-white/97 text-ink ring-1 ring-line"
+      )}>
+        <span className="font-semibold tabular-nums">{metric.fmt(Number(value))}</span>
+        {label ? <span className={cn("ml-1.5", isDark ? "text-white/55" : "text-muted")}>{label}</span> : null}
+      </div>
+    );
+  }
 
   return (
     <>
@@ -75,7 +94,12 @@ export function KpiHistoryView() {
               </defs>
               <XAxis dataKey="name" tick={{ fill: isDark ? "#8899BB" : "#64748B", fontSize: 10 }} axisLine={false} tickLine={false} />
               <CartesianGrid strokeDasharray="3 3" stroke={isDark ? "rgba(255,255,255,0.08)" : "rgba(15,23,42,0.07)"} vertical={false} />
-              <Tooltip contentStyle={tooltipStyle} formatter={(value) => [metric.fmt(Number(value)), metric.label]} />
+              <Tooltip
+                content={<CompactTooltip />}
+                cursor={{ stroke: isDark ? "rgba(255,255,255,0.22)" : "rgba(15,23,42,0.18)", strokeWidth: 1 }}
+                allowEscapeViewBox={{ x: false, y: true }}
+                offset={12}
+              />
               <Area type="monotone" dataKey="valor" stroke={metric.color} strokeWidth={2.5} fill="url(#kpiHistory)" dot={{ r: 3.5, fill: metric.color, stroke: isDark ? "#1a2540" : "#FFFFFF", strokeWidth: 1.5 }} animationDuration={700} animationEasing="ease-out" />
             </AreaChart>
           </ResponsiveContainer>
