@@ -247,8 +247,21 @@
     </ol>
     <div class="note warn">
       <svg class="n-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4"/><path d="M12 17h.01"/><path d="M10.3 3.2 1.9 18a2 2 0 0 0 1.7 3h16.8a2 2 0 0 0 1.7-3L13.7 3.2a2 2 0 0 0-3.4 0Z"/></svg>
-      <div class="n-body"><strong>Tu PIN es solo tuyo.</strong> Tras 5 intentos fallidos la cuenta se bloquea 15 minutos por seguridad. Si lo olvidas, tu gerente puede ayudarte a restablecerlo.</div>
+      <div class="n-body"><strong>Tu PIN es solo tuyo.</strong> Tras <strong>5 intentos fallidos</strong> la cuenta se bloquea 15 minutos. Si vuelve a pasar, el bloqueo se <strong>duplica</strong> cada vez (30 min, 1 h, 2 h…) hasta un tope de 24 horas. No es un castigo: es lo que hace inviable probar PINs a ciegas.</div>
     </div>
+
+    <h3>Si olvidas tu PIN</h3>
+    <p>Hay tres situaciones distintas y conviene no confundirlas, porque la solución no es la misma:</p>
+    <div class="rows">
+      <div class="row"><div class="r-key">Ya tenías PIN y lo olvidaste</div><div class="r-val">Pide el <strong>enlace de restablecimiento</strong> desde la pantalla de acceso. Llega a tu correo y tú eliges el PIN nuevo. <strong>Tu gerente NO puede cambiártelo</strong>: nadie más que tú llega a conocer tu PIN.</div></div>
+      <div class="row"><div class="r-key">Nunca has tenido PIN</div><div class="r-val">Es el caso de un alta nueva. Aquí sí lo configura tu <strong>gerente o subgerente</strong>, con su sesión abierta, desde la misma pantalla de acceso.</div></div>
+      <div class="row"><div class="r-key">No te llega el correo</div><div class="r-val">Casi seguro tu cuenta tiene un correo inventado (ver aviso abajo). Pide a administración un <strong>enlace de PIN</strong>.</div></div>
+    </div>
+    <div class="note warn">
+      <svg class="n-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4"/><path d="M12 17h.01"/><path d="M10.3 3.2 1.9 18a2 2 0 0 0 1.7 3h16.8a2 2 0 0 0 1.7-3L13.7 3.2a2 2 0 0 0-3.4 0Z"/></svg>
+      <div class="n-body"><strong>Registra tu correo real en tu perfil.</strong> Al darte de alta, la app te inventa una dirección del tipo <span class="pill">81893@clarvex.local</span>, y a ese dominio no llega nada. Si no lo cambias, el día que olvides el PIN no vas a poder recuperarlo por tu cuenta.</div>
+    </div>
+    <p class="lead">Por seguridad, esa pantalla <strong>siempre responde lo mismo</strong> —«si el número existe y tiene correo registrado…»— exista la cuenta o no. Si contestara distinto en cada caso, sería un buscador de números de empleado válidos.</p>
   </section>
 
   <section id="roles">
@@ -321,6 +334,26 @@
     <div class="note tip">
       <svg class="n-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 12 2 2 4-4"/><circle cx="12" cy="12" r="9"/></svg>
       <div class="n-body">Los KPIs vienen del <strong>RDV</strong> de la tienda. Si ves ceros o datos viejos, casi siempre es que falta <strong>sincronizar</strong> (ver Centro de Datos) o que un asesor no está dado de alta con su número exacto.</div>
+    </div>
+
+    <h3>Cómo se calcula tu comisión</h3>
+    <p>El alcance de comisión se mide contra el <strong>mínimo</strong>, no contra la meta. El asesor se mide con su venta y su mínimo individual; gerente y subgerente, con la venta y el mínimo <strong>de tienda</strong>.</p>
+
+    <h3>Tiendas GUESS: esquema propio</h3>
+    <p class="lead">Solo aplica a las tiendas cuyo nombre empieza por GUESS. El resto de marcas sigue con el porcentaje de siempre.</p>
+    <div class="rows">
+      <div class="row"><div class="r-key">Menos de 80 %</div><div class="r-val">No hay comisión.</div></div>
+      <div class="row"><div class="r-key">80 % – 99.99 %</div><div class="r-val"><strong>Importe fijo</strong> por escalón, no un porcentaje. Son cuatro escalones (80–84.99, 85–89.99, 90–94.99 y 95–99.99) y cada uno tiene un monto de <strong>temporada regular</strong> y otro de <strong>temporada alta</strong>.</div></div>
+      <div class="row"><div class="r-key">100 % en adelante</div><div class="r-val"><strong>Porcentaje sobre la venta</strong>, en dos escalones (100–114.99 y 115 % o más). Ese porcentaje es el mismo en las dos temporadas.</div></div>
+    </div>
+    <div class="note warn">
+      <svg class="n-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4"/><path d="M12 17h.01"/><path d="M10.3 3.2 1.9 18a2 2 0 0 0 1.7 3h16.8a2 2 0 0 0 1.7-3L13.7 3.2a2 2 0 0 0-3.4 0Z"/></svg>
+      <div class="n-body"><strong>Dentro de un escalón de importe fijo, vender más no paga más.</strong> Lo que sube la comisión es <strong>saltar de escalón</strong>. Por eso, en esos tramos la app te muestra el importe del nivel en lugar de un porcentaje.</div>
+    </div>
+    <p>Los montos <strong>no son iguales en todas las tiendas</strong>: dependen de la <strong>etiqueta</strong> de cada una (E, D, C…). Por eso los captura la propia tienda, desde la pantalla que le aparece a gerencia al entrar.</p>
+    <div class="note tip">
+      <svg class="n-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2Z"/></svg>
+      <div class="n-body"><strong>Los meses de temporada alta aún no están cargados.</strong> Hasta que se carguen, todo se paga con el importe de <strong>temporada regular</strong>.</div>
     </div>
   </section>
 
@@ -622,6 +655,11 @@
 
     <h3>Comisiones y metas internas</h3>
     <p>Los porcentajes de comisión los define administración por zonificación. La <strong>meta de venta</strong> viene del archivo y tampoco se edita aquí.</p>
+
+    <div class="note warn">
+      <svg class="n-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4"/><path d="M12 17h.01"/><path d="M10.3 3.2 1.9 18a2 2 0 0 0 1.7 3h16.8a2 2 0 0 0 1.7-3L13.7 3.2a2 2 0 0 0-3.4 0Z"/></svg>
+      <div class="n-body"><strong>Tiendas GUESS: hay que capturar el tabulador.</strong> Al entrar te aparecerá una pantalla para registrar los montos de <strong>tu</strong> etiqueta. Ten a mano el tabulador con los tres puestos —Gerente, Subgerente y Vendedor—: son 30 datos, los cuatro escalones fijos en sus dos temporadas más los dos porcentajes de cada puesto. Puedes darle <strong>«Ahora no»</strong> y capturarlo luego; queda un aviso arriba y la pantalla vuelve a salir la próxima vez. Mientras no captures, <strong>sigue vigente el esquema anterior</strong>. Al guardar, el nuevo entra en vigor de inmediato: revisa bien los montos antes de confirmar.</div>
+    </div>
     <p>Lo que sí capturas tú son las <strong>metas internas</strong> de tienda, desde <strong>KPIs → Metas internas</strong>. Cada una se fija por <strong>semana</strong> o por <strong>mes</strong>, y al volver a guardarla sustituye a la anterior:</p>
     <div class="rows">
       <div class="row"><div class="r-key">UPT</div><div class="r-val">Unidades por ticket.</div></div>
@@ -680,7 +718,8 @@
       <div class="row"><div class="r-key">Pantalla en blanco</div><div class="r-val">Cierra la app por completo y vuélvela a abrir. Si sigue, <strong>borra la app del inicio y reinstálala</strong> una vez desde Safari/Chrome. Después se actualiza sola.</div></div>
       <div class="row"><div class="r-key">Datos en cero o viejos</div><div class="r-val">Falta <strong>sincronizar</strong> el RDV (Centro de Datos) o el asesor no está dado de alta con su número exacto.</div></div>
       <div class="row"><div class="r-key">No aparece un asesor</div><div class="r-val">Verifica su número de empleado en Equipo. Revisa la tarjeta de “no encontrados” tras sincronizar.</div></div>
-      <div class="row"><div class="r-key">PIN bloqueado</div><div class="r-val">Espera 15 minutos o pide a tu gerencia que te ayude a restablecerlo.</div></div>
+      <div class="row"><div class="r-key">PIN bloqueado</div><div class="r-val">Espera a que pase el bloqueo: 15 minutos la primera vez, y el doble en cada bloqueo seguido. Si prefieres no esperar, pide el <strong>enlace de restablecimiento</strong>: al usarlo se desbloquea la cuenta.</div></div>
+      <div class="row"><div class="r-key">Olvidé mi PIN</div><div class="r-val">Se recupera con el <strong>enlace por correo</strong>, no por gerencia. Tu gerente solo puede configurar el PIN de quien <strong>nunca ha tenido</strong> uno.</div></div>
       <div class="row"><div class="r-key">No llega el correo para restablecer el PIN</div><div class="r-val">Casi seguro tu cuenta tiene un correo inventado del tipo <span class="pill">81893@clarvex.local</span>, al que no llega nada. Pide a administración un <strong>enlace de PIN</strong>, y de paso registra tu correo real en tu perfil.</div></div>
       <div class="row"><div class="r-key">Una gerente de tienda nueva no puede entrar</div><div class="r-val">Es el caso previsto: necesita un <strong>enlace de PIN</strong> desde el panel de administración.</div></div>
       <div class="row"><div class="r-key">Una fuente de SharePoint nunca sincroniza</div><div class="r-val">Lo más común: el vínculo es de “Personas de la organización” y pide iniciar sesión. Pégalo en una <strong>ventana de incógnito</strong>: si te pide usuario, ese es el problema. Vuelve a compartirlo como <strong>“Cualquier persona con el vínculo”</strong>. También revisa que apunte al <span class="pill">.xlsx</span> y no a la carpeta. Si fallan <strong>todas</strong> a la vez, es el intermediario del lado técnico.</div></div>
