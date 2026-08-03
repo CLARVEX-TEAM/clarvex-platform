@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis } from "recharts";
+import { ChartTooltip, lineCursor } from "@/components/ChartTooltip";
 import { History, TrendingDown, TrendingUp } from "lucide-react";
 import { money } from "@/lib/format";
 import { percentDelta, type WeekHistoryPoint } from "@/lib/kpi-history";
@@ -48,28 +49,6 @@ export function KpiHistoryView() {
   if (!weeks) return <div className="space-y-3"><Skeleton className="h-52" /><Skeleton className="h-24" /></div>;
   if (weeks.length === 0) return <Card className="p-4"><p className="text-sm font-semibold text-muted">Aún no hay semanas sincronizadas para comparar.</p></Card>;
 
-  /**
-   * Tooltip compacto y propio.
-   *
-   * El de serie pintaba una caja grande con el periodo en una linea y
-   * «Venta : $182,802.21» en otra, y en un telefono tapaba media curva. Aqui
-   * va todo en un renglon, con el dato en negrita y el periodo en tinta
-   * apagada: se lee igual de rapido y no esconde lo que se esta mirando.
-   */
-  function CompactTooltip({ active, payload, label }: { active?: boolean; payload?: Array<{ value?: number }>; label?: string }) {
-    if (!active || !payload?.length) return null;
-    const value = payload[0]?.value;
-    if (value === undefined) return null;
-    return (
-      <div className={cn(
-        "pointer-events-none rounded-lg px-2.5 py-1.5 text-[12px] leading-none shadow-lg",
-        isDark ? "bg-[#0f1729]/95 text-white ring-1 ring-white/12" : "bg-white/97 text-ink ring-1 ring-line"
-      )}>
-        <span className="font-semibold tabular-nums">{metric.fmt(Number(value))}</span>
-        {label ? <span className={cn("ml-1.5", isDark ? "text-white/55" : "text-muted")}>{label}</span> : null}
-      </div>
-    );
-  }
 
   return (
     <>
@@ -95,8 +74,8 @@ export function KpiHistoryView() {
               <XAxis dataKey="name" tick={{ fill: isDark ? "#8899BB" : "#64748B", fontSize: 10 }} axisLine={false} tickLine={false} />
               <CartesianGrid strokeDasharray="3 3" stroke={isDark ? "rgba(255,255,255,0.08)" : "rgba(15,23,42,0.07)"} vertical={false} />
               <Tooltip
-                content={<CompactTooltip />}
-                cursor={{ stroke: isDark ? "rgba(255,255,255,0.22)" : "rgba(15,23,42,0.18)", strokeWidth: 1 }}
+                content={<ChartTooltip isDark={isDark} format={(v) => metric.fmt(v)} />}
+                cursor={lineCursor(isDark)}
                 allowEscapeViewBox={{ x: false, y: true }}
                 offset={12}
               />

@@ -2,7 +2,8 @@
 
 import { useCallback, useMemo, useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Bar, BarChart, CartesianGrid, LabelList, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { barCursor, ChartTooltip, lineCursor, shortName } from "@/components/ChartTooltip";
 import { Calculator, CalendarDays, Download, Receipt, Settings2, ShoppingBag, Sparkles, Target, TrendingUp, Trophy, UsersRound, X } from "lucide-react";
 import { getSession } from "@/lib/auth";
 import { computeNextBracketGap, resolveCommissionMinimum } from "@/lib/commission";
@@ -509,9 +510,6 @@ function VentasView({ activeKpi, team, progress, periodLabel }: { activeKpi: Kpi
   const goalColor = isDark ? "#60636A" : "#A1A5AC";
   const axisColor = isDark ? "#92969E" : "#636872";
   const gridColor = isDark ? "rgba(255,255,255,0.06)" : "rgba(21,25,32,0.07)";
-  const tooltipStyle = isDark
-    ? { background: "#22252A", border: "1px solid #41454D", borderRadius: 12, color: "#F1F2F5", fontSize: 13 }
-    : { background: "#FFFFFF", border: "1px solid #CCCFD5", borderRadius: 12, color: "#151920", fontSize: 13 };
 
   const barData = team.map((m) => ({ name: m.userName.split(" ")[0], Venta: m.sales, Meta: m.goal }));
 
@@ -571,9 +569,8 @@ function VentasView({ activeKpi, team, progress, periodLabel }: { activeKpi: Kpi
                 <XAxis dataKey="name" tick={{ fill: axisColor, fontSize: 11 }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fill: axisColor, fontSize: 11 }} axisLine={false} tickLine={false} width={58} tickFormatter={(v: number) => compactMoney.format(v)} />
                 <Tooltip
-                  contentStyle={tooltipStyle}
-                  cursor={{ fill: isDark ? "rgba(255,255,255,0.04)" : "rgba(21,25,32,0.04)" }}
-                  formatter={(value) => money(Number(value))}
+                  content={<ChartTooltip isDark={isDark} format={money} />}
+                  cursor={lineCursor(isDark)}
                 />
                 {/* La meta va detrás y en gris: es referencia, no una serie par. */}
                 <Bar dataKey="Meta" fill={goalColor} radius={[4, 4, 0, 0]} maxBarSize={30} />
@@ -668,9 +665,6 @@ function RankingView({ ranking, periodLabel, isAdvisor, currentUserId }: { ranki
   const { isDark } = useTheme();
   const [metricId, setMetricId] = useState<RankMetricId>("venta");
   const metric = RANK_METRICS.find((item) => item.id === metricId) ?? RANK_METRICS[0];
-  const tooltipStyle = isDark
-    ? { background: "#22252A", border: "1px solid #41454D", borderRadius: 12, color: "#F1F2F5", boxShadow: "0 6px 14px rgb(0 0 0 / 0.4)" }
-    : { background: "#FFFFFF", border: "1px solid #ECECEF", borderRadius: 12, color: "#17181C", boxShadow: "0 6px 14px rgb(15 23 42 / 0.08)" };
   const ranked = useMemo(() => {
     if (isAdvisor) return ranking.map((item) => ({ item, position: item.ranking, value: item.achievement as number | null }));
     const withValue = ranking.map((item) => ({ item, value: metric.get(item) }));
@@ -696,18 +690,26 @@ function RankingView({ ranking, periodLabel, isAdvisor, currentUserId }: { ranki
         <div className="h-64">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={data} margin={{ top: 12, right: 12, left: 8, bottom: 0 }}>
-              <XAxis dataKey="name" tick={{ fill: isDark ? "#8899BB" : "#64748B", fontSize: 11 }} axisLine={false} tickLine={false} />
-              <CartesianGrid strokeDasharray="3 3" stroke={isDark ? "rgba(255,255,255,0.08)" : "rgba(15,23,42,0.07)"} vertical={false} />
+              <XAxis dataKey="name" tickFormatter={shortName} interval={0} tick={{ fill: isDark ? "#8899BB" : "#64748B", fontSize: 11 }} axisLine={false} tickLine={false} />
+              <CartesianGrid strokeDasharray="3 3" stroke={isDark ? "rgba(255,255,255,0.06)" : "rgba(15,23,42,0.06)"} vertical={false} />
               {/* El `cursor` es OBLIGATORIO aquí. Sin él, recharts pinta por
                   omisión una franja gris muy clara del alto de toda la barra,
                   que sobre el lienzo oscuro se ve como un recuadro blanco que
                   tapa la barra al pasar el ratón. */}
               <Tooltip
-                contentStyle={tooltipStyle}
-                cursor={{ fill: isDark ? "rgba(255,255,255,0.05)" : "rgba(21,25,32,0.05)" }}
-                formatter={(value) => isAdvisor ? [`${value}%`, "Cumplimiento"] : [metric.fmt(Number(value)), metric.label]}
+                content={<ChartTooltip isDark={isDark} format={(v) => (isAdvisor ? `${v}%` : metric.fmt(v))} />}
+                cursor={barCursor(isDark)}
               />
-              <Bar dataKey="valor" fill={isDark ? "#709DF6" : "#1E5AE2"} radius={[8, 8, 8, 8]} animationDuration={800} />
+              <Bar dataKey="valor" fill={isDark ? "#709DF6" : "#1E5AE2"} radius={[10, 10, 4, 4]} maxBarSize={72} animationDuration={800}>
+                <LabelList
+                  dataKey="valor"
+                  position="top"
+                  offset={8}
+                  fontSize={11}
+                  fill={isDark ? "#C7D2FE" : "#334155"}
+                  formatter={(v) => (isAdvisor ? `${Number(v)}%` : metric.fmt(Number(v)))}
+                />
+              </Bar>
             </BarChart>
           </ResponsiveContainer>
         </div>
