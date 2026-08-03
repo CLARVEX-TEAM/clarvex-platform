@@ -1,18 +1,16 @@
 # Vulnerabilidades conocidas SIN parche disponible, anotadas con fecha de revisión.
 # Todo lo que sí tiene parche se fija en los overrides de pnpm-workspace.yaml:
 # esta lista es el residual, no un atajo para no actualizar.
-
-[[IgnoredVulns]]
-id = "GHSA-mh99-v99m-4gvg"
-ignoreUntil = 2026-10-25
-reason = """
-ReDoS en brace-expansion. La línea 5 ya está parcheada en el override (5.0.8).
-Quedan las líneas 1.x y 2.x, que NO tienen versión parcheada: 1.1.16 y 2.1.2 son
-las últimas publicadas de sus majors. Subirlas a 5.x rompe la app: desde la v3 el
-paquete exporta un objeto { expand } en lugar de la función, y minimatch@3 y @5
-hacen `require('brace-expansion')(patrón)` — se caerían exceljs (parseo del RDV) y
-eslint. Llegan por dependencias transitivas (exceljs>archiver>glob>minimatch@3 y
-eslint>minimatch@3) y solo se expanden patrones glob que vienen del propio código,
-nunca de entrada de usuario, así que no hay superficie de ReDoS explotable.
-Revisar en la fecha de arriba por si publican 1.1.17 / 2.1.3.
-"""
+#
+# Ahora mismo está VACÍA a propósito: no queda ninguna sin parche.
+#
+# El 3 de agosto de 2026 se retiró la entrada de GHSA-mh99-v99m-4gvg (ReDoS en
+# brace-expansion). Se ignoraba porque las líneas 1.x y 2.x no tenían versión
+# parcheada, y esa nota terminaba diciendo «revisar por si publican 1.1.17 /
+# 2.1.3». Se publicaron. El aviso posterior GHSA-rgw5-rvv9-x895 las llevó a
+# 1.1.18 y 2.1.4, y la línea 5 a 5.0.9. Las tres quedan fijadas en los
+# overrides, cada una dentro de su propio major.
+#
+# Al añadir una entrada aquí, poner SIEMPRE `ignoreUntil` y explicar por qué no
+# se puede parchear todavía. Un ignore sin fecha se vuelve permanente sin que
+# nadie lo haya decidido.

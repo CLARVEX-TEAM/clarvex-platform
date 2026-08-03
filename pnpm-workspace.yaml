@@ -3,21 +3,24 @@
 #  - postcss <8.5.18: XSS en el stringify (<8.5.10, vía next) y GHSA-r28c-9q8g-f849
 #  - uuid <11.1.1: bounds check de buffer en v3/v5/v6 (vía exceljs; no explotable
 #    con el v4 que usa exceljs, pero se fija para dejar el audit en cero)
-#  - brace-expansion (GHSA-3jxr-9vmj-r5cp y GHSA-mh99-v99m-4gvg): ReDoS. Tres
-#    majors en el árbol, cada uno fijado a su parche (no cruzar de major).
-#    GHSA-mh99-v99m-4gvg solo tiene parche en la línea 5 (5.0.8): 1.1.16 y 2.1.2
-#    son las últimas de sus majors y siguen afectadas. NO subirlas a 5.x: desde la
-#    v3 el paquete exporta un objeto { expand } y minimatch@3 / @5 hacen
-#    `require('brace-expansion')(patrón)`, así que cruzar el major rompe exceljs
-#    (parseo del RDV) y eslint en tiempo de ejecución. El residual queda anotado
-#    con fecha de revisión en osv-scanner.toml.
+#  - brace-expansion (GHSA-3jxr-9vmj-r5cp, GHSA-mh99-v99m-4gvg y
+#    GHSA-rgw5-rvv9-x895): ReDoS y agotamiento de memoria. Tres majors en el
+#    árbol, cada uno fijado a su parche. NO cruzar de major: desde la v3 el
+#    paquete exporta un objeto { expand } en lugar de la función, y minimatch@3
+#    y @5 hacen `require('brace-expansion')(patrón)`, así que subir 1.x o 2.x a
+#    5.x rompería exceljs (parseo del RDV) y eslint en tiempo de ejecución.
+#    GHSA-rgw5-rvv9-x895 (3-ago-2026) es el que cierra el círculo: la mitigación
+#    por `maxLength` que traía 5.0.8 estaba incompleta —acotaba el acumulador
+#    pero no los arrays intermedios— y volvía a tumbar el proceso. Esta vez SÍ
+#    hay parche dentro de cada major (1.1.18, 2.1.4 y 5.0.9), así que ya no
+#    queda residual que ignorar en osv-scanner.toml.
 #  - js-yaml <4.3.0 (GHSA-52cp-r559-cp3m)
 overrides:
   postcss@<8.5.18: ">=8.5.18"
   exceljs>uuid: ">=11.1.1"
-  brace-expansion@1: 1.1.16
-  brace-expansion@2: 2.1.2
-  brace-expansion@5: 5.0.8
+  brace-expansion@1: 1.1.18
+  brace-expansion@2: 2.1.4
+  brace-expansion@5: 5.0.9
   js-yaml@4: 4.3.0
   fast-uri@<3.1.4: ">=3.1.4 <4"
   sharp@<0.35.0: ">=0.35.0 <0.36"
