@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Building2, CheckCircle2, ChevronDown, Percent, Plus, ScrollText, Trash2, TrendingUp } from "lucide-react";
+import { Building2, CheckCircle2, ChevronDown, KeyRound, Percent, Plus, ScrollText, Trash2, TrendingUp } from "lucide-react";
 import { getSession } from "@/lib/auth";
 import { money } from "@/lib/format";
 import { AppFrame, AppHeader, BottomNav, Button, Card } from "@/components/ui";
@@ -31,7 +31,8 @@ const AUDIT_ACTION_LABELS: Record<string, string> = {
   "billing.update": "Cobro",
   "target.update": "Meta interna",
   "user.role": "Cambio de rol",
-  "user.delete": "Cuenta eliminada"
+  "user.delete": "Cuenta eliminada",
+  "user.pin_reset_link": "Enlace de PIN emitido"
 };
 
 type StoreRow = {
@@ -95,6 +96,10 @@ export default function AdminPage() {
   const [showAudit, setShowAudit] = useState(false);
   const [auditEntries, setAuditEntries] = useState<AuditEntry[] | null>(null);
   const [savingRoleId, setSavingRoleId] = useState<string | null>(null);
+  const [pinLinkUserId, setPinLinkUserId] = useState<string | null>(null);
+  // Solo en memoria: el enlace vale por sí solo para fijar el PIN.
+  const [pinLink, setPinLink] = useState<{ userId: string; url: string; minutes: number } | null>(null);
+  const [pinLinkCopied, setPinLinkCopied] = useState(false);
   const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
 
   async function toggleAudit() {
@@ -195,6 +200,41 @@ export default function AdminPage() {
       setError(roleError instanceof Error ? roleError.message : "No se pudo cambiar el rol.");
     } finally {
       setSavingRoleId(null);
+    }
+  }
+
+  /**
+   * Emite el enlace con el que esa persona fija su PROPIO PIN.
+   *
+   * Salida al bloqueo circular de una tienda nueva: su gerente no tiene PIN y
+   * `employee-login` solo deja crear uno con una sesión de gerencia de esa misma
+   * tienda ya iniciada, que en una tienda recién creada no existe.
+   */
+  async function issuePinLink(store: StoreRow, userId: string) {
+    setError("");
+    setPinLink(null);
+    setPinLinkCopied(false);
+    setPinLinkUserId(userId);
+    try {
+      const response = await fetch(`/api/admin/stores/${store.id}/users/${userId}/pin-reset`, { method: "POST" });
+      const payload = await response.json() as { url?: string; expiresInMinutes?: number; error?: string };
+      if (!response.ok || !payload.url) throw new Error(payload.error ?? "No se pudo generar el enlace.");
+      setPinLink({ userId, url: payload.url, minutes: payload.expiresInMinutes ?? 0 });
+    } catch (linkError) {
+      setError(linkError instanceof Error ? linkError.message : "No se pudo generar el enlace.");
+    } finally {
+      setPinLinkUserId(null);
+    }
+  }
+
+  async function copyPinLink(url: string) {
+    try {
+      await navigator.clipboard.writeText(url);
+      setPinLinkCopied(true);
+    } catch {
+      // Sin permiso de portapapeles el enlace sigue visible y se puede
+      // seleccionar a mano: no merece interrumpir con un error.
+      setPinLinkCopied(false);
     }
   }
 
@@ -348,7 +388,8 @@ export default function AdminPage() {
                       {store.members.length === 0 ? (
                         <p className="text-xs font-semibold text-muted">Sin miembros activos todavía.</p>
                       ) : store.members.map((member) => (
-                        <div key={member.id} className="flex items-center justify-between gap-2">
+                        <div key={member.id}>
+                        <div className="flex items-center justify-between gap-2">
                           <div className="min-w-0">
                             <p className={`truncate text-sm font-semibold ${member.active ? "text-ink" : "text-muted line-through"}`}>{member.name}</p>
                             <p className="font-mono text-[10px] font-semibold text-muted">#{member.employeeNumber}{member.active ? "" : " · desactivado"}</p>
@@ -364,6 +405,17 @@ export default function AdminPage() {
                               <option value="SUBGERENTE">Subgerente</option>
                               <option value="ASESOR">Asesor</option>
                             </select>
+                            {member.active ? (
+                              <button
+                                type="button"
+                                onClick={() => void issuePinLink(store, member.id)}
+                                disabled={pinLinkUserId === member.id}
+                                aria-label={`Generar enlace de PIN para ${member.name}`}
+                                className="grid size-9 place-items-center rounded-xl bg-panel text-volt transition hover:bg-line/60 disabled:opacity-40"
+                              >
+                                {pinLinkUserId === member.id ? "..." : <KeyRound size={14} />}
+                              </button>
+                            ) : null}
                             {!member.active ? (
                               <button
                                 type="button"
@@ -376,6 +428,25 @@ export default function AdminPage() {
                               </button>
                             ) : null}
                           </div>
+                        </div>
+                        {pinLink?.userId === member.id ? (
+                          <div className="mt-2 rounded-xl border border-line bg-panel p-2.5">
+                            <p className="text-[11px] font-semibold text-muted">
+                              Pásale este enlace a {member.name}. Ella elige su PIN; tú no lo verás.
+                              {pinLink.minutes > 0 ? ` Caduca en ${pinLink.minutes} minutos y solo sirve una vez.` : ""}
+                            </p>
+                            <div className="mt-1.5 flex items-center gap-2">
+                              <code className="min-w-0 flex-1 truncate rounded-lg bg-card px-2 py-1.5 text-[11px] text-ink">{pinLink.url}</code>
+                              <button
+                                type="button"
+                                onClick={() => void copyPinLink(pinLink.url)}
+                                className="shrink-0 rounded-xl bg-volt px-3 py-1.5 text-[11px] font-bold text-white"
+                              >
+                                {pinLinkCopied ? "Copiado" : "Copiar"}
+                              </button>
+                            </div>
+                          </div>
+                        ) : null}
                         </div>
                       ))}
                     </div>
