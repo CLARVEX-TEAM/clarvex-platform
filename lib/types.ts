@@ -161,4 +161,15 @@ export type CommissionRule = {
   maxAchievement?: number | null;
   commissionPercent: number;
   active: boolean;
+  /**
+   * Cómo paga el bracket. Ausente o "PERCENT" → venta × commissionPercent, que
+   * es el comportamiento histórico de todas las marcas salvo Guess.
+   */
+  payoutType?: CommissionPayoutType | null;
+  /** Importe fijo en temporada regular. Solo se lee con payoutType "FIXED". */
+  fixedAmount?: number | null;
+  /** Importe fijo en temporada alta. Si falta, se usa `fixedAmount`. */
+  fixedAmountHigh?: number | null;
 };
+
+export type CommissionPayoutType = "PERCENT" | "FIXED";

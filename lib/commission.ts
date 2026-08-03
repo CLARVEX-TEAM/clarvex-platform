@@ -1,4 +1,43 @@
-import type { CommissionRule, Role } from "@/lib/types";
+import type { CommissionPayoutType, CommissionRule, Role } from "@/lib/types";
+
+/**
+ * Importe que paga UN bracket para una venta dada.
+ *
+ * Es el único sitio donde se decide cuánto vale un bracket. Los cuatro
+ * calculadores de este archivo (acumulada, siguiente bracket, simulador y
+ * proyección de cierre) pasan por aquí, para que no haya dos fórmulas que
+ * puedan separarse con el tiempo.
+ *
+ * - `PERCENT` (histórico, todas las marcas menos Guess): venta × tasa.
+ * - `FIXED` (esquema Guess, agosto 2026): importe fijo del bracket, INDEPENDIENTE
+ *   de la venta. Vender más dentro del mismo escalón no paga más; lo que paga es
+ *   saltar de escalón.
+ *
+ * Una regla sin `payoutType` se trata como `PERCENT`: las filas que ya existían
+ * antes de la migración dan exactamente el mismo importe que antes.
+ */
+export function rulePayout(
+  rule: Pick<CommissionRule, "commissionPercent" | "payoutType" | "fixedAmount" | "fixedAmountHigh"> | null | undefined,
+  sales: number,
+  highSeason = false
+): number {
+  if (!rule) return 0;
+  if (rule.payoutType === "FIXED") {
+    const regular = rule.fixedAmount ?? 0;
+    // En temporada alta se paga `fixedAmountHigh`; si esa columna viene vacía se
+    // cae al importe regular en vez de a cero: un dato faltante no debe
+    // convertirse en un pago de cero para alguien que sí cumplió.
+    const amount = highSeason ? rule.fixedAmountHigh ?? regular : regular;
+    return round2(amount);
+  }
+  return round2(sales * ((rule.commissionPercent ?? 0) / 100));
+}
+
+/** Tasa a mostrar de un bracket. Los brackets de importe fijo no tienen tasa. */
+function rulePercent(rule: { commissionPercent?: number; payoutType?: CommissionPayoutType | null } | null | undefined): number {
+  if (!rule || rule.payoutType === "FIXED") return 0;
+  return rule.commissionPercent ?? 0;
+}
 
 export function findCommissionRule(rules: CommissionRule[], role: Role, achievement: number) {
   const rule = rules.find((item) => (
@@ -21,15 +60,46 @@ export function resolveCommissionMinimum(commissionMinimum: number | null | unde
   return goal > 0 ? Math.round((goal / MINIMUM_TO_GOAL_FACTOR) * 100) / 100 : 0;
 }
 
+/**
+ * ¿El periodo cae en temporada alta?
+ *
+ * Se compara por CLAVE DE FECHA (`YYYY-MM-DD`), no con objetos Date: comparar
+ * fechas con hora arrastra la zona horaria y un rango que termina el día 31
+ * dejaría fuera ese mismo 31 a partir de las 18:00 en Monterrey.
+ *
+ * Sin ningún rango que lo cubra devuelve `false` (temporada regular). Es el
+ * valor conservador: paga el importe menor, así que un rango sin capturar se
+ * detecta por defecto en vez de pagar de más.
+ */
+export function isHighSeason(
+  seasons: Array<{ startDate: string | Date; endDate: string | Date }>,
+  date: string | Date
+): boolean {
+  const key = dateKey(date);
+  return seasons.some((season) => key >= dateKey(season.startDate) && key <= dateKey(season.endDate));
+}
+
+function dateKey(value: string | Date): string {
+  if (typeof value === "string") return value.slice(0, 10);
+  return value.toISOString().slice(0, 10);
+}
+
 export type AccruedCommission = {
-  /** Comisión acumulada estimada (venta × tasa del bracket). */
+  /** Comisión acumulada estimada. Venta × tasa, o el importe fijo del bracket. */
   amount: number;
-  /** Tasa del bracket vigente, en %. */
+  /** Tasa del bracket vigente, en %. Vale 0 si el bracket paga importe fijo. */
   percent: number;
   /** Alcance de comisión (venta ÷ mínimo), en %. */
   achievement: number;
   /** Mínimo usado (el sincronizado o el derivado de la meta). */
   minimum: number;
+  /** Cómo paga el bracket alcanzado. Sin bracket, "PERCENT" con importe 0. */
+  payoutType: CommissionPayoutType;
+  /**
+   * Importe fijo aplicado, si el bracket es de los que pagan fijo. La interfaz
+   * lo necesita para no anunciar «0%» donde en realidad hay un bono.
+   */
+  fixedAmount: number;
 };
 
 /**
@@ -39,12 +109,18 @@ export type AccruedCommission = {
  * comisión: sirve para mostrar "la comisión que llevo" sin depender de que el
  * RDV traiga commissionAmount poblado (a veces llega en 0).
  */
-export function accruedCommission(input: { sales: number; goal: number; minimum?: number | null; rules: CommissionRule[]; role: Role }): AccruedCommission {
+export function accruedCommission(input: { sales: number; goal: number; minimum?: number | null; rules: CommissionRule[]; role: Role; highSeason?: boolean }): AccruedCommission {
   const minimum = resolveCommissionMinimum(input.minimum, input.goal);
   const achievement = minimum > 0 ? (input.sales / minimum) * 100 : 0;
   const rule = findCommissionRule(input.rules, input.role, achievement);
-  const percent = rule?.commissionPercent ?? 0;
-  return { amount: round2(input.sales * (percent / 100)), percent, achievement, minimum };
+  return {
+    amount: rulePayout(rule, input.sales, input.highSeason),
+    percent: rulePercent(rule),
+    achievement,
+    minimum,
+    payoutType: rule?.payoutType === "FIXED" ? "FIXED" : "PERCENT",
+    fixedAmount: rule?.payoutType === "FIXED" ? rulePayout(rule, input.sales, input.highSeason) : 0
+  };
 }
 
 export type NextBracketGap = {
@@ -61,7 +137,7 @@ export type NextBracketGap = {
  * El alcance se mide contra el mínimo (misma regla que el cálculo real).
  * No modifica el cálculo de comisión: solo lo lee para motivar la venta.
  */
-export function computeNextBracketGap(input: { sales: number; minimum: number; rules: CommissionRule[]; role: Role }): NextBracketGap | null {
+export function computeNextBracketGap(input: { sales: number; minimum: number; rules: CommissionRule[]; role: Role; highSeason?: boolean }): NextBracketGap | null {
   if (input.minimum <= 0) return null;
   const achievement = (input.sales / input.minimum) * 100;
   const active = input.rules
@@ -69,15 +145,20 @@ export function computeNextBracketGap(input: { sales: number; minimum: number; r
     .sort((left, right) => left.minAchievement - right.minAchievement);
   if (active.length === 0) return null;
   const current = findCommissionRule(active, input.role, achievement);
-  const currentPercent = current?.commissionPercent ?? 0;
+  const currentPercent = rulePercent(current);
   const next = active.find((rule) => rule.minAchievement > achievement);
   if (!next) {
     return { atTop: true, currentPercent, nextPercent: currentPercent, targetAchievement: current?.minAchievement ?? 0, salesNeeded: 0, extraCommission: 0 };
   }
   const targetSales = input.minimum * (next.minAchievement / 100);
   const salesNeeded = round2(Math.max(0, targetSales - input.sales));
-  const extraCommission = round2(targetSales * (next.commissionPercent / 100) - input.sales * (currentPercent / 100));
-  return { atTop: false, currentPercent, nextPercent: next.commissionPercent, targetAchievement: next.minAchievement, salesNeeded, extraCommission };
+  // La diferencia se calcula con el importe REAL de cada bracket, no con la
+  // resta de porcentajes: entre dos escalones de importe fijo no hay tasas que
+  // restar, y con el esquema Guess la resta de porcentajes daría siempre cero.
+  const extraCommission = round2(
+    rulePayout(next, targetSales, input.highSeason) - rulePayout(current, input.sales, input.highSeason)
+  );
+  return { atTop: false, currentPercent, nextPercent: rulePercent(next), targetAchievement: next.minAchievement, salesNeeded, extraCommission };
 }
 
 function round2(value: number) { return Math.round(value * 100) / 100; }
@@ -119,6 +200,8 @@ export function buildCommissionSimulation(input: {
   role: Role;
   /** Venta que mueve el usuario. Sin valor, el simulador arranca en la venta real. */
   simulatedSales?: number;
+  /** Temporada alta del periodo simulado. Cambia el importe de los brackets fijos. */
+  highSeason?: boolean;
 }): CommissionSimulation {
   const minimum = resolveCommissionMinimum(input.minimum, input.goal);
   const sliderMin = Math.round(Math.max(0, input.sales));
@@ -130,7 +213,7 @@ export function buildCommissionSimulation(input: {
   const topSales = minimum > 0 && topAchievement > 0 ? minimum * (topAchievement / 100) : 0;
   const sliderMax = Math.max(sliderMin + 10_000, Math.round(input.goal * 1.5), Math.round(topSales * 1.1));
   const simulatedSales = Math.min(Math.max(input.simulatedSales ?? sliderMin, sliderMin), sliderMax);
-  const scope = { goal: input.goal, minimum: input.minimum, rules: input.rules, role: input.role };
+  const scope = { goal: input.goal, minimum: input.minimum, rules: input.rules, role: input.role, highSeason: input.highSeason };
   const real = accruedCommission({ ...scope, sales: input.sales });
   const simulated = accruedCommission({ ...scope, sales: simulatedSales });
   return {
@@ -141,7 +224,7 @@ export function buildCommissionSimulation(input: {
     simulated,
     salesToSimulated: round2(Math.max(0, simulatedSales - input.sales)),
     extraCommissionVsReal: round2(Math.max(0, simulated.amount - real.amount)),
-    gap: computeNextBracketGap({ sales: simulatedSales, minimum, rules: input.rules, role: input.role })
+    gap: computeNextBracketGap({ sales: simulatedSales, minimum, rules: input.rules, role: input.role, highSeason: input.highSeason })
   };
 }
 
@@ -168,6 +251,7 @@ export function projectMonthlyCommission(input: {
   totalWeeks: number;
   rules: CommissionRule[];
   role: Role;
+  highSeason?: boolean;
 }): MonthlyCommissionProjection | null {
   // El alcance de comisión se mide contra el mínimo: sin mínimo no hay proyección.
   if (input.salesToDate <= 0 || input.weeksElapsed < 1 || input.totalWeeks < 1 || input.minimumToDate <= 0) return null;
@@ -175,6 +259,10 @@ export function projectMonthlyCommission(input: {
   const projectedSales = (input.salesToDate / weeksElapsed) * input.totalWeeks;
   const achievement = input.minimumToDate > 0 ? (input.salesToDate / input.minimumToDate) * 100 : 0;
   const rule = findCommissionRule(input.rules, input.role, achievement);
-  const percent = rule?.commissionPercent ?? 0;
-  return { projectedSales, projectedCommission: projectedSales * (percent / 100), percent, achievement };
+  return {
+    projectedSales,
+    projectedCommission: rulePayout(rule, projectedSales, input.highSeason),
+    percent: rulePercent(rule),
+    achievement
+  };
 }

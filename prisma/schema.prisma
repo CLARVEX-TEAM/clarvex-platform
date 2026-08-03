@@ -15,6 +15,11 @@ model Store {
   billingExempt         Boolean                   @default(true)
   subscriptionPaidUntil DateTime?
   pricePerUserMxn       Decimal?                  @db.Decimal(10, 2)
+  /// Etiqueta del tabulador de comisiones de la tienda (E, D, C…). En GUESS los
+  /// importes cambian según esta letra, así que se guarda tal como la capturó la
+  /// tienda para poder contrastarla después con el documento de central. NO
+  /// interviene en el cálculo: la comisión sale de las CommissionRule.
+  commissionTier        String?
   announcements         Announcement[]
   chatRooms             ChatRoom[]
   checklistEntries      ChecklistEntry[]
@@ -23,6 +28,7 @@ model Store {
   choreAssignments      ChoreAssignment[]
   comments              Comment[]
   commissionRules       CommissionRule[]
+  commissionSeasons     CommissionSeason[]
   cycleCounts           CycleCount[]
   cycleCountTags        CycleCountTag[]
   dataSources           DataSource[]
@@ -615,13 +621,52 @@ model CommissionRule {
   role              Role?
   minSales          Decimal  @default(0) @db.Decimal(12, 2)
   maxSales          Decimal? @db.Decimal(12, 2)
-  commissionPercent Decimal  @default(0) @db.Decimal(5, 2)
+  // TRES decimales, no dos: el tabulador de Guess usa 1.654 %, 2.427 %, 1.230 %…
+  // Con el Decimal(5,2) anterior, 2.427 se guardaba redondeado a 2.43 y la
+  // comisión salía mal sin que nada fallara. Ampliar la escala no toca las filas
+  // existentes (1.53 sigue siendo 1.530).
+  commissionPercent Decimal  @default(0) @db.Decimal(6, 3)
   active            Boolean  @default(true)
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
   minAchievement    Decimal  @default(0) @db.Decimal(5, 2)
   maxAchievement    Decimal? @db.Decimal(5, 2)
+
+  // Esquema Guess (agosto 2026): los brackets de 80% a 99.99% NO pagan un
+  // porcentaje sino un importe fijo, y ese importe cambia entre temporada
+  // regular y temporada alta.
+  //
+  // Los tres campos son aditivos a propósito: con `payoutType = PERCENT` y los
+  // importes en null, el cálculo es exactamente el de siempre. Las reglas ya
+  // existentes de las demás marcas no cambian de comportamiento.
+  payoutType        CommissionPayoutType @default(PERCENT)
+  /// Importe fijo en temporada regular. Solo se lee si payoutType = FIXED.
+  fixedAmount       Decimal? @db.Decimal(12, 2)
+  /// Importe fijo en temporada alta. Si es null, se usa `fixedAmount`.
+  fixedAmountHigh   Decimal? @db.Decimal(12, 2)
+
   store             Store    @relation(fields: [storeId], references: [id])
+}
+
+/// Rangos de TEMPORADA ALTA por tienda. Un periodo sin fila que lo cubra se
+/// paga como temporada regular: es el valor conservador, y al ser el importe
+/// notablemente menor, un rango mal capturado se nota enseguida.
+model CommissionSeason {
+  id        String   @id @default(cuid())
+  storeId   String
+  startDate DateTime @db.Date
+  endDate   DateTime @db.Date
+  label     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  store     Store    @relation(fields: [storeId], references: [id])
+
+  @@index([storeId, startDate, endDate])
+}
+
+enum CommissionPayoutType {
+  PERCENT
+  FIXED
 }
 
 model Announcement {
