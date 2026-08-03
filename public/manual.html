@@ -147,6 +147,17 @@
   .row .r-val { color: var(--muted); font-size: 14.5px; }
   .row .r-val strong { color: var(--ink); font-weight: 650; }
 
+  /* Capturas de pantalla */
+  figure.shot { margin: 20px auto; max-width: 380px; }
+  figure.shot img { width: 100%; height: auto; display: block; border-radius: 16px; border: 1px solid var(--line); box-shadow: var(--shadow); background: var(--surface); }
+  figure.shot figcaption { margin-top: 9px; font-size: 13px; color: var(--muted); text-align: center; text-wrap: balance; }
+
+  /* Boton de descarga */
+  .dl { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; background: var(--brand); color: #fff; font-weight: 750; font-size: 15px; padding: 13px 20px; border-radius: 14px; box-shadow: var(--shadow); margin: 4px 0; }
+  .dl:hover { filter: brightness(1.08); }
+  .dl svg { width: 19px; height: 19px; flex: none; }
+  .dl .dl-sub { font-weight: 600; font-size: 12.5px; opacity: .85; }
+
   kbd { font-family: var(--font-mono); font-size: 12.5px; background: var(--surface-2); border: 1px solid var(--line); border-radius: 6px; padding: 1px 6px; color: var(--ink); }
   .pill { font-family: var(--font-mono); font-size: 12.5px; background: var(--brand-soft); color: var(--brand); border-radius: 6px; padding: 1px 7px; font-weight: 650; }
 
@@ -295,6 +306,10 @@
     <span class="eyebrow">Rendimiento</span>
     <h2 class="sec">KPIs y comisiones</h2>
     <p class="lead">La sección de <strong>KPIs</strong> tiene pestañas. Arriba eliges el periodo: <span class="pill">Semana</span> o <span class="pill">Mes</span>.</p>
+    <figure class="shot">
+      <img src="/manual-img/kpis.jpg" alt="Pantalla de KPIs mostrando 99% de cumplimiento semanal, UPT 2.14, AUR $681.67, EPT $1,460.71 y conversión 23.33%" width="921" height="916" loading="lazy">
+      <figcaption>Vista de KPIs con el periodo en <strong>Semana</strong>. Las cifras son de la tienda de demostración.</figcaption>
+    </figure>
     <div class="rows">
       <div class="row"><div class="r-key">Resumen</div><div class="r-val">Venta vs meta, UPT, AUR, EPT, conversión y ranking del equipo.</div></div>
       <div class="row"><div class="r-key">Ventas</div><div class="r-val">Gráfica de la venta del periodo con tu avance.</div></div>
@@ -314,12 +329,29 @@
     <h2 class="sec">Horarios</h2>
     <p class="lead">Cada quien ve sus turnos de la semana. La gerencia ve el horario de todo el equipo.</p>
     <p>Los horarios se cargan desde el archivo de Excel de la tienda (el mismo formato universal que se reparte). Cada día puede estar como <strong>Laborando</strong>, <strong>Descanso</strong>, <strong>Vacaciones</strong>, <strong>Pago de día</strong> o <strong>Conteo</strong>. Usa las flechas para moverte entre semanas.</p>
+
+    <h3>Plantilla de horarios</h3>
+    <p>Si vas a empezar de cero, descarga el formato base. Trae las <strong>52 semanas de 2026</strong> repartidas en una hoja por mes, con los renglones de gerente, subgerente y asesores ya puestos. Solo hay que rellenar el número de empleado, el nombre y marcar los días.</p>
+    <p>
+      <a class="dl" href="/plantilla-horarios-2026.xlsx" download>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>
+        <span>Descargar plantilla de horarios 2026<br><span class="dl-sub">Excel · 12 hojas · 64 KB</span></span>
+      </a>
+    </p>
+    <div class="note tip">
+      <svg class="n-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2Z"/></svg>
+      <div class="n-body"><strong>No cambies los encabezados ni el orden de las columnas.</strong> La app localiza los datos por su posición: si se mueve una columna o se renombra un título, la sincronización deja de encontrarlos. Añadir gente en los renglones que ya existen sí es seguro.</div>
+    </div>
   </section>
 
   <section id="asistencia">
     <span class="eyebrow">Día a día</span>
     <h2 class="sec">Asistencia</h2>
     <p class="lead">La app lee las horas que se marcan en el POS y las convierte en asistencia, retardos y saldo de horas. No hay que capturar nada a mano.</p>
+    <figure class="shot">
+      <img src="/manual-img/asistencia.jpg" alt="Pantalla de Asistencia con los contadores del mes: 0 faltas, 3 retardos, 4 domingos y 0 festivos, y el detalle por persona con su saldo de horas" width="921" height="916" loading="lazy">
+      <figcaption>Los cuatro contadores del mes y el detalle por persona, con su saldo de horas acumulado. Datos de la tienda de demostración.</figcaption>
+    </figure>
 
     <h3>De dónde salen los datos</h3>
     <p>Del archivo de asistencia en SharePoint, de la hoja <span class="pill">APERTURA</span>, donde queda la entrada, la comida y la salida de cada quien.</p>
