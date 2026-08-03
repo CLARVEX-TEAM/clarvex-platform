@@ -1,7 +1,7 @@
 "use client";
 
-import { motion } from "framer-motion";
 import { Delete } from "lucide-react";
+import { RippleButton } from "@/components/animate-ui/RippleButton";
 
 export function NumPad({ onKey }: { onKey: (k: string) => void }) {
   const keys = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "del"] as const;
@@ -10,10 +10,10 @@ export function NumPad({ onKey }: { onKey: (k: string) => void }) {
       {keys.map((k, i) => {
         if (k === "") return <div key={`empty-${i}`} />;
         return (
-          <motion.button
+          <RippleButton
             key={k}
             type="button"
-            whileTap={{ scale: 0.85 }}
+            tapScale={0.85}
             onPointerDown={(e) => {
               e.preventDefault();
               onKey(k);
@@ -25,7 +25,7 @@ export function NumPad({ onKey }: { onKey: (k: string) => void }) {
             }`}
           >
             {k === "del" ? <Delete size={22} /> : k}
-          </motion.button>
+          </RippleButton>
         );
       })}
     </div>

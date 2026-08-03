@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { spawn, ChildProcess } from "node:child_process";
+import path from "node:path";
 import { assertSafeTestEnvironment, assertSafeDatabaseRecords } from "../helpers";
 import { PrismaClient } from "@prisma/client";
 
@@ -31,10 +32,29 @@ test("Suite de pruebas de integración con servidor de test aislado", async (t) 
   console.log(`[test] Iniciando servidor Next.js de desarrollo en puerto ${TEST_PORT}...`);
   
   // 2. Levantar el servidor en puerto separado
-  const serverProcess = spawn("npx", ["next", "dev", "-p", TEST_PORT], {
+  // Se lanza el binario local de Next con el propio Node en vez de `npx`.
+  // En Windows `spawn("npx")` falla con ENOENT (spawn no aplica PATHEXT) y
+  // `spawn("npx.cmd")` con EINVAL, porque Node bloquea lanzar .cmd sin shell
+  // desde la corrección de CVE-2024-27980. Usar `shell: true` lo sortearía,
+  // pero entonces `kill()` mata al intérprete y deja el servidor huérfano
+  // ocupando el puerto. Esta vía es idéntica en Windows, Linux y el VPS.
+  const nextBin = path.join(process.cwd(), "node_modules", "next", "dist", "bin", "next");
+  const serverProcess = spawn(process.execPath, [nextBin, "dev", "-p", TEST_PORT], {
     env: {
       ...process.env,
-      NODE_ENV: "test",
+      // `next dev` FUERZA NODE_ENV=development: el hijo nunca estará en modo
+      // test por mucho que se lo pasemos. Si encima heredara
+      // ALLOW_INTEGRATION_TEST_DATABASE=true, el guardia de lib/prisma.ts vería
+      // el par descompensado ("deben activarse juntos") y abortaría cada
+      // petición con un 500. Por eso se retira aquí.
+      //
+      // La base de pruebas se le entrega explícita. Es seguro: para llegar a
+      // esta línea ya pasó assertSafeTestEnvironment(), que exige que
+      // TEST_DATABASE_URL exista, contenga "test" y NO coincida con la
+      // DATABASE_URL de .env. Y Next no pisa variables ya presentes en el
+      // entorno al cargar los .env, así que este valor manda.
+      NODE_ENV: "development",
+      ALLOW_INTEGRATION_TEST_DATABASE: undefined,
       PORT: TEST_PORT,
       DATABASE_URL: process.env.TEST_DATABASE_URL
     }

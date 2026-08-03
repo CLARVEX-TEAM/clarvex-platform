@@ -2,8 +2,10 @@
 
 import { motion } from "framer-motion";
 import type { LucideIcon } from "lucide-react";
-import { Fingerprint, KeyRound } from "lucide-react";
+import { KeyRound } from "lucide-react";
 import type { PreAuthUser } from "@/lib/auth";
+import { AnimatedFingerprint } from "@/components/animate-ui/AnimatedFingerprint";
+import { RippleButton } from "@/components/animate-ui/RippleButton";
 
 export function GreetingStep({
   user,
@@ -63,16 +65,18 @@ export function GreetingStep({
 
       {/* Botón biometría (si tiene registrada) */}
       {user.biometricEnabled ? (
-        <motion.button
-          whileTap={{ scale: 0.97 }}
+        <RippleButton
+          tapScale={0.97}
           type="button"
           onClick={onBiometricLogin}
           disabled={busy}
           aria-label="Entrar con autenticación biométrica"
           className="mt-6 flex min-h-[3.5rem] w-full max-w-sm items-center justify-center gap-2 rounded-2xl bg-blue-600 text-[15px] font-semibold text-white shadow-[0_8px_24px_rgba(37,99,235,0.38)] transition disabled:opacity-60"
         >
-          <Fingerprint size={19} /> Entrar con Huella
-        </motion.button>
+          {/* La huella late mientras corre el reto WebAuthn: es el único aviso
+              de que el sistema está esperando al lector. */}
+          <AnimatedFingerprint size={19} animate={busy} /> Entrar con Huella
+        </RippleButton>
       ) : null}
 
       {/* Separador */}
