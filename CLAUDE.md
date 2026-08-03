@@ -646,6 +646,45 @@ oscuro. Solución: la clase **`desk-adopt`**, definida en `app/escritorio/deskto
 
 Mismo motivo por el que los Meteors se ocultan con `body:has([data-surface="desk"])`.
 
+## ⚠️ El usuario kiosko NO es un asesor
+
+El celular de la tienda (`checklistOnly: true`) está dado de alta con rol
+`ASESOR`. Filtrar por `role: "ASESOR"` a secas lo incluye, y se coló en DOCE
+consultas: salía en la plantilla de Asistencia, contaba como un asesor con cero
+venta en el resumen de cierre («Abajo: 1 asesores» una noche en que la única
+persona que trabajó SÍ llegó a su meta), y hasta recibía plan del día.
+
+Usar siempre **`ADVISOR_WHERE` / `PERSON_WHERE`** de `lib/store-people.ts`.
+
+## ⚠️ Asistencia: mes retail vs mes natural
+
+No son lo mismo y la diferencia **se paga**:
+
+- **FALTAS** → por quincena de CALENDARIO (1–15, 16–fin). La nómina va así.
+- **RETARDOS, DOMINGOS y FESTIVOS** → por **mes RETAIL**.
+
+Agosto 2026 natural trae CINCO domingos (2, 9, 16, 23 y 30) y el retail solo
+CUATRO: el 30 ya es septiembre retail. Por natural se pagaría una prima
+dominical de más por persona. En julio los dos daban los mismos cuatro, por eso
+el fallo estuvo meses invisible.
+
+`retailMonthBoundsFor()` en `lib/report-deadlines.ts` da los límites.
+
+## ⚠️ Margen DTO es un TECHO, no una meta
+
+Su «meta» es el descuento máximo permitido: pasarse es MALO. Con el semáforo
+genérico (verde si valor ≥ meta) se pintaba verde justo al excederlo.
+`isCeiling()` en `lib/kpi-view.ts` lo distingue.
+
+## ⚠️ Verificar el build SIN filtrar la salida
+
+`pnpm run build | grep -E "Compiled|Failed"` **miente**: casa con el
+«✓ Compiled successfully» del paso de compilación e ignora el error del export,
+que ocurre después. Un `useSearchParams()` sin límite de `<Suspense>` compiló
+«bien», dejó el `.next` incompleto y **tumbó producción con 502**.
+
+Mirar siempre las últimas líneas completas (`| tail -4`).
+
 ## ⚠️ Bug conocido excelJS — Arrays Sparse
 
 `row.values` en excelJS es un **array sparse**. NUNCA usar `.map()` directo — preserva huecos y causa crashes.
