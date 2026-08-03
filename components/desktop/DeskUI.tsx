@@ -4,6 +4,7 @@ import Link from "next/link";
 import type { LucideIcon } from "lucide-react";
 import { ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { fillWidth, markerPosition, paceStatus } from "@/lib/progress-pace";
 import { BlurFade } from "@/components/magic/BlurFade";
 import { BorderBeam } from "@/components/magic/BorderBeam";
 import { ShineBorder } from "@/components/magic/ShineBorder";
@@ -200,22 +201,41 @@ export function DeskButton({
  * Barra de alcance. El color nunca es la única señal: el porcentaje va siempre
  * al lado, y quien no distinga verde de ámbar lee el número igual.
  */
-export function DeskMeter({ value, className }: { value: number; className?: string }) {
-  const clamped = Math.max(0, Math.min(100, value));
-  const tone = value >= 100 ? "bg-ok" : value >= 80 ? "bg-accent" : "bg-warn";
+/**
+ * Medidor con MARCA DE RITMO opcional.
+ *
+ * Sin `pace` se comporta como antes. Con `pace`, la marca dice dónde deberías
+ * ir hoy y el color sale de compararte con ELLA, no con el 100%: el día 2 de un
+ * mes, un 33% iba en rojo aunque estuviera por delante de lo esperado.
+ */
+export function DeskMeter({ value, pace = null, className }: { value: number; pace?: number | null; className?: string }) {
+  const width = fillWidth(value, pace);
+  const marker = markerPosition(value, pace);
+  const tone = pace === null || pace === undefined
+    ? (value >= 100 ? "bg-ok" : value >= 80 ? "bg-accent" : "bg-warn")
+    : { cumplida: "bg-ok", adelante: "bg-ok", "en-ritmo": "bg-accent", atras: "bg-danger", "sin-ritmo": "bg-accent" }[paceStatus(value, pace)];
   return (
     <div
-      className={cn("h-1.5 overflow-hidden rounded-full bg-panel", className)}
+      className={cn("relative h-1.5 rounded-full bg-panel", className)}
       role="progressbar"
       aria-valuenow={value}
       aria-valuemin={0}
       aria-valuemax={100}
       aria-label="Alcance de la meta"
     >
-      <div
-        className={cn("h-full rounded-full transition-[width] duration-500 ease-out-quint", tone)}
-        style={{ width: `${clamped}%` }}
-      />
+      <div className="h-full overflow-hidden rounded-full">
+        <div
+          className={cn("h-full rounded-full transition-[width] duration-500 ease-out-quint", tone)}
+          style={{ width: `${width}%` }}
+        />
+      </div>
+      {marker !== null ? (
+        <span
+          className="pointer-events-none absolute -top-1 h-3.5 w-0.5 rounded-full bg-ink/45"
+          style={{ left: `${marker}%` }}
+          aria-hidden
+        />
+      ) : null}
     </div>
   );
 }

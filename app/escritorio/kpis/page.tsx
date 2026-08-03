@@ -16,6 +16,7 @@ const compactMoney = new Intl.NumberFormat("es-MX", {
 import type { KpiPeriod } from "@/lib/kpi-period";
 import type { KpiReportItem } from "@/lib/kpi-report";
 import type { CommissionRule, Role, User } from "@/lib/types";
+import { paceLabel, paceStatus, periodElapsed } from "@/lib/progress-pace";
 import { KPI_TABS as tabs, METRIC_ACCENT, METRIC_CONFIG, metricAchievement, metricStatus, metricStatusText, isCeiling, formatWeeksElapsed, localDateKey, type KpiTab as Tab, type KpiTarget, type MonthProjection, type MonthSalesProjection, type ReceiptLine, type ReceiptMonth } from "@/lib/kpi-view";
 import { ElectronicTicketsPanel } from "@/components/ElectronicTicketsPanel";
 import { targetValue } from "@/lib/electronic-tickets";
@@ -150,7 +151,7 @@ export default function EscritorioKpis() {
           <motion.div key={`${activeTab}-${period}-${selectedDate}`} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}>
             {activeTab === "resumen" ? (
               <>
-                <ResumenView activeKpi={activeKpi} team={report?.team ?? []} progress={progress} periodLabel={periodLabel} hasDiscountSource={report?.hasDiscountSource ?? false} latestDiscountWeek={report?.latestDiscountWeek ?? null} targets={periodTargets} isManager={isManager} onOpenTargets={() => setShowTargetSheet(true)} salesProjection={monthSalesProjection} />
+                <ResumenView activeKpi={activeKpi} team={report?.team ?? []} progress={progress} periodLabel={periodLabel} hasDiscountSource={report?.hasDiscountSource ?? false} latestDiscountWeek={report?.latestDiscountWeek ?? null} targets={periodTargets} isManager={isManager} onOpenTargets={() => setShowTargetSheet(true)} salesProjection={monthSalesProjection} periodStart={report?.startDate} periodEnd={report?.endDate} />
                 <ElectronicTicketsPanel
                   own={report?.own ?? null}
                   store={report?.store ?? null}
@@ -276,7 +277,7 @@ function PeriodBar({ period, setPeriod, selectedDate, setSelectedDate, rangeLabe
 }
 
 
-function ResumenView({ activeKpi, team, progress, periodLabel, hasDiscountSource, latestDiscountWeek, targets, isManager, onOpenTargets, salesProjection }: { activeKpi: KpiReportItem; team: KpiReportItem[]; progress: number; periodLabel: string; hasDiscountSource: boolean; latestDiscountWeek: { weekNumber: number; margin: number | null } | null; targets: KpiTarget[]; isManager: boolean; onOpenTargets: () => void; salesProjection?: MonthSalesProjection | null }) {
+function ResumenView({ activeKpi, team, progress, periodLabel, hasDiscountSource, latestDiscountWeek, targets, isManager, onOpenTargets, salesProjection , periodStart, periodEnd }: { activeKpi: KpiReportItem; team: KpiReportItem[]; progress: number; periodLabel: string; hasDiscountSource: boolean; latestDiscountWeek: { weekNumber: number; margin: number | null } | null; targets: KpiTarget[]; isManager: boolean; onOpenTargets: () => void; salesProjection?: MonthSalesProjection | null ; periodStart?: string; periodEnd?: string }) {
   const { isDark } = useTheme();
   const discountValue = activeKpi.discountMargin !== null ? `${activeKpi.discountMargin}%`
     : latestDiscountWeek?.margin !== null && latestDiscountWeek !== null ? `${latestDiscountWeek.margin}%`
@@ -285,6 +286,10 @@ function ResumenView({ activeKpi, team, progress, periodLabel, hasDiscountSource
     : latestDiscountWeek !== null ? `Semana ${latestDiscountWeek.weekNumber}`
     : hasDiscountSource ? "Sin datos este periodo" : "Vincula Descuentos POS";
 
+  // Dónde deberías ir HOY según el periodo transcurrido. El color del
+  // cumplimiento sale de esto y no del 100%: el día 2 de un mes de cuatro
+  // semanas, un 33% va POR DELANTE aunque antes se pintara en rojo.
+  const pace = periodStart && periodEnd ? periodElapsed(periodStart, periodEnd) : null;
   const getTarget = (metric: string) => targets.find((t) => t.metric === metric)?.value ?? null;
   // Delegado a lib/kpi-view: el Margen DTO es un TECHO y su semáforo va al revés.
   const semaphore = (value: number | null, metric: string) => metricStatus(value, getTarget(metric), metric);
@@ -311,13 +316,17 @@ function ResumenView({ activeKpi, team, progress, periodLabel, hasDiscountSource
             ) : null}
           </div>
 
-          <p className={cn("mt-2 text-metric font-semibold", progress >= 100 ? "text-ok" : "text-ink")}>{progress}%</p>
+          <p className={cn("mt-2 text-metric font-semibold", (() => {
+            const st = paceStatus(progress, pace);
+            return st === "cumplida" || st === "adelante" ? "text-ok" : st === "atras" ? "text-danger" : "text-ink";
+          })())}>{progress}%</p>
           <p className="mt-2 text-ui text-ink-2">{money(activeKpi.sales)} de {money(activeKpi.goal)}</p>
-          <DeskMeter value={progress} className="mt-4" />
+          <DeskMeter value={progress} pace={pace} className="mt-4" />
           <p className="mt-2 text-caption text-muted">
             {activeKpi.goal <= 0 ? "Sin meta cargada para el período"
               : remaining > 0 ? `Faltan ${money(remaining)}`
               : `Meta superada por ${money(activeKpi.sales - activeKpi.goal)}`}
+            {pace !== null && activeKpi.goal > 0 ? ` · ${paceLabel(paceStatus(progress, pace), pace)}` : ""}
           </p>
         </div>
 
@@ -332,7 +341,7 @@ function ResumenView({ activeKpi, team, progress, periodLabel, hasDiscountSource
               <p className="mt-1 text-caption text-muted">
                 Al ritmo de {formatWeeksElapsed(salesProjection.weeksElapsed)} de {salesProjection.totalWeeks} semanas
               </p>
-              <DeskMeter value={Math.min(salesProjection.achievement, 100)} className="mt-4" />
+              <DeskMeter value={salesProjection.achievement} pace={100} className="mt-4" />
             </>
           ) : (
             <h2 className="text-ui font-medium text-muted">Volumen del período</h2>
