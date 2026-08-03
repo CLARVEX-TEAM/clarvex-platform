@@ -95,6 +95,10 @@
   .steps li::before { content: counter(step); position: absolute; left: 14px; top: 14px; width: 30px; height: 30px; border-radius: 9px; background: var(--brand); color: #fff; font-weight: 800; font-size: 15px; display: grid; place-items: center; font-family: var(--font-mono); }
   .steps li strong { display: block; font-size: 15.5px; margin-bottom: 2px; }
   .steps li span { color: var(--muted); font-size: 14.5px; }
+  /* El `display:block` de arriba es para el TITULO del paso. Sin esta linea
+     tambien afecta a cualquier <strong> dentro del texto, y cada palabra
+     resaltada se parte en su propio renglon. */
+  .steps li span strong { display: inline; font-size: inherit; margin-bottom: 0; color: var(--ink); }
 
   /* Cards */
   .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin: 18px 0; }
@@ -186,6 +190,8 @@
       <li><a href="#inicio">La pantalla de inicio</a></li>
       <li><a href="#kpis">KPIs y comisiones</a></li>
       <li><a href="#horarios">Horarios</a></li>
+      <li><a href="#asistencia">Asistencia</a></li>
+      <li><a href="#bancos">Banco de horas y días</a></li>
       <li><a href="#dia">Plan del día y pendientes</a></li>
       <li><a href="#comunicacion">Chat y comunicados</a></li>
       <li><a href="#conteos">Conteos de inventario</a></li>
@@ -310,6 +316,92 @@
     <p>Los horarios se cargan desde el archivo de Excel de la tienda (el mismo formato universal que se reparte). Cada día puede estar como <strong>Laborando</strong>, <strong>Descanso</strong>, <strong>Vacaciones</strong>, <strong>Pago de día</strong> o <strong>Conteo</strong>. Usa las flechas para moverte entre semanas.</p>
   </section>
 
+  <section id="asistencia">
+    <span class="eyebrow">Día a día</span>
+    <h2 class="sec">Asistencia</h2>
+    <p class="lead">La app lee las horas que se marcan en el POS y las convierte en asistencia, retardos y saldo de horas. No hay que capturar nada a mano.</p>
+
+    <h3>De dónde salen los datos</h3>
+    <p>Del archivo de asistencia en SharePoint, de la hoja <span class="pill">APERTURA</span>, donde queda la entrada, la comida y la salida de cada quien.</p>
+    <div class="note warn">
+      <svg class="n-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4"/><path d="M12 17h.01"/><path d="M10.3 3.2 1.9 18a2 2 0 0 0 1.7 3h16.8a2 2 0 0 0 1.7-3L13.7 3.2a2 2 0 0 0-3.4 0Z"/></svg>
+      <div class="n-body"><strong>Esa hoja se sobrescribe todos los días:</strong> solo contiene la captura del día en curso. Por eso la app la baja varias veces al día y la guarda. Si se dejara para fin de mes, lo anterior ya se habría perdido.</div>
+    </div>
+
+    <h3>Los estados</h3>
+    <div class="rows">
+      <div class="row"><div class="r-key">A tiempo</div><div class="r-val">Llegó dentro de la tolerancia.</div></div>
+      <div class="row"><div class="r-key">Retardo</div><div class="r-val">Llegó tarde, ya fuera de la tolerancia.</div></div>
+      <div class="row"><div class="r-key">Falta</div><div class="r-val">No se presentó.</div></div>
+      <div class="row"><div class="r-key">Justificada</div><div class="r-val">Ausencia autorizada.</div></div>
+      <div class="row"><div class="r-key">Descanso</div><div class="r-val">Día libre según su horario.</div></div>
+      <div class="row"><div class="r-key">Vacaciones</div><div class="r-val">Descuenta del saldo de vacaciones.</div></div>
+      <div class="row"><div class="r-key">Pago de día</div><div class="r-val">Descuenta del banco de días.</div></div>
+      <div class="row"><div class="r-key">Conteo</div><div class="r-val">Jornada de inventario.</div></div>
+    </div>
+
+    <h3>La tolerancia son 14 minutos</h3>
+    <p>Con entrada a las <kbd>10:30</kbd>, llegar a las <kbd>10:44</kbd> cuenta como <strong>a tiempo</strong>. A partir de las <kbd>10:45</kbd> es retardo.</p>
+
+    <h3>Corregir a mano <span class="pill">gerencia</span></h3>
+    <p>El POS falla, alguien olvida marcar o el archivo trae texto donde debería haber una hora. Cualquier registro se puede corregir desde la app, con una nota que explique el motivo.</p>
+    <p>Toda corrección queda marcada como manual y registrada con quién la hizo y cuándo. No es desconfianza: es lo que permite defender una nómina cuando alguien la cuestiona un mes después.</p>
+
+    <h3>Faltas y retardos NO se cuentan por el mismo período</h3>
+    <p>Es la parte que más se presta a error, y cuesta dinero:</p>
+    <div class="rows">
+      <div class="row"><div class="r-key">Faltas</div><div class="r-val">Por <strong>quincena de calendario</strong> (del 1 al 15, y del 16 a fin de mes). Así va la nómina.</div></div>
+      <div class="row"><div class="r-key">Retardos, domingos y festivos</div><div class="r-val">Por <strong>mes retail</strong>, y se capturan antes de su cierre.</div></div>
+    </div>
+    <div class="note warn">
+      <svg class="n-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4"/><path d="M12 17h.01"/><path d="M10.3 3.2 1.9 18a2 2 0 0 0 1.7 3h16.8a2 2 0 0 0 1.7-3L13.7 3.2a2 2 0 0 0-3.4 0Z"/></svg>
+      <div class="n-body"><strong>Confundirlos se paga literalmente.</strong> Agosto de 2026 tiene cinco domingos en el calendario (2, 9, 16, 23 y 30) pero solo <strong>cuatro</strong> en el mes retail: el 30 ya es septiembre retail. Contarlos por calendario natural pagaría una prima dominical de más por persona.</div>
+    </div>
+  </section>
+
+  <section id="bancos">
+    <span class="eyebrow">Día a día</span>
+    <h2 class="sec">Banco de horas y días</h2>
+    <p class="lead">Tres contadores distintos, cada uno con su propia regla: horas, vacaciones y días pagados.</p>
+
+    <h3>Banco de horas</h3>
+    <p>Registra las horas que la tienda le debe a alguien, o las que esa persona debe. <strong>Positivo significa a favor del colaborador.</strong></p>
+    <p>Se calcula comparando lo que marcó contra lo que le tocaba: lo que entró antes suma, lo que salió después suma; entrar tarde o salir antes resta. Con horario de 10:30 a 21:00:</p>
+    <div class="rows">
+      <div class="row"><div class="r-key">8:00 → 21:00</div><div class="r-val"><strong>+2:30</strong> — entró dos horas y media antes: se le deben.</div></div>
+      <div class="row"><div class="r-key">10:30 → 19:00</div><div class="r-val"><strong>−2:00</strong> — salió dos horas antes: las debe.</div></div>
+      <div class="row"><div class="r-key">11:00 → 21:00</div><div class="r-val"><strong>−0:30</strong> — pidió entrar más tarde.</div></div>
+      <div class="row"><div class="r-key">10:30 → 22:00</div><div class="r-val"><strong>+1:00</strong> — se quedó una hora más.</div></div>
+    </div>
+    <p>Tres reglas evitan sorpresas:</p>
+    <ol class="steps">
+      <li><strong>Dentro de la tolerancia, el saldo no se mueve</strong><span>Llegar a las 10:36 no es deber 6 minutos: es llegar a tiempo. Contarlo generaba saldos negativos a gente puntual.</span></li>
+      <li><strong>Al salirse de la tolerancia se cuenta completo</strong><span>Quien entra a las 11:00 debe 30 minutos, no 16.</span></li>
+      <li><strong>El redondeo va a favor del colaborador</strong><span>Cuando la marca cae dentro de la tolerancia se ajusta a la media hora cerrada más cercana: llegar a las 8:11 cuenta como haber entrado a las 8:00.</span></li>
+    </ol>
+    <div class="note tip">
+      <svg class="n-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2Z"/></svg>
+      <div class="n-body">Si no se marcó la salida, esa mitad simplemente no se cuenta. Nadie sale castigado con un saldo negativo enorme por un olvido del POS.</div>
+    </div>
+
+    <h3>Vacaciones</h3>
+    <p>El saldo que ves <strong>no</strong> es el número que gerencia capturó: es el real, calculado en el momento.</p>
+    <div class="rows">
+      <div class="row"><div class="r-key">Saldo capturado</div><div class="r-val">El que gerencia registró, con su <strong>fecha de corte</strong>.</div></div>
+      <div class="row"><div class="r-key">+ Ganados</div><div class="r-val">Los días que se sumaron en los aniversarios posteriores a esa fecha.</div></div>
+      <div class="row"><div class="r-key">− Tomados</div><div class="r-val">Las vacaciones disfrutadas desde esa fecha.</div></div>
+      <div class="row"><div class="r-key">= Disponible</div><div class="r-val">Lo que de verdad queda hoy. Es el número que manda, también al validar una solicitud.</div></div>
+    </div>
+    <p>La <strong>fecha de corte</strong> es la clave: el saldo capturado ya descuenta todo lo anterior a ella, así que solo se cuenta lo que pasó después. Sin esa frontera, las vacaciones viejas se restarían dos veces.</p>
+    <div class="note tip">
+      <svg class="n-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2Z"/></svg>
+      <div class="n-body">Las vacaciones <strong>futuras</strong> ya capturadas en Horarios se muestran aparte y todavía no se descuentan: aún no se han tomado.</div>
+    </div>
+
+    <h3>Días pagados</h3>
+    <p>Un contador propio, independiente de las vacaciones. Al usarse, ese día aparece en asistencia como <strong>Pago de día</strong>.</p>
+  </section>
+
   <section id="dia">
     <span class="eyebrow">Día a día</span>
     <h2 class="sec">Plan del día y pendientes</h2>
@@ -432,14 +524,87 @@
       <div class="n-body">Si un asesor no aparece con sus ventas, revisa que su número de empleado en la app <strong>coincida exactamente</strong> con el del RDV. El Centro de Datos te muestra los “no encontrados” tras sincronizar.</div>
     </div>
 
-    <h3>Centro de datos</h3>
-    <p>Es donde se conecta el archivo del RDV y los horarios. Tras cualquier cambio en esos archivos, entra y pulsa <strong>“Sincronizar ahora”</strong> para que la app tome los datos frescos. Ahí también ves cuándo fue la última sincronización y si faltó dar de alta a alguien.</p>
+    <h3>Centro de datos: conectar SharePoint</h3>
+    <p>La app no captura las ventas a mano: las lee de los archivos de Excel que ya existen en SharePoint. El Centro de Datos es donde se le dice de dónde sacarlos.</p>
+
+    <p><strong>Los siete tipos de fuente</strong>, cada uno alimenta una parte distinta:</p>
+    <div class="rows">
+      <div class="row"><div class="r-key">KPIs</div><div class="r-val">Venta, tickets, piezas y tráfico diarios (el RDV).</div></div>
+      <div class="row"><div class="r-key">Metas</div><div class="r-val">Metas diarias por persona y de tienda.</div></div>
+      <div class="row"><div class="r-key">Comisiones</div><div class="r-val">Mínimos de comisión por persona y de tienda.</div></div>
+      <div class="row"><div class="r-key">Horarios</div><div class="r-val">Turnos del equipo.</div></div>
+      <div class="row"><div class="r-key">Asistencia</div><div class="r-val">Entradas y salidas marcadas en el POS.</div></div>
+      <div class="row"><div class="r-key">Descuentos POS</div><div class="r-val">Margen DTO: venta bruta y descuento por semana.</div></div>
+      <div class="row"><div class="r-key">Comunicados</div><div class="r-val">Avisos.</div></div>
+    </div>
+
+    <h3>Paso 1: compartir el archivo con un enlace que abra sin sesión</h3>
+    <p>Esta es la parte que más se atora, y conviene entender por qué. La app <strong>no entra a SharePoint con tu usuario</strong>: descarga el archivo desde un servidor, sin sesión de nadie. Por eso el enlace tiene que ser de los que abren <strong>sin pedir iniciar sesión</strong>.</p>
+    <p>El enlace normal de una cuenta corporativa <strong>no sirve</strong>: por defecto es de tipo “Personas de la organización”, y eso exige un usuario de Microsoft. Hay que cambiarlo:</p>
+    <ol class="steps">
+      <li><strong>Abre el archivo en Excel, SharePoint o Teams</strong><span>Tiene que ser el archivo, no la carpeta que lo contiene.</span></li>
+      <li><strong>Pulsa Compartir</strong><span>Arriba a la derecha. Se abre el cuadro de “Enviar vínculo”.</span></li>
+      <li><strong>Abre la configuración del vínculo</strong><span>Toca el renglón que dice a quién aplica —algo como <strong>“Personas de [tu empresa] con el vínculo pueden editar”</strong>—, o el engrane. Ahí se elige el tipo de vínculo.</span></li>
+      <li><strong>Elige “Cualquier persona con el vínculo”</strong><span>En inglés, <strong>Anyone with the link</strong>. Es la única opción que no pide iniciar sesión. Si aparece en gris, ve al aviso de abajo.</span></li>
+      <li><strong>Quita el permiso de edición</strong><span>Desmarca <strong>“Permitir la edición”</strong> para que quede en <strong>solo lectura</strong>. La app únicamente necesita leer, y así nadie puede alterar el archivo con ese enlace.</span></li>
+      <li><strong>Aplica y copia el vínculo</strong><span>Pulsa <strong>Aplicar</strong> y luego <strong>Copiar vínculo</strong>.</span></li>
+    </ol>
+
+    <div class="note tip">
+      <svg class="n-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2Z"/></svg>
+      <div class="n-body"><strong>La prueba definitiva, en 10 segundos.</strong> Abre una <strong>ventana de incógnito</strong> y pega ahí el enlace. Si el archivo se ve sin pedirte usuario ni contraseña, servirá. Si te manda a la pantalla de inicio de sesión de Microsoft, la app tampoco va a poder entrar — por muy bien que se vea desde tu computadora, donde ya estás con la sesión abierta.</div>
+    </div>
+
+    <div class="note warn">
+      <svg class="n-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4"/><path d="M12 17h.01"/><path d="M10.3 3.2 1.9 18a2 2 0 0 0 1.7 3h16.8a2 2 0 0 0 1.7-3L13.7 3.2a2 2 0 0 0-3.4 0Z"/></svg>
+      <div class="n-body"><strong>Si “Cualquier persona” aparece en gris o no aparece.</strong> No es un error tuyo: muchas empresas lo tienen desactivado a nivel de organización. Solo lo puede habilitar el área de sistemas, desde el centro de administración de SharePoint, en las opciones de uso compartido externo. Es lo que hay que pedirles textualmente: <em>“habilitar los vínculos de tipo Cualquier persona (Anyone) para este sitio”</em>. Sin eso, la app no podrá leer el archivo.</div>
+    </div>
+
+    <div class="note warn">
+      <svg class="n-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4"/><path d="M12 17h.01"/><path d="M10.3 3.2 1.9 18a2 2 0 0 0 1.7 3h16.8a2 2 0 0 0 1.7-3L13.7 3.2a2 2 0 0 0-3.4 0Z"/></svg>
+      <div class="n-body"><strong>Ojo con la fecha de caducidad.</strong> Muchas empresas ponen que estos vínculos expiren solos a los 30, 60 o 90 días. El día que caduca, la app deja de sincronizar <strong>sin avisar de la causa</strong>: los datos simplemente se quedan viejos. Si una fuente llevaba meses funcionando y de pronto deja de hacerlo, revisa esto primero. Se resuelve generando el vínculo otra vez y pegando el nuevo.</div>
+    </div>
+
+    <div class="note tip">
+      <svg class="n-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2Z"/></svg>
+      <div class="n-body"><strong>Compartir el archivo no lo vuelve público en internet.</strong> El vínculo es una cadena larga e imposible de adivinar, y no se indexa en buscadores: solo llega quien lo tenga. Aun así, trátalo como una llave — con solo lectura activado, quien lo tenga puede ver el archivo, así que no lo publiques en grupos abiertos.</div>
+    </div>
+
+    <h3>Paso 2: vincularlo en la app</h3>
+    <ol class="steps">
+      <li><strong>Centro de Datos → Vincular fuente</strong><span>Elige el tipo de la lista de arriba y el proveedor <strong>SharePoint</strong>. También existe <strong>Excel</strong> (archivo con URL directa) y <strong>Manual</strong> (sin archivo: se captura dentro de la app).</span></li>
+      <li><strong>Pega el vínculo que copiaste</strong><span>El del paso anterior, el de “Cualquier persona”. Debe apuntar al <span class="pill">.xlsx</span> concreto: un enlace a la carpeta no sirve.</span></li>
+      <li><strong>Elige la frecuencia</strong><span>Manual, cada hora, diaria o semanal. La asistencia conviene dejarla frecuente, porque su hoja se sobrescribe a diario.</span></li>
+      <li><strong>Guarda y pulsa “Sincronizar ahora”</strong><span>Así compruebas en el momento que funciona, sin esperar al siguiente ciclo automático.</span></li>
+    </ol>
+
+    <div class="note warn">
+      <svg class="n-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4"/><path d="M12 17h.01"/><path d="M10.3 3.2 1.9 18a2 2 0 0 0 1.7 3h16.8a2 2 0 0 0 1.7-3L13.7 3.2a2 2 0 0 0-3.4 0Z"/></svg>
+      <div class="n-body"><strong>Por qué a veces no basta con pegar el enlace.</strong> SharePoint no le entrega el archivo a un servidor cualquiera: exige una sesión. Entre la app y SharePoint hay un intermediario que se encarga de eso. Está configurado a nivel de servidor, no por tienda: si nunca se configuró, <strong>ninguna</strong> fuente de SharePoint sincronizará por correcto que sea el enlace, y eso se resuelve del lado técnico.</div>
+    </div>
+
+    <p>Cada fuente muestra su estado y la fecha de la última sincronización, además de los asesores <strong>“no encontrados”</strong>. <strong>Tras cualquier cambio en los archivos hay que sincronizar</strong>: la app no se entera sola al instante.</p>
 
     <h3>Reportes: cierre semanal en Excel</h3>
     <p>En <strong>KPIs → vista Semana → Exportar reporte</strong> descargas el cierre con el mismo formato de tienda: alcance con estrella, pérdidas por EPT/UPT/AUR, indicador a trabajar y la sección de WhatsApp. Cada domingo por la mañana también llega solo por notificación y al chat del equipo.</p>
 
     <h3>Comisiones y metas internas</h3>
-    <p>Los porcentajes de comisión los define administración por zonificación. Tú puedes capturar <strong>metas internas</strong> (UPT, AUR, conversión…) y el <strong>PPTO de WhatsApp</strong> de la semana desde KPIs → Metas internas.</p>
+    <p>Los porcentajes de comisión los define administración por zonificación. La <strong>meta de venta</strong> viene del archivo y tampoco se edita aquí.</p>
+    <p>Lo que sí capturas tú son las <strong>metas internas</strong> de tienda, desde <strong>KPIs → Metas internas</strong>. Cada una se fija por <strong>semana</strong> o por <strong>mes</strong>, y al volver a guardarla sustituye a la anterior:</p>
+    <div class="rows">
+      <div class="row"><div class="r-key">UPT</div><div class="r-val">Unidades por ticket.</div></div>
+      <div class="row"><div class="r-key">AUR</div><div class="r-val">Precio promedio por pieza.</div></div>
+      <div class="row"><div class="r-key">EPT</div><div class="r-val">Venta por ticket.</div></div>
+      <div class="row"><div class="r-key">Conversión</div><div class="r-val">Porcentaje de visitantes que compran.</div></div>
+      <div class="row"><div class="r-key">Cumplimiento</div><div class="r-val">Porcentaje de alcance de la meta.</div></div>
+      <div class="row"><div class="r-key">Margen DTO</div><div class="r-val">El descuento <strong>máximo permitido</strong> (ver aviso abajo).</div></div>
+      <div class="row"><div class="r-key">WhatsApp</div><div class="r-val">El PPTO de la semana.</div></div>
+      <div class="row"><div class="r-key">Ticket electrónico</div><div class="r-val">Son <strong>dos</strong> metas: una de tienda y otra de asesor. Gerencia se mide contra la de tienda; la de asesor es la misma para todos.</div></div>
+    </div>
+    <div class="note warn">
+      <svg class="n-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4"/><path d="M12 17h.01"/><path d="M10.3 3.2 1.9 18a2 2 0 0 0 1.7 3h16.8a2 2 0 0 0 1.7-3L13.7 3.2a2 2 0 0 0-3.4 0Z"/></svg>
+      <div class="n-body"><strong>El Margen DTO es un techo, no una meta.</strong> En los demás indicadores, más es mejor. En este <strong>pasarse es malo</strong>: su “meta” es el descuento máximo permitido. Por eso el semáforo se invierte y se pone en rojo al superarlo, no al quedarse corto.</div>
+    </div>
   </section>
 
   <section id="admin">
@@ -447,11 +612,25 @@
     <h2 class="sec">Administración de plataforma</h2>
     <p class="lead">El panel <span class="pill">/admin</span> es el centro de control de todas las tiendas.</p>
     <div class="rows">
-      <div class="row"><div class="r-key">Nueva tienda</div><div class="r-val">Crea la tienda y su gerente; el gerente entra con su número y crea su PIN.</div></div>
+      <div class="row"><div class="r-key">Nueva tienda</div><div class="r-val">Crea la tienda y su gerente. <strong>Después hay que emitirle un enlace de PIN</strong> (ver abajo): en una tienda recién creada no puede crearlo por su cuenta.</div></div>
+      <div class="row"><div class="r-key">Enlace de PIN</div><div class="r-val">El botón de la <strong>llave</strong> junto a cada persona genera un enlace para que fije su propio PIN.</div></div>
       <div class="row"><div class="r-key">Equipo y roles</div><div class="r-val">Cambia el rol de cualquier miembro (Gerente / Subgerente / Asesor) y elimina cuentas desactivadas.</div></div>
       <div class="row"><div class="r-key">Comisiones</div><div class="r-val">Ajusta el % por alcance de cada tienda según su zonificación.</div></div>
       <div class="row"><div class="r-key">Suscripción</div><div class="r-val">Marca la tienda como exenta o de pago, con su fecha de vigencia.</div></div>
       <div class="row"><div class="r-key">Panel y auditoría</div><div class="r-val">Venta consolidada de todas las tiendas y bitácora de quién cambió qué.</div></div>
+    </div>
+
+    <h3>Tienda nueva: la gerente no puede crear su PIN</h3>
+    <p>Crear un PIN desde la pantalla de acceso exige que <strong>ya haya</strong> una sesión de gerencia de esa misma tienda abierta. En una tienda recién creada no hay nadie dentro, así que nadie puede autorizar a nadie: sin ayuda, la cuenta queda inservible.</p>
+    <ol class="steps">
+      <li><strong>Despliega la tienda en el panel</strong><span>Localiza a la persona en la lista de miembros.</span></li>
+      <li><strong>Pulsa el botón de la llave</strong><span>Aparece un enlace, con un botón para copiarlo.</span></li>
+      <li><strong>Pásaselo</strong><span>Por WhatsApp o como sea más cómodo.</span></li>
+      <li><strong>Ella elige su propio PIN</strong><span>Abre el enlace y lo fija. Ya puede entrar con normalidad.</span></li>
+    </ol>
+    <div class="note tip">
+      <svg class="n-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2Z"/></svg>
+      <div class="n-body"><strong>Quien emite el enlace nunca conoce el PIN</strong>, así que en ningún momento puede entrar suplantando a esa persona. El enlace <strong>caduca a los 30 minutos</strong> y sirve <strong>una sola vez</strong>. Al usarlo se desbloquea la cuenta y se cierran las sesiones anteriores. Sirve igual para quien nunca tuvo PIN que para quien lo olvidó, y queda registrado en la auditoría.</div>
     </div>
   </section>
 
@@ -470,6 +649,14 @@
       <div class="row"><div class="r-key">Datos en cero o viejos</div><div class="r-val">Falta <strong>sincronizar</strong> el RDV (Centro de Datos) o el asesor no está dado de alta con su número exacto.</div></div>
       <div class="row"><div class="r-key">No aparece un asesor</div><div class="r-val">Verifica su número de empleado en Equipo. Revisa la tarjeta de “no encontrados” tras sincronizar.</div></div>
       <div class="row"><div class="r-key">PIN bloqueado</div><div class="r-val">Espera 15 minutos o pide a tu gerencia que te ayude a restablecerlo.</div></div>
+      <div class="row"><div class="r-key">No llega el correo para restablecer el PIN</div><div class="r-val">Casi seguro tu cuenta tiene un correo inventado del tipo <span class="pill">81893@clarvex.local</span>, al que no llega nada. Pide a administración un <strong>enlace de PIN</strong>, y de paso registra tu correo real en tu perfil.</div></div>
+      <div class="row"><div class="r-key">Una gerente de tienda nueva no puede entrar</div><div class="r-val">Es el caso previsto: necesita un <strong>enlace de PIN</strong> desde el panel de administración.</div></div>
+      <div class="row"><div class="r-key">Una fuente de SharePoint nunca sincroniza</div><div class="r-val">Lo más común: el vínculo es de “Personas de la organización” y pide iniciar sesión. Pégalo en una <strong>ventana de incógnito</strong>: si te pide usuario, ese es el problema. Vuelve a compartirlo como <strong>“Cualquier persona con el vínculo”</strong>. También revisa que apunte al <span class="pill">.xlsx</span> y no a la carpeta. Si fallan <strong>todas</strong> a la vez, es el intermediario del lado técnico.</div></div>
+      <div class="row"><div class="r-key">Sincronizaba bien y de pronto dejó de hacerlo</div><div class="r-val">Casi seguro <strong>caducó el vínculo</strong>: muchas empresas los expiran a los 30 o 90 días. Genera uno nuevo y pégalo.</div></div>
+      <div class="row"><div class="r-key">Aparece “—” en un indicador</div><div class="r-val">No hay dato para ese período, y es correcto: un cero diría “vendimos cero”, que es distinto. La conversión en blanco suele ser falta de tráfico.</div></div>
+      <div class="row"><div class="r-key">El Margen DTO se ve en rojo</div><div class="r-val">Correcto: es un techo. Rojo significa que se pasó del descuento permitido.</div></div>
+      <div class="row"><div class="r-key">Los domingos del mes no cuadran</div><div class="r-val">Se están contando por calendario natural en vez de por <strong>mes retail</strong>.</div></div>
+      <div class="row"><div class="r-key">Un saldo de horas parece mal</div><div class="r-val">Revisa si falta la marca de salida y si la desviación entra en la tolerancia de 14 minutos.</div></div>
       <div class="row"><div class="r-key">No llegan notificaciones</div><div class="r-val">Revisa que estén permitidas en los ajustes del sistema para la app instalada.</div></div>
     </div>
   </section>
