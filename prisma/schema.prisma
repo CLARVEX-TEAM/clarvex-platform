@@ -20,6 +20,17 @@ model Store {
   /// tienda para poder contrastarla después con el documento de central. NO
   /// interviene en el cálculo: la comisión sale de las CommissionRule.
   commissionTier        String?
+  /// Contra qué se mide el alcance de comisión.
+  ///
+  /// `MINIMO` (venta ÷ mínimo) es el histórico y el valor por defecto, así que
+  /// las tiendas que ya existen no cambian de comportamiento. `META`
+  /// (venta ÷ meta) lo usa GUESS: su propio RDV lo dice literalmente
+  /// —«Cumpl % = Venta / Meta»— y con el otro denominador un 90 % de meta
+  /// saltaría al tramo de porcentaje y pagaría menos de la mitad.
+  ///
+  /// El valor por defecto es el conservador a propósito: si alguien da de alta
+  /// una tienda y olvida configurarlo, se comporta como siempre.
+  commissionBasis       CommissionBasis @default(MINIMO)
   announcements         Announcement[]
   chatRooms             ChatRoom[]
   checklistEntries      ChecklistEntry[]
@@ -667,6 +678,11 @@ model CommissionSeason {
 enum CommissionPayoutType {
   PERCENT
   FIXED
+}
+
+enum CommissionBasis {
+  MINIMO
+  META
 }
 
 model Announcement {

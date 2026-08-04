@@ -80,6 +80,28 @@ export function findCommissionRule(rules: CommissionRule[], role: Role, achievem
 // mínimo da 115%). Se usa cuando el RDV no trae un mínimo sincronizado explícito.
 export const MINIMUM_TO_GOAL_FACTOR = 1.15;
 
+export type CommissionBasis = "MINIMO" | "META";
+
+/**
+ * Contra QUÉ se mide el alcance de comisión.
+ *
+ * Hay un único sitio donde se decide, y todos los cálculos lo usan. Repartir
+ * esta decisión sería la forma más fácil de que el simulador y el recibo
+ * acabaran diciendo cosas distintas.
+ *
+ * - `MINIMO` (histórico): venta ÷ mínimo. Es el de todas las marcas menos GUESS.
+ * - `META` (GUESS): venta ÷ meta. Lo dice su propio RDV: «Cumpl % = Venta / Meta».
+ *
+ * La diferencia NO es cosmética. Con meta = 268 974 y un gerente al 90 %:
+ * contra meta cae en el escalón 90–95 y cobra un fijo de 10 619; contra mínimo
+ * ese mismo 90 % se convierte en 103 % y cobra el 1.611 % de la venta, unos
+ * 3 900. Elegir mal el denominador es pagar menos de la mitad.
+ */
+export function commissionReference(input: { goal: number; minimum?: number | null; basis?: CommissionBasis | null }): number {
+  if (input.basis === "META") return input.goal > 0 ? input.goal : 0;
+  return resolveCommissionMinimum(input.minimum, input.goal);
+}
+
 /** Mínimo de comisión: el sincronizado si existe (>0), si no se deriva de la meta. */
 export function resolveCommissionMinimum(commissionMinimum: number | null | undefined, goal: number): number {
   if (commissionMinimum && commissionMinimum > 0) return commissionMinimum;
@@ -115,9 +137,9 @@ export type AccruedCommission = {
   amount: number;
   /** Tasa del bracket vigente, en %. Vale 0 si el bracket paga importe fijo. */
   percent: number;
-  /** Alcance de comisión (venta ÷ mínimo), en %. */
+  /** Alcance de comisión, en %. Venta ÷ la referencia de abajo. */
   achievement: number;
-  /** Mínimo usado (el sincronizado o el derivado de la meta). */
+  /** Referencia usada: el mínimo, o la META si la tienda es de base META. */
   minimum: number;
   /** Cómo paga el bracket alcanzado. Sin bracket, "PERCENT" con importe 0. */
   payoutType: CommissionPayoutType;
@@ -135,8 +157,10 @@ export type AccruedCommission = {
  * comisión: sirve para mostrar "la comisión que llevo" sin depender de que el
  * RDV traiga commissionAmount poblado (a veces llega en 0).
  */
-export function accruedCommission(input: { sales: number; goal: number; minimum?: number | null; rules: CommissionRule[]; role: Role; highSeason?: boolean }): AccruedCommission {
-  const minimum = resolveCommissionMinimum(input.minimum, input.goal);
+export function accruedCommission(input: { sales: number; goal: number; minimum?: number | null; rules: CommissionRule[]; role: Role; highSeason?: boolean; basis?: CommissionBasis | null }): AccruedCommission {
+  // `minimum` conserva su nombre en la salida por compatibilidad, pero lo que
+  // lleva es la REFERENCIA contra la que se mide: el mínimo, o la meta en GUESS.
+  const minimum = commissionReference(input);
   const achievement = minimum > 0 ? (input.sales / minimum) * 100 : 0;
   const rule = findCommissionRule(input.rules, input.role, achievement);
   return {
@@ -228,8 +252,10 @@ export function buildCommissionSimulation(input: {
   simulatedSales?: number;
   /** Temporada alta del periodo simulado. Cambia el importe de los brackets fijos. */
   highSeason?: boolean;
+  /** Contra qué se mide el alcance. Sin valor, contra el mínimo (histórico). */
+  basis?: CommissionBasis | null;
 }): CommissionSimulation {
-  const minimum = resolveCommissionMinimum(input.minimum, input.goal);
+  const minimum = commissionReference(input);
   const sliderMin = Math.round(Math.max(0, input.sales));
   // El deslizador tiene que poder llegar al bracket más alto del rol. Si se queda
   // corto, moverlo de tope a tope nunca cambia la tasa y el simulador no simula.
@@ -239,7 +265,7 @@ export function buildCommissionSimulation(input: {
   const topSales = minimum > 0 && topAchievement > 0 ? minimum * (topAchievement / 100) : 0;
   const sliderMax = Math.max(sliderMin + 10_000, Math.round(input.goal * 1.5), Math.round(topSales * 1.1));
   const simulatedSales = Math.min(Math.max(input.simulatedSales ?? sliderMin, sliderMin), sliderMax);
-  const scope = { goal: input.goal, minimum: input.minimum, rules: input.rules, role: input.role, highSeason: input.highSeason };
+  const scope = { goal: input.goal, minimum: input.minimum, rules: input.rules, role: input.role, highSeason: input.highSeason, basis: input.basis };
   const real = accruedCommission({ ...scope, sales: input.sales });
   const simulated = accruedCommission({ ...scope, sales: simulatedSales });
   return {
@@ -275,6 +301,10 @@ export type MonthlyCommissionProjection = {
  */
 export function projectMonthlyCommission(input: {
   salesToDate: number;
+  /**
+   * REFERENCIA acumulada del periodo: el mínimo, o la meta si la tienda mide
+   * contra META. Quien llama ya resolvió cuál toca (`commissionReference`).
+   */
   minimumToDate: number;
   weeksElapsed: number;
   totalWeeks: number;

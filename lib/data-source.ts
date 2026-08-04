@@ -30,7 +30,11 @@ export type ScheduleSyncMetrics = {
 };
 
 export type KpiSyncMetrics = {
-  sheetUsed: "Diario de ventas";
+  /**
+   * Hoja de la que salieron los datos. Hay dos formatos de RDV: el histórico
+   * usa «Diario de ventas» y el de GUESS usa «Captura».
+   */
+  sheetUsed: string;
   weeksDetected: Array<{ weekNumber: number; weekStart: string; weekEnd: string }>;
   // Números de empleado en el orden de columnas del RDV (gerente primero,
   // luego subgerentes y vendedores). Se usa para ordenar el cierre semanal.

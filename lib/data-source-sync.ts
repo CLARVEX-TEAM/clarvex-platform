@@ -2,6 +2,7 @@ import type { DataSource } from "@prisma/client";
 import { encodeSyncLogMessage, getNextSyncAt, serializeDataSource, type AttendanceSyncMetrics, type DiscountSyncMetrics, type KpiSyncMetrics, type ScheduleSyncMetrics } from "@/lib/data-source";
 import { downloadExcelWorkbook, summarizeWorkbook } from "@/lib/excel-proxy";
 import { buildUserByEmployeeNumber } from "@/lib/employee-match";
+import { isGuessRdvWorkbook, parseGuessCaptura } from "@/lib/guess-rdv";
 import { parseKpiWorkbook } from "@/lib/kpi-parser";
 import { parsePosDiscountWorkbook } from "@/lib/pos-discount-parser";
 import { prisma } from "@/lib/prisma";
@@ -134,7 +135,13 @@ export async function syncDataSource(source: DataSource): Promise<SyncOutcome> {
 }
 
 async function importKpis(workbook: Parameters<typeof parseKpiWorkbook>[0], storeId: string): Promise<KpiSyncMetrics> {
-  const parsed = parseKpiWorkbook(workbook);
+  // Hay DOS formatos de RDV y se eligen por la forma del archivo, no por un
+  // ajuste que alguien deba marcar al vincular la fuente: un formato mal
+  // configurado a mano daría un error incomprensible meses después.
+  //
+  // El de GUESS se reconoce por sus hojas «Captura» y «Tabulador», que el RDV
+  // histórico no tiene. Ante la duda manda el de siempre.
+  const parsed = isGuessRdvWorkbook(workbook) ? parseGuessCaptura(workbook) : parseKpiWorkbook(workbook);
   logParsedKpiWeeks(parsed);
   const users = parsed.employeeNumbers.length > 0
     ? await prisma.user.findMany({

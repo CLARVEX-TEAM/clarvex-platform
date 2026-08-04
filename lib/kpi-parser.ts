@@ -29,7 +29,11 @@ export type ParsedKpiRecord = {
 };
 
 export type KpiParseResult = {
-  sheetUsed: typeof RDV_SHEET_NAME;
+  /**
+   * Hoja de la que salieron los datos. Es texto libre porque hay dos formatos:
+   * el RDV histórico usa «Diario de ventas» y el de GUESS usa «Captura».
+   */
+  sheetUsed: string;
   records: ParsedKpiRecord[];
   employeeNumbers: string[];
   weeksDetected: RdvWeekRange[];
