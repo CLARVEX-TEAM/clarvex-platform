@@ -9,7 +9,7 @@ import { UpdatePrompt } from "@/components/UpdatePrompt";
 import { OfflineBanner } from "@/components/OfflineBanner";
 import { WhatsNewModal } from "@/components/WhatsNewModal";
 import { TermsGate } from "@/components/TermsGate";
-import { GuessSchemeGate } from "@/components/GuessSchemeGate";
+import { GuessSchemeNotice } from "@/components/GuessSchemeNotice";
 import { DesktopRouteGuard } from "@/components/desktop/DesktopRouteGuard";
 import { ClarvexCopilot } from "@/components/ClarvexCopilot";
 import { DemoBanner } from "@/components/DemoBanner";
@@ -78,7 +78,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <TermsGate />
             {/* Después de TermsGate a propósito: primero se aceptan los
                 documentos legales, y solo entonces se pide capturar nada. */}
-            <GuessSchemeGate />
+            <GuessSchemeNotice />
             <PageTransition>{children}</PageTransition>
             <WhatsNewModal />
             <ClarvexCopilot />
