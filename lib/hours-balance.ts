@@ -1,4 +1,4 @@
-import { TOLERANCE_MINUTES, toMinutes } from "@/lib/attendance";
+import { CUTOFF_MINUTES, TOLERANCE_MINUTES, toMinutes } from "@/lib/attendance";
 import type { AttendanceStatus } from "@/lib/attendance";
 
 /**
@@ -75,12 +75,22 @@ function entryCredit(expectedEntry: number, arrived: number, status: AttendanceS
   // como retardo aparte (reporte mensual); descontarle horas además sería
   // castigarlo dos veces.
   //
-  // Excepciones que SÍ descuentan la entrada tarde:
-  //  - EXCUSED: entrada tarde CON PERMISO (se acordó cambiar la jornada).
-  //  - INVENTORY (conteo): día laborable SIN concepto de retardo (nadie se
-  //    regresa a casa), así que la entrada tarde no se penaliza como retardo —
-  //    va directo al banco de horas. Entró 12:00 en conteo → −1:30.
-  return status === "EXCUSED" || status === "INVENTORY" ? expectedEntry - arrived : 0;
+  // EXCUSED: entrada tarde CON PERMISO. No es retardo, se acordó cambiar la
+  // jornada, así que sí se descuenta.
+  if (status === "EXCUSED") return expectedEntry - arrived;
+
+  // INVENTORY (conteo): día laborable, y hasta el corte se trata como cualquier
+  // otro — es RETARDO y por tanto NO toca el banco. Lo que el conteo no tiene es
+  // falta: a nadie se le regresa a casa. Por eso, pasado el corte, en vez de
+  // falta se entiende como jornada acordada y ahí sí descuenta.
+  //   Entró 10:47 (17 min) → retardo, banco +0:00
+  //   Entró 13:00 (150 min) → sin falta, banco −2:30
+  // La frontera es la misma que usa `countsAsLate` en lib/attendance.ts.
+  if (status === "INVENTORY") {
+    return arrived - expectedEntry >= CUTOFF_MINUTES ? expectedEntry - arrived : 0;
+  }
+
+  return 0;
 }
 
 /** Días en los que no se esperaba a la persona: no generan saldo.

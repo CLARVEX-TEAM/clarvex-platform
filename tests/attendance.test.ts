@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { classifyArrival, classifyDay, earnsSundayPremium, toMinutes } from "../lib/attendance";
+import { classifyArrival, classifyDay, countsAsLate, earnsSundayPremium, toMinutes } from "../lib/attendance";
+import { dayBalanceMinutes } from "../lib/hours-balance";
 
 // Horario estándar de la tienda.
 const E = "10:30";
@@ -85,6 +86,34 @@ test("con horario de trabajo, la llegada se juzga normal", () => {
   assert.equal(classifyDay({ scheduled: "WORKING", expected: E, arrived: "10:37" }).status, "ON_TIME");
   assert.equal(classifyDay({ scheduled: "WORKING", expected: E, arrived: "10:45" }).status, "LATE");
   assert.equal(classifyDay({ scheduled: "WORKING", expected: E, arrived: "11:00" }).status, "ABSENT");
+});
+
+test("en CONTEO la llegada tarde es retardo, no una deuda de horas", () => {
+  // Caso real: 4-ago-2026, día de conteo. Jazmín entró 10:47 (17 min tarde) y la
+  // app no le puso retardo — le cobró −0:17 al banco de horas. El conteo es día
+  // laborable: hasta el corte se juzga igual que cualquier otro día.
+  const jazmin = classifyDay({ scheduled: "INVENTORY", expected: E, arrived: "10:47" });
+  assert.equal(jazmin.status, "INVENTORY");
+  assert.equal(jazmin.minutesLate, 17);
+  assert.equal(countsAsLate(jazmin), true);
+  // Y no se le cobra dos veces: el banco no se mueve.
+  assert.equal(dayBalanceMinutes({ status: "INVENTORY", expectedEntry: E, expectedExit: "21:00", arrivedAt: "10:47", leftAt: "21:00" }), 0);
+
+  // Dentro de la tolerancia sigue sin ser nada.
+  const puntual = classifyDay({ scheduled: "INVENTORY", expected: E, arrived: "10:42" });
+  assert.equal(countsAsLate(puntual), false);
+
+  // Pasado el corte NO es falta (en conteo nadie se regresa a casa) y tampoco
+  // retardo: es jornada acordada y se descuenta del banco. Itzel entró 13:00.
+  const itzel = classifyDay({ scheduled: "INVENTORY", expected: E, arrived: "13:00" });
+  assert.equal(itzel.status, "INVENTORY");
+  assert.equal(countsAsLate(itzel), false);
+  assert.equal(dayBalanceMinutes({ status: "INVENTORY", expectedEntry: E, expectedExit: "21:00", arrivedAt: "13:00", leftAt: "21:00" }), -150);
+});
+
+test("el retardo de un día normal nunca toca el banco de horas", () => {
+  // Contraste con el conteo: 3-ago Jazmín entró 10:56 y quedó LATE con banco en 0.
+  assert.equal(dayBalanceMinutes({ status: "LATE", expectedEntry: E, expectedExit: "21:00", arrivedAt: "10:56", leftAt: "21:00" }), 0);
 });
 
 test("sin horario cargado se juzga solo por la llegada (no se inventa descanso)", () => {

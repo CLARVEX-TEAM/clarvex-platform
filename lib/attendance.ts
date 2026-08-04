@@ -118,6 +118,20 @@ const TEXT_TO_ATTENDANCE: Record<string, AttendanceStatus> = {
   CONTEO: "INVENTORY"
 };
 
+/**
+ * El estatus del día ya lo decidió el horario o el texto de la celda. Solo el
+ * CONTEO necesita además medir la llegada: es día laborable y sí tiene retardos
+ * (ver `countsAsLate`). Al resto —descanso, vacaciones, pago de día— no hay nada
+ * que medirle: no tenían que presentarse.
+ */
+function withDayStatus(status: AttendanceStatus, input: ArrivalInput): ArrivalResult {
+  if (status !== "INVENTORY") return { status, minutesLate: 0 };
+  const expected = toMinutes(input.expected);
+  const arrived = toMinutes(input.arrived);
+  if (expected === null || arrived === null) return { status, minutesLate: 0 };
+  return { status, minutesLate: arrived - expected };
+}
+
 export type DayInput = ArrivalInput & {
   /** Lo que dice el archivo de HORARIOS para ese día. null si no hay horario cargado. */
   scheduled: ScheduledStatus | null;
@@ -142,13 +156,13 @@ export function classifyDay(input: DayInput): ArrivalResult {
   //    aunque el horario dijera otra cosa.
   const text = input.entryText?.trim().toUpperCase();
   if (text && TEXT_TO_ATTENDANCE[text]) {
-    return { status: TEXT_TO_ATTENDANCE[text], minutesLate: 0 };
+    return withDayStatus(TEXT_TO_ATTENDANCE[text], input);
   }
 
   // 2. Si el horario dice que NO le tocaba trabajar, no hay nada que juzgar.
   //    Esto es lo que evita las faltas falsas de quien descansa.
   if (input.scheduled && input.scheduled !== "WORKING") {
-    return { status: SCHEDULED_TO_ATTENDANCE[input.scheduled], minutesLate: 0 };
+    return withDayStatus(SCHEDULED_TO_ATTENDANCE[input.scheduled], input);
   }
 
   // 3. Le tocaba trabajar (o no hay horario cargado): se juzga la llegada.
@@ -160,9 +174,21 @@ export function countsAsAbsence(status: AttendanceStatus): boolean {
   return status === "ABSENT";
 }
 
-/** Cuenta para el reporte mensual de retardos. */
-export function countsAsLate(status: AttendanceStatus): boolean {
-  return status === "LATE";
+/**
+ * Cuenta para el reporte mensual de retardos.
+ *
+ * ⚠️ El CONTEO también tiene retardos. Es día laborable: llegar tarde es llegar
+ * tarde, y se reporta igual que cualquier otro día. Lo que el conteo NO tiene es
+ * FALTA — a nadie se le regresa a casa ese día —, así que pasado el corte deja
+ * de ser retardo: ahí la jornada sí cambió de verdad (entrar a las 13:00 es un
+ * acuerdo, no una llegada tarde) y se ajusta contra el banco de horas.
+ * Ver `entryCredit` en lib/hours-balance.ts, que parte las bandas igual.
+ */
+export function countsAsLate(day: { status: AttendanceStatus; minutesLate: number }): boolean {
+  if (day.status === "LATE") return true;
+  return day.status === "INVENTORY"
+    && day.minutesLate > TOLERANCE_MINUTES
+    && day.minutesLate < CUTOFF_MINUTES;
 }
 
 /** Prima dominical: la gana quien TRABAJÓ un domingo (no quien descansó). */

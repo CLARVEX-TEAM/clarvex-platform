@@ -112,7 +112,7 @@ export function totalsFor(records: AttendanceRecord[], schedules: ScheduleDay[] 
   // lo que estaba planeado, no si la persona llegó.
   for (const record of records) {
     if (countsAsAbsence(record.status)) totals.absences += 1;
-    if (countsAsLate(record.status)) {
+    if (countsAsLate(record)) {
       totals.lates += 1;
       totals.minutesLate += Math.max(0, record.minutesLate);
     }
@@ -150,7 +150,7 @@ export function incidentsFor(records: AttendanceRecord[], schedules: ScheduleDay
     if (countsAsAbsence(record.status)) {
       incidents.push({ userId: record.userId, date: record.date, kind: "FALTA", detail: "No se presentó" });
     }
-    if (countsAsLate(record.status)) {
+    if (countsAsLate(record)) {
       incidents.push({
         userId: record.userId,
         date: record.date,

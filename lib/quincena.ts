@@ -70,7 +70,7 @@ export function retardoStatus(lates: number, limit = RETARDO_LIMIT): RetardoStat
 
 /** Retardos del periodo cargado (los records ya vienen filtrados por mes). */
 export function countLates(records: AttendanceRecord[]): number {
-  return records.reduce((total, record) => total + (countsAsLate(record.status) ? 1 : 0), 0);
+  return records.reduce((total, record) => total + (countsAsLate(record) ? 1 : 0), 0);
 }
 
 /**
