@@ -15,6 +15,14 @@
 #    hay parche dentro de cada major (1.1.18, 2.1.4 y 5.0.9), así que ya no
 #    queda residual que ignorar en osv-scanner.toml.
 #  - js-yaml <4.3.0 (GHSA-52cp-r559-cp3m)
+#  - fast-uri <3.1.5 (GHSA-7p8r-x3mc-p8w7): confusión de host. Reconoce la
+#    autoridad de una URI solo tras "//", así que con "\\", "/\" o "\/" se traga
+#    el host dentro de la ruta. El URL nativo de Node sí trata "\" como "/", de
+#    modo que los dos parsers sacan hosts DISTINTOS de la misma cadena — que es
+#    justo el terreno donde nacen los SSRF. Llega por ajv, que la usa para
+#    resolver referencias de JSON Schema (definidas en el código, no por el
+#    usuario), así que aquí la superficie es estrecha; aun así el parche es
+#    cambiar un número.
 overrides:
   postcss@<8.5.18: ">=8.5.18"
   exceljs>uuid: ">=11.1.1"
@@ -22,5 +30,5 @@ overrides:
   brace-expansion@2: 2.1.4
   brace-expansion@5: 5.0.9
   js-yaml@4: 4.3.0
-  fast-uri@<3.1.4: ">=3.1.4 <4"
+  fast-uri@<3.1.5: ">=3.1.5 <4"
   sharp@<0.35.0: ">=0.35.0 <0.36"
