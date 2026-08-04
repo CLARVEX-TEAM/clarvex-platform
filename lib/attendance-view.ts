@@ -54,6 +54,22 @@ export const STATUS_TONE: Record<AttendanceStatus, string> = {
   INVENTORY: "bg-cyan-100 text-cyan-800 dark:bg-cyan-950/50 dark:text-cyan-200"
 };
 
+/**
+ * Etiquetas del día. Casi siempre una —el estatus—, pero el CONTEO con retardo
+ * lleva DOS: el día sigue siendo de conteo y además hubo retardo.
+ *
+ * ⚠️ Sin esto el retardo del conteo no se ve en ninguna parte: el estatus que se
+ * guarda sigue siendo INVENTORY, así que la fila diría solo "Conteo" aunque la
+ * persona llegara 17 minutos tarde y el retardo ya contara en su total del mes.
+ */
+export function dayBadges(record: AttendanceRecord): { label: string; tone: string }[] {
+  const badges = [{ label: STATUS_LABEL[record.status], tone: STATUS_TONE[record.status] }];
+  if (record.status !== "LATE" && countsAsLate(record)) {
+    badges.push({ label: STATUS_LABEL.LATE, tone: STATUS_TONE.LATE });
+  }
+  return badges;
+}
+
 export type AttendanceTotals = {
   /** Se reportan cada quincena al supervisor. */
   absences: number;

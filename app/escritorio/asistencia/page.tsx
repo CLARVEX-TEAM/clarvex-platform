@@ -5,7 +5,7 @@ import { BellRing, CalendarX2, ChevronLeft, ChevronRight, Clock, PartyPopper, Su
 import { getSession } from "@/lib/auth";
 import type { User } from "@/lib/types";
 import {
-  currentMonth, dayLabel, balanceOf, fortnightOf, incidentsFor, INCIDENT_TONE,
+  currentMonth, dayBadges, dayLabel, balanceOf, fortnightOf, incidentsFor, INCIDENT_TONE,
   isSunday, STATUS_LABEL, STATUS_TONE, totalsByUser, totalsFor,
   type AttendanceRecord, type Incident, type ScheduleDay
 } from "@/lib/attendance-view";
@@ -392,7 +392,9 @@ function DayTable({ records, onEdit }: { records: AttendanceRecord[]; onEdit?: (
                 <span className={cn(isSunday(record.date) && "text-accent")}>{dayLabel(record.date)}</span>
               </td>
               <td className={deskTd}>
-                <span className={cn("font-medium", STATUS_TONE[record.status])}>{STATUS_LABEL[record.status]}</span>
+                {dayBadges(record).map((badge, index) => (
+                  <span key={badge.label} className={cn("font-medium", badge.tone, index > 0 && "ml-1.5")}>{badge.label}</span>
+                ))}
               </td>
               <td className={cn(deskTdMuted, "text-right tabular-nums")}>{record.arrivedAt ?? "—"}</td>
               <td className={cn(deskTdMuted, "text-right tabular-nums")}>{record.leftAt ?? "—"}</td>

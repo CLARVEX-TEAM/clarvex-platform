@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { fortnightOf, hoursMovements, incidentsFor, totalsByUser, totalsFor, type AttendanceRecord } from "../lib/attendance-view";
+import { dayBadges, fortnightOf, hoursMovements, incidentsFor, totalsByUser, totalsFor, type AttendanceRecord } from "../lib/attendance-view";
 
 function record(partial: Partial<AttendanceRecord> & Pick<AttendanceRecord, "date" | "status">): AttendanceRecord {
   return {
@@ -166,6 +166,25 @@ test("los totales se separan por colaborador", () => {
   assert.equal(byUser.get("itzel")?.lates, 1);
   assert.equal(byUser.get("jazmin")?.absences, 0);
   assert.equal(byUser.get("jazmin")?.lates, 0);
+});
+
+test("el conteo con retardo lleva las DOS etiquetas", () => {
+  // El estatus guardado sigue siendo INVENTORY, así que con una sola etiqueta el
+  // retardo del 4-ago no se veía en la fila del día aunque ya contara en el mes.
+  const conteoTarde = dayBadges(record({ date: "2026-08-04", status: "INVENTORY", arrivedAt: "10:47", minutesLate: 17 }));
+  assert.deepEqual(conteoTarde.map((b) => b.label), ["Conteo", "Retardo"]);
+
+  // Conteo dentro de tolerancia: una sola.
+  const conteoPuntual = dayBadges(record({ date: "2026-08-04", status: "INVENTORY", arrivedAt: "10:37", minutesLate: 7 }));
+  assert.deepEqual(conteoPuntual.map((b) => b.label), ["Conteo"]);
+
+  // Conteo pasado el corte: es jornada acordada, no retardo.
+  const conteoAcordado = dayBadges(record({ date: "2026-08-04", status: "INVENTORY", arrivedAt: "13:00", minutesLate: 150 }));
+  assert.deepEqual(conteoAcordado.map((b) => b.label), ["Conteo"]);
+
+  // Un retardo normal no se duplica.
+  const retardo = dayBadges(record({ date: "2026-08-03", status: "LATE", arrivedAt: "10:56", minutesLate: 26 }));
+  assert.deepEqual(retardo.map((b) => b.label), ["Retardo"]);
 });
 
 test("hoursMovements explica el movimiento del banco en palabras", () => {

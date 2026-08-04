@@ -10,6 +10,7 @@ import {
   currentMonth,
   dayLabel,
   balanceOf,
+  dayBadges,
   fortnightOf,
   hoursMovements,
   incidentsFor,
@@ -433,9 +434,11 @@ function DayList({ records, onEdit }: { records: AttendanceRecord[]; onEdit?: (r
                 {dayLabel(record.date)}
                 {isSunday(record.date) ? <span className="ml-1 text-blue-500">•</span> : null}
               </p>
-              <span className={cn("rounded-full px-2 py-0.5 text-[11px] font-semibold", STATUS_TONE[record.status])}>
-                {STATUS_LABEL[record.status]}
-              </span>
+              {dayBadges(record).map((badge) => (
+                <span key={badge.label} className={cn("rounded-full px-2 py-0.5 text-[11px] font-semibold", badge.tone)}>
+                  {badge.label}
+                </span>
+              ))}
               <div className="ml-auto text-right">
                 {record.arrivedAt ? (
                   <p className="text-xs font-bold text-ink">
