@@ -45,6 +45,12 @@ export type User = {
   platformAdmin?: boolean;
   /** Usuario "kiosko" de la tienda: solo ve el checklist (escaneos del cierre). */
   checklistOnly?: boolean;
+  /**
+   * ¿La tienda tiene visible la sección de KPIs? Se apaga cuando no hay RDV
+   * sincronizado: una pantalla de ceros se lee como «vendimos cero», no como
+   * «todavía no hay datos». Ausente se trata como `true`.
+   */
+  kpisEnabled?: boolean;
 };
 
 export type Kpi = {

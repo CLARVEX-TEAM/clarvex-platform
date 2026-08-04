@@ -52,7 +52,12 @@ export function CommandPalette({
 
   const commands = useMemo<Command[]>(() => {
     const sections: Command[] = navItems
-      .filter((item) => !item.adminOnly || user.platformAdmin)
+      .filter((item) =>
+        (!item.adminOnly || user.platformAdmin) &&
+        // Si los KPIs están apagados para la tienda, tampoco se llega por el
+        // buscador: ocultarlo del menú y dejarlo aquí sería una puerta trasera.
+        !(user.kpisEnabled === false && item.href === "/escritorio/kpis")
+      )
       .map((item) => ({
         id: `nav:${item.href}`,
         label: item.label,
@@ -95,7 +100,7 @@ export function CommandPalette({
     }));
 
     return [...sections, ...actions, ...roster];
-  }, [people, user.platformAdmin]);
+  }, [people, user.platformAdmin, user.kpisEnabled]);
 
   const results = useMemo(() => {
     const term = normalize(query);

@@ -16,7 +16,7 @@ import { KPI_TABS as tabs, metricAchievement, metricStatus, metricStatusText, is
 import { ElectronicTicketsPanel } from "@/components/ElectronicTicketsPanel";
 import { targetValue } from "@/lib/electronic-tickets";
 import { useKpiDerived, useKpiReceipts, useKpiReport, useKpiTargets } from "@/lib/use-kpis";
-import { achievementTone, AppFrame, AppHeader, Badge, BottomNav, Card, ProfileAvatar, ProgressBar, ProgressRing, Skeleton, StatCard } from "@/components/ui";
+import { achievementTone, AppFrame, AppHeader, Badge, BottomNav, Card, EmptyState, ProfileAvatar, ProgressBar, ProgressRing, Skeleton, StatCard } from "@/components/ui";
 import { KpiHistoryView } from "@/components/KpiHistory";
 import { PullToRefresh } from "@/components/PullToRefresh";
 import { useTheme } from "@/components/ThemeProvider";
@@ -83,6 +83,25 @@ export default function KpisPage() {
     appliedPercent, simulatedCommission, chartData, rangeLabel, periodKey,
     periodTargets, monthProjection, monthSalesProjection
   } = useKpiDerived({ session, report, period, targets, simulatedSales });
+
+  // Tienda con los KPIs apagados: se llega igual por un enlace de notificación
+  // o por un marcador, así que la puerta se cierra también aquí. Enseñar ceros
+  // sería peor que no enseñar nada: se leen como «vendimos cero».
+  if (session && session.kpisEnabled === false) {
+    return (
+      <>
+        <AppHeader title="KPIs" subtitle="Temporalmente no disponibles." backHref={isAdvisor ? "/advisor" : "/manager"} />
+        <AppFrame>
+          <EmptyState
+            icon={Settings2}
+            title="KPIs en pausa"
+            description="Estamos adaptando la app al esquema nuevo de tu marca. En cuanto el RDV esté conectado, tus indicadores vuelven a aparecer aquí."
+          />
+        </AppFrame>
+        <BottomNav />
+      </>
+    );
+  }
 
   return (
     <>

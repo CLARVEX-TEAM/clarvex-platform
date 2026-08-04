@@ -90,7 +90,12 @@ export function DeskRail({
             nunca llegaba a dibujarse. El colapsado la oculta desde desktop.css. */}
         <div className="desk-rail-scroll min-h-0 flex-1 overflow-y-auto px-3 pb-3 pt-1">
           {navGroups.map((group, groupIndex) => {
-            const items = group.items.filter((item) => !item.adminOnly || user.platformAdmin);
+            const items = group.items.filter((item) =>
+              (!item.adminOnly || user.platformAdmin) &&
+              // Tienda con los KPIs apagados: se retira la entrada del menú.
+              // Ausente se trata como encendido.
+              !(user.kpisEnabled === false && item.href === "/escritorio/kpis")
+            );
             if (items.length === 0) return null;
             return (
               <div key={group.label}>

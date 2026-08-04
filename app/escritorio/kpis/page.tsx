@@ -84,6 +84,19 @@ export default function EscritorioKpis() {
     periodTargets, monthProjection, monthSalesProjection
   } = useKpiDerived({ session, report, period, targets, simulatedSales });
 
+  // Tienda con los KPIs apagados. Se cierra también aquí porque al escritorio
+  // se llega por enlace directo y por el buscador de comandos, no solo por el
+  // menú. Ceros en pantalla se leen como «vendimos cero», no como «sin datos».
+  if (session && session.kpisEnabled === false) {
+    return (
+      <DeskEmpty
+        icon={Settings2}
+        title="KPIs en pausa"
+        hint="Estamos adaptando la app al esquema nuevo de tu marca. En cuanto el RDV esté conectado, los indicadores vuelven a aparecer aquí."
+      />
+    );
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">

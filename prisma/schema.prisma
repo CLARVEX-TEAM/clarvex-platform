@@ -31,6 +31,16 @@ model Store {
   /// El valor por defecto es el conservador a propósito: si alguien da de alta
   /// una tienda y olvida configurarlo, se comporta como siempre.
   commissionBasis       CommissionBasis @default(MINIMO)
+  /// Interruptor para ocultar la sección de KPIs a una tienda.
+  ///
+  /// Existe porque un KPI vacío no es neutro: una pantalla llena de ceros se
+  /// lee como «vendimos cero», no como «todavía no hay datos». Cuando una
+  /// tienda no tiene su RDV sincronizado, es más honesto no enseñar nada que
+  /// enseñar números que no significan nada.
+  ///
+  /// Es una bandera y no una condición deducida a propósito: se enciende y se
+  /// apaga sin desplegar, y no ata un estado temporal a la marca de la tienda.
+  kpisEnabled           Boolean         @default(true)
   announcements         Announcement[]
   chatRooms             ChatRoom[]
   checklistEntries      ChecklistEntry[]

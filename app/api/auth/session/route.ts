@@ -9,11 +9,11 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   const session = await getServerSession();
   if (!session) return NextResponse.json({ error: "Sesion requerida." }, { status: 401 });
-  const user = await prisma.user.findFirst({ where: { id: session.userId, storeId: session.storeId }, include: { store: { select: { name: true } } } });
+  const user = await prisma.user.findFirst({ where: { id: session.userId, storeId: session.storeId }, include: { store: { select: { name: true, kpisEnabled: true } } } });
   if (!user) return NextResponse.json({ error: "Usuario no encontrado." }, { status: 404 });
   // `needsEmail`: sin correo real no puede recuperar su PIN solo (la app le puso
   // un relleno al darlo de alta). Lo consume el aviso global EmailBanner.
-  return NextResponse.json({ user: { ...publicUser(user), storeName: user.store.name, platformAdmin: user.platformAdmin, checklistOnly: user.checklistOnly, demo: user.isDemo, needsEmail: !hasRealEmail(user.email) } }, { headers: { "Cache-Control": "private, no-store" } });
+  return NextResponse.json({ user: { ...publicUser(user), storeName: user.store.name, kpisEnabled: user.store.kpisEnabled, platformAdmin: user.platformAdmin, checklistOnly: user.checklistOnly, demo: user.isDemo, needsEmail: !hasRealEmail(user.email) } }, { headers: { "Cache-Control": "private, no-store" } });
 }
 
 export async function DELETE() {

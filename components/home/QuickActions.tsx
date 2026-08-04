@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
+import { getSession } from "@/lib/auth";
 import { BarChart3, BookOpen, Boxes, CalendarClock, CalendarDays, CheckSquare, ClipboardCheck, ClipboardList, Clock, CreditCard, GraduationCap, HeartHandshake, PackageSearch, Shirt } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -52,7 +54,15 @@ interface QuickActionsProps {
 }
 
 export function QuickActions({ variant = "manager", delay = 0.30 }: QuickActionsProps) {
-  const actions = variant === "manager" ? managerActions : advisorActions;
+  // Se asume encendido hasta saber lo contrario: si la consulta falla, es mejor
+  // un acceso de más que ver la rejilla reacomodarse al cargar.
+  const [kpisEnabled, setKpisEnabled] = useState(true);
+  useEffect(() => {
+    getSession().then((session) => setKpisEnabled(session?.kpisEnabled !== false)).catch(() => undefined);
+  }, []);
+
+  const base = variant === "manager" ? managerActions : advisorActions;
+  const actions = kpisEnabled ? base : base.filter((action) => action.href !== "/kpis");
 
   return (
     <motion.div

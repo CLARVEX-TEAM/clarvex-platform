@@ -28,16 +28,30 @@ const navItems: { href: string; label: string; icon: LucideIcon }[] = [
 
 export function LiquidBottomNav() {
   const [homeHref, setHomeHref] = useState("/manager");
+  // Se arranca mostrando KPIs y solo se ocultan si la sesión dice que están
+  // apagados: si la consulta falla, es preferible una pestaña de más que una
+  // barra que baila al cargar.
+  const [kpisEnabled, setKpisEnabled] = useState(true);
   const pathname = usePathname();
 
   useEffect(() => {
-    getSession().then((session) => setHomeHref(session?.role === "ASESOR" ? "/advisor" : "/manager"));
+    getSession().then((session) => {
+      setHomeHref(session?.role === "ASESOR" ? "/advisor" : "/manager");
+      setKpisEnabled(session?.kpisEnabled !== false);
+    });
   }, []);
+
+  const items = kpisEnabled ? navItems : navItems.filter((item) => item.href !== "/kpis");
 
   return (
     <nav className="pointer-events-none fixed inset-x-0 bottom-2 z-30 px-3">
-      <div className="liquid-glass pointer-events-auto mx-auto grid max-w-md grid-cols-6 gap-0.5 rounded-[30px] border-line/80 bg-card/90 dark:bg-panel/95 p-1.5 shadow-[0_14px_34px_rgb(15_23_42_/_0.14)] backdrop-blur-xl">
-        {navItems.map((item) => {
+      <div
+        className="liquid-glass pointer-events-auto mx-auto grid max-w-md gap-0.5 rounded-[30px] border-line/80 bg-card/90 dark:bg-panel/95 p-1.5 shadow-[0_14px_34px_rgb(15_23_42_/_0.14)] backdrop-blur-xl"
+        // El número de columnas sigue al de pestañas: con `grid-cols-6` fijo,
+        // ocultar una dejaría un hueco en la barra.
+        style={{ gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))` }}
+      >
+        {items.map((item) => {
           const href = item.href === "/manager" ? homeHref : item.href;
           const active = pathname === href || (item.href === "/manager" && (pathname === "/manager" || pathname === "/advisor")) || (item.href === "/chat" && pathname.startsWith("/chat"));
           return (
