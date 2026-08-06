@@ -299,8 +299,41 @@ async function importKpis(workbook: Parameters<typeof parseKpiWorkbook>[0], stor
   // fechas presentes en el archivo. Nunca se tocan otros meses ni gente fuera de
   // la hoja.
   const recordsDeleted = await deleteStaleKpis(storeId, users.map((user) => user.id), matchedRecords);
+  await enableKpisIfStoreHasSales(storeId);
 
   return buildKpiMetrics(parsed, users.length, matchedRecords.length, recordsCreated, recordsUpdated, recordsDeleted, employeesNotFound, errors);
+}
+
+/**
+ * Enciende la sección de KPIs de la tienda en cuanto su RDV trae ventas.
+ *
+ * `Store.kpisEnabled` se apagó para que las tiendas cuyo RDV todavía no se leía
+ * no vieran una pantalla de ceros: un cero no se lee como «aún no hay datos»,
+ * se lee como «vendimos cero». En cuanto el archivo trae ventas esa razón
+ * desaparece, y dejarlo apagado obliga a acordarse de un UPDATE a mano justo el
+ * día en que la tienda por fin tiene algo que mirar.
+ *
+ * Se exige venta > 0 y no solo filas importadas: un RDV recién estrenado trae el
+ * mes entero con metas y sin una sola venta, que es exactamente la pantalla que
+ * la bandera evita.
+ *
+ * **Solo enciende, nunca apaga.** Apagarlo es una decisión de una persona y no
+ * le toca deshacerla a una sincronización automática.
+ */
+async function enableKpisIfStoreHasSales(storeId: string): Promise<void> {
+  try {
+    const store = await prisma.store.findUnique({ where: { id: storeId }, select: { kpisEnabled: true } });
+    if (!store || store.kpisEnabled) return;
+    const withSales = await prisma.kpi.count({ where: { storeId, dailySales: { gt: 0 } } });
+    if (withSales === 0) return;
+    await prisma.store.update({ where: { id: storeId }, data: { kpisEnabled: true } });
+    syncLog("[SYNC] KPIs habilitados: el RDV de la tienda", storeId, "ya trae ventas.");
+  } catch (error) {
+    // Nunca puede tumbar una importación que ya salió bien: los KPIs están
+    // guardados, y lo único en juego es que la sección tarde una sync más en
+    // aparecer.
+    syncLog("[SYNC] No se pudo habilitar la seccion de KPIs:", error instanceof Error ? error.message : String(error));
+  }
 }
 
 async function deleteStaleKpis(
