@@ -3,7 +3,8 @@ import { encodeSyncLogMessage, getNextSyncAt, serializeDataSource, type Attendan
 import { downloadExcelWorkbook, summarizeWorkbook } from "@/lib/excel-proxy";
 import { buildUserByEmployeeNumber } from "@/lib/employee-match";
 import { isGuessRdvWorkbook, parseGuessCaptura, parseGuessTabulador } from "@/lib/guess-rdv";
-import { compareGuessTabulador } from "@/lib/guess-tabulador-check";
+import { isGuessStore } from "@/lib/guess-scheme";
+import { rulesDiffer, tabuladorToRules } from "@/lib/guess-tabulador-sync";
 import { parseKpiWorkbook } from "@/lib/kpi-parser";
 import { parsePosDiscountWorkbook } from "@/lib/pos-discount-parser";
 import { prisma } from "@/lib/prisma";
@@ -136,30 +137,64 @@ export async function syncDataSource(source: DataSource): Promise<SyncOutcome> {
 }
 
 /**
- * Compara el tabulador del RDV con el esquema de comisiones que capturó la
- * tienda y devuelve las diferencias en texto.
+ * Aplica el tabulador de comisiones que el RDV trae dentro.
+ *
+ * El RDV de cada tienda trae el tabulador de SU zona, así que tomarlo de ahí
+ * hace imposible el error que costaba dinero: capturar a mano la tabla de otra
+ * zona y no enterarse hasta que alguien reclama su pago.
  *
  * Nunca lanza: un tabulador con un formato inesperado no puede tumbar la
- * importación de los KPIs, que es lo que la tienda necesita cada día. Si no se
- * puede leer, simplemente no se avisa de nada.
+ * importación de los KPIs, que es lo que la tienda necesita cada día.
+ *
+ * Devuelve una línea para el Centro de Datos solo cuando algo cambió; el resto
+ * de las veces calla, porque esto corre cada hora.
  */
-async function checkGuessTabulador(workbook: Parameters<typeof parseGuessTabulador>[0], storeId: string): Promise<string[]> {
+async function applyGuessTabulador(
+  workbook: Parameters<typeof parseGuessTabulador>[0],
+  storeId: string
+): Promise<string[]> {
   try {
+    const store = await prisma.store.findUnique({ where: { id: storeId }, select: { name: true } });
+    // El esquema es exclusivo de GUESS: aplicarlo a otra marca le cambiaría el
+    // modelo de pago. Mismo candado que la ruta de captura manual.
+    if (!store || !isGuessStore(store.name)) return [];
+
     const tabulador = parseGuessTabulador(workbook);
     if (!tabulador) return [];
-    const rules = await prisma.commissionRule.findMany({
-      where: { storeId, active: true, role: { not: null } },
-      select: { role: true, minAchievement: true, commissionPercent: true, fixedAmount: true, fixedAmountHigh: true }
+
+    const existing = await prisma.commissionRule.findMany({
+      where: { storeId, active: true },
+      select: { role: true, minAchievement: true, payoutType: true, commissionPercent: true, fixedAmount: true, fixedAmountHigh: true }
     });
-    return compareGuessTabulador(tabulador, rules.map((rule) => ({
+    const snapshot = existing.map((rule) => ({
       role: rule.role,
       minAchievement: Number(rule.minAchievement),
+      payoutType: rule.payoutType,
       commissionPercent: Number(rule.commissionPercent),
       fixedAmount: rule.fixedAmount === null ? null : Number(rule.fixedAmount),
       fixedAmountHigh: rule.fixedAmountHigh === null ? null : Number(rule.fixedAmountHigh)
-    })));
+    }));
+
+    const rows = tabuladorToRules(tabulador, storeId, snapshot);
+    if (!rows) {
+      syncLog("[SYNC] El tabulador del RDV no viene completo; se conserva el esquema actual.");
+      return [];
+    }
+    if (!rulesDiffer(rows, snapshot)) return [];
+
+    await prisma.$transaction(async (tx) => {
+      // Las reglas anteriores se DESACTIVAN, no se borran: si más adelante hay
+      // que auditar una comisión pagada con el esquema viejo, la fila sigue ahí.
+      await tx.commissionRule.updateMany({ where: { storeId, active: true }, data: { active: false } });
+      await tx.commissionRule.createMany({ data: rows });
+      if (tabulador.tier) await tx.store.update({ where: { id: storeId }, data: { commissionTier: tabulador.tier } });
+    });
+
+    const zone = tabulador.tier ? ` (zona ${tabulador.tier})` : "";
+    syncLog("[SYNC] Tabulador de comisiones actualizado desde el RDV", zone, "para la tienda", storeId);
+    return [`Comisiones: se actualizó el tabulador desde el RDV${zone} — ${rows.length} reglas.`];
   } catch (error) {
-    syncLog("[SYNC] No se pudo contrastar el tabulador de GUESS:", error instanceof Error ? error.message : String(error));
+    syncLog("[SYNC] No se pudo aplicar el tabulador de GUESS:", error instanceof Error ? error.message : String(error));
     return [];
   }
 }
@@ -174,7 +209,7 @@ async function importKpis(workbook: Parameters<typeof parseKpiWorkbook>[0], stor
   const isGuess = isGuessRdvWorkbook(workbook);
   const parsed = isGuess ? parseGuessCaptura(workbook) : parseKpiWorkbook(workbook);
   logParsedKpiWeeks(parsed);
-  const schemeIssues = isGuess ? await checkGuessTabulador(workbook, storeId) : [];
+  const schemeIssues = isGuess ? await applyGuessTabulador(workbook, storeId) : [];
   const users = parsed.employeeNumbers.length > 0
     ? await prisma.user.findMany({
         where: { storeId, OR: [{ employeeNumber: { in: parsed.employeeNumbers } }, { employeeNumberAliases: { some: { employeeNumber: { in: parsed.employeeNumbers } } } }] },
@@ -203,9 +238,9 @@ async function importKpis(workbook: Parameters<typeof parseKpiWorkbook>[0], stor
   const existingKeys = new Set(existing.map((kpi) => `${kpi.userId}:${kpi.date.toISOString()}`));
   let recordsCreated = 0;
   let recordsUpdated = 0;
-  // Las diferencias del tabulador se listan junto a los errores de importación
-  // porque es donde el Centro de Datos ya mira. No impiden guardar los KPIs:
-  // son un aviso sobre las comisiones, no un fallo de la sincronización.
+  // El aviso del tabulador se lista junto a los errores de importación porque es
+  // donde el Centro de Datos ya mira. No impide guardar los KPIs: informa de un
+  // cambio en las comisiones, no de un fallo de la sincronización.
   const errors: string[] = [...schemeIssues];
   const importStartedAt = Date.now();
 
