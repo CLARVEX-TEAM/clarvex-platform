@@ -5,13 +5,15 @@ import { resolveMonterreyDate } from "@/lib/cron-time";
 import { createNotifications, type NotificationInput } from "@/lib/notifications";
 import { prisma } from "@/lib/prisma";
 import { dispatchPushToUsers } from "@/lib/push";
+import { daysSinceLatestSale, isDataFrozen } from "@/lib/sync-freshness";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 // Vigila la sincronización del RDV por tienda: si la última sync exitosa
-// tiene más de STALE_HOURS o la última terminó en ERROR, avisa a gerencia
-// y al admin de plataforma. Sin datos frescos, los KPIs mienten en silencio.
+// tiene más de STALE_HOURS, si la última terminó en ERROR, o si el archivo
+// lleva días sin traer ventas nuevas, avisa a gerencia y al admin de
+// plataforma. Sin datos frescos, los KPIs mienten en silencio.
 
 const PUSH_TAG = "sync-alert";
 const LOG_TYPE = "SYNC_ALERT";
@@ -21,7 +23,7 @@ export async function POST(request: Request) {
   const unauthorized = requireCron(request);
   if (unauthorized) return unauthorized;
 
-  const { dateKey } = resolveMonterreyDate();
+  const { dateKey, utcDate } = resolveMonterreyDate();
   const now = Date.now();
   const sources = await prisma.dataSource.findMany({
     where: { type: "KPIS" },
@@ -44,7 +46,18 @@ export async function POST(request: Request) {
     const hoursSinceSuccess = lastSuccess ? (now - lastSuccess.createdAt.getTime()) / 3_600_000 : Infinity;
     const failed = lastLog?.status === "ERROR";
     const stale = hoursSinceSuccess > STALE_HOURS;
-    if (!failed && !stale) {
+
+    // Se ignoran los días futuros: una venta capturada por error en un día que
+    // aún no ocurre haría pasar por fresca a una fuente detenida.
+    const latestSale = await prisma.kpi.findFirst({
+      where: { storeId: source.storeId, dailySales: { gt: 0 }, date: { lte: utcDate } },
+      orderBy: { date: "desc" },
+      select: { date: true }
+    });
+    const daysBehind = daysSinceLatestSale(utcDate, latestSale?.date ?? null);
+    const frozen = isDataFrozen(utcDate, latestSale?.date ?? null);
+
+    if (!failed && !stale && !frozen) {
       summary.healthy += 1;
       continue;
     }
@@ -65,12 +78,20 @@ export async function POST(request: Request) {
       continue;
     }
 
-    const title = `⚠️ Sincronización del RDV — ${source.store.name}`;
+    // El aviso de datos congelados lleva otro título a propósito: la
+    // sincronización se ve verde, así que decir "revisa el Centro de Datos"
+    // mandaría a gerencia a mirar justo donde todo parece correcto.
+    const dataOnly = frozen && !failed && !stale;
+    const title = dataOnly
+      ? `⚠️ El RDV no trae datos nuevos — ${source.store.name}`
+      : `⚠️ Sincronización del RDV — ${source.store.name}`;
     const body = failed
       ? `La última sincronización falló. Revisa el Centro de Datos y vuelve a intentar.`
-      : lastSuccess
-        ? `Lleva ${Math.floor(hoursSinceSuccess)} h sin sincronizar; los KPIs pueden estar desactualizados. Ejecuta "Sincronizar ahora".`
-        : `Nunca se ha sincronizado con éxito. Revisa el enlace en el Centro de Datos.`;
+      : stale
+        ? lastSuccess
+          ? `Lleva ${Math.floor(hoursSinceSuccess)} h sin sincronizar; los KPIs pueden estar desactualizados. Ejecuta "Sincronizar ahora".`
+          : `Nunca se ha sincronizado con éxito. Revisa el enlace en el Centro de Datos.`
+        : `La sincronización corre bien, pero el archivo lleva ${daysBehind} días sin traer ventas nuevas. Revisa que el RDV de origen se siga actualizando.`;
 
     const notifications: NotificationInput[] = recipients.map((id) => ({
       storeId: source.storeId, userId: id, type: NotificationType.DAILY_SUMMARY, title, body
