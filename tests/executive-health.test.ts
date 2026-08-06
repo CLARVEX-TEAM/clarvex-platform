@@ -163,7 +163,8 @@ test("getExecutiveHealth usa getKpiReport y no inventa conversión", async () =>
       })),
       hasDiscountSource: false,
       latestDiscountWeek: null,
-      commissionRules: []
+      commissionRules: [],
+      commissionBasis: "MINIMO" as const
     };
   });
 

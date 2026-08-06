@@ -1,84 +1,86 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { accruedCommission, commissionReference, resolveCommissionMinimum } from "../lib/commission";
+import { accruedCommission, commissionReference, MINIMUM_TO_GOAL_FACTOR } from "../lib/commission";
+import { buildCommissionPerson } from "../lib/commission-read";
 import type { CommissionRule } from "../lib/types";
 
 /**
- * Contra qué se mide el alcance de comisión.
+ * La BASE decide el denominador del alcance, y con el denominador cambia el
+ * bracket y el pago. Es el fallo que estuvo vivo en produccion: nadie pasaba
+ * `basis`, asi que una tienda GUESS —que mide contra la META— acababa midiendo
+ * contra meta÷1.15, ~15 puntos de alcance de regalo.
  *
- * Los importes son los REALES del RDV de GUESS zona D (hoja «Tabulador» del
- * archivo de Galerías Monterrey), no inventados: gerente 90–95 % paga 10 619 de
- * bono fijo, y del 100 % en adelante 1.611 % sobre la venta de tienda.
+ * Cifras reales de GUESS Galerias Monterrey (zona D), agosto de 2026.
  */
-const guessGerenteZonaD: CommissionRule[] = [
-  { id: "d1", storeId: "guess", role: "GERENTE", minSales: 0, maxSales: null, minAchievement: 80, maxAchievement: 84.99, commissionPercent: 0, payoutType: "FIXED", fixedAmount: 6637, fixedAmountHigh: 6637, active: true },
-  { id: "d2", storeId: "guess", role: "GERENTE", minSales: 0, maxSales: null, minAchievement: 85, maxAchievement: 89.99, commissionPercent: 0, payoutType: "FIXED", fixedAmount: 8628, fixedAmountHigh: 8628, active: true },
-  { id: "d3", storeId: "guess", role: "GERENTE", minSales: 0, maxSales: null, minAchievement: 90, maxAchievement: 94.99, commissionPercent: 0, payoutType: "FIXED", fixedAmount: 10619, fixedAmountHigh: 10619, active: true },
-  { id: "d4", storeId: "guess", role: "GERENTE", minSales: 0, maxSales: null, minAchievement: 95, maxAchievement: 99.99, commissionPercent: 0, payoutType: "FIXED", fixedAmount: 13273, fixedAmountHigh: 13273, active: true },
-  { id: "d5", storeId: "guess", role: "GERENTE", minSales: 0, maxSales: null, minAchievement: 100, maxAchievement: 114.99, commissionPercent: 1.611, payoutType: "PERCENT", fixedAmount: null, fixedAmountHigh: null, active: true },
-  { id: "d6", storeId: "guess", role: "GERENTE", minSales: 0, maxSales: null, minAchievement: 115, maxAchievement: null, commissionPercent: 1.929, payoutType: "PERCENT", fixedAmount: null, fixedAmountHigh: null, active: true }
+const META = 70325.85;
+const VENTA = 72593.27;
+
+const REGLAS_GUESS: CommissionRule[] = [
+  { id: "f80", storeId: "s", role: "ASESOR", minSales: 0, maxSales: null, minAchievement: 80, maxAchievement: 84.99, commissionPercent: 0, active: true, payoutType: "FIXED", fixedAmount: 1978, fixedAmountHigh: null },
+  { id: "p100", storeId: "s", role: "ASESOR", minSales: 0, maxSales: null, minAchievement: 100, maxAchievement: 114.99, commissionPercent: 1.961, active: true, payoutType: "PERCENT", fixedAmount: null, fixedAmountHigh: null },
+  { id: "p115", storeId: "s", role: "ASESOR", minSales: 0, maxSales: null, minAchievement: 115, maxAchievement: null, commissionPercent: 2.353, active: true, payoutType: "PERCENT", fixedAmount: null, fixedAmountHigh: null }
 ];
 
-/** Meta mensual real de la tienda del archivo. */
-const META = 268_974.03;
-
-test("por defecto se mide contra el MÍNIMO, como siempre", () => {
-  // Sin `basis`, la referencia es el mínimo derivado de la meta (meta ÷ 1.15).
-  assert.equal(commissionReference({ goal: 115_000 }), 100_000);
-  assert.equal(commissionReference({ goal: 115_000, basis: null }), 100_000);
-  // Y respeta el mínimo sincronizado si lo hay.
-  assert.equal(commissionReference({ goal: 115_000, minimum: 90_000 }), 90_000);
+test("con base META el alcance se mide contra la meta", () => {
+  assert.equal(commissionReference({ goal: META, minimum: null, basis: "META" }), META);
 });
 
-test("con base META la referencia es la meta, y el mínimo se ignora", () => {
-  assert.equal(commissionReference({ goal: 115_000, basis: "META" }), 115_000);
-  // Aunque venga un mínimo sincronizado, con base META no pinta nada.
-  assert.equal(commissionReference({ goal: 115_000, minimum: 90_000, basis: "META" }), 115_000);
+test("sin base explicita se mide contra el minimo derivado, como el resto de marcas", () => {
+  const esperado = Math.round((META / MINIMUM_TO_GOAL_FACTOR) * 100) / 100;
+  assert.equal(commissionReference({ goal: META, minimum: null }), esperado);
+  assert.equal(commissionReference({ goal: META, minimum: null, basis: "MINIMO" }), esperado);
 });
 
-test("el denominador cambia el escalón, y con él lo que se paga", () => {
-  // El caso que motivó todo esto: un gerente al 90 % de su meta.
-  const ventaAl90 = META * 0.9;
+test("olvidar la base cambia el bracket y sobrepaga", () => {
+  const conBase = accruedCommission({ sales: VENTA, goal: META, minimum: null, rules: REGLAS_GUESS, role: "ASESOR", basis: "META" });
+  const sinBase = accruedCommission({ sales: VENTA, goal: META, minimum: null, rules: REGLAS_GUESS, role: "ASESOR" });
 
-  // Como dice el RDV de GUESS: venta ÷ meta → 90 % → escalón 90–95 → fijo.
-  const conMeta = accruedCommission({ sales: ventaAl90, goal: META, rules: guessGerenteZonaD, role: "GERENTE", basis: "META" });
-  assert.equal(Math.round(conMeta.achievement), 90);
-  assert.equal(conMeta.payoutType, "FIXED");
-  assert.equal(conMeta.amount, 10_619);
+  // Contra META: 103.22 % → bracket 100-114.99 → 1.961 %
+  assert.equal(Math.round(conBase.achievement * 100) / 100, 103.22);
+  assert.equal(conBase.percent, 1.961);
+  assert.equal(conBase.amount, 1423.55);
 
-  // Contra el mínimo, ese mismo 90 % se convierte en ~103 % y cae en el tramo
-  // de porcentaje: paga menos de la mitad. Por eso el denominador importa.
-  const conMinimo = accruedCommission({ sales: ventaAl90, goal: META, rules: guessGerenteZonaD, role: "GERENTE" });
-  assert.equal(Math.round(conMinimo.achievement), 104);
-  assert.equal(conMinimo.payoutType, "PERCENT");
-  assert.ok(conMinimo.amount < conMeta.amount / 2, "el tramo de porcentaje paga menos de la mitad que el fijo");
+  // Contra el minimo derivado: 118.71 % → salta al bracket de 115 % → 2.353 %
+  assert.equal(Math.round(sinBase.achievement * 100) / 100, 118.71);
+  assert.equal(sinBase.percent, 2.353);
+  assert.ok(sinBase.amount > conBase.amount, "sin base se paga de mas");
 });
 
-test("con base META, el 100 % de la meta entra en el tramo de porcentaje", () => {
-  const result = accruedCommission({ sales: META, goal: META, rules: guessGerenteZonaD, role: "GERENTE", basis: "META" });
-  assert.equal(Math.round(result.achievement), 100);
-  assert.equal(result.payoutType, "PERCENT");
-  assert.equal(result.percent, 1.611);
-  // 268 974.03 × 1.611 % = 4 333.17
-  assert.equal(result.amount, 4333.17);
+test("una tienda de base MINIMO no cambia al pasar la base", () => {
+  // Las tiendas Tommy tienen minimo real sincronizado: pasar `basis` no puede
+  // moverles el numero.
+  const minimo = 61000;
+  const sinBase = accruedCommission({ sales: VENTA, goal: META, minimum: minimo, rules: REGLAS_GUESS, role: "ASESOR" });
+  const conBase = accruedCommission({ sales: VENTA, goal: META, minimum: minimo, rules: REGLAS_GUESS, role: "ASESOR", basis: "MINIMO" });
+  assert.deepEqual(sinBase, conBase);
 });
 
-test("con base META, por debajo del 80 % de la meta no se paga nada", () => {
-  // La cifra real del archivo: 84 059 vendidos sobre 268 974 de meta = 31.3 %.
-  const result = accruedCommission({ sales: 84_059, goal: META, rules: guessGerenteZonaD, role: "GERENTE", basis: "META" });
-  assert.equal(result.achievement.toFixed(1), "31.3");
-  assert.equal(result.amount, 0);
+test("un bracket de IMPORTE FIJO paga el importe, no venta x 0 %", () => {
+  // Con 82 % de alcance cae en el escalon fijo. Multiplicar por su porcentaje
+  // (que es 0) pagaria cero a quien si cumplio.
+  const venta = META * 0.82;
+  const resultado = accruedCommission({ sales: venta, goal: META, minimum: null, rules: REGLAS_GUESS, role: "ASESOR", basis: "META" });
+  assert.equal(resultado.payoutType, "FIXED");
+  assert.equal(resultado.amount, 1978);
 });
 
-test("NO REGRESIÓN: sin `basis`, el esquema histórico no se mueve", () => {
-  const legacy: CommissionRule[] = [
-    { id: "l1", storeId: "tommy", role: "ASESOR", minSales: 0, maxSales: null, minAchievement: 0, maxAchievement: 99.99, commissionPercent: 1.53, active: true },
-    { id: "l2", storeId: "tommy", role: "ASESOR", minSales: 0, maxSales: null, minAchievement: 100, maxAchievement: 114.99, commissionPercent: 1.91, active: true },
-    { id: "l3", storeId: "tommy", role: "ASESOR", minSales: 0, maxSales: null, minAchievement: 115, maxAchievement: null, commissionPercent: 2.29, active: true }
-  ];
-  const result = accruedCommission({ sales: 120_000, goal: 115_000, minimum: 100_000, rules: legacy, role: "ASESOR" });
-  assert.equal(result.achievement, 120);
-  assert.equal(result.amount, 2748);
-  // Y resolveCommissionMinimum sigue siendo la fuente para las tiendas de siempre.
-  assert.equal(resolveCommissionMinimum(null, 115_000), 100_000);
+test("buildCommissionPerson respeta la base y los importes fijos", () => {
+  // Es la lectura que usa el Copilot: antes ignoraba las dos cosas.
+  const persona = buildCommissionPerson(
+    { userId: "u1", userName: "Fernanda", role: "ASESOR", sales: VENTA, goal: META, commissionMinimum: null },
+    REGLAS_GUESS,
+    "ASESOR",
+    "META"
+  );
+  assert.equal(persona.minimum, META);
+  assert.equal(persona.achievementVsMinimum, 103.22);
+  assert.equal(persona.commissionAmount, 1423.55);
+
+  const enFijo = buildCommissionPerson(
+    { userId: "u1", userName: "Fernanda", role: "ASESOR", sales: META * 0.82, goal: META, commissionMinimum: null },
+    REGLAS_GUESS,
+    "ASESOR",
+    "META"
+  );
+  assert.equal(enFijo.commissionAmount, 1978);
 });

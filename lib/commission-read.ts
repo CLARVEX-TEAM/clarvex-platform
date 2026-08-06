@@ -1,4 +1,4 @@
-import { computeNextBracketGap, findCommissionRule, resolveCommissionMinimum } from "@/lib/commission";
+import { commissionReference, computeNextBracketGap, findCommissionRule, rulePayout, rulePercent, type CommissionBasis } from "@/lib/commission";
 import { getAchievement } from "@/lib/kpi-view";
 import type { CommissionRule, Role } from "@/lib/types";
 
@@ -43,14 +43,18 @@ export function buildCommissionPerson(
     commissionMinimum: number | null;
   },
   rules: CommissionRule[],
-  commissionRole: Role
+  commissionRole: Role,
+  basis?: CommissionBasis | null
 ): CommissionPersonInternal {
-  const minimum = resolveCommissionMinimum(item.commissionMinimum, item.goal);
+  // La referencia es el mínimo, o la META si la tienda es de base META (GUESS).
+  const minimum = commissionReference({ goal: item.goal, minimum: item.commissionMinimum, basis });
   const hasMinimum = minimum > 0;
   const achievementVsMinimum = hasMinimum ? getAchievement(item.sales, minimum) : 0;
   const activeRule = hasMinimum ? findCommissionRule(rules, commissionRole, achievementVsMinimum) : undefined;
-  const commissionPercent = activeRule?.commissionPercent ?? 0;
-  const commissionAmount = hasMinimum ? round2(item.sales * (commissionPercent / 100)) : 0;
+  const commissionPercent = rulePercent(activeRule);
+  // `rulePayout` y no venta × %: los brackets de GUESS entre 80 y 99.99 % pagan
+  // un IMPORTE FIJO, cuyo porcentaje es 0.
+  const commissionAmount = hasMinimum ? round2(rulePayout(activeRule, item.sales)) : 0;
   const gap = hasMinimum
     ? computeNextBracketGap({ sales: item.sales, minimum, rules, role: commissionRole })
     : null;

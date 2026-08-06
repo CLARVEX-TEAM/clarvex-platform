@@ -49,6 +49,9 @@ const mockPrisma = {
     findFirst: async () => null
   },
   dataSource: { findFirst: async () => null },
+  // Base de comision de la tienda: estas pruebas usan el esquema historico, que
+  // mide contra el MINIMO.
+  store: { findUnique: async () => ({ commissionBasis: "MINIMO" }) },
   commissionRule: {
     findMany: async () => [
       { id: "r1", storeId: "store-1", role: "ASESOR", minSales: 0, maxSales: null, minAchievement: 0, maxAchievement: 99.99, commissionPercent: 1.53, active: true },

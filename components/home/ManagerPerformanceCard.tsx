@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Trophy } from "lucide-react";
 import { Badge, Card, ProgressBar } from "@/components/ui";
-import { accruedCommission } from "@/lib/commission";
+import { accruedCommission, type CommissionBasis } from "@/lib/commission";
 import { completion, money, performanceTextClass } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { CommissionRule, Role } from "@/lib/types";
@@ -37,6 +37,8 @@ function todayKey(): string {
 export function ManagerPerformanceCard({ role, dailySales, dailyGoal, monthlySales, monthlyGoal }: Props) {
   const [store, setStore] = useState<KpiReportItem | null>(null);
   const [rules, setRules] = useState<CommissionRule[] | null>(null);
+  // Se asume MINIMO hasta saber lo contrario: es la base del resto de marcas.
+  const [basis, setBasis] = useState<CommissionBasis>("MINIMO");
   const [failed, setFailed] = useState(false);
 
   useEffect(() => {
@@ -45,8 +47,8 @@ export function ManagerPerformanceCard({ role, dailySales, dailyGoal, monthlySal
       try {
         const res = await fetch(`/api/kpis?period=month&date=${todayKey()}`, { cache: "no-store" });
         if (!res.ok) throw new Error(String(res.status));
-        const payload = (await res.json()) as { store: KpiReportItem | null; commissionRules: CommissionRule[] };
-        if (!cancelled) { setStore(payload.store); setRules(payload.commissionRules); }
+        const payload = (await res.json()) as { store: KpiReportItem | null; commissionRules: CommissionRule[]; commissionBasis?: CommissionBasis };
+        if (!cancelled) { setStore(payload.store); setRules(payload.commissionRules); setBasis(payload.commissionBasis ?? "MINIMO"); }
       } catch {
         if (!cancelled) setFailed(true);
       }
@@ -58,7 +60,7 @@ export function ManagerPerformanceCard({ role, dailySales, dailyGoal, monthlySal
   const monthAlcance = completion(monthlySales, monthlyGoal);
 
   const commission = store && rules
-    ? accruedCommission({ sales: store.sales, goal: store.goal, minimum: store.commissionMinimum, rules, role })
+    ? accruedCommission({ sales: store.sales, goal: store.goal, minimum: store.commissionMinimum, rules, role, basis })
     : null;
 
   return (

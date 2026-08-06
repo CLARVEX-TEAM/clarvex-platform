@@ -25,15 +25,20 @@ const argsSchema = z.object({
 
 function buildPayload(report: KpiReport, ctxRole: Role, resolvedUserId?: string) {
   const rules = report.commissionRules;
+  const basis = report.commissionBasis;
   const periodMeta = {
     ...kpiPeriodMeta(report),
-    note: "Mismos números que pestaña KPIs → Comisión. Alcance comisión = venta ÷ mínimo (NO venta÷meta).",
+    // La nota le dice al modelo contra QUÉ se mide. Si dijera "mínimo" en una
+    // tienda de base META, el Copilot explicaría mal un número correcto.
+    note: basis === "META"
+      ? "Mismos números que pestaña KPIs → Comisión. Alcance comisión = venta ÷ META (esta tienda mide contra la meta)."
+      : "Mismos números que pestaña KPIs → Comisión. Alcance comisión = venta ÷ mínimo (NO venta÷meta).",
     formatHint: "Para cada persona: Nombre — comisión $X (Y%) — alcance vs mínimo Z%. Evita tablas con muchas columnas."
   };
 
   if (ctxRole === "ASESOR") {
     if (!report.own) return toolError("No hay datos de comisión para ti en este periodo.");
-    const own = buildCommissionPerson(report.own, rules, "ASESOR");
+    const own = buildCommissionPerson(report.own, rules, "ASESOR", basis);
     return toolOk({
       ...periodMeta,
       scope: "own",
@@ -51,12 +56,13 @@ function buildPayload(report: KpiReport, ctxRole: Role, resolvedUserId?: string)
   const own = buildCommissionPerson(
     { ...store, userName: ctxRole === "GERENTE" ? "Tienda (GERENTE)" : "Tienda (SUBGERENTE)" },
     rules,
-    ctxRole
+    ctxRole,
+    basis
   );
 
   const team = report.team
     .filter((item) => item.role === "ASESOR")
-    .map((item) => buildCommissionPerson(item, rules, "ASESOR"))
+    .map((item) => buildCommissionPerson(item, rules, "ASESOR", basis))
     .sort((a, b) => b.commissionAmount - a.commissionAmount || b.achievementVsMinimum - a.achievementVsMinimum);
 
   if (resolvedUserId) {

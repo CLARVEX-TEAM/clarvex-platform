@@ -176,7 +176,8 @@ export default function AdvisorDashboard() {
     goal: kpi?.monthlyGoal ?? 0,
     minimum: kpi?.commissionMinimum,
     rules: data.commissionRules,
-    role: user.role
+    role: user.role,
+    basis: data.commissionBasis
   });
 
   const salesTrend = buildSalesTrend(data.kpis.map((k) => ({ date: k.date, dailySales: k.dailySales, dailyGoal: k.dailyGoal })), todayKey);

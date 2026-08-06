@@ -4,7 +4,7 @@
 // (app/escritorio/kpis). El fetch usa la versión robusta con reintentos
 // (en iOS/PWA la petición a veces se cuelga al cambiar de pantalla).
 import { useEffect, useMemo, useState } from "react";
-import { findCommissionRule, projectMonthlyCommission, resolveCommissionMinimum } from "@/lib/commission";
+import { commissionReference, findCommissionRule, projectMonthlyCommission, rulePayout, rulePercent } from "@/lib/commission";
 import { completion } from "@/lib/format";
 import type { KpiPeriod } from "@/lib/kpi-period";
 import type { Role, User } from "@/lib/types";
@@ -154,15 +154,23 @@ export function useKpiDerived({ session, report, period, targets, simulatedSales
   const progress = completion(activeKpi?.sales ?? 0, activeKpi?.goal ?? 0);
   const commissionKpi = isAdvisor ? (report?.own ?? null) : (report?.store ?? null);
   const initialSimulation = simulatedSales ? Number(simulatedSales) : commissionKpi?.sales ?? 0;
-  // El alcance para comisión SIEMPRE se mide contra el MÍNIMO (nunca contra la meta).
-  // Si no hay mínimo sincronizado, se deriva de la meta (meta ÷ 1.15).
-  const commissionBase = resolveCommissionMinimum(commissionKpi?.commissionMinimum ?? null, commissionKpi?.goal ?? 0);
+  // Referencia del alcance para comisión: el MÍNIMO en casi todas las marcas, y
+  // la META en GUESS. Lo decide la tienda (`commissionBasis`), no esta pantalla:
+  // con meta 268 974 y un 90 %, medir contra el mínimo lo convierte en 103 % y
+  // cambia de bracket. Sin mínimo sincronizado se deriva de la meta (meta ÷ 1.15).
+  const commissionBase = commissionReference({
+    goal: commissionKpi?.goal ?? 0,
+    minimum: commissionKpi?.commissionMinimum ?? null,
+    basis: report?.commissionBasis
+  });
   const hasCommissionMinimum = commissionBase > 0;
   const simulatedAchievement = hasCommissionMinimum ? getAchievement(initialSimulation, commissionBase) : 0;
   const commissionRole: Role = isAdvisor ? "ASESOR" : session?.role ?? "GERENTE";
   const activeRule = hasCommissionMinimum ? findCommissionRule(report?.commissionRules ?? [], commissionRole, simulatedAchievement) : undefined;
-  const appliedPercent = activeRule?.commissionPercent ?? 0;
-  const simulatedCommission = hasCommissionMinimum ? initialSimulation * (appliedPercent / 100) : 0;
+  const appliedPercent = rulePercent(activeRule);
+  // Con `rulePayout` y no venta × %, porque los brackets de GUESS entre 80 y
+  // 99.99 % pagan un IMPORTE FIJO: multiplicar por su porcentaje (0) daría cero.
+  const simulatedCommission = hasCommissionMinimum ? rulePayout(activeRule, initialSimulation) : 0;
   const chartData = report?.team.map((item) => ({ name: item.userName, venta: item.sales, meta: item.goal })) ?? [];
   const rangeLabel = report ? formatPeriodLabel(report.period, report.startDate, report.endDate, report.weekNumber, report.retailMonthLabel) : "Cargando periodo";
   const periodKey: "SEMANA" | "MES" = period === "week" ? "SEMANA" : "MES";
@@ -175,7 +183,11 @@ export function useKpiDerived({ session, report, period, targets, simulatedSales
     if (!monthWeeks || !report || !commissionKpi || commissionKpi.sales <= 0) return null;
     const result = projectMonthlyCommission({
       salesToDate: commissionKpi.sales,
-      minimumToDate: resolveCommissionMinimum(commissionKpi.commissionMinimum ?? null, commissionKpi.goal),
+      minimumToDate: commissionReference({
+        goal: commissionKpi.goal,
+        minimum: commissionKpi.commissionMinimum ?? null,
+        basis: report.commissionBasis
+      }),
       weeksElapsed: monthWeeks.weeksElapsed,
       totalWeeks: monthWeeks.totalWeeks,
       rules: report.commissionRules,

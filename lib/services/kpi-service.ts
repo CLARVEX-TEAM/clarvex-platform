@@ -68,7 +68,7 @@ export async function getKpiReport(session: Session, { period, selectedDate, asO
     end = new Date(Date.UTC(asOfDate.getUTCFullYear(), asOfDate.getUTCMonth(), asOfDate.getUTCDate()));
   }
 
-  const [allRows, rules, latestDiscountAnchor] = await Promise.all([
+  const [allRows, rules, latestDiscountAnchor, commissionStore] = await Promise.all([
     prisma.kpi.findMany({
       where: {
         storeId: session.storeId,
@@ -87,7 +87,11 @@ export async function getKpiReport(session: Session, { period, selectedDate, asO
       where: { storeId: session.storeId, ...(!manager ? { userId: session.userId } : {}), discountAmount: { not: null }, weekNumber: { not: null } },
       orderBy: { date: "desc" },
       select: { weekNumber: true }
-    })
+    }),
+    // La BASE de comisión viaja con las reglas: sin ella el cliente no sabe si
+    // el alcance se mide contra el mínimo o contra la meta, y en GUESS ese
+    // denominador cambia el bracket —y el pago— por completo.
+    prisma.store.findUnique({ where: { id: session.storeId }, select: { commissionBasis: true } })
   ]);
   const rows = manager ? allRows : allRows.filter((row) => row.userId === session.userId);
 
@@ -159,11 +163,17 @@ export async function getKpiReport(session: Session, { period, selectedDate, asO
       ),
     hasDiscountSource,
     latestDiscountWeek,
+    commissionBasis: commissionStore?.commissionBasis ?? "MINIMO",
     commissionRules: rules.map((rule) => ({
       id: rule.id, storeId: rule.storeId, role: rule.role,
       minSales: Number(rule.minSales), maxSales: rule.maxSales === null ? null : Number(rule.maxSales),
       minAchievement: Number(rule.minAchievement), maxAchievement: rule.maxAchievement === null ? null : Number(rule.maxAchievement),
-      commissionPercent: Number(rule.commissionPercent), active: rule.active
+      commissionPercent: Number(rule.commissionPercent), active: rule.active,
+      // Sin estos tres, un bracket de importe fijo llega al navegador como un
+      // porcentaje de 0 y `rulePayout` paga cero a quien sí cumplió.
+      payoutType: rule.payoutType,
+      fixedAmount: rule.fixedAmount === null ? null : Number(rule.fixedAmount),
+      fixedAmountHigh: rule.fixedAmountHigh === null ? null : Number(rule.fixedAmountHigh)
     }))
   };
 }

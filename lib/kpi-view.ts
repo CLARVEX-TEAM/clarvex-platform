@@ -3,7 +3,7 @@
 // viven aquí para que un arreglo aplique a ambas versiones a la vez.
 import { BarChart3, Mail, MessageCircle, Percent, Receipt, ShoppingBag, Target, TrendingUp } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { findCommissionRule, resolveCommissionMinimum } from "@/lib/commission";
+import { findCommissionRule, resolveCommissionMinimum, type CommissionBasis } from "@/lib/commission";
 import { periodDateKey, type KpiPeriod } from "@/lib/kpi-period";
 import type { KpiReportItem } from "@/lib/kpi-report";
 import type { CommissionRule, Role } from "@/lib/types";
@@ -31,6 +31,8 @@ export type KpiResponse = {
   own: KpiReportItem | null;
   team: KpiReportItem[];
   commissionRules: CommissionRule[];
+  /** Contra qué se mide el alcance de comisión: el mínimo o la meta (GUESS). */
+  commissionBasis: CommissionBasis;
   hasDiscountSource: boolean;
   latestDiscountWeek: { weekNumber: number; margin: number | null } | null;
 };

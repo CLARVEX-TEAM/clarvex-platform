@@ -27,7 +27,7 @@ export async function GET(request: Request) {
   const dashboardDate = dashboardDateKey();
   const dashboardRange = dashboardDateRange(dashboardDate);
 
-  const [users, kpis, dashboardRows, plans, pendings, logEntries, announcements, schedules, evidences, commissionRules] = await Promise.all([
+  const [users, kpis, dashboardRows, plans, pendings, logEntries, announcements, schedules, evidences, commissionRules, commissionStore] = await Promise.all([
     prisma.user.findMany({ where: { storeId: session.storeId, ...activeFilter }, orderBy: [{ role: "asc" }, { name: "asc" }] }),
     prisma.kpi.findMany({ where: { storeId: session.storeId, ...own }, orderBy: [{ date: "desc" }, { ranking: "asc" }] }),
     prisma.kpi.findMany({
@@ -45,7 +45,10 @@ export async function GET(request: Request) {
     prisma.announcement.findMany({ where: { storeId: session.storeId }, include: { reads: true, reactions: true }, orderBy: { createdAt: "desc" } }),
     prisma.schedule.findMany({ where: { storeId: session.storeId, ...own }, orderBy: [{ userId: "asc" }, { date: "asc" }] }),
     prisma.evidence.findMany({ where: { storeId: session.storeId, ...(manager ? {} : { uploadedById: session.userId }) }, orderBy: { createdAt: "desc" } }),
-    prisma.commissionRule.findMany({ where: { storeId: session.storeId, ...(manager ? {} : { OR: [{ role: session.role }, { role: null }] }) }, orderBy: [{ active: "desc" }, { role: "asc" }, { minAchievement: "asc" }] })
+    prisma.commissionRule.findMany({ where: { storeId: session.storeId, ...(manager ? {} : { OR: [{ role: session.role }, { role: null }] }) }, orderBy: [{ active: "desc" }, { role: "asc" }, { minAchievement: "asc" }] }),
+    // La BASE de comisión: contra el mínimo o contra la meta. En GUESS ese
+    // denominador decide el bracket, y con él el pago.
+    prisma.store.findUnique({ where: { id: session.storeId }, select: { commissionBasis: true } })
   ]);
   // Gerencia: TOTAL de tienda del día (suma de colaboradores = TOTALES; meta de
   // gerente/subgerente = meta de tienda). Asesor: su única fila del día.
@@ -107,6 +110,9 @@ export async function GET(request: Request) {
     // meta del RDV (otro archivo), y al reasignar un turno se contradecían.
     schedules: schedules.map((shift) => ({ id: shift.id, userId: shift.userId, date: shift.date.toISOString().slice(0, 10), status: shift.status, day: shift.day, start: shift.startTime ?? shift.statusRaw ?? shift.status, end: shift.endTime ?? "", zone: shift.zone ?? "" })),
     evidences: evidences.map((evidence, index) => ({ id: evidence.id, storeId: evidence.storeId, uploadedById: evidence.uploadedById, pendingId: evidence.pendingId, logEntryId: evidence.logEntryId, taskId: evidence.taskId, url: signedEvidenceUrls[index] ?? evidence.url, fileName: evidence.fileName, mimeType: evidence.mimeType, note: evidence.note, createdAt: evidence.createdAt.toISOString() })),
-    commissionRules: commissionRules.map((rule) => ({ id: rule.id, storeId: rule.storeId, role: rule.role, minSales: Number(rule.minSales), maxSales: rule.maxSales === null ? null : Number(rule.maxSales), minAchievement: Number(rule.minAchievement), maxAchievement: rule.maxAchievement === null ? null : Number(rule.maxAchievement), commissionPercent: Number(rule.commissionPercent), active: rule.active }))
+    commissionBasis: commissionStore?.commissionBasis ?? "MINIMO",
+    // `payoutType` y los importes fijos viajan siempre: sin ellos un bracket de
+    // importe fijo llega como un porcentaje de 0 y paga cero a quien cumplio.
+    commissionRules: commissionRules.map((rule) => ({ id: rule.id, storeId: rule.storeId, role: rule.role, minSales: Number(rule.minSales), maxSales: rule.maxSales === null ? null : Number(rule.maxSales), minAchievement: Number(rule.minAchievement), maxAchievement: rule.maxAchievement === null ? null : Number(rule.maxAchievement), commissionPercent: Number(rule.commissionPercent), active: rule.active, payoutType: rule.payoutType, fixedAmount: rule.fixedAmount === null ? null : Number(rule.fixedAmount), fixedAmountHigh: rule.fixedAmountHigh === null ? null : Number(rule.fixedAmountHigh) }))
   }, { headers: { "Cache-Control": "private, no-store" } });
 }

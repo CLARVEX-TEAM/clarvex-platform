@@ -1,3 +1,4 @@
+import type { CommissionBasis } from "@/lib/commission";
 import type { DashboardDailyKpi } from "@/lib/dashboard-kpi";
 import type { Announcement, CommissionRule, DayPlan, Evidence, Kpi, LogEntry, Pending, ScheduleShift, User } from "@/lib/types";
 
@@ -12,6 +13,8 @@ export type AppData = {
   schedules: ScheduleShift[];
   evidences: Evidence[];
   commissionRules: CommissionRule[];
+  /** Contra qué se mide el alcance de comisión: el mínimo o la meta (GUESS). */
+  commissionBasis: CommissionBasis;
 };
 
 async function fetchWithTimeout(url: string, ms: number): Promise<Response> {

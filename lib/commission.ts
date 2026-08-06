@@ -60,7 +60,7 @@ export function formatCommissionLevel(
 }
 
 /** Tasa a mostrar de un bracket. Los brackets de importe fijo no tienen tasa. */
-function rulePercent(rule: { commissionPercent?: number; payoutType?: CommissionPayoutType | null } | null | undefined): number {
+export function rulePercent(rule: { commissionPercent?: number; payoutType?: CommissionPayoutType | null } | null | undefined): number {
   if (!rule || rule.payoutType === "FIXED") return 0;
   return rule.commissionPercent ?? 0;
 }
