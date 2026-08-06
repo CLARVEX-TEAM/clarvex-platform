@@ -2,7 +2,8 @@ import type { DataSource } from "@prisma/client";
 import { encodeSyncLogMessage, getNextSyncAt, serializeDataSource, type AttendanceSyncMetrics, type DiscountSyncMetrics, type KpiSyncMetrics, type ScheduleSyncMetrics } from "@/lib/data-source";
 import { downloadExcelWorkbook, summarizeWorkbook } from "@/lib/excel-proxy";
 import { buildUserByEmployeeNumber } from "@/lib/employee-match";
-import { isGuessRdvWorkbook, parseGuessCaptura } from "@/lib/guess-rdv";
+import { isGuessRdvWorkbook, parseGuessCaptura, parseGuessTabulador } from "@/lib/guess-rdv";
+import { compareGuessTabulador } from "@/lib/guess-tabulador-check";
 import { parseKpiWorkbook } from "@/lib/kpi-parser";
 import { parsePosDiscountWorkbook } from "@/lib/pos-discount-parser";
 import { prisma } from "@/lib/prisma";
@@ -134,6 +135,35 @@ export async function syncDataSource(source: DataSource): Promise<SyncOutcome> {
   }
 }
 
+/**
+ * Compara el tabulador del RDV con el esquema de comisiones que capturó la
+ * tienda y devuelve las diferencias en texto.
+ *
+ * Nunca lanza: un tabulador con un formato inesperado no puede tumbar la
+ * importación de los KPIs, que es lo que la tienda necesita cada día. Si no se
+ * puede leer, simplemente no se avisa de nada.
+ */
+async function checkGuessTabulador(workbook: Parameters<typeof parseGuessTabulador>[0], storeId: string): Promise<string[]> {
+  try {
+    const tabulador = parseGuessTabulador(workbook);
+    if (!tabulador) return [];
+    const rules = await prisma.commissionRule.findMany({
+      where: { storeId, active: true, role: { not: null } },
+      select: { role: true, minAchievement: true, commissionPercent: true, fixedAmount: true, fixedAmountHigh: true }
+    });
+    return compareGuessTabulador(tabulador, rules.map((rule) => ({
+      role: rule.role,
+      minAchievement: Number(rule.minAchievement),
+      commissionPercent: Number(rule.commissionPercent),
+      fixedAmount: rule.fixedAmount === null ? null : Number(rule.fixedAmount),
+      fixedAmountHigh: rule.fixedAmountHigh === null ? null : Number(rule.fixedAmountHigh)
+    })));
+  } catch (error) {
+    syncLog("[SYNC] No se pudo contrastar el tabulador de GUESS:", error instanceof Error ? error.message : String(error));
+    return [];
+  }
+}
+
 async function importKpis(workbook: Parameters<typeof parseKpiWorkbook>[0], storeId: string): Promise<KpiSyncMetrics> {
   // Hay DOS formatos de RDV y se eligen por la forma del archivo, no por un
   // ajuste que alguien deba marcar al vincular la fuente: un formato mal
@@ -141,8 +171,10 @@ async function importKpis(workbook: Parameters<typeof parseKpiWorkbook>[0], stor
   //
   // El de GUESS se reconoce por sus hojas «Captura» y «Tabulador», que el RDV
   // histórico no tiene. Ante la duda manda el de siempre.
-  const parsed = isGuessRdvWorkbook(workbook) ? parseGuessCaptura(workbook) : parseKpiWorkbook(workbook);
+  const isGuess = isGuessRdvWorkbook(workbook);
+  const parsed = isGuess ? parseGuessCaptura(workbook) : parseKpiWorkbook(workbook);
   logParsedKpiWeeks(parsed);
+  const schemeIssues = isGuess ? await checkGuessTabulador(workbook, storeId) : [];
   const users = parsed.employeeNumbers.length > 0
     ? await prisma.user.findMany({
         where: { storeId, OR: [{ employeeNumber: { in: parsed.employeeNumbers } }, { employeeNumberAliases: { some: { employeeNumber: { in: parsed.employeeNumbers } } } }] },
@@ -171,7 +203,10 @@ async function importKpis(workbook: Parameters<typeof parseKpiWorkbook>[0], stor
   const existingKeys = new Set(existing.map((kpi) => `${kpi.userId}:${kpi.date.toISOString()}`));
   let recordsCreated = 0;
   let recordsUpdated = 0;
-  const errors: string[] = [];
+  // Las diferencias del tabulador se listan junto a los errores de importación
+  // porque es donde el Centro de Datos ya mira. No impiden guardar los KPIs:
+  // son un aviso sobre las comisiones, no un fallo de la sincronización.
+  const errors: string[] = [...schemeIssues];
   const importStartedAt = Date.now();
 
   for (let batchStart = 0; batchStart < matchedRecords.length; batchStart += KPI_BATCH_SIZE) {
