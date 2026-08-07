@@ -14,7 +14,15 @@
 #    pero no los arrays intermedios— y volvía a tumbar el proceso. Esta vez SÍ
 #    hay parche dentro de cada major (1.1.18, 2.1.4 y 5.0.9), así que ya no
 #    queda residual que ignorar en osv-scanner.toml.
-#  - js-yaml <4.3.0 (GHSA-52cp-r559-cp3m)
+#  - js-yaml <4.3.1: dos avisos encadenados. Primero GHSA-52cp-r559-cp3m
+#    (<4.3.0), y el 7-ago-2026 GHSA-5p4m-2wfm-xmqj contra la propia 4.3.0, que
+#    era la versión a la que este override apuntaba. Es un DoS por complejidad:
+#    `resolveYamlOmap()` comprobaba claves repetidas con `indexOf` dentro de un
+#    bucle —O(n²)— y como el trabajo ocurre SÍNCRONO dentro de `yaml.load()`,
+#    bloquea el bucle de eventos entero (150 000 entradas ≈ 10.8 s). Aquí solo
+#    llega por eslint, que lee configuración nuestra y no entrada de terceros,
+#    así que la superficie real es nula; se sube igual para dejar el audit en
+#    cero. La 4.3.1 cambia el escaneo del array por un Set.
 #  - fast-uri <3.1.5 (GHSA-7p8r-x3mc-p8w7): confusión de host. Reconoce la
 #    autoridad de una URI solo tras "//", así que con "\\", "/\" o "\/" se traga
 #    el host dentro de la ruta. El URL nativo de Node sí trata "\" como "/", de
@@ -29,6 +37,6 @@ overrides:
   brace-expansion@1: 1.1.18
   brace-expansion@2: 2.1.4
   brace-expansion@5: 5.0.9
-  js-yaml@4: 4.3.0
+  js-yaml@4: 4.3.1
   fast-uri@<3.1.5: ">=3.1.5 <4"
   sharp@<0.35.0: ">=0.35.0 <0.36"
