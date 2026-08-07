@@ -47,6 +47,11 @@ const publicApiExact = new Set([
 function isPublicApi(pathname: string): boolean {
   if (publicApiExact.has(pathname)) return true;
   if (pathname.startsWith("/api/cron/")) return true;
+  // Sincronización desde el panel externo: no lleva sesión porque no la tiene.
+  // Se autoriza con ADMIN_SYNC_SECRET dentro del handler, igual que los cron.
+  // Se lista la ruta EXACTA y no el prefijo `/api/admin/`: así una ruta futura
+  // bajo ese prefijo no queda pública por herencia.
+  if (pathname === "/api/admin/sync-source") return true;
   if (pathname.startsWith("/api/webhooks/")) return true;
   // Entrada pública al modo demo (crea la sesión demo; rate-limitada en el handler).
   if (pathname.startsWith("/api/demo/")) return true;
