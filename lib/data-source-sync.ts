@@ -335,8 +335,64 @@ async function importKpis(workbook: Parameters<typeof parseKpiWorkbook>[0], stor
   // la hoja.
   const recordsDeleted = await deleteStaleKpis(storeId, users.map((user) => user.id), matchedRecords);
   await enableKpisIfStoreHasSales(storeId);
+  await refreshCapturedDenominators(storeId);
 
   return buildKpiMetrics(parsed, users.length, matchedRecords.length, recordsCreated, recordsUpdated, recordsDeleted, employeesNotFound, errors);
+}
+
+/**
+ * Mantiene al día el denominador de la tasa de ticket electrónico.
+ *
+ * Al capturar, `posTransactions` guarda cuántos tickets totales tenía esa
+ * persona esa semana. Se guardaba UNA vez y ya nadie lo volvía a mirar, así que
+ * si el RDV seguía creciendo —y crece: las tiendas capturan a media semana y
+ * además completan días con retraso— la tasa se quedaba clavada contra un total
+ * parcial. En TH SAN AGUSTIN una asesora salía al 100 % (11 de 11) cuando su
+ * semana real llevaba 28 tickets: su tasa verdadera era 39 %.
+ *
+ * Ahora se recalcula en cada sincronización. No es «descongelar»: el
+ * denominador sigue cubriendo SOLO las semanas capturadas —que es lo que evita
+ * hundir la tasa del mes fingiendo ceros donde nadie midió—, pero dentro de esas
+ * semanas refleja los tickets que el RDV tiene HOY. Cuando el archivo deja de
+ * moverse, el número se queda quieto solo.
+ *
+ * Se puede sobrescribir sin miedo porque `posTransactions` NUNCA se teclea: la
+ * pantalla de captura solo tiene un campo, el de tickets electrónicos.
+ *
+ * Nunca lanza: esto es un ajuste sobre datos ya importados, y fallar aquí no
+ * puede tumbar una sincronización que ya salió bien.
+ */
+async function refreshCapturedDenominators(storeId: string): Promise<void> {
+  try {
+    // Las anclas: la captura vive en la PRIMERA fila de cada semana, no repetida
+    // en los siete días (repetirla multiplicaría por siete al sumar).
+    const anchors = await prisma.kpi.findMany({
+      where: { storeId, crmTransactions: { not: null }, weekNumber: { not: null } },
+      select: { id: true, userId: true, weekNumber: true, posTransactions: true }
+    });
+    if (anchors.length === 0) return;
+
+    const weekNumbers = Array.from(new Set(anchors.map((anchor) => anchor.weekNumber!)));
+    const rows = await prisma.kpi.findMany({
+      where: { storeId, weekNumber: { in: weekNumbers } },
+      select: { userId: true, weekNumber: true, transactions: true }
+    });
+
+    const totals = new Map<string, number>();
+    for (const row of rows) {
+      const key = `${row.userId}:${row.weekNumber}`;
+      totals.set(key, (totals.get(key) ?? 0) + row.transactions);
+    }
+
+    for (const anchor of anchors) {
+      const live = totals.get(`${anchor.userId}:${anchor.weekNumber}`) ?? 0;
+      if (anchor.posTransactions === live) continue;
+      await prisma.kpi.update({ where: { id: anchor.id }, data: { posTransactions: live } });
+      syncLog("[SYNC] Denominador de ticket electronico actualizado:", anchor.posTransactions, "->", live);
+    }
+  } catch (error) {
+    syncLog("[SYNC] No se pudieron refrescar los denominadores:", error instanceof Error ? error.message : String(error));
+  }
 }
 
 /**
