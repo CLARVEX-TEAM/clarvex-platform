@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { fetchAppData, type AppData } from "@/lib/app-data";
+import { fetchAppData, lastKnownAppData, type AppData } from "@/lib/app-data";
 
 /**
  * Hook compartido por los dashboards de manager y advisor.
@@ -11,7 +11,10 @@ import { fetchAppData, type AppData } from "@/lib/app-data";
  * internet (evento custom `clarvex-online`).
  */
 export function useAppData() {
-  const [data, setData] = useState<AppData | null>(null);
+  // Arranca con la última copia conocida, si la hay, para que el panel nunca
+  // aparezca vacío. `useState` con función para no leer el disco en cada
+  // render. Se refresca igual en el efecto de abajo.
+  const [data, setData] = useState<AppData | null>(() => lastKnownAppData());
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
 
