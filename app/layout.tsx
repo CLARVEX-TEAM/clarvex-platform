@@ -55,9 +55,35 @@ export const viewport: Viewport = {
   interactiveWidget: "resizes-content"
 };
 
+/**
+ * Aplica el tema ANTES del primer pintado.
+ *
+ * `ThemeProvider` pone la clase `dark` en un `useEffect`, y los efectos corren
+ * después de pintar. Como `html { background: var(--bg) }`, durante esos
+ * milisegundos se veía el fondo CLARO: un parpadeo blanco al abrir la app y al
+ * cambiar de pantalla por primera vez. El fundido que tenía la transición lo
+ * disimulaba; al quitarlo quedó a la vista.
+ *
+ * Va en línea y sin `defer` a propósito: tiene que ejecutarse de forma síncrona
+ * antes de que el navegador pinte nada. Todo dentro de un try: si falla —modo
+ * privado, almacenamiento bloqueado— se queda el tema claro, que es el
+ * comportamiento de antes, nunca una pantalla rota.
+ *
+ * La lógica debe coincidir EXACTA con la de ThemeProvider; si divergen, el
+ * parpadeo vuelve pero al revés.
+ */
+const THEME_SCRIPT = `(function(){try{
+var t=localStorage.getItem('clarvex-theme');
+var d=t==='dark'||((t==='system'||t===null||t===undefined)&&window.matchMedia('(prefers-color-scheme: dark)').matches);
+if(d)document.documentElement.classList.add('dark');
+}catch(e){}})();`;
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="es" suppressHydrationWarning className={geist.variable}>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
+      </head>
       <body>
         <ThemeProvider>
           <ToastProvider>
