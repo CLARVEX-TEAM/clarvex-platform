@@ -4,6 +4,7 @@ import type {
   PublicKeyCredentialRequestOptionsJSON,
   RegistrationResponseJSON
 } from "@simplewebauthn/server";
+import { clearAppDataCache } from "@/lib/app-data";
 import type { User } from "@/lib/types";
 
 /**
@@ -66,6 +67,9 @@ export async function createPin(employeeNumber: string, pin: string) {
 
 export async function logout() {
   await fetch("/api/auth/session", { method: "DELETE" });
+  // El celular kiosko y las cuentas demo son COMPARTIDOS: sin vaciar la caché
+  // del panel, quien entre después vería los datos de quien acaba de salir.
+  clearAppDataCache();
 }
 
 export async function getBiometricRegistrationOptions(): Promise<PublicKeyCredentialCreationOptionsJSON> {
