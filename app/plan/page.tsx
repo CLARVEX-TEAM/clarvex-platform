@@ -399,8 +399,13 @@ export default function PlanPage() {
                 <div className="mb-3 flex items-start justify-between gap-3">
                   <div className="flex min-w-0 items-center gap-3">
                     <ProfileAvatar name={userName(plan.userId)} photoUrl={planUser(plan.userId)?.photoUrl} size="sm" className="rounded-full shadow-none" />
-                    <div>
-                      <h2 className="truncate text-xl font-semibold">{userName(plan.userId)}</h2>
+                    {/* `min-w-0` tambien AQUI, no solo en el contenedor de
+                        fuera: dentro de un flex un hijo tiene `min-width: auto`
+                        y no se encoge por debajo de su contenido, asi que sin
+                        esto el `truncate` del nombre no recorta nada y los
+                        apellidos largos se metian debajo del importe. */}
+                    <div className="min-w-0">
+                      <h2 className="truncate text-base font-semibold">{userName(plan.userId)}</h2>
                       <p className="text-sm text-muted">{plan.date}</p>
                     </div>
                   </div>
