@@ -7,6 +7,7 @@ import { getSession } from "@/lib/auth";
 import type { User } from "@/lib/types";
 import { AppFrame, AppHeader, Badge, Button, Card } from "@/components/ui";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { useToast } from "@/components/Toast";
 import { AnimatedList } from "@/components/magic/AnimatedList";
 
 type NotificationType = "PLAN_READY" | "NEW_ANNOUNCEMENT" | "PENDING_ASSIGNED" | "TASK_COMPLETED" | "KPI_GOAL_REACHED" | "COMMENT_ADDED" | "EVIDENCE_ADDED" | "DAILY_SUMMARY" | "ANNOUNCEMENT_REACTION" | "CELEBRATION" | "KUDO" | "SHIFT_REQUEST" | "INVENTORY_REPORT" | "NEW_TRAINING";
@@ -59,6 +60,7 @@ export default function NotificationsPage() {
   const [error, setError] = useState("");
   const [confirmClear, setConfirmClear] = useState(false);
   const [clearing, setClearing] = useState(false);
+  const toast = useToast();
   const homeHref = session?.role === "ASESOR" ? "/advisor" : "/manager";
 
   useEffect(() => { getSession().then(setSession); }, []);
@@ -81,20 +83,43 @@ export default function NotificationsPage() {
   }
 
   async function markRead(id: string) {
-    const response = await fetch(`/api/notifications/${id}/read`, { method: "POST" });
-    if (!response.ok) return;
+    // Marcar la primera fila optimista: quien toca una notificación se va a
+    // otra pantalla en el mismo gesto, así que si se espera a la respuesta el
+    // cambio nunca llega a verse.
     setItems((current) => current.map((item) => item.id === id ? { ...item, readAt: new Date().toISOString() } : item));
     setUnreadCount((count) => Math.max(0, count - 1));
-    window.dispatchEvent(new Event("notifications-updated"));
+    try {
+      // `keepalive` es la clave: el clic navega de inmediato, y sin esto el
+      // navegador aborta la petición al desmontar el documento. Ese aborto es
+      // el `TypeError: Load failed` que llegaba a Sentry, y de paso la
+      // notificación se quedaba sin marcar. Con keepalive el envío sobrevive a
+      // la navegación.
+      await fetch(`/api/notifications/${id}/read`, { method: "POST", keepalive: true });
+      window.dispatchEvent(new Event("notifications-updated"));
+    } catch {
+      // Sin red: se queda marcada en pantalla y el servidor se entera al
+      // siguiente refresco. No se avisa porque para entonces ya se navegó a
+      // otra pantalla y el aviso saldría fuera de contexto.
+    }
   }
 
   async function markAllRead() {
-    const response = await fetch("/api/notifications/read-all", { method: "POST" });
-    if (!response.ok) return;
+    const previous = items;
+    const previousUnread = unreadCount;
     const readAt = new Date().toISOString();
     setItems((current) => current.map((item) => ({ ...item, readAt: item.readAt ?? readAt })));
     setUnreadCount(0);
-    window.dispatchEvent(new Event("notifications-updated"));
+    try {
+      const response = await fetch("/api/notifications/read-all", { method: "POST" });
+      if (!response.ok) throw new Error();
+      window.dispatchEvent(new Event("notifications-updated"));
+    } catch {
+      // Aquí sí se avisa: no hay navegación, la persona sigue mirando la lista
+      // y vería las notificaciones volver a "sin leer" sin explicación.
+      setItems(previous);
+      setUnreadCount(previousUnread);
+      toast("No se pudieron marcar como leídas. Revisa tu conexión.", "error");
+    }
   }
 
   async function deleteOne(id: string) {
