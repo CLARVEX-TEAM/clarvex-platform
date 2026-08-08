@@ -31,7 +31,15 @@
 #    resolver referencias de JSON Schema (definidas en el código, no por el
 #    usuario), así que aquí la superficie es estrecha; aun así el parche es
 #    cambiar un número.
+#  - nanoid <3.3.17 (GHSA-2v37-7h3g-55p8, CVE-2026-67213): bucle infinito.
+#    `customAlphabet` y `customRandom` con tamaño CERO nunca cumplen la
+#    condición de salida y el hilo se queda colgado. Llega solo por postcss
+#    —vía next, tailwind, autoprefixer y el plugin de Sentry—, que la usa
+#    internamente con tamaños fijos y en tiempo de COMPILACIÓN, no de
+#    ejecución: para explotarlo haría falta que un atacante eligiera ese
+#    tamaño, cosa que aquí no ocurre. Se sube igual porque el audit va a cero.
 overrides:
+  nanoid@3: ">=3.3.17 <4"
   postcss@<8.5.18: ">=8.5.18"
   exceljs>uuid: ">=11.1.1"
   brace-expansion@1: 1.1.18
