@@ -7,7 +7,7 @@ import { Check, ImagePlus, PackageSearch, RotateCcw, X } from "lucide-react";
 import { getSession } from "@/lib/auth";
 import { INVENTORY_CATEGORIES, INVENTORY_CATEGORY_LABELS } from "@/lib/inventory";
 import type { User } from "@/lib/types";
-import { AppFrame, AppHeader, Badge, BottomNav, Button, Card, ProfileAvatar } from "@/components/ui";
+import { AppFrame, AppHeader, Badge, Button, Card, ProfileAvatar } from "@/components/ui";
 import { DeleteButton } from "@/components/ActionButtons";
 import { SendButton } from "@/components/SendButton";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
@@ -212,7 +212,6 @@ export default function FaltantesPage() {
           </Card>
         ) : null}
       </AppFrame>
-      <BottomNav />
       <ConfirmDialog
         open={pendingDeleteId !== null}
         title="¿Eliminar este reporte?"

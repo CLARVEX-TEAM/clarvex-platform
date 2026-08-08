@@ -6,7 +6,7 @@ import { getSession } from "@/lib/auth";
 import { addWeeks, dateKey, startOfWeek } from "@/lib/schedule-week";
 import { SHIFT_TYPE_LABELS } from "@/lib/shift-requests";
 import type { Role, User } from "@/lib/types";
-import { AppFrame, AppHeader, Badge, BottomNav, Button, Card, ProfileAvatar, Skeleton } from "@/components/ui";
+import { AppFrame, AppHeader, Badge, Button, Card, ProfileAvatar, Skeleton } from "@/components/ui";
 import { PullToRefresh } from "@/components/PullToRefresh";
 
 type ScheduleStatus = "WORKING" | "OFF" | "VACATION" | "PAID_DAY" | "INVENTORY" | "TERMINATED" | "UNKNOWN";
@@ -184,7 +184,6 @@ export default function HorariosPage() {
         )}
       </AppFrame>
       </PullToRefresh>
-      <BottomNav />
     </>
   );
 }

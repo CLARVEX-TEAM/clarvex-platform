@@ -8,7 +8,7 @@ import { getSession } from "@/lib/auth";
 import { money } from "@/lib/format";
 import type { Activity, User } from "@/lib/types";
 import { CHORE_LABELS, ROTATING_ORDER } from "@/lib/chore-rules";
-import { AppFrame, AppHeader, Badge, BottomNav, Card, EmptyState, ProfileAvatar, ProgressBar, ProgressRing, Skeleton } from "@/components/ui";
+import { AppFrame, AppHeader, Badge, Card, EmptyState, ProfileAvatar, ProgressBar, ProgressRing, Skeleton } from "@/components/ui";
 import { TaskList } from "@/components/TaskList";
 import { DeleteButton, SaveButton } from "@/components/ActionButtons";
 import { SendButton } from "@/components/SendButton";
@@ -117,7 +117,6 @@ export default function PlanPage() {
             <Skeleton className="h-44 rounded-[28px]" />
           </div>
         </AppFrame>
-        <BottomNav />
       </>
     );
   }
@@ -452,7 +451,6 @@ export default function PlanPage() {
           ) : null}
         </div>
       </AppFrame>
-      <BottomNav />
       <ConfirmDialog
         open={pendingDeleteId !== null}
         title="¿Eliminar plan del día?"

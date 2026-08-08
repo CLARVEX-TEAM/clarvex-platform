@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { CheckCircle2, CreditCard, Loader2, ShieldCheck } from "lucide-react";
 import { getSession } from "@/lib/auth";
 import { money } from "@/lib/format";
-import { AppFrame, AppHeader, Badge, BottomNav, Button, Card } from "@/components/ui";
+import { AppFrame, AppHeader, Badge, Button, Card } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
 
@@ -145,7 +145,6 @@ export default function SubscriptionPage() {
           </>
         )}
       </AppFrame>
-      <BottomNav />
     </>
   );
 }

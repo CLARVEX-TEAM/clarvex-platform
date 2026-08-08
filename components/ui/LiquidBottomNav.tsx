@@ -45,14 +45,22 @@ export function LiquidBottomNav() {
   // apagados: si la consulta falla, es preferible una pestaña de más que una
   // barra que baila al cargar.
   const [kpisEnabled, setKpisEnabled] = useState(true);
+  // `null` = todavía no se sabe. La barra no se pinta hasta saberlo porque el
+  // celular kiosko NO debe verla, y mostrarla un instante le abriría el paso al
+  // resto de la app. Vive en el layout, así que esta espera ocurre una vez por
+  // sesión, no en cada navegación.
+  const [kiosk, setKiosk] = useState<boolean | null>(null);
   const pathname = usePathname();
   const reduce = useReducedMotion();
 
   useEffect(() => {
-    getSession().then((session) => {
-      setHomeHref(session?.role === "ASESOR" ? "/advisor" : "/manager");
-      setKpisEnabled(session?.kpisEnabled !== false);
-    });
+    getSession()
+      .then((session) => {
+        setHomeHref(session?.role === "ASESOR" ? "/advisor" : "/manager");
+        setKpisEnabled(session?.kpisEnabled !== false);
+        setKiosk(session?.checklistOnly === true);
+      })
+      .catch(() => setKiosk(false));
   }, []);
 
   const items = kpisEnabled ? navItems : navItems.filter((item) => item.href !== "/kpis");
@@ -85,6 +93,8 @@ export function LiquidBottomNav() {
   const spring = reduce
     ? { duration: 0 }
     : { type: "spring" as const, stiffness: 480, damping: 34 };
+
+  if (kiosk !== false) return null;
 
   return (
     <nav className="pointer-events-none fixed inset-x-0 bottom-2 z-30 px-3">

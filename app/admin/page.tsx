@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Building2, CheckCircle2, ChevronDown, KeyRound, Percent, Plus, ScrollText, Trash2, TrendingUp } from "lucide-react";
 import { getSession } from "@/lib/auth";
 import { money } from "@/lib/format";
-import { AppFrame, AppHeader, BottomNav, Button, Card } from "@/components/ui";
+import { AppFrame, AppHeader, Button, Card } from "@/components/ui";
 
 type CommissionRuleRow = {
   id: string;
@@ -548,7 +548,6 @@ export default function AdminPage() {
           ) : null}
         </Card>
       </AppFrame>
-      <BottomNav />
     </>
   );
 }

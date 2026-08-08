@@ -6,7 +6,7 @@ import { Cake, Camera, ChevronRight, Fingerprint, ImageUp, LifeBuoy, Moon, Scrol
 import { startRegistration } from "@simplewebauthn/browser";
 import { getBiometricRegistrationOptions, getSession, registerBiometric } from "@/lib/auth";
 import type { User } from "@/lib/types";
-import { AppFrame, AppHeader, Badge, BottomNav, Button, Card, ProfileAvatar } from "@/components/ui";
+import { AppFrame, AppHeader, Badge, Button, Card, ProfileAvatar } from "@/components/ui";
 import { SaveButton } from "@/components/ActionButtons";
 import { useToast } from "@/components/Toast";
 import { useTheme, type Theme } from "@/components/ThemeProvider";
@@ -270,7 +270,6 @@ export default function ProfilePage() {
           </>
         )}
       </AppFrame>
-      <BottomNav />
     </>
   );
 }

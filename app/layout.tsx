@@ -14,6 +14,7 @@ import { DesktopRouteGuard } from "@/components/desktop/DesktopRouteGuard";
 import { ClarvexCopilot } from "@/components/ClarvexCopilot";
 import { DemoBanner } from "@/components/DemoBanner";
 import { EmailBanner } from "@/components/EmailBanner";
+import { AppChrome } from "@/components/AppChrome";
 import { SplashIntro } from "@/components/SplashIntro";
 import { Meteors } from "@/components/magic/Meteors";
 import { DotPattern } from "@/components/magic/DotPattern";
@@ -80,6 +81,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 documentos legales, y solo entonces se pide capturar nada. */}
             <GuessSchemeNotice />
             <PageTransition>{children}</PageTransition>
+            {/* Fuera de PageTransition: dentro, el transform del envoltorio
+                animado crearía un containing block y rompería su position:fixed.
+                Aquí sobrevive a las navegaciones, que es lo que permite animar
+                la pastilla activa. */}
+            <AppChrome />
             <WhatsNewModal />
             <ClarvexCopilot />
           </ToastProvider>

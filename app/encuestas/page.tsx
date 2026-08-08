@@ -9,7 +9,7 @@ import { useRouter } from "next/navigation";
 import { ClipboardCheck, Lock, Star } from "lucide-react";
 import { getSession } from "@/lib/auth";
 import type { User } from "@/lib/types";
-import { AppFrame, AppHeader, Badge, BottomNav, Button, Card, EmptyState } from "@/components/ui";
+import { AppFrame, AppHeader, Badge, Button, Card, EmptyState } from "@/components/ui";
 import { useToast } from "@/components/Toast";
 
 type Question = { id: string; text: string; type: "RATING" | "TEXT"; order: number };
@@ -160,7 +160,6 @@ function EncuestasContent() {
           </div>
         )}
       </AppFrame>
-      <BottomNav />
     </>
   );
 }

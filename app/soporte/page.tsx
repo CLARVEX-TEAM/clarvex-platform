@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { LifeBuoy, CheckCircle2, Send } from "lucide-react";
-import { AppFrame, AppHeader, BottomNav, Card } from "@/components/ui";
+import { AppFrame, AppHeader, Card } from "@/components/ui";
 import { cn } from "@/lib/utils";
 
 const CATEGORIES = [
@@ -127,7 +127,6 @@ export default function SoportePage() {
           </Card>
         )}
       </AppFrame>
-      <BottomNav />
     </>
   );
 }

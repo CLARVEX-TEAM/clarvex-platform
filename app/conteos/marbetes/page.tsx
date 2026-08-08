@@ -1,6 +1,6 @@
 "use client";
 
-import { AppFrame, AppHeader, BottomNav } from "@/components/ui";
+import { AppFrame, AppHeader } from "@/components/ui";
 import { ConteosMarbetesView } from "@/components/conteos/ConteosMarbetes";
 
 export default function MarbetesPage() {
@@ -10,7 +10,6 @@ export default function MarbetesPage() {
       <AppFrame>
         <ConteosMarbetesView />
       </AppFrame>
-      <BottomNav />
     </>
   );
 }

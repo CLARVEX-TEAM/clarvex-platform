@@ -8,7 +8,7 @@ import { getSession } from "@/lib/auth";
 import { fetchAppData } from "@/lib/app-data";
 import { KUDO_OPTIONS } from "@/lib/kudos";
 import type { User } from "@/lib/types";
-import { AppFrame, AppHeader, Badge, BottomNav, Button, Card, ProfileAvatar } from "@/components/ui";
+import { AppFrame, AppHeader, Badge, Button, Card, ProfileAvatar } from "@/components/ui";
 import { Confetti } from "@/components/Confetti";
 
 type KudoItem = { id: string; emoji: string; message: string | null; from: { name: string; photoUrl?: string | null }; to: { name: string; photoUrl?: string | null }; createdAt: string };
@@ -172,7 +172,6 @@ export default function KudosPage() {
           )}
         </Card>
       </AppFrame>
-      <BottomNav />
     </>
   );
 }

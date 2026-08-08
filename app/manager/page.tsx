@@ -23,7 +23,7 @@ import { cn } from "@/lib/utils";
 import { computeDailyStreak } from "@/lib/streaks";
 import { isRestingToday, restLabel, scheduleStatusByUser } from "@/lib/working-today";
 import { isOpenPending, type User } from "@/lib/types";
-import { AppFrame, Badge, BottomNav, Card, ProfileAvatar, ProgressBar, priorityTone } from "@/components/ui";
+import { AppFrame, Badge, Card, ProfileAvatar, ProgressBar, priorityTone } from "@/components/ui";
 import { PullToRefresh } from "@/components/PullToRefresh";
 import { HomeHeader } from "@/components/home/HomeHeader";
 import { ShineBorder } from "@/components/magic/ShineBorder";
@@ -486,7 +486,6 @@ export default function ManagerDashboard() {
         ) : null}
       </AppFrame>
       </PullToRefresh>
-      <BottomNav />
     </>
   );
 }

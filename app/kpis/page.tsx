@@ -16,7 +16,7 @@ import { KPI_TABS as tabs, metricAchievement, metricStatus, metricStatusText, is
 import { ElectronicTicketsPanel } from "@/components/ElectronicTicketsPanel";
 import { targetValue } from "@/lib/electronic-tickets";
 import { useKpiDerived, useKpiReceipts, useKpiReport, useKpiTargets } from "@/lib/use-kpis";
-import { achievementTone, AppFrame, AppHeader, Badge, BottomNav, Card, EmptyState, ProfileAvatar, ProgressBar, ProgressRing, Skeleton, StatCard } from "@/components/ui";
+import { achievementTone, AppFrame, AppHeader, Badge, Card, EmptyState, ProfileAvatar, ProgressBar, ProgressRing, Skeleton, StatCard } from "@/components/ui";
 import { KpiHistoryView } from "@/components/KpiHistory";
 import { PullToRefresh } from "@/components/PullToRefresh";
 import { useTheme } from "@/components/ThemeProvider";
@@ -98,7 +98,6 @@ export default function KpisPage() {
             description="Estamos adaptando la app al esquema nuevo de tu marca. En cuanto el RDV esté conectado, tus indicadores vuelven a aparecer aquí."
           />
         </AppFrame>
-        <BottomNav />
       </>
     );
   }
@@ -167,7 +166,6 @@ export default function KpisPage() {
         ) : <Card className="text-sm font-semibold text-muted">No hay KPIs dentro de {rangeLabel}.</Card>}
       </AppFrame>
       </PullToRefresh>
-      <BottomNav />
       <AnimatePresence>
         {showTargetSheet && isManager ? (
           <TargetSheet

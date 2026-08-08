@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { Bell, Cake, CalendarClock, Check, CheckCheck, ClipboardCheck, GraduationCap, HeartHandshake, ImagePlus, Megaphone, MessageCircle, PackageSearch, Sparkles, Target, Trash2, Trophy, X } from "lucide-react";
 import { getSession } from "@/lib/auth";
 import type { User } from "@/lib/types";
-import { AppFrame, AppHeader, Badge, BottomNav, Button, Card } from "@/components/ui";
+import { AppFrame, AppHeader, Badge, Button, Card } from "@/components/ui";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { AnimatedList } from "@/components/magic/AnimatedList";
 
@@ -147,7 +147,6 @@ export default function NotificationsPage() {
         {error ? <Card className="mb-3 text-sm font-semibold text-rose-700">{error}</Card> : null}
         {loading ? <Card className="text-sm font-semibold text-muted">Cargando notificaciones...</Card> : items.length === 0 ? <Card className="py-8 text-center"><Target className="mx-auto text-volt" size={28} /><h2 className="mt-3 font-semibold text-ink">Sin notificaciones</h2><p className="mt-1 text-sm text-muted">Los planes, comunicados y pendientes apareceran aqui.</p></Card> : <AnimatedList className="space-y-2.5">{items.map((item) => <NotificationRow key={item.id} item={item} onRead={markRead} onDelete={deleteOne} />)}</AnimatedList>}
       </AppFrame>
-      <BottomNav />
       <ConfirmDialog
         open={confirmClear}
         title="¿Borrar todas las notificaciones?"

@@ -1,7 +1,7 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import { AppFrame, AppHeader, BottomNav } from "@/components/ui";
+import { AppFrame, AppHeader } from "@/components/ui";
 import { ConteoDetailView } from "@/components/conteos/ConteoDetail";
 
 export default function ConteoDetallePage() {
@@ -12,7 +12,6 @@ export default function ConteoDetallePage() {
       <AppFrame>
         <ConteoDetailView countId={id} />
       </AppFrame>
-      <BottomNav />
     </>
   );
 }

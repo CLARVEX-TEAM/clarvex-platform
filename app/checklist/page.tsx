@@ -8,7 +8,7 @@ import { getSession, logout } from "@/lib/auth";
 import { compressImage } from "@/lib/image-compress";
 import { DocScanner } from "@/components/DocScanner";
 import type { User } from "@/lib/types";
-import { AppFrame, AppHeader, Badge, BottomNav, Card, ProgressBar } from "@/components/ui";
+import { AppFrame, AppHeader, Badge, Card, ProgressBar } from "@/components/ui";
 
 type Section = "APERTURA" | "CIERRE";
 type ScanPhoto = { id: string; url: string; fileName: string | null; createdAt: string };
@@ -261,7 +261,6 @@ export default function ChecklistPage() {
           onCancel={() => setScanning(null)}
         />
       ) : null}
-      {kiosk ? null : <BottomNav />}
     </>
   );
 }

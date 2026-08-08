@@ -4,7 +4,7 @@ import Image from "next/image";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { BookOpen, CalendarClock, FileText, ImagePlus, PenLine, X } from "lucide-react";
 import { fetchAppData, type AppData } from "@/lib/app-data";
-import { AppFrame, AppHeader, Badge, BottomNav, Button, Card, EmptyState, Skeleton, StatCard } from "@/components/ui";
+import { AppFrame, AppHeader, Badge, Button, Card, EmptyState, Skeleton, StatCard } from "@/components/ui";
 import { ResourceDiscussion } from "@/components/ResourceDiscussion";
 
 export default function BitacoraPage() {
@@ -43,7 +43,6 @@ export default function BitacoraPage() {
             </Card>
           ) : <div className="space-y-3"><Skeleton className="h-20 rounded-[28px]" /><div className="grid grid-cols-2 gap-3"><Skeleton className="h-20 rounded-[28px]" /><Skeleton className="h-20 rounded-[28px]" /></div><Skeleton className="h-48 rounded-[28px]" /></div>}
         </AppFrame>
-        <BottomNav />
       </>
     );
   }
@@ -165,7 +164,6 @@ export default function BitacoraPage() {
           ))}
         </div>
       </AppFrame>
-      <BottomNav />
     </>
   );
 }

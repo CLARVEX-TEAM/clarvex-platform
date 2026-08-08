@@ -6,7 +6,7 @@ import { CalendarOff, Check, Send, X } from "lucide-react";
 import { getSession } from "@/lib/auth";
 import { DAY_BALANCE_LABELS, SHIFT_TYPE_LABELS, dayBalanceField, formatRequestDate, isHourType } from "@/lib/shift-requests";
 import type { User } from "@/lib/types";
-import { AppFrame, AppHeader, Badge, BottomNav, Button, Card, EmptyState, ProfileAvatar, Skeleton } from "@/components/ui";
+import { AppFrame, AppHeader, Badge, Button, Card, EmptyState, ProfileAvatar, Skeleton } from "@/components/ui";
 import { ShiftSwaps } from "@/components/ShiftSwaps";
 
 type ShiftRequest = {
@@ -242,7 +242,6 @@ export default function SolicitudesPage() {
           )}
         </Card>
       </AppFrame>
-      <BottomNav />
     </>
   );
 }

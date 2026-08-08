@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { CheckCircle2, Trash2, UserPlus } from "lucide-react";
 import { getSession } from "@/lib/auth";
 import { fetchAppData } from "@/lib/app-data";
-import { AppFrame, AppHeader, BottomNav, Button, Card, ProfileAvatar } from "@/components/ui";
+import { AppFrame, AppHeader, Button, Card, ProfileAvatar } from "@/components/ui";
 
 type Row = {
   id: string; name: string; photoUrl?: string | null; birthDate: string; hireDate: string;
@@ -306,7 +306,6 @@ export default function TeamDatesPage() {
           </div>
         )}
       </AppFrame>
-      <BottomNav />
     </>
   );
 }

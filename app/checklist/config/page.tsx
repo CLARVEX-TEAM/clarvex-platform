@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { ChevronDown, ChevronUp, FileText, ListChecks, Plus, Trash2 } from "lucide-react";
 import { getSession } from "@/lib/auth";
 import type { User } from "@/lib/types";
-import { AppFrame, AppHeader, BottomNav, Button, Card } from "@/components/ui";
+import { AppFrame, AppHeader, Button, Card } from "@/components/ui";
 import { cn } from "@/lib/utils";
 
 type Item = { id: string; key: string; section: "APERTURA" | "CIERRE"; kind: "check" | "scan"; label: string; sortOrder: number };
@@ -151,7 +151,6 @@ export default function ChecklistConfigPage() {
           </div>
         )}
       </AppFrame>
-      <BottomNav />
     </>
   );
 }

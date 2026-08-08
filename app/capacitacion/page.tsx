@@ -6,7 +6,7 @@ import { ExternalLink, FileText, GraduationCap, ImagePlus, X } from "lucide-reac
 import { getSession } from "@/lib/auth";
 import { TRAINING_CATEGORIES, TRAINING_CATEGORY_LABELS } from "@/lib/training";
 import type { User } from "@/lib/types";
-import { AppFrame, AppHeader, Badge, BottomNav, Card } from "@/components/ui";
+import { AppFrame, AppHeader, Badge, Card } from "@/components/ui";
 import { DeleteButton } from "@/components/ActionButtons";
 import { SendButton } from "@/components/SendButton";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
@@ -199,7 +199,6 @@ export default function CapacitacionPage() {
           </div>
         )}
       </AppFrame>
-      <BottomNav />
       <ConfirmDialog
         open={pendingDeleteId !== null}
         title="¿Eliminar este recurso?"

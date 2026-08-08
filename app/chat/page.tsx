@@ -6,7 +6,7 @@ import { MessageSquare, Users } from "lucide-react";
 import { getSession } from "@/lib/auth";
 import { fetchAppData } from "@/lib/app-data";
 import type { User } from "@/lib/types";
-import { AppFrame, AppHeader, BottomNav, Card, ProfileAvatar } from "@/components/ui";
+import { AppFrame, AppHeader, Card, ProfileAvatar } from "@/components/ui";
 import { chatPreview } from "@/components/ChatPicker";
 import { useToast } from "@/components/Toast";
 
@@ -174,7 +174,6 @@ export default function ChatPage() {
           </>
         )}
       </AppFrame>
-      <BottomNav />
     </>
   );
 }

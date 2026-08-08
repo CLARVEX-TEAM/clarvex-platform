@@ -13,7 +13,7 @@ import { computeAchievements } from "@/lib/achievements";
 import { buildSalesTrend, buildDailySeries } from "@/lib/trend";
 import type { User } from "@/lib/types";
 import Link from "next/link";
-import { AppFrame, Badge, BottomNav, Card, NotificationCard, SimulatorCard } from "@/components/ui";
+import { AppFrame, Badge, Card, NotificationCard, SimulatorCard } from "@/components/ui";
 import { TaskList } from "@/components/TaskList";
 import { Confetti } from "@/components/Confetti";
 import { PullToRefresh } from "@/components/PullToRefresh";
@@ -591,7 +591,6 @@ export default function AdvisorDashboard() {
         </motion.div>
       </AppFrame>
       </PullToRefresh>
-      <BottomNav />
     </>
   );
 }

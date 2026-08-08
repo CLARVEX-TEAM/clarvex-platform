@@ -6,7 +6,7 @@ import { AlertTriangle, ClipboardCheck, Plus, Sparkles, UserRound, X } from "luc
 import { fetchAppData, type AppData } from "@/lib/app-data";
 import { getSession } from "@/lib/auth";
 import { isOpenPending, type Pending, type User } from "@/lib/types";
-import { AppFrame, AppHeader, Badge, BottomNav, Card, EmptyState, FloatingActionButton, priorityTone, Skeleton, statusTone } from "@/components/ui";
+import { AppFrame, AppHeader, Badge, Card, EmptyState, FloatingActionButton, priorityTone, Skeleton, statusTone } from "@/components/ui";
 import { ResourceDiscussion } from "@/components/ResourceDiscussion";
 import { DeleteButton, SaveButton } from "@/components/ActionButtons";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
@@ -71,7 +71,6 @@ export default function PendientesPage() {
             <Skeleton className="h-32 rounded-[28px]" />
           </div>
         </AppFrame>
-        <BottomNav />
       </>
     );
   }
@@ -314,7 +313,6 @@ export default function PendientesPage() {
       </AppFrame>
       </PullToRefresh>
       {!isAdvisor ? <FloatingActionButton href="#crear-pendiente" label="Crear" icon={Plus} /> : null}
-      <BottomNav />
       <ConfirmDialog
         open={deleteTargetId !== null}
         title="¿Eliminar pendiente?"

@@ -34,7 +34,7 @@ import {
   type DataSourceType,
   type SheetSummary
 } from "@/lib/data-source";
-import { AppFrame, AppHeader, Badge, BottomNav, Button, Card } from "@/components/ui";
+import { AppFrame, AppHeader, Badge, Button, Card } from "@/components/ui";
 import { cn } from "@/lib/utils";
 // Cada tono lleva SU variante oscura. El banner tenia bg-blue-50 fijo: en modo
 // oscuro el texto (claro) quedaba sobre un fondo casi blanco = ilegible.
@@ -466,7 +466,6 @@ export default function DataCenterPage() {
           </section>
         </div>
       ) : null}
-      <BottomNav />
     </>
   );
 }

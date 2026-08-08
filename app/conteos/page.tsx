@@ -1,6 +1,6 @@
 "use client";
 
-import { AppFrame, AppHeader, BottomNav } from "@/components/ui";
+import { AppFrame, AppHeader } from "@/components/ui";
 import { ConteosListView } from "@/components/conteos/ConteosList";
 
 export default function ConteosPage() {
@@ -10,7 +10,6 @@ export default function ConteosPage() {
       <AppFrame>
         <ConteosListView />
       </AppFrame>
-      <BottomNav />
     </>
   );
 }

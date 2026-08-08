@@ -8,7 +8,7 @@ import { fetchAppData, type AppData } from "@/lib/app-data";
 import { getSession } from "@/lib/auth";
 import { ANNOUNCEMENT_REACTIONS } from "@/lib/reactions";
 import type { Announcement, AnnouncementReaction, User } from "@/lib/types";
-import { AppFrame, AppHeader, Badge, BottomNav, Card, NotificationCard, ProfileAvatar, ProgressBar, Skeleton } from "@/components/ui";
+import { AppFrame, AppHeader, Badge, Card, NotificationCard, ProfileAvatar, ProgressBar, Skeleton } from "@/components/ui";
 import { AppInput, AppTextarea } from "@/components/forms";
 import { SendButton, SendIconButton } from "@/components/SendButton";
 import { DeleteButton } from "@/components/ActionButtons";
@@ -394,7 +394,6 @@ export default function ComunicadosPage() {
         </div>
       </AppFrame>
       </PullToRefresh>
-      <BottomNav />
       <ConfirmDialog
         open={pendingDeleteId !== null}
         title="¿Eliminar comunicado?"

@@ -26,7 +26,7 @@ import {
 } from "@/lib/attendance-view";
 import { formatBalance } from "@/lib/hours-balance";
 import { EditDayModal } from "@/components/attendance/EditDayModal";
-import { AppFrame, AppHeader, BottomNav, Button, Card, ProfileAvatar } from "@/components/ui";
+import { AppFrame, AppHeader, Button, Card, ProfileAvatar } from "@/components/ui";
 import { cn } from "@/lib/utils";
 
 // balanceMinutes: saldo acumulado REAL (inicial del Excel + todo lo registrado),
@@ -372,7 +372,6 @@ export default function AsistenciaPage() {
           onSaved={() => { setEditing(null); void load(); }}
         />
       ) : null}
-      <BottomNav />
     </>
   );
 }

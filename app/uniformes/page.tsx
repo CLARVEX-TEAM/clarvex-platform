@@ -12,7 +12,7 @@ import {
   type UniformDay,
   type UniformVariant
 } from "@/lib/uniforms";
-import { AppFrame, AppHeader, BottomNav, Button, Card, ProfileAvatar } from "@/components/ui";
+import { AppFrame, AppHeader, Button, Card, ProfileAvatar } from "@/components/ui";
 import { useToast } from "@/components/Toast";
 import { cn } from "@/lib/utils";
 
@@ -215,7 +215,6 @@ export default function UniformesPage() {
           </Button>
         ) : null}
       </AppFrame>
-      <BottomNav />
     </>
   );
 }
