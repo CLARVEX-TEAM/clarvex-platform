@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import type { LucideIcon } from "lucide-react";
 import {
   AlertTriangle,
@@ -26,6 +26,19 @@ const navItems: { href: string; label: string; icon: LucideIcon }[] = [
   { href: "/comunicados", label: "Actividad", icon: ListChecks }
 ];
 
+/**
+ * Cuánto se deforma la pastilla al viajar, según los saltos de pestaña.
+ *
+ * Se estira en X y adelgaza en Y para que el volumen parezca constante: es lo
+ * que hace leer el movimiento como una gota y no como un rectángulo escalado.
+ * El tope de 4 saltos evita que cruzar la barra entera se convierta en una
+ * lámina; a partir de ahí la deformación ya no aporta información.
+ */
+function travelSquash(distance: number) {
+  const steps = Math.min(Math.abs(distance), 4);
+  return { scaleX: 1 + steps * 0.1, scaleY: 1 - steps * 0.035 };
+}
+
 export function LiquidBottomNav() {
   const [homeHref, setHomeHref] = useState("/manager");
   // Se arranca mostrando KPIs y solo se ocultan si la sesión dice que están
@@ -33,6 +46,7 @@ export function LiquidBottomNav() {
   // barra que baila al cargar.
   const [kpisEnabled, setKpisEnabled] = useState(true);
   const pathname = usePathname();
+  const reduce = useReducedMotion();
 
   useEffect(() => {
     getSession().then((session) => {
@@ -42,6 +56,35 @@ export function LiquidBottomNav() {
   }, []);
 
   const items = kpisEnabled ? navItems : navItems.filter((item) => item.href !== "/kpis");
+
+  const isActive = (item: (typeof navItems)[number]) => {
+    const href = item.href === "/manager" ? homeHref : item.href;
+    return pathname === href
+      || (item.href === "/manager" && (pathname === "/manager" || pathname === "/advisor"))
+      || (item.href === "/chat" && pathname.startsWith("/chat"));
+  };
+
+  // La distancia se lee DURANTE el render en que cambia la pestaña: el ref aún
+  // guarda la anterior, y se actualiza después en el efecto. Calcularla en el
+  // efecto llegaría tarde, con la pastilla ya en movimiento.
+  //
+  // Se recuerda la RUTA además del índice porque la lista cambia de tamaño: al
+  // resolverse la sesión de una tienda con los KPIs apagados desaparece una
+  // pestaña y todos los índices se corren uno. Sin comparar la ruta, esa
+  // reordenación se leería como un salto y la barra se estiraría sola al
+  // cargar, sin que nadie haya navegado.
+  const activeIndex = items.findIndex(isActive);
+  const previous = useRef({ index: activeIndex, href: pathname });
+  const navigated = previous.current.href !== pathname;
+  const travelled = navigated && previous.current.index >= 0 && activeIndex >= 0
+    ? activeIndex - previous.current.index
+    : 0;
+  useEffect(() => { previous.current = { index: activeIndex, href: pathname }; }, [activeIndex, pathname]);
+
+  const squash = reduce ? { scaleX: 1, scaleY: 1 } : travelSquash(travelled);
+  const spring = reduce
+    ? { duration: 0 }
+    : { type: "spring" as const, stiffness: 480, damping: 34 };
 
   return (
     <nav className="pointer-events-none fixed inset-x-0 bottom-2 z-30 px-3">
@@ -53,7 +96,7 @@ export function LiquidBottomNav() {
       >
         {items.map((item) => {
           const href = item.href === "/manager" ? homeHref : item.href;
-          const active = pathname === href || (item.href === "/manager" && (pathname === "/manager" || pathname === "/advisor")) || (item.href === "/chat" && pathname.startsWith("/chat"));
+          const active = isActive(item);
           return (
             <Link
               key={item.href}
@@ -64,15 +107,30 @@ export function LiquidBottomNav() {
             >
               <span className="relative grid size-9 place-items-center">
                 {active ? (
+                  // Dos capas a propósito: la de fuera VIAJA (layoutId) y la de
+                  // dentro se DEFORMA. Poner la escala en la misma capa que el
+                  // layout la haría competir con las transformaciones que
+                  // framer-motion usa para interpolar la posición.
                   <motion.span
                     layoutId="bottom-nav-active"
-                    className="absolute inset-0 rounded-[16px] bg-volt/14 ring-1 ring-volt/25 shadow-[inset_0_1px_0_rgb(255_255_255_/_0.18)]"
-                    transition={{ type: "spring", stiffness: 480, damping: 34 }}
-                  />
+                    aria-hidden
+                    className="absolute inset-0"
+                    transition={spring}
+                  >
+                    <motion.span
+                      // Arranca estirada en el sentido del viaje y se asienta al
+                      // llegar. Solo transform: no toca layout ni pinta filtros,
+                      // así que compone en GPU y no repinta la barra.
+                      initial={squash}
+                      animate={{ scaleX: 1, scaleY: 1 }}
+                      transition={spring}
+                      className="block size-full rounded-[16px] bg-volt/14 ring-1 ring-volt/25 shadow-[inset_0_1px_0_rgb(255_255_255_/_0.18)]"
+                    />
+                  </motion.span>
                 ) : null}
                 <motion.span
                   animate={{ scale: active ? 1.08 : 1, y: active ? -0.5 : 0 }}
-                  transition={{ type: "spring", stiffness: 520, damping: 26 }}
+                  transition={reduce ? { duration: 0 } : { type: "spring", stiffness: 520, damping: 26 }}
                   className={cn("relative grid place-items-center transition-colors", active ? "icon-bold text-volt" : "text-muted")}
                 >
                   <item.icon size={19} />
