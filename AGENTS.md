@@ -94,18 +94,63 @@ emergencia por SSH:
 ssh clarvex "cd /root/clarvex-app && sed -i 's/^MAINTENANCE_MODE=.*/MAINTENANCE_MODE=0/' .env && pm2 restart clarvex-team --update-env"
 ```
 
-## Variables nuevas (el VPS aún no las tiene todas)
+## Variables de entorno del VPS
 
 ```env
-ADMIN_CAPTURE_SECRET=   # ya configurada — escribe operación de tienda
-RETOOL_API_TOKEN=       # PENDIENTE — Retool → Settings → API
-RETOOL_ORG_URL=         # PENDIENTE — https://clarvex.retool.com
-RETOOL_APP_UUID=        # PENDIENTE — b6ebeac8-95fd-11f1-a579-b33e5e6ede64
-RETOOL_EMBED_GROUP_ID=  # PENDIENTE — id del grupo, sale en la URL
+ADMIN_CAPTURE_SECRET=   # ✅ configurada — autoriza la escritura de operación
+RETOOL_API_TOKEN=       # ✅ configurada — scope ÚNICO "Retool Embed"
+RETOOL_ORG_URL=         # ⚠️ https://clarvex.retool.com — hay que cambiarla al
+                        #    dominio personalizado en cuanto esté activo
+RETOOL_APP_UUID=        # ✅ b6ebeac8-95fd-11f1-a579-b33e5e6ede64
+RETOOL_EMBED_GROUP_ID=  # ✅ 6998583  (grupo «captura tiendas»)
 ```
 
-Sin ellas, `/escritorio/captura` responde **503 nombrando cuál falta**. Es
-deliberado.
+Si falta alguna, `/escritorio/captura` responde **503 nombrando cuál**. Es
+deliberado: un 500 genérico obligaría a adivinar.
+
+## Accesos: usuarios externos embebidos
+
+Las gerentes **no tienen cuenta de Retool**. Entran a Clarvex con su PIN y la
+pantalla se incrusta con una URL firmada de un solo uso. En Business, los
+usuarios externos son **gratis hasta 50**; cuentas propias habrían costado
+$18/mes cada una y añadido un login más a una tarea diaria.
+
+### 🔴 Bloqueo activo (12 ago 2026)
+
+`POST /api/embed-url/external-user` responde:
+
+```json
+{"error": true, "message": "You must call this endpoint from a custom domain"}
+```
+
+**La API de incrustación exige dominio personalizado.** No basta
+`clarvex.retool.com`. En curso: `captura.adrianluna.mx`.
+
+- DNS ✅ — `CNAME captura → custom-domain.retool.com`, resuelve a las IPs de
+  Retool (35.92.202.168/169/170, un balanceador en AWS).
+- Certificado ⏳ — Retool aún no lo emite; `curl` devuelve `http=000 tls=1`.
+
+Cuando esté activo hay que **cambiar `RETOOL_ORG_URL` al dominio nuevo**: la
+llamada tiene que salir desde ahí o vuelve el mismo error.
+
+### Configuración en Retool, y las trampas de cada paso
+
+- **Token**: Settings → API. Scope **solo `Retool Embed`**, nada más. Se muestra
+  una única vez.
+- **Grupo `captura tiendas`** (id `6998583`): acceso **Use, nunca Edit**, y solo
+  a la app «Captura Clarvex» y a los dos recursos de Clarvex. *Use* es lo que
+  impide ver el secreto o alterar el código que fija la tienda, y además es lo
+  que hace que Retool facture como usuario interno y no como *builder* a $65.
+  **No reutilizar Viewer/Editor/Admin**: tienen acceso a *All apps*, o sea
+  también al panel de administración con facturación y auditoría.
+- **Dominio personalizado**: Settings → **Branding** → campo *Domain name*.
+  ⚠️ **No confundir con «Auto-join domains»** de *Advanced settings*: eso son
+  dominios de CORREO para que alguien se una a la organización, no la URL.
+- **CNAME en Cloudflare**: destino `custom-domain.retool.com` y **proxy en gris
+  (DNS only)**. Con la nube naranja, Cloudflare responde con su certificado,
+  Retool no puede validar y el dominio se queda «pendiente» sin explicar por qué.
+- La API de grupos de Retool (`/api/v2/groups`) devuelve **403 «not available on
+  your plan»**. El id del grupo se saca de la URL en Settings → Groups.
 
 ## Reglas que salieron de esto y no hay que romper
 
