@@ -16,8 +16,12 @@ import { NextResponse } from "next/server";
  * abierto por olvido.
  */
 export function requireAdminCapture(request: Request): NextResponse | null {
-  const secret = process.env.ADMIN_CAPTURE_SECRET;
-  const header = request.headers.get("authorization") ?? "";
+  const secret = process.env.ADMIN_CAPTURE_SECRET?.trim();
+  // Se recorta el header antes de comparar. La comparación es byte a byte, así
+  // que un salto de línea o un espacio colado al pegar el token en el panel
+  // externo devolvía 401 sin ninguna pista de por qué — y el espacio sobrante
+  // no es material secreto, así que tolerarlo no debilita nada.
+  const header = (request.headers.get("authorization") ?? "").trim();
   if (!secret || secret.length < 32 || !safeEquals(header, `Bearer ${secret}`)) {
     return NextResponse.json({ error: "No autorizado." }, { status: 401 });
   }
