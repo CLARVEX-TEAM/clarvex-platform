@@ -71,8 +71,8 @@ un login más a una tarea diaria.
 único que falta es probar tres de las cuatro de extremo a extremo, y eso está
 bloqueado por el certificado del dominio personalizado.
 
-Falta también el **tráfico de tienda**: es un dato de tienda y no de persona, así
-que ninguna de las cuatro pantallas lo cubre. Sin él no hay conversión.
+El **tráfico de tienda** ya está cubierto dentro de la captura de KPIs.
+
 
 ### Lo que hace especial a `KPIS`
 
@@ -91,8 +91,17 @@ deriva, y ahí está lo que un `INSERT` externo se saltaría:
 la meta TTLS de la hoja cuando existía, pero esa hoja es justo lo que se deja de
 leer.
 
-Pendiente en esta pieza: el **tráfico de tienda** (y con él la conversión), que
-es un dato de tienda y no de persona, así que necesita su propia captura.
+El **tráfico de tienda** viaja aparte de `entries`, en su propio array por fecha,
+porque no es un dato de persona. Se escribe en la fila de **cada** asesor de ese
+día junto con su conversión.
+
+Repetirlo parece redundante y no lo es: `aggregateStoreTraffic` toma el **máximo
+por fecha**, no la suma, justamente para no multiplicarlo por el número de
+personas. Guardarlo en una sola fila dejaría al resto sin conversión.
+
+La conversión es `null` sin tráfico, **no cero**: sin visitantes no significa
+«entró gente y no compró nadie», significa que no se sabe. `Kpi.conversion` sí
+es nulable, a diferencia de `upt` y `avgTicket`.
 
 ### Lo que hace especial a `DESCUENTOS_POS`
 
