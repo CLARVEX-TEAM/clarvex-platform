@@ -64,11 +64,15 @@ un login más a una tarea diaria.
 |---|---|---|
 | HORARIOS | ✅ `/api/admin/capture/schedules` | ✅ publicada y **probada de extremo a extremo** |
 | ASISTENCIA | ✅ `/api/admin/capture/attendance` | ✅ publicada, **sin probar aún** |
-| KPIS | ✅ `/api/admin/capture/kpis` | 🔄 generándose |
-| DESCUENTOS_POS | ✅ `/api/admin/capture/discounts` | 🔄 generándose |
+| KPIS | ✅ `/api/admin/capture/kpis` | ✅ publicada, sin probar |
+| DESCUENTOS_POS | ✅ `/api/admin/capture/discounts` | ✅ publicada, sin probar |
 
-**Los cuatro backends están completos y desplegados.** Lo que falta son pantallas
-y pruebas de extremo a extremo, y esas dependen del dominio personalizado.
+**Los cuatro backends y las cuatro pantallas están completos y publicados.** Lo
+único que falta es probar tres de las cuatro de extremo a extremo, y eso está
+bloqueado por el certificado del dominio personalizado.
+
+Falta también el **tráfico de tienda**: es un dato de tienda y no de persona, así
+que ninguna de las cuatro pantallas lo cubre. Sin él no hay conversión.
 
 ### Lo que hace especial a `KPIS`
 
