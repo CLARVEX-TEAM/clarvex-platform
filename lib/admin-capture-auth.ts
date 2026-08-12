@@ -23,9 +23,30 @@ export function requireAdminCapture(request: Request): NextResponse | null {
   // no es material secreto, así que tolerarlo no debilita nada.
   const header = (request.headers.get("authorization") ?? "").trim();
   if (!secret || secret.length < 32 || !safeEquals(header, `Bearer ${secret}`)) {
-    return NextResponse.json({ error: "No autorizado." }, { status: 401 });
+    return NextResponse.json({ error: "No autorizado.", diagnostico: describeHeader(header, secret) }, { status: 401 });
   }
   return null;
+}
+
+/**
+ * ⚠️ TEMPORAL — quitar cuando la captura desde Retool quede confirmada.
+ *
+ * Un 401 a secas no distingue entre "no llegó cabecera", "llegó sin Bearer" y
+ * "llegó un token distinto", y esa ambigüedad ya costó una sesión entera de
+ * depuración a ciegas. Describe la FORMA de lo recibido, nunca su contenido:
+ * ni el token entrante ni el esperado salen de aquí.
+ */
+function describeHeader(header: string, secret: string | undefined) {
+  const prefix = "Bearer ";
+  const startsWithBearer = header.startsWith(prefix);
+  return {
+    cabeceraPresente: header.length > 0,
+    longitudCabecera: header.length,
+    empiezaConBearer: startsWithBearer,
+    longitudTokenRecibido: startsWithBearer ? header.slice(prefix.length).length : 0,
+    longitudTokenEsperado: secret?.length ?? 0,
+    secretoConfigurado: Boolean(secret && secret.length >= 32)
+  };
 }
 
 function safeEquals(left: string, right: string) {
