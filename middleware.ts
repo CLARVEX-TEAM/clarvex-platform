@@ -66,17 +66,27 @@ function startsWithRoute(pathname: string, routes: string[]) {
  * Ventana de mantenimiento. Se activa poniendo MAINTENANCE_MODE=1 en el .env y
  * reiniciando con `pm2 restart clarvex-team --update-env`.
  *
- * Deja pasar dos cosas a propósito:
+ * Deja pasar cuatro cosas a propósito:
  *  - `/api/health`, para que Uptime Kuma no dispare alertas falsas durante la
  *    ventana (la app SÍ está sana; solo está cerrada al público).
  *  - Los administradores de plataforma, para poder verificar el despliegue con
  *    la app cerrada al resto.
+ *  - El usuario kiosko de la tienda. La apertura y el cierre con evidencia son
+ *    operación diaria y una ventana larga los dejaría sin registrar. NO hace
+ *    falta enumerar sus rutas aquí: más abajo el middleware ya lo encierra en
+ *    `/checklist` (páginas) y en `/api/checklist` + `/api/auth` (APIs).
+ *  - El login y `/api/auth/*`. Sin esto, quien cierre sesión o se le caduque
+ *    (7 días) queda fuera hasta que alguien entre por SSH — incluido el propio
+ *    administrador. Dejarlo abierto no expone nada: el resto de rutas sigue
+ *    devolviendo 503, así que quien entre solo verá la página de mantenimiento.
  */
 function maintenanceResponse(request: NextRequest, session: Session | null): NextResponse | null {
   if (process.env.MAINTENANCE_MODE !== "1") return null;
   const { pathname } = request.nextUrl;
   if (pathname === "/api/health") return null;
   if (session?.platformAdmin === true) return null;
+  if (session?.checklistOnly === true) return null;
+  if (pathname === "/login" || pathname.startsWith("/api/auth/")) return null;
 
   if (pathname.startsWith("/api/")) {
     return NextResponse.json(
