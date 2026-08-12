@@ -1,5 +1,162 @@
 # AGENTS.md
 
+> El resto de este archivo son pautas de diseño y de arranque, y siguen
+> vigentes. Esta primera sección es **el estado real del proyecto hoy** y va en
+> español porque es el idioma de `CLAUDE.md`, que es la fuente operativa.
+
+---
+
+# 🔴 EN QUÉ ESTAMOS AHORA — 12 de agosto de 2026
+
+## Qué pasó
+
+El **11 de agosto de 2026, sobre las 17:00 de Monterrey**, Grupo Axo deshabilitó
+los enlaces de compartir anónimos en su tenant de SharePoint. **Cinco de las seis
+fuentes de datos cayeron a la vez**, todas en la misma corrida del cron:
+
+| Tienda | Fuentes caídas |
+|---|---|
+| TH San Agustín | KPIS, HORARIOS, DESCUENTOS_POS, ASISTENCIA |
+| GUESS Galerías | HORARIOS |
+
+Error en `SyncLog`: *«El link devolvió una página web, no un Excel»* — SharePoint
+sirve la página de «enlace deshabilitado» en lugar del XLSX.
+
+**Sobrevivió `GUESS / KPIS`**, la única fuente que no lee un enlace de Axo: pasa
+por un flujo de Power Automate que copia el archivo a un OneDrive nuestro. Ver
+la memoria `integracion-microsoft-sharepoint`.
+
+## Qué se quiere lograr
+
+**Que la app deje de depender de archivos de Excel ajenos.** En vez de leer
+hojas del SharePoint de Axo, la operación se captura en la propia plataforma.
+
+El punto clave para entender el alcance: **la app ya es dueña de las tablas y de
+toda la lógica encima** (`Kpi`, `Schedule`, `Attendance`, comisiones, calendario
+retail, KPIs, reportes). Excel solo aportaba **las filas**. Así que esto NO es
+reescribir la app: es **sustituir el parser por un formulario**. Todo lo que
+consume esos datos se queda igual.
+
+## Arquitectura elegida
+
+```
+Gerente entra a Clarvex con su PIN de siempre
+  → /escritorio/captura pide una URL firmada de un solo uso
+  → POST /api/retool/embed-url  (identidad SACADA DE LA SESIÓN)
+  → se incrusta la app de Retool «Captura Clarvex»
+  → sus funciones POSTean a /api/admin/capture/*
+  → validación + reglas de negocio + escritura en la base
+```
+
+Retool pinta la interfaz; **la lógica de negocio vive en este repo**. Se descartó
+que Retool escribiera SQL directo: se saltaría el calendario retail, el
+`weekNumber`, el patrón de fila ancla y el filtro del usuario kiosko, y eso
+corrompe en silencio.
+
+Los gerentes entran como **usuarios externos** de Retool: sin cuenta propia, sin
+contraseña nueva y **gratis hasta 50 personas** en el plan Business. La
+alternativa (una cuenta de Retool por persona) costaba $18/mes cada una y añadía
+un login más a una tarea diaria.
+
+## Dónde vamos
+
+| Fuente | Endpoint | Pantalla Retool |
+|---|---|---|
+| HORARIOS | ✅ `/api/admin/capture/schedules` | ✅ publicada y **probada de extremo a extremo** |
+| ASISTENCIA | ✅ `/api/admin/capture/attendance` | ✅ publicada, **sin probar aún** |
+| KPIS | ⏳ sin empezar | — |
+| DESCUENTOS_POS | ⏳ bloqueado por KPIS | — |
+
+**Orden obligatorio: KPIS antes que DESCUENTOS_POS.** El margen DTO no crea filas
+propias: busca los `Kpi` de esa semana y escribe los totales en la primera
+(patrón de fila ancla, `lib/data-source-sync.ts:749-779`). Sin filas de KPI no
+tiene dónde escribir.
+
+⚠️ **`KPIS` es la pieza delicada.** Toca `commissionAmount`, `commissionPercent`
+y `commissionMinimum`, más los derivados `upt`, `avgTicket` y `conversion`.
+`CLAUDE.md` marca la lógica de comisiones como intocable sin aprobación
+explícita, y su modo de fallo no es un error rojo: es una comisión mal pagada
+que nadie detecta hasta la quincena. **No apurarla.**
+
+## Estado de la app: CERRADA
+
+`MAINTENANCE_MODE=1` en el `.env` del VPS desde el 12 de agosto. Se avisó por
+push a 19 usuarios.
+
+Atraviesan la ventana: `/api/health`, los `platformAdmin`, el **usuario kiosko**
+(el checklist de tienda es operación diaria), `/login` + `/api/auth/*` (para que
+nadie quede fuera de forma permanente) y las rutas de captura.
+
+⚠️ **Solo un usuario tiene `platformAdmin`**: Adrian (102259). Salida de
+emergencia por SSH:
+
+```bash
+ssh clarvex "cd /root/clarvex-app && sed -i 's/^MAINTENANCE_MODE=.*/MAINTENANCE_MODE=0/' .env && pm2 restart clarvex-team --update-env"
+```
+
+## Variables nuevas (el VPS aún no las tiene todas)
+
+```env
+ADMIN_CAPTURE_SECRET=   # ya configurada — escribe operación de tienda
+RETOOL_API_TOKEN=       # PENDIENTE — Retool → Settings → API
+RETOOL_ORG_URL=         # PENDIENTE — https://clarvex.retool.com
+RETOOL_APP_UUID=        # PENDIENTE — b6ebeac8-95fd-11f1-a579-b33e5e6ede64
+RETOOL_EMBED_GROUP_ID=  # PENDIENTE — id del grupo, sale en la URL
+```
+
+Sin ellas, `/escritorio/captura` responde **503 nombrando cuál falta**. Es
+deliberado.
+
+## Reglas que salieron de esto y no hay que romper
+
+**La tienda sale de la IDENTIDAD, nunca del cliente.** Ni `/api/retool/embed-url`
+ni las funciones de Retool aceptan `storeId` como parámetro. Si lo aceptaran, una
+gerente podría capturar los horarios de otra tienda. En Retool lo aplica
+`requireManagerIdentity` (`/backend/schedules/identity.ts`), que además corta si
+el rol no es GERENTE o SUBGERENTE.
+
+**Sin identidad no hay respaldo: se muestra un aviso y se para.** Nunca volver a
+un selector de tienda como alternativa — ese era justo el agujero.
+
+**Un guardado que miente es peor que uno que falla.** La app de Retool anunciaba
+«Cambios guardados» sin haber escrito nada, porque un `as SaveResult` dejaba
+pasar cualquier respuesta. Ahora solo declara éxito si llegan contadores
+numéricos reales; cualquier otra cosa es error ruidoso con el JSON crudo a la
+vista. **No reintroducir casteos a ciegas sobre respuestas de red.**
+
+**La captura NO borra filas.** El importador de Excel sí puede, porque el archivo
+es una foto completa de la semana. Una captura es una edición parcial: borrar lo
+que no venga en el cuerpo vaciaría la semana al guardar una celda.
+
+**El estado del día de asistencia no se captura, se deriva.** `classifyDay` y
+`dayBalanceMinutes` lo calculan desde el horario, igual que el importador. Si la
+pantalla pudiera mandar el estado, se podría marcar «a tiempo» un retardo.
+
+## Trampas verificadas en producción
+
+- **`Schedule.date` va a medianoche UTC.** Había 4 filas a mediodía que
+  duplicaban días; ya se bloqueó la entrada de fechas fuera de medianoche.
+- **Ningún horario real trae `startTime`.** La asistencia asume la hora estándar
+  de tienda (10:30) para calcular retardos, y gerencia lo parchea a mano. Es una
+  oportunidad de arreglarlo de raíz al montar la captura.
+- **El usuario kiosko no es un asesor.** Filtrar por `role: "ASESOR"` a secas lo
+  incluye. Usar `ADVISOR_WHERE` / `PERSON_WHERE`, y en Retool el filtro
+  `"checklistOnly" = false` es obligatorio.
+
+## Cosas del entorno que cuestan tiempo si no se saben
+
+- **El agente de Retool se para sin avisar** y su estado sigue diciendo
+  «activo»: unas veces esperando aprobación humana, otras dejando la rama **sin
+  commit**. Antes de publicar, comprobar que hay `commitSha`; si no lo hay, el
+  botón de publicar no responde y no es culpa de quien lo pulsa.
+- **Aprobar funciones que escriben es un paso humano.** No se puede automatizar.
+- **`rawRequest` de Retool no lanza excepción en un 401**: devuelve el cuerpo del
+  error, así que un fallo de autenticación parece éxito si no se valida.
+- **Verificar el build sin filtrar la salida.** Un `| tail -6` hace que el código
+  de salida sea el de `tail`, no el del build. Ya pasó en esta sesión.
+
+---
+
 ## Project Vision
 
 CLARVEX Team is a premium retail operations platform focused on store managers, assistant managers and sales associates.

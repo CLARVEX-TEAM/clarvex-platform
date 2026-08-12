@@ -356,6 +356,12 @@ Cuando un asesor sube una **evidencia** o un **faltante con foto**, la app avisa
 
 ## Fuente de datos — RDV (SharePoint XLSX)
 
+> ⚠️ **Desde el 11 de agosto de 2026 esta vía está caída para cinco de las seis
+> fuentes**: Axo deshabilitó los enlaces anónimos. Se está sustituyendo por
+> captura propia — ver `AGENTS.md`. La estructura de columnas de abajo sigue
+> siendo la referencia de qué significa cada dato y qué tiene que producir la
+> captura nueva, así que **no se borra**.
+
 El Worker descarga el archivo como **XLSX** desde `EXCEL_PROXY_WORKER_URL` usando `exceljs`.
 
 ### Hojas del Excel
@@ -454,10 +460,22 @@ El % de comisión difiere por puesto pero el mínimo de referencia es el mismo p
 
 ---
 
-## Estado actual del proyecto — 28 de julio de 2026
+## Estado actual del proyecto — 12 de agosto de 2026
+
+> 📌 **Lee primero el bloque «EN QUÉ ESTAMOS AHORA» al inicio de `AGENTS.md`.**
+> Ahí está el contexto completo de la migración en curso: qué se rompió, qué se
+> quiere lograr, hasta dónde vamos y qué reglas nuevas no hay que romper.
 
 ### 🔴 Abierto — requiere acción
 
+- **La app está CERRADA** (`MAINTENANCE_MODE=1`) mientras se construye la
+  captura propia. Pasan la ventana el kiosko, el login y las rutas de captura.
+- **Cinco de las seis fuentes de datos están caídas desde el 11 de agosto**:
+  Axo deshabilitó los enlaces anónimos de SharePoint. Lo que sigue en esta
+  página sobre el RDV describe un mecanismo que **ya no funciona** para esas
+  fuentes; solo sobrevive `GUESS / KPIS`, que pasa por Power Automate.
+- **Faltan las variables `RETOOL_*` en el VPS**, así que `/escritorio/captura`
+  responde 503 hasta que se configuren.
 - **`MERCADOPAGO_WEBHOOK_SECRET` sin configurar en el VPS.** El webhook de Mercado
   Pago responde 401 a todo: las suscripciones no se procesan automáticamente.
   Ver [Variables de entorno](#variables-de-entorno).
