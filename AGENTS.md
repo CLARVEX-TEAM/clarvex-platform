@@ -72,8 +72,18 @@ y el tráfico de tienda dentro de KPIs. Ya no queda ningún dato que dependa de 
 Excel de Axo.
 
 Lo único que falta es **probar tres de las cuatro de extremo a extremo**, y eso
-está bloqueado por el certificado del dominio personalizado — ticket de Retool
-**#00121648**, escalado a su equipo de desarrollo el 12 de agosto.
+está bloqueado por el certificado del dominio personalizado.
+
+**Ticket de Retool #00121648** (12 de agosto). Su soporte confirmó que la
+emisión del certificado puede tardar **hasta 24 horas**, así que no es un fallo
+de configuración: la validación pasa (palomita verde) y lo que va lento es la
+emisión. Mientras tanto el endpoint sirve el *Kubernetes Ingress Controller Fake
+Certificate*, `curl` devuelve `tls=1` y `POST /api/embed-url/external-user` no
+responde.
+
+⚠️ **No tocar el dominio mientras esté en ese estado.** Eliminarlo y volver a
+añadirlo reinicia el ciclo desde cero, y además Retool tarda unos minutos en
+liberar el hueco (el plan admite un único dominio personalizado).
 
 
 ### Lo que hace especial a `KPIS`
