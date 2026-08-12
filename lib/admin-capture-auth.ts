@@ -56,6 +56,15 @@ function describeHeader(header: string, secret: string | undefined) {
     }
   }
 
+  // El secreto se genera con `openssl rand -hex 32`: 64 caracteres [0-9a-f].
+  // Por tanto CUALQUIER carácter fuera de ese alfabeto es un intruso seguro, y
+  // señalar dónde está no revela nada del secreto.
+  const noHex: Array<{ posicion: number; codigo: number }> = [];
+  for (let i = 0; i < received.length; i += 1) {
+    if (!/[0-9a-f]/.test(received[i])) noHex.push({ posicion: i, codigo: received.charCodeAt(i) });
+    if (noHex.length >= 5) break;
+  }
+
   return {
     cabeceraPresente: header.length > 0,
     longitudCabecera: header.length,
@@ -66,6 +75,8 @@ function describeHeader(header: string, secret: string | undefined) {
     sobraAlPrincipio,
     sobraAlFinal,
     codigoCaracterSobrante,
+    caracteresNoHexadecimales: noHex,
+    todoHexadecimal: noHex.length === 0,
     // Si ninguna de las dos anteriores es true y las longitudes difieren en uno,
     // el token no es el nuestro: no basta con quitarle un carácter.
     esOtroToken: Boolean(secret) && received.length !== secret!.length && !sobraAlPrincipio && !sobraAlFinal
