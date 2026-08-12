@@ -52,7 +52,8 @@ const publicApiExact = new Set([
 const captureRoutes = new Set([
   "/api/admin/capture/schedules",
   "/api/admin/capture/attendance",
-  "/api/admin/capture/kpis"
+  "/api/admin/capture/kpis",
+  "/api/admin/capture/discounts"
 ]);
 
 function isPublicApi(pathname: string): boolean {
