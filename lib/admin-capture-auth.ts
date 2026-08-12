@@ -39,13 +39,36 @@ export function requireAdminCapture(request: Request): NextResponse | null {
 function describeHeader(header: string, secret: string | undefined) {
   const prefix = "Bearer ";
   const startsWithBearer = header.startsWith(prefix);
+  const received = startsWithBearer ? header.slice(prefix.length) : "";
+
+  // Localiza el carácter sobrante comparando contra el secreto SIN revelarlo:
+  // solo sale de aquí la posición y el código del intruso.
+  let sobraAlPrincipio = false;
+  let sobraAlFinal = false;
+  let codigoCaracterSobrante: number | null = null;
+  if (secret && received.length === secret.length + 1) {
+    if (received.slice(1) === secret) {
+      sobraAlPrincipio = true;
+      codigoCaracterSobrante = received.charCodeAt(0);
+    } else if (received.slice(0, -1) === secret) {
+      sobraAlFinal = true;
+      codigoCaracterSobrante = received.charCodeAt(received.length - 1);
+    }
+  }
+
   return {
     cabeceraPresente: header.length > 0,
     longitudCabecera: header.length,
     empiezaConBearer: startsWithBearer,
-    longitudTokenRecibido: startsWithBearer ? header.slice(prefix.length).length : 0,
+    longitudTokenRecibido: received.length,
     longitudTokenEsperado: secret?.length ?? 0,
-    secretoConfigurado: Boolean(secret && secret.length >= 32)
+    secretoConfigurado: Boolean(secret && secret.length >= 32),
+    sobraAlPrincipio,
+    sobraAlFinal,
+    codigoCaracterSobrante,
+    // Si ninguna de las dos anteriores es true y las longitudes difieren en uno,
+    // el token no es el nuestro: no basta con quitarle un carácter.
+    esOtroToken: Boolean(secret) && received.length !== secret!.length && !sobraAlPrincipio && !sobraAlFinal
   };
 }
 
