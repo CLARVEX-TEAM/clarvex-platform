@@ -2,10 +2,14 @@ import { buildUserByEmployeeNumber } from "@/lib/employee-match";
 import {
   computeAchievement,
   computeAvgTicket,
+  computeConversion,
   computeUpt,
   normalizeKpiEntry,
+  normalizeTrafficEntry,
   type KpiCaptureEntry,
-  type NormalizedKpiEntry
+  type NormalizedKpiEntry,
+  type NormalizedTraffic,
+  type TrafficCaptureEntry
 } from "@/lib/kpi-capture-entry";
 import { prisma } from "@/lib/prisma";
 import { reconstructRdvWeek } from "@/lib/rdv-week";
@@ -25,9 +29,12 @@ import { reconstructRdvWeek } from "@/lib/rdv-week";
  * el acumulado de cada persona y mes tocados. Es exactamente el trabajo que un
  * `INSERT` desde una herramienta externa se saltaría.
  *
- * NO se captura aquí: el tráfico de tienda (y con él la conversión), que es un
- * dato de tienda y no de persona, y las comisiones, que se calculan aparte
- * contra el mínimo. Ver `lib/commission.ts`.
+ * El **tráfico de tienda** viaja aparte de `entries` porque no es un dato de
+ * persona: se captura una vez por fecha y se escribe igual en la fila de cada
+ * asesor de ese día, junto con la conversión que se deriva de él.
+ *
+ * NO se calculan aquí las comisiones: van contra el mínimo y viven en
+ * `lib/commission.ts`.
  */
 
 export type KpiCaptureResult = {
@@ -36,18 +43,26 @@ export type KpiCaptureResult = {
   employeesNotFound: string[];
   datesReranked: number;
   monthsRecalculated: number;
+  trafficDatesApplied: number;
   errors: string[];
 };
 
 export async function captureKpis(
   storeId: string,
-  entries: KpiCaptureEntry[]
+  entries: KpiCaptureEntry[],
+  traffic: TrafficCaptureEntry[] = []
 ): Promise<{ ok: false; errors: string[] } | { ok: true; result: KpiCaptureResult }> {
   const normalized: NormalizedKpiEntry[] = [];
   const errors: string[] = [];
   for (const entry of entries) {
     const outcome = normalizeKpiEntry(entry);
     if (outcome.ok) normalized.push(outcome.value);
+    else errors.push(outcome.error);
+  }
+  const normalizedTraffic: NormalizedTraffic[] = [];
+  for (const entry of traffic) {
+    const outcome = normalizeTrafficEntry(entry);
+    if (outcome.ok) normalizedTraffic.push(outcome.value);
     else errors.push(outcome.error);
   }
   if (errors.length > 0) return { ok: false, errors };
@@ -76,10 +91,18 @@ export async function captureKpis(
     const userId = userByEmployee.get(item.employeeNumber);
     return userId ? [{ ...item, userId }] : [];
   });
-  if (matched.length === 0) {
+  if (matched.length === 0 && normalizedTraffic.length === 0) {
     return {
       ok: true,
-      result: { recordsCreated: 0, recordsUpdated: 0, employeesNotFound, datesReranked: 0, monthsRecalculated: 0, errors: [] }
+      result: {
+        recordsCreated: 0,
+        recordsUpdated: 0,
+        employeesNotFound,
+        datesReranked: 0,
+        monthsRecalculated: 0,
+        trafficDatesApplied: 0,
+        errors: []
+      }
     };
   }
 
@@ -134,13 +157,54 @@ export async function captureKpis(
     }
   }
 
+  // El tráfico va DESPUÉS de escribir las filas: si se aplicara antes, las que
+  // se acaban de crear se quedarían sin él.
+  const trafficDatesApplied = await applyTraffic(storeId, normalizedTraffic);
   const datesReranked = await rerankDates(storeId, dates);
   const monthsRecalculated = await recalculateMonths(storeId, matched);
 
   return {
     ok: true,
-    result: { recordsCreated, recordsUpdated, employeesNotFound, datesReranked, monthsRecalculated, errors: writeErrors }
+    result: {
+      recordsCreated,
+      recordsUpdated,
+      employeesNotFound,
+      datesReranked,
+      monthsRecalculated,
+      trafficDatesApplied,
+      errors: writeErrors
+    }
   };
+}
+
+/**
+ * Escribe el tráfico de tienda en TODAS las filas de esa fecha, y recalcula la
+ * conversión de cada una.
+ *
+ * Repetir el mismo número en cada fila parece redundante, pero es justo lo que
+ * hace el importador y lo que espera `aggregateStoreTraffic`, que toma el
+ * MÁXIMO por fecha —no la suma— precisamente para no multiplicarlo por el
+ * número de personas. Guardarlo en una sola fila dejaría al resto sin
+ * conversión.
+ */
+async function applyTraffic(storeId: string, traffic: NormalizedTraffic[]): Promise<number> {
+  let applied = 0;
+  for (const { date, value } of traffic) {
+    const rows = await prisma.kpi.findMany({
+      where: { storeId, date },
+      select: { id: true, transactions: true }
+    });
+    if (rows.length === 0) continue;
+
+    for (const row of rows) {
+      await prisma.kpi.update({
+        where: { id: row.id },
+        data: { traffic: value, conversion: computeConversion(row.transactions, value) }
+      });
+    }
+    applied += 1;
+  }
+  return applied;
 }
 
 /**

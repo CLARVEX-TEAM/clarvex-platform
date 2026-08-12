@@ -143,3 +143,57 @@ export function computeAvgTicket(dailySales: number, transactions: number): numb
 export function computeAchievement(dailySales: number, dailyGoal: number): number {
   return dailyGoal > 0 ? (dailySales / dailyGoal) * 100 : 0;
 }
+
+/** Techo defensivo: el tráfico diario de una tienda no llega a esto. */
+const MAX_TRAFFIC = 100_000;
+
+export type TrafficCaptureEntry = {
+  date: string;
+  /** Opcional: una casilla que nadie tocó llega sin valor y cuenta como cero. */
+  value?: number | string | null;
+};
+
+export type NormalizedTraffic = {
+  date: Date;
+  value: number;
+};
+
+/**
+ * Valida el tráfico de un día.
+ *
+ * El tráfico es de TIENDA, no de persona, pero se guarda repetido en la fila de
+ * cada asesor de ese día porque así lo escribe el importador y así lo espera
+ * `aggregateStoreTraffic`, que toma el MÁXIMO por fecha —no la suma— para no
+ * multiplicarlo por el número de personas.
+ */
+export function normalizeTrafficEntry(entry: TrafficCaptureEntry):
+  | { ok: true; value: NormalizedTraffic }
+  | { ok: false; error: string } {
+  if (!DATE_PATTERN.test(entry.date ?? "")) {
+    return { ok: false, error: `Tráfico: fecha inválida (${String(entry.date)}), se espera AAAA-MM-DD.` };
+  }
+  const date = new Date(`${entry.date}T00:00:00.000Z`);
+  if (Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== entry.date) {
+    return { ok: false, error: `Tráfico: fecha inexistente (${entry.date}).` };
+  }
+
+  const value = toNumber(entry.value);
+  if (value === null) return { ok: false, error: `Tráfico (${entry.date}): no es un número.` };
+  if (value < 0) return { ok: false, error: `Tráfico (${entry.date}): no puede ser negativo.` };
+  if (value > MAX_TRAFFIC) {
+    return { ok: false, error: `Tráfico (${entry.date}): ${value} parece un error de captura.` };
+  }
+
+  return { ok: true, value: { date, value } };
+}
+
+/**
+ * `tickets / tráfico`, en porcentaje. Es la conversión de TIENDA.
+ *
+ * Devuelve `null` si no hay tráfico —y `Kpi.conversion` sí es nulable—, porque
+ * sin visitantes la conversión no es 0 %: es desconocida. Un 0 se leería como
+ * «entró gente y no compró nadie», que es una afirmación distinta.
+ */
+export function computeConversion(transactions: number, traffic: number): number | null {
+  return traffic > 0 ? (transactions * 100) / traffic : null;
+}

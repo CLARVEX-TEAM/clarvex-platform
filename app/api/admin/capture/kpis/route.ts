@@ -31,7 +31,18 @@ const bodySchema = z.object({
       })
     )
     .min(1, "No se recibió ninguna fila.")
-    .max(400)
+    .max(400),
+  // Tráfico de TIENDA por fecha. Va aparte de `entries` porque no es un dato de
+  // persona: se escribe igual en la fila de cada asesor de ese día.
+  traffic: z
+    .array(
+      z.object({
+        date: z.string().min(10).max(10),
+        value: z.union([z.number(), z.string()]).nullish()
+      })
+    )
+    .max(40)
+    .optional()
 });
 
 export async function POST(request: Request) {
@@ -56,7 +67,7 @@ export async function POST(request: Request) {
   const store = await prisma.store.findUnique({ where: { id: parsed.data.storeId }, select: { id: true } });
   if (!store) return NextResponse.json({ error: "Tienda no encontrada." }, { status: 404 });
 
-  const outcome = await captureKpis(parsed.data.storeId, parsed.data.entries);
+  const outcome = await captureKpis(parsed.data.storeId, parsed.data.entries, parsed.data.traffic ?? []);
   if (!outcome.ok) {
     return NextResponse.json({ error: "Hay filas invalidas.", detail: outcome.errors }, { status: 422 });
   }

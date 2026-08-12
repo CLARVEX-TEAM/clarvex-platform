@@ -4,7 +4,9 @@ import {
   computeAchievement,
   computeAvgTicket,
   computeUpt,
-  normalizeKpiEntry
+  normalizeKpiEntry,
+  normalizeTrafficEntry,
+  computeConversion
 } from "../lib/kpi-capture-entry";
 
 const base = {
@@ -101,4 +103,32 @@ test("una fila sin cifras es valida: cuenta como dia sin venta", () => {
   if (!outcome.ok) return;
   assert.equal(outcome.value.dailySales, 0);
   assert.equal(outcome.value.transactions, 0);
+});
+
+test("el trafico acepta una fecha y un numero", () => {
+  const outcome = normalizeTrafficEntry({ date: "2026-08-12", value: "1,250" });
+  assert.equal(outcome.ok, true);
+  if (!outcome.ok) return;
+  assert.equal(outcome.value.value, 1250);
+  assert.equal(outcome.value.date.toISOString(), "2026-08-12T00:00:00.000Z");
+});
+
+test("el trafico rechaza negativos y cifras absurdas", () => {
+  assert.equal(normalizeTrafficEntry({ date: "2026-08-12", value: -5 }).ok, false);
+  assert.equal(normalizeTrafficEntry({ date: "2026-08-12", value: 999999 }).ok, false);
+});
+
+test("el trafico rechaza fechas invalidas", () => {
+  assert.equal(normalizeTrafficEntry({ date: "12-08-2026", value: 100 }).ok, false);
+  assert.equal(normalizeTrafficEntry({ date: "2026-02-31", value: 100 }).ok, false);
+});
+
+test("la conversion es tickets sobre trafico, en porcentaje", () => {
+  assert.equal(computeConversion(25, 500), 5);
+});
+
+test("sin trafico la conversion es null, no cero", () => {
+  // Kpi.conversion SI es nulable. Sin visitantes la conversion no es 0 %: es
+  // desconocida. Un 0 diria "entro gente y no compro nadie", que es otra cosa.
+  assert.equal(computeConversion(10, 0), null);
 });
