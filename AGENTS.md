@@ -64,8 +64,11 @@ un login más a una tarea diaria.
 |---|---|---|
 | HORARIOS | ✅ `/api/admin/capture/schedules` | ✅ publicada y **probada de extremo a extremo** |
 | ASISTENCIA | ✅ `/api/admin/capture/attendance` | ✅ publicada, **sin probar aún** |
-| KPIS | ✅ `/api/admin/capture/kpis` | ⏳ pendiente |
-| DESCUENTOS_POS | ⏳ ya desbloqueado | ⏳ pendiente |
+| KPIS | ✅ `/api/admin/capture/kpis` | 🔄 generándose |
+| DESCUENTOS_POS | ✅ `/api/admin/capture/discounts` | 🔄 generándose |
+
+**Los cuatro backends están completos y desplegados.** Lo que falta son pantallas
+y pruebas de extremo a extremo, y esas dependen del dominio personalizado.
 
 ### Lo que hace especial a `KPIS`
 
@@ -86,6 +89,24 @@ leer.
 
 Pendiente en esta pieza: el **tráfico de tienda** (y con él la conversión), que
 es un dato de tienda y no de persona, así que necesita su propia captura.
+
+### Lo que hace especial a `DESCUENTOS_POS`
+
+**No crea filas propias.** El margen es semanal y `Kpi` es diaria, así que se
+escribe en la **primera fila de la semana** (patrón de fila ancla) y en el resto
+queda `null`. Repetirlo en los siete días multiplicaría por siete cualquier suma.
+
+Se agrupa por **`weekNumber`, nunca por `weekStart`**: en esta tabla `weekStart`
+vale lo mismo que `date` en cada fila, así que agrupar por él daría una «semana»
+por día.
+
+Si no existen KPIs de esa semana **no se inventa una fila**: se devuelve 200 con
+la lista en `weeksWithoutKpis`. Crear un `Kpi` vacío solo para colgar un
+descuento falsearía venta y metas.
+
+⚠️ **El margen es un TECHO, no una meta**: pasarse es malo, así que el semáforo
+va al revés que en el resto (verde si es BAJO). `isCeiling()` en
+`lib/kpi-view.ts` es quien lo distingue.
 
 **Orden obligatorio: KPIS antes que DESCUENTOS_POS.** El margen DTO no crea filas
 propias: busca los `Kpi` de esa semana y escribe los totales en la primera
