@@ -67,11 +67,13 @@ un login más a una tarea diaria.
 | KPIS | ✅ `/api/admin/capture/kpis` | ✅ publicada, sin probar |
 | DESCUENTOS_POS | ✅ `/api/admin/capture/discounts` | ✅ publicada, sin probar |
 
-**Los cuatro backends y las cuatro pantallas están completos y publicados.** Lo
-único que falta es probar tres de las cuatro de extremo a extremo, y eso está
-bloqueado por el certificado del dominio personalizado.
+**El reemplazo del RDV está COMPLETO**: los cuatro backends, las cuatro pantallas
+y el tráfico de tienda dentro de KPIs. Ya no queda ningún dato que dependa de un
+Excel de Axo.
 
-El **tráfico de tienda** ya está cubierto dentro de la captura de KPIs.
+Lo único que falta es **probar tres de las cuatro de extremo a extremo**, y eso
+está bloqueado por el certificado del dominio personalizado — ticket de Retool
+**#00121648**, escalado a su equipo de desarrollo el 12 de agosto.
 
 
 ### Lo que hace especial a `KPIS`
