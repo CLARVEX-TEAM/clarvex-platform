@@ -44,7 +44,14 @@ export type AttendanceSyncMetrics = {
 };
 
 /** El horario del día manda; si no trae hora, la entrada estándar de la tienda. */
-function expectedEntry(startTime: string | null): string {
+/**
+ * Hora a la que se espera a alguien: la de su horario, y si no la tiene (o es
+ * ilegible) la estándar de tienda. Se exporta porque la captura manual
+ * (`lib/attendance-capture`) tiene que clasificar el día con EXACTAMENTE el
+ * mismo criterio que el archivo; si divergieran, el mismo retardo contaría
+ * distinto según quién lo registró.
+ */
+export function expectedEntry(startTime: string | null): string {
   return startTime && toMinutes(startTime) !== null ? startTime : DEFAULT_EXPECTED_ENTRY;
 }
 

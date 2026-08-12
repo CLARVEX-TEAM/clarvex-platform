@@ -44,6 +44,16 @@ const publicApiExact = new Set([
   "/api/push/vapid-public-key"
 ]);
 
+/**
+ * Rutas de captura manual desde el panel externo. Se enumeran UNA A UNA y no
+ * con el prefijo `/api/admin/capture/`: así una ruta futura bajo ese prefijo no
+ * queda pública por herencia sin que nadie lo decida.
+ */
+const captureRoutes = new Set([
+  "/api/admin/capture/schedules",
+  "/api/admin/capture/attendance"
+]);
+
 function isPublicApi(pathname: string): boolean {
   if (publicApiExact.has(pathname)) return true;
   if (pathname.startsWith("/api/cron/")) return true;
@@ -52,9 +62,9 @@ function isPublicApi(pathname: string): boolean {
   // Se lista la ruta EXACTA y no el prefijo `/api/admin/`: así una ruta futura
   // bajo ese prefijo no queda pública por herencia.
   if (pathname === "/api/admin/sync-source") return true;
-  // Captura manual desde el panel externo. Mismo criterio: ruta exacta, y su
-  // propio secreto (ADMIN_CAPTURE_SECRET) validado en el handler.
-  if (pathname === "/api/admin/capture/schedules") return true;
+  // Captura manual desde el panel externo. Mismo criterio: rutas EXACTAS, y su
+  // propio secreto (ADMIN_CAPTURE_SECRET) validado en cada handler.
+  if (captureRoutes.has(pathname)) return true;
   if (pathname.startsWith("/api/webhooks/")) return true;
   // Entrada pública al modo demo (crea la sesión demo; rate-limitada en el handler).
   if (pathname.startsWith("/api/demo/")) return true;
@@ -93,7 +103,7 @@ function maintenanceResponse(request: NextRequest, session: Session | null): Nex
   // Captura desde el panel externo. Construir esa captura es justamente el
   // motivo de la ventana, así que cerrarle la puerta la volvería inútil. Va con
   // su propio secreto y es fail-closed, no queda nada abierto.
-  if (pathname === "/api/admin/capture/schedules") return null;
+  if (captureRoutes.has(pathname)) return null;
 
   if (pathname.startsWith("/api/")) {
     return NextResponse.json(
