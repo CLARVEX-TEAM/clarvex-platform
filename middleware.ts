@@ -52,6 +52,9 @@ function isPublicApi(pathname: string): boolean {
   // Se lista la ruta EXACTA y no el prefijo `/api/admin/`: así una ruta futura
   // bajo ese prefijo no queda pública por herencia.
   if (pathname === "/api/admin/sync-source") return true;
+  // Captura manual desde el panel externo. Mismo criterio: ruta exacta, y su
+  // propio secreto (ADMIN_CAPTURE_SECRET) validado en el handler.
+  if (pathname === "/api/admin/capture/schedules") return true;
   if (pathname.startsWith("/api/webhooks/")) return true;
   // Entrada pública al modo demo (crea la sesión demo; rate-limitada en el handler).
   if (pathname.startsWith("/api/demo/")) return true;
@@ -87,6 +90,10 @@ function maintenanceResponse(request: NextRequest, session: Session | null): Nex
   if (session?.platformAdmin === true) return null;
   if (session?.checklistOnly === true) return null;
   if (pathname === "/login" || pathname.startsWith("/api/auth/")) return null;
+  // Captura desde el panel externo. Construir esa captura es justamente el
+  // motivo de la ventana, así que cerrarle la puerta la volvería inútil. Va con
+  // su propio secreto y es fail-closed, no queda nada abierto.
+  if (pathname === "/api/admin/capture/schedules") return null;
 
   if (pathname.startsWith("/api/")) {
     return NextResponse.json(

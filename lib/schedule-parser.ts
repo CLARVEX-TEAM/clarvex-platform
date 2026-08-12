@@ -42,6 +42,25 @@ const statusMap: Record<string, ParsedScheduleStatus> = {
   BAJA: "TERMINATED"
 };
 
+/**
+ * Etiqueta en español de cada estado, la misma que trae el archivo de horarios.
+ * Se deriva de `statusMap` en vez de escribirse aparte para que una fila
+ * capturada a mano y una importada del Excel guarden el MISMO `statusRaw`: si
+ * divergen, cualquier consulta que agrupe por ese texto parte el resultado en
+ * dos sin avisar.
+ */
+export const SCHEDULE_STATUS_LABELS = Object.fromEntries(
+  Object.entries(statusMap).map(([label, status]) => [status, label])
+) as Record<ParsedScheduleStatus, string>;
+
+/**
+ * Nombre corto del día ("Dom", "Lun"…) tal y como lo guarda el importador en
+ * `Schedule.day`. Se calcula desde la MISMA tabla que usa el parser.
+ */
+export function shortDayFromDate(date: Date): string {
+  return dayDefinitions[date.getUTCDay()].short;
+}
+
 export function parseScheduleWorkbook(workbook: XLSX.WorkBook): ScheduleParseResult {
   const records: ParsedSchedule[] = [];
   const weeks = new Set<string>();
