@@ -21,8 +21,15 @@ export function requireAdminCapture(request: Request): NextResponse | null {
   // que un salto de línea o un espacio colado al pegar el token en el panel
   // externo devolvía 401 sin ninguna pista de por qué — y el espacio sobrante
   // no es material secreto, así que tolerarlo no debilita nada.
+  // Se ignoran TODOS los espacios en blanco del token, no solo los de los
+  // extremos. Un salto de línea o un espacio colado al pegar el secreto en un
+  // panel externo —donde el campo parte el valor visualmente— producía un 401
+  // indistinguible de un token equivocado. El blanco no aporta entropía: los 64
+  // caracteres hexadecimales siguen teniendo que coincidir uno a uno, así que
+  // tolerarlo no debilita la comprobación y ahorra una depuración a ciegas.
   const header = (request.headers.get("authorization") ?? "").trim();
-  if (!secret || secret.length < 32 || !safeEquals(header, `Bearer ${secret}`)) {
+  const normalized = normalizeBearer(header);
+  if (!secret || secret.length < 32 || !safeEquals(normalized, `Bearer ${secret}`)) {
     return NextResponse.json({ error: "No autorizado.", diagnostico: describeHeader(header, secret) }, { status: 401 });
   }
   return null;
@@ -81,6 +88,18 @@ function describeHeader(header: string, secret: string | undefined) {
     // el token no es el nuestro: no basta con quitarle un carácter.
     esOtroToken: Boolean(secret) && received.length !== secret!.length && !sobraAlPrincipio && !sobraAlFinal
   };
+}
+
+/**
+ * Deja la cabecera como `Bearer <token sin espacios>`.
+ *
+ * Solo se toca el token, nunca el esquema: si no viene un `Bearer` reconocible,
+ * se devuelve la cabecera tal cual y la comparación falla como debe.
+ */
+function normalizeBearer(header: string): string {
+  const prefix = "Bearer ";
+  if (!header.startsWith(prefix)) return header;
+  return prefix + header.slice(prefix.length).replace(/\s+/g, "");
 }
 
 function safeEquals(left: string, right: string) {
