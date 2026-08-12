@@ -64,8 +64,28 @@ un login más a una tarea diaria.
 |---|---|---|
 | HORARIOS | ✅ `/api/admin/capture/schedules` | ✅ publicada y **probada de extremo a extremo** |
 | ASISTENCIA | ✅ `/api/admin/capture/attendance` | ✅ publicada, **sin probar aún** |
-| KPIS | ⏳ sin empezar | — |
-| DESCUENTOS_POS | ⏳ bloqueado por KPIS | — |
+| KPIS | ✅ `/api/admin/capture/kpis` | ⏳ pendiente |
+| DESCUENTOS_POS | ⏳ ya desbloqueado | ⏳ pendiente |
+
+### Lo que hace especial a `KPIS`
+
+Solo acepta datos **crudos**: meta, venta, tickets y piezas. Todo lo demás se
+deriva, y ahí está lo que un `INSERT` externo se saltaría:
+
+- `upt` y `avgTicket` salen de la propia fila. Guardan **0** cuando no hay
+  tickets —no `null`— porque son NO nulables y es lo que hace `ratio()` en el
+  importador. Mostrar «—» es cosa de `lib/kpi-view.ts`, no del dato guardado.
+- **`ranking` es la posición de ESE DÍA** frente a las compañeras: capturar a una
+  cambia el puesto de todas, así que se recalcula la fecha completa.
+- **`monthlySales` / `monthlyGoal` son acumulados**: capturar un día mueve el
+  acumulado de todos los días de ese mes para esa persona.
+
+`monthlyGoal` pasa a ser la **suma de las metas diarias**. El importador prefería
+la meta TTLS de la hoja cuando existía, pero esa hoja es justo lo que se deja de
+leer.
+
+Pendiente en esta pieza: el **tráfico de tienda** (y con él la conversión), que
+es un dato de tienda y no de persona, así que necesita su propia captura.
 
 **Orden obligatorio: KPIS antes que DESCUENTOS_POS.** El margen DTO no crea filas
 propias: busca los `Kpi` de esa semana y escribe los totales en la primera
