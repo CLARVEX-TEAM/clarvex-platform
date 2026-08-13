@@ -64,11 +64,26 @@ test("rechaza formatos de hora que no son HH:MM", () => {
   }
 });
 
-test("acepta hora vacia como sin horario", () => {
+test("completa las horas vacias con el horario estándar de tienda", () => {
   const outcome = normalizeScheduleEntry({ ...base, startTime: "", endTime: null });
   assert.equal(outcome.ok, true);
   if (!outcome.ok) return;
-  assert.equal(outcome.value.startTime, null);
+  assert.equal(outcome.value.startTime, "10:30");
+  assert.equal(outcome.value.endTime, "21:00");
+});
+
+test("completa solo la hora faltante y conserva la capturada", () => {
+  const withoutEnd = normalizeScheduleEntry({ ...base, startTime: "12:00" });
+  assert.equal(withoutEnd.ok, true);
+  if (!withoutEnd.ok) return;
+  assert.equal(withoutEnd.value.startTime, "12:00");
+  assert.equal(withoutEnd.value.endTime, "21:00");
+
+  const withoutStart = normalizeScheduleEntry({ ...base, endTime: "20:00" });
+  assert.equal(withoutStart.ok, true);
+  if (!withoutStart.ok) return;
+  assert.equal(withoutStart.value.startTime, "10:30");
+  assert.equal(withoutStart.value.endTime, "20:00");
 });
 
 test("rechaza fechas mal formadas", () => {

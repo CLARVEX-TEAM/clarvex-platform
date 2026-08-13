@@ -511,8 +511,15 @@ El % de comisión difiere por puesto pero el mínimo de referencia es el mismo p
   hasta +14 min es `ON_TIME`; de +15 a +29 min es `LATE` sin tocar el banco;
   desde +30 min es `EXCUSED` (permiso de entrada tarde) y se descuenta la
   diferencia completa del banco; solo la falta de marca o el texto `FALTA`
-  produce `ABSENT`. Las bandas son relativas al horario individual. Quedan por
-  probar Horarios, KPIs y Descuentos. La regla quedó desplegada en `e69f52e` y
+  produce `ABSENT`. Las bandas son relativas al horario individual. KPIs ya se
+  guardó correctamente desde la cuenta operativa. El contador que mostró `4`
+  «meses recalculados» correspondía en realidad a cuatro acumulados persona-mes
+  (uno por colaborador); el parche Retool `0.0.3` lo renombró a «Acumulados
+  mensuales» sin cambiar el cálculo. La primera prueba de Horarios detectó horas
+  faltantes y una salida recortada: `0.0.3` ahora muestra Entrada/Salida apiladas
+  y completa `10:30`/`21:00` solo cuando falten en `LABORANDO` o `INVENTARIO`.
+  El servidor aplica la misma defensa. Queda repetir Horarios y probar
+  Descuentos. La regla de asistencia quedó desplegada en `e69f52e` y
   la fila de Itzel fue reprocesada por el endpoint de captura: producción
   confirmó `EXCUSED`, 90 minutos tarde y `minutesBalance=-90`.
   Falta definir el remitente de correo. Detalle completo en `AGENTS.md`.

@@ -82,9 +82,9 @@ reconstruirlas como Classic app ni como formularios nativos de Clarvex.
 
 | Fuente | Endpoint | Pantalla Retool nuevo builder |
 |---|---|---|
-| HORARIOS | ✅ `/api/admin/capture/schedules` | ✅ publicada y probada internamente; falta prueba con invitado |
+| HORARIOS | ✅ `/api/admin/capture/schedules` | 🟡 parche `0.0.3` publicado; falta repetir el guardado desde la cuenta operativa |
 | ASISTENCIA | ✅ `/api/admin/capture/attendance` | ✅ prueba completa desde cuenta operativa hasta la base de Clarvex |
-| KPIS | ✅ `/api/admin/capture/kpis` | ✅ publicada; falta prueba con invitado |
+| KPIS | ✅ `/api/admin/capture/kpis` | ✅ guardado confirmado desde la cuenta operativa; parche `0.0.3` aclara los acumulados |
 | DESCUENTOS_POS | ✅ `/api/admin/capture/discounts` | ✅ publicada; falta prueba con invitado |
 
 **El reemplazo del RDV está construido**: los cuatro endpoints, las cuatro
@@ -125,6 +125,12 @@ deriva, y ahí está lo que un `INSERT` externo se saltaría:
   cambia el puesto de todas, así que se recalcula la fecha completa.
 - **`monthlySales` / `monthlyGoal` son acumulados**: capturar un día mueve el
   acumulado de todos los días de ese mes para esa persona.
+
+La respuesta `monthsRecalculated` no cuenta meses calendario distintos: cuenta
+pares **persona-mes** recalculados. Si se capturan cuatro colaboradores del mismo
+mes, el valor correcto es `4`. Desde el parche Retool `0.0.3` la interfaz lo
+muestra como **«Acumulados mensuales»** y aclara «Uno por colaborador del mes
+capturado»; no se cambió el cálculo ni el contrato del endpoint.
 
 `monthlyGoal` pasa a ser la **suma de las metas diarias**. El importador prefería
 la meta TTLS de la hoja cuando existía, pero esa hoja es justo lo que se deja de
@@ -294,6 +300,26 @@ Cambio desplegado en producción el 13 de agosto en `e69f52e`. La fila de Itzel
 se volvió a procesar por el endpoint normal de captura y se verificó en la base:
 `status=EXCUSED`, `minutesLate=90`, `minutesBalance=-90`, `source=MANUAL`. Las
 dos instancias PM2 quedaron `online` y `/api/health` respondió `status=ok`.
+
+### Ajuste de Horarios después de la primera prueba
+
+La primera prueba operativa detectó que Retool bloqueaba todo el guardado cuando
+una fila `LABORANDO` no tenía ambas horas y que, por el ancho de la celda, la
+salida quedaba recortada. El parche `0.0.3` corrige ambos puntos:
+
+- en `LABORANDO` e `INVENTARIO`, una entrada vacía toma `10:30` y una salida
+  vacía toma `21:00`;
+- si solo se capturó una de las dos horas, esa hora se conserva y únicamente se
+  completa la faltante;
+- `DESCANSO`, `VACACIONES` y demás estados no laborados siguen guardando ambas
+  horas como `null`;
+- Entrada y Salida se muestran apiladas, con etiqueta visible y ancho táctil
+  suficiente para móvil.
+
+La misma regla vive en el servidor (`lib/schedule-capture-entry.ts`), no solo en
+Retool, para que una interfaz antigua o defectuosa no vuelva a bloquear la
+captura. Falta repetir el guardado desde la cuenta operativa después de recargar
+la aplicación.
 
 La cuenta administrativa de Adrian (`contacto@clarvex.adrianluna.mx`) **no se
 usará para operación ni para la prueba**. Aunque actualmente tiene atributos de

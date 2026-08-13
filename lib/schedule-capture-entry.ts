@@ -21,6 +21,8 @@ const STATUSES_WITH_HOURS: ReadonlySet<ParsedScheduleStatus> = new Set<ParsedSch
 const VALID_STATUSES = Object.keys(SCHEDULE_STATUS_LABELS) as ParsedScheduleStatus[];
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
+export const DEFAULT_SCHEDULE_START = "10:30";
+export const DEFAULT_SCHEDULE_END = "21:00";
 
 export type ScheduleCaptureEntry = {
   employeeNumber: string;
@@ -74,11 +76,17 @@ export function normalizeScheduleEntry(entry: ScheduleCaptureEntry): NormalizeOu
   }
 
   const allowsHours = STATUSES_WITH_HOURS.has(status);
-  const startTime = normalizeTime(entry.startTime);
-  const endTime = normalizeTime(entry.endTime);
-  if (startTime === "INVALID" || endTime === "INVALID") {
+  const capturedStartTime = normalizeTime(entry.startTime);
+  const capturedEndTime = normalizeTime(entry.endTime);
+  if (capturedStartTime === "INVALID" || capturedEndTime === "INVALID") {
     return { ok: false, error: `Hora inválida en ${employeeNumber} (${entry.date}): se espera HH:MM.` };
   }
+  // La operación estándar de tienda es 10:30–21:00. La captura de horarios es
+  // parcial: si gerencia solo cambia el estatus, o deja una de las dos horas
+  // vacía, completamos únicamente lo que falta. La regla vive también en el
+  // servidor para no depender de que Retool aplique correctamente el default.
+  const startTime = allowsHours ? (capturedStartTime ?? DEFAULT_SCHEDULE_START) : capturedStartTime;
+  const endTime = allowsHours ? (capturedEndTime ?? DEFAULT_SCHEDULE_END) : capturedEndTime;
   if (!allowsHours && (startTime || endTime)) {
     return {
       ok: false,
