@@ -247,11 +247,31 @@ Estado de acceso verificado el 13 de agosto:
 
 Lo pendiente es:
 
-1. invitar una cuenta interna de prueba y añadirla a `captura tiendas`;
-2. asignar sus tres atributos;
-3. verificar que solo vea «Captura Clarvex» y su propia tienda;
-4. probar guardado de Horarios, Asistencia, KPIs y Descuentos;
-5. invitar al resto y reabrir Clarvex cuando todo esté validado.
+1. republicar «Captura Clarvex» para habilitarla en el dominio personalizado;
+2. verificar que una cuenta limitada solo vea «Captura Clarvex» y su tienda;
+3. probar guardado de Horarios, Asistencia, KPIs y Descuentos;
+4. invitar al resto y reabrir Clarvex cuando todo esté validado.
+
+La cuenta administrativa de Adrian (`contacto@clarvex.adrianluna.mx`) **no se
+usará para operación ni para la prueba**. Aunque actualmente tiene atributos de
+tienda, debe conservarse separada como cuenta de administración. Adrian creará
+o indicará otro correo para una cuenta operativa interna con acceso solo a
+`captura tiendas`, `role=SUBGERENTE`, `storeId=clarvex-demo-store` y
+`storeName=TH SAN AGUSTIN`. Esa segunda cuenta será la primera prueba real de
+aislamiento y captura.
+
+Correo elegido: `jhernandezl2c@gmail.com`. La invitación fue enviada el 13 de
+agosto y está **Pending**. Tiene únicamente los grupos `All Users` (automático)
+y `captura tiendas`, sin `admin`, `editor` ni `viewer`. Sus atributos quedaron
+guardados y se verificaron cerrando y reabriendo el perfil:
+`role=SUBGERENTE`, `storeId=clarvex-demo-store` y
+`storeName=TH SAN AGUSTIN`. En este panel cada atributo se persiste con
+**Enter**; salir del campo o cerrar el perfil no lo guarda.
+
+Al abrir la app desde `captura.adrianluna.mx`, Retool pide **Republish to use
+your custom domain**. Elegir la versión actual redirige a
+`clarvex.retool.com/auth/login`, donde la sesión del dominio personalizado no
+existe. Hay que republicar antes de continuar la prueba directa.
 
 ### Branding del acceso directo
 

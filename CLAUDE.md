@@ -490,6 +490,14 @@ El % de comisión difiere por puesto pero el mínimo de referencia es el mismo p
   horizontal 1200 × 300 en `public/branding/retool-logo-horizontal.png`, con su
   fuente SVG. Adrian lo aprobó y **ya está cargado en Retool**; se verificó en
   la vista previa del login y en el encabezado. El favicon no cambió.
+  La cuenta administrativa de Adrian no se usará para operación. Se acordó
+  crear otra cuenta interna, limitada a `captura tiendas`, con atributos
+  `SUBGERENTE`, `clarvex-demo-store` y `TH SAN AGUSTIN`. El correo será
+  `jhernandezl2c@gmail.com`; la invitación ya fue enviada y está **Pending**, con
+  `All Users` y `captura tiendas`, sin grupos elevados. Los tres atributos ya
+  están guardados y verificados. Ojo: en User attributes hay que pulsar Enter
+  en cada campo para persistirlo. Además, Retool exige republicar la app en el dominio personalizado:
+  continuar con la versión actual redirige a `clarvex.retool.com/auth/login`.
   Falta definir el remitente de correo. Detalle completo en `AGENTS.md`.
 - **`MERCADOPAGO_WEBHOOK_SECRET` sin configurar en el VPS.** El webhook de Mercado
   Pago responde 401 a todo: las suscripciones no se procesan automáticamente.
