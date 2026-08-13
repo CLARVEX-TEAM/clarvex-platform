@@ -476,14 +476,16 @@ El % de comisión difiere por puesto pero el mínimo de referencia es el mismo p
   fuentes; solo sobrevive `GUESS / KPIS`, que pasa por Power Automate.
 - **Se descartó la incrustación, no Retool.** «Captura Clarvex» usa el nuevo App
   Builder, que todavía no admite iframe externo. La decisión vigente es invitar
-  a gerentes/subgerentes como usuarios externos y que entren directamente a
-  `captura.adrianluna.mx`. Los atributos `storeId`, `storeName` y `role` ya
-  están creados sin valor predeterminado; el grupo `captura tiendas` ya fue
-  verificado con acceso **Use** únicamente a «Captura Clarvex» y sus dos
-  recursos necesarios. Falta probar una cuenta invitada y validar las cuatro
-  pantallas. El branding ya usa nombre **CLARVEX TEAM**, acento `#00FF66`,
-  cabecera negra y referencias adicionales a Retool ocultas; logo/favicon
-  siguen pendientes. Detalle completo en `AGENTS.md`.
+  a gerentes/subgerentes como usuarios internos de la organización y que entren
+  directamente a `captura.adrianluna.mx`. Los atributos `storeId`, `storeName`
+  y `role` ya están creados sin valor predeterminado; el grupo `captura tiendas`
+  ya fue verificado con acceso **Use** únicamente a «Captura Clarvex» y sus dos
+  recursos necesarios. `All Users` no concede acceso a apps ni recursos y
+  `External Apps` permanece desactivado. Falta probar una cuenta interna
+  invitada y validar las cuatro pantallas. El branding ya usa nombre **CLARVEX
+  TEAM**, acento `#2563EB`, cabecera `#0B0C0F` y referencias adicionales a
+  Retool ocultas; logo/favicon siguen pendientes. Detalle completo en
+  `AGENTS.md`.
 - **`MERCADOPAGO_WEBHOOK_SECRET` sin configurar en el VPS.** El webhook de Mercado
   Pago responde 401 a todo: las suscripciones no se procesan automáticamente.
   Ver [Variables de entorno](#variables-de-entorno).

@@ -53,18 +53,19 @@ que Retool escribiera SQL directo: se saltaría el calendario retail, el
 `weekNumber`, el patrón de fila ancla y el filtro del usuario kiosko, y eso
 corrompe en silencio.
 
-Los gerentes entran como **usuarios externos invitados** de Retool. Cada persona
-tiene su cuenta individual y Retool le envía un enlace para crear su contraseña;
-el administrador configura antes su grupo, tienda y cargo. También pueden usar
-**Sign in with Google** si su correo lo admite. En Business, los primeros 50
-usuarios externos al mes no tienen costo.
+Los gerentes y subgerentes entran como **usuarios internos invitados** de la
+organización de Retool. Cada persona tiene su cuenta individual y Retool le
+envía un enlace para crear su contraseña; el administrador configura antes su
+grupo, tienda y cargo. También pueden usar **Sign in with Google** si su correo
+lo admite. `External Apps` permanece desactivado: no usar el flujo de usuarios
+externos para esta operación.
 
 ⚠️ **Hallazgo del 13 de agosto:** «Captura Clarvex» fue creada con el **nuevo App
 Builder** de Retool (proyecto de código con `/frontend` y `/backend`), no como
-una **Classic app**. Retool documenta que las apps del nuevo builder admiten
-usuarios externos, pero **todavía no admiten incrustación en sitios o
-aplicaciones externas**. El endpoint clásico acepta el UUID y devuelve 200, pero
-la URL firmada termina en una pantalla blanca.
+una **Classic app**. Retool documenta que las apps del nuevo builder **todavía
+no admiten incrustación en sitios o aplicaciones externas**. El endpoint
+clásico acepta el UUID y devuelve 200, pero la URL firmada termina en una
+pantalla blanca.
 
 Esto se reprodujo fuera de Clarvex: una URL firmada nueva se abrió directamente
 en el navegador, llegó a
@@ -73,9 +74,9 @@ Retool sin errores de consola y dejó `App Body` vacío. Por tanto, **no es CSP,
 certificado, iframe ni sandbox de Clarvex**.
 
 **Decisión tomada el 13 de agosto:** se descarta la incrustación, no Retool. Los
-usuarios externos entrarán directamente al dominio personalizado. Así se
-conservan las cuatro pantallas del nuevo App Builder y no hay que reconstruirlas
-como Classic app ni como formularios nativos de Clarvex.
+usuarios internos invitados entrarán directamente al dominio personalizado. Así
+se conservan las cuatro pantallas del nuevo App Builder y no hay que
+reconstruirlas como Classic app ni como formularios nativos de Clarvex.
 
 ## Dónde vamos
 
@@ -89,7 +90,7 @@ como Classic app ni como formularios nativos de Clarvex.
 **El reemplazo del RDV está construido**: los cuatro endpoints, las cuatro
 pantallas y el tráfico de tienda dentro de KPIs. Los atributos seguros de
 usuario (`storeId`, `storeName` y `role`) ya están creados en Retool sin valor
-predeterminado. Antes de reabrir Clarvex falta invitar una cuenta externa de
+predeterminado. Antes de reabrir Clarvex falta invitar una cuenta interna de
 prueba, asignarle esos atributos y validar las cuatro capturas de extremo a
 extremo mediante acceso directo.
 
@@ -200,12 +201,13 @@ RETOOL_EMBED_GROUP_ID=  # ✅ 6998583  (grupo «captura tiendas»)
 Si falta alguna, `/escritorio/captura` responde **503 nombrando cuál**. Es
 deliberado: un 500 genérico obligaría a adivinar.
 
-## Accesos: usuarios externos invitados con acceso directo
+## Accesos: usuarios internos invitados con acceso directo
 
-Las gerentes sí tienen una cuenta individual de Retool, pero no la crean desde
-cero: el administrador las invita, asigna grupo y atributos, y Retool les manda
-un enlace de una semana para elegir contraseña. Nunca compartir contraseñas ni
-crear una cuenta común por tienda: se perdería auditoría y control de bajas.
+Las gerentes y subgerentes tienen una cuenta interna individual de Retool, pero
+no la crean desde cero: el administrador las invita, asigna grupo y atributos,
+y Retool les manda un enlace de una semana para elegir contraseña. Nunca
+compartir contraseñas ni crear una cuenta común por tienda: se perdería
+auditoría y control de bajas. `External Apps` debe permanecer desactivado.
 
 Entran directamente a `https://captura.adrianluna.mx`. El flujo embebido de
 `/escritorio/captura` y `/api/retool/embed-url` queda como implementación
@@ -238,11 +240,14 @@ Estado de acceso verificado el 13 de agosto:
 - ✅ recursos limitados a **Use** sobre `Clarvex API (captura)` y
   `Clarvex producción (solo lectura + 3 columnas)`;
 - ✅ sin acceso del grupo a «Diagnóstico de datos» ni «Panel Administración
-  Tiendas».
+  Tiendas»;
+- ✅ `All Users` no concede acceso a ninguna app ni recurso, así que la
+  membresía automática de los usuarios internos no amplía sus permisos;
+- ✅ `External Apps` permanece desactivado.
 
 Lo pendiente es:
 
-1. invitar una cuenta externa de prueba y añadirla a `captura tiendas`;
+1. invitar una cuenta interna de prueba y añadirla a `captura tiendas`;
 2. asignar sus tres atributos;
 3. verificar que solo vea «Captura Clarvex» y su propia tienda;
 4. probar guardado de Horarios, Asistencia, KPIs y Descuentos;
@@ -256,7 +261,7 @@ nuevo App Builder no se admite todavía sustituir por completo la estructura de
 la página de login con una app propia; eso es distinto de aplicar branding.
 
 Aplicado el 13 de agosto: nombre **CLARVEX TEAM**, referencias adicionales a
-Retool ocultas, acento `#00FF66`, cabecera `#0d0d0d` y menú de usuario oculto.
+Retool ocultas, acento `#2563EB`, cabecera `#0B0C0F` y menú de usuario oculto.
 Falta subir el logo/banner y el favicon del repo y definir el remitente de
 correo.
 
@@ -266,9 +271,8 @@ correo.
   una única vez.
 - **Grupo `captura tiendas`** (id `6998583`): acceso **Use, nunca Edit**, y solo
   a la app «Captura Clarvex» y a los dos recursos de Clarvex. *Use* impide ver el
-  secreto o alterar el código que fija la tienda. La clasificación interna o
-  externa depende del dominio del correo y de la configuración de External
-  Apps, no del permiso *Use*.
+  secreto o alterar el código que fija la tienda. Los gerentes y subgerentes se
+  invitan como usuarios internos; `External Apps` permanece desactivado.
   **No reutilizar Viewer/Editor/Admin**: tienen acceso a *All apps*, o sea
   también al panel de administración con facturación y auditoría.
 - **Dominio personalizado**: Settings → **Branding** → campo *Domain name*.
@@ -345,10 +349,11 @@ Every screen must be mobile-first.
 ### Visual Style
 
 * Premium enterprise SaaS
-* Modern glassmorphism
-* Dark mode first
-* Black background (#0A0A0A)
-* Neon green accent (#00FF66)
+* Estética minimalista Apple/Linear
+* Temas claro y oscuro
+* Fondo claro `#FAFAFB`; fondo oscuro `#0B0C0F`
+* Acento azul `#2563EB` en claro y `#6B9BFF` en oscuro
+* Glass y blur solo en superficies flotantes
 * High contrast typography
 * Clean spacing
 * Minimal borders
