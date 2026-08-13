@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="300" viewBox="0 0 1200 300" role="img" aria-labelledby="title description">
+  <title id="title">Clarvex Team</title>
+  <desc id="description">Logotipo horizontal de Clarvex Team para el acceso de Retool.</desc>
+  <defs>
+    <linearGradient id="iconBlue" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0" stop-color="#071F47" />
+      <stop offset="0.58" stop-color="#1458BD" />
+      <stop offset="1" stop-color="#287DFF" />
+    </linearGradient>
+  </defs>
+  <g transform="translate(36 36) scale(.4453125)">
+    <rect x="1" y="1" width="510" height="510" rx="88" fill="url(#iconBlue)" stroke="#8BB8FF" stroke-width="2" />
+    <path fill="#FFFFFF" d="M108 171 256 86 403 171 210 283v-57l93-53-47-27-95 55v111l95 56 48-28v-57l99 58-147 85-148-84V171Z" />
+  </g>
+  <g fill="#2563EB" font-family="Arial, sans-serif">
+    <text x="312" y="142" font-size="112" font-weight="700" letter-spacing="7">CLARVEX</text>
+    <text x="319" y="214" font-size="46" font-weight="700" letter-spacing="20">TEAM</text>
+  </g>
+</svg>

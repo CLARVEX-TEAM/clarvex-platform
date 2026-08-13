@@ -267,6 +267,14 @@ Retool solo acepta `.ico` para el favicon; se verificó que ese archivo coincide
 visualmente con `public/favicon-32x32.png`. La opción **Show logo in app
 headers** está activada. Falta definir el remitente de correo.
 
+⚠️ El logo cuadrado se ve sobredimensionado en el login. Retool no publica una
+medida obligatoria para el logo (solo admite PNG/JPG), y su vista previa reserva
+un área horizontal aproximada de 249 × 87 px. Adrian aprobó el candidato
+`public/branding/retool-logo-horizontal.png` (1200 × 300, transparente, símbolo
++ texto «CLARVEX TEAM») y su fuente SVG. **Ya está cargado en Retool** y se
+verificó visualmente tanto en el login como en el encabezado de la aplicación.
+El favicon continúa usando `public/favicon.ico`.
+
 ### Configuración en Retool, y las trampas de cada paso
 
 - **Token**: Settings → API. Scope **solo `Retool Embed`**, nada más. Se muestra
