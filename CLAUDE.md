@@ -519,8 +519,11 @@ El % de comisión difiere por puesto pero el mínimo de referencia es el mismo p
   faltantes y una salida recortada: `0.0.3` ahora muestra Entrada/Salida apiladas
   y completa `10:30`/`21:00` solo cuando falten en `LABORANDO` o `INVENTARIO`.
   El servidor aplica la misma defensa. El guardado de Horarios ya fue repetido
-  y confirmado desde la cuenta operativa; solo queda probar Descuentos. La regla
-  de asistencia quedó desplegada en `e69f52e` y
+  y confirmado desde la cuenta operativa. En Descuentos se corrigió con el
+  parche Retool `0.0.4` el rango visual de la semana retail: es domingo-sábado,
+  por lo que la semana 32 de 2026 corresponde al 9–15 de agosto, no al 3–9. El
+  número enviado al endpoint no cambió. Solo queda probar el guardado de
+  Descuentos. La regla de asistencia quedó desplegada en `e69f52e` y
   la fila de Itzel fue reprocesada por el endpoint de captura: producción
   confirmó `EXCUSED`, 90 minutos tarde y `minutesBalance=-90`.
   Falta definir el remitente de correo. Detalle completo en `AGENTS.md`.

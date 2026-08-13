@@ -150,6 +150,14 @@ es nulable, a diferencia de `upt` y `avgTicket`.
 
 ### Lo que hace especial a `DESCUENTOS_POS`
 
+La numeración del RDV no se muestra como una semana ISO lunes-domingo. Para la
+captura, la semana retail es **domingo-sábado** y conserva el número ISO de la
+semana que termina en ese domingo. Ejemplo verificado: **semana 32 de 2026 = 9
+al 15 de agosto**; la semana 33 = 16 al 22 de agosto. El parche Retool `0.0.4`
+corrigió la pantalla de Descuentos, que antes mostraba erróneamente 3–9 de
+agosto. La conversión se hace en UTC para evitar desplazamientos por zona
+horaria y no modifica el `weekNumber` enviado al endpoint.
+
 **No crea filas propias.** El margen es semanal y `Kpi` es diaria, así que se
 escribe en la **primera fila de la semana** (patrón de fila ancla) y en el resto
 queda `null`. Repetirlo en los siete días multiplicaría por siete cualquier suma.
