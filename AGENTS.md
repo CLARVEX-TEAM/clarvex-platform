@@ -82,7 +82,7 @@ reconstruirlas como Classic app ni como formularios nativos de Clarvex.
 
 | Fuente | Endpoint | Pantalla Retool nuevo builder |
 |---|---|---|
-| HORARIOS | ✅ `/api/admin/capture/schedules` | 🟡 parche `0.0.3` publicado; falta repetir el guardado desde la cuenta operativa |
+| HORARIOS | ✅ `/api/admin/capture/schedules` | ✅ guardado confirmado desde la cuenta operativa con el parche `0.0.3` |
 | ASISTENCIA | ✅ `/api/admin/capture/attendance` | ✅ prueba completa desde cuenta operativa hasta la base de Clarvex |
 | KPIS | ✅ `/api/admin/capture/kpis` | ✅ guardado confirmado desde la cuenta operativa; parche `0.0.3` aclara los acumulados |
 | DESCUENTOS_POS | ✅ `/api/admin/capture/discounts` | ✅ publicada; falta prueba con invitado |
@@ -318,8 +318,8 @@ salida quedaba recortada. El parche `0.0.3` corrige ambos puntos:
 
 La misma regla vive en el servidor (`lib/schedule-capture-entry.ts`), no solo en
 Retool, para que una interfaz antigua o defectuosa no vuelva a bloquear la
-captura. Falta repetir el guardado desde la cuenta operativa después de recargar
-la aplicación.
+captura. Adrian repitió el guardado desde la cuenta operativa después de recargar
+la aplicación y confirmó que ya permite guardar correctamente.
 
 La cuenta administrativa de Adrian (`contacto@clarvex.adrianluna.mx`) **no se
 usará para operación ni para la prueba**. Aunque actualmente tiene atributos de
