@@ -500,7 +500,11 @@ El % de comisión difiere por puesto pero el mínimo de referencia es el mismo p
   pulsar Enter en cada campo para persistirlo. «Captura Clarvex» ya fue
   republicada como parche `0.0.2` con **Always publish latest changes**: el
   enlace limpio del dominio personalizado abre Horarios y reconoce
-  `TH SAN AGUSTIN` sin mostrar el aviso de republicación.
+  `TH SAN AGUSTIN` sin mostrar el aviso de republicación. En el grupo `captura
+  tiendas` → **Additional**, la **Landing page** quedó fijada en «Captura
+  Clarvex», por lo que el siguiente inicio de sesión de la cuenta operativa debe
+  enviarla directo a la app; la raíz del dominio conserva la página general de
+  Retool si alguien navega a ella manualmente.
   Falta definir el remitente de correo. Detalle completo en `AGENTS.md`.
 - **`MERCADOPAGO_WEBHOOK_SECRET` sin configurar en el VPS.** El webhook de Mercado
   Pago responde 401 a todo: las suscripciones no se procesan automáticamente.

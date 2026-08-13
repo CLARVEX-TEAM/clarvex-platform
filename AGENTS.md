@@ -252,11 +252,16 @@ Estado de acceso verificado el 13 de agosto:
   publish latest changes**; el enlace limpio
   `https://captura.adrianluna.mx/rr/app/captura-clarvex` abre la app sin la
   pantalla de republicación y carga `TH SAN AGUSTIN` desde la identidad.
+- ✅ en `captura tiendas` → **Additional**, la **Landing page** quedó fijada en
+  «Captura Clarvex». Al iniciar sesión, los miembros del grupo deben entrar
+  directamente a la captura en vez de quedarse en el inicio general de Retool.
+  La raíz `https://captura.adrianluna.mx` sigue siendo la página general si
+  alguien la abre manualmente; para accesos y marcadores usar la URL de la app.
 
 Lo pendiente es:
 
-1. cerrar sesión y volver a entrar con la cuenta operativa para renovar sus
-   permisos, y verificar que ya no aparezcan controles de creación;
+1. cerrar sesión y volver a entrar con la cuenta operativa para verificar la
+   redirección automática a «Captura Clarvex»;
 2. confirmar que esa cuenta solo vea «Captura Clarvex» y `TH SAN AGUSTIN`;
 3. probar guardado de Horarios, Asistencia, KPIs y Descuentos;
 4. invitar al resto y reabrir Clarvex cuando todo esté validado.
