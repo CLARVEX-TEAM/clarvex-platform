@@ -37,13 +37,13 @@ retail, KPIs, reportes). Excel solo aportaba **las filas**. Así que esto NO es
 reescribir la app: es **sustituir el parser por un formulario**. Todo lo que
 consume esos datos se queda igual.
 
-## Arquitectura intentada (bloqueada por el tipo de app de Retool)
+## Arquitectura elegida: acceso directo a Retool
 
 ```
-Gerente entra a Clarvex con su PIN de siempre
-  → /escritorio/captura pide una URL firmada de un solo uso
-  → POST /api/retool/embed-url  (identidad SACADA DE LA SESIÓN)
-  → se incrusta la app de Retool «Captura Clarvex»
+Gerente abre https://captura.adrianluna.mx
+  → inicia sesión directamente en Retool con su invitación individual
+  → Retool abre la app publicada «Captura Clarvex»
+  → atributos seguros del usuario fijan storeId, storeName y role
   → sus funciones POSTean a /api/admin/capture/*
   → validación + reglas de negocio + escritura en la base
 ```
@@ -53,10 +53,11 @@ que Retool escribiera SQL directo: se saltaría el calendario retail, el
 `weekNumber`, el patrón de fila ancla y el filtro del usuario kiosko, y eso
 corrompe en silencio.
 
-Los gerentes entran como **usuarios externos** de Retool: sin cuenta propia, sin
-contraseña nueva y **gratis hasta 50 personas** en el plan Business. La
-alternativa (una cuenta de Retool por persona) costaba $18/mes cada una y añadía
-un login más a una tarea diaria.
+Los gerentes entran como **usuarios externos invitados** de Retool. Cada persona
+tiene su cuenta individual y Retool le envía un enlace para crear su contraseña;
+el administrador configura antes su grupo, tienda y cargo. También pueden usar
+**Sign in with Google** si su correo lo admite. En Business, los primeros 50
+usuarios externos al mes no tienen costo.
 
 ⚠️ **Hallazgo del 13 de agosto:** «Captura Clarvex» fue creada con el **nuevo App
 Builder** de Retool (proyecto de código con `/frontend` y `/backend`), no como
@@ -71,27 +72,24 @@ en el navegador, llegó a
 Retool sin errores de consola y dejó `App Body` vacío. Por tanto, **no es CSP,
 certificado, iframe ni sandbox de Clarvex**.
 
-La decisión pendiente es una de estas dos:
-
-1. reconstruir las cuatro pantallas como **Retool Classic app**, que sí soporta
-   `POST /api/embed-url/external-user`; o
-2. montar las cuatro pantallas directamente en **Clarvex/Next.js**, reutilizando
-   los backends y reglas ya terminados y eliminando la dependencia de Retool para
-   la interfaz.
+**Decisión tomada el 13 de agosto:** se descarta la incrustación, no Retool. Los
+usuarios externos entrarán directamente al dominio personalizado. Así se
+conservan las cuatro pantallas del nuevo App Builder y no hay que reconstruirlas
+como Classic app ni como formularios nativos de Clarvex.
 
 ## Dónde vamos
 
 | Fuente | Endpoint | Pantalla Retool nuevo builder |
 |---|---|---|
-| HORARIOS | ✅ `/api/admin/capture/schedules` | ✅ publicada y probada internamente; ❌ no embebible |
-| ASISTENCIA | ✅ `/api/admin/capture/attendance` | ✅ publicada; ❌ no embebible |
-| KPIS | ✅ `/api/admin/capture/kpis` | ✅ publicada; ❌ no embebible |
-| DESCUENTOS_POS | ✅ `/api/admin/capture/discounts` | ✅ publicada; ❌ no embebible |
+| HORARIOS | ✅ `/api/admin/capture/schedules` | ✅ publicada y probada internamente; falta prueba con invitado |
+| ASISTENCIA | ✅ `/api/admin/capture/attendance` | ✅ publicada; falta prueba con invitado |
+| KPIS | ✅ `/api/admin/capture/kpis` | ✅ publicada; falta prueba con invitado |
+| DESCUENTOS_POS | ✅ `/api/admin/capture/discounts` | ✅ publicada; falta prueba con invitado |
 
-**El backend del reemplazo del RDV está completo**: los cuatro endpoints y el
-tráfico de tienda dentro de KPIs. Las cuatro interfaces también existen, pero en
-un tipo de app de Retool que no se puede incrustar; falta decidir y construir la
-interfaz final compatible antes de reabrir Clarvex.
+**El reemplazo del RDV está construido**: los cuatro endpoints, las cuatro
+pantallas y el tráfico de tienda dentro de KPIs. Antes de reabrir Clarvex falta
+crear los atributos de usuario, invitar una cuenta externa de prueba y validar
+las cuatro capturas de extremo a extremo mediante acceso directo.
 
 El dominio personalizado **`captura.adrianluna.mx` ya está operativo** con
 certificado de Let's Encrypt, y `RETOOL_ORG_URL` apunta a él.
@@ -200,14 +198,19 @@ RETOOL_EMBED_GROUP_ID=  # ✅ 6998583  (grupo «captura tiendas»)
 Si falta alguna, `/escritorio/captura` responde **503 nombrando cuál**. Es
 deliberado: un 500 genérico obligaría a adivinar.
 
-## Accesos: usuarios externos embebidos (diseño deseado)
+## Accesos: usuarios externos invitados con acceso directo
 
-Las gerentes **no tienen cuenta de Retool**. Entran a Clarvex con su PIN y la
-pantalla se incrusta con una URL firmada de un solo uso. En Business, los
-usuarios externos son **gratis hasta 50**; cuentas propias habrían costado
-$18/mes cada una y añadido un login más a una tarea diaria.
+Las gerentes sí tienen una cuenta individual de Retool, pero no la crean desde
+cero: el administrador las invita, asigna grupo y atributos, y Retool les manda
+un enlace de una semana para elegir contraseña. Nunca compartir contraseñas ni
+crear una cuenta común por tienda: se perdería auditoría y control de bajas.
 
-### 🔴 Bloqueo activo (13 ago 2026)
+Entran directamente a `https://captura.adrianluna.mx`. El flujo embebido de
+`/escritorio/captura` y `/api/retool/embed-url` queda como implementación
+obsoleta y no debe usarse para operación; puede retirarse cuando la prueba
+directa quede aprobada.
+
+### 🟡 Pendiente activo (13 ago 2026)
 
 Dominio, TLS, token, grupo y generación de URL están correctos:
 
@@ -217,11 +220,27 @@ Dominio, TLS, token, grupo y generación de URL están correctos:
 - `POST /api/embed-url/external-user` ✅ — devuelve 200 y una URL de un solo uso.
 - CSP de Clarvex ✅ — permite `frame-src https://captura.adrianluna.mx`.
 
-El bloqueo real es de producto: el endpoint y el SDK de Embed son para **Classic
-apps**; la app creada es del **nuevo App Builder**, cuya documentación lista
-«Embedded apps in external websites or applications» como funcionalidad aún no
-soportada. No seguir modificando CSP, `frame-ancestors`, Cloudflare ni el
-`sandbox`: ya quedaron descartados por la prueba directa.
+El endpoint y el SDK de Embed son para **Classic apps**; la app creada es del
+**nuevo App Builder**, cuya documentación lista «Embedded apps in external
+websites or applications» como funcionalidad aún no soportada. No seguir
+modificando CSP, `frame-ancestors`, Cloudflare ni el `sandbox`: ya quedaron
+descartados por la prueba directa.
+
+Ya no bloquea la salida porque se eligió acceso directo. Lo pendiente es:
+
+1. crear atributos `storeId`, `storeName` y `role` en Settings → User attributes;
+2. invitar una cuenta externa de prueba y añadirla a `captura tiendas`;
+3. asignar sus tres atributos;
+4. verificar que solo vea «Captura Clarvex» y su propia tienda;
+5. probar guardado de Horarios, Asistencia, KPIs y Descuentos;
+6. invitar al resto y reabrir Clarvex cuando todo esté validado.
+
+### Branding del acceso directo
+
+Business permite personalizar nombre de organización, logo, favicon, color de
+acento, color de cabecera, visibilidad del menú y remitente de correos. Para el
+nuevo App Builder no se admite todavía sustituir por completo la estructura de
+la página de login con una app propia; eso es distinto de aplicar branding.
 
 ### Configuración en Retool, y las trampas de cada paso
 

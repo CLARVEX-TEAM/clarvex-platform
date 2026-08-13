@@ -474,12 +474,12 @@ El % de comisión difiere por puesto pero el mínimo de referencia es el mismo p
   Axo deshabilitó los enlaces anónimos de SharePoint. Lo que sigue en esta
   página sobre el RDV describe un mecanismo que **ya no funciona** para esas
   fuentes; solo sobrevive `GUESS / KPIS`, que pasa por Power Automate.
-- **La captura embebida está bloqueada por el tipo de app de Retool.** Dominio,
-  certificado, CSP, token, grupo y URL firmada ya funcionan. «Captura Clarvex»
-  fue creada con el nuevo App Builder, y Retool todavía no permite incrustar ese
-  tipo de app en sitios externos. La URL firmada carga `App Body` vacío incluso
-  abierta directamente. Hay que elegir entre reconstruirla como Classic app o
-  hacer las pantallas nativas en Clarvex. Detalle completo en `AGENTS.md`.
+- **Se descartó la incrustación, no Retool.** «Captura Clarvex» usa el nuevo App
+  Builder, que todavía no admite iframe externo. La decisión vigente es invitar
+  a gerentes/subgerentes como usuarios externos y que entren directamente a
+  `captura.adrianluna.mx`. Falta crear los atributos `storeId`, `storeName` y
+  `role`, probar una cuenta invitada y validar las cuatro pantallas. Detalle
+  completo en `AGENTS.md`.
 - **`MERCADOPAGO_WEBHOOK_SECRET` sin configurar en el VPS.** El webhook de Mercado
   Pago responde 401 a todo: las suscripciones no se procesan automáticamente.
   Ver [Variables de entorno](#variables-de-entorno).
