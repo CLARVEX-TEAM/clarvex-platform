@@ -26,6 +26,22 @@ const r2Domain = r2PublicUrl
     })()
   : "";
 
+// Origen de Retool desde el que se incrusta la captura (/escritorio/captura).
+// Se deriva de la variable en vez de escribirlo a mano: el dominio cambia según
+// la instalación, y una lista fija dejaría la pantalla en blanco sin decir por
+// qué. Si no está configurada, no se añade nada y la política queda como estaba.
+const retoolOrgUrl = process.env.RETOOL_ORG_URL ?? "";
+const retoolOrigin = retoolOrgUrl
+  ? (() => {
+      try {
+        return new URL(retoolOrgUrl).origin;
+      } catch {
+        return "";
+      }
+    })()
+  : "";
+const frameSrc = ["'self'", retoolOrigin].filter(Boolean).join(" ");
+
 // Huella única de cada build. El cliente lleva la suya incrustada; el servidor
 // (ya reconstruido) devuelve la nueva. Si difieren, la app sabe que está corriendo
 // código viejo y ofrece recargar.
@@ -104,8 +120,8 @@ const nextConfig = {
               `connect-src ${connectSrc}`,
               "manifest-src 'self'",
               "worker-src 'self'",
-              "frame-src 'self'",
-              "child-src 'self'",
+              `frame-src ${frameSrc}`,
+              `child-src ${frameSrc}`,
               "object-src 'none'",
               "base-uri 'self'",
               "form-action 'self'",
