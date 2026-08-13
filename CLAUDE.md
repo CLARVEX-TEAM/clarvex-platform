@@ -529,6 +529,10 @@ El % de comisión difiere por puesto pero el mínimo de referencia es el mismo p
   de asistencia quedó desplegada en `e69f52e` y
   la fila de Itzel fue reprocesada por el endpoint de captura: producción
   confirmó `EXCUSED`, 90 minutos tarde y `minutesBalance=-90`.
+  Ya comenzó el despliegue al resto del equipo: `esoriamontes@gmail.com` fue
+  invitada como SUBGERENTE de GUESS Galerías Monterrey, con solo `All Users` y
+  `captura tiendas`; sus tres atributos de identidad quedaron verificados y la
+  invitación está pendiente de aceptación.
   Falta definir el remitente de correo. Detalle completo en `AGENTS.md`.
 - **`MERCADOPAGO_WEBHOOK_SECRET` sin configurar en el VPS.** El webhook de Mercado
   Pago responde 401 a todo: las suscripciones no se procesan automáticamente.

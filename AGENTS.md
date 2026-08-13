@@ -352,6 +352,14 @@ atributos quedaron guardados y se verificaron cerrando y reabriendo el perfil:
 `storeName=TH SAN AGUSTIN`. En este panel cada atributo se persiste con
 **Enter**; salir del campo o cerrar el perfil no lo guarda.
 
+Primera invitación del despliegue al resto del equipo enviada el 13 de agosto:
+`esoriamontes@gmail.com`, SUBGERENTE de **GUESS Galerías Monterrey**. Quedó en
+estado `Pending`, con solo `All Users` + `captura tiendas`, acceso a una app y
+dos recursos, sin `admin`, `editor`, `viewer`, workflows ni agentes. Atributos
+verificados en el detalle de la invitación: `role=SUBGERENTE`,
+`storeId=cmr9yr6te05qagemyll8vv48f` y
+`storeName=GUESS Galerías Monterrey`. Falta que acepte el correo de Retool.
+
 La pantalla **Republish to use your custom domain** quedó resuelta el 13 de
 agosto. Retool no quitó el aviso con una publicación sin etiqueta; fue necesario
 hacer un cambio fuente sin efecto funcional (solo un comentario), publicarlo
