@@ -290,6 +290,11 @@ codificada y cubierta por pruebas:
 
 Las bandas son relativas al horario de cada persona, no a las 10:30 fijas.
 
+Cambio desplegado en producción el 13 de agosto en `e69f52e`. La fila de Itzel
+se volvió a procesar por el endpoint normal de captura y se verificó en la base:
+`status=EXCUSED`, `minutesLate=90`, `minutesBalance=-90`, `source=MANUAL`. Las
+dos instancias PM2 quedaron `online` y `/api/health` respondió `status=ok`.
+
 La cuenta administrativa de Adrian (`contacto@clarvex.adrianluna.mx`) **no se
 usará para operación ni para la prueba**. Aunque actualmente tiene atributos de
 tienda, debe conservarse separada como cuenta de administración. Adrian creará

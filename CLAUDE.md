@@ -512,7 +512,9 @@ El % de comisión difiere por puesto pero el mínimo de referencia es el mismo p
   desde +30 min es `EXCUSED` (permiso de entrada tarde) y se descuenta la
   diferencia completa del banco; solo la falta de marca o el texto `FALTA`
   produce `ABSENT`. Las bandas son relativas al horario individual. Quedan por
-  probar Horarios, KPIs y Descuentos.
+  probar Horarios, KPIs y Descuentos. La regla quedó desplegada en `e69f52e` y
+  la fila de Itzel fue reprocesada por el endpoint de captura: producción
+  confirmó `EXCUSED`, 90 minutos tarde y `minutesBalance=-90`.
   Falta definir el remitente de correo. Detalle completo en `AGENTS.md`.
 - **`MERCADOPAGO_WEBHOOK_SECRET` sin configurar en el VPS.** El webhook de Mercado
   Pago responde 401 a todo: las suscripciones no se procesan automáticamente.
