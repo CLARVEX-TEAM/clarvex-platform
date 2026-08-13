@@ -71,19 +71,23 @@ un login más a una tarea diaria.
 y el tráfico de tienda dentro de KPIs. Ya no queda ningún dato que dependa de un
 Excel de Axo.
 
-Lo único que falta es **probar tres de las cuatro de extremo a extremo**, y eso
-está bloqueado por el certificado del dominio personalizado.
+El dominio personalizado **`captura.adrianluna.mx` ya está operativo** con
+certificado de Let's Encrypt, y `RETOOL_ORG_URL` apunta a él.
+`POST /api/embed-url/external-user` responde 200 con verificación TLS estricta.
 
-**Ticket de Retool #00121648** (12 de agosto). Su soporte confirmó que la
-emisión del certificado puede tardar **hasta 24 horas**, así que no es un fallo
-de configuración: la validación pasa (palomita verde) y lo que va lento es la
-emisión. Mientras tanto el endpoint sirve el *Kubernetes Ingress Controller Fake
-Certificate*, `curl` devuelve `tls=1` y `POST /api/embed-url/external-user` no
-responde.
+Lo que costó llegar ahí, por si vuelve a pasar (ticket **#00121648**):
 
-⚠️ **No tocar el dominio mientras esté en ese estado.** Eliminarlo y volver a
-añadirlo reinicia el ciclo desde cero, y además Retool tarda unos minutos en
-liberar el hueco (el plan admite un único dominio personalizado).
+- La emisión del certificado tardó **casi un día**, muy por encima de los «unos
+  minutos» que promete la documentación. Su soporte confirmó **hasta 24 horas**.
+- Durante ese tiempo el host sirve el *Kubernetes Ingress Controller Fake
+  Certificate*: la validación aparece en verde y la emisión va aparte y lenta.
+  **Palomita verde no significa certificado listo.**
+- ⚠️ **No tocar el dominio mientras esté pendiente.** Eliminarlo y volver a
+  añadirlo reinicia el ciclo, y Retool tarda minutos en liberar el hueco (el
+  plan admite un único dominio personalizado).
+- `curl -k` es la forma de comprobar que todo lo demás está bien antes de que
+  emita: si devuelve 200 con `embedUrl`, token, grupo y app son correctos y solo
+  falta el certificado.
 
 
 ### Lo que hace especial a `KPIS`
@@ -165,8 +169,8 @@ ssh clarvex "cd /root/clarvex-app && sed -i 's/^MAINTENANCE_MODE=.*/MAINTENANCE_
 ```env
 ADMIN_CAPTURE_SECRET=   # ✅ configurada — autoriza la escritura de operación
 RETOOL_API_TOKEN=       # ✅ configurada — scope ÚNICO "Retool Embed"
-RETOOL_ORG_URL=         # ⚠️ https://clarvex.retool.com — hay que cambiarla al
-                        #    dominio personalizado en cuanto esté activo
+RETOOL_ORG_URL=         # ✅ https://captura.adrianluna.mx — el dominio propio,
+                        #    obligatorio para la API de incrustación
 RETOOL_APP_UUID=        # ✅ b6ebeac8-95fd-11f1-a579-b33e5e6ede64
 RETOOL_EMBED_GROUP_ID=  # ✅ 6998583  (grupo «captura tiendas»)
 ```
