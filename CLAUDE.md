@@ -507,9 +507,12 @@ El % de comisión difiere por puesto pero el mínimo de referencia es el mismo p
   Retool si alguien navega a ella manualmente. La primera prueba real de
   Asistencia ya pasó de extremo a extremo: el 13 de agosto a las 09:39 se creó
   en producción la fila de Itzel (`81893`) para `TH SAN AGUSTIN`, con llegada
-  `12:00`, `source=MANUAL` y 90 minutos tarde. Clarvex la derivó correctamente
-  como `ABSENT`, no `LATE`, por superar el corte; no cambiar esa regla sin
-  aprobación explícita. Quedan por probar Horarios, KPIs y Descuentos.
+  `12:00`, `source=MANUAL` y 90 minutos tarde. Esa prueba aclaró la regla real:
+  hasta +14 min es `ON_TIME`; de +15 a +29 min es `LATE` sin tocar el banco;
+  desde +30 min es `EXCUSED` (permiso de entrada tarde) y se descuenta la
+  diferencia completa del banco; solo la falta de marca o el texto `FALTA`
+  produce `ABSENT`. Las bandas son relativas al horario individual. Quedan por
+  probar Horarios, KPIs y Descuentos.
   Falta definir el remitente de correo. Detalle completo en `AGENTS.md`.
 - **`MERCADOPAGO_WEBHOOK_SECRET` sin configurar en el VPS.** El webhook de Mercado
   Pago responde 401 a todo: las suscripciones no se procesan automáticamente.

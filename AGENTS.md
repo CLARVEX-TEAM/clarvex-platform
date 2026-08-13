@@ -274,13 +274,21 @@ directamente en la base de producción que usa Clarvex:
 - persona: `ITZEL SAIDY REYES BAUTISTA` (`81893`);
 - fecha: `2026-08-13`;
 - entrada esperada `10:30`, llegada `12:00`, salida `21:00`;
-- `source=MANUAL`, `minutesLate=90`, `minutesBalance=0`;
-- estado derivado: `ABSENT`.
+- `source=MANUAL`, `minutesLate=90`;
+- regla confirmada después de la prueba: `status=EXCUSED` y
+  `minutesBalance=-90`.
 
 El flujo Retool → endpoint de captura → PostgreSQL → `/api/attendance` quedó
-confirmado. Ojo: aunque operativamente se describió como «entrada tarde», una
-llegada 90 minutos después de la hora esperada supera el corte y la lógica de
-Clarvex la clasifica como falta. No cambiar esa regla sin aprobación explícita.
+confirmado. La prueba además aclaró la regla real de negocio, que quedó
+codificada y cubierta por pruebas:
+
+- hasta 14 minutos después de la entrada esperada: `ON_TIME`, banco sin cambio;
+- de 15 a 29 minutos: `LATE` (retardo), banco sin cambio;
+- desde 30 minutos: `EXCUSED` (permiso de entrada tarde), se descuenta del banco
+  la diferencia completa contra la hora esperada;
+- sin marca de entrada, o con texto explícito `FALTA`: `ABSENT`.
+
+Las bandas son relativas al horario de cada persona, no a las 10:30 fijas.
 
 La cuenta administrativa de Adrian (`contacto@clarvex.adrianluna.mx`) **no se
 usará para operación ni para la prueba**. Aunque actualmente tiene atributos de

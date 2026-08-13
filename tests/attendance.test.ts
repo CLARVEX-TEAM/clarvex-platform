@@ -13,18 +13,19 @@ test("frontera del retardo: 10:44 aún es a tiempo, 10:45 ya es retardo", () => 
   assert.equal(classifyArrival({ expected: E, arrived: "10:45" }).minutesLate, 15);
 });
 
-test("frontera de la falta: 10:59 es retardo, a las 11:00 se regresan", () => {
+test("frontera del permiso: 10:59 es retardo, desde las 11:00 usa banco de horas", () => {
   assert.equal(classifyArrival({ expected: E, arrived: "10:59" }).status, "LATE");
-  // A partir de +30 min ya no se les deja trabajar: se van a casa = falta.
-  assert.equal(classifyArrival({ expected: E, arrived: "11:00" }).status, "ABSENT");
-  assert.equal(classifyArrival({ expected: E, arrived: "11:30" }).status, "ABSENT");
+  assert.equal(classifyArrival({ expected: E, arrived: "11:00" }).status, "EXCUSED");
+  assert.equal(classifyArrival({ expected: E, arrived: "11:30" }).status, "EXCUSED");
+  assert.equal(dayBalanceMinutes({ status: "EXCUSED", expectedEntry: E, expectedExit: "21:00", arrivedAt: "11:00", leftAt: "21:00" }), -30);
+  assert.equal(dayBalanceMinutes({ status: "EXCUSED", expectedEntry: E, expectedExit: "21:00", arrivedAt: "12:00", leftAt: "21:00" }), -90);
 });
 
 test("la regla es RELATIVA al horario de cada quien, no a las 11:00 fijas", () => {
   // Quien entra a las 13:00 corre su propia ventana.
   assert.equal(classifyArrival({ expected: "13:00", arrived: "13:14" }).status, "ON_TIME");
   assert.equal(classifyArrival({ expected: "13:00", arrived: "13:15" }).status, "LATE");
-  assert.equal(classifyArrival({ expected: "13:00", arrived: "13:30" }).status, "ABSENT");
+  assert.equal(classifyArrival({ expected: "13:00", arrived: "13:30" }).status, "EXCUSED");
   // Y a las 11:00 llegaría dos horas ANTES: eso no es retardo.
   assert.equal(classifyArrival({ expected: "13:00", arrived: "11:00" }).status, "ON_TIME");
 });
@@ -85,7 +86,7 @@ test("el texto escrito en la celda manda sobre el horario", () => {
 test("con horario de trabajo, la llegada se juzga normal", () => {
   assert.equal(classifyDay({ scheduled: "WORKING", expected: E, arrived: "10:37" }).status, "ON_TIME");
   assert.equal(classifyDay({ scheduled: "WORKING", expected: E, arrived: "10:45" }).status, "LATE");
-  assert.equal(classifyDay({ scheduled: "WORKING", expected: E, arrived: "11:00" }).status, "ABSENT");
+  assert.equal(classifyDay({ scheduled: "WORKING", expected: E, arrived: "11:00" }).status, "EXCUSED");
 });
 
 test("en CONTEO la llegada tarde es retardo, no una deuda de horas", () => {

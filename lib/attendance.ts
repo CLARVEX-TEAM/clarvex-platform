@@ -8,11 +8,12 @@
  *              esperada de la tienda (10:30 por defecto).
  *
  *   ≤ esperada + 14 min   → A TIEMPO   (llegar temprano también cuenta aquí)
- *   +15 a +29 min         → RETARDO
- *   ≥ esperada + 30 min   → FALTA      (se regresan a casa: ya no trabajan)
+ *   +15 a +29 min         → RETARDO    (no mueve el banco de horas)
+ *   ≥ esperada + 30 min   → PERMISO DE ENTRADA TARDE (descuenta del banco)
  *
  * La regla es RELATIVA al horario de cada quien: quien entra a las 13:00 tiene
- * su retardo de 13:15 a 13:29, y a las 13:30 se regresa. No es una hora fija.
+ * su retardo de 13:15 a 13:29, y desde las 13:30 se considera entrada tarde
+ * con permiso. No es una hora fija.
  *
  * Excepción: si el colaborador tenía un permiso de ENTRAR_TARDE aprobado para
  * ese día, no cuenta ni como retardo ni como falta.
@@ -24,8 +25,8 @@
 export type AttendanceStatus =
   | "ON_TIME"    // llegó dentro de la tolerancia (o antes)
   | "LATE"       // retardo
-  | "ABSENT"     // falta: no llegó, o llegó pasado el corte y se regresó
-  | "EXCUSED"    // permiso aprobado (entrar tarde): no cuenta
+  | "ABSENT"     // falta: no llegó, o la captura declara FALTA explícitamente
+  | "EXCUSED"    // permiso de entrar tarde: no es retardo y usa banco de horas
   | "REST"       // descanso
   | "VACATION"
   | "PAID_DAY"
@@ -33,7 +34,7 @@ export type AttendanceStatus =
 
 /** Minutos de gracia antes de que cuente como retardo. */
 export const TOLERANCE_MINUTES = 14;
-/** A partir de aquí ya no se les deja trabajar: se regresan y es falta. */
+/** A partir de aquí la llegada se trata como permiso y usa el banco de horas. */
 export const CUTOFF_MINUTES = 30;
 /** Entrada esperada de la tienda cuando el horario del día no trae hora. */
 export const DEFAULT_EXPECTED_ENTRY = "10:30";
@@ -86,8 +87,9 @@ export function classifyArrival(input: ArrivalInput): ArrivalResult {
 
   if (minutesLate <= tolerance) return { status: "ON_TIME", minutesLate };
   if (minutesLate < cutoff) return { status: "LATE", minutesLate };
-  // Pasado el corte se regresan a casa: no trabajaron, es falta.
-  return { status: "ABSENT", minutesLate };
+  // Desde el corte ya no es retardo: es un permiso de entrada tarde y los
+  // minutos completos se descuentan del banco de horas.
+  return { status: "EXCUSED", minutesLate };
 }
 
 /** Estos estatus significan que la persona no tenía que presentarse. */
