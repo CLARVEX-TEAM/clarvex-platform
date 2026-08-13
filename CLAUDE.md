@@ -485,8 +485,8 @@ El % de comisión difiere por puesto pero el mínimo de referencia es el mismo p
   invitada y validar las cuatro pantallas. El branding ya usa nombre **CLARVEX
   TEAM**, acento `#2563EB`, cabecera `#0B0C0F` y referencias adicionales a
   Retool ocultas. Logo `public/icon-512.png` y favicon `public/favicon.ico` ya
-  están cargados. Falta definir el remitente de correo. Detalle completo en
-  `AGENTS.md`.
+  están cargados, y el logo está habilitado en los encabezados de las apps.
+  Falta definir el remitente de correo. Detalle completo en `AGENTS.md`.
 - **`MERCADOPAGO_WEBHOOK_SECRET` sin configurar en el VPS.** El webhook de Mercado
   Pago responde 401 a todo: las suscripciones no se procesan automáticamente.
   Ver [Variables de entorno](#variables-de-entorno).
