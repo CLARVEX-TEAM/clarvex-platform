@@ -83,7 +83,7 @@ reconstruirlas como Classic app ni como formularios nativos de Clarvex.
 | Fuente | Endpoint | Pantalla Retool nuevo builder |
 |---|---|---|
 | HORARIOS | ✅ `/api/admin/capture/schedules` | ✅ publicada y probada internamente; falta prueba con invitado |
-| ASISTENCIA | ✅ `/api/admin/capture/attendance` | ✅ publicada; falta prueba con invitado |
+| ASISTENCIA | ✅ `/api/admin/capture/attendance` | ✅ prueba completa desde cuenta operativa hasta la base de Clarvex |
 | KPIS | ✅ `/api/admin/capture/kpis` | ✅ publicada; falta prueba con invitado |
 | DESCUENTOS_POS | ✅ `/api/admin/capture/discounts` | ✅ publicada; falta prueba con invitado |
 
@@ -260,11 +260,27 @@ Estado de acceso verificado el 13 de agosto:
 
 Lo pendiente es:
 
-1. cerrar sesión y volver a entrar con la cuenta operativa para verificar la
-   redirección automática a «Captura Clarvex»;
-2. confirmar que esa cuenta solo vea «Captura Clarvex» y `TH SAN AGUSTIN`;
-3. probar guardado de Horarios, Asistencia, KPIs y Descuentos;
-4. invitar al resto y reabrir Clarvex cuando todo esté validado.
+1. confirmar que la cuenta operativa no pueda abrir otras apps o herramientas;
+2. probar guardado de Horarios, KPIs y Descuentos;
+3. invitar al resto y reabrir Clarvex cuando todo esté validado.
+
+### Primera prueba de extremo a extremo: Asistencia ✅
+
+El 13 de agosto a las 09:39 de Monterrey, `jhernandezl2c@gmail.com` guardó una
+asistencia desde Retool y la pantalla confirmó `1 registro creado`. Se verificó
+directamente en la base de producción que usa Clarvex:
+
+- tienda: `TH SAN AGUSTIN`;
+- persona: `ITZEL SAIDY REYES BAUTISTA` (`81893`);
+- fecha: `2026-08-13`;
+- entrada esperada `10:30`, llegada `12:00`, salida `21:00`;
+- `source=MANUAL`, `minutesLate=90`, `minutesBalance=0`;
+- estado derivado: `ABSENT`.
+
+El flujo Retool → endpoint de captura → PostgreSQL → `/api/attendance` quedó
+confirmado. Ojo: aunque operativamente se describió como «entrada tarde», una
+llegada 90 minutos después de la hora esperada supera el corte y la lógica de
+Clarvex la clasifica como falta. No cambiar esa regla sin aprobación explícita.
 
 La cuenta administrativa de Adrian (`contacto@clarvex.adrianluna.mx`) **no se
 usará para operación ni para la prueba**. Aunque actualmente tiene atributos de

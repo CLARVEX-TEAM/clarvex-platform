@@ -504,7 +504,12 @@ El % de comisión difiere por puesto pero el mínimo de referencia es el mismo p
   tiendas` → **Additional**, la **Landing page** quedó fijada en «Captura
   Clarvex», por lo que el siguiente inicio de sesión de la cuenta operativa debe
   enviarla directo a la app; la raíz del dominio conserva la página general de
-  Retool si alguien navega a ella manualmente.
+  Retool si alguien navega a ella manualmente. La primera prueba real de
+  Asistencia ya pasó de extremo a extremo: el 13 de agosto a las 09:39 se creó
+  en producción la fila de Itzel (`81893`) para `TH SAN AGUSTIN`, con llegada
+  `12:00`, `source=MANUAL` y 90 minutos tarde. Clarvex la derivó correctamente
+  como `ABSENT`, no `LATE`, por superar el corte; no cambiar esa regla sin
+  aprobación explícita. Quedan por probar Horarios, KPIs y Descuentos.
   Falta definir el remitente de correo. Detalle completo en `AGENTS.md`.
 - **`MERCADOPAGO_WEBHOOK_SECRET` sin configurar en el VPS.** El webhook de Mercado
   Pago responde 401 a todo: las suscripciones no se procesan automáticamente.
