@@ -85,7 +85,7 @@ reconstruirlas como Classic app ni como formularios nativos de Clarvex.
 | HORARIOS | ✅ `/api/admin/capture/schedules` | ✅ guardado confirmado desde la cuenta operativa con el parche `0.0.3` |
 | ASISTENCIA | ✅ `/api/admin/capture/attendance` | ✅ prueba completa desde cuenta operativa hasta la base de Clarvex |
 | KPIS | ✅ `/api/admin/capture/kpis` | ✅ guardado confirmado desde la cuenta operativa; parche `0.0.3` aclara los acumulados |
-| DESCUENTOS_POS | ✅ `/api/admin/capture/discounts` | ✅ publicada; falta prueba con invitado |
+| DESCUENTOS_POS | ✅ `/api/admin/capture/discounts` | ✅ guardado confirmado desde la cuenta operativa con el parche `0.0.4` |
 
 **El reemplazo del RDV está construido**: los cuatro endpoints, las cuatro
 pantallas y el tráfico de tienda dentro de KPIs. Los atributos seguros de
@@ -157,6 +157,12 @@ al 15 de agosto**; la semana 33 = 16 al 22 de agosto. El parche Retool `0.0.4`
 corrigió la pantalla de Descuentos, que antes mostraba erróneamente 3–9 de
 agosto. La conversión se hace en UTC para evitar desplazamientos por zona
 horaria y no modifica el `weekNumber` enviado al endpoint.
+
+El margen consolidado de tienda, tanto semanal como mensual, es **ponderado**:
+se suman primero `discountAmount` y `grossSales` de todas las personas y semanas
+incluidas, y después se calcula `(descuento total / venta bruta total) × 100`.
+Nunca se promedian porcentajes individuales. Como los importes semanales viven
+solo en la fila ancla, al sumar un mes retail cada semana se cuenta una sola vez.
 
 **No crea filas propias.** El margen es semanal y `Kpi` es diaria, así que se
 escribe en la **primera fila de la semana** (patrón de fila ancla) y en el resto
@@ -272,11 +278,12 @@ Estado de acceso verificado el 13 de agosto:
   La raíz `https://captura.adrianluna.mx` sigue siendo la página general si
   alguien la abre manualmente; para accesos y marcadores usar la URL de la app.
 
-Lo pendiente es:
+Las cuatro pantallas ya fueron probadas desde la cuenta operativa. Lo pendiente
+es:
 
 1. confirmar que la cuenta operativa no pueda abrir otras apps o herramientas;
-2. probar guardado de Horarios, KPIs y Descuentos;
-3. invitar al resto y reabrir Clarvex cuando todo esté validado.
+2. invitar al resto;
+3. reabrir Clarvex cuando quede aprobada la comunicación de salida.
 
 ### Primera prueba de extremo a extremo: Asistencia ✅
 

@@ -522,8 +522,11 @@ El % de comisión difiere por puesto pero el mínimo de referencia es el mismo p
   y confirmado desde la cuenta operativa. En Descuentos se corrigió con el
   parche Retool `0.0.4` el rango visual de la semana retail: es domingo-sábado,
   por lo que la semana 32 de 2026 corresponde al 9–15 de agosto, no al 3–9. El
-  número enviado al endpoint no cambió. Solo queda probar el guardado de
-  Descuentos. La regla de asistencia quedó desplegada en `e69f52e` y
+  número enviado al endpoint no cambió. El guardado de Descuentos ya fue
+  confirmado y las cuatro pantallas quedaron funcionales desde la cuenta
+  operativa. El margen de tienda es ponderado: suma descuento y venta bruta del
+  periodo y después divide; nunca promedia porcentajes individuales. La regla
+  de asistencia quedó desplegada en `e69f52e` y
   la fila de Itzel fue reprocesada por el endpoint de captura: producción
   confirmó `EXCUSED`, 90 minutos tarde y `minutesBalance=-90`.
   Falta definir el remitente de correo. Detalle completo en `AGENTS.md`.
