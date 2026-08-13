@@ -480,10 +480,11 @@ El % de comisión difiere por puesto pero el mínimo de referencia es el mismo p
   directamente a `captura.adrianluna.mx`. Los atributos `storeId`, `storeName`
   y `role` ya están creados sin valor predeterminado; el grupo `captura tiendas`
   ya fue verificado con acceso **Use** únicamente a «Captura Clarvex» y sus dos
-  recursos necesarios. `All Users` no concede acceso a apps ni recursos y
-  `External Apps` permanece desactivado. Falta probar una cuenta interna
-  invitada y validar las cuatro pantallas. El branding ya usa nombre **CLARVEX
-  TEAM**, acento `#2563EB`, cabecera `#0B0C0F` y referencias adicionales a
+  recursos necesarios. `All Users` no concede acceso a apps ni recursos y sus
+  permisos globales para Assist y para construir apps con IA quedaron
+  desactivados; `External Apps` permanece desactivado. Falta renovar la sesión
+  de la cuenta operativa y validar las cuatro pantallas. El branding ya usa
+  nombre **CLARVEX TEAM**, acento `#2563EB`, cabecera `#0B0C0F` y referencias adicionales a
   Retool ocultas. Logo `public/icon-512.png` y favicon `public/favicon.ico` ya
   están cargados, y el logo está habilitado en los encabezados de las apps.
   El logo cuadrado se ve demasiado grande en el login; existe un candidato
@@ -493,11 +494,13 @@ El % de comisión difiere por puesto pero el mínimo de referencia es el mismo p
   La cuenta administrativa de Adrian no se usará para operación. Se acordó
   crear otra cuenta interna, limitada a `captura tiendas`, con atributos
   `SUBGERENTE`, `clarvex-demo-store` y `TH SAN AGUSTIN`. El correo será
-  `jhernandezl2c@gmail.com`; la invitación ya fue enviada y está **Pending**, con
-  `All Users` y `captura tiendas`, sin grupos elevados. Los tres atributos ya
-  están guardados y verificados. Ojo: en User attributes hay que pulsar Enter
-  en cada campo para persistirlo. Además, Retool exige republicar la app en el dominio personalizado:
-  continuar con la versión actual redirige a `clarvex.retool.com/auth/login`.
+  `jhernandezl2c@gmail.com`; la invitación ya fue aceptada y la cuenta está
+  activa, con `All Users` y `captura tiendas`, sin grupos elevados. Los tres
+  atributos ya están guardados y verificados. Ojo: en User attributes hay que
+  pulsar Enter en cada campo para persistirlo. «Captura Clarvex» ya fue
+  republicada como parche `0.0.2` con **Always publish latest changes**: el
+  enlace limpio del dominio personalizado abre Horarios y reconoce
+  `TH SAN AGUSTIN` sin mostrar el aviso de republicación.
   Falta definir el remitente de correo. Detalle completo en `AGENTS.md`.
 - **`MERCADOPAGO_WEBHOOK_SECRET` sin configurar en el VPS.** El webhook de Mercado
   Pago responde 401 a todo: las suscripciones no se procesan automáticamente.

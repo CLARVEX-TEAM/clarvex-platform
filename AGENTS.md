@@ -243,12 +243,21 @@ Estado de acceso verificado el 13 de agosto:
   Tiendas»;
 - ✅ `All Users` no concede acceso a ninguna app ni recurso, así que la
   membresía automática de los usuarios internos no amplía sus permisos;
+- ✅ en el rol global `All Users` se desactivaron `Use Assist with Build and Ask
+  mode`, `View Assist` y `Build apps in the AI-powered app builder`; los
+  usuarios de tienda ya no pueden crear apps, recursos, workflows ni agentes
+  después de renovar su sesión;
 - ✅ `External Apps` permanece desactivado.
+- ✅ «Captura Clarvex» se republicó como parche `0.0.2`, fijado en **Always
+  publish latest changes**; el enlace limpio
+  `https://captura.adrianluna.mx/rr/app/captura-clarvex` abre la app sin la
+  pantalla de republicación y carga `TH SAN AGUSTIN` desde la identidad.
 
 Lo pendiente es:
 
-1. republicar «Captura Clarvex» para habilitarla en el dominio personalizado;
-2. verificar que una cuenta limitada solo vea «Captura Clarvex» y su tienda;
+1. cerrar sesión y volver a entrar con la cuenta operativa para renovar sus
+   permisos, y verificar que ya no aparezcan controles de creación;
+2. confirmar que esa cuenta solo vea «Captura Clarvex» y `TH SAN AGUSTIN`;
 3. probar guardado de Horarios, Asistencia, KPIs y Descuentos;
 4. invitar al resto y reabrir Clarvex cuando todo esté validado.
 
@@ -260,18 +269,20 @@ o indicará otro correo para una cuenta operativa interna con acceso solo a
 `storeName=TH SAN AGUSTIN`. Esa segunda cuenta será la primera prueba real de
 aislamiento y captura.
 
-Correo elegido: `jhernandezl2c@gmail.com`. La invitación fue enviada el 13 de
-agosto y está **Pending**. Tiene únicamente los grupos `All Users` (automático)
-y `captura tiendas`, sin `admin`, `editor` ni `viewer`. Sus atributos quedaron
-guardados y se verificaron cerrando y reabriendo el perfil:
+Correo elegido: `jhernandezl2c@gmail.com`. La invitación fue aceptada el 13 de
+agosto y la cuenta ya está activa. Tiene únicamente los grupos `All Users`
+(automático) y `captura tiendas`, sin `admin`, `editor` ni `viewer`. Sus
+atributos quedaron guardados y se verificaron cerrando y reabriendo el perfil:
 `role=SUBGERENTE`, `storeId=clarvex-demo-store` y
 `storeName=TH SAN AGUSTIN`. En este panel cada atributo se persiste con
 **Enter**; salir del campo o cerrar el perfil no lo guarda.
 
-Al abrir la app desde `captura.adrianluna.mx`, Retool pide **Republish to use
-your custom domain**. Elegir la versión actual redirige a
-`clarvex.retool.com/auth/login`, donde la sesión del dominio personalizado no
-existe. Hay que republicar antes de continuar la prueba directa.
+La pantalla **Republish to use your custom domain** quedó resuelta el 13 de
+agosto. Retool no quitó el aviso con una publicación sin etiqueta; fue necesario
+hacer un cambio fuente sin efecto funcional (solo un comentario), publicarlo
+como parche `0.0.2` y mantener **Always publish latest changes**. El enlace
+limpio ya carga Horarios directamente. Si reaparece, revisar primero la etiqueta
+publicada antes de tocar DNS, certificado o Cloudflare.
 
 ### Branding del acceso directo
 
