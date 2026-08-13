@@ -468,18 +468,19 @@ El % de comisión difiere por puesto pero el mínimo de referencia es el mismo p
 
 ### 🔴 Abierto — requiere acción
 
-- **La app está CERRADA** (`MAINTENANCE_MODE=1`) mientras se construye la
-  captura propia. Pasan la ventana el kiosko, el login y las rutas de captura.
-- **La reapertura ya se está preparando, pero todavía no está autorizada.** El
+- **La app está ABIERTA** desde el 13 de agosto de 2026. El VPS tiene
+  `MAINTENANCE_MODE=0`; ambas instancias PM2 están `online`, `/api/health`
+  responde correctamente y el acceso normal llega a `/login` sin mostrar la
+  ventana de mantenimiento. La difusión de reapertura se envió a 19 usuarios
+  activos después de completar esas verificaciones.
+- **La comunicación de reapertura ya está desplegada.** El
   anuncio global de agosto explica por qué se dejó de depender de los Excel,
   presenta la integración de Retool y reconoce la doble captura temporal. Solo
   `GERENTE`/`SUBGERENTE` reciben el botón **Conocer la nueva captura**, enlazado
   a `https://captura.adrianluna.mx/rr/app/captura-clarvex`; asesores continúan
-  dentro de Clarvex y el kiosko no ve el aviso. El push de salida está listo con
-  el título `Clarvex vuelve a estar disponible`, pero debe enviarse únicamente
-  después de poner `MAINTENANCE_MODE=0`, verificar salud y probar un acceso
-  normal. Adrian está reuniendo los correos restantes para invitarlos antes de
-  dar la aprobación final.
+  dentro de Clarvex y el kiosko no ve el aviso. El push se envió con el título
+  `Clarvex vuelve a estar disponible`. Adrian continúa reuniendo los correos
+  restantes para invitarlos a Retool y comprobar su aislamiento por tienda.
 - **Cinco de las seis fuentes de datos están caídas desde el 11 de agosto**:
   Axo deshabilitó los enlaces anónimos de SharePoint. Lo que sigue en esta
   página sobre el RDV describe un mecanismo que **ya no funciona** para esas

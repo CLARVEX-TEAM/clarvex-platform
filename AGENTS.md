@@ -191,14 +191,17 @@ y `commissionMinimum`, más los derivados `upt`, `avgTicket` y `conversion`.
 explícita, y su modo de fallo no es un error rojo: es una comisión mal pagada
 que nadie detecta hasta la quincena. **No apurarla.**
 
-## Estado de la app: CERRADA
+## Estado de la app: ABIERTA
 
-`MAINTENANCE_MODE=1` en el `.env` del VPS desde el 12 de agosto. Se avisó por
-push a 19 usuarios.
+Clarvex se reabrió el **13 de agosto de 2026**. `MAINTENANCE_MODE=0` en el
+`.env` del VPS; las dos instancias PM2 quedaron `online`, `/api/health`
+respondió `status=ok` y una visita sin sesión a `/manager` llegó a `/login` sin
+la pantalla de mantenimiento. Después de verificarlo se envió la notificación
+de reapertura a **19 usuarios activos**.
 
-Atraviesan la ventana: `/api/health`, los `platformAdmin`, el **usuario kiosko**
-(el checklist de tienda es operación diaria), `/login` + `/api/auth/*` (para que
-nadie quede fuera de forma permanente) y las rutas de captura.
+Si se vuelve a activar mantenimiento, atraviesan la ventana: `/api/health`, los
+`platformAdmin`, el **usuario kiosko** (el checklist de tienda es operación
+diaria), `/login` + `/api/auth/*` y las rutas de captura.
 
 ⚠️ **Solo un usuario tiene `platformAdmin`**: Adrian (102259). Salida de
 emergencia por SSH:
@@ -207,9 +210,9 @@ emergencia por SSH:
 ssh clarvex "cd /root/clarvex-app && sed -i 's/^MAINTENANCE_MODE=.*/MAINTENANCE_MODE=0/' .env && pm2 restart clarvex-team --update-env"
 ```
 
-### Reapertura preparada — todavía NO ejecutar
+### Reapertura ejecutada — 13 de agosto de 2026
 
-El paquete de comunicación de salida quedó preparado el 13 de agosto:
+El paquete de comunicación de salida quedó desplegado y activado:
 
 - `components/WhatsNewModal.tsx` usa la clave de lanzamiento
   `clarvex-whatsnew-2026-08-captura-propia`, por lo que se mostrará una vez a
@@ -222,16 +225,14 @@ El paquete de comunicación de salida quedó preparado el 13 de agosto:
   `https://captura.adrianluna.mx/rr/app/captura-clarvex`;
 - asesores solo ven **Entrar a Clarvex**; el kiosko y la ventana de mantenimiento
   están excluidos del aviso;
-- la difusión push está redactada pero **no enviada**:
+- la difusión push fue enviada a 19 usuarios activos:
   - título: `Clarvex vuelve a estar disponible`;
-  - cuerpo: `Estrenamos una captura propia para reducir la dependencia de archivos externos. Abre la app y conoce qué cambió.`;
+  - cuerpo: `Estrenamos una captura propia para reducir la dependencia de archivos externos. Abre Clarvex y descubre el cambio.`;
   - URL: `/`.
 
-Orden de salida obligatorio: (1) terminar invitaciones y atributos de Retool,
-(2) desplegar/verificar este anuncio manteniendo `MAINTENANCE_MODE=1`, (3) con
-aprobación explícita cambiar a `MAINTENANCE_MODE=0` y recargar PM2, (4) comprobar
-`/api/health` y acceso de un usuario normal, (5) enviar la difusión push por
-`POST /api/cron/broadcast`. No enviar el push antes de abrir.
+La apertura siguió este orden: (1) cambiar a `MAINTENANCE_MODE=0`, (2) recargar
+las dos instancias PM2, (3) comprobar `/api/health`, (4) verificar el acceso sin
+sesión hasta `/login` y (5) enviar la difusión por `POST /api/cron/broadcast`.
 
 ## Variables de entorno del VPS
 
@@ -308,9 +309,10 @@ Las cuatro pantallas ya fueron probadas desde la cuenta operativa. Lo pendiente
 es:
 
 1. invitar al resto y asignar sus tres atributos de identidad;
-2. desplegar y revisar visualmente el anuncio de reapertura con mantenimiento;
-3. reabrir Clarvex cuando Adrian dé la aprobación final;
-4. enviar la difusión push preparada después de confirmar que la app abrió.
+2. comprobar que cada invitación aceptada abre únicamente su propia tienda;
+3. comenzar, después de estabilizar la salida, la migración gradual del panel
+   gerencial de escritorio a Retool. Clarvex seguirá siendo la API, base de
+   datos, motor de reglas, PWA de asesores, kiosko y panel privado de Adrian.
 
 ### Primera prueba de extremo a extremo: Asistencia ✅
 
