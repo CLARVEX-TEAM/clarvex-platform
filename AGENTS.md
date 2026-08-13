@@ -262,8 +262,9 @@ la página de login con una app propia; eso es distinto de aplicar branding.
 
 Aplicado el 13 de agosto: nombre **CLARVEX TEAM**, referencias adicionales a
 Retool ocultas, acento `#2563EB`, cabecera `#0B0C0F` y menú de usuario oculto.
-Falta subir el logo/banner y el favicon del repo y definir el remitente de
-correo.
+Logo cargado desde `public/icon-512.png` y favicon desde `public/favicon.ico`.
+Retool solo acepta `.ico` para el favicon; se verificó que ese archivo coincide
+visualmente con `public/favicon-32x32.png`. Falta definir el remitente de correo.
 
 ### Configuración en Retool, y las trampas de cada paso
 
