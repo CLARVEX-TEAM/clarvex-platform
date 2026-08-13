@@ -477,9 +477,13 @@ El % de comisión difiere por puesto pero el mínimo de referencia es el mismo p
 - **Se descartó la incrustación, no Retool.** «Captura Clarvex» usa el nuevo App
   Builder, que todavía no admite iframe externo. La decisión vigente es invitar
   a gerentes/subgerentes como usuarios externos y que entren directamente a
-  `captura.adrianluna.mx`. Falta crear los atributos `storeId`, `storeName` y
-  `role`, probar una cuenta invitada y validar las cuatro pantallas. Detalle
-  completo en `AGENTS.md`.
+  `captura.adrianluna.mx`. Los atributos `storeId`, `storeName` y `role` ya
+  están creados sin valor predeterminado; el grupo `captura tiendas` ya fue
+  verificado con acceso **Use** únicamente a «Captura Clarvex» y sus dos
+  recursos necesarios. Falta probar una cuenta invitada y validar las cuatro
+  pantallas. El branding ya usa nombre **CLARVEX TEAM**, acento `#00FF66`,
+  cabecera negra y referencias adicionales a Retool ocultas; logo/favicon
+  siguen pendientes. Detalle completo en `AGENTS.md`.
 - **`MERCADOPAGO_WEBHOOK_SECRET` sin configurar en el VPS.** El webhook de Mercado
   Pago responde 401 a todo: las suscripciones no se procesan automáticamente.
   Ver [Variables de entorno](#variables-de-entorno).

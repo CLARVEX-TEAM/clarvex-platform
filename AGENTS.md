@@ -87,9 +87,11 @@ como Classic app ni como formularios nativos de Clarvex.
 | DESCUENTOS_POS | ✅ `/api/admin/capture/discounts` | ✅ publicada; falta prueba con invitado |
 
 **El reemplazo del RDV está construido**: los cuatro endpoints, las cuatro
-pantallas y el tráfico de tienda dentro de KPIs. Antes de reabrir Clarvex falta
-crear los atributos de usuario, invitar una cuenta externa de prueba y validar
-las cuatro capturas de extremo a extremo mediante acceso directo.
+pantallas y el tráfico de tienda dentro de KPIs. Los atributos seguros de
+usuario (`storeId`, `storeName` y `role`) ya están creados en Retool sin valor
+predeterminado. Antes de reabrir Clarvex falta invitar una cuenta externa de
+prueba, asignarle esos atributos y validar las cuatro capturas de extremo a
+extremo mediante acceso directo.
 
 El dominio personalizado **`captura.adrianluna.mx` ya está operativo** con
 certificado de Let's Encrypt, y `RETOOL_ORG_URL` apunta a él.
@@ -226,14 +228,25 @@ websites or applications» como funcionalidad aún no soportada. No seguir
 modificando CSP, `frame-ancestors`, Cloudflare ni el `sandbox`: ya quedaron
 descartados por la prueba directa.
 
-Ya no bloquea la salida porque se eligió acceso directo. Lo pendiente es:
+Ya no bloquea la salida porque se eligió acceso directo.
 
-1. crear atributos `storeId`, `storeName` y `role` en Settings → User attributes;
-2. invitar una cuenta externa de prueba y añadirla a `captura tiendas`;
-3. asignar sus tres atributos;
-4. verificar que solo vea «Captura Clarvex» y su propia tienda;
-5. probar guardado de Horarios, Asistencia, KPIs y Descuentos;
-6. invitar al resto y reabrir Clarvex cuando todo esté validado.
+Estado de acceso verificado el 13 de agosto:
+
+- ✅ atributos `storeId`, `storeName` y `role` creados como `String`, sin valor
+  predeterminado para que una identidad incompleta falle de forma cerrada;
+- ✅ grupo `captura tiendas` limitado a **Use** sobre «Captura Clarvex»;
+- ✅ recursos limitados a **Use** sobre `Clarvex API (captura)` y
+  `Clarvex producción (solo lectura + 3 columnas)`;
+- ✅ sin acceso del grupo a «Diagnóstico de datos» ni «Panel Administración
+  Tiendas».
+
+Lo pendiente es:
+
+1. invitar una cuenta externa de prueba y añadirla a `captura tiendas`;
+2. asignar sus tres atributos;
+3. verificar que solo vea «Captura Clarvex» y su propia tienda;
+4. probar guardado de Horarios, Asistencia, KPIs y Descuentos;
+5. invitar al resto y reabrir Clarvex cuando todo esté validado.
 
 ### Branding del acceso directo
 
@@ -241,6 +254,11 @@ Business permite personalizar nombre de organización, logo, favicon, color de
 acento, color de cabecera, visibilidad del menú y remitente de correos. Para el
 nuevo App Builder no se admite todavía sustituir por completo la estructura de
 la página de login con una app propia; eso es distinto de aplicar branding.
+
+Aplicado el 13 de agosto: nombre **CLARVEX TEAM**, referencias adicionales a
+Retool ocultas, acento `#00FF66`, cabecera `#0d0d0d` y menú de usuario oculto.
+Falta subir el logo/banner y el favicon del repo y definir el remitente de
+correo.
 
 ### Configuración en Retool, y las trampas de cada paso
 
