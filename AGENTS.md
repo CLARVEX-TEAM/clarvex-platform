@@ -87,12 +87,12 @@ reconstruirlas como Classic app ni como formularios nativos de Clarvex.
 | KPIS | ✅ `/api/admin/capture/kpis` | ✅ guardado confirmado desde la cuenta operativa; parche `0.0.3` aclara los acumulados |
 | DESCUENTOS_POS | ✅ `/api/admin/capture/discounts` | ✅ guardado confirmado desde la cuenta operativa con el parche `0.0.4` |
 
-**El reemplazo del RDV está construido**: los cuatro endpoints, las cuatro
-pantallas y el tráfico de tienda dentro de KPIs. Los atributos seguros de
+**El reemplazo del RDV está construido y validado**: los cuatro endpoints, las
+cuatro pantallas y el tráfico de tienda dentro de KPIs. Los atributos seguros de
 usuario (`storeId`, `storeName` y `role`) ya están creados en Retool sin valor
-predeterminado. Antes de reabrir Clarvex falta invitar una cuenta interna de
-prueba, asignarle esos atributos y validar las cuatro capturas de extremo a
-extremo mediante acceso directo.
+predeterminado. La cuenta operativa de TH San Agustín ya validó las cuatro
+capturas de extremo a extremo. Antes de reabrir falta terminar de invitar a los
+gerentes/subgerentes restantes y recibir la aprobación final de Adrian.
 
 El dominio personalizado **`captura.adrianluna.mx` ya está operativo** con
 certificado de Let's Encrypt, y `RETOOL_ORG_URL` apunta a él.
@@ -207,6 +207,32 @@ emergencia por SSH:
 ssh clarvex "cd /root/clarvex-app && sed -i 's/^MAINTENANCE_MODE=.*/MAINTENANCE_MODE=0/' .env && pm2 restart clarvex-team --update-env"
 ```
 
+### Reapertura preparada — todavía NO ejecutar
+
+El paquete de comunicación de salida quedó preparado el 13 de agosto:
+
+- `components/WhatsNewModal.tsx` usa la clave de lanzamiento
+  `clarvex-whatsnew-2026-08-captura-propia`, por lo que se mostrará una vez a
+  cada usuario al volver a entrar;
+- explica que el cambio nació porque Grupo Axo modificó el acceso a los archivos
+  compartidos, presenta la integración de Retool mediante su programa para
+  startups y reconoce que temporalmente habrá doble captura;
+- a `GERENTE` y `SUBGERENTE` les muestra **Conocer la nueva captura**, que abre
+  directamente
+  `https://captura.adrianluna.mx/rr/app/captura-clarvex`;
+- asesores solo ven **Entrar a Clarvex**; el kiosko y la ventana de mantenimiento
+  están excluidos del aviso;
+- la difusión push está redactada pero **no enviada**:
+  - título: `Clarvex vuelve a estar disponible`;
+  - cuerpo: `Estrenamos una captura propia para reducir la dependencia de archivos externos. Abre la app y conoce qué cambió.`;
+  - URL: `/`.
+
+Orden de salida obligatorio: (1) terminar invitaciones y atributos de Retool,
+(2) desplegar/verificar este anuncio manteniendo `MAINTENANCE_MODE=1`, (3) con
+aprobación explícita cambiar a `MAINTENANCE_MODE=0` y recargar PM2, (4) comprobar
+`/api/health` y acceso de un usuario normal, (5) enviar la difusión push por
+`POST /api/cron/broadcast`. No enviar el push antes de abrir.
+
 ## Variables de entorno del VPS
 
 ```env
@@ -281,9 +307,10 @@ Estado de acceso verificado el 13 de agosto:
 Las cuatro pantallas ya fueron probadas desde la cuenta operativa. Lo pendiente
 es:
 
-1. confirmar que la cuenta operativa no pueda abrir otras apps o herramientas;
-2. invitar al resto;
-3. reabrir Clarvex cuando quede aprobada la comunicación de salida.
+1. invitar al resto y asignar sus tres atributos de identidad;
+2. desplegar y revisar visualmente el anuncio de reapertura con mantenimiento;
+3. reabrir Clarvex cuando Adrian dé la aprobación final;
+4. enviar la difusión push preparada después de confirmar que la app abrió.
 
 ### Primera prueba de extremo a extremo: Asistencia ✅
 

@@ -3,121 +3,110 @@
 import { useCallback, useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import type { LucideIcon } from "lucide-react";
-import { Calculator, EyeOff, KeyRound, LayoutDashboard, LifeBuoy, Wallet, X } from "lucide-react";
+import {
+  ArrowUpRight,
+  Database,
+  FileSpreadsheet,
+  Handshake,
+  ShieldCheck,
+  X
+} from "lucide-react";
+import { getSession } from "@/lib/auth";
+import type { User } from "@/lib/types";
 
 /**
- * Aviso de novedades.
+ * Anuncio de reapertura de agosto de 2026.
  *
- * Subir RELEASE_KEY para volver a mostrarlo. La marca de "ya lo vi" va en
- * localStorage con esa clave, así que una clave nueva reabre el aviso para
- * todos sin tocar la base de datos.
- *
- * Decisiones de diseño, tras el rediseño de julio de 2026:
- *
- *  1. RESPONSIVO DE VERDAD. Antes era `max-w-md` (448 px) en cualquier pantalla:
- *     en un monitor de 1920 se veía como un teléfono pegado en medio. Ahora es
- *     hoja inferior en móvil y diálogo ancho a dos columnas en escritorio.
- *
- *  2. UN SOLO ACENTO. Antes cada novedad traía su propio color (seis en total) y
- *     el resultado era confeti. Ahora el azul se gasta en un solo sitio, la
- *     novedad destacada, y el resto va en tinta neutra.
- *
- *  3. LA ESTRUCTURA DICE ALGO. La novedad grande es un panel; las demás son
- *     filas separadas por una línea. No son diez tarjetas iguales fingiendo que
- *     todas pesan lo mismo.
- *
- *  4. `desk-adopt`: el aviso vive en el layout raíz, FUERA del subárbol
- *     [data-surface="desk"]. Sin esa clase se pintaría con la paleta del móvil
- *     encima del lienzo del escritorio (ver app/escritorio/desktop.css).
+ * Una clave nueva hace que el aviso se muestre una vez a cada persona. El CTA
+ * de Retool se deriva de la sesión de Clarvex: nunca se enseña a asesores ni al
+ * usuario kiosko, aunque alguien conserve una URL directa en el navegador.
  */
+const RELEASE_KEY = "clarvex-whatsnew-2026-08-captura-propia";
+const CAPTURE_URL = "https://captura.adrianluna.mx/rr/app/captura-clarvex";
+const EXCLUDED_PATHS = ["/login", "/mantenimiento", "/checklist", "/suspendida"];
 
-const RELEASE_KEY = "clarvex-whatsnew-2026-07-30";
+function canOpenCapture(user: User): boolean {
+  return !user.checklistOnly && (user.role === "GERENTE" || user.role === "SUBGERENTE");
+}
 
-/** La novedad que justifica el aviso. Va sola y ocupa todo el ancho. */
-const headline = {
-  icon: LayoutDashboard,
-  title: "Versión de escritorio nueva",
-  body: "Desde una computadora la app ya no es el móvil estirado. Barra lateral de secciones, buscador con Ctrl+K y gráficas grandes de verdad."
-};
-
-/** El resto, en filas. Orden por lo que más se usa, no por lo más reciente. */
-const changes: { icon: LucideIcon; title: string; body: string }[] = [
-  {
-    icon: KeyRound,
-    title: "Recupera tu PIN solo",
-    body: "Si lo olvidas, te llega un enlace a tu correo. Ya no dependes de que tu gerente te lo restablezca."
-  },
-  {
-    icon: Wallet,
-    title: "Mi quincena",
-    body: "Tu comisión acumulada y tu alcance del mes, en el tablero, sin esperar al cierre."
-  },
-  {
-    icon: Calculator,
-    title: "Simulador de comisión",
-    body: "Te dice cuánto te falta vender para llegar al siguiente escalón."
-  },
-  {
-    icon: EyeOff,
-    title: "Conteo ciego",
-    body: "En inventarios ya no ves lo que contó otro. Tu propio conteo sí lo ves."
-  },
-  {
-    icon: LifeBuoy,
-    title: "Soporte desde la app",
-    body: "Reporta un problema sin salir de Clarvex y le damos seguimiento."
-  }
-];
+function isExcludedPath(pathname: string): boolean {
+  return pathname === "/" || EXCLUDED_PATHS.some((path) => pathname.startsWith(path));
+}
 
 export function WhatsNewModal() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const [captureAccess, setCaptureAccess] = useState(false);
   const reduceMotion = useReducedMotion();
 
   useEffect(() => {
-    // Ni en el login ni en la redirección inicial: ahí no hay nada que celebrar.
-    if (pathname === "/login" || pathname === "/") return;
-    try {
-      if (!localStorage.getItem(RELEASE_KEY)) setOpen(true);
-    } catch {
-      // localStorage bloqueado: no bloquear la app por un aviso.
+    let cancelled = false;
+    if (isExcludedPath(pathname)) {
+      setOpen(false);
+      return () => { cancelled = true; };
     }
+
+    try {
+      if (localStorage.getItem(RELEASE_KEY)) return () => { cancelled = true; };
+    } catch {
+      // Sin almacenamiento local el aviso sigue siendo seguro; solo podría
+      // volver a aparecer en una visita posterior.
+    }
+
+    getSession()
+      .then((user) => {
+        if (!user || cancelled) return;
+        setCaptureAccess(canOpenCapture(user));
+        setOpen(true);
+      })
+      .catch(() => undefined);
+
+    return () => { cancelled = true; };
   }, [pathname]);
 
   const dismiss = useCallback(() => {
     try {
       localStorage.setItem(RELEASE_KEY, "1");
     } catch {
-      /* da igual: se cierra en esta vista */
+      /* El cierre de esta vista no depende de localStorage. */
     }
     setOpen(false);
   }, []);
 
-  // Escape cierra. Antes solo se podía tocando el fondo, que con teclado no
-  // existe: quien navegue sin ratón se quedaba atrapado en el aviso.
+  const openCapture = useCallback(() => {
+    dismiss();
+    window.location.assign(CAPTURE_URL);
+  }, [dismiss]);
+
   useEffect(() => {
     if (!open) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
     function onKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") dismiss();
     }
+
     window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", onKeyDown);
+    };
   }, [open, dismiss]);
 
   const panel = reduceMotion
     ? { initial: { opacity: 0 }, animate: { opacity: 1 }, exit: { opacity: 0 } }
     : {
-        initial: { opacity: 0, y: 28, scale: 0.98 },
+        initial: { opacity: 0, y: 24, scale: 0.985 },
         animate: { opacity: 1, y: 0, scale: 1 },
-        exit: { opacity: 0, y: 18, scale: 0.98 }
+        exit: { opacity: 0, y: 16, scale: 0.985 }
       };
 
   return (
     <AnimatePresence>
       {open ? (
         <motion.div
-          className="fixed inset-0 z-[60] flex items-end justify-center bg-slate-950/60 p-0 backdrop-blur-[2px] sm:items-center sm:p-6"
+          className="fixed inset-0 z-[60] flex items-end justify-center bg-slate-950/70 p-0 backdrop-blur-sm sm:items-center sm:p-6"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -126,78 +115,106 @@ export function WhatsNewModal() {
           role="dialog"
           aria-modal="true"
           aria-labelledby="whatsnew-title"
+          aria-describedby="whatsnew-description"
         >
           <motion.div
             onClick={(event) => event.stopPropagation()}
             {...panel}
             transition={{ duration: 0.34, ease: [0.22, 1, 0.36, 1] }}
-            className="desk-adopt flex max-h-[92dvh] w-full max-w-full flex-col overflow-hidden rounded-t-3xl border border-line bg-card shadow-2xl sm:max-h-[86vh] sm:max-w-xl sm:rounded-3xl lg:max-w-3xl"
+            className="desk-adopt flex max-h-[94dvh] w-full max-w-full flex-col overflow-hidden rounded-t-3xl border border-line bg-card shadow-2xl sm:max-h-[88vh] sm:max-w-2xl sm:rounded-3xl"
           >
-            {/* ── Cabecera ── */}
             <div className="flex items-start justify-between gap-4 border-b border-line px-5 py-4 sm:px-7 sm:py-5">
               <div className="min-w-0">
-                <h2 id="whatsnew-title" className="text-lg font-semibold tracking-[-0.02em] text-ink sm:text-xl">
-                  Novedades
+                <p className="mb-1 text-[11px] font-bold uppercase tracking-[0.16em] text-volt">
+                  Una nueva etapa
+                </p>
+                <h2 id="whatsnew-title" className="text-xl font-semibold tracking-[-0.025em] text-ink sm:text-2xl">
+                  Clarvex vuelve con captura propia
                 </h2>
-                <p className="mt-0.5 text-[13px] leading-5 text-muted">Lo que cambió en Clarvex Team.</p>
               </div>
               <button
+                type="button"
                 onClick={dismiss}
-                aria-label="Cerrar novedades"
-                className="-mr-1.5 -mt-1 grid size-9 shrink-0 place-items-center rounded-full text-muted transition hover:bg-line/60 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-volt"
+                aria-label="Cerrar anuncio"
+                className="-mr-1.5 -mt-1 grid size-10 shrink-0 place-items-center rounded-full text-muted transition hover:bg-line/60 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-volt"
               >
-                <X size={18} />
+                <X size={19} />
               </button>
             </div>
 
-            {/* ── Contenido ── */}
-            <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5 sm:px-7 [scrollbar-width:thin]">
-              {/* La destacada: único sitio donde se gasta el color. */}
-              <div className="flex flex-col gap-3 rounded-2xl border border-volt/25 bg-volt/[0.07] p-4 sm:flex-row sm:items-start sm:gap-4 sm:p-5">
-                <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-volt text-white">
-                  <headline.icon size={21} />
-                </span>
-                <div className="min-w-0">
-                  <h3 className="text-[15px] font-semibold leading-6 tracking-[-0.015em] text-ink sm:text-base">
-                    {headline.title}
-                  </h3>
-                  <p className="mt-1 text-[13px] leading-5 text-muted">{headline.body}</p>
+            <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5 sm:px-7 sm:py-6 [scrollbar-width:thin]">
+              <p id="whatsnew-description" className="max-w-2xl text-[14px] leading-6 text-muted sm:text-[15px]">
+                Durante estos días construimos una base propia para que la operación de cada tienda ya no dependa de enlaces de Excel externos.
+              </p>
+
+              <div className="mt-5 rounded-2xl border border-volt/25 bg-volt/[0.07] p-4 sm:p-5">
+                <div className="flex items-start gap-3.5">
+                  <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-volt text-white">
+                    <Handshake size={20} />
+                  </span>
+                  <div className="min-w-0">
+                    <h3 className="text-[15px] font-semibold tracking-[-0.015em] text-ink sm:text-base">
+                      Retool se integra a Clarvex
+                    </h3>
+                    <p className="mt-1 text-[13px] leading-5 text-muted sm:text-sm sm:leading-6">
+                      A través de su programa para startups, Retool confió en nuestro proyecto y nos dio acceso a la plataforma segura donde gerentes y subgerentes capturarán horarios, asistencia, KPIs, tráfico y descuentos. Cada acceso está ligado únicamente a su tienda.
+                    </p>
+                  </div>
                 </div>
               </div>
 
-              {/* El resto: filas con línea, no diez tarjetas iguales. En
-                  escritorio se reparten en dos columnas para no dejar medio
-                  monitor vacío ni obligar a hacer scroll. */}
-              <ul className="mt-5 grid gap-x-8 sm:grid-cols-2">
-                {changes.map((change, index) => (
-                  <motion.li
-                    key={change.title}
-                    initial={reduceMotion ? false : { opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.1 + index * 0.05, duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
-                    className="flex items-start gap-3.5 border-b border-line/70 py-3.5 last:border-b-0 sm:[&:nth-last-child(-n+2)]:border-b-0"
-                  >
-                    <span className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-lg bg-line/50 text-ink">
-                      <change.icon size={16} />
-                    </span>
-                    <div className="min-w-0">
-                      <h3 className="text-[14px] font-semibold leading-5 tracking-[-0.01em] text-ink">{change.title}</h3>
-                      <p className="mt-0.5 text-[12.5px] leading-[1.45] text-muted">{change.body}</p>
-                    </div>
-                  </motion.li>
-                ))}
-              </ul>
+              <div className="mt-5 grid gap-0 sm:grid-cols-2 sm:gap-x-7">
+                <div className="flex items-start gap-3.5 border-b border-line/70 py-4 sm:border-b-0 sm:border-r sm:pr-7">
+                  <span className="mt-0.5 grid size-9 shrink-0 place-items-center rounded-lg bg-line/50 text-ink">
+                    <Database size={17} />
+                  </span>
+                  <div>
+                    <h3 className="text-sm font-semibold text-ink">Por qué hicimos el cambio</h3>
+                    <p className="mt-1 text-[12.5px] leading-5 text-muted">
+                      Grupo Axo modificó el acceso a los archivos compartidos que alimentaban Clarvex. Para mantener la continuidad, construimos una ruta que controlamos nosotros.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3.5 py-4 sm:pl-0">
+                  <span className="mt-0.5 grid size-9 shrink-0 place-items-center rounded-lg bg-line/50 text-ink">
+                    <FileSpreadsheet size={17} />
+                  </span>
+                  <div>
+                    <h3 className="text-sm font-semibold text-ink">Una transición temporal</h3>
+                    <p className="mt-1 text-[12.5px] leading-5 text-muted">
+                      Sabemos que por ahora implica capturar tanto en los archivos de Axo como en la nueva plataforma. Seguimos trabajando para colaborar directamente con Grupo Axo y eliminar esa duplicidad.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-1 flex items-start gap-3 rounded-xl bg-line/35 px-4 py-3.5">
+                <ShieldCheck className="mt-0.5 shrink-0 text-volt" size={18} />
+                <p className="text-[12.5px] leading-5 text-muted">
+                  Gracias por su confianza y por sostener la operación durante esta transición. Clarvex seguirá facilitando el control individual, el seguimiento del equipo y las decisiones de cada tienda.
+                </p>
+              </div>
             </div>
 
-            {/* ── Pie ── */}
-            {/* Flex y no `ml-auto` a secas: el botón es inline-block en cuanto
-                deja de ser `w-full`, y ahí el margen automático no lo mueve. */}
-            <div className="flex border-t border-line px-5 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:justify-end sm:px-7 sm:pb-4">
+            <div className="flex flex-col-reverse gap-2.5 border-t border-line px-5 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:flex-row sm:justify-end sm:px-7 sm:pb-4">
+              {captureAccess ? (
+                <button
+                  type="button"
+                  onClick={dismiss}
+                  className="min-h-11 rounded-xl px-4 text-sm font-semibold text-muted transition hover:bg-line/50 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-volt"
+                >
+                  Continuar en Clarvex
+                </button>
+              ) : null}
               <button
-                onClick={dismiss}
-                className="min-h-11 w-full rounded-xl bg-volt px-4 text-sm font-semibold text-white transition hover:bg-[#1D4ED8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-volt focus-visible:ring-offset-2 active:scale-[0.99] sm:w-auto sm:min-w-[10rem]"
+                type="button"
+                autoFocus
+                onClick={captureAccess ? openCapture : dismiss}
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-volt px-5 text-sm font-semibold text-white transition hover:bg-[#1D4ED8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-volt focus-visible:ring-offset-2 active:scale-[0.99]"
               >
-                Entendido
+                {captureAccess ? "Conocer la nueva captura" : "Entrar a Clarvex"}
+                {captureAccess ? <ArrowUpRight size={17} /> : null}
               </button>
             </div>
           </motion.div>
