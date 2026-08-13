@@ -6,7 +6,7 @@
 
 ---
 
-# 🔴 EN QUÉ ESTAMOS AHORA — 12 de agosto de 2026
+# 🔴 EN QUÉ ESTAMOS AHORA — 13 de agosto de 2026
 
 ## Qué pasó
 
@@ -37,7 +37,7 @@ retail, KPIs, reportes). Excel solo aportaba **las filas**. Así que esto NO es
 reescribir la app: es **sustituir el parser por un formulario**. Todo lo que
 consume esos datos se queda igual.
 
-## Arquitectura elegida
+## Arquitectura intentada (bloqueada por el tipo de app de Retool)
 
 ```
 Gerente entra a Clarvex con su PIN de siempre
@@ -58,18 +58,40 @@ contraseña nueva y **gratis hasta 50 personas** en el plan Business. La
 alternativa (una cuenta de Retool por persona) costaba $18/mes cada una y añadía
 un login más a una tarea diaria.
 
+⚠️ **Hallazgo del 13 de agosto:** «Captura Clarvex» fue creada con el **nuevo App
+Builder** de Retool (proyecto de código con `/frontend` y `/backend`), no como
+una **Classic app**. Retool documenta que las apps del nuevo builder admiten
+usuarios externos, pero **todavía no admiten incrustación en sitios o
+aplicaciones externas**. El endpoint clásico acepta el UUID y devuelve 200, pero
+la URL firmada termina en una pantalla blanca.
+
+Esto se reprodujo fuera de Clarvex: una URL firmada nueva se abrió directamente
+en el navegador, llegó a
+`/embedded/authed/b6ebeac8-95fd-11f1-a579-b33e5e6ede64/page1`, cargó el shell de
+Retool sin errores de consola y dejó `App Body` vacío. Por tanto, **no es CSP,
+certificado, iframe ni sandbox de Clarvex**.
+
+La decisión pendiente es una de estas dos:
+
+1. reconstruir las cuatro pantallas como **Retool Classic app**, que sí soporta
+   `POST /api/embed-url/external-user`; o
+2. montar las cuatro pantallas directamente en **Clarvex/Next.js**, reutilizando
+   los backends y reglas ya terminados y eliminando la dependencia de Retool para
+   la interfaz.
+
 ## Dónde vamos
 
-| Fuente | Endpoint | Pantalla Retool |
+| Fuente | Endpoint | Pantalla Retool nuevo builder |
 |---|---|---|
-| HORARIOS | ✅ `/api/admin/capture/schedules` | ✅ publicada y **probada de extremo a extremo** |
-| ASISTENCIA | ✅ `/api/admin/capture/attendance` | ✅ publicada, **sin probar aún** |
-| KPIS | ✅ `/api/admin/capture/kpis` | ✅ publicada, sin probar |
-| DESCUENTOS_POS | ✅ `/api/admin/capture/discounts` | ✅ publicada, sin probar |
+| HORARIOS | ✅ `/api/admin/capture/schedules` | ✅ publicada y probada internamente; ❌ no embebible |
+| ASISTENCIA | ✅ `/api/admin/capture/attendance` | ✅ publicada; ❌ no embebible |
+| KPIS | ✅ `/api/admin/capture/kpis` | ✅ publicada; ❌ no embebible |
+| DESCUENTOS_POS | ✅ `/api/admin/capture/discounts` | ✅ publicada; ❌ no embebible |
 
-**El reemplazo del RDV está COMPLETO**: los cuatro backends, las cuatro pantallas
-y el tráfico de tienda dentro de KPIs. Ya no queda ningún dato que dependa de un
-Excel de Axo.
+**El backend del reemplazo del RDV está completo**: los cuatro endpoints y el
+tráfico de tienda dentro de KPIs. Las cuatro interfaces también existen, pero en
+un tipo de app de Retool que no se puede incrustar; falta decidir y construir la
+interfaz final compatible antes de reabrir Clarvex.
 
 El dominio personalizado **`captura.adrianluna.mx` ya está operativo** con
 certificado de Let's Encrypt, y `RETOOL_ORG_URL` apunta a él.
@@ -178,39 +200,38 @@ RETOOL_EMBED_GROUP_ID=  # ✅ 6998583  (grupo «captura tiendas»)
 Si falta alguna, `/escritorio/captura` responde **503 nombrando cuál**. Es
 deliberado: un 500 genérico obligaría a adivinar.
 
-## Accesos: usuarios externos embebidos
+## Accesos: usuarios externos embebidos (diseño deseado)
 
 Las gerentes **no tienen cuenta de Retool**. Entran a Clarvex con su PIN y la
 pantalla se incrusta con una URL firmada de un solo uso. En Business, los
 usuarios externos son **gratis hasta 50**; cuentas propias habrían costado
 $18/mes cada una y añadido un login más a una tarea diaria.
 
-### 🔴 Bloqueo activo (12 ago 2026)
+### 🔴 Bloqueo activo (13 ago 2026)
 
-`POST /api/embed-url/external-user` responde:
+Dominio, TLS, token, grupo y generación de URL están correctos:
 
-```json
-{"error": true, "message": "You must call this endpoint from a custom domain"}
-```
+- DNS ✅ — `CNAME captura → custom-domain.retool.com`.
+- Certificado ✅ — Let's Encrypt válido.
+- `RETOOL_ORG_URL` ✅ — `https://captura.adrianluna.mx`.
+- `POST /api/embed-url/external-user` ✅ — devuelve 200 y una URL de un solo uso.
+- CSP de Clarvex ✅ — permite `frame-src https://captura.adrianluna.mx`.
 
-**La API de incrustación exige dominio personalizado.** No basta
-`clarvex.retool.com`. En curso: `captura.adrianluna.mx`.
-
-- DNS ✅ — `CNAME captura → custom-domain.retool.com`, resuelve a las IPs de
-  Retool (35.92.202.168/169/170, un balanceador en AWS).
-- Certificado ⏳ — Retool aún no lo emite; `curl` devuelve `http=000 tls=1`.
-
-Cuando esté activo hay que **cambiar `RETOOL_ORG_URL` al dominio nuevo**: la
-llamada tiene que salir desde ahí o vuelve el mismo error.
+El bloqueo real es de producto: el endpoint y el SDK de Embed son para **Classic
+apps**; la app creada es del **nuevo App Builder**, cuya documentación lista
+«Embedded apps in external websites or applications» como funcionalidad aún no
+soportada. No seguir modificando CSP, `frame-ancestors`, Cloudflare ni el
+`sandbox`: ya quedaron descartados por la prueba directa.
 
 ### Configuración en Retool, y las trampas de cada paso
 
 - **Token**: Settings → API. Scope **solo `Retool Embed`**, nada más. Se muestra
   una única vez.
 - **Grupo `captura tiendas`** (id `6998583`): acceso **Use, nunca Edit**, y solo
-  a la app «Captura Clarvex» y a los dos recursos de Clarvex. *Use* es lo que
-  impide ver el secreto o alterar el código que fija la tienda, y además es lo
-  que hace que Retool facture como usuario interno y no como *builder* a $65.
+  a la app «Captura Clarvex» y a los dos recursos de Clarvex. *Use* impide ver el
+  secreto o alterar el código que fija la tienda. La clasificación interna o
+  externa depende del dominio del correo y de la configuración de External
+  Apps, no del permiso *Use*.
   **No reutilizar Viewer/Editor/Admin**: tienen acceso a *All apps*, o sea
   también al panel de administración con facturación y auditoría.
 - **Dominio personalizado**: Settings → **Branding** → campo *Domain name*.

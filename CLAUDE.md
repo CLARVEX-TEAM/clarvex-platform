@@ -460,7 +460,7 @@ El % de comisión difiere por puesto pero el mínimo de referencia es el mismo p
 
 ---
 
-## Estado actual del proyecto — 12 de agosto de 2026
+## Estado actual del proyecto — 13 de agosto de 2026
 
 > 📌 **Lee primero el bloque «EN QUÉ ESTAMOS AHORA» al inicio de `AGENTS.md`.**
 > Ahí está el contexto completo de la migración en curso: qué se rompió, qué se
@@ -474,10 +474,12 @@ El % de comisión difiere por puesto pero el mínimo de referencia es el mismo p
   Axo deshabilitó los enlaces anónimos de SharePoint. Lo que sigue en esta
   página sobre el RDV describe un mecanismo que **ya no funciona** para esas
   fuentes; solo sobrevive `GUESS / KPIS`, que pasa por Power Automate.
-- **La captura embebida está bloqueada por el dominio personalizado.** La API de
-  Retool exige que la llamada salga de un dominio propio; `captura.adrianluna.mx`
-  tiene el DNS listo pero el certificado aún no. Al activarse hay que cambiar
-  `RETOOL_ORG_URL`. Detalle completo en `AGENTS.md`.
+- **La captura embebida está bloqueada por el tipo de app de Retool.** Dominio,
+  certificado, CSP, token, grupo y URL firmada ya funcionan. «Captura Clarvex»
+  fue creada con el nuevo App Builder, y Retool todavía no permite incrustar ese
+  tipo de app en sitios externos. La URL firmada carga `App Body` vacío incluso
+  abierta directamente. Hay que elegir entre reconstruirla como Classic app o
+  hacer las pantallas nativas en Clarvex. Detalle completo en `AGENTS.md`.
 - **`MERCADOPAGO_WEBHOOK_SECRET` sin configurar en el VPS.** El webhook de Mercado
   Pago responde 401 a todo: las suscripciones no se procesan automáticamente.
   Ver [Variables de entorno](#variables-de-entorno).
