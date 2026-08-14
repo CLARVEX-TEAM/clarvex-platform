@@ -1,7 +1,16 @@
 import { DeleteObjectCommand, GetObjectCommand, HeadBucketCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { setDefaultResultOrder } from "node:dns";
 import fs from "node:fs";
 import path from "node:path";
+
+// Cloudflare publica IPv4 e IPv6 para el endpoint de R2. El VPS de producción
+// resuelve ambas familias, pero no tiene una ruta IPv6 funcional. El handler del
+// AWS SDK intentaba primero la AAAA y dejaba las subidas esperando hasta agotar
+// el timeout; fotos, escaneos y PDFs parecían quedarse en "Procesando…" y nunca
+// alcanzaban la base. Preferir IPv4 conserva IPv6 como respaldo y evita el
+// bloqueo sin cambiar credenciales, llaves ni URLs guardadas.
+setDefaultResultOrder("ipv4first");
 
 if (process.env.NODE_ENV === "test" || process.env.ALLOW_INTEGRATION_TEST_DATABASE === "true") {
   const envTestPath = path.resolve(process.cwd(), ".env.test");
