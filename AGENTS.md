@@ -6,7 +6,7 @@
 
 ---
 
-# 🔴 EN QUÉ ESTAMOS AHORA — 13 de agosto de 2026
+# 🔴 EN QUÉ ESTAMOS AHORA — 14 de agosto de 2026
 
 ## Qué pasó
 
@@ -75,7 +75,7 @@ certificado, iframe ni sandbox de Clarvex**.
 
 **Decisión tomada el 13 de agosto:** se descarta la incrustación, no Retool. Los
 usuarios internos invitados entrarán directamente al dominio personalizado. Así
-se conservan las cuatro pantallas del nuevo App Builder y no hay que
+se conservan las pantallas del nuevo App Builder y no hay que
 reconstruirlas como Classic app ni como formularios nativos de Clarvex.
 
 ## Dónde vamos
@@ -86,13 +86,15 @@ reconstruirlas como Classic app ni como formularios nativos de Clarvex.
 | ASISTENCIA | ✅ `/api/admin/capture/attendance` | ✅ prueba completa desde cuenta operativa hasta la base de Clarvex |
 | KPIS | ✅ `/api/admin/capture/kpis` | ✅ guardado confirmado desde la cuenta operativa; parche `0.0.3` aclara los acumulados |
 | DESCUENTOS_POS | ✅ `/api/admin/capture/discounts` | ✅ guardado confirmado desde la cuenta operativa con el parche `0.0.4` |
+| TICKET_ELECTRONICO | ✅ `/api/admin/capture/electronic-tickets` | ✅ lectura y escritura probadas; publicado en Retool `0.0.7` |
 
-**El reemplazo del RDV está construido y validado**: los cuatro endpoints, las
-cuatro pantallas y el tráfico de tienda dentro de KPIs. Los atributos seguros de
+**El reemplazo del RDV está construido y validado**: los cinco endpoints, las
+cinco pantallas de captura y el tráfico de tienda dentro de KPIs. Los atributos seguros de
 usuario (`storeId`, `storeName` y `role`) ya están creados en Retool sin valor
 predeterminado. La cuenta operativa de TH San Agustín ya validó las cuatro
-capturas de extremo a extremo. Antes de reabrir falta terminar de invitar a los
-gerentes/subgerentes restantes y recibir la aprobación final de Adrian.
+capturas originales y Ticket electrónico de extremo a extremo. La app ya está
+abierta; falta terminar de invitar a los gerentes/subgerentes restantes y
+comprobar su aislamiento por tienda.
 
 El dominio personalizado **`captura.adrianluna.mx` ya está operativo** con
 certificado de Let's Encrypt, y `RETOOL_ORG_URL` apunta a él.
@@ -305,7 +307,7 @@ Estado de acceso verificado el 13 de agosto:
   La raíz `https://captura.adrianluna.mx` sigue siendo la página general si
   alguien la abre manualmente; para accesos y marcadores usar la URL de la app.
 
-Las cuatro pantallas ya fueron probadas desde la cuenta operativa. Lo pendiente
+Las cinco pantallas de captura ya fueron probadas desde la cuenta operativa. Lo pendiente
 es:
 
 1. invitar al resto y asignar sus tres atributos de identidad;
@@ -389,6 +391,42 @@ de tema. En producción se midió el fondo oscuro como
 `rgba(11, 12, 15, 0.86)` y, tras usar el botón real, el fondo claro como
 `rgba(255, 255, 255, 0.84)`, título `rgb(15, 23, 42)`, clase `dark` ausente y
 `color-scheme: light`. La preferencia de prueba se devolvió a oscuro.
+
+### Retiro de Centro de Datos y Ticket electrónico — 14 de agosto
+
+La sincronización heredada con los Excel de Axo quedó retirada de la operación:
+
+- se eliminaron del `crontab` de producción las llamadas a `sync-all`,
+  `sync-alert` y `attendance-sync`;
+- esos tres endpoints conservan autenticación pero ahora responden como tareas
+  deshabilitadas y no leen Excel ni generan alertas;
+- los resúmenes diario y de mediodía ya no llaman `syncAllSources`;
+- se marcaron como leídas las cuatro alertas heredadas que todavía estaban
+  pendientes, sin tocar notificaciones normales;
+- Centro de Datos desapareció de la navegación móvil y de escritorio. Las rutas
+  antiguas `/datos` y `/escritorio/datos` redirigen a la captura nueva para no
+  romper marcadores.
+
+Ticket electrónico conserva su lógica en Clarvex mediante
+`GET|POST /api/admin/capture/electronic-tickets`. El dato semanal se guarda en
+la primera fila `Kpi` de la semana (fila ancla); el denominador es
+`posTransactions` cuando existe y, como compatibilidad, `rdvTransactions` en
+datos históricos. Retool nunca elige la tienda: la toma de
+`requireManagerIdentity` y solo permite `GERENTE` o `SUBGERENTE`.
+
+La pantalla Retool está publicada como parche **`0.0.7`**, commit Retool
+`3efa632`, ruta `/ticket-electronico`. Incluye semanas retail, total de tickets,
+captura de electrónicos, porcentaje en vivo, resumen mensual ponderado por
+conteos, validación contra valores mayores al total, estados de carga/error y
+ambos temas. Se probó una escritura real en TH San Agustín, Retool confirmó un
+contador numérico de `1`, se recargó la lectura y se restauró inmediatamente el
+valor original; la base terminó sin cambios de prueba pendientes.
+La URL pública confirmó las seis rutas del panel: Inicio, Horarios, Asistencia,
+KPIs, Descuentos y Ticket electrónico.
+
+Clarvex quedó en `a531f46`, desplegado en producción: lint, TypeScript, build y
+las **687 pruebas** pasan. El GET real del endpoint nuevo respondió HTTP 200 con
+siete semanas y siete grupos de filas.
 
 ### Primera prueba de extremo a extremo: Asistencia ✅
 

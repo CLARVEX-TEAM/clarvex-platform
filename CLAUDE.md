@@ -147,7 +147,9 @@ pm2 list
 curl -s https://app.adrianluna.mx/api/health
 ```
 
-Tras cambios en datos del RDV: ejecutar **«Sincronizar ahora»** desde el Centro de Datos en la app.
+La operación ya no usa «Sincronizar ahora» ni Centro de Datos. Horarios,
+Asistencia, KPIs, Descuentos y Ticket electrónico se capturan en Retool; no
+reactivar los crons heredados de Excel.
 
 ### Comandos útiles en el VPS
 
@@ -480,7 +482,7 @@ El % de comisión difiere por puesto pero el mínimo de referencia es el mismo p
 
 ---
 
-## Estado actual del proyecto — 13 de agosto de 2026
+## Estado actual del proyecto — 14 de agosto de 2026
 
 > 📌 **Lee primero el bloque «EN QUÉ ESTAMOS AHORA» al inicio de `AGENTS.md`.**
 > Ahí está el contexto completo de la migración en curso: qué se rompió, qué se
@@ -513,8 +515,9 @@ El % de comisión difiere por puesto pero el mínimo de referencia es el mismo p
   ya fue verificado con acceso **Use** únicamente a «Captura Clarvex» y sus dos
   recursos necesarios. `All Users` no concede acceso a apps ni recursos y sus
   permisos globales para Assist y para construir apps con IA quedaron
-  desactivados; `External Apps` permanece desactivado. Falta renovar la sesión
-  de la cuenta operativa y validar las cuatro pantallas. El branding ya usa
+  desactivados; `External Apps` permanece desactivado. Las capturas originales
+  y Ticket electrónico ya se validaron de extremo a extremo con la cuenta
+  operativa. El branding ya usa
   nombre **CLARVEX TEAM**, acento `#2563EB`, cabecera `#0B0C0F` y referencias adicionales a
   Retool ocultas. Logo `public/icon-512.png` y favicon `public/favicon.ico` ya
   están cargados, y el logo está habilitado en los encabezados de las apps.
@@ -599,6 +602,17 @@ El % de comisión difiere por puesto pero el mínimo de referencia es el mismo p
   ausencia de conflictos. La comprobación posterior en la URL pública confirmó
   las cinco rutas, el botón de tema y fondos no transparentes: oscuro
   `rgba(11, 12, 15, 0.86)` y claro `rgba(255, 255, 255, 0.84)`.
+  El 14 de agosto se retiró Centro de Datos y se publicó Ticket electrónico en
+  Retool **`0.0.7`** (commit Retool `3efa632`, ruta `/ticket-electronico`).
+  Clarvex aporta `GET|POST /api/admin/capture/electronic-tickets` y conserva la
+  fila ancla semanal, la identidad segura y todas las reglas de negocio. La
+  escritura real se probó con contador `1` y el valor usado se restauró al
+  original. Las rutas antiguas `/datos` y `/escritorio/datos` redirigen a la
+  pantalla nueva. Los crons `sync-all`, `sync-alert` y `attendance-sync` fueron
+  retirados del crontab; sus endpoints son no-op autenticados, y los resúmenes
+  diario/mediodía ya no sincronizan Excel. Se limpiaron cuatro alertas antiguas.
+  Commit Clarvex `a531f46`, desplegado; lint, TypeScript, build y 687 pruebas
+  correctos. La pantalla pública y ambos temas fueron verificados.
   Falta definir el remitente de correo. Detalle completo en `AGENTS.md`.
 - **`MERCADOPAGO_WEBHOOK_SECRET` sin configurar en el VPS.** El webhook de Mercado
   Pago responde 401 a todo: las suscripciones no se procesan automáticamente.
@@ -732,7 +746,9 @@ git status   # debe quedar limpio
 
 ## Margen DTO (Descuentos POS)
 
-Fuente: archivo XLSX separado vinculado en Centro de Datos (SharePoint).
+Fuente histórica: archivo XLSX de SharePoint. Desde el 14 de agosto de 2026 la
+captura operativa vive en Retool y escribe por la API segura de Clarvex; este
+bloque solo documenta el parser heredado.
 
 ### Estructura hoja "MARGEN DTO"
 
