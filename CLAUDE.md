@@ -555,6 +555,13 @@ El % de comisión difiere por puesto pero el mínimo de referencia es el mismo p
   contra producción y devolvió `ok: true` con el contrato completo. **Aún no se
   ha publicado:** la versión pública sigue siendo la captura estable; primero
   debe revisarse la vista previa y después validarse con la cuenta operativa.
+  La iteración visual actual añade una barra superior liquid-glass restringida
+  únicamente a la navegación y fotos reales en ranking/incidencias. Clarvex
+  firma temporalmente las fotos privadas de R2 desde `b500065`; el preview
+  confirmó cuatro imágenes cargadas (`complete=true`, `naturalWidth>0`) y el
+  fallback de iniciales para quien no tiene foto. Retool guardó `5ada430` para
+  los avatares y `d7d2e22` para que, por debajo de ~1100 px, el título y la
+  navegación ocupen dos filas sin recortar «Descuentos». Sigue sin publicarse.
   Falta definir el remitente de correo. Detalle completo en `AGENTS.md`.
 - **`MERCADOPAGO_WEBHOOK_SECRET` sin configurar en el VPS.** El webhook de Mercado
   Pago responde 401 a todo: las suscripciones no se procesan automáticamente.

@@ -340,6 +340,17 @@ reglas de negocio.
 - La función de Retool se probó contra producción después del despliegue y
   recibió `ok: true` con el contrato real completo. La compilación del borrador
   quedó limpia.
+- La API ya entrega `photoUrl` en ranking e incidencias. Como el bucket R2 es
+  privado, desde `b500065` esas fotos salen como URLs firmadas temporales; no se
+  debe volver a entregar la URL `*.r2.dev` cruda porque Retool recibe 401.
+- El borrador Retool `5ada430` usa fotos reales con `object-cover` y fallback de
+  iniciales solo cuando la foto es nula o falla. Se verificaron cuatro elementos
+  `img` reales en el preview, todos con `complete=true` y `naturalWidth>0`;
+  Itzel conserva iniciales porque no tiene foto registrada.
+- El borrador `d7d2e22` corrige la navegación responsive. La cabecera es el único
+  elemento liquid-glass; por debajo de ~1100 px usa título completo en la primera
+  fila y navegación horizontal en la segunda, sin recortar «Descuentos». En
+  anchos suficientes vuelve a una sola fila. Compilación limpia.
 - **El borrador todavía no está publicado.** La versión pública sigue siendo la
   captura estable. Revisar la vista previa antes de pulsar Publish; no retirar
   ninguna pantalla de Clarvex hasta validar cada fase con una cuenta operativa.
