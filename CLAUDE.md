@@ -544,6 +544,17 @@ El % de comisión difiere por puesto pero el mínimo de referencia es el mismo p
   invitada como SUBGERENTE de GUESS Galerías Monterrey, con solo `All Users` y
   `captura tiendas`; sus tres atributos de identidad quedaron verificados y la
   invitación está pendiente de aceptación.
+  La migración gradual del escritorio gerencial ya comenzó. Clarvex tiene en
+  producción el endpoint de solo lectura
+  `GET /api/admin/retool/dashboard?storeId=...` (`5dfad9f` + corrección de
+  middleware `644c694`), cubierto por `ADMIN_CAPTURE_SECRET`. El build y las
+  686 pruebas pasaron, PM2 quedó con dos instancias `online` y el health check
+  respondió correctamente. Retool guardó el borrador `ccf83f9` con un nuevo
+  **Inicio** gerencial, resumen diario/mensual, operación, ranking y atención,
+  sin tocar Horarios, Asistencia, KPIs ni Descuentos. La función fue probada
+  contra producción y devolvió `ok: true` con el contrato completo. **Aún no se
+  ha publicado:** la versión pública sigue siendo la captura estable; primero
+  debe revisarse la vista previa y después validarse con la cuenta operativa.
   Falta definir el remitente de correo. Detalle completo en `AGENTS.md`.
 - **`MERCADOPAGO_WEBHOOK_SECRET` sin configurar en el VPS.** El webhook de Mercado
   Pago responde 401 a todo: las suscripciones no se procesan automáticamente.

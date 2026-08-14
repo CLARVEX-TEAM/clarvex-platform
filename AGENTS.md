@@ -310,9 +310,39 @@ es:
 
 1. invitar al resto y asignar sus tres atributos de identidad;
 2. comprobar que cada invitación aceptada abre únicamente su propia tienda;
-3. comenzar, después de estabilizar la salida, la migración gradual del panel
-   gerencial de escritorio a Retool. Clarvex seguirá siendo la API, base de
-   datos, motor de reglas, PWA de asesores, kiosko y panel privado de Adrian.
+3. revisar y publicar la fase 1 del panel gerencial en Retool;
+4. continuar la migración gradual del resto del escritorio. Clarvex seguirá
+   siendo la API, base de datos, motor de reglas, PWA de asesores, kiosko y
+   panel privado de Adrian.
+
+### Migración del panel gerencial a Retool — fase 1 en revisión
+
+La migración comenzó el 13 de agosto. No es un reemplazo del backend: Retool
+solo presenta la interfaz y Clarvex conserva identidad, permisos, PostgreSQL y
+reglas de negocio.
+
+- En Clarvex se desplegó `GET /api/admin/retool/dashboard?storeId=...`, protegido
+  con `ADMIN_CAPTURE_SECRET`. Es de solo lectura y devuelve un contrato pequeño
+  con tienda, fecha, mes retail, venta/meta de hoy y mes, tráfico, operación,
+  ranking y bandeja de atención.
+- La tienda sigue saliendo de `requireManagerIdentity` en el backend de Retool;
+  no existe selector ni se acepta una tienda elegida por el navegador.
+- El cálculo vive en `lib/retool-manager-dashboard.ts`; divisor cero devuelve
+  `null` para que la interfaz muestre `—`, nunca un cero inventado.
+- Commits de Clarvex: `5dfad9f` (endpoint y pruebas) y `644c694` (lista exacta
+  del middleware). Ambos están en `main`, desplegados; build limpio, 686 pruebas
+  aprobadas, dos procesos PM2 `online` y `/api/health` correcto.
+- Retool tiene el borrador `ccf83f9`: agrega **Inicio** como ruta predeterminada,
+  renombra la cabecera a **Panel Gerencial Clarvex**, conserva Horarios,
+  Asistencia, KPIs y Descuentos, y añade resumen diario/mensual, indicadores,
+  ranking y una cola combinada de atención. Incluye skeleton, estado sin datos,
+  error visible con reintento, actualización manual y formato `es-MX`.
+- La función de Retool se probó contra producción después del despliegue y
+  recibió `ok: true` con el contrato real completo. La compilación del borrador
+  quedó limpia.
+- **El borrador todavía no está publicado.** La versión pública sigue siendo la
+  captura estable. Revisar la vista previa antes de pulsar Publish; no retirar
+  ninguna pantalla de Clarvex hasta validar cada fase con una cuenta operativa.
 
 ### Primera prueba de extremo a extremo: Asistencia ✅
 
