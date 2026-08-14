@@ -58,7 +58,7 @@ export async function GET(request: Request) {
     }),
     prisma.user.findMany({
       where: { storeId, ...ADVISOR_WHERE },
-      select: { id: true, name: true, employeeNumber: true },
+      select: { id: true, name: true, employeeNumber: true, photoUrl: true },
       orderBy: { name: "asc" }
     }),
     prisma.schedule.findMany({
@@ -72,7 +72,7 @@ export async function GET(request: Request) {
         status: { in: ["LATE", "ABSENT", "EXCUSED"] },
         user: PERSON_WHERE
       },
-      include: { user: { select: { id: true, name: true, employeeNumber: true } } },
+      include: { user: { select: { id: true, name: true, employeeNumber: true, photoUrl: true } } },
       orderBy: [{ status: "asc" }, { minutesLate: "desc" }]
     }),
     prisma.pending.findMany({
@@ -121,6 +121,7 @@ export async function GET(request: Request) {
         userId: advisor.id,
         name: advisor.name,
         employeeNumber: advisor.employeeNumber,
+        photoUrl: advisor.photoUrl,
         sales,
         goal,
         achievement: goal > 0 ? Math.round((sales / goal) * 10_000) / 100 : null,
@@ -153,6 +154,7 @@ export async function GET(request: Request) {
         userId: row.userId,
         name: row.user.name,
         employeeNumber: row.user.employeeNumber,
+        photoUrl: row.user.photoUrl,
         status: row.status,
         expectedAt: row.expectedAt,
         arrivedAt: row.arrivedAt,
@@ -170,4 +172,3 @@ export async function GET(request: Request) {
     }
   }, { headers: { "Cache-Control": "private, no-store" } });
 }
-
