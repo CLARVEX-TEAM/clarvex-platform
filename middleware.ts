@@ -53,7 +53,9 @@ const captureRoutes = new Set([
   "/api/admin/capture/schedules",
   "/api/admin/capture/attendance",
   "/api/admin/capture/kpis",
-  "/api/admin/capture/discounts"
+  "/api/admin/capture/discounts",
+  // Inicio gerencial de Retool: solo lectura, autorizado con el mismo secreto.
+  "/api/admin/retool/dashboard"
 ]);
 
 function isPublicApi(pathname: string): boolean {
