@@ -358,15 +358,14 @@ reglas de negocio.
   KPIs y Descuentos) y las cuatro imágenes firmadas cargaron con
   `complete=true` y `naturalWidth>0`. Itzel conserva el fallback esperado.
 
-### Borrador posterior a `0.0.5`: contraste y selector de tema
+### Parche Retool `0.0.6`: contraste y selector de tema
 
 La captura publicada por Adrian mostró un defecto real en modo claro: la clase
 `bg-[#0B0C0F]/72` del contenedor glass no produjo color en el CSS compilado y
 la cabecera quedó transparente, aunque su título seguía blanco. No era un
 problema del navegador ni del dominio.
 
-El borrador actual de Retool corrige la cabecera y todavía **no está
-publicado**:
+La corrección se publicó el 13 de agosto como parche Retool **`0.0.6`**:
 
 - `frontend/components/AppNav.tsx` usa fondos RGBA explícitos: blanco al 84 %
   en claro y `#0B0C0F` al 86 % en oscuro, con borde, sombra y contraste propios
@@ -384,8 +383,12 @@ publicado**:
   oscuro persistió después de recargar la vista previa.
 - No se tocaron funciones de captura, rutas, identidad ni reglas de negocio.
 
-Antes de publicar el siguiente parche, Adrian debe revisar este borrador en la
-vista previa. No publicar automáticamente solo por haber terminado la prueba.
+Retool confirmó funciones aprobadas y ausencia de conflictos antes de publicar.
+Después se abrió la URL pública, donde aparecieron las cinco rutas y el botón
+de tema. En producción se midió el fondo oscuro como
+`rgba(11, 12, 15, 0.86)` y, tras usar el botón real, el fondo claro como
+`rgba(255, 255, 255, 0.84)`, título `rgb(15, 23, 42)`, clase `dark` ausente y
+`color-scheme: light`. La preferencia de prueba se devolvió a oscuro.
 
 ### Primera prueba de extremo a extremo: Asistencia ✅
 
