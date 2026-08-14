@@ -310,12 +310,12 @@ es:
 
 1. invitar al resto y asignar sus tres atributos de identidad;
 2. comprobar que cada invitación aceptada abre únicamente su propia tienda;
-3. revisar y publicar la fase 1 del panel gerencial en Retool;
+3. validar la fase 1 publicada con las siguientes cuentas invitadas;
 4. continuar la migración gradual del resto del escritorio. Clarvex seguirá
    siendo la API, base de datos, motor de reglas, PWA de asesores, kiosko y
    panel privado de Adrian.
 
-### Migración del panel gerencial a Retool — fase 1 en revisión
+### Migración del panel gerencial a Retool — fase 1 publicada
 
 La migración comenzó el 13 de agosto. No es un reemplazo del backend: Retool
 solo presenta la interfaz y Clarvex conserva identidad, permisos, PostgreSQL y
@@ -351,9 +351,12 @@ reglas de negocio.
   elemento liquid-glass; por debajo de ~1100 px usa título completo en la primera
   fila y navegación horizontal en la segunda, sin recortar «Descuentos». En
   anchos suficientes vuelve a una sola fila. Compilación limpia.
-- **El borrador todavía no está publicado.** La versión pública sigue siendo la
-  captura estable. Revisar la vista previa antes de pulsar Publish; no retirar
-  ninguna pantalla de Clarvex hasta validar cada fase con una cuenta operativa.
+- **Publicado el 13 de agosto como parche Retool `0.0.5`.** La URL pública
+  `https://captura.adrianluna.mx/rr/app/captura-clarvex` ya abre Inicio con el
+  panel gerencial, la navegación liquid-glass responsive y las fotos reales.
+  Después de publicar se probaron las cinco rutas (Inicio, Horarios, Asistencia,
+  KPIs y Descuentos) y las cuatro imágenes firmadas cargaron con
+  `complete=true` y `naturalWidth>0`. Itzel conserva el fallback esperado.
 
 ### Primera prueba de extremo a extremo: Asistencia ✅
 

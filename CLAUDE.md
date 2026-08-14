@@ -561,7 +561,11 @@ El % de comisión difiere por puesto pero el mínimo de referencia es el mismo p
   confirmó cuatro imágenes cargadas (`complete=true`, `naturalWidth>0`) y el
   fallback de iniciales para quien no tiene foto. Retool guardó `5ada430` para
   los avatares y `d7d2e22` para que, por debajo de ~1100 px, el título y la
-  navegación ocupen dos filas sin recortar «Descuentos». Sigue sin publicarse.
+  navegación ocupen dos filas sin recortar «Descuentos». La fase 1 se publicó
+  el 13 de agosto como parche Retool `0.0.5`. La URL pública abre Inicio y se
+  validaron las cinco rutas; las cuatro imágenes firmadas cargaron con
+  `complete=true` y `naturalWidth>0`, mientras Itzel conserva el fallback por
+  no tener foto.
   Falta definir el remitente de correo. Detalle completo en `AGENTS.md`.
 - **`MERCADOPAGO_WEBHOOK_SECRET` sin configurar en el VPS.** El webhook de Mercado
   Pago responde 401 a todo: las suscripciones no se procesan automáticamente.
