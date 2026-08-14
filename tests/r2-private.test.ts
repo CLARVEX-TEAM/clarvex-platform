@@ -1,13 +1,14 @@
 import assert from "node:assert/strict";
 import { getDefaultResultOrder } from "node:dns";
 import test from "node:test";
-import { keyFromR2Url } from "../lib/r2";
+import { keyFromR2Url, R2_NETWORK_FAMILY } from "../lib/r2";
 import { photoSrc } from "../lib/photo-src";
 
 const PUBLIC_BASE = "https://pub-abc123.r2.dev";
 
 test("R2 prefiere IPv4 cuando el host también publica una AAAA", () => {
   assert.equal(getDefaultResultOrder(), "ipv4first");
+  assert.equal(R2_NETWORK_FAMILY, 4);
 });
 
 test("keyFromR2Url extrae la llave de una URL pública del bucket", () => {

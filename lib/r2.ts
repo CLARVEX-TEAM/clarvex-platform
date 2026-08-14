@@ -1,7 +1,9 @@
 import { DeleteObjectCommand, GetObjectCommand, HeadBucketCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { NodeHttpHandler } from "@smithy/node-http-handler";
 import { setDefaultResultOrder } from "node:dns";
 import fs from "node:fs";
+import https from "node:https";
 import path from "node:path";
 
 // Cloudflare publica IPv4 e IPv6 para el endpoint de R2. El VPS de producción
@@ -11,6 +13,22 @@ import path from "node:path";
 // alcanzaban la base. Preferir IPv4 conserva IPv6 como respaldo y evita el
 // bloqueo sin cambiar credenciales, llaves ni URLs guardadas.
 setDefaultResultOrder("ipv4first");
+
+// `ipv4first` mejora la resolución general, pero no obliga a todos los
+// transportes a conservar ese orden. El handler de Smithy usa un agente propio,
+// así que fijamos aquí la familia de la conexión real que utiliza el SDK. El
+// agente se comparte entre llamadas para reutilizar conexiones TLS y evitar que
+// cada foto pague de nuevo el costo de conexión.
+export const R2_NETWORK_FAMILY = 4 as const;
+const r2RequestHandler = new NodeHttpHandler({
+  connectionTimeout: 5_000,
+  socketTimeout: 30_000,
+  httpsAgent: new https.Agent({
+    family: R2_NETWORK_FAMILY,
+    keepAlive: true,
+    maxSockets: 50
+  })
+});
 
 if (process.env.NODE_ENV === "test" || process.env.ALLOW_INTEGRATION_TEST_DATABASE === "true") {
   const envTestPath = path.resolve(process.cwd(), ".env.test");
@@ -40,7 +58,8 @@ function createClient() {
   return new S3Client({
     region: "auto",
     endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
-    credentials: { accessKeyId, secretAccessKey }
+    credentials: { accessKeyId, secretAccessKey },
+    requestHandler: r2RequestHandler
   });
 }
 
