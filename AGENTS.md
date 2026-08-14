@@ -358,6 +358,35 @@ reglas de negocio.
   KPIs y Descuentos) y las cuatro imágenes firmadas cargaron con
   `complete=true` y `naturalWidth>0`. Itzel conserva el fallback esperado.
 
+### Borrador posterior a `0.0.5`: contraste y selector de tema
+
+La captura publicada por Adrian mostró un defecto real en modo claro: la clase
+`bg-[#0B0C0F]/72` del contenedor glass no produjo color en el CSS compilado y
+la cabecera quedó transparente, aunque su título seguía blanco. No era un
+problema del navegador ni del dominio.
+
+El borrador actual de Retool corrige la cabecera y todavía **no está
+publicado**:
+
+- `frontend/components/AppNav.tsx` usa fondos RGBA explícitos: blanco al 84 %
+  en claro y `#0B0C0F` al 86 % en oscuro, con borde, sombra y contraste propios
+  de cada tema. El glass continúa limitado a la navegación.
+- Añade un botón visible sol/luna, fuera del carrusel de navegación, con área
+  táctil de 44 px en pantallas estrechas, etiquetas accesibles en español y
+  estados de foco, hover y movimiento reducido.
+- `frontend/theme/themeToggle.ts` conserva la elección en `localStorage` con la
+  clave `clarvex-capture-theme`, sincroniza la clase `dark` y `color-scheme`, y
+  respeta el tema que Retool ya tenga cuando el usuario todavía no ha elegido.
+- `frontend/App.tsx` aplica la preferencia antes de pintar para evitar un
+  destello del tema contrario.
+- Se verificaron Inicio, Horarios, Asistencia, KPIs y Descuentos tanto en claro
+  como en oscuro. La barra dejó de ser transparente en ambos modos y el tema
+  oscuro persistió después de recargar la vista previa.
+- No se tocaron funciones de captura, rutas, identidad ni reglas de negocio.
+
+Antes de publicar el siguiente parche, Adrian debe revisar este borrador en la
+vista previa. No publicar automáticamente solo por haber terminado la prueba.
+
 ### Primera prueba de extremo a extremo: Asistencia ✅
 
 El 13 de agosto a las 09:39 de Monterrey, `jhernandezl2c@gmail.com` guardó una

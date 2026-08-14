@@ -566,6 +566,17 @@ El % de comisión difiere por puesto pero el mínimo de referencia es el mismo p
   validaron las cinco rutas; las cuatro imágenes firmadas cargaron con
   `complete=true` y `naturalWidth>0`, mientras Itzel conserva el fallback por
   no tener foto.
+  Después de `0.0.5` quedó un nuevo **borrador sin publicar** para corregir la
+  cabecera en modo claro y añadir selector de tema. La causa era
+  `bg-[#0B0C0F]/72`: Retool no generó esa opacidad y el contenedor quedó
+  transparente con texto blanco. `frontend/components/AppNav.tsx` ahora usa
+  RGBA explícito para claro/oscuro y un botón sol/luna accesible;
+  `frontend/theme/themeToggle.ts` persiste la elección bajo
+  `clarvex-capture-theme`; `frontend/App.tsx` la aplica antes del primer
+  pintado. Se probaron Inicio, Horarios, Asistencia, KPIs y Descuentos en ambos
+  temas, además de la persistencia tras recargar la vista previa. No se tocaron
+  rutas, datos ni funciones de captura. Esperar la revisión de Adrian antes de
+  publicar el siguiente parche.
   Falta definir el remitente de correo. Detalle completo en `AGENTS.md`.
 - **`MERCADOPAGO_WEBHOOK_SECRET` sin configurar en el VPS.** El webhook de Mercado
   Pago responde 401 a todo: las suscripciones no se procesan automáticamente.
