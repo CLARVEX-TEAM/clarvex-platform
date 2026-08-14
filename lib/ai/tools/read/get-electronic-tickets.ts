@@ -69,7 +69,7 @@ export const getElectronicTicketsTool = defineTool<z.infer<typeof argsSchema>>({
     if (rows.length === 0) {
       return toolOk({
         disponible: false,
-        motivo: "Todavía no se ha capturado ticket electrónico. Se captura por semana desde Centro de Datos."
+        motivo: "Todavía no se ha capturado ticket electrónico. Se captura por semana desde Captura Clarvex."
       });
     }
 

@@ -1,108 +1,18 @@
 import { NextResponse } from "next/server";
-import { NotificationType } from "@prisma/client";
 import { requireCron } from "@/lib/cron-auth";
-import { resolveMonterreyDate } from "@/lib/cron-time";
-import { createNotifications, type NotificationInput } from "@/lib/notifications";
-import { prisma } from "@/lib/prisma";
-import { dispatchPushToUsers } from "@/lib/push";
-import { daysSinceLatestSale, isDataFrozen } from "@/lib/sync-freshness";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-// Vigila la sincronización del RDV por tienda: si la última sync exitosa
-// tiene más de STALE_HOURS, si la última terminó en ERROR, o si el archivo
-// lleva días sin traer ventas nuevas, avisa a gerencia y al admin de
-// plataforma. Sin datos frescos, los KPIs mienten en silencio.
-
-const PUSH_TAG = "sync-alert";
-const LOG_TYPE = "SYNC_ALERT";
-const STALE_HOURS = 26;
-
+/**
+ * Compatibilidad para instalaciones que todavía conserven el cron antiguo.
+ *
+ * Las fuentes de Excel de Axo fueron retiradas el 14 de agosto de 2026. La
+ * operación ahora se captura en Retool, así que alertar por esos enlaces
+ * deshabilitados solo genera ruido y conduce a una pantalla ya retirada.
+ */
 export async function POST(request: Request) {
   const unauthorized = requireCron(request);
   if (unauthorized) return unauthorized;
-
-  const { dateKey, utcDate } = resolveMonterreyDate();
-  const now = Date.now();
-  const sources = await prisma.dataSource.findMany({
-    where: { type: "KPIS" },
-    select: {
-      id: true, storeId: true, lastSyncAt: true,
-      store: { select: { name: true } },
-      syncLogs: { orderBy: { createdAt: "desc" }, take: 1, select: { status: true, message: true, createdAt: true } }
-    }
-  });
-  const platformAdmins = await prisma.user.findMany({ where: { platformAdmin: true, active: true }, select: { id: true, storeId: true } });
-  const summary = { date: dateKey, sources: sources.length, alerts: 0, healthy: 0, skipped: 0 };
-
-  for (const source of sources) {
-    const lastSuccess = await prisma.syncLog.findFirst({
-      where: { dataSourceId: source.id, status: "SUCCESS" },
-      orderBy: { createdAt: "desc" },
-      select: { createdAt: true }
-    });
-    const lastLog = source.syncLogs[0] ?? null;
-    const hoursSinceSuccess = lastSuccess ? (now - lastSuccess.createdAt.getTime()) / 3_600_000 : Infinity;
-    const failed = lastLog?.status === "ERROR";
-    const stale = hoursSinceSuccess > STALE_HOURS;
-
-    // Se ignoran los días futuros: una venta capturada por error en un día que
-    // aún no ocurre haría pasar por fresca a una fuente detenida.
-    const latestSale = await prisma.kpi.findFirst({
-      where: { storeId: source.storeId, dailySales: { gt: 0 }, date: { lte: utcDate } },
-      orderBy: { date: "desc" },
-      select: { date: true }
-    });
-    const daysBehind = daysSinceLatestSale(utcDate, latestSale?.date ?? null);
-    const frozen = isDataFrozen(utcDate, latestSale?.date ?? null);
-
-    if (!failed && !stale && !frozen) {
-      summary.healthy += 1;
-      continue;
-    }
-
-    const alreadySent = await prisma.dailyNotificationLog.findFirst({ where: { date: dateKey, type: LOG_TYPE, employeeId: source.storeId } });
-    if (alreadySent) {
-      summary.skipped += 1;
-      continue;
-    }
-
-    const managers = await prisma.user.findMany({
-      where: { storeId: source.storeId, active: true, role: { in: ["GERENTE", "SUBGERENTE"] } },
-      select: { id: true }
-    });
-    const recipients = Array.from(new Set([...managers.map((manager) => manager.id), ...platformAdmins.map((admin) => admin.id)]));
-    if (recipients.length === 0) {
-      summary.skipped += 1;
-      continue;
-    }
-
-    // El aviso de datos congelados lleva otro título a propósito: la
-    // sincronización se ve verde, así que decir "revisa el Centro de Datos"
-    // mandaría a gerencia a mirar justo donde todo parece correcto.
-    const dataOnly = frozen && !failed && !stale;
-    const title = dataOnly
-      ? `⚠️ El RDV no trae datos nuevos — ${source.store.name}`
-      : `⚠️ Sincronización del RDV — ${source.store.name}`;
-    const body = failed
-      ? `La última sincronización falló. Revisa el Centro de Datos y vuelve a intentar.`
-      : stale
-        ? lastSuccess
-          ? `Lleva ${Math.floor(hoursSinceSuccess)} h sin sincronizar; los KPIs pueden estar desactualizados. Ejecuta "Sincronizar ahora".`
-          : `Nunca se ha sincronizado con éxito. Revisa el enlace en el Centro de Datos.`
-        : `La sincronización corre bien, pero el archivo lleva ${daysBehind} días sin traer ventas nuevas. Revisa que el RDV de origen se siga actualizando.`;
-
-    const notifications: NotificationInput[] = recipients.map((id) => ({
-      storeId: source.storeId, userId: id, type: NotificationType.DAILY_SUMMARY, title, body
-    }));
-    await prisma.$transaction(async (tx) => {
-      await createNotifications(tx, notifications);
-      await tx.dailyNotificationLog.create({ data: { employeeId: source.storeId, date: dateKey, type: LOG_TYPE, case: null, sent: true } });
-    });
-    await dispatchPushToUsers(recipients, { title, body, tag: PUSH_TAG, url: "/datos" }).catch(() => undefined);
-    summary.alerts += 1;
-  }
-
-  return NextResponse.json(summary);
+  return NextResponse.json({ ok: true, disabled: true, alerts: 0, reason: "Captura propia activa." });
 }

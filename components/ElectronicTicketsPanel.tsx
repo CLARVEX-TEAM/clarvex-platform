@@ -112,7 +112,7 @@ export function ElectronicTicketsPanel({
       {!hasAnything ? (
         <p className="mt-4 rounded-xl bg-void px-3 py-3 text-xs text-muted">
           Todavía no hay capturas de este periodo.
-          {!isAdvisor ? " Se capturan por semana desde Centro de Datos." : ""}
+          {!isAdvisor ? " Se capturan por semana desde Captura Clarvex." : ""}
         </p>
       ) : (
         <>

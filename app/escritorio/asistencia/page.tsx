@@ -237,7 +237,7 @@ export default function EscritorioAsistencia() {
       ) : records.length === 0 ? (
         <DeskEmpty
           title="Sin registros este mes"
-          hint="Se llenan solos conforme el archivo de Asistencia se sincroniza desde Centro de Datos."
+          hint="Se llenan conforme gerencia captura la asistencia en Captura Clarvex."
         />
       ) : tab === "dias" ? (
         <DeskReveal>

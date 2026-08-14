@@ -54,6 +54,7 @@ const captureRoutes = new Set([
   "/api/admin/capture/attendance",
   "/api/admin/capture/kpis",
   "/api/admin/capture/discounts",
+  "/api/admin/capture/electronic-tickets",
   // Inicio gerencial de Retool: solo lectura, autorizado con el mismo secreto.
   "/api/admin/retool/dashboard"
 ]);

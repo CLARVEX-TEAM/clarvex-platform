@@ -6,13 +6,11 @@ import { resolveMonterreyDate } from "@/lib/cron-time";
 import { buildMiddayAdvisorMessage, buildMiddayManagerSummary } from "@/lib/daily-summary";
 import { createNotifications, type NotificationInput } from "@/lib/notifications";
 import { dispatchPushToUsers } from "@/lib/push";
-import { syncAllSources } from "@/lib/data-source-sync";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
-// Sincroniza los datos antes de avisar: incluye la sync (varios min) + el envío.
-export const maxDuration = 300;
+export const maxDuration = 120;
 
 const PUSH_TAG = "media-jornada";
 const LOG_TYPE = "MIDDAY";
@@ -21,9 +19,6 @@ const THRESHOLD = 0.5; // por debajo del 50% de la meta del día = atrasado
 export async function POST(request: Request) {
   const unauthorized = requireCron(request);
   if (unauthorized) return unauthorized;
-
-  // Refrescar KPIs/horarios antes de avisar para no mandar datos viejos.
-  await syncAllSources().catch(() => undefined);
 
   const { dateKey, utcDate, dateLabel } = resolveMonterreyDate();
   const thresholdPct = Math.round(THRESHOLD * 100);

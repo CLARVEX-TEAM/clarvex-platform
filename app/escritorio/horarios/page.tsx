@@ -244,7 +244,7 @@ export default function EscritorioHorarios() {
         <DeskEmpty
           icon={CalendarDays}
           title="Sin horarios para esta semana"
-          hint="Se cargan desde el archivo de horarios en el Centro de Datos. Prueba también con otra semana."
+          hint="Se cargan desde Captura Clarvex. Prueba también con otra semana."
         />
       ) : null}
     </div>

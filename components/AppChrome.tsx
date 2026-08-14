@@ -41,7 +41,6 @@ const ROUTES_WITH_NAV = new Set([
   "/comunicados",
   "/conteos",
   "/conteos/marbetes",
-  "/datos",
   "/encuestas",
   "/equipo",
   "/faltantes",

@@ -211,7 +211,7 @@ export default function EscritorioEquipo() {
             <DeskEmpty
               icon={UsersRound}
               title="Sin horarios cargados para esta semana"
-              hint="Aparecen en cuanto se sincroniza el archivo de horarios desde el Centro de Datos."
+              hint="Aparecen en cuanto gerencia guarda los horarios en Captura Clarvex."
             />
           ) : (
             <div className="overflow-x-auto">
@@ -342,7 +342,7 @@ export default function EscritorioEquipo() {
                 {editRows.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="py-8">
-                      <DeskEmpty icon={CalendarHeart} title="Sin colaboradores todavía" hint="Se cargan desde el Centro de Datos." />
+                      <DeskEmpty icon={CalendarHeart} title="Sin colaboradores todavía" hint="Los horarios se capturan en Captura Clarvex." />
                     </td>
                   </tr>
                 ) : null}

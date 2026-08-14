@@ -11,7 +11,6 @@ import {
   Cake,
   CheckCircle2,
   ClipboardCheck,
-  Database,
   Megaphone,
   Receipt,
   ShoppingBag,
@@ -435,26 +434,6 @@ export default function ManagerDashboard() {
               </div>
               <Link
                 href="/checklist"
-                className="inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-full border border-line px-3.5 text-xs font-semibold text-ink/75 transition active:scale-95"
-              >
-                Abrir <ArrowRight size={14} />
-              </Link>
-            </div>
-          </Card>
-        </motion.div>
-
-        <motion.div {...cardAnim(0.80)} className="mt-3">
-          <Card className="p-3.5">
-            <div className="flex items-center gap-3">
-              <span className="grid size-11 shrink-0 place-items-center rounded-2xl border border-line bg-void text-ink/65">
-                <Database size={20} />
-              </span>
-              <div className="min-w-0 flex-1">
-                <h2 className="font-semibold tracking-[-0.02em] text-ink">Centro de Datos</h2>
-                <p className="mt-0.5 text-xs text-muted">Fuentes y sincronizaciones</p>
-              </div>
-              <Link
-                href="/datos"
                 className="inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-full border border-line px-3.5 text-xs font-semibold text-ink/75 transition active:scale-95"
               >
                 Abrir <ArrowRight size={14} />

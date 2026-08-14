@@ -1,5 +1,5 @@
 import {
-  Award, Boxes, CalendarRange, ChartColumn, ClipboardCheck, ClipboardList, Database,
+  Award, Boxes, CalendarRange, ChartColumn, ClipboardCheck, ClipboardList,
   CalendarCheck, FileClock, Gauge, GraduationCap, Megaphone, MessagesSquare, NotebookPen, PackageSearch,
   PencilLine, ShieldCheck, Target, TriangleAlert, Users
 } from "lucide-react";
@@ -51,8 +51,7 @@ export const navGroups: NavGroup[] = [
       { href: "/escritorio/kudos", label: "Reconocimientos", icon: Award, keywords: "kudos felicitaciones logros" },
       { href: "/escritorio/encuestas", label: "Encuestas", icon: ClipboardList, keywords: "clima feedback opinion" },
       { href: "/escritorio/capacitacion", label: "Capacitación", icon: GraduationCap, keywords: "cursos biblioteca recursos archivos" },
-      { href: "/escritorio/captura", label: "Captura", icon: PencilLine, keywords: "horarios asistencia registrar turnos entradas retool" },
-      { href: "/escritorio/datos", label: "Centro de Datos", icon: Database, keywords: "rdv sincronizar excel fuentes sharepoint" },
+      { href: "/escritorio/captura", label: "Captura", icon: PencilLine, keywords: "horarios asistencia kpis descuentos ticket electronico retool" },
       { href: "/escritorio/admin", label: "Administración", icon: ShieldCheck, adminOnly: true, keywords: "tiendas usuarios plataforma comisiones suscripcion auditoria" }
     ]
   }
@@ -76,7 +75,6 @@ export const sectionTitles: Record<string, { title: string; subtitle: string }> 
   "/escritorio/kudos": { title: "Reconocimientos", subtitle: "Reconoce el buen trabajo del equipo" },
   "/escritorio/encuestas": { title: "Encuestas", subtitle: "Clima laboral y feedback del equipo" },
   "/escritorio/captura": { title: "Captura", subtitle: "Horarios y asistencia de tu tienda" },
-  "/escritorio/datos": { title: "Centro de Datos", subtitle: "Fuentes RDV y sincronización" },
   "/escritorio/bitacora": { title: "Bitácora", subtitle: "Registro cronológico de operación de tienda" },
   "/escritorio/capacitacion": { title: "Capacitación", subtitle: "Biblioteca de recursos y archivos del equipo" },
   "/escritorio/chat": { title: "Chat", subtitle: "Mensajes directos y del equipo" },
