@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireAdminCapture } from "@/lib/admin-capture-auth";
 import { dashboardDateKey, dashboardDateRange } from "@/lib/dashboard-kpi";
 import { prisma } from "@/lib/prisma";
+import { signR2Url } from "@/lib/r2";
 import { buildManagerDashboardMetric } from "@/lib/retool-manager-dashboard";
 import { retailMonthBoundsFor } from "@/lib/report-deadlines";
 import { ADVISOR_WHERE, PERSON_WHERE } from "@/lib/store-people";
@@ -111,6 +112,14 @@ export async function GET(request: Request) {
 
   const scheduleByUser = new Map(schedules.map((row) => [row.userId, row]));
   const kpiByUser = new Map(todayRows.map((row) => [row.userId, row]));
+  const photoByUser = new Map(
+    await Promise.all(
+      [...new Map(
+        [...advisors, ...attendance.map((row) => row.user)]
+          .map((user) => [user.id, user] as const)
+      ).values()].map(async (user) => [user.id, await signR2Url(user.photoUrl)] as const)
+    )
+  );
   const ranking = advisors
     .map((advisor) => {
       const kpi = kpiByUser.get(advisor.id);
@@ -121,7 +130,7 @@ export async function GET(request: Request) {
         userId: advisor.id,
         name: advisor.name,
         employeeNumber: advisor.employeeNumber,
-        photoUrl: advisor.photoUrl,
+        photoUrl: photoByUser.get(advisor.id) ?? null,
         sales,
         goal,
         achievement: goal > 0 ? Math.round((sales / goal) * 10_000) / 100 : null,
@@ -154,7 +163,7 @@ export async function GET(request: Request) {
         userId: row.userId,
         name: row.user.name,
         employeeNumber: row.user.employeeNumber,
-        photoUrl: row.user.photoUrl,
+        photoUrl: photoByUser.get(row.userId) ?? null,
         status: row.status,
         expectedAt: row.expectedAt,
         arrivedAt: row.arrivedAt,
