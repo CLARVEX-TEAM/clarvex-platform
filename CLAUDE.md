@@ -44,6 +44,7 @@ global de otra versión instala un árbol de dependencias distinto al del servid
 | bcryptjs | ^2.4.3 |
 | jose | ^6.2.3 |
 | @aws-sdk/client-s3 | ^3.1086.0 (para R2) |
+| @smithy/node-http-handler | 4.9.5 (transporte IPv4 de R2) |
 | @sentry/nextjs | ^10.65.0 |
 | exceljs | ^4.4.0 (parser del RDV) |
 
@@ -123,7 +124,7 @@ pnpm install
 pnpm exec prisma generate
 pnpm run build
 pnpm exec eslint . --max-warnings 0
-pnpm test                      # 403 tests; deben pasar todos
+pnpm test                      # 687 tests; deben pasar todos
 
 # Preferir SIEMPRE archivos explicitos sobre `git add .`:
 git status --short              # revisar que no haya .env, respaldos ni volcados
@@ -195,6 +196,25 @@ R2_BUCKET_NAME=
 R2_PUBLIC_URL=
 CLOUDFLARE_ACCOUNT_ID=
 ```
+
+#### Incidente de subidas del kiosko — resuelto el 13 de agosto de 2026
+
+Fotos, escaneos y PDFs del checklist se quedaban en «Procesando» y no creaban
+filas en `ChecklistEntry`/`ChecklistScan`. No era la cámara ni el parser: el
+endpoint de Cloudflare R2 publica A y AAAA, pero el VPS no tiene una ruta IPv6
+funcional. El transporte del AWS SDK intentaba IPv6 y podía tardar entre 20 y
+más de 90 segundos.
+
+La corrección definitiva está en `a20aff1`: `lib/r2.ts` usa un
+`NodeHttpHandler` con agente HTTPS `family: 4`, `keepAlive`, límite de conexión
+de 5 s y límite de socket de 30 s. `setDefaultResultOrder("ipv4first")` se
+conserva como primera defensa, pero **no basta por sí solo**; no retirar el
+handler IPv4 mientras el VPS siga sin salida IPv6.
+
+Verificación de producción tras desplegar: health profundo (DB + R2) en 411 ms
+y escritura + `HeadObject` en 553 ms; el objeto temporal se eliminó. Pasaron
+lint, TypeScript, build y las 687 pruebas. Los intentos fallidos anteriores al
+despliegue no llegaron a la base ni al bucket y deben capturarse otra vez.
 
 ### Respaldos — bucket y token SEPARADOS de los de la app
 

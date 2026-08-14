@@ -540,6 +540,17 @@ pantalla pudiera mandar el estado, se podría marcar «a tiempo» un retardo.
 
 ## Trampas verificadas en producción
 
+- **R2 debe usar IPv4 en el agente HTTP, no solo en DNS.** El 13 de agosto el
+  kiosko dejó fotos, escaneos y PDFs indefinidamente en «Procesando»: no hubo
+  filas nuevas de `ChecklistEntry`/`ChecklistScan`. Cloudflare publica A y AAAA,
+  pero el VPS no tiene ruta IPv6 funcional. `setDefaultResultOrder("ipv4first")`
+  redujo el problema, aunque llamadas del AWS SDK todavía tardaron 20–90+ s. La
+  solución definitiva (`a20aff1`) es el `NodeHttpHandler` de `lib/r2.ts` con
+  agente HTTPS `family: 4`, `keepAlive`, conexión de 5 s y socket de 30 s. No
+  retirarlo mientras no exista IPv6 funcional. Producción quedó verificada con
+  health profundo en 411 ms y escritura + lectura de metadatos en 553 ms; el
+  objeto temporal se borró. Los intentos anteriores al despliegue no se
+  guardaron y deben repetirse.
 - **`Schedule.date` va a medianoche UTC.** Había 4 filas a mediodía que
   duplicaban días; ya se bloqueó la entrada de fechas fuera de medianoche.
 - **Ningún horario real trae `startTime`.** La asistencia asume la hora estándar
@@ -726,5 +737,5 @@ Single Next.js 15 (App Router) PWA backed by PostgreSQL via Prisma. `pnpm` is th
 * Login: seeded users `81893` (GERENTE), `102259` (SUBGERENTE), `95739` (ASESOR) were given PIN `1234` during setup. Brand-new users have no PIN and PIN setup requires an authenticated manager/subgerente (see `app/api/auth/employee-login/route.ts`); set a PIN directly with bcrypt (`hashPin`) if you need a fresh login.
 
 ### Lint / typecheck / test / build (matches `.github/workflows/ci.yml`)
-* `pnpm lint`, `pnpm exec tsc --noEmit`, `pnpm test` (158 unit tests, needs `clarvex_test` migrated+seeded), `pnpm audit --audit-level=high`. `pnpm test:security-protection` also passes.
+* `pnpm lint`, `pnpm exec tsc --noEmit`, `pnpm test` (687 tests al 13 de agosto de 2026; la integración usa `clarvex_test` migrada y sembrada), `pnpm audit --audit-level=high`. `pnpm test:security-protection` también pasa.
 * Known-broken: `pnpm test:integration` fails because it spawns `next dev` with `NODE_ENV=test`, which Next forces back to `development`, tripping the `lib/prisma.ts` guard. It is not part of CI. The harness also SIGKILLs only the parent, leaving orphaned `next-server` processes on port 3101 — kill them by PID if you hit `EADDRINUSE`.
