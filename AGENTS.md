@@ -501,7 +501,18 @@ estado `Pending`, con solo `All Users` + `captura tiendas`, acceso a una app y
 dos recursos, sin `admin`, `editor`, `viewer`, workflows ni agentes. Atributos
 verificados en el detalle de la invitación: `role=SUBGERENTE`,
 `storeId=cmr9yr6te05qagemyll8vv48f` y
-`storeName=GUESS Galerías Monterrey`. Falta que acepte el correo de Retool.
+`storeName=GUESS Galerías Monterrey`.
+
+✅ **Aceptó el 13 de agosto** y ha entrado desde entonces. Es la primera cuenta
+de una tienda distinta a TH San Agustín, así que es con la que conviene
+confirmar el aislamiento en la práctica: pedirle que abra la captura y diga qué
+tienda le sale. El código no deja otra opción —`getEmployees` recibe solo
+`user`, sin parámetro de tienda— pero una prueba real cierra la duda.
+
+⚠️ **`prueba@clarvex.local` quedó DESHABILITADO el 15 de agosto.** Era una
+cuenta de tipo *embed* creada sin querer al depurar el certificado, con
+identidad de TH San Agustín. Retool no permite borrar usuarios, solo
+deshabilitarlos.
 
 La pantalla **Republish to use your custom domain** quedó resuelta el 13 de
 agosto. Retool no quitó el aviso con una publicación sin etiqueta; fue necesario

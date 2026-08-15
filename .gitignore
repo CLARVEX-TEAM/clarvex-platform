@@ -52,3 +52,9 @@ public/uploads/evidences/*
 *.crt
 *.cer
 .vercel
+
+# Restos de Codex: configuracion local y fotos enviadas en sus sesiones.
+# Ya no se usa, pero mientras las carpetas existan un `git add .` las subiria
+# al historial, y de ahi no salen.
+.codex/
+.codex-remote-attachments/
