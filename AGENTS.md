@@ -434,13 +434,29 @@ teórico = inventario inicial
         ± ajustes
 ```
 
+**Validado contra el kardex real de la tienda** (`KARDEX TOMMY SAN AGUSTIN 1RA
+RONDA 2026.xlsx`, revisado el 16 de agosto). Su aritmética es idéntica:
+
+```
+6430 (inventario 18 feb) + 8220 recepción + 23 traspasos recibidos
+     − 5275 ventas netas − 2039 traspasos enviados − 0 SFS  =  7359 teórico ✅
+```
+
+Hay una prueba en el repo que reproduce esos números exactos, para que el
+cálculo no se aleje del que ya saben leer. Sus «ventas netas» son brutas menos
+devoluciones (5372 − 97); aquí entran por separado y dan lo mismo.
+
 Decisiones que costaron conversación y no hay que deshacer:
 
-- **La base se fija UNA sola vez y no se reancla nunca.** Es decisión explícita
-  de Adrian. Los conteos posteriores se comparan contra el teórico y muestran la
-  diferencia **acumulada desde el arranque**; no la borran. Reanclar en cada
-  inventario se tragaría la merma en silencio y cada conteo empezaría de cero.
-  `InventoryBaseline.storeId` es único para que el esquema lo garantice.
+- **El kardex va por RONDAS**, como el Excel. Cada inventario cierra la ronda en
+  curso y abre la siguiente con las piezas recién contadas. Dentro de una ronda
+  la base **no se toca jamás**: corregirla a media ronda reescribe la existencia
+  teórica de todos los días de golpe. Una sola ronda abierta por tienda,
+  garantizado por índice único parcial (`closedAt IS NULL`) creado a mano en la
+  migración — el chequeo en código no basta con dos instancias de PM2.
+- **Cerrar una ronda NO abre la siguiente.** El conteo de cierre suele ajustarse
+  en los días posteriores al inventario; encadenarlas dejaría la base nueva
+  clavada en una cifra provisional.
 - **Para absorber una diferencia ya investigada se registra un `AJUSTE`**, con
   motivo obligatorio. Nunca automático: es la diferencia entre una merma
   explicada y una desaparecida.
@@ -458,29 +474,48 @@ Decisiones que costaron conversación y no hay que deshacer:
   ⚠️ **Supuesto pendiente de confirmar con la tienda:** que el conteo se hace al
   cierre. Si contaran ANTES de abrir, las ventas de ese día se perderían.
 - **`quantity` siempre positivo**; el signo lo pone el tipo (`signedQuantity`).
+- **SFS (Ship From Store) es una salida propia**, no un traspaso. Lo llevan
+  separado en su archivo; esta ronda salió en 0 pero la hoja existe.
+- **Sobrantes y faltantes NO entran al teórico** —`quantity` ya son las piezas
+  realmente recibidas— pero se guardan: 6 y 10 esta ronda, y son la primera
+  pista cuando el conteo de cierre no cuadra.
 - **Todo o nada al capturar**: si una fila falla no entra ninguna. En un kardex,
   la duda de qué quedó dentro se paga recontando.
 
 Qué hay en el repo:
 
-- `prisma/schema.prisma` — `InventoryBaseline`, `InventoryMovement` y el enum
-  `InventoryMovementType`. Migración `20260816204302_inventory_kardex`,
-  **puramente aditiva** (dos tablas y un enum; no toca nada existente).
-- `lib/inventory-kardex-entry.ts` — validación y cálculo, sin Prisma. 22 pruebas.
-- `lib/inventory-kardex.ts` — lectura del estado y escritura.
+- `prisma/schema.prisma` — `InventoryRound`, `InventoryMovement` y el enum
+  `InventoryMovementType`. Tres migraciones aditivas; la última crea el índice
+  parcial de una sola ronda abierta.
+- `lib/inventory-kardex-entry.ts` — validación y cálculo, sin Prisma. 26 pruebas.
+- `lib/inventory-kardex.ts` — estado, captura, abrir y cerrar ronda, historial.
 - `GET|POST /api/admin/capture/inventory` — estado y movimientos.
-- `POST /api/admin/capture/inventory/baseline` — inventario inicial, en ruta
-  aparte a propósito: cambiar la base recalcula todo el histórico de golpe.
+- `GET|POST /api/admin/capture/inventory/rounds` — historial, abrir y cerrar.
 - Las dos rutas registradas en `captureRoutes` del `middleware.ts`.
 
-Probado contra base real: base fijada, reemplazo rechazado, movimiento anterior
-a la base rechazado, ajuste sin motivo rechazado, captura de 4 movimientos, y
-teórico coincidiendo al número con el esperado. Lint, build (salida sin filtrar)
-y 716 pruebas en verde.
+Probado contra base real, ciclo completo: abrir ronda, rechazo de una segunda
+abierta, captura de movimientos, teórico coincidiendo al número, cierre con
+diferencia de −75, rechazo de movimientos en ronda cerrada, apertura de la 2ª
+ronda con las piezas contadas y su kardex arrancando limpio. Lint, build (salida
+sin filtrar) y 721 pruebas en verde.
+
+Lo que se vio en el archivo de la tienda y conviene recordar:
+
+- El catálogo de `Hoja1` trae **72 tiendas Tommy con su APTO** (San Agustín es
+  `03029`). En Retool, «Destino» y «Origen» deben ser desplegable, no texto
+  libre: hoy conviven `O. MTY`, `PARQUE TOREO`, `VALLARTA`, `ALTACIA`.
+- Una fila de *Trans. recibidas* (folio `1737816`, 16 pz, CUERNAVACA) **no tiene
+  fecha**. Suma al total igual; en el kardex nuevo no pasaría.
+- El resumen muestra «Diferencias −7359» y «−100 % de variación» porque la celda
+  de existencia física está vacía esperando el conteo. No es un error del
+  archivo.
 
 **Falta:** desplegar (`prisma migrate deploy` en el VPS), la pantalla de Retool,
-la vista en Clarvex y enganchar la comparación al cierre de un `CycleCount`. El
-inventario del **martes 18 de agosto** es el que da la base inicial de la tienda.
+la vista en Clarvex y enganchar el cierre de ronda a un `CycleCount`. El
+inventario del **martes 18 de agosto** cierra la 1ª ronda y abre la 2ª.
+
+⚠️ **Supuesto sin confirmar:** que el conteo se hace al cierre del día. Si
+contaran ANTES de abrir, las ventas de ese día se perderían del kardex.
 
 ### Retiro de Centro de Datos y Ticket electrónico — 14 de agosto
 

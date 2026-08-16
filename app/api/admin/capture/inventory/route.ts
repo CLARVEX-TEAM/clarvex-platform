@@ -29,9 +29,13 @@ const bodySchema = z.object({
         type: z.string().min(1).max(32),
         quantity: z.union([z.number(), z.string()]),
         reference: z.string().max(64).nullish(),
+        document: z.string().max(64).nullish(),
+        delivery: z.string().max(64).nullish(),
         counterpart: z.string().max(120).nullish(),
+        surplus: z.union([z.number(), z.string()]).nullish(),
+        missing: z.union([z.number(), z.string()]).nullish(),
         note: z.string().max(500).nullish(),
-        createdBy: z.string().max(32).nullish()
+        createdBy: z.string().max(64).nullish()
       })
     )
     .min(1, "No se recibió ningún movimiento.")
@@ -48,7 +52,8 @@ export async function GET(request: Request) {
   const store = await prisma.store.findUnique({ where: { id: storeId }, select: { id: true, name: true } });
   if (!store) return NextResponse.json({ error: "Tienda no encontrada." }, { status: 404 });
 
-  const state = await getKardexState(storeId);
+  const roundId = new URL(request.url).searchParams.get("roundId")?.trim() || undefined;
+  const state = await getKardexState(storeId, roundId);
 
   return NextResponse.json({
     ok: true,
@@ -56,15 +61,16 @@ export async function GET(request: Request) {
     // El catálogo viaja con el estado para que el formulario externo no tenga que
     // repetir la lista de tipos: si aquí se añade uno, allá aparece solo.
     types: MOVEMENT_TYPES.map((type) => ({ value: type, label: movementLabel(type) })),
-    baseline: state.baseline
+    round: state.round
       ? {
-          date: state.baseline.date.toISOString().slice(0, 10),
-          pieces: state.baseline.pieces,
-          countId: state.baseline.countId,
-          note: state.baseline.note
+          ...state.round,
+          startDate: state.round.startDate.toISOString().slice(0, 10),
+          endDate: state.round.endDate ? state.round.endDate.toISOString().slice(0, 10) : null,
+          open: state.round.endDate === null
         }
       : null,
     summary: state.summary,
+    difference: state.difference,
     movements: state.movements.map((movement) => ({
       ...movement,
       date: movement.date.toISOString().slice(0, 10),

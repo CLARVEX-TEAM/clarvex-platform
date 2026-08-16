@@ -805,16 +805,29 @@ Guardar la existencia y sumarle/restarle es como se corrompe un inventario: el
 error queda incrustado y ya no se sabe cuál fue. `summarizeKardex()` en
 `lib/inventory-kardex-entry.ts` la recalcula entera en cada lectura.
 
-Cuatro reglas que NO hay que cambiar sin hablarlo:
+El kardex va por **rondas**: cada inventario físico cierra la ronda en curso y
+abre la siguiente con las piezas recién contadas. Es como se lleva a mano (el
+archivo de la tienda se llama «1RA RONDA 2026»).
 
-1. **La base se fija una vez y no se reancla jamás.** Los conteos posteriores
-   muestran la diferencia acumulada desde el arranque; no la borran. Reanclar se
-   tragaría la merma en silencio. `InventoryBaseline.storeId` es único.
+Cinco reglas que NO hay que cambiar sin hablarlo:
+
+1. **Dentro de una ronda, `basePieces` no se toca jamás.** Corregirla a media
+   ronda reescribe la existencia teórica de todos los días de golpe. Solo puede
+   haber **una ronda abierta por tienda**, garantizado por un índice único
+   parcial (`closedAt IS NULL`) — el chequeo en código no basta con dos
+   instancias de PM2.
 2. **La venta del día NO se captura**: sale de `Kpi.pieces`, agregada con
    `PERSON_WHERE`. Capturarla otra vez la contaría dos veces.
 3. **La devolución de cliente SÍ se captura**: las piezas de `Kpi` son brutas y
    el POS reporta las devoluciones aparte, a nivel tienda.
 4. **`quantity` siempre positivo**; el signo lo pone el tipo de movimiento.
+5. **Sobrantes y faltantes NO entran al teórico**: `quantity` ya son las piezas
+   realmente recibidas. Se guardan porque son la primera pista cuando el conteo
+   de cierre no cuadra.
+
+Tipos de movimiento: recepción, traspaso de entrada, devolución de cliente,
+traspaso de salida, **SFS** (Ship From Store) y ajuste ±. El corte de la ronda
+es el DÍA del inventario: movimientos y ventas usan `date > startDate`.
 
 Un `AJUSTE` exige motivo: sin él, una merma desaparece sin explicación, que es
 justo lo que el kardex existe para evitar.

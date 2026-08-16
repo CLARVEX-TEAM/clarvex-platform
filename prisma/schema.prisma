@@ -51,7 +51,7 @@ model Store {
   commissionRules       CommissionRule[]
   commissionSeasons     CommissionSeason[]
   cycleCounts           CycleCount[]
-  inventoryBaseline     InventoryBaseline?
+  inventoryRounds       InventoryRound[]
   inventoryMovements    InventoryMovement[]
   cycleCountTags        CycleCountTag[]
   dataSources           DataSource[]
@@ -1150,33 +1150,46 @@ model CycleCountNoUpc {
   @@index([countId])
 }
 
-/// Piezas del inventario físico con el que ARRANCA el kardex de una tienda.
+/// Una ronda de inventario: el periodo entre dos conteos físicos.
 ///
-/// Es el único número que no se deriva de nada: sale de contar la tienda
-/// completa una vez. Todo lo demás —la existencia teórica de cualquier día— se
-/// calcula sumándole los movimientos posteriores.
+/// Reproduce cómo se lleva hoy a mano —el archivo se llama «1RA RONDA 2026» y
+/// arranca con el inventario del 18 de febrero—. Cada inventario cierra la ronda
+/// en curso y abre la siguiente, cuya base son las piezas recién contadas.
 ///
-/// ⚠️ **No se reancla en cada conteo.** Los inventarios siguientes se comparan
-/// contra el teórico y muestran la diferencia ACUMULADA desde este día; no la
-/// borran. Reanclar automáticamente se tragaría la merma en silencio y cada
-/// inventario empezaría de cero como si nada hubiera pasado. Para absorber una
-/// diferencia ya investigada se registra un `AJUSTE`, que deja fecha, importe y
-/// motivo — la diferencia entre una merma explicada y una desaparecida.
+/// ⚠️ **Dentro de una ronda, `basePieces` no se toca JAMÁS.** Es el único número
+/// del kardex que no se deriva de nada; todo lo demás se calcula sumándole los
+/// movimientos. Corregir la base a media ronda reescribe la existencia teórica
+/// de todos los días de golpe. Para absorber una diferencia ya investigada se
+/// registra un `AJUSTE`, con motivo obligatorio — la diferencia entre una merma
+/// explicada y una desaparecida.
 ///
-/// `storeId` es único a propósito: una tienda tiene una sola base, y el esquema
-/// es quien lo garantiza.
-model InventoryBaseline {
-  id        String   @id @default(cuid())
-  storeId   String   @unique
-  /// Día del inventario físico del que salieron las piezas.
-  date      DateTime
-  pieces    Int
-  /// Conteo del que se tomó, cuando salió de un `CycleCount` de la app.
-  countId   String?
-  note      String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  store     Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+/// Solo puede haber **una ronda abierta por tienda**. Lo garantiza un índice
+/// único parcial (`closedAt IS NULL`) creado en la migración, no el código: dos
+/// rondas abiertas partirían los movimientos en dos kardex incompatibles.
+model InventoryRound {
+  id            String              @id @default(cuid())
+  storeId       String
+  /// Cómo la llaman en tienda. Ej. «1ra ronda 2026».
+  name          String
+  /// Día del inventario que la abre. Los movimientos son POSTERIORES a él.
+  startDate     DateTime
+  /// Piezas contadas en ese inventario. La base.
+  basePieces    Int
+  /// Día del inventario que la cierra. `null` mientras está abierta.
+  endDate       DateTime?
+  /// Piezas contadas al cerrar. Son la base de la ronda siguiente.
+  closingPieces Int?
+  /// Conteo de la app del que salió la base, si vino de un `CycleCount`.
+  countId       String?
+  note          String?
+  closedAt      DateTime?
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+  store         Store               @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  movements     InventoryMovement[]
+
+  @@unique([storeId, startDate])
+  @@index([storeId, startDate])
 }
 
 /// Un movimiento de mercancía: el kardex.
@@ -1195,23 +1208,37 @@ model InventoryBaseline {
 model InventoryMovement {
   id          String                @id @default(cuid())
   storeId     String
+  /// Ronda a la que pertenece. Un movimiento sin ronda no tiene base contra la
+  /// cual significar nada.
+  roundId     String
   date        DateTime
   type        InventoryMovementType
   /// Piezas, siempre > 0. El sentido lo da `type`.
   quantity    Int
-  /// Folio del traspaso, remisión o nota. Sirve para rastrearlo con Axo.
+  /// Caja, folio del traspaso o número de pedido en SFS.
   reference   String?
+  /// Manifiesto. Es lo que permite rastrear el envío con Axo.
+  document    String?
+  /// Entrega, en la recepción de mercancía.
+  delivery    String?
   /// Tienda destino/origen, CEDIS, o de dónde vino la mercancía.
   counterpart String?
+  /// Piezas de más y de menos halladas al abrir la caja. NO entran al teórico
+  /// —`quantity` ya son las piezas realmente recibidas—, pero son la primera
+  /// pista cuando el conteo de cierre no cuadra.
+  surplus     Int?
+  missing     Int?
   note        String?
-  /// Quién lo capturó, por número de empleado. Sin relación: la captura entra
-  /// por API externa y el número puede no corresponder a un usuario de la app.
+  /// Quién recibe o quién recolecta. Texto libre: la captura entra por API
+  /// externa y ahí aparecen tanto personas como paqueterías («ESTAFETA»).
   createdBy   String?
   createdAt   DateTime              @default(now())
   updatedAt   DateTime              @updatedAt
   store       Store                 @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  round       InventoryRound        @relation(fields: [roundId], references: [id], onDelete: Cascade)
 
   @@index([storeId, date])
+  @@index([roundId, date])
 }
 
 enum InventoryMovementType {

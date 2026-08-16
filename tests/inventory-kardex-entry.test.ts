@@ -3,7 +3,7 @@ import test from "node:test";
 import {
   countDifference,
   movementLabel,
-  normalizeBaselineEntry,
+  normalizeRoundEntry,
   normalizeMovementEntry,
   signedQuantity,
   summarizeKardex
@@ -11,7 +11,7 @@ import {
 
 const BASE = new Date("2026-08-18T00:00:00.000Z"); // inventario inicial
 const HOY = new Date("2026-08-31T00:00:00.000Z");
-const ctx = { baselineDate: BASE, today: HOY };
+const ctx = { round: { start: BASE, end: null }, today: HOY };
 
 const movimiento = (over: Record<string, unknown> = {}) => ({
   date: "2026-08-20",
@@ -63,13 +63,13 @@ test("rechaza un movimiento anterior al inventario inicial", () => {
   const outcome = normalizeMovementEntry(movimiento({ date: "2026-08-17" }), ctx);
   assert.equal(outcome.ok, false);
   if (outcome.ok) return;
-  assert.match(outcome.error, /no es posterior al inventario inicial/);
+  assert.match(outcome.error, /no es posterior al inventario que abre la ronda/);
 });
 
 test("el DIA del inventario inicial tampoco se acepta", () => {
   // Lo de ese dia ya esta dentro de las piezas contadas. Aceptarlo aqui y no en
-  // las ventas —que se suman con date > baseline— haria que un traspaso del
-  // martes contara dos veces.
+  // las ventas —que se suman con date > startDate— haria que un traspaso de ese
+  // dia contara dos veces.
   const outcome = normalizeMovementEntry(movimiento({ date: "2026-08-18" }), ctx);
   assert.equal(outcome.ok, false);
 });
@@ -132,7 +132,7 @@ test("los textos vacios quedan en null, no en cadena vacia", () => {
 
 test("el teorico suma entradas y resta salidas y ventas", () => {
   const summary = summarizeKardex({
-    baselinePieces: 3500,
+    basePieces: 3500,
     soldPieces: 120,
     movements: [
       { type: "RECEPCION", quantity: 200 },
@@ -157,7 +157,7 @@ test("reproduce el kardex real de TOMMY SAN AGUSTIN (1ra ronda 2026)", () => {
   // Sus "ventas netas" (5275) son brutas menos devoluciones (5372 - 97); aqui
   // entran por separado y dan lo mismo.
   const summary = summarizeKardex({
-    baselinePieces: 6430,
+    basePieces: 6430,
     soldPieces: 5372,
     movements: [
       { type: "RECEPCION", quantity: 8220 },
@@ -175,7 +175,7 @@ test("reproduce el kardex real de TOMMY SAN AGUSTIN (1ra ronda 2026)", () => {
 test("SFS es una salida, como el traspaso enviado", () => {
   assert.equal(signedQuantity("SFS", 30), -30);
   const summary = summarizeKardex({
-    baselinePieces: 1000,
+    basePieces: 1000,
     soldPieces: 0,
     movements: [{ type: "SFS", quantity: 30 }]
   });
@@ -185,7 +185,7 @@ test("SFS es una salida, como el traspaso enviado", () => {
 
 test("los ajustes entran netos y con su signo", () => {
   const summary = summarizeKardex({
-    baselinePieces: 1000,
+    basePieces: 1000,
     soldPieces: 0,
     movements: [
       { type: "AJUSTE_POSITIVO", quantity: 10 },
@@ -197,7 +197,7 @@ test("los ajustes entran netos y con su signo", () => {
 });
 
 test("sin movimientos el teorico es la base menos lo vendido", () => {
-  const summary = summarizeKardex({ baselinePieces: 3412, soldPieces: 15, movements: [] });
+  const summary = summarizeKardex({ basePieces: 3412, soldPieces: 15, movements: [] });
   assert.equal(summary.theoretical, 3397);
 });
 
@@ -207,22 +207,67 @@ test("la diferencia negativa significa que falta mercancia", () => {
   assert.equal(countDifference(3487, 3487), 0);
 });
 
-test("valida el inventario inicial", () => {
-  const ok = normalizeBaselineEntry({ date: "2026-08-18", pieces: "3,412", countId: "abc" }, { today: HOY });
+const ronda = (over: Record<string, unknown> = {}) => ({
+  name: "2da ronda 2026",
+  startDate: "2026-08-18",
+  basePieces: 3412,
+  ...over
+});
+
+test("valida la apertura de una ronda", () => {
+  const ok = normalizeRoundEntry(ronda({ basePieces: "3,412", countId: "abc" }), { today: HOY });
   assert.equal(ok.ok, true);
   if (!ok.ok) return;
-  assert.equal(ok.value.pieces, 3412);
+  assert.equal(ok.value.basePieces, 3412);
   assert.equal(ok.value.countId, "abc");
+  assert.equal(ok.value.name, "2da ronda 2026");
 
-  assert.equal(normalizeBaselineEntry({ date: "2026-08-18", pieces: -5 }, { today: HOY }).ok, false);
-  assert.equal(normalizeBaselineEntry({ date: "2026-09-30", pieces: 100 }, { today: HOY }).ok, false);
-  assert.equal(normalizeBaselineEntry({ date: "2026-08-18", pieces: 10.5 }, { today: HOY }).ok, false);
+  assert.equal(normalizeRoundEntry(ronda({ basePieces: -5 }), { today: HOY }).ok, false);
+  assert.equal(normalizeRoundEntry(ronda({ startDate: "2026-09-30" }), { today: HOY }).ok, false);
+  assert.equal(normalizeRoundEntry(ronda({ basePieces: 10.5 }), { today: HOY }).ok, false);
+});
+
+test("la ronda necesita nombre", () => {
+  // Sin nombre, el historial de rondas se vuelve una lista de fechas sueltas.
+  assert.equal(normalizeRoundEntry(ronda({ name: "   " }), { today: HOY }).ok, false);
 });
 
 test("una tienda puede arrancar el kardex en cero", () => {
   // Tienda nueva sin mercancia: es un dato valido, no un olvido de captura.
-  const outcome = normalizeBaselineEntry({ date: "2026-08-18", pieces: 0 }, { today: HOY });
+  assert.equal(normalizeRoundEntry(ronda({ basePieces: 0 }), { today: HOY }).ok, true);
+});
+
+test("una ronda cerrada no admite movimientos posteriores a su cierre", () => {
+  // Esa ronda ya se comparo contra su conteo fisico; mover su teorico despues
+  // cambiaria un numero del que ya se sacaron conclusiones.
+  const cerrada = { round: { start: BASE, end: new Date("2026-08-25T00:00:00.000Z") }, today: HOY };
+  const dentro = normalizeMovementEntry(movimiento({ date: "2026-08-25" }), cerrada);
+  assert.equal(dentro.ok, true);
+
+  const fuera = normalizeMovementEntry(movimiento({ date: "2026-08-26" }), cerrada);
+  assert.equal(fuera.ok, false);
+  if (fuera.ok) return;
+  assert.match(fuera.error, /ronda cerró/);
+});
+
+test("guarda sobrantes y faltantes de la caja", () => {
+  // No entran al teorico —quantity ya son las piezas realmente recibidas— pero
+  // son la primera pista cuando el conteo de cierre no cuadra.
+  const outcome = normalizeMovementEntry(movimiento({ surplus: 2, missing: 1, document: "M0030013372355", delivery: "81717606" }), ctx);
   assert.equal(outcome.ok, true);
+  if (!outcome.ok) return;
+  assert.equal(outcome.value.surplus, 2);
+  assert.equal(outcome.value.missing, 1);
+  assert.equal(outcome.value.document, "M0030013372355");
+  assert.equal(outcome.value.delivery, "81717606");
+
+  const sinCapturar = normalizeMovementEntry(movimiento(), ctx);
+  assert.equal(sinCapturar.ok, true);
+  if (!sinCapturar.ok) return;
+  assert.equal(sinCapturar.value.surplus, null);
+
+  assert.equal(normalizeMovementEntry(movimiento({ surplus: -1 }), ctx).ok, false);
+  assert.equal(normalizeMovementEntry(movimiento({ missing: "dos" }), ctx).ok, false);
 });
 
 test("cada tipo tiene etiqueta legible", () => {

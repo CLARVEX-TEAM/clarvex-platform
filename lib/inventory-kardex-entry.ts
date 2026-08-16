@@ -108,7 +108,11 @@ export type MovementEntry = {
   type: string;
   quantity: number | string;
   reference?: string | null;
+  document?: string | null;
+  delivery?: string | null;
   counterpart?: string | null;
+  surplus?: number | string | null;
+  missing?: number | string | null;
   note?: string | null;
   createdBy?: string | null;
 };
@@ -118,10 +122,17 @@ export type NormalizedMovement = {
   type: InventoryMovementType;
   quantity: number;
   reference: string | null;
+  document: string | null;
+  delivery: string | null;
   counterpart: string | null;
+  surplus: number | null;
+  missing: number | null;
   note: string | null;
   createdBy: string | null;
 };
+
+/** Ventana de la ronda. `end` es `null` mientras sigue abierta. */
+export type RoundWindow = { start: Date; end: Date | null };
 
 export type NormalizeMovementOutcome =
   | { ok: true; value: NormalizedMovement }
@@ -130,14 +141,14 @@ export type NormalizeMovementOutcome =
 /**
  * Valida un movimiento capturado a mano.
  *
- * `baselineDate` no es opcional por comodidad: un movimiento anterior al
- * inventario inicial contaría mercancía que ya se contó físicamente, y el
+ * La ventana de la ronda no es opcional por comodidad: un movimiento anterior a
+ * su inventario de apertura contaría mercancía que ya se contó físicamente, y el
  * teórico saldría inflado sin ninguna señal de error. Es el fallo más caro que
  * puede tener un kardex, así que se rechaza en la puerta.
  */
 export function normalizeMovementEntry(
   entry: MovementEntry,
-  { baselineDate, today }: { baselineDate: Date; today: Date }
+  { round, today }: { round: RoundWindow; today: Date }
 ): NormalizeMovementOutcome {
   if (!DATE_PATTERN.test(entry.date ?? "")) {
     return { ok: false, error: `Fecha inválida (${String(entry.date)}), se espera AAAA-MM-DD.` };
@@ -153,12 +164,20 @@ export function normalizeMovementEntry(
   // El corte es el DÍA del inventario, no el instante: todo lo que pasó hasta el
   // cierre de ese día ya está reflejado en las piezas contadas. Por eso el kardex
   // arranca al día siguiente, y por eso las ventas se suman con el mismo criterio
-  // (`date > baseline`) — si aquí se aceptara el día del conteo y allá no, un
-  // traspaso del martes sumaría dos veces.
-  if (date.getTime() <= baselineDate.getTime()) {
+  // (`date > start`) — si aquí se aceptara el día del conteo y allá no, un
+  // traspaso de ese día contaría dos veces.
+  if (date.getTime() <= round.start.getTime()) {
     return {
       ok: false,
-      error: `${entry.date}: no es posterior al inventario inicial (${baselineDate.toISOString().slice(0, 10)}). Lo de ese día ya está contado en la base.`
+      error: `${entry.date}: no es posterior al inventario que abre la ronda (${round.start.toISOString().slice(0, 10)}). Lo de ese día ya está contado en la base.`
+    };
+  }
+  // Una ronda cerrada ya se comparó contra su conteo físico. Dejar entrar un
+  // movimiento después movería un teórico del que ya se sacaron conclusiones.
+  if (round.end && date.getTime() > round.end.getTime()) {
+    return {
+      ok: false,
+      error: `${entry.date}: la ronda cerró el ${round.end.toISOString().slice(0, 10)}. Ese movimiento va en la ronda siguiente.`
     };
   }
 
@@ -191,6 +210,18 @@ export function normalizeMovementEntry(
     return { ok: false, error: `${entry.date}: un ajuste necesita motivo. Sin él la diferencia se pierde sin explicación.` };
   }
 
+  // Sobrantes y faltantes no entran al teórico: `quantity` ya son las piezas
+  // realmente recibidas. Se guardan porque son la primera pista cuando el conteo
+  // de cierre no cuadra.
+  const surplus = toOptionalCount(entry.surplus);
+  if (surplus === "invalid") {
+    return { ok: false, error: `${entry.date}: los sobrantes deben ser piezas enteras y no negativas.` };
+  }
+  const missing = toOptionalCount(entry.missing);
+  if (missing === "invalid") {
+    return { ok: false, error: `${entry.date}: los faltantes deben ser piezas enteras y no negativos.` };
+  }
+
   return {
     ok: true,
     value: {
@@ -198,57 +229,83 @@ export function normalizeMovementEntry(
       type,
       quantity,
       reference: cleanText(entry.reference, 64),
+      document: cleanText(entry.document, 64),
+      delivery: cleanText(entry.delivery, 64),
       counterpart: cleanText(entry.counterpart, 120),
+      surplus,
+      missing,
       note,
-      createdBy: cleanText(entry.createdBy, 32)
+      createdBy: cleanText(entry.createdBy, 64)
     }
   };
 }
 
-export type BaselineEntry = {
-  date: string;
-  pieces: number | string;
+/** `null` si no se capturó, `"invalid"` si vino algo que no son piezas. */
+function toOptionalCount(raw: unknown): number | null | "invalid" {
+  if (raw === null || raw === undefined || raw === "") return null;
+  const parsed = toNumber(raw);
+  if (parsed === null || !Number.isInteger(parsed) || parsed < 0) return "invalid";
+  return parsed;
+}
+
+export type RoundEntry = {
+  name: string;
+  startDate: string;
+  basePieces: number | string;
   countId?: string | null;
   note?: string | null;
 };
 
-export type NormalizedBaseline = { date: Date; pieces: number; countId: string | null; note: string | null };
+export type NormalizedRound = {
+  name: string;
+  startDate: Date;
+  basePieces: number;
+  countId: string | null;
+  note: string | null;
+};
 
-export type NormalizeBaselineOutcome =
-  | { ok: true; value: NormalizedBaseline }
-  | { ok: false; error: string };
+export type NormalizeRoundOutcome = { ok: true; value: NormalizedRound } | { ok: false; error: string };
 
-export function normalizeBaselineEntry(
-  entry: BaselineEntry,
-  { today }: { today: Date }
-): NormalizeBaselineOutcome {
-  if (!DATE_PATTERN.test(entry.date ?? "")) {
-    return { ok: false, error: `Fecha inválida (${String(entry.date)}), se espera AAAA-MM-DD.` };
+/** Valida la apertura de una ronda: su nombre, su fecha y su base. */
+export function normalizeRoundEntry(entry: RoundEntry, { today }: { today: Date }): NormalizeRoundOutcome {
+  const name = cleanText(entry.name, 80);
+  if (!name) return { ok: false, error: "La ronda necesita un nombre (por ejemplo «2da ronda 2026»)." };
+
+  if (!DATE_PATTERN.test(entry.startDate ?? "")) {
+    return { ok: false, error: `Fecha inválida (${String(entry.startDate)}), se espera AAAA-MM-DD.` };
   }
-  const date = new Date(`${entry.date}T00:00:00.000Z`);
-  if (Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== entry.date) {
-    return { ok: false, error: `Fecha inexistente (${entry.date}).` };
+  const startDate = new Date(`${entry.startDate}T00:00:00.000Z`);
+  if (Number.isNaN(startDate.getTime()) || startDate.toISOString().slice(0, 10) !== entry.startDate) {
+    return { ok: false, error: `Fecha inexistente (${entry.startDate}).` };
   }
-  if (date.getTime() > today.getTime()) {
-    return { ok: false, error: `${entry.date}: el inventario inicial no puede ser una fecha futura.` };
+  if (startDate.getTime() > today.getTime()) {
+    return { ok: false, error: `${entry.startDate}: el inventario que abre la ronda no puede ser una fecha futura.` };
   }
 
-  const pieces = toNumber(entry.pieces);
-  if (pieces === null) return { ok: false, error: "Las piezas del inventario inicial no son un número." };
-  if (!Number.isInteger(pieces)) return { ok: false, error: `El inventario inicial debe ser piezas enteras (${pieces}).` };
-  if (pieces < 0) return { ok: false, error: "El inventario inicial no puede ser negativo." };
-  if (pieces > MAX_BASELINE) return { ok: false, error: `${pieces} piezas parece un error de captura.` };
+  const basePieces = validatePieces(entry.basePieces, "La base de la ronda");
+  if (typeof basePieces === "string") return { ok: false, error: basePieces };
 
   return {
     ok: true,
-    value: { date, pieces, countId: cleanText(entry.countId, 64), note: cleanText(entry.note, 500) }
+    value: { name, startDate, basePieces, countId: cleanText(entry.countId, 64), note: cleanText(entry.note, 500) }
   };
+}
+
+/** Devuelve las piezas, o el mensaje de error si no son válidas. */
+export function validatePieces(raw: unknown, label: string): number | string {
+  const pieces = toNumber(raw);
+  if (pieces === null) return `${label} no es un número.`;
+  if (!Number.isInteger(pieces)) return `${label} debe ser piezas enteras (${pieces}).`;
+  if (pieces < 0) return `${label} no puede ser negativa.`;
+  if (pieces > MAX_BASELINE) return `${label}: ${pieces} piezas parece un error de captura.`;
+  return pieces;
 }
 
 export type KardexMovement = { type: InventoryMovementType; quantity: number };
 
 export type KardexSummary = {
-  baselinePieces: number;
+  /** Piezas del inventario que abrió la ronda. */
+  basePieces: number;
   received: number;
   transferredIn: number;
   customerReturns: number;
@@ -271,16 +328,16 @@ export type KardexSummary = {
  * desincronizado de los movimientos que lo justifican.
  */
 export function summarizeKardex({
-  baselinePieces,
+  basePieces,
   movements,
   soldPieces
 }: {
-  baselinePieces: number;
+  basePieces: number;
   movements: KardexMovement[];
   soldPieces: number;
 }): KardexSummary {
   const summary: KardexSummary = {
-    baselinePieces,
+    basePieces,
     received: 0,
     transferredIn: 0,
     customerReturns: 0,
@@ -316,7 +373,7 @@ export function summarizeKardex({
   }
 
   summary.theoretical =
-    baselinePieces +
+    basePieces +
     summary.received +
     summary.transferredIn +
     summary.customerReturns +
@@ -331,9 +388,9 @@ export function summarizeKardex({
 /**
  * Diferencia de un conteo físico contra el teórico.
  *
- * Negativa = falta mercancía. Es **acumulada desde el inventario inicial**, no
- * del periodo entre conteos: la base no se reancla nunca. Ver el comentario de
- * `InventoryBaseline` en el esquema.
+ * Negativa = falta mercancía. Es la diferencia **de la ronda**: dentro de ella la
+ * base nunca se toca, y cada inventario cierra una ronda y abre la siguiente con
+ * las piezas recién contadas. Ver el comentario de `InventoryRound` en el esquema.
  */
 export function countDifference(counted: number, theoretical: number): number {
   return counted - theoretical;
