@@ -115,6 +115,32 @@ Lo que costó llegar ahí, por si vuelve a pasar (ticket **#00121648**):
   falta el certificado.
 
 
+### 🔔 Alarma de captura — sustituye a `sync-alert`
+
+`sync-alert` quedó como no-op al retirar los Excel de Axo, y el crontab se
+quedó **sin ninguna alarma de frescura**. El riesgo no se fue con los enlaces:
+cambió de forma y a peor. Antes fallaba una máquina; ahora depende de que una
+persona capture cada día, y un olvido **no produce ningún error** — solo KPIs
+quietos y decisiones tomadas sobre datos viejos.
+
+`POST /api/cron/capture-alert`, a diario a las **18:00 UTC (12:00 Monterrey)**:
+al mediodía la captura del día anterior ya debería estar hecha y aún queda
+jornada para ponerse al día.
+
+- Reutiliza el criterio de `lib/sync-freshness` —mismo margen de días, mismo
+  trato a las fechas futuras— para que «congelado» signifique lo mismo antes y
+  después de la migración.
+- Solo tiendas con `kpisEnabled`; un aviso por persona y día
+  (`DailyNotificationLog`, tipo `CAPTURE_STALE`).
+- Distingue dos casos: una tienda que capturaba y **dejó** de hacerlo es un
+  olvido y se avisa; una que **nunca** capturó es una puesta en marcha
+  incompleta y no se avisa a diario, porque gerencia no puede arreglarlo desde
+  la pantalla de captura.
+
+En su primera corrida (15 de agosto) detectó **GUESS Galerías con 3 días sin
+capturar** y avisó a sus dos gerentes. Respaldo del crontab previo en
+`/root/crontab.backup-20260815`.
+
 ### Lo que hace especial a `KPIS`
 
 Solo acepta datos **crudos**: meta, venta, tickets y piezas. Todo lo demás se
