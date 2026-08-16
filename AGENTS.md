@@ -418,6 +418,70 @@ de tema. En producción se midió el fondo oscuro como
 `rgba(255, 255, 255, 0.84)`, título `rgb(15, 23, 42)`, clase `dark` ausente y
 `color-scheme: light`. La preferencia de prueba se devolvió a oscuro.
 
+### Kardex de inventario — fase 1 en el repo (16 de agosto de 2026)
+
+Nace de una necesidad de la operación, no de la migración: la tienda lleva a
+mano un kardex con traspasos de entrada y salida (a otras tiendas y a CEDIS),
+recepción de mercancía, devoluciones de cliente y venta diaria. La captura va en
+Retool y lo visual en Clarvex, igual que el resto.
+
+**El diseño en una línea: la existencia NO se guarda, se calcula.**
+
+```
+teórico = inventario inicial
+        + recepciones + traspasos de entrada + devoluciones de cliente
+        − ventas − traspasos de salida
+        ± ajustes
+```
+
+Decisiones que costaron conversación y no hay que deshacer:
+
+- **La base se fija UNA sola vez y no se reancla nunca.** Es decisión explícita
+  de Adrian. Los conteos posteriores se comparan contra el teórico y muestran la
+  diferencia **acumulada desde el arranque**; no la borran. Reanclar en cada
+  inventario se tragaría la merma en silencio y cada conteo empezaría de cero.
+  `InventoryBaseline.storeId` es único para que el esquema lo garantice.
+- **Para absorber una diferencia ya investigada se registra un `AJUSTE`**, con
+  motivo obligatorio. Nunca automático: es la diferencia entre una merma
+  explicada y una desaparecida.
+- **La venta del día NO se captura.** Sale de las piezas que ya están en `Kpi`.
+  Contrapartida: si un día no se capturan KPIs, el kardex cree que la mercancía
+  sigue en piso — por eso importa la alarma de captura. Se agrega con
+  `PERSON_WHERE`, que excluye al usuario del kiosko.
+- **Las devoluciones de cliente SÍ se capturan.** El POS da las piezas vendidas
+  brutas y desglosadas por asesor, y las devoluciones aparte a nivel tienda; al
+  llegar por caminos distintos no hay doble conteo. Confirmado por Adrian.
+- **El corte es el DÍA del inventario, no el instante.** Movimientos y ventas
+  usan el mismo criterio (`date > baseline`): todo lo del día del conteo ya está
+  dentro de las piezas contadas. Si se aceptara en un lado y no en el otro, un
+  traspaso de ese día contaría dos veces.
+  ⚠️ **Supuesto pendiente de confirmar con la tienda:** que el conteo se hace al
+  cierre. Si contaran ANTES de abrir, las ventas de ese día se perderían.
+- **`quantity` siempre positivo**; el signo lo pone el tipo (`signedQuantity`).
+- **Todo o nada al capturar**: si una fila falla no entra ninguna. En un kardex,
+  la duda de qué quedó dentro se paga recontando.
+
+Qué hay en el repo:
+
+- `prisma/schema.prisma` — `InventoryBaseline`, `InventoryMovement` y el enum
+  `InventoryMovementType`. Migración `20260816204302_inventory_kardex`,
+  **puramente aditiva** (dos tablas y un enum; no toca nada existente).
+- `lib/inventory-kardex-entry.ts` — validación y cálculo, sin Prisma. 22 pruebas.
+- `lib/inventory-kardex.ts` — lectura del estado y escritura.
+- `GET|POST /api/admin/capture/inventory` — estado y movimientos.
+- `POST /api/admin/capture/inventory/baseline` — inventario inicial, en ruta
+  aparte a propósito: cambiar la base recalcula todo el histórico de golpe.
+- Las dos rutas registradas en `captureRoutes` del `middleware.ts`.
+
+Probado contra base real: base fijada, reemplazo rechazado, movimiento anterior
+a la base rechazado, ajuste sin motivo rechazado, captura de 4 movimientos, y
+teórico coincidiendo al número con el esperado. Lint, build (salida sin filtrar)
+y 716 pruebas en verde.
+
+**Falta:** desplegar (`prisma migrate deploy` en el VPS), la pantalla de Retool,
+la vista en Clarvex y enganchar la comparación al cierre de un `CycleCount`. El
+inventario del **martes 18 de agosto** es el que da la base inicial de la tienda.
+
 ### Retiro de Centro de Datos y Ticket electrónico — 14 de agosto
 
 La sincronización heredada con los Excel de Axo quedó retirada de la operación:

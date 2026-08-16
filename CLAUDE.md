@@ -795,6 +795,30 @@ siete días, sumar la semana multiplicaría por siete.
 
 Ver `lib/data-source-sync.ts:597` y `app/api/electronic-tickets/route.ts`.
 
+## Kardex de inventario — la existencia se CALCULA, no se guarda
+
+```
+teórico = inventario inicial + entradas − salidas − ventas ± ajustes
+```
+
+Guardar la existencia y sumarle/restarle es como se corrompe un inventario: el
+error queda incrustado y ya no se sabe cuál fue. `summarizeKardex()` en
+`lib/inventory-kardex-entry.ts` la recalcula entera en cada lectura.
+
+Cuatro reglas que NO hay que cambiar sin hablarlo:
+
+1. **La base se fija una vez y no se reancla jamás.** Los conteos posteriores
+   muestran la diferencia acumulada desde el arranque; no la borran. Reanclar se
+   tragaría la merma en silencio. `InventoryBaseline.storeId` es único.
+2. **La venta del día NO se captura**: sale de `Kpi.pieces`, agregada con
+   `PERSON_WHERE`. Capturarla otra vez la contaría dos veces.
+3. **La devolución de cliente SÍ se captura**: las piezas de `Kpi` son brutas y
+   el POS reporta las devoluciones aparte, a nivel tienda.
+4. **`quantity` siempre positivo**; el signo lo pone el tipo de movimiento.
+
+Un `AJUSTE` exige motivo: sin él, una merma desaparece sin explicación, que es
+justo lo que el kardex existe para evitar.
+
 ## Avisos globales y la paleta del escritorio
 
 Los componentes montados en `app/layout.tsx` (`EmailBanner`, `WhatsNewModal`…)

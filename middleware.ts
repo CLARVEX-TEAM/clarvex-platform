@@ -55,6 +55,9 @@ const captureRoutes = new Set([
   "/api/admin/capture/kpis",
   "/api/admin/capture/discounts",
   "/api/admin/capture/electronic-tickets",
+  // Kardex de inventario: movimientos (GET/POST) e inventario inicial.
+  "/api/admin/capture/inventory",
+  "/api/admin/capture/inventory/baseline",
   // Inicio gerencial de Retool: solo lectura, autorizado con el mismo secreto.
   "/api/admin/retool/dashboard"
 ]);

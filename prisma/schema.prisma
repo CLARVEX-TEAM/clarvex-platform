@@ -51,6 +51,8 @@ model Store {
   commissionRules       CommissionRule[]
   commissionSeasons     CommissionSeason[]
   cycleCounts           CycleCount[]
+  inventoryBaseline     InventoryBaseline?
+  inventoryMovements    InventoryMovement[]
   cycleCountTags        CycleCountTag[]
   dataSources           DataSource[]
   plans                 DayPlan[]
@@ -1146,6 +1148,79 @@ model CycleCountNoUpc {
   count   CycleCount @relation(fields: [countId], references: [id], onDelete: Cascade)
 
   @@index([countId])
+}
+
+/// Piezas del inventario físico con el que ARRANCA el kardex de una tienda.
+///
+/// Es el único número que no se deriva de nada: sale de contar la tienda
+/// completa una vez. Todo lo demás —la existencia teórica de cualquier día— se
+/// calcula sumándole los movimientos posteriores.
+///
+/// ⚠️ **No se reancla en cada conteo.** Los inventarios siguientes se comparan
+/// contra el teórico y muestran la diferencia ACUMULADA desde este día; no la
+/// borran. Reanclar automáticamente se tragaría la merma en silencio y cada
+/// inventario empezaría de cero como si nada hubiera pasado. Para absorber una
+/// diferencia ya investigada se registra un `AJUSTE`, que deja fecha, importe y
+/// motivo — la diferencia entre una merma explicada y una desaparecida.
+///
+/// `storeId` es único a propósito: una tienda tiene una sola base, y el esquema
+/// es quien lo garantiza.
+model InventoryBaseline {
+  id        String   @id @default(cuid())
+  storeId   String   @unique
+  /// Día del inventario físico del que salieron las piezas.
+  date      DateTime
+  pieces    Int
+  /// Conteo del que se tomó, cuando salió de un `CycleCount` de la app.
+  countId   String?
+  note      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  store     Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+}
+
+/// Un movimiento de mercancía: el kardex.
+///
+/// `quantity` SIEMPRE es positivo; el signo lo pone el tipo (ver
+/// `signedQuantity` en `lib/inventory-kardex-entry.ts`). Guardar cantidades
+/// negativas invita a que un dedazo reste dos veces sin que nada lo delate.
+///
+/// ⚠️ **La venta del día NO se registra aquí.** Sale de las piezas ya
+/// capturadas en `Kpi`, y duplicarla dejaría el teórico bajo. Las devoluciones
+/// de cliente sí van aquí: el POS las reporta aparte y las piezas de `Kpi` son
+/// brutas, así que no hay doble conteo.
+///
+/// Nada se sobrescribe ni se borra para corregir: se registra otro movimiento.
+/// Un kardex que se puede editar deja de poder explicar su propio número.
+model InventoryMovement {
+  id          String                @id @default(cuid())
+  storeId     String
+  date        DateTime
+  type        InventoryMovementType
+  /// Piezas, siempre > 0. El sentido lo da `type`.
+  quantity    Int
+  /// Folio del traspaso, remisión o nota. Sirve para rastrearlo con Axo.
+  reference   String?
+  /// Tienda destino/origen, CEDIS, o de dónde vino la mercancía.
+  counterpart String?
+  note        String?
+  /// Quién lo capturó, por número de empleado. Sin relación: la captura entra
+  /// por API externa y el número puede no corresponder a un usuario de la app.
+  createdBy   String?
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+  store       Store                 @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@index([storeId, date])
+}
+
+enum InventoryMovementType {
+  RECEPCION
+  TRANSFERENCIA_ENTRADA
+  DEVOLUCION_CLIENTE
+  TRANSFERENCIA_SALIDA
+  AJUSTE_POSITIVO
+  AJUSTE_NEGATIVO
 }
 
 model SubscriptionPayment {
