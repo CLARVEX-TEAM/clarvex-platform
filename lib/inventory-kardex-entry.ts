@@ -37,6 +37,7 @@ export type InventoryMovementType =
   | "TRANSFERENCIA_ENTRADA"
   | "DEVOLUCION_CLIENTE"
   | "TRANSFERENCIA_SALIDA"
+  | "SFS"
   | "AJUSTE_POSITIVO"
   | "AJUSTE_NEGATIVO";
 
@@ -46,6 +47,7 @@ export const MOVEMENT_TYPES: InventoryMovementType[] = [
   "TRANSFERENCIA_ENTRADA",
   "DEVOLUCION_CLIENTE",
   "TRANSFERENCIA_SALIDA",
+  "SFS",
   "AJUSTE_POSITIVO",
   "AJUSTE_NEGATIVO"
 ];
@@ -55,6 +57,7 @@ const MOVEMENT_LABELS: Record<InventoryMovementType, string> = {
   TRANSFERENCIA_ENTRADA: "Traspaso de entrada",
   DEVOLUCION_CLIENTE: "Devolución de cliente",
   TRANSFERENCIA_SALIDA: "Traspaso de salida",
+  SFS: "Ship From Store",
   AJUSTE_POSITIVO: "Ajuste a favor",
   AJUSTE_NEGATIVO: "Ajuste en contra"
 };
@@ -94,6 +97,7 @@ export function signedQuantity(type: InventoryMovementType, quantity: number): n
     case "AJUSTE_POSITIVO":
       return quantity;
     case "TRANSFERENCIA_SALIDA":
+    case "SFS":
     case "AJUSTE_NEGATIVO":
       return -quantity;
   }
@@ -249,6 +253,8 @@ export type KardexSummary = {
   transferredIn: number;
   customerReturns: number;
   transferredOut: number;
+  /** Pedidos en línea surtidos desde la tienda. Salida, igual que un traspaso. */
+  shipFromStore: number;
   /** Piezas vendidas del periodo. Vienen de `Kpi`, no de los movimientos. */
   sold: number;
   /** Neto de los ajustes, con signo. */
@@ -279,6 +285,7 @@ export function summarizeKardex({
     transferredIn: 0,
     customerReturns: 0,
     transferredOut: 0,
+    shipFromStore: 0,
     sold: soldPieces,
     adjustments: 0,
     theoretical: 0
@@ -298,6 +305,9 @@ export function summarizeKardex({
       case "TRANSFERENCIA_SALIDA":
         summary.transferredOut += movement.quantity;
         break;
+      case "SFS":
+        summary.shipFromStore += movement.quantity;
+        break;
       case "AJUSTE_POSITIVO":
       case "AJUSTE_NEGATIVO":
         summary.adjustments += signedQuantity(movement.type, movement.quantity);
@@ -312,6 +322,7 @@ export function summarizeKardex({
     summary.customerReturns +
     summary.adjustments -
     summary.transferredOut -
+    summary.shipFromStore -
     summary.sold;
 
   return summary;

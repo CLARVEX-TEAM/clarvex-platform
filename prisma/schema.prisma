@@ -1219,6 +1219,8 @@ enum InventoryMovementType {
   TRANSFERENCIA_ENTRADA
   DEVOLUCION_CLIENTE
   TRANSFERENCIA_SALIDA
+  /// Ship From Store: pedido en línea surtido con mercancía de la tienda.
+  SFS
   AJUSTE_POSITIVO
   AJUSTE_NEGATIVO
 }

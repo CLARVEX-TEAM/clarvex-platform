@@ -150,6 +150,39 @@ test("el teorico suma entradas y resta salidas y ventas", () => {
   assert.equal(summary.theoretical, 3569);
 });
 
+test("reproduce el kardex real de TOMMY SAN AGUSTIN (1ra ronda 2026)", () => {
+  // Numeros del archivo que lleva la tienda a mano, para que el calculo no se
+  // aleje del que ya usan y saben leer:
+  //   base 6430 (inventario del 18 feb) + 8243 entradas - 7314 salidas = 7359
+  // Sus "ventas netas" (5275) son brutas menos devoluciones (5372 - 97); aqui
+  // entran por separado y dan lo mismo.
+  const summary = summarizeKardex({
+    baselinePieces: 6430,
+    soldPieces: 5372,
+    movements: [
+      { type: "RECEPCION", quantity: 8220 },
+      { type: "TRANSFERENCIA_ENTRADA", quantity: 23 },
+      { type: "DEVOLUCION_CLIENTE", quantity: 97 },
+      { type: "TRANSFERENCIA_SALIDA", quantity: 2039 },
+      { type: "SFS", quantity: 0 }
+    ]
+  });
+  assert.equal(summary.received + summary.transferredIn, 8243);
+  assert.equal(summary.transferredOut + summary.shipFromStore + summary.sold - summary.customerReturns, 7314);
+  assert.equal(summary.theoretical, 7359);
+});
+
+test("SFS es una salida, como el traspaso enviado", () => {
+  assert.equal(signedQuantity("SFS", 30), -30);
+  const summary = summarizeKardex({
+    baselinePieces: 1000,
+    soldPieces: 0,
+    movements: [{ type: "SFS", quantity: 30 }]
+  });
+  assert.equal(summary.shipFromStore, 30);
+  assert.equal(summary.theoretical, 970);
+});
+
 test("los ajustes entran netos y con su signo", () => {
   const summary = summarizeKardex({
     baselinePieces: 1000,
