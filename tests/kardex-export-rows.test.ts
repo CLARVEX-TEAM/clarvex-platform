@@ -187,3 +187,17 @@ test("los movimientos salen ordenados por fecha dentro de cada hoja", () => {
   );
   assert.deepEqual(rows.recepcion.map((r) => r[1]), ["A", "B"]);
 });
+
+test("dentro del mismo dia manda el orden de captura", () => {
+  // El estado del kardex llega del mas reciente al mas antiguo, que es lo que
+  // quiere la pantalla. Sin desempatar por createdAt, dos recepciones del mismo
+  // dia salian invertidas en el archivo respecto a como se capturaron.
+  const { rows } = buildSheetRows(
+    [
+      mov({ type: "RECEPCION", quantity: 1, reference: "SEGUNDA", createdAt: new Date("2026-02-19T18:00:00Z") }),
+      mov({ type: "RECEPCION", quantity: 1, reference: "PRIMERA", createdAt: new Date("2026-02-19T09:00:00Z") })
+    ],
+    []
+  );
+  assert.deepEqual(rows.recepcion.map((r) => r[1]), ["PRIMERA", "SEGUNDA"]);
+});

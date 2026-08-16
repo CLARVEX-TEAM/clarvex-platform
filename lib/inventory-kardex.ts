@@ -46,6 +46,8 @@ export type KardexState = {
   movements: {
     id: string;
     date: Date;
+    /** Momento de captura. Desempata dos movimientos del mismo día al exportar. */
+    createdAt: Date;
     type: InventoryMovementType;
     quantity: number;
     reference: string | null;
@@ -144,6 +146,7 @@ export async function getKardexState(storeId: string, roundId?: string): Promise
     movements: movements.map((movement) => ({
       id: movement.id,
       date: movement.date,
+      createdAt: movement.createdAt,
       type: movement.type as InventoryMovementType,
       quantity: movement.quantity,
       reference: movement.reference,

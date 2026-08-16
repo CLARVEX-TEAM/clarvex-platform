@@ -16,6 +16,8 @@ import { type InventoryMovementType } from "@/lib/inventory-kardex-entry";
 
 export type ExportMovement = {
   date: Date;
+  /** Momento de captura. Desempata dos movimientos del mismo día. */
+  createdAt?: Date;
   type: InventoryMovementType;
   quantity: number;
   reference: string | null;
@@ -66,7 +68,16 @@ export type ExportTotals = {
   adjustments: number;
 };
 
-const byDate = (left: { date: Date }, right: { date: Date }) => left.date.getTime() - right.date.getTime();
+/**
+ * Orden del archivo exportado: por día y, dentro del día, por orden de captura.
+ *
+ * El desempate importa: el estado del kardex viene ordenado del más reciente al
+ * más antiguo (así lo quiere la pantalla), y sin él dos recepciones del mismo día
+ * salían invertidas respecto a como se capturaron.
+ */
+const byDate = (left: ExportMovement, right: ExportMovement) =>
+  left.date.getTime() - right.date.getTime() ||
+  (left.createdAt?.getTime() ?? 0) - (right.createdAt?.getTime() ?? 0);
 
 /**
  * Convierte los movimientos en filas por hoja y saca los totales.
