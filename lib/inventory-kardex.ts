@@ -69,7 +69,25 @@ export async function getOpenRound(storeId: string) {
 }
 
 /**
- * Estado del kardex de una ronda. Sin `roundId` se usa la abierta.
+ * La ronda que se lee por omisión: la abierta y, si no hay, la última cerrada.
+ *
+ * El respaldo importa más de lo que parece: **el momento más probable de leer o
+ * exportar el kardex es justo después de cerrar la ronda**, cuando ya no hay
+ * ninguna abierta. Sin esto, consultar el resultado del inventario devolvía
+ * vacío el mismo día que se hizo.
+ *
+ * La captura NO usa este respaldo: escribir sigue exigiendo una ronda abierta.
+ */
+async function getReadableRound(storeId: string) {
+  return (
+    (await getOpenRound(storeId)) ??
+    (await prisma.inventoryRound.findFirst({ where: { storeId }, orderBy: { startDate: "desc" } }))
+  );
+}
+
+/**
+ * Estado del kardex de una ronda. Sin `roundId` se usa la abierta, o la última
+ * cerrada si ya no hay ninguna abierta.
  *
  * Sin ronda no hay teórico posible: se devuelve `summary: null` en vez de un
  * cero, porque un cero se leería como «no hay mercancía» cuando lo que pasa es
@@ -78,7 +96,7 @@ export async function getOpenRound(storeId: string) {
 export async function getKardexState(storeId: string, roundId?: string): Promise<KardexState> {
   const round = roundId
     ? await prisma.inventoryRound.findFirst({ where: { id: roundId, storeId } })
-    : await getOpenRound(storeId);
+    : await getReadableRound(storeId);
 
   if (!round) return { round: null, summary: null, difference: null, movements: [] };
 

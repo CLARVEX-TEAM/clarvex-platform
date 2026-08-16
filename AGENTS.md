@@ -491,6 +491,26 @@ Qué hay en el repo:
 - `lib/inventory-kardex.ts` — estado, captura, abrir y cerrar ronda, historial.
 - `GET|POST /api/admin/capture/inventory` — estado y movimientos.
 - `GET|POST /api/admin/capture/inventory/rounds` — historial, abrir y cerrar.
+- `GET /api/admin/capture/inventory/export` — descarga el kardex en el XLSX que
+  la tienda ya entrega. La plantilla es `templates/kardex.xlsx`: su propio
+  archivo con los datos vaciados y las fórmulas intactas.
+
+⚠️ **En el exportado los totales se escriben como VALORES, no como fórmulas.**
+exceljs no recalcula, y las sumas del formato apuntan a tablas de Excel
+(`SUM(Tabla1[Piezas])`) cuyo rango no se extiende solo al añadir filas desde
+código: dejarlas como fórmula daría ceros. La consecuencia hay que saberla —
+**el exportado es un reporte, no una hoja de trabajo**: si alguien le añade una
+fila a mano, los totales no se mueven.
+
+Los **ajustes no existen en el formato de la tienda**. Se exportan en una hoja
+«Ajustes» que solo se crea si los hay, y el aviso viaja en `X-Kardex-Warnings`:
+cuando hay ajustes, el teórico del resumen ya los incluye y la resta a mano
+«entradas − salidas + base» no cuadra con él.
+
+Bug encontrado al probar el export y corregido: `getKardexState` sin `roundId`
+solo miraba la ronda ABIERTA, así que **leer o exportar justo después de cerrar
+—el momento más probable— devolvía vacío**. Ahora cae a la última cerrada. La
+captura no usa ese respaldo: escribir sigue exigiendo una ronda abierta.
 - Las dos rutas registradas en `captureRoutes` del `middleware.ts`.
 
 Probado contra base real, ciclo completo: abrir ronda, rechazo de una segunda
