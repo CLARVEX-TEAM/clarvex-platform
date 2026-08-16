@@ -52,6 +52,7 @@ export type KardexState = {
     document: string | null;
     delivery: string | null;
     counterpart: string | null;
+    counterpartCode: string | null;
     surplus: number | null;
     missing: number | null;
     note: string | null;
@@ -131,6 +132,7 @@ export async function getKardexState(storeId: string, roundId?: string): Promise
       document: movement.document,
       delivery: movement.delivery,
       counterpart: movement.counterpart,
+      counterpartCode: movement.counterpartCode,
       surplus: movement.surplus,
       missing: movement.missing,
       note: movement.note,

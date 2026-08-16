@@ -1221,8 +1221,12 @@ model InventoryMovement {
   document    String?
   /// Entrega, en la recepción de mercancía.
   delivery    String?
-  /// Tienda destino/origen, CEDIS, o de dónde vino la mercancía.
+  /// Tienda destino/origen, CEDIS, o de dónde vino la mercancía. Es la etiqueta
+  /// legible; el APTO va en `counterpartCode`.
   counterpart String?
+  /// APTO del catálogo (`lib/inventory-counterparts.ts`). Sin él, «CUERNAVACA»
+  /// puede ser dos tiendas distintas y el traspaso deja de ser rastreable.
+  counterpartCode String?
   /// Piezas de más y de menos halladas al abrir la caja. NO entran al teórico
   /// —`quantity` ya son las piezas realmente recibidas—, pero son la primera
   /// pista cuando el conteo de cierre no cuadra.

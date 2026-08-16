@@ -502,8 +502,16 @@ sin filtrar) y 721 pruebas en verde.
 Lo que se vio en el archivo de la tienda y conviene recordar:
 
 - El catálogo de `Hoja1` trae **72 tiendas Tommy con su APTO** (San Agustín es
-  `03029`). En Retool, «Destino» y «Origen» deben ser desplegable, no texto
-  libre: hoy conviven `O. MTY`, `PARQUE TOREO`, `VALLARTA`, `ALTACIA`.
+  `03029`). Ya está en `lib/inventory-counterparts.ts`, junto con CEDIS y
+  Uniformes, y viaja en la respuesta del `GET` para que Retool no mantenga su
+  propia copia. **Adrian pidió que aparezcan todas**, aunque en la 1ra ronda solo
+  usaron seis destinos: CEDIS (71 envíos) y O. MTY (54) se ofrecen primero.
+  El nombre que se muestra es el corto que ya escriben (`O. MTY`, `VALLARTA`),
+  no el oficial: quien captura busca por ese.
+- ⚠️ **El APTO se guarda aparte de la etiqueta** (`counterpartCode`). Es el
+  motivo entero del catálogo: en el papel se anota «CUERNAVACA» y hay **dos**
+  (Galerías `03036` y Outlet `03049`); igual con «METEPEC» (`03031` y `03073`).
+  Sin el código, ese traspaso deja de ser rastreable.
 - Una fila de *Trans. recibidas* (folio `1737816`, 16 pz, CUERNAVACA) **no tiene
   fecha**. Suma al total igual; en el kardex nuevo no pasaría.
 - El resumen muestra «Diferencias −7359» y «−100 % de variación» porque la celda

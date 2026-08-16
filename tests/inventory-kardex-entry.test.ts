@@ -270,6 +270,46 @@ test("guarda sobrantes y faltantes de la caja", () => {
   assert.equal(normalizeMovementEntry(movimiento({ missing: "dos" }), ctx).ok, false);
 });
 
+test("el codigo del catalogo rellena la etiqueta solo", () => {
+  // Sin esto, el mismo destino acaba escrito de dos formas distintas segun quien
+  // capture, y agrupar por contraparte deja de servir.
+  const outcome = normalizeMovementEntry(
+    movimiento({ type: "TRANSFERENCIA_SALIDA", counterpartCode: "03009" }),
+    ctx
+  );
+  assert.equal(outcome.ok, true);
+  if (!outcome.ok) return;
+  assert.equal(outcome.value.counterpartCode, "03009");
+  assert.equal(outcome.value.counterpart, "O. MTY");
+});
+
+test("una etiqueta escrita a mano gana sobre la del catalogo", () => {
+  const outcome = normalizeMovementEntry(
+    movimiento({ counterpartCode: "03009", counterpart: "Outlet Monterrey (bodega)" }),
+    ctx
+  );
+  assert.equal(outcome.ok, true);
+  if (!outcome.ok) return;
+  assert.equal(outcome.value.counterpart, "Outlet Monterrey (bodega)");
+  assert.equal(outcome.value.counterpartCode, "03009");
+});
+
+test("un codigo fuera del catalogo se rechaza", () => {
+  const outcome = normalizeMovementEntry(movimiento({ counterpartCode: "03999" }), ctx);
+  assert.equal(outcome.ok, false);
+  if (outcome.ok) return;
+  assert.match(outcome.error, /no está en el catálogo/);
+});
+
+test("sin codigo se admite texto libre", () => {
+  // La recepcion de mercancia no siempre tiene contraparte del catalogo.
+  const outcome = normalizeMovementEntry(movimiento({ counterpart: "PROVEEDOR EXTERNO" }), ctx);
+  assert.equal(outcome.ok, true);
+  if (!outcome.ok) return;
+  assert.equal(outcome.value.counterpartCode, null);
+  assert.equal(outcome.value.counterpart, "PROVEEDOR EXTERNO");
+});
+
 test("cada tipo tiene etiqueta legible", () => {
   assert.equal(movementLabel("DEVOLUCION_CLIENTE"), "Devolución de cliente");
   assert.equal(movementLabel("TRANSFERENCIA_SALIDA"), "Traspaso de salida");

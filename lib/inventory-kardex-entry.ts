@@ -32,6 +32,8 @@
  *    nivel tienda. Al llegar por caminos distintos no hay doble conteo.
  */
 
+import { counterpartLabel, findCounterpart } from "@/lib/inventory-counterparts";
+
 export type InventoryMovementType =
   | "RECEPCION"
   | "TRANSFERENCIA_ENTRADA"
@@ -111,6 +113,7 @@ export type MovementEntry = {
   document?: string | null;
   delivery?: string | null;
   counterpart?: string | null;
+  counterpartCode?: string | null;
   surplus?: number | string | null;
   missing?: number | string | null;
   note?: string | null;
@@ -125,6 +128,7 @@ export type NormalizedMovement = {
   document: string | null;
   delivery: string | null;
   counterpart: string | null;
+  counterpartCode: string | null;
   surplus: number | null;
   missing: number | null;
   note: string | null;
@@ -222,6 +226,21 @@ export function normalizeMovementEntry(
     return { ok: false, error: `${entry.date}: los faltantes deben ser piezas enteras y no negativos.` };
   }
 
+  // El código manda sobre la etiqueta: si viene del catálogo, la etiqueta se
+  // rellena sola con el nombre que ya usan en tienda. Así dos capturas del mismo
+  // destino no acaban escritas de dos formas distintas.
+  const rawCode = cleanText(entry.counterpartCode, 16);
+  let counterpartCode: string | null = null;
+  let counterpart = cleanText(entry.counterpart, 120);
+  if (rawCode) {
+    const known = findCounterpart(rawCode);
+    if (!known) {
+      return { ok: false, error: `${entry.date}: la contraparte «${rawCode}» no está en el catálogo de tiendas.` };
+    }
+    counterpartCode = known.code;
+    counterpart = counterpart ?? counterpartLabel(known);
+  }
+
   return {
     ok: true,
     value: {
@@ -231,7 +250,8 @@ export function normalizeMovementEntry(
       reference: cleanText(entry.reference, 64),
       document: cleanText(entry.document, 64),
       delivery: cleanText(entry.delivery, 64),
-      counterpart: cleanText(entry.counterpart, 120),
+      counterpart,
+      counterpartCode,
       surplus,
       missing,
       note,

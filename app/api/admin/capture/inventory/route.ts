@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireAdminCapture } from "@/lib/admin-capture-auth";
 import { captureInventoryMovements, getKardexState } from "@/lib/inventory-kardex";
+import { counterpartOptions } from "@/lib/inventory-counterparts";
 import { MOVEMENT_TYPES, movementLabel } from "@/lib/inventory-kardex-entry";
 import { prisma } from "@/lib/prisma";
 
@@ -32,6 +33,7 @@ const bodySchema = z.object({
         document: z.string().max(64).nullish(),
         delivery: z.string().max(64).nullish(),
         counterpart: z.string().max(120).nullish(),
+        counterpartCode: z.string().max(16).nullish(),
         surplus: z.union([z.number(), z.string()]).nullish(),
         missing: z.union([z.number(), z.string()]).nullish(),
         note: z.string().max(500).nullish(),
@@ -61,6 +63,10 @@ export async function GET(request: Request) {
     // El catálogo viaja con el estado para que el formulario externo no tenga que
     // repetir la lista de tipos: si aquí se añade uno, allá aparece solo.
     types: MOVEMENT_TYPES.map((type) => ({ value: type, label: movementLabel(type) })),
+    // Las 72 tiendas del catálogo más CEDIS y Uniformes, con los habituales
+    // primero. Viaja con el estado para que el formulario externo no mantenga su
+    // propia copia y se desincronice.
+    counterparts: counterpartOptions(),
     round: state.round
       ? {
           ...state.round,
