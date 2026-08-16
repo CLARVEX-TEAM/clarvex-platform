@@ -23,13 +23,19 @@ import { PERSON_WHERE } from "@/lib/store-people";
 
 const TEMPLATE_PATH = path.join(process.cwd(), "templates", "kardex.xlsx");
 
-/** Primera fila de datos de cada hoja, debajo del encabezado del formato. */
+/**
+ * Dónde empieza y hasta dónde llega la tabla de cada hoja del formato.
+ *
+ * `lastColumn` no siempre coincide con el número de datos que se escriben: en
+ * «Trans. Enviadas» la columna SMI existe en el formato y va vacía, y aun así
+ * tiene que llevar borde para que la tabla no se vea partida.
+ */
 const DATA_START = {
-  ventas: { sheet: "Ventas", row: 8, column: 3 },
-  recepcion: { sheet: "Recepción Mercancia", row: 7, column: 2 },
-  enviadas: { sheet: "Trans. Enviadas", row: 7, column: 2 },
-  recibidas: { sheet: "Trans. recibidas", row: 7, column: 2 },
-  sfs: { sheet: "SFS", row: 7, column: 2 }
+  ventas: { sheet: "Ventas", row: 8, column: 3, lastColumn: 5 },
+  recepcion: { sheet: "Recepción Mercancia", row: 7, column: 2, lastColumn: 9 },
+  enviadas: { sheet: "Trans. Enviadas", row: 7, column: 2, lastColumn: 7 },
+  recibidas: { sheet: "Trans. recibidas", row: 7, column: 2, lastColumn: 6 },
+  sfs: { sheet: "SFS", row: 7, column: 2, lastColumn: 6 }
 } as const;
 
 export type KardexExport = { buffer: Buffer; filename: string; warnings: string[] };
@@ -116,9 +122,21 @@ export async function exportKardex(storeId: string, roundId?: string): Promise<K
   return { buffer, filename: `KARDEX ${store?.name ?? storeId} ${slug}.xlsx`, warnings };
 }
 
+/** Azules del formato: los mismos que llevaba el estilo de tabla original. */
+const BORDE = "FFB4C6E7";
+const BANDA = "FFD9E2F3";
+
+/**
+ * Escribe las filas de una hoja con el aspecto de tabla del formato.
+ *
+ * Los bordes y el sombreado alterno los ponía el **estilo de tabla de Excel**, y
+ * las tablas hubo que quitarlas de la plantilla porque exceljs las escribía rotas
+ * y obligaban a Excel a reparar el archivo. Al desaparecer, las filas quedaban
+ * lisas: aquí se repone el aspecto celda por celda.
+ */
 function writeRows(
   workbook: ExcelJS.Workbook,
-  target: { sheet: string; row: number; column: number },
+  target: { sheet: string; row: number; column: number; lastColumn: number },
   rows: (Date | string | number | null)[][]
 ) {
   const sheet = workbook.getWorksheet(target.sheet);
@@ -128,6 +146,18 @@ function writeRows(
     values.forEach((value, offset) => {
       row.getCell(target.column + offset).value = value ?? null;
     });
+    // El borde llega hasta la última columna del formato, no solo hasta donde
+    // hubo dato: una celda vacía sin borde parte la tabla visualmente.
+    for (let column = target.column; column <= target.lastColumn; column++) {
+      const cell = row.getCell(column);
+      cell.border = {
+        top: { style: "thin", color: { argb: BORDE } },
+        left: { style: "thin", color: { argb: BORDE } },
+        bottom: { style: "thin", color: { argb: BORDE } },
+        right: { style: "thin", color: { argb: BORDE } }
+      };
+      if (index % 2 === 1) cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: BANDA } };
+    }
     row.commit();
   });
 }
