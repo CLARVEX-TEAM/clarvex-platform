@@ -626,10 +626,25 @@ Descartado por el camino, para no volver a mirarlo: no eran los datos (`null` en
 eran las variantes `success`/`warning` (sí existen, y una desconocida en `cva` no
 lanza), y no eran los iconos de lucide.
 
-🟡 **Sin verificar por una persona:** que la pantalla cargue con la ronda abierta
-tras el arreglo, y la captura de un movimiento. Ni el agente de Retool ni yo
-podemos entrar con la cuenta operativa, así que el diagnóstico fue por
-eliminación —razonable, pero no es una comprobación—. Hay que hacer clic.
+Confirmado por Adrian: con `0.0.9` **la pantalla ya carga** con la ronda abierta.
+
+### ⚠️ Un hilo de Retool se queda sin commits después de publicar
+
+Tras publicar `0.0.9`, se le pidieron más cambios al **mismo hilo**. El agente los
+hizo y dijo «listo», pero al publicar: *«No commits found on this thread branch»*.
+Se comprobó leyendo la rama publicada: **seguía con el código viejo**. El trabajo
+estaba en el estado del hilo pero sin commit, o sea en el limbo.
+
+**Regla:** después de publicar un hilo, para el cambio siguiente hay que abrir uno
+nuevo con `startNewThreadFromMain: true`. Y no basta con que el agente diga que
+terminó — hay que **verificar la rama publicada**. Un atajo barato: comparar
+`sizeBytes`/`lineCount` del archivo antes y después, sin releer el contenido.
+
+Con el hilo limpio se rehízo el cambio y se publicó como **`0.0.10`**
+(9 956 → 10 284 bytes confirmados en `main`).
+
+🟡 **Sin verificar por una persona:** la captura de un movimiento de principio a
+fin y el botón de exportar.
 
 **Falta:** la vista en Clarvex y decidir si el cierre de ronda se engancha a algo
 de la app. ⚠️ Ojo: la existencia física la trae **RGIS**, no los `CycleCount` por
