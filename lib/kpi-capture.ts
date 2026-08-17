@@ -13,6 +13,7 @@ import {
 } from "@/lib/kpi-capture-entry";
 import { prisma } from "@/lib/prisma";
 import { reconstructRdvWeek } from "@/lib/rdv-week";
+import { retailMonthBoundsFor } from "@/lib/report-deadlines";
 
 /**
  * Captura manual de KPIs, la vía que sustituye al RDV.
@@ -251,6 +252,12 @@ async function rerankDates(storeId: string, dates: Date[]): Promise<number> {
  * prefería la meta TTLS de la hoja cuando existía, pero esa hoja es justo lo que
  * se deja de leer: sin RDV, la suma de lo capturado es la única definición que
  * se sostiene sola.
+ *
+ * ⚠️ El mes es el **RETAIL**, no el natural. El 1 de agosto de 2026 es julio
+ * retail: contarlo en agosto lo sumaba en los dos meses a la vez —27,246.33 de
+ * más en TH SAN AGUSTIN— y dejaba la meta del mes peleada con el período que la
+ * app muestra. Es la misma trampa que advierte `CLAUDE.md` en «Asistencia: mes
+ * retail vs mes natural», y aquí además se paga: el alcance sale de esta cifra.
  */
 export async function recalculateMonths(
   storeId: string,
@@ -258,16 +265,10 @@ export async function recalculateMonths(
 ): Promise<number> {
   const months = new Map<string, { userId: string; from: Date; to: Date }>();
   for (const item of matched) {
-    const year = item.date.getUTCFullYear();
-    const month = item.date.getUTCMonth();
-    const key = `${item.userId}:${year}-${month}`;
+    const bounds = retailMonthBoundsFor(item.date);
+    const key = `${item.userId}:${bounds.start.toISOString().slice(0, 10)}`;
     if (months.has(key)) continue;
-    months.set(key, {
-      userId: item.userId,
-      from: new Date(Date.UTC(year, month, 1)),
-      // Día 0 del mes siguiente = último día de este mes.
-      to: new Date(Date.UTC(year, month + 1, 0))
-    });
+    months.set(key, { userId: item.userId, from: bounds.start, to: bounds.end });
   }
 
   for (const { userId, from, to } of Array.from(months.values())) {

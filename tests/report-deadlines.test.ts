@@ -45,6 +45,22 @@ test("mes retail: cualquier día de la misma semana da el mismo cierre", () => {
   }
 });
 
+test("el 1 y el 2 de agosto caen en meses retail DISTINTOS", () => {
+  // Es la frontera que agrupa `monthlyGoal` y `monthlySales`, en los dos
+  // escritores: la captura de Retool (`recalculateMonths`) y el importador del
+  // RDV (`applyMonthlyTotals`). Agrupando por mes natural, el 1 de agosto caía
+  // en julio Y en agosto: 27,246.33 contados dos veces en TH SAN AGUSTIN y
+  // 58,700.47 en GUESS. Y no es cosmético — de aquí sale el alcance.
+  const sabado = retailMonthBoundsFor(day("2026-08-01"));
+  const domingo = retailMonthBoundsFor(day("2026-08-02"));
+
+  assert.equal(key(sabado.start), "2026-07-05");
+  assert.equal(key(sabado.end), "2026-08-01");
+  assert.equal(key(domingo.start), "2026-08-02");
+  assert.equal(key(domingo.end), "2026-08-29");
+  assert.notEqual(key(sabado.start), key(domingo.start));
+});
+
 test("NO avisa el último sábado del calendario si el mes retail sigue abierto", () => {
   // El bug reportado: el 25 de julio de 2026 es el último sábado del calendario,
   // pero el mes retail cierra el 1 de agosto. Ese día no toca avisar.

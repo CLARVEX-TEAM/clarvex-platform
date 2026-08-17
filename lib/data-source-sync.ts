@@ -8,6 +8,7 @@ import { rulesDiffer, tabuladorToRules } from "@/lib/guess-tabulador-sync";
 import { parseKpiWorkbook } from "@/lib/kpi-parser";
 import { parsePosDiscountWorkbook } from "@/lib/pos-discount-parser";
 import { prisma } from "@/lib/prisma";
+import { retailMonthBoundsFor } from "@/lib/report-deadlines";
 import { parseScheduleWorkbook } from "@/lib/schedule-parser";
 import { reconcileAbsences } from "@/lib/attendance-reconcile";
 import { reconcileShiftSwaps } from "@/lib/shift-swap-reconcile";
@@ -488,17 +489,37 @@ function applyKpiRankings(records: MatchedKpiRecord[]) {
   }
 }
 
+/**
+ * Acumulados del mes **RETAIL**, no del natural.
+ *
+ * Agrupar por `YYYY-MM` metía el 1 de agosto de 2026 —que es julio retail— en
+ * los dos meses a la vez. El TTLS del empleado sigue mandando sobre la meta
+ * cuando la hoja lo trae: ya es el total del mes retail completo, incluidos los
+ * días que el RDV todavía no ha cargado, y por eso no se sustituye por la suma
+ * de lo que va llegando.
+ */
 function applyMonthlyTotals(records: MatchedKpiRecord[], employeeTtlsGoals: Record<string, number>) {
+  const monthStarts = new Map<string, string>();
+  const monthKey = (record: MatchedKpiRecord) => {
+    const dateKey = record.date.toISOString().slice(0, 10);
+    let start = monthStarts.get(dateKey);
+    if (!start) {
+      start = retailMonthBoundsFor(record.date).start.toISOString().slice(0, 10);
+      monthStarts.set(dateKey, start);
+    }
+    return `${record.userId}:${start}`;
+  };
+
   const totals = new Map<string, { sales: number; goal: number }>();
   for (const record of records) {
-    const key = `${record.userId}:${record.date.toISOString().slice(0, 7)}`;
+    const key = monthKey(record);
     const total = totals.get(key) ?? { sales: 0, goal: 0 };
     total.sales += record.dailySales;
     total.goal += record.dailyGoal;
     totals.set(key, total);
   }
   for (const record of records) {
-    const total = totals.get(`${record.userId}:${record.date.toISOString().slice(0, 7)}`);
+    const total = totals.get(monthKey(record));
     record.monthlySales = total?.sales ?? 0;
     const ttlsGoal = employeeTtlsGoals[record.employeeNumber];
     record.monthlyGoal = ttlsGoal && ttlsGoal > 0 ? ttlsGoal : (total?.goal ?? 0);
