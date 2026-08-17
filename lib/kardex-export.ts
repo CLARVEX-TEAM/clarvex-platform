@@ -66,7 +66,8 @@ export async function exportKardex(
     by: ["date"],
     where: {
       storeId,
-      date: { gt: state.round.startDate, ...(state.round.endDate ? { lte: state.round.endDate } : {}) },
+      // Mismo corte que el kardex: el día del inventario entra en la ronda.
+      date: { gte: state.round.startDate, ...(state.round.endDate ? { lte: state.round.endDate } : {}) },
       user: PERSON_WHERE
     },
     _sum: { pieces: true }

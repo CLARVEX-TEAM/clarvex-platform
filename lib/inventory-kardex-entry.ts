@@ -165,15 +165,20 @@ export function normalizeMovementEntry(
   if (date.getTime() > today.getTime()) {
     return { ok: false, error: `${entry.date}: no se puede registrar un movimiento en el futuro.` };
   }
-  // El corte es el DÍA del inventario, no el instante: todo lo que pasó hasta el
-  // cierre de ese día ya está reflejado en las piezas contadas. Por eso el kardex
-  // arranca al día siguiente, y por eso las ventas se suman con el mismo criterio
-  // (`date > start`) — si aquí se aceptara el día del conteo y allá no, un
-  // traspaso de ese día contaría dos veces.
-  if (date.getTime() <= round.start.getTime()) {
+  // ⚠️ El día del inventario SÍ entra en la ronda.
+  //
+  // El conteo lo hace RGIS antes de que la tienda abra, así que lo que pasa ese
+  // día ocurre DESPUÉS de contar. Lo confirma el kardex real de la tienda: su
+  // «Último Inventario» es el 18 de febrero y la primera fila de la hoja Ventas
+  // es de ese mismo 18 de febrero.
+  //
+  // Las ventas se suman con el mismo criterio (`date >= start`). Si aquí se
+  // aceptara el día del conteo y allá no —o al revés—, ese día se contaría dos
+  // veces o se perdería entero.
+  if (date.getTime() < round.start.getTime()) {
     return {
       ok: false,
-      error: `${entry.date}: no es posterior al inventario que abre la ronda (${round.start.toISOString().slice(0, 10)}). Lo de ese día ya está contado en la base.`
+      error: `${entry.date}: es anterior al inventario que abre la ronda (${round.start.toISOString().slice(0, 10)}). Esa mercancía ya está contada en la base.`
     };
   }
   // Una ronda cerrada ya se comparó contra su conteo físico. Dejar entrar un

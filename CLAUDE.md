@@ -827,7 +827,12 @@ Cinco reglas que NO hay que cambiar sin hablarlo:
 
 Tipos de movimiento: recepción, traspaso de entrada, devolución de cliente,
 traspaso de salida, **SFS** (Ship From Store) y ajuste ±. El corte de la ronda
-es el DÍA del inventario: movimientos y ventas usan `date > startDate`.
+⚠️ **El día del inventario SÍ entra en la ronda**: movimientos y ventas usan
+`date >= startDate`. RGIS cuenta antes de que la tienda abra, así que lo de ese
+día ocurre después del conteo. Lo confirma el kardex real de la tienda: su
+«Último Inventario» es el 18 de febrero y la primera fila de la hoja Ventas es
+de ese mismo día. Los dos cortes tienen que moverse juntos: si uno acepta el día
+del conteo y el otro no, ese día se cuenta dos veces o se pierde entero.
 
 Un `AJUSTE` exige motivo: sin él, una merma desaparece sin explicación, que es
 justo lo que el kardex existe para evitar.

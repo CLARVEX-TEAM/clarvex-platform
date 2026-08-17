@@ -467,12 +467,15 @@ Decisiones que costaron conversación y no hay que deshacer:
 - **Las devoluciones de cliente SÍ se capturan.** El POS da las piezas vendidas
   brutas y desglosadas por asesor, y las devoluciones aparte a nivel tienda; al
   llegar por caminos distintos no hay doble conteo. Confirmado por Adrian.
-- **El corte es el DÍA del inventario, no el instante.** Movimientos y ventas
-  usan el mismo criterio (`date > baseline`): todo lo del día del conteo ya está
-  dentro de las piezas contadas. Si se aceptara en un lado y no en el otro, un
-  traspaso de ese día contaría dos veces.
-  ⚠️ **Supuesto pendiente de confirmar con la tienda:** que el conteo se hace al
-  cierre. Si contaran ANTES de abrir, las ventas de ese día se perderían.
+- ⚠️ **El día del inventario SÍ entra en la ronda.** Movimientos y ventas usan
+  el mismo criterio (`date >= startDate`). **RGIS cuenta antes de que la tienda
+  abra**, así que lo de ese día ocurre después del conteo. Lo confirma su propio
+  kardex: «Último Inventario» = 18 de febrero, y la primera fila de la hoja
+  Ventas es de ese mismo 18 de febrero.
+  Se construyó al revés (`> startDate`) y se descubrió al capturar el primer
+  movimiento real: la interfaz lo rechazaba por ser del mismo día que la
+  apertura. Los dos cortes tienen que moverse juntos: si uno acepta el día del
+  conteo y el otro no, ese día se cuenta dos veces o se pierde entero.
 - **`quantity` siempre positivo**; el signo lo pone el tipo (`signedQuantity`).
 - **SFS (Ship From Store) es una salida propia**, no un traspaso. Lo llevan
   separado en su archivo; esta ronda salió en 0 pero la hoja existe.
@@ -636,8 +639,8 @@ marbete, así que ese enganche ya no es evidente.
 movimientos de febrero a agosto—. Se abre directamente la ronda nueva con la
 fecha del inventario y las piezas que cuente RGIS como `basePieces`.
 
-⚠️ **Supuesto sin confirmar:** que el conteo se hace al cierre del día. Si
-contaran ANTES de abrir, las ventas de ese día se perderían del kardex.
+✅ **Resuelto:** el conteo lo hace RGIS **antes de abrir**, así que el día del
+inventario pertenece a la ronda. Ver la regla del corte más arriba.
 
 ### Retiro de Centro de Datos y Ticket electrónico — 14 de agosto
 

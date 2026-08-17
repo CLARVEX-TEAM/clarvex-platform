@@ -57,24 +57,24 @@ test("exige piezas enteras", () => {
   assert.equal(outcome.ok, false);
 });
 
-test("rechaza un movimiento anterior al inventario inicial", () => {
+test("rechaza un movimiento anterior al inventario que abre la ronda", () => {
   // Es el fallo mas caro posible: contaria mercancia que ya se conto fisicamente
   // y el teorico saldria inflado sin ninguna senal de error.
   const outcome = normalizeMovementEntry(movimiento({ date: "2026-08-17" }), ctx);
   assert.equal(outcome.ok, false);
   if (outcome.ok) return;
-  assert.match(outcome.error, /no es posterior al inventario que abre la ronda/);
+  assert.match(outcome.error, /anterior al inventario que abre la ronda/);
 });
 
-test("el DIA del inventario inicial tampoco se acepta", () => {
-  // Lo de ese dia ya esta dentro de las piezas contadas. Aceptarlo aqui y no en
-  // las ventas —que se suman con date > startDate— haria que un traspaso de ese
-  // dia contara dos veces.
+test("el DIA del inventario SI entra en la ronda", () => {
+  // RGIS cuenta antes de que la tienda abra, asi que lo de ese dia ocurre
+  // DESPUES del conteo. Lo confirma el kardex real: su "Ultimo Inventario" es el
+  // 18 de febrero y la primera fila de la hoja Ventas es de ese mismo dia.
   const outcome = normalizeMovementEntry(movimiento({ date: "2026-08-18" }), ctx);
-  assert.equal(outcome.ok, false);
+  assert.equal(outcome.ok, true);
 });
 
-test("el dia siguiente al inventario si arranca el kardex", () => {
+test("el dia siguiente tambien, obviamente", () => {
   const outcome = normalizeMovementEntry(movimiento({ date: "2026-08-19" }), ctx);
   assert.equal(outcome.ok, true);
 });

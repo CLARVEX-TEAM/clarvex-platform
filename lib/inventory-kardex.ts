@@ -108,13 +108,14 @@ export async function getKardexState(storeId: string, roundId?: string): Promise
       orderBy: [{ date: "desc" }, { createdAt: "desc" }]
     }),
     // Las piezas VENDIDAS no son movimientos capturados: ya se registran en KPIs
-    // día a día. Mismo corte que los movimientos (`> startDate`) para que lo del
-    // día del inventario no cuente dos veces. `PERSON_WHERE` excluye al usuario
-    // del kiosko, que está dado de alta como ASESOR — ver `lib/store-people`.
+    // día a día. Mismo corte que los movimientos (`>= startDate`): RGIS cuenta
+    // antes de abrir, así que la venta del día del inventario ocurre después del
+    // conteo y pertenece a la ronda. `PERSON_WHERE` excluye al usuario del
+    // kiosko, que está dado de alta como ASESOR — ver `lib/store-people`.
     prisma.kpi.aggregate({
       where: {
         storeId,
-        date: { gt: round.startDate, ...(round.endDate ? { lte: round.endDate } : {}) },
+        date: { gte: round.startDate, ...(round.endDate ? { lte: round.endDate } : {}) },
         user: PERSON_WHERE
       },
       _sum: { pieces: true }
