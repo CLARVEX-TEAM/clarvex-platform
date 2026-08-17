@@ -247,3 +247,65 @@ export function parseAmount(raw: string | undefined): number | null {
 function round(value: number): number {
   return Math.round(value * 100) / 100;
 }
+
+/* ─── Emparejar con la gente de Clarvex ──────────────────────────────────── */
+
+export type Candidate = { id: string; name: string; employeeNumber: string };
+
+export type MatchedPerson = {
+  user: Candidate;
+  /** Nombre tal como venía en la Cuota Justa. */
+  source: string;
+  goals: Record<string, number>;
+};
+
+export type MatchOutcome = {
+  matched: MatchedPerson[];
+  /** Nombres de la Cuota Justa que no corresponden a nadie de la tienda. */
+  unmatched: string[];
+  /** Nombres que encajan con VARIAS personas: no se elige por sorteo. */
+  ambiguous: { name: string; candidates: string[] }[];
+};
+
+/**
+ * Cruza los nombres de la Cuota Justa con la plantilla de la tienda.
+ *
+ * La hoja trae solo el nombre de pila («Waira», «Jazmín»), así que se compara
+ * contra las palabras del nombre completo, sin acentos.
+ *
+ * ⚠️ **Nunca se elige entre varios.** Si «Ana» encaja con Ana Torres y Ana Ruiz,
+ * la fila se marca como ambigua y no se escribe: sembrarle una semana de metas a
+ * la persona equivocada es peor que no sembrar nada, porque su alcance y su
+ * comisión salen mal sin que nadie lo note.
+ */
+export function matchCuotaJusta(people: PersonGoals[], candidates: Candidate[]): MatchOutcome {
+  const outcome: MatchOutcome = { matched: [], unmatched: [], ambiguous: [] };
+  const taken = new Set<string>();
+
+  for (const person of people) {
+    const target = norm(person.name);
+    const hits = candidates.filter((candidate) => {
+      const words = norm(candidate.name).split(/\s+/).filter(Boolean);
+      return norm(candidate.name) === target || words.includes(target);
+    });
+
+    if (hits.length === 0) {
+      outcome.unmatched.push(person.name);
+      continue;
+    }
+    if (hits.length > 1) {
+      outcome.ambiguous.push({ name: person.name, candidates: hits.map((hit) => `${hit.name} (${hit.employeeNumber})`) });
+      continue;
+    }
+    // Dos filas distintas apuntando a la misma persona sería un error de la
+    // hoja; la segunda pisaría a la primera en silencio.
+    if (taken.has(hits[0].id)) {
+      outcome.ambiguous.push({ name: person.name, candidates: [`${hits[0].name}: ya asignado por otra fila`] });
+      continue;
+    }
+    taken.add(hits[0].id);
+    outcome.matched.push({ user: hits[0], source: person.name, goals: person.goals });
+  }
+
+  return outcome;
+}

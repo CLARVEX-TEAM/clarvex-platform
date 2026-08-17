@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { parseAmount, parseCuotaJusta, parseDate, weeklyTotal } from "../lib/cuota-justa";
+import { matchCuotaJusta, parseAmount, parseCuotaJusta, parseDate, weeklyTotal } from "../lib/cuota-justa";
 
 /**
  * Pegado tal como sale de Excel: cada dia ocupa DOS columnas (% e importe) y la
@@ -169,4 +169,59 @@ test("los acentos no parten el nombre", () => {
 test("acepta el pegado con saltos de linea de Windows", () => {
   const outcome = parseCuotaJusta(PEGADO.replace(/\n/g, "\r\n"));
   assert.equal(outcome.ok, true);
+});
+
+/* ─── Emparejar con la plantilla ─────────────────────────────────────────── */
+
+const PLANTILLA = [
+  { id: "u1", name: "Itzel Reyes", employeeNumber: "81893" },
+  { id: "u2", name: "Adrián Luna", employeeNumber: "80001" },
+  { id: "u3", name: "Waira Sánchez", employeeNumber: "80002" },
+  { id: "u4", name: "Jazmín Torres", employeeNumber: "80003" },
+  { id: "u5", name: "Alonso Pérez", employeeNumber: "80004" }
+];
+
+const gente = () => {
+  const outcome = parseCuotaJusta(PEGADO);
+  if (!outcome.ok) throw new Error("el pegado de prueba deberia parsear");
+  return outcome.value.people;
+};
+
+test("empareja por nombre de pila, sin acentos", () => {
+  const match = matchCuotaJusta(gente(), PLANTILLA);
+  assert.equal(match.matched.length, 5);
+  assert.deepEqual(match.unmatched, []);
+  assert.deepEqual(match.ambiguous, []);
+  assert.equal(match.matched.find((m) => m.source === "JAZMIN")?.user.id, "u4");
+  assert.equal(match.matched.find((m) => m.source === "ADRIAN")?.user.id, "u2");
+});
+
+test("NO elige cuando el nombre encaja con varias personas", () => {
+  // Sembrarle una semana de metas a quien no es deja su alcance y su comision
+  // mal sin que nadie lo note.
+  const conDoble = [...PLANTILLA, { id: "u6", name: "Waira Gómez", employeeNumber: "80005" }];
+  const match = matchCuotaJusta(gente(), conDoble);
+  assert.equal(match.ambiguous.length, 1);
+  assert.equal(match.ambiguous[0].name, "WAIRA");
+  assert.equal(match.ambiguous[0].candidates.length, 2);
+  assert.equal(match.matched.some((m) => m.source === "WAIRA"), false);
+});
+
+test("reporta a quien no esta en la plantilla", () => {
+  const sinAlonso = PLANTILLA.filter((p) => p.id !== "u5");
+  const match = matchCuotaJusta(gente(), sinAlonso);
+  assert.deepEqual(match.unmatched, ["ALONSO"]);
+  assert.equal(match.matched.length, 4);
+});
+
+test("dos filas para la misma persona no se pisan en silencio", () => {
+  const duplicado = [{ name: "ITZEL", goals: { "2026-08-16": 100 } }, { name: "REYES", goals: { "2026-08-16": 200 } }];
+  const match = matchCuotaJusta(duplicado, PLANTILLA);
+  assert.equal(match.matched.length, 1);
+  assert.equal(match.ambiguous.length, 1);
+});
+
+test("un apellido tambien empareja si es inequivoco", () => {
+  const match = matchCuotaJusta([{ name: "SANCHEZ", goals: { "2026-08-16": 100 } }], PLANTILLA);
+  assert.equal(match.matched[0]?.user.id, "u3");
 });

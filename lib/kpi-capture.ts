@@ -252,7 +252,7 @@ async function rerankDates(storeId: string, dates: Date[]): Promise<number> {
  * se deja de leer: sin RDV, la suma de lo capturado es la única definición que
  * se sostiene sola.
  */
-async function recalculateMonths(
+export async function recalculateMonths(
   storeId: string,
   matched: Array<{ userId: string; date: Date }>
 ): Promise<number> {
