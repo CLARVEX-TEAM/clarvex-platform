@@ -28,6 +28,31 @@ test("acumula ventas, metas y ranking por periodo", () => {
   assert.equal(aggregateStore(reports)?.sales, 450);
 });
 
+test("la meta de tienda del MES suma el periodo, no el monthlyGoal de cada quien", () => {
+  // El bug real de agosto de 2026: la meta del mes se leia de un TTLS congelado
+  // en el ultimo sync del RDV (11 de agosto), asi que TH SAN AGUSTIN mostraba
+  // 222,874.94 —la foto de ese dia— con 355,837.02 ya capturados en Retool.
+  //
+  // `monthlyGoal` no sirve como sustituto: es del mes NATURAL y arrastra el 1 de
+  // agosto, que ya es julio retail. El total de tienda tiene que salir de sumar
+  // las metas DIARIAS del periodo que se esta mostrando.
+  const base = { conversion: null, traffic: null, grossSales: null, discountAmount: null, discountLimit: null, commissionAmount: 0, commissionPercent: 0 };
+  const rows = [
+    { ...base, userId: "a", date: new Date("2026-08-02T00:00:00.000Z"), dailySales: 0, dailyGoal: 100, monthlyGoal: 175, transactions: 0, pieces: 0, user: { name: "Ana", role: "ASESOR" as const, photoUrl: null } },
+    { ...base, userId: "a", date: new Date("2026-08-16T00:00:00.000Z"), dailySales: 0, dailyGoal: 50, monthlyGoal: 175, transactions: 0, pieces: 0, user: { name: "Ana", role: "ASESOR" as const, photoUrl: null } }
+  ];
+
+  // Vista mes: a la persona se le muestra su monthlyGoal (mes natural, con el
+  // dia 1 dentro). Documentado, no es lo que se corrige aqui.
+  assert.equal(aggregateKpis(rows, true)[0].goal, 175);
+  // La misma agregacion sin monthlyGoal da la meta del PERIODO retail.
+  assert.equal(aggregateKpis(rows, false)[0].goal, 150);
+
+  const monthReports = aggregateKpis(rows, true);
+  const periodGoal = aggregateKpis(rows, false).reduce((total, item) => total + item.goal, 0);
+  assert.equal(aggregateStore(monthReports, null, periodGoal)?.goal, 150);
+});
+
 test("no suma dos veces el mismo usuario y dia calendario", () => {
   const base = { conversion: null, traffic: null, grossSales: null, discountAmount: null, discountLimit: null, commissionAmount: 0, commissionPercent: 0 };
   const reports = aggregateKpis([

@@ -1093,29 +1093,60 @@ diarias, en vez de teclearlas día a día. Retool `0.0.11`, bloque arriba de KPI
 Probado en producción con la semana 33 de TH SAN AGUSTIN: 5 personas, 7 días,
 26 filas creadas y 9 actualizadas, los cinco nombres emparejados.
 
-#### 🔴 ABIERTO: la vista mensual de Clarvex no ve las metas nuevas
+#### ✅ RESUELTO: la meta del mes venía congelada del RDV muerto
 
-Los datos están BIEN. `Kpi.dailyGoal` suma **355,837.02** en el mes retail
-(2–29 ago) y `monthlyGoal` quedó bien recalculada (**383,083.35**, mes natural),
-pareja en todas las filas. **Retool las muestra correctamente** porque suma las
-diarias.
+No era caché ni las filas nuevas. `lib/services/kpi-service.ts` prefería, en
+vista **mes**, los **TTLS del RDV** que viajan dentro del último log de sync
+`SUCCESS` del mes retail consultado (`pickTtlsForMonth`). El último de esos logs
+es del **11 de agosto a las 23:00** — justo antes de que Axo cortara los enlaces.
+Desde entonces la meta, los tickets y las piezas de tienda quedaron clavados en
+la foto de ese día, sin importar lo que se capturara después.
 
-La pantalla de KPIs de **Clarvex** muestra **222,874.94**, que es exactamente la
-suma **sin** los días 16–22 — la foto de antes de sembrar. **Persiste tras
-recargar**, así que no es la caché de 30 s de `lib/app-data.ts`.
+Los números lo confirman al centavo. En `clarvex-demo-store`:
 
-Que Retool acierte y Clarvex no acota el problema a esa pantalla: o filtra las
-filas nuevas por algo que les falta, o sirve una respuesta cacheada. Pista: las
-filas creadas para días futuros tienen `dailySales`, `transactions`, `pieces` y
-`ranking` en **0**.
+| | TTLS congelado | Suma real del periodo |
+|---|---|---|
+| Meta agosto | 222,874.94 | **355,837.02** |
+| Tickets | 158 | **251** |
+| Piezas | 321 | **518** |
 
-⚠️ Al arreglarlo, **no tocar la lógica de comisiones**: `monthlyGoal` alimenta el
-alcance.
+Y 222,874.94 no era coincidencia: es la suma de las semanas 31 y 32
+(106,260.68 + 116,614.26), lo único que el RDV alcanzó a escribir.
 
-#### 🟡 Aparte: `recalculateMonths` usa el mes NATURAL
+**El arreglo** suma las filas del periodo en vez de leer el TTLS. Es un **no-op
+donde la fuente sigue viva**, comprobado contra producción antes de tocar nada:
+
+- Julio de TH SAN AGUSTIN: TTLS 821,273.50 = suma 821,273.50; tx 499 = 499;
+  piezas 899 = 899.
+- Agosto de GUESS Galerías (su RDV sigue entrando por Power Automate):
+  TTLS 570,480.43 = suma 570,480.43; tx 226 = 226; piezas 407 = 407.
+
+**No se movió ni un número de comisión**, a propósito:
+
+- `ttlsCommissionMinimum` se deja intacto: sigue siendo la única fuente del
+  mínimo de tienda y es lo que alimenta el alcance.
+- La meta **por persona** tampoco se toca (sigue saliendo de `monthlyGoal`), que
+  es lo que habría cambiado el alcance en GUESS: su `commissionBasis` es `META`
+  y **ninguna** de sus 51 filas de agosto trae `commissionMinimum`, así que ahí
+  la comisión se mide contra la meta directamente.
+
+Regresión cubierta en `tests/kpi-period.test.ts` («la meta de tienda del MES
+suma el periodo, no el monthlyGoal de cada quien»).
+
+#### 🟡 SIGUE ABIERTO: `recalculateMonths` usa el mes NATURAL
 
 `lib/kpi-capture.ts:255` calcula `monthlyGoal` sobre el mes natural (1–31), pero
-la app muestra el **mes retail** (2–29 ago). Son 27,246 pesos de diferencia: los
-días 30 y 31 de agosto ya son septiembre retail. Es la trampa que advierte
-`CLAUDE.md` en «Asistencia: mes retail vs mes natural». Independiente del bug de
-arriba, y también toca alcance: hablarlo antes de cambiarlo.
+la app muestra el **mes retail**. Son **27,246.33** pesos de diferencia en
+agosto, y ya está identificado exactamente de dónde salen: las metas del **1 de
+agosto**, que es julio retail y se cuenta dos veces. GUESS tiene el mismo caso
+por 58,700.47.
+
+El arreglo de arriba **esquiva** esto en el total de tienda (suma el periodo
+retail), pero la meta que se le muestra a **cada persona** en vista mes sigue
+saliendo de `monthlyGoal`, o sea del mes natural. Es la trampa que advierte
+`CLAUDE.md` en «Asistencia: mes retail vs mes natural».
+
+⚠️ **Hablarlo antes de cambiarlo, porque aquí sí se paga.** En GUESS
+(`commissionBasis = META`, sin `commissionMinimum` en ninguna fila de agosto) el
+alcance se mide contra esa meta: corregir el mes cambia el bracket y cambia lo
+que cobra la gente.

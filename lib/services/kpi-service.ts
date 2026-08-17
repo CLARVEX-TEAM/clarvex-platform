@@ -115,15 +115,31 @@ export async function getKpiReport(session: Session, { period, selectedDate, asO
   // junio, aunque el sync más reciente ya sea del RDV de julio.
   const referenceMonth = selectRetailMonth(retailMonths, start);
   const kpiTtls = pickTtlsForMonth(latestKpiSource?.syncLogs ?? [], referenceMonth?.label ?? null);
-  const ttlsGoalOverride = period === "month" && kpiTtls?.ttlsMeta && kpiTtls.ttlsMeta > 0 ? kpiTtls.ttlsMeta : undefined;
-  const ttlsTxOverride = period === "month" && kpiTtls?.ttlsTransactions && kpiTtls.ttlsTransactions > 0 ? kpiTtls.ttlsTransactions : undefined;
-  const ttlsPiecesOverride = period === "month" && kpiTtls?.ttlsPieces && kpiTtls.ttlsPieces > 0 ? kpiTtls.ttlsPieces : undefined;
+  // Meta, tickets y piezas de TIENDA en vista mes: se suman las filas del
+  // período mostrado, NO los TTLS del RDV.
+  //
+  // Los TTLS viven congelados dentro del último log de sync. Con el RDV muerto
+  // desde el 11 de agosto de 2026, ese snapshot dejó la meta del mes clavada en
+  // la foto de ese día: nada de lo capturado en Retool después —las metas de la
+  // Cuota Justa incluidas— aparecía en la pantalla, aunque la base estuviera
+  // bien. Se comprobó que TTLS y suma del período coinciden AL CENTAVO en julio
+  // y en agosto, en las dos tiendas con datos, así que sumar no cambia nada
+  // donde la fuente sigue viva; solo descongela donde ya no lo está.
+  //
+  // ⚠️ En vista mes `storeReports` trae la meta MENSUAL de cada persona
+  // (`monthlyGoal`, mes NATURAL). Por eso el total de tienda se vuelve a
+  // agregar sobre las metas DIARIAS del período retail que se está mostrando.
+  const storeGoalOverride = manager && useMonthlyGoal
+    ? round2(aggregateKpis(rows, false, workingKeys).reduce((total, item) => total + item.goal, 0))
+    : undefined;
   // El mínimo de tienda (TOTALES de COMISIONES) es mensual; debe estar disponible en
   // todos los períodos para que el alcance de comisión se mida SIEMPRE contra mínimo.
   const ttlsCommissionMinimum = kpiTtls?.ttlsCommissionMinimum && kpiTtls.ttlsCommissionMinimum > 0 ? kpiTtls.ttlsCommissionMinimum : null;
   const computedTraffic = aggregateStoreTraffic(rows);
   const trafficForStore = computedTraffic ?? (period === "month" ? (kpiTtls?.ttlsTraffic ?? null) : null);
-  const store = manager ? aggregateStore(storeReports, trafficForStore, ttlsGoalOverride, ttlsTxOverride, ttlsPiecesOverride, ttlsCommissionMinimum) : null;
+  // Tickets y piezas ya salen de sumar el período en `storeReports`: no llevan
+  // override. Solo la meta lo necesita, por el `monthlyGoal` del párrafo de arriba.
+  const store = manager ? aggregateStore(storeReports, trafficForStore, storeGoalOverride, undefined, undefined, ttlsCommissionMinimum) : null;
   const workedDays = session.role === "ASESOR"
     ? Array.from(workingKeys).filter((key) => key.startsWith(`${session.userId}:`)).length
     : null;
@@ -260,6 +276,8 @@ export async function getStoreDailyResults(session: Session, dateKeyStr?: string
     conversion: daily.conversion
   };
 }
+
+function round2(value: number) { return Math.round(value * 100) / 100; }
 
 function isKpiSyncMetrics(details: unknown): details is KpiSyncMetrics {
   return typeof details === "object" && details !== null && "sheetUsed" in details && "weeksDetected" in details && Array.isArray((details as KpiSyncMetrics).weeksDetected);
