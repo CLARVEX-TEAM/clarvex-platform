@@ -1133,20 +1133,44 @@ donde la fuente sigue viva**, comprobado contra producción antes de tocar nada:
 Regresión cubierta en `tests/kpi-period.test.ts` («la meta de tienda del MES
 suma el periodo, no el monthlyGoal de cada quien»).
 
-#### 🟡 SIGUE ABIERTO: `recalculateMonths` usa el mes NATURAL
+#### ✅ RESUELTO: los acumulados del mes van por mes RETAIL
 
-`lib/kpi-capture.ts:255` calcula `monthlyGoal` sobre el mes natural (1–31), pero
-la app muestra el **mes retail**. Son **27,246.33** pesos de diferencia en
-agosto, y ya está identificado exactamente de dónde salen: las metas del **1 de
-agosto**, que es julio retail y se cuenta dos veces. GUESS tiene el mismo caso
-por 58,700.47.
+Aprobado explícitamente por Adrian el 17 de agosto de 2026: **todas las tiendas
+trabajan por mes retail**. Los dos escritores de `monthlyGoal`/`monthlySales`
+agrupaban por mes natural, así que el **1 de agosto** —que es julio retail—
+caía en los dos meses a la vez: 27,246.33 duplicados en TH SAN AGUSTIN y
+58,700.47 en GUESS.
 
-El arreglo de arriba **esquiva** esto en el total de tienda (suma el periodo
-retail), pero la meta que se le muestra a **cada persona** en vista mes sigue
-saliendo de `monthlyGoal`, o sea del mes natural. Es la trampa que advierte
-`CLAUDE.md` en «Asistencia: mes retail vs mes natural».
+- `recalculateMonths` (`lib/kpi-capture.ts`) usa `retailMonthBoundsFor`.
+- `applyMonthlyTotals` (`lib/data-source-sync.ts`) agrupa por inicio de mes retail.
 
-⚠️ **Hablarlo antes de cambiarlo, porque aquí sí se paga.** En GUESS
-(`commissionBasis = META`, sin `commissionMinimum` en ninguna fila de agosto) el
-alcance se mide contra esa meta: corregir el mes cambia el bracket y cambia lo
-que cobra la gente.
+El **TTLS del empleado sigue mandando** sobre la meta cuando la hoja lo trae: ya
+es el total del mes retail COMPLETO, incluidos los días que el RDV todavía no ha
+cargado, y sustituirlo por la suma de lo que va llegando encogería la meta del
+mes cada vez que se sincroniza. En GUESS eso deja la meta intacta; lo que se le
+corrige es la venta acumulada.
+
+**Backfill hecho solo en agosto** de `clarvex-demo-store` (86 filas), con los
+valores previos respaldados en la tabla `_respaldo_kpi_mensual_20260817`.
+
+⚠️ **Junio y julio se dejaron intactos a propósito**: son meses cerrados y ya
+pagados. En junio la venta acumulada pasaría de 334,541 a 438,520, porque el
+junio retail son cinco semanas (31 may – 4 jul), y eso movería recibos
+históricos. Si algún día se decide reescribirlos, que sea una decisión hablada.
+
+#### Por qué estuvo meses invisible
+
+Mientras el RDV vivía, el mes natural era **código muerto**: `applyMonthlyTotals`
+prefería el TTLS de la hoja —que ya es retail— y la suma agrupada por mes
+natural era solo el camino de respaldo, que nunca se tomaba. El código estaba
+mal y el número salía bien.
+
+Solo pudo aflorar cuando la captura sustituyó al RDV, porque `recalculateMonths`
+no tiene hoja que preferir: ahí la suma ES la definición. Y aun así lo tapaba el
+otro bug —la meta de tienda congelada—, que enseñaba 222,874.94 en vez del
+383,083.35 del mes natural. Dos fallos apilados, el de fuera escondiendo al de
+dentro.
+
+Es el mismo patrón que ya documenta `CLAUDE.md` con los domingos de asistencia:
+«en julio los dos daban los mismos cuatro, por eso el fallo estuvo meses
+invisible».
