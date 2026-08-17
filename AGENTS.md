@@ -576,9 +576,43 @@ Lo que se vio en el archivo de la tienda y conviene recordar:
   de existencia física está vacía esperando el conteo. No es un error del
   archivo.
 
-**Falta:** desplegar (`prisma migrate deploy` en el VPS), la pantalla de Retool,
-la vista en Clarvex y enganchar el cierre de ronda a un `CycleCount`. El
-inventario del **martes 18 de agosto** cierra la 1ª ronda y abre la 2ª.
+**Desplegado el 17 de agosto de 2026.** Respaldo previo en
+`/root/pre-kardex-20260817-0204.dump` (789K), las 4 migraciones aplicadas, las
+tablas y el índice parcial verificados en la base, build en verde, PM2 con dos
+instancias y health correcto. Los endpoints se probaron contra producción con
+`TH SAN AGUSTIN`: devuelven los 7 tipos, las 74 contrapartes y `rounds: []`.
+
+⚠️ Dos trampas del VPS que costaron tiempo y volverán a costarlo:
+- **`pg_dump -U postgres` falla**: ese rol NO existe, el usuario es `clarvex`.
+  El respaldo sale en 0 bytes y es fácil darlo por bueno.
+- **`ADMIN_CAPTURE_SECRET` está entrecomillado en el `.env`**: leerlo con
+  `cut -d= -f2-` da 66 caracteres en vez de 64 y produce un 401 idéntico al de
+  un token equivocado. Hay que limpiar comillas antes de usarlo en un `curl`.
+
+**Pantalla de Retool publicada como parche `0.0.8`** (commit Retool `8b6e94c`),
+ruta `/kardex`, entre «Descuentos» y «Ticket electrónico». Backend en
+`backend/kardex/` con el patrón de siempre: `requireManagerIdentity` para el
+`storeId`, `clarvexApiCaptura.rawRequest` y los helpers de `restError`. Las dos
+funciones mutativas (`saveMovements`, `saveRound`) se aprobaron tras revisar su
+código: publicar está bloqueado hasta hacerlo — **una pausa pidiendo aprobación
+no es un cuelgue, no cancelarla**.
+
+El export se añadió con `?format=base64` porque el panel no puede pedir el
+binario desde el navegador (el secreto no puede viajar al cliente). El runtime de
+Retool no expone `utils.downloadFile`, así que la descarga usa un helper propio.
+
+🟡 **Sin verificar por una persona:** la escritura desde la interfaz de Retool.
+Las lecturas sí se probaron contra producción, pero el camino de guardado solo
+se comprobó leyendo el código. Es exactamente lo que falló en su día con
+«no guarda los cambios», así que hay que hacer clic de verdad.
+
+**Falta:** la vista en Clarvex y decidir si el cierre de ronda se engancha a algo
+de la app. ⚠️ Ojo: la existencia física la trae **RGIS**, no los `CycleCount` por
+marbete, así que ese enganche ya no es evidente.
+
+**El martes 18 de agosto**: no hay que reconstruir la 1ª ronda —serían ~500
+movimientos de febrero a agosto—. Se abre directamente la ronda nueva con la
+fecha del inventario y las piezas que cuente RGIS como `basePieces`.
 
 ⚠️ **Supuesto sin confirmar:** que el conteo se hace al cierre del día. Si
 contaran ANTES de abrir, las ventas de ese día se perderían del kardex.
