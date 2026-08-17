@@ -25,7 +25,12 @@ export async function GET(request: Request) {
   const store = await prisma.store.findUnique({ where: { id: storeId }, select: { id: true } });
   if (!store) return NextResponse.json({ error: "Tienda no encontrada." }, { status: 404 });
 
-  const result = await exportKardex(storeId, params.get("roundId")?.trim() || undefined);
+  const result = await exportKardex(storeId, {
+    roundId: params.get("roundId")?.trim() || undefined,
+    // APTO de la tienda en el catálogo de corporativo (03029 = San Agustín).
+    // Va por parámetro porque Clarvex todavía no lo guarda como dato de tienda.
+    apto: params.get("apto")?.trim() || undefined
+  });
   if (!result) {
     return NextResponse.json(
       { error: "Esta tienda no tiene ninguna ronda de inventario que exportar." },

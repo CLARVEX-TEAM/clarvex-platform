@@ -495,17 +495,42 @@ Qué hay en el repo:
   la tienda ya entrega. La plantilla es `templates/kardex.xlsx`: su propio
   archivo con los datos vaciados y las fórmulas intactas.
 
-⚠️ **En el exportado los totales se escriben como VALORES, no como fórmulas.**
-exceljs no recalcula, y las sumas del formato apuntan a tablas de Excel
-(`SUM(Tabla1[Piezas])`) cuyo rango no se extiende solo al añadir filas desde
-código: dejarlas como fórmula daría ceros. La consecuencia hay que saberla —
-**el exportado es un reporte, no una hoja de trabajo**: si alguien le añade una
-fila a mano, los totales no se mueven.
+🔴 **El archivo NO se rediseña, se rellena.** La toma de inventario la hace un
+proveedor externo (**RGIS**) y el formato es de corporativo, a donde se manda.
+Cualquier cambio de estructura, estilo o de las tablas es inaceptable.
 
-Los **ajustes no existen en el formato de la tienda**. Se exportan en una hoja
-«Ajustes» que solo se crea si los hay, y el aviso viaja en `X-Kardex-Warnings`:
-cuando hay ajustes, el teórico del resumen ya los incluye y la resta a mano
-«entradas − salidas + base» no cuadra con él.
+⚠️ **Por eso el exportador NO usa exceljs.** exceljs reescribe el libro entero y
+destroza las tablas de Excel: el archivo obligaba a Excel a «repararlo», los
+encabezados perdían su fondo (el texto ya era blanco; el azul se lo daba el
+estilo de tabla) y la reparación llegó a **inventar una sucursal** —`03074`— en
+una celda que estaba vacía. Se probaron dos rondas de parches sobre exceljs
+antes de aceptar que el enfoque era el equivocado.
+
+`lib/kardex-xlsx.ts` edita el XLSX por dentro (es un ZIP de XML) con jszip,
+tocando solo filas de datos, rango de tablas y cuatro celdas del resumen.
+**Comprobado: 53 de las 68 partes del archivo quedan byte a byte idénticas** al
+original; solo cambian las seis hojas, las cinco tablas, `workbook.xml` y sus
+dos declaraciones, y desaparece `calcChain.xml` (Excel lo reconstruye).
+
+**No se escribe ningún total.** El libro se marca con `fullCalcOnLoad="1"` y son
+las fórmulas originales las que los calculan al abrir. Así el exportado sigue
+siendo una hoja de trabajo: si le añaden una fila, todo cuadra solo.
+
+La plantilla se regenera con
+`pnpm exec tsx scripts/build-kardex-template.ts <kardex.xlsx>`. Borra las filas
+de datos dejando una **fila molde** por hoja —conserva los índices de estilo de
+cada columna, sin los cuales las fechas saldrían como números crudos— y borra
+los resultados en caché de las fórmulas, que eran cifras reales de la tienda.
+
+Los **ajustes no existen en el formato de corporativo** y NO se añaden al
+archivo: meterlos exigiría una hoja nueva. Cuando los hay, el aviso viaja en
+`X-Kardex-Warnings` diciendo en cuántas piezas discrepará el teórico del archivo
+respecto al de Clarvex.
+
+⚠️ **Falta el APTO de la tienda** (`03029` para San Agustín): dispara el
+`VLOOKUP` del nombre en `E9`. Clarvex no lo guarda, así que va por parámetro
+`?apto=` y sin él la casilla SUCURSAL queda vacía y el nombre sale `#N/A`.
+Conviene añadirlo como campo de `Store`.
 
 Bug encontrado al probar el export y corregido: `getKardexState` sin `roundId`
 solo miraba la ronda ABIERTA, así que **leer o exportar justo después de cerrar
