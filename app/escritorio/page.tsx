@@ -12,6 +12,7 @@ import { useTheme } from "@/components/ThemeProvider";
 import { useDesktopData } from "@/components/desktop/useDesktopData";
 import { DesktopError } from "@/components/desktop/DesktopError";
 import { DeskTrendChart, Sparkline } from "@/components/desktop/DeskCharts";
+import { InventoryCard } from "@/components/desktop/InventoryCard";
 import { DeskMeter, DeskReveal } from "@/components/desktop/DeskUI";
 
 /** Días hasta el próximo cumpleaños (para ordenar por más cercano). */
@@ -220,6 +221,11 @@ export default function EscritorioDashboard() {
         </dl>
         </section>
       </DeskReveal>
+
+      {/* Existencia teórica del kardex. Se pinta sola solo si la tienda tiene una
+          ronda de inventario abierta: sin ella, un cero se leería como que no
+          queda mercancía. Ver `components/desktop/InventoryCard`. */}
+      <InventoryCard />
 
       <hr className="desk-rule" />
 

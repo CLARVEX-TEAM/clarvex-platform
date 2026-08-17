@@ -1,7 +1,7 @@
 import {
   Award, Boxes, CalendarRange, ChartColumn, ClipboardCheck, ClipboardList,
   CalendarCheck, FileClock, Gauge, GraduationCap, Megaphone, MessagesSquare, NotebookPen, PackageSearch,
-  PencilLine, ShieldCheck, Target, TriangleAlert, Users
+  PackageOpen, PencilLine, ShieldCheck, Target, TriangleAlert, Users
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -47,6 +47,7 @@ export const navGroups: NavGroup[] = [
     items: [
       { href: "/escritorio/solicitudes", label: "Solicitudes", icon: FileClock, keywords: "permisos vacaciones cambio turno aprobaciones" },
       { href: "/escritorio/conteos", label: "Conteos", icon: Boxes, keywords: "inventario marbetes fisico" },
+      { href: "/escritorio/kardex", label: "Kardex", icon: PackageOpen, keywords: "inventario existencia teorica traspasos recepcion rondas rgis" },
       { href: "/escritorio/faltantes", label: "Faltantes", icon: PackageSearch, keywords: "producto inventario reporte" },
       { href: "/escritorio/kudos", label: "Reconocimientos", icon: Award, keywords: "kudos felicitaciones logros" },
       { href: "/escritorio/encuestas", label: "Encuestas", icon: ClipboardList, keywords: "clima feedback opinion" },
@@ -82,6 +83,7 @@ export const sectionTitles: Record<string, { title: string; subtitle: string }> 
   "/escritorio/perfil": { title: "Mi perfil", subtitle: "Tus datos y preferencias" },
   "/escritorio/admin": { title: "Administración", subtitle: "Tiendas, comisiones y suscripciones de la plataforma" },
   "/escritorio/conteos": { title: "Conteos", subtitle: "Inventario físico por marbete" },
+  "/escritorio/kardex": { title: "Kardex", subtitle: "Existencia teórica día a día de la ronda en curso" },
   "/escritorio/conteos/marbetes": { title: "Marbetes", subtitle: "Catálogo fijo de tienda y bodega" }
 };
 

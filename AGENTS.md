@@ -646,8 +646,24 @@ Con el hilo limpio se rehízo el cambio y se publicó como **`0.0.10`**
 🟡 **Sin verificar por una persona:** la captura de un movimiento de principio a
 fin y el botón de exportar.
 
-**Falta:** la vista en Clarvex y decidir si el cierre de ronda se engancha a algo
-de la app. ⚠️ Ojo: la existencia física la trae **RGIS**, no los `CycleCount` por
+### Vista del kardex en Clarvex
+
+`GET /api/kardex` (con sesión, solo lectura) + `/escritorio/kardex` y una tarjeta
+en el dashboard. La captura sigue viviendo solo en Retool: dos sitios donde
+capturar lo mismo es cómo se acaba con dos verdades.
+
+⚠️ **`/api/kardex`, NO `/api/inventory`.** Esa última ya existía y es el reporte
+de **faltantes** de producto (con foto y aviso a gerencia). Al montar esto se
+sobrescribió por accidente y hubo que restaurarla con `git checkout`: comprobar
+que la ruta está libre antes de escribir el archivo.
+
+`lib/inventory-daily.ts` arma la serie día a día. Emite **todos** los días del
+periodo, también los que no tuvieron movimiento: una línea con huecos se lee como
+si el inventario hubiera dejado de existir esos días. La tarjeta del dashboard no
+se pinta si no hay ronda abierta — un cero ahí se leería como «no queda
+mercancía».
+
+**Falta:** decidir si el cierre de ronda se engancha a algo de la app. ⚠️ Ojo: la existencia física la trae **RGIS**, no los `CycleCount` por
 marbete, así que ese enganche ya no es evidente.
 
 **El martes 18 de agosto**: no hay que reconstruir la 1ª ronda —serían ~500
