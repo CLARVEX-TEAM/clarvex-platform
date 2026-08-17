@@ -1174,3 +1174,20 @@ dentro.
 Es el mismo patrón que ya documenta `CLAUDE.md` con los domingos de asistencia:
 «en julio los dos daban los mismos cuatro, por eso el fallo estuvo meses
 invisible».
+
+### Totales de tienda en la captura de KPIs (Retool `0.0.12`)
+
+Fila **TOTAL TIENDA** al pie de la tabla de captura: meta, venta, tickets,
+piezas, UPT, ticket promedio y alcance, sumados **en vivo** conforme se teclea.
+Solo `frontend/components/kpis/KpiTable.tsx` y `frontend/utils/kpi.ts`; no se
+tocó el guardado, ni `buildKpiEntries`, ni ninguna función de backend.
+
+- **Suma a TODOS, gerente y subgerente incluidos.** No hay doble conteo: en la
+  Cuota Justa cada persona lleva su propia porción y la suma de las cinco da la
+  meta de tienda del día (3,269.56 + 0 + 9,808.68 × 3 = 32,695.60, que es
+  exactamente la fila `META` del pegado). Ojo si algún día otra marca reparte
+  distinto —con la meta de gerencia igual a la de tienda, sumar sí duplicaría.
+- El total se calcula construyendo un `KpiDraft` sintético con las sumas
+  (`sumDrafts`) y pasándolo por los helpers que ya usaba cada fila: `upt`,
+  `avgTicket`, `alcance`, `alcanceColor`. Nada de fórmulas nuevas, así el «—» y
+  el semáforo se comportan igual arriba que abajo.
