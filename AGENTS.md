@@ -1069,3 +1069,53 @@ Single Next.js 15 (App Router) PWA backed by PostgreSQL via Prisma. `pnpm` is th
 ### Lint / typecheck / test / build (matches `.github/workflows/ci.yml`)
 * `pnpm lint`, `pnpm exec tsc --noEmit`, `pnpm test` (687 tests al 13 de agosto de 2026; la integración usa `clarvex_test` migrada y sembrada), `pnpm audit --audit-level=high`. `pnpm test:security-protection` también pasa.
 * Known-broken: `pnpm test:integration` fails because it spawns `next dev` with `NODE_ENV=test`, which Next forces back to `development`, tripping the `lib/prisma.ts` guard. It is not part of CI. The harness also SIGKILLs only the parent, leaving orphaned `next-server` processes on port 3101 — kill them by PID if you hit `EADDRINUSE`.
+
+### Metas desde la Cuota Justa (17 de agosto de 2026)
+
+Pegar la tabla de la hoja **CJ** del archivo de la tienda y sembrar las metas
+diarias, en vez de teclearlas día a día. Retool `0.0.11`, bloque arriba de KPIs.
+
+- `lib/cuota-justa.ts` — parser del pegado y emparejamiento de nombres, sin
+  Prisma, 23 pruebas. `lib/goal-capture.ts` escribe. Endpoint
+  `POST /api/admin/capture/goals`, con `preview: true` que no escribe nada.
+- **Cada día ocupa DOS columnas** (% e importe) y la fila `FECHA` solo trae la
+  fecha en la primera: el importe está en la columna SIGUIENTE. La fila `META`
+  es la excepción —está combinada— y su importe cae en la MISMA columna.
+- **WhatsApp se ignora** por decisión de Adrian: son ~$102 al día de tienda.
+- **Nunca se pisan las ventas**: si el día ya tiene KPIs, solo se toca
+  `dailyGoal`. Verificado contra base real.
+- **Nunca se adivina una persona**: si un nombre encaja con varias, la carga se
+  detiene entera. Sembrarle una semana a quien no es deja su alcance y su
+  comisión mal sin que nadie lo note.
+- Cuadra el reparto contra la meta de tienda de cada día y avisa si no suma: es
+  la señal de que el pegado se quedó corto de filas.
+
+Probado en producción con la semana 33 de TH SAN AGUSTIN: 5 personas, 7 días,
+26 filas creadas y 9 actualizadas, los cinco nombres emparejados.
+
+#### 🔴 ABIERTO: la vista mensual de Clarvex no ve las metas nuevas
+
+Los datos están BIEN. `Kpi.dailyGoal` suma **355,837.02** en el mes retail
+(2–29 ago) y `monthlyGoal` quedó bien recalculada (**383,083.35**, mes natural),
+pareja en todas las filas. **Retool las muestra correctamente** porque suma las
+diarias.
+
+La pantalla de KPIs de **Clarvex** muestra **222,874.94**, que es exactamente la
+suma **sin** los días 16–22 — la foto de antes de sembrar. **Persiste tras
+recargar**, así que no es la caché de 30 s de `lib/app-data.ts`.
+
+Que Retool acierte y Clarvex no acota el problema a esa pantalla: o filtra las
+filas nuevas por algo que les falta, o sirve una respuesta cacheada. Pista: las
+filas creadas para días futuros tienen `dailySales`, `transactions`, `pieces` y
+`ranking` en **0**.
+
+⚠️ Al arreglarlo, **no tocar la lógica de comisiones**: `monthlyGoal` alimenta el
+alcance.
+
+#### 🟡 Aparte: `recalculateMonths` usa el mes NATURAL
+
+`lib/kpi-capture.ts:255` calcula `monthlyGoal` sobre el mes natural (1–31), pero
+la app muestra el **mes retail** (2–29 ago). Son 27,246 pesos de diferencia: los
+días 30 y 31 de agosto ya son septiembre retail. Es la trampa que advierte
+`CLAUDE.md` en «Asistencia: mes retail vs mes natural». Independiente del bug de
+arriba, y también toca alcance: hablarlo antes de cambiarlo.
