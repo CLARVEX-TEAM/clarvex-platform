@@ -38,6 +38,18 @@ export async function GET(request: Request) {
     );
   }
 
+  // El panel externo no puede pedir el binario desde el navegador —el secreto no
+  // puede viajar al cliente—, así que lo baja por su backend en base64 y lo
+  // entrega él. Con `format=base64` se evita tener que manejar bytes ahí.
+  if (params.get("format") === "base64") {
+    return NextResponse.json({
+      ok: true,
+      filename: result.filename,
+      base64: result.buffer.toString("base64"),
+      warnings: result.warnings
+    });
+  }
+
   return new NextResponse(new Uint8Array(result.buffer), {
     headers: {
       "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
