@@ -28,6 +28,24 @@ export function toExcelSerial(date: Date): number {
   return Math.round((date.getTime() - EXCEL_EPOCH_UTC) / DAY_MS);
 }
 
+/**
+ * ¿Este texto debe escribirse como NÚMERO en la hoja?
+ *
+ * Importa más de lo que parece: el resumen cuenta las transferencias con
+ * `COUNT(Tabla2[Folio])`, y `COUNT` **solo cuenta celdas numéricas**. Escribir el
+ * folio como texto dejaba «Transferencias realizadas: 0» junto a 25 piezas
+ * enviadas. En el archivo original de la tienda esos folios son números, así que
+ * aquí se reproduce ese tipado.
+ *
+ * Se excluyen los que empiezan por cero —perderían el cero al convertirse— y los
+ * de más de 15 dígitos, que ya no caben exactos en un double.
+ */
+function looksNumeric(value: string): boolean {
+  if (!/^\d+$/.test(value)) return false;
+  if (value.length > 15) return false;
+  return !(value.length > 1 && value.startsWith("0"));
+}
+
 export function escapeXml(value: string): string {
   return value
     .replace(/&/g, "&amp;")
@@ -150,6 +168,9 @@ function buildRow(row: number, firstColumn: number, values: CellValue[], templat
       if (value === null || value === undefined || value === "") return `<c r="${address}" s="${style}"/>`;
       if (value instanceof Date) return `<c r="${address}" s="${style}"><v>${toExcelSerial(value)}</v></c>`;
       if (typeof value === "number") return `<c r="${address}" s="${style}"><v>${value}</v></c>`;
+      // Un folio o una entrega que son solo dígitos van como número: los `COUNT`
+      // del resumen no cuentan texto (ver `looksNumeric`).
+      if (looksNumeric(value)) return `<c r="${address}" s="${style}"><v>${value}</v></c>`;
       // Cadena en línea: evita tocar sharedStrings.xml, que obligaría a
       // reindexar todas las referencias del libro.
       return `<c r="${address}" s="${style}" t="inlineStr"><is><t xml:space="preserve">${escapeXml(String(value))}</t></is></c>`;

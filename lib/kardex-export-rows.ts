@@ -208,15 +208,15 @@ export function buildSheetRows(movements: ExportMovement[], sales: DailySale[]):
 }
 
 /**
- * Lo que se escribe en la columna de destino/origen.
+ * Lo que se escribe en la columna de destino/origen: **solo el nombre**.
  *
- * Se antepone el APTO cuando se conoce: es lo único que distingue las dos
- * tiendas de Cuernavaca (`03036` y `03049`) al leer el archivo después.
+ * El APTO NO se antepone. Es decisión de Adrian: el archivo va a corporativo y
+ * ahí la tienda se nombra, no se codifica. El código no se pierde —queda en
+ * `counterpartCode` en la base—, así que un «CUERNAVACA» del archivo sigue
+ * siendo rastreable desde Clarvex aunque el Excel no lo muestre.
  */
 function counterpartText(movement: ExportMovement): string | null {
-  if (!movement.counterpart) return movement.counterpartCode;
-  if (!movement.counterpartCode || movement.counterpartCode === movement.counterpart) return movement.counterpart;
-  return `${movement.counterpartCode} ${movement.counterpart}`;
+  return movement.counterpart ?? movement.counterpartCode;
 }
 
 /**

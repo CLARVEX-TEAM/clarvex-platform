@@ -46,16 +46,17 @@ test("el traspaso enviado deja hueco en SMI, que no se captura", () => {
     [mov({ type: "TRANSFERENCIA_SALIDA", quantity: 30, reference: "1699795", counterpart: "O. MTY", counterpartCode: "03009", createdBy: "ESTAFETA" })],
     []
   );
-  assert.deepEqual(rows.enviadas, [[dia("2026-02-19"), "1699795", 30, null, "03009 O. MTY", "ESTAFETA"]]);
+  assert.deepEqual(rows.enviadas, [[dia("2026-02-19"), "1699795", 30, null, "O. MTY", "ESTAFETA"]]);
 });
 
-test("el APTO se antepone al destino", () => {
-  // Es lo unico que distingue las dos tiendas de Cuernavaca al leer el archivo.
+test("en el archivo va SOLO el nombre de la tienda, sin el APTO", () => {
+  // El archivo va a corporativo y ahi la tienda se nombra, no se codifica. El
+  // codigo no se pierde: sigue en counterpartCode dentro de Clarvex.
   const { rows } = buildSheetRows(
     [mov({ type: "TRANSFERENCIA_ENTRADA", quantity: 16, counterpart: "CUERNAVACA", counterpartCode: "03049" })],
     []
   );
-  assert.equal(rows.recibidas[0][3], "03049 CUERNAVACA");
+  assert.equal(rows.recibidas[0][3], "CUERNAVACA");
 });
 
 test("sin APTO se escribe solo la etiqueta", () => {
