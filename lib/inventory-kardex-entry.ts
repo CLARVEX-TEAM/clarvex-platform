@@ -207,8 +207,21 @@ export function normalizeMovementEntry(
     return { ok: false, error: `${entry.date} (${movementLabel(type)}): ${quantity} piezas parece un error de captura.` };
   }
 
-  // Un ajuste sin motivo es una diferencia que desaparece sin dejar rastro, que
-  // es justo lo que este kardex existe para evitar.
+  // ⚠️ El ajuste es una SALIDA DE EMERGENCIA, no parte de la operación normal.
+  //
+  // Cuando RGIS cuenta y falta mercancía, quien da de baja las piezas es
+  // CORPORATIVO, y esa baja entra como la base de la ronda SIGUIENTE, no como un
+  // ajuste dentro de la que se cierra. Ejemplo real: corporativo manda un
+  // teórico de 8000, RGIS encuentra 7990, corporativo da de baja las 10 y la
+  // ronda nueva arranca en 7990.
+  //
+  // O sea: la diferencia se resuelve sola al reanclar. El ajuste solo haría
+  // falta para corregir A MITAD de una ronda, que hoy no ocurre. Por eso exige
+  // motivo: si alguna vez se usa, tiene que quedar claro quién y por qué.
+  //
+  // Además, el formato que se manda a corporativo no tiene dónde ponerlos: al
+  // exportar, un ajuste hace que su teórico y el de Clarvex discrepen, y el
+  // export lo avisa.
   const note = cleanText(entry.note, 500);
   if ((type === "AJUSTE_POSITIVO" || type === "AJUSTE_NEGATIVO") && !note) {
     return { ok: false, error: `${entry.date}: un ajuste necesita motivo. Sin él la diferencia se pierde sin explicación.` };

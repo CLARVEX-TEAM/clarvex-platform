@@ -522,15 +522,28 @@ de datos dejando una **fila molde** por hoja —conserva los índices de estilo 
 cada columna, sin los cuales las fechas saldrían como números crudos— y borra
 los resultados en caché de las fórmulas, que eran cifras reales de la tienda.
 
-Los **ajustes no existen en el formato de corporativo** y NO se añaden al
-archivo: meterlos exigiría una hoja nueva. Cuando los hay, el aviso viaja en
-`X-Kardex-Warnings` diciendo en cuántas piezas discrepará el teórico del archivo
-respecto al de Clarvex.
+**El APTO es SOLO para el desplegable** de destinos y orígenes de traspasos.
+Decisión explícita de Adrian: el nombre de la tienda en el resumen lo escribe
+Clarvex, no se deduce del código. La celda `E9` traía un
+`VLOOKUP(F8, Hoja1!A:B)` y el exportador la sustituye por el nombre real — es la
+**única fórmula que se sobrescribe**, y evita depender de un dato que Clarvex no
+guarda. `F8` solo se rellena si se pasa `?apto=`.
 
-⚠️ **Falta el APTO de la tienda** (`03029` para San Agustín): dispara el
-`VLOOKUP` del nombre en `E9`. Clarvex no lo guarda, así que va por parámetro
-`?apto=` y sin él la casilla SUCURSAL queda vacía y el nombre sale `#N/A`.
-Conviene añadirlo como campo de `Store`.
+⚠️ **Los ajustes NO son parte de la operación.** Así funciona de verdad el
+cierre: corporativo manda un teórico a RGIS, RGIS cuenta, y **corporativo da de
+baja el faltante**; esa baja es la base de la ronda SIGUIENTE. Ejemplo de Adrian:
+teórico de corporativo 8000, RGIS encuentra 7990, corporativo da de baja las 10
+y la ronda nueva arranca en 7990.
+
+O sea que la diferencia **se resuelve sola al reanclar**, y el tipo `AJUSTE`
+queda como salida de emergencia para corregir a mitad de ronda, que hoy no
+ocurre. El formato de corporativo tampoco tiene dónde ponerlos y no se añaden al
+archivo: si alguna vez se usan, el aviso de `X-Kardex-Warnings` dice en cuántas
+piezas discreparán los dos teóricos.
+
+💡 Sin construir: el **teórico que manda corporativo** (8000 en el ejemplo) es un
+tercer número, distinto del teórico de Clarvex y del conteo de RGIS. Guardarlo al
+cerrar la ronda permitiría comparar los tres.
 
 Bug encontrado al probar el export y corregido: `getKardexState` sin `roundId`
 solo miraba la ronda ABIERTA, así que **leer o exportar justo después de cerrar

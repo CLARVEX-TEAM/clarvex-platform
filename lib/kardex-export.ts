@@ -105,6 +105,13 @@ export async function exportKardex(
   let resumen = await readPart(zip, resumenPath);
   resumen = writeCell(resumen, "C8", state.round.startDate);
   resumen = writeCell(resumen, "C9", state.round.basePieces);
+  // El nombre de la tienda lo pone Clarvex, NO el catálogo de corporativo. La
+  // celda traía un `VLOOKUP(F8, Hoja1!A:B)` que lo deducía del APTO; se
+  // sustituye por el nombre real para que no dependa de tener ese código —y para
+  // que no salga `#N/A` cuando no lo hay—. Es la única fórmula que se sobrescribe.
+  if (store?.name) resumen = writeCell(resumen, "E9", store.name);
+  // El APTO solo se escribe si se pide: en el kardex sirve para el desplegable
+  // de destinos y orígenes de traspasos, no para nombrar la tienda.
   if (apto) resumen = writeCell(resumen, "F8", apto);
   // La existencia física solo se conoce al cerrar la ronda. Mientras tanto va
   // vacía a propósito: un cero se leería como «no quedó nada».
@@ -114,12 +121,11 @@ export async function exportKardex(
   zip.file("xl/workbook.xml", forceRecalcOnLoad(await readPart(zip, "xl/workbook.xml")));
 
   const warnings: string[] = [];
-  if (!apto) {
-    warnings.push(
-      "Falta el APTO de la tienda (por ejemplo 03029): la casilla SUCURSAL va vacía y el nombre saldrá como #N/A hasta que se escriba."
-    );
-  }
   if (totals.adjustments !== 0) {
+    // Caso raro: la operación normal no lleva ajustes a media ronda. Cuando RGIS
+    // cuenta y falta mercancía, es CORPORATIVO quien da de baja las piezas, y
+    // eso entra como la base de la ronda siguiente —no como un ajuste dentro de
+    // la que se cierra—. Ver el aviso de `AJUSTE` en `lib/inventory-kardex-entry`.
     warnings.push(
       `La ronda tiene ${rows.ajustes.length} ajuste(s) por ${totals.adjustments} piezas netas. El formato de corporativo no tiene dónde ponerlos, así que NO están en el archivo: su teórico saldrá ${Math.abs(totals.adjustments)} piezas ${totals.adjustments > 0 ? "por debajo" : "por encima"} del de Clarvex (${exportTheoretical(state.round.basePieces, totals)}).`
     );
