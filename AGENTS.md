@@ -601,10 +601,32 @@ El export se añadió con `?format=base64` porque el panel no puede pedir el
 binario desde el navegador (el secreto no puede viajar al cliente). El runtime de
 Retool no expone `utils.downloadFile`, así que la descarga usa un helper propio.
 
-🟡 **Sin verificar por una persona:** la escritura desde la interfaz de Retool.
-Las lecturas sí se probaron contra producción, pero el camino de guardado solo
-se comprobó leyendo el código. Es exactamente lo que falló en su día con
-«no guarda los cambios», así que hay que hacer clic de verdad.
+### ⚠️ El `Select` de Radix rompe la app — usar `NativeSelect`
+
+Al abrir la primera ronda desde `0.0.8`, la pantalla se cayó entera con el error
+boundary («Something went wrong»). **La escritura funcionó**: la ronda quedó
+creada en producción. El fallo era de renderizado.
+
+Causa: la pantalla usaba el **`Select` de Radix** (`lib/shadcn/select.tsx`) en el
+selector de tipo de movimiento y en el filtro de la tabla. Ese componente monta
+DOM aunque esté cerrado, y en este runtime (React 19 en iframe con CSP) revienta
+al montarse. Solo aparecía con una ronda abierta, por eso el estado vacío se veía
+bien y todo se caía justo al abrirla.
+
+**El resto de la app nunca usa el `Select` de Radix: todos los desplegables son
+`NativeSelect`** (`AttendanceRow`, `ScheduleCell`). Era el único componente fuera
+de convención en la pantalla nueva. Corregido en `0.0.9` sustituyéndolo por
+`NativeSelect`, conservando el `<optgroup>` de «Excepcionales».
+
+Descartado por el camino, para no volver a mirarlo: no eran los datos (`null` en
+`difference`/`closingPieces` y `movements` vacío ya estaban contemplados), no
+eran las variantes `success`/`warning` (sí existen, y una desconocida en `cva` no
+lanza), y no eran los iconos de lucide.
+
+🟡 **Sin verificar por una persona:** que la pantalla cargue con la ronda abierta
+tras el arreglo, y la captura de un movimiento. Ni el agente de Retool ni yo
+podemos entrar con la cuenta operativa, así que el diagnóstico fue por
+eliminación —razonable, pero no es una comprobación—. Hay que hacer clic.
 
 **Falta:** la vista en Clarvex y decidir si el cierre de ronda se engancha a algo
 de la app. ⚠️ Ojo: la existencia física la trae **RGIS**, no los `CycleCount` por
