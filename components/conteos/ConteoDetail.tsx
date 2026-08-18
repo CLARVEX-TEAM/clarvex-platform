@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { AlertTriangle, CheckCircle2, Download, Lock, LockOpen, Plus, ScanLine, Trash2, X } from "lucide-react";
@@ -444,7 +445,11 @@ function ScannerOverlay({ onScan, onClose }: { onScan: (number: number) => void;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  return (
+  // Mismo motivo que la hoja de captura: dentro de `AppFrame` el `fixed` queda
+  // encerrado por su transform y la barra inferior se pinta encima.
+  if (typeof document === "undefined") return null;
+
+  return createPortal(
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
@@ -467,7 +472,8 @@ function ScannerOverlay({ onScan, onClose }: { onScan: (number: number) => void;
           <p className="pointer-events-none absolute inset-x-0 bottom-10 text-center text-xs font-bold text-white/80">Acerca la cámara al código pegado en el mueble</p>
         </div>
       )}
-    </motion.div>
+    </motion.div>,
+    document.body
   );
 }
 
@@ -492,6 +498,22 @@ function CaptureSheet({ countId, tag, entry, isOpen, onClose, onSaved }: {
   const keyboardInset = useKeyboardInset();
 
   useEffect(() => { inputRef.current?.focus(); }, []);
+
+  /**
+   * ⚠️ La hoja se monta en `document.body`, NO donde vive el componente.
+   *
+   * `AppFrame` es un `motion.main` animado: su `transform` crea un *containing
+   * block* y un contexto de apilamiento, así que `fixed inset-0 z-[80]` quedaba
+   * encerrado dentro de él. La barra inferior vive FUERA de `AppFrame` con
+   * `z-30`, y por estar fuera se pintaba ENCIMA de la hoja por mucho z-index
+   * que esta declarara: el botón de guardar quedaba debajo de la barra y el
+   * toque se lo llevaba la barra.
+   *
+   * Es la misma trampa que ya avisan `PageTransition` y `AppChrome`: cualquier
+   * transform en un ancestro rompe el `position: fixed` de sus hijos. Sacarlo a
+   * un portal es lo único que lo arregla de raíz.
+   */
+  const portalTarget = typeof document === "undefined" ? null : document.body;
 
   // Presencia en vivo: mientras esta hoja está abierta, avisa cada 5 s que estoy
   // contando este marbete (gerencia lo ve en escritorio). Al cerrar, salgo.
@@ -533,7 +555,9 @@ function CaptureSheet({ countId, tag, entry, isOpen, onClose, onSaved }: {
     }
   }
 
-  return (
+  if (!portalTarget) return null;
+
+  return createPortal(
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
@@ -622,7 +646,8 @@ function CaptureSheet({ countId, tag, entry, isOpen, onClose, onSaved }: {
           <p className="mt-3 text-sm font-semibold text-muted">El conteo está cerrado; ya no se puede capturar.</p>
         )}
       </motion.div>
-    </motion.div>
+    </motion.div>,
+    portalTarget
   );
 }
 
