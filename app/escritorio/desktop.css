@@ -239,11 +239,20 @@ body:has([data-surface="desk"]) .dot-pattern {
 }
 
 /* Resplandores del acento. Van muy difuminados y a baja opacidad: aportan
-   profundidad sin teñir el texto que va encima. */
+   profundidad sin teñir el texto que va encima.
+
+   ⚠️ NADA de `filter: blur()` aquí. Llevaban `blur(90px)` sobre 768 × 544 px y
+   eran la causa del lag del escritorio — medido con Adrian el 18 de agosto de
+   2026, quitando las capas del fondo una por una: con los resplandores fuera,
+   el escritorio se pone fluido.
+
+   El difuminado lo da ahora el propio degradado radial, con más paradas para
+   que la caída sea suave. Se ve prácticamente igual y se pinta UNA vez, en vez
+   de obligar al navegador a rehacer un desenfoque enorme mientras la capa
+   deriva. Un degradado es gratis; un filtro sobre media pantalla, no. */
 [data-surface="desk"] .desk-glow {
   position: absolute;
   border-radius: 999px;
-  filter: blur(90px);
   will-change: transform;
 }
 /* Arrancaba en left:-12rem y quedaba casi entero DETRÁS del rail, que es opaco:
@@ -253,7 +262,13 @@ body:has([data-surface="desk"]) .dot-pattern {
   left: 14%;
   width: 48rem;
   height: 34rem;
-  background: radial-gradient(circle, rgb(var(--desk-accent) / 0.20), transparent 70%);
+  background: radial-gradient(
+    circle,
+    rgb(var(--desk-accent) / 0.20) 0%,
+    rgb(var(--desk-accent) / 0.13) 28%,
+    rgb(var(--desk-accent) / 0.06) 52%,
+    transparent 76%
+  );
   animation: desk-drift-a 26s ease-in-out infinite alternate;
 }
 [data-surface="desk"] .desk-glow-b {
@@ -264,7 +279,13 @@ body:has([data-surface="desk"]) .dot-pattern {
      rehacer el desenfoque en cada fotograma. */
   width: 47.5rem;
   height: 34.5rem;
-  background: radial-gradient(circle, rgb(var(--desk-accent) / 0.11), transparent 70%);
+  background: radial-gradient(
+    circle,
+    rgb(var(--desk-accent) / 0.11) 0%,
+    rgb(var(--desk-accent) / 0.07) 30%,
+    rgb(var(--desk-accent) / 0.03) 55%,
+    transparent 78%
+  );
   animation: desk-drift-b 34s ease-in-out infinite alternate;
 }
 /* En claro el resplandor se nota mucho más sobre blanco: se baja bastante. */
@@ -275,15 +296,13 @@ body:has([data-surface="desk"]) .dot-pattern {
 
 /* ⚠️ SOLO se desplazan. NADA de `scale` aquí dentro.
  *
- * Estos resplandores llevan `filter: blur(90px)` sobre 768 × 544 px. Un
- * desplazamiento lo resuelve el compositor: se rasteriza el borrón UNA vez y
- * después solo se mueve la capa. Escalarla, en cambio, la invalida en cada
- * fotograma, así que el navegador rehace un desenfoque enorme 60 veces por
- * segundo, para siempre — también con el escritorio quieto y sin nadie
- * mirando. Era la causa del lag del escritorio: no un pico al hacer algo,
- * sino trabajo constante de fondo.
+ * Un desplazamiento lo resuelve el compositor: la capa se pinta UNA vez y
+ * después solo se mueve. Escalarla la invalida en cada fotograma y obliga a
+ * repintarla sesenta veces por segundo, para siempre.
  *
- * El movimiento se nota igual: son 4rem de deriva en 26 s. */
+ * Se quitó junto con el `filter: blur(90px)` que llevaban estas capas, que era
+ * la causa de fondo del lag del escritorio. El movimiento se nota igual: son
+ * 4rem de deriva en 26 s. */
 @keyframes desk-drift-a {
   from { transform: translate3d(0, 0, 0); }
   to   { transform: translate3d(4rem, 2.5rem, 0); }
