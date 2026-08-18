@@ -16,9 +16,57 @@ import type { PosReport, PosRow } from "@/lib/pos-productivity";
  * teclear a ciegas con pasos extra.
  */
 
-const MODEL = process.env.POS_VISION_MODEL ?? "gemini-2.5-flash";
+/**
+ * Modelo por defecto medido contra el reporte real de TH SAN AGUSTIN: leyó las
+ * cuatro filas exactas en 11 s. `gemini-2.5-flash` también acierta, pero
+ * «piensa» tanto para una transcripción que se pasaba de los 45 s.
+ */
+const MODEL = process.env.POS_VISION_MODEL ?? "gemini-3.1-flash-lite";
 const ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models";
 const TIMEOUT_MS = 45_000;
+
+/** Forma OBJECT/ARRAY que entiende Gemini para forzar la estructura. */
+const NUMBER = { type: "NUMBER" } as const;
+const INTEGER = { type: "INTEGER" } as const;
+const STRING = { type: "STRING" } as const;
+
+/**
+ * ⚠️ El esquema se manda a Gemini, no solo se valida al volver.
+ *
+ * Sin él, y con el razonamiento apagado, el modelo devolvía JSON ROTO: se
+ * comía la llave de cierre de una fila y fundía dos vendedores en uno. Los
+ * números estaban bien; la estructura no. Forzando el esquema, el formato deja
+ * de ser cosa del modelo.
+ */
+const RESPONSE_SCHEMA = {
+  type: "OBJECT",
+  properties: {
+    from: STRING,
+    to: STRING,
+    storeNumber: STRING,
+    rows: {
+      type: "ARRAY",
+      items: {
+        type: "OBJECT",
+        properties: {
+          name: STRING,
+          tickets: INTEGER,
+          units: INTEGER,
+          unitsReturned: INTEGER,
+          gross: NUMBER,
+          discount: NUMBER,
+          afterDiscount: NUMBER,
+          returns: NUMBER,
+          net: NUMBER,
+          avgUnits: NUMBER,
+          avgAmount: NUMBER
+        },
+        required: ["name", "tickets", "units", "gross", "discount", "afterDiscount", "net", "avgUnits", "avgAmount"]
+      }
+    }
+  },
+  required: ["from", "to", "rows"]
+} as const;
 
 const PROMPT = `Lee la tabla del reporte "Productividad del vendedor" y devuelve JSON.
 
@@ -49,7 +97,8 @@ const rowSchema = z.object({
 const responseSchema = z.object({
   from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  storeNumber: z.string().max(32).nullable().optional(),
+  // A veces llega como número (3029) pese al esquema: se acepta y se normaliza.
+  storeNumber: z.union([z.string().max(32), z.number()]).nullable().optional(),
   rows: z.array(rowSchema).min(1).max(60)
 });
 
@@ -63,30 +112,53 @@ export async function readPosReportImage(imageBase64: string, mimeType: string):
   const key = process.env.GEMINI_API_KEY ?? "";
   if (!key) return { ok: false, error: "La lectura de capturas no está configurada en el servidor." };
 
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
-  let payload: unknown;
-  try {
-    const response = await fetch(`${ENDPOINT}/${MODEL}:generateContent?key=${encodeURIComponent(key)}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      signal: controller.signal,
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: PROMPT }, { inline_data: { mime_type: mimeType, data: imageBase64 } }] }],
-        // Temperatura 0: esto es transcribir, no redactar. No queremos que
-        // "mejore" un número que se ve mal.
-        generationConfig: { temperature: 0, responseMimeType: "application/json" }
-      })
-    });
-    if (!response.ok) {
-      return { ok: false, error: `El lector de capturas respondió ${response.status}. Intenta de nuevo o sube el PDF.` };
+  const body = JSON.stringify({
+    contents: [{ parts: [{ text: PROMPT }, { inline_data: { mime_type: mimeType, data: imageBase64 } }] }],
+    generationConfig: {
+      // Temperatura 0: esto es transcribir, no redactar. No queremos que
+      // "mejore" un número que se ve mal.
+      temperature: 0,
+      responseMimeType: "application/json",
+      responseSchema: RESPONSE_SCHEMA,
+      // Sin razonamiento: es copiar una tabla, no resolver nada. Con él, la
+      // llamada se pasaba del minuto.
+      thinkingConfig: { thinkingBudget: 0 }
     }
-    payload = await response.json();
-  } catch (error) {
-    const aborted = error instanceof Error && error.name === "AbortError";
-    return { ok: false, error: aborted ? "El lector de capturas tardó demasiado." : "No se pudo contactar al lector de capturas." };
-  } finally {
-    clearTimeout(timer);
+  });
+
+  let payload: unknown;
+  // Un 503 de Gemini es «modelo saturado» y suele pasarse solo. Un reintento
+  // evita mandar a teclear a mano por una punta de demanda de treinta segundos.
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+    try {
+      const response = await fetch(`${ENDPOINT}/${MODEL}:generateContent?key=${encodeURIComponent(key)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
+        body
+      });
+      if (response.status === 503 && attempt === 0) continue;
+      if (!response.ok) {
+        return {
+          ok: false,
+          error: response.status === 503
+            ? "El lector de capturas está saturado. Intenta de nuevo en un momento, o sube el PDF."
+            : `El lector de capturas respondió ${response.status}. Intenta de nuevo o sube el PDF.`
+        };
+      }
+      payload = await response.json();
+      break;
+    } catch (error) {
+      const aborted = error instanceof Error && error.name === "AbortError";
+      return { ok: false, error: aborted ? "El lector de capturas tardó demasiado." : "No se pudo contactar al lector de capturas." };
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+  if (payload === undefined) {
+    return { ok: false, error: "El lector de capturas está saturado. Intenta de nuevo en un momento, o sube el PDF." };
   }
 
   const text = extractText(payload);
@@ -118,7 +190,8 @@ export async function readPosReportImage(imageBase64: string, mimeType: string):
     avgAmount: row.avgAmount
   }));
 
-  return { ok: true, value: { from: parsed.data.from, to: parsed.data.to, storeNumber: parsed.data.storeNumber ?? null, rows } };
+  const storeNumber = parsed.data.storeNumber == null ? null : String(parsed.data.storeNumber);
+  return { ok: true, value: { from: parsed.data.from, to: parsed.data.to, storeNumber, rows } };
 }
 
 /** El texto de la respuesta de Gemini, sin dar por hecha su forma. */
