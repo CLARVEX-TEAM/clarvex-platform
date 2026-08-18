@@ -53,6 +53,8 @@ const captureRoutes = new Set([
   "/api/admin/capture/schedules",
   "/api/admin/capture/attendance",
   "/api/admin/capture/kpis",
+  // Lectura del reporte diario del POS desde una captura. Solo lee y devuelve.
+  "/api/admin/capture/kpis/pos-report",
   "/api/admin/capture/goals",
   "/api/admin/capture/discounts",
   "/api/admin/capture/electronic-tickets",
