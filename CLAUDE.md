@@ -822,8 +822,26 @@ Cinco reglas que NO hay que cambiar sin hablarlo:
    el POS reporta las devoluciones aparte, a nivel tienda.
 4. **`quantity` siempre positivo**; el signo lo pone el tipo de movimiento.
 5. **Sobrantes y faltantes NO entran al teórico**: `quantity` ya son las piezas
-   realmente recibidas. Se guardan porque son la primera pista cuando el conteo
-   de cierre no cuadra.
+   que se quedan en la tienda. Se guardan porque son la primera pista cuando el
+   conteo de cierre no cuadra.
+
+   ⚠️ **Las piezas de MÁS no son inventario de la tienda.** Cuando llegan más
+   de las que dice el manifiesto, la tienda las **aparta y las devuelve al
+   CEDIS**: nunca fueron suyas. Con `contadas` y lo que declara el manifiesto:
+
+   ```
+   quantity = min(contadas, manifiesto)
+   missing  = max(0, manifiesto − contadas)
+   surplus  = max(0, contadas − manifiesto)
+   ```
+
+   Manifiesto 5 y llegan 4 → entran **4**. Manifiesto 5 y llegan 7 → entran
+   **5**, y las 2 de más se apartan. Meterlas al teórico infla el inventario con
+   mercancía que se va a ir de vuelta, y el descuadre aparecería hasta el
+   siguiente conteo físico sin rastro de dónde salió.
+
+   Corolario: al devolver ese sobrante al CEDIS **no se captura un traspaso de
+   salida**. Nunca entró, así que restarlo lo contaría dos veces.
 
 Tipos de movimiento: recepción, traspaso de entrada, devolución de cliente,
 traspaso de salida, **SFS** (Ship From Store) y ajuste ±. El corte de la ronda
