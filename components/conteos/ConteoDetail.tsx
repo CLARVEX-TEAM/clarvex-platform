@@ -7,6 +7,7 @@ import { AlertTriangle, CheckCircle2, Download, Lock, LockOpen, Plus, ScanLine, 
 import { getSession } from "@/lib/auth";
 import type { User } from "@/lib/types";
 import { entryCountsDone, entryNeedsRecount, entryReal, entryResolved, parseTagQr, slotFilled, zoneProgress, type CycleZone, type SerializedEntry, type SerializedTag } from "@/lib/cycle-count";
+import { useKeyboardInset } from "@/lib/use-keyboard-inset";
 import { Badge, Card, ProgressBar } from "@/components/ui";
 
 // Captura del conteo. Compartida entre movil y escritorio.
@@ -488,6 +489,7 @@ function CaptureSheet({ countId, tag, entry, isOpen, onClose, onSaved }: {
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const keyboardInset = useKeyboardInset();
 
   useEffect(() => { inputRef.current?.focus(); }, []);
 
@@ -537,6 +539,9 @@ function CaptureSheet({ countId, tag, entry, isOpen, onClose, onSaved }: {
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       className="fixed inset-0 z-[80] flex items-end justify-center bg-black/50 p-3 backdrop-blur-sm"
+      // El teclado tapaba el botón de guardar: la hoja se levanta por encima de
+      // él. En iOS es obligatorio — ahí el teclado NO encoge el viewport.
+      style={{ paddingBottom: keyboardInset + 12 }}
       onClick={onClose}
     >
       <motion.div
@@ -544,7 +549,9 @@ function CaptureSheet({ countId, tag, entry, isOpen, onClose, onSaved }: {
         animate={{ y: 0 }}
         exit={{ y: 80 }}
         transition={{ type: "spring", stiffness: 380, damping: 32 }}
-        className="w-full max-w-md rounded-[26px] border border-line bg-card p-4 shadow-2xl"
+        // Con el teclado abierto queda poca altura: que la hoja haga scroll por
+        // dentro en vez de recortar lo de abajo.
+        className="max-h-full w-full max-w-md overflow-y-auto rounded-[26px] border border-line bg-card p-4 shadow-2xl"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="flex items-start justify-between">
@@ -588,7 +595,11 @@ function CaptureSheet({ countId, tag, entry, isOpen, onClose, onSaved }: {
               value={value}
               onChange={(event) => setValue(event.target.value.replace(/\D/g, "").slice(0, 5))}
               onKeyDown={(event) => {
-                // Enter guarda igual que el botón (sin tener que tocarlo).
+                // Atajo para escritorio y teclado físico. ⚠️ En teléfono NO
+                // sirve: el teclado numérico no trae Enter en iOS ni en
+                // Android, así que `enterKeyHint` no pinta nada y el botón de
+                // abajo es la única manera de guardar. De ahí que el modal se
+                // levante por encima del teclado (`useKeyboardInset`).
                 if (event.key === "Enter" && !saving && value !== "") { event.preventDefault(); void save(); }
               }}
               inputMode="numeric"
