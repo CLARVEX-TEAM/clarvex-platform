@@ -35,6 +35,13 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   // La sugerencia la calcula el SERVIDOR: reusa el marbete desactivado mas
   // bajo, y esos no viajan en `tags`, asi que el navegador no puede verla.
   const suggestedBodegaTag = suggestBodegaTagNumber(catalog);
+  // Marbetes de bodega dados de alta pero APAGADOS. Se mandan para poder
+  // volver a habilitarlos desde el conteo: no salen en `tags` justamente por
+  // estar apagados, asi que sin esto son invisibles y no hay como pedirlos.
+  const disabledBodegaTags = catalog
+    .filter((tag) => !tag.active && tag.zone === "BODEGA")
+    .map((tag) => tag.number)
+    .sort((left, right) => left - right);
   // Conteo CIEGO: solo gerencia/subgerencia ve las piezas capturadas. El asesor
   // ve su avance (qué conteo va) pero no lo que contó otra persona, para que un
   // 2do/3er conteo no copie al anterior.
@@ -52,6 +59,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     },
     canSeePieces,
     suggestedBodegaTag,
+    disabledBodegaTags: canSeePieces ? disabledBodegaTags : [],
     tags: tags.map((tag) => ({ id: tag.id, number: tag.number, zone: tag.zone, label: tag.label })),
     entries: count.entries.map((entry) => serializeEntry({
       tagId: entry.tagId,

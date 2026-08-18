@@ -22,6 +22,10 @@ const schema = z.object({
   // Sin número se asigna el siguiente libre. Con número manda el de la etiqueta
   // física, que es lo que se pega en el mueble.
   number: z.number().int().min(1).max(99999).optional(),
+  // Varios de golpe: es el caso de volver a habilitar un tramo entero que se
+  // habia apagado (el 136 al 160 en TH SAN AGUSTIN). Uno por uno son 25
+  // viajes y 25 oportunidades de teclear mal.
+  numbers: z.array(z.number().int().min(1).max(99999)).min(1).max(200).optional(),
   label: z.string().max(60).optional()
 });
 
@@ -45,54 +49,73 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     select: { id: true, number: true, zone: true, active: true }
   });
 
-  const number = parsed.data.number ?? suggestBodegaTagNumber(catalog);
-  const existing = catalog.find((tag) => tag.number === number);
+  // Uno, varios, o —sin nada— el que sugiere el servidor.
+  const wanted = parsed.data.numbers ?? [parsed.data.number ?? suggestBodegaTagNumber(catalog)];
+  const unique = Array.from(new Set(wanted)).sort((left, right) => left - right);
+  // La etiqueta solo tiene sentido pidiendo UN marbete: una sola descripcion
+  // repetida en veinte muebles no dice donde esta ninguno.
+  const label = unique.length === 1 ? parsed.data.label?.trim() || null : null;
 
-  let tag;
-  let reactivated = false;
-  if (existing && existing.active) {
-    // Ya esta en la lista del conteo: no hay nada que agregar.
-    return NextResponse.json(
-      {
-        error: existing.zone === "BODEGA"
-          ? `El marbete ${number} ya esta en la lista de bodega.`
-          : `El marbete ${number} ya existe en Piso de venta. Usa otro numero.`
-      },
-      { status: 409 }
-    );
-  } else if (existing) {
-    // ⚠️ Existe pero DESACTIVADO. Se reactiva en vez de rechazar: el numero
-    // esta ocupado en la base pero el marbete no se ve en el conteo, asi que
-    // un error de «ya existe» manda a buscar algo invisible. Ademas su
-    // etiqueta ya se imprimio en su dia, que es justo lo que se quiere reusar.
-    tag = await prisma.cycleCountTag.update({
-      where: { id: existing.id },
-      data: {
-        active: true,
-        zone: "BODEGA",
-        ...(parsed.data.label?.trim() ? { label: parsed.data.label.trim() } : {})
+  const added: number[] = [];
+  const reactivated: number[] = [];
+  const skipped: number[] = [];
+
+  for (const number of unique) {
+    const existing = catalog.find((tag) => tag.number === number);
+    if (existing && existing.active) {
+      // Ya esta en la lista. Pidiendo uno solo se avisa; en lote se ignora,
+      // que es lo que espera quien selecciona un tramo entero.
+      if (unique.length === 1) {
+        return NextResponse.json(
+          {
+            error: existing.zone === "BODEGA"
+              ? `El marbete ${number} ya esta en la lista de bodega.`
+              : `El marbete ${number} ya existe en Piso de venta. Usa otro numero.`
+          },
+          { status: 409 }
+        );
       }
-    });
-    reactivated = true;
-  } else {
-    try {
-      tag = await prisma.cycleCountTag.create({
-        data: { storeId: session.storeId, number, zone: "BODEGA", label: parsed.data.label?.trim() || null }
+      skipped.push(number);
+      continue;
+    }
+    if (existing) {
+      // ⚠️ Existe pero DESACTIVADO: se reactiva. El numero esta ocupado en la
+      // base pero el marbete no se ve en el conteo, asi que un error de «ya
+      // existe» manda a buscar algo invisible. Y su etiqueta ya se imprimio en
+      // su dia, que es justo lo que se quiere reusar.
+      await prisma.cycleCountTag.update({
+        where: { id: existing.id },
+        data: { active: true, zone: "BODEGA", ...(label ? { label } : {}) }
       });
+      reactivated.push(number);
+      continue;
+    }
+    try {
+      await prisma.cycleCountTag.create({
+        data: { storeId: session.storeId, number, zone: "BODEGA", label }
+      });
+      added.push(number);
     } catch {
       // Dos personas agregando a la vez: entre la lectura y el create el
       // numero pudo ocuparse. Lo atrapa el indice unico, no el chequeo.
-      return NextResponse.json({ error: `El marbete ${number} acaba de darse de alta. Intenta con otro.` }, { status: 409 });
+      if (unique.length === 1) {
+        return NextResponse.json({ error: `El marbete ${number} acaba de darse de alta. Intenta con otro.` }, { status: 409 });
+      }
+      skipped.push(number);
     }
+  }
+
+  if (added.length === 0 && reactivated.length === 0) {
+    return NextResponse.json({ error: "Esos marbetes ya estaban en la lista." }, { status: 409 });
   }
   await recordAudit({
     session,
     storeId: session.storeId,
     action: "cyclecount.tag.add",
     entity: "CycleCountTag",
-    entityId: tag.id,
-    detail: `Marbete ${number} ${reactivated ? "reactivado" : "agregado"} en bodega con el conteo del ${count.date.toISOString().slice(0, 10)} abierto`
+    entityId: null,
+    detail: `Bodega, conteo del ${count.date.toISOString().slice(0, 10)} abierto: ${added.length} marbete(s) agregado(s), ${reactivated.length} reactivado(s)`
   });
 
-  return NextResponse.json({ tag: { id: tag.id, number: tag.number, zone: tag.zone, label: tag.label }, reactivated });
+  return NextResponse.json({ added, reactivated, skipped });
 }
