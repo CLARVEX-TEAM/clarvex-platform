@@ -259,8 +259,11 @@ body:has([data-surface="desk"]) .dot-pattern {
 [data-surface="desk"] .desk-glow-b {
   right: -14rem;
   bottom: -24rem;
-  width: 44rem;
-  height: 32rem;
+  /* Antes nacía con `scale(1.08)` dentro de la animación. Al quitar el escalado
+     de los keyframes, ese 8% se pasa al tamaño: se ve igual y ya no obliga a
+     rehacer el desenfoque en cada fotograma. */
+  width: 47.5rem;
+  height: 34.5rem;
   background: radial-gradient(circle, rgb(var(--desk-accent) / 0.11), transparent 70%);
   animation: desk-drift-b 34s ease-in-out infinite alternate;
 }
@@ -270,13 +273,24 @@ body:has([data-surface="desk"]) .dot-pattern {
 .dark [data-surface="desk"] .desk-glow-a { opacity: 1; }
 .dark [data-surface="desk"] .desk-glow-b { opacity: 1; }
 
+/* ⚠️ SOLO se desplazan. NADA de `scale` aquí dentro.
+ *
+ * Estos resplandores llevan `filter: blur(90px)` sobre 768 × 544 px. Un
+ * desplazamiento lo resuelve el compositor: se rasteriza el borrón UNA vez y
+ * después solo se mueve la capa. Escalarla, en cambio, la invalida en cada
+ * fotograma, así que el navegador rehace un desenfoque enorme 60 veces por
+ * segundo, para siempre — también con el escritorio quieto y sin nadie
+ * mirando. Era la causa del lag del escritorio: no un pico al hacer algo,
+ * sino trabajo constante de fondo.
+ *
+ * El movimiento se nota igual: son 4rem de deriva en 26 s. */
 @keyframes desk-drift-a {
-  from { transform: translate3d(0, 0, 0) scale(1); }
-  to   { transform: translate3d(4rem, 2.5rem, 0) scale(1.12); }
+  from { transform: translate3d(0, 0, 0); }
+  to   { transform: translate3d(4rem, 2.5rem, 0); }
 }
 @keyframes desk-drift-b {
-  from { transform: translate3d(0, 0, 0) scale(1.08); }
-  to   { transform: translate3d(-3.5rem, -2rem, 0) scale(1); }
+  from { transform: translate3d(0, 0, 0); }
+  to   { transform: translate3d(-3.5rem, -2rem, 0); }
 }
 
 /* ─── Rail de navegación ──────────────────────────────────────────────────────
