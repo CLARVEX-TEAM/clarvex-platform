@@ -1284,11 +1284,32 @@ día a quien no es le mueve el alcance y la comisión a dos personas a la vez.
 - Groq **no tiene modelos de visión** en esta cuenta; por eso este módulo va por
   Gemini y aparte de `lib/ai/*`, que es el chat del copiloto.
 
-#### Pendiente
+#### Puerta PDF: el mismo lector, sin extractor propio
 
-- **Puerta PDF** del mismo reporte: falta un PDF exportado de muestra. El
-  manifiesto y este reporte los genera software distinto y no comparten formato.
-- **Margen diario**: el reporte ya trae bruto y descuento, pero pasarlos de
-  captura semanal a diaria exige el candado del patrón de fila ancla — ver la
-  sección del margen más arriba. No se pueden mezclar las dos formas en una
-  misma semana.
+Gemini lee el PDF nativo y sale **más exacto y más rápido** que la captura
+(7.6 s contra 11). Es el camino recomendado.
+
+No se le escribió un lector propio como al manifiesto porque este reporte va
+**rotado 90°** y su texto usa fuentes subconjunto, cada una con su tabla de
+glifos: fusionarlas da 40 conflictos y los nombres salen destrozados
+(«REBED,P.bZELPDC.DB» por REYES, ITZEL SAIDY). Sería un extractor de PDF entero
+para empeorar lo que ya funciona.
+
+#### Margen diario y el candado contra la doble captura
+
+El reporte trae bruto y descuento por asesor, así que el margen se captura **día
+a día** y la semana se arma sumando. `POST /api/admin/capture/kpis` los acepta;
+van **juntos o no van**, y ausentes no tocan la fila.
+
+⚠️ **Las dos formas de capturar el margen no se mezclan en una semana.** El
+semanal vive en la **fila ancla** (el primer día lleva el total, el resto queda
+`null`). Si a esa semana se le añaden los importes de cada día, la lectura suma
+las dos cosas y el descuento sale inflado — y el margen es un TECHO, así que
+pasarse se lee como que la tienda descontó de más.
+
+La columna **`Kpi.discountDaily`** distingue una fila de la otra:
+
+- `lib/kpi-capture.ts` se niega si la semana ya trae el margen semanal.
+- `lib/discount-capture.ts` se niega si la semana ya viene por días.
+
+Se arrancó limpio en la **semana 33**, que no tenía margen capturado.
