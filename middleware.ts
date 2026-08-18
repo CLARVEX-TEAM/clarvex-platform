@@ -60,6 +60,8 @@ const captureRoutes = new Set([
   "/api/admin/capture/inventory",
   "/api/admin/capture/inventory/rounds",
   "/api/admin/capture/inventory/export",
+  // Lectura del manifiesto de carga en PDF. Solo lee y devuelve; no escribe.
+  "/api/admin/capture/inventory/manifest",
   // Inicio gerencial de Retool: solo lectura, autorizado con el mismo secreto.
   "/api/admin/retool/dashboard"
 ]);
