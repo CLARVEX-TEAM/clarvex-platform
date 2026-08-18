@@ -1191,3 +1191,42 @@ tocó el guardado, ni `buildKpiEntries`, ni ninguna función de backend.
   (`sumDrafts`) y pasándolo por los helpers que ya usaba cada fila: `upt`,
   `avgTicket`, `alcance`, `alcanceColor`. Nada de fórmulas nuevas, así el «—» y
   el semáforo se comportan igual arriba que abajo.
+
+### Recepción por manifiesto en PDF (Retool `0.0.13`)
+
+Llenar la recepción caja por caja son ~22 renglones de tres campos. El PDF que
+manda el CEDIS trae **texto de verdad**, no imagen, así que se lee exacto: nada
+de OCR.
+
+- `lib/manifest-pdf.ts` — lector puro, sin Prisma, 14 pruebas contra **dos
+  manifiestos reales** guardados en `tests/fixtures/`. Endpoint
+  `POST /api/admin/capture/inventory/manifest`, que **solo lee**.
+- El guardado sigue siendo `POST /api/admin/capture/inventory`, el de siempre:
+  leer y guardar son dos pasos a propósito, para poder revisar antes.
+
+**⚠️ Cada página viene DUPLICADA dentro del archivo** (original y copia para
+firmas). Sin quitarla, 22 cajas se leen como 44 y el inventario se infla al
+doble en silencio. Cortado por dos lados: se descartan las páginas repetidas y
+una caja repetida es error.
+
+**Todo se contrasta contra el propio documento.** Si lo leído no da exactamente
+el `Num.Cajas` y el `Cant.Total` que el manifiesto declara al pie, no devuelve
+nada. Piezas fantasma en el inventario no se notarían hasta el conteo físico.
+
+Reglas del formato, todas con prueba:
+
+- `72.000` son **72 piezas**, no 72 mil: SAP siempre trae tres decimales.
+- La entrega va **sin los ceros de la izquierda**: `0081871303` → `81871303`.
+- El documento del kardex es el **MANIFIESTO DE CARGA**, no el transporte SAP.
+  Lo confirma la hoja de recepción: `Fecha · Caja/Folio · Piezas · Entrega ·
+  Manifiesto · Quién recibe · Sobrantes · Faltantes`.
+- Una entrega puede venir en varias cajas; la **caja (HU)** es la que es única.
+- La **fecha es la del registro de la entrada**, no la de salida del CEDIS que
+  trae el PDF. La pone quien recibe.
+
+**⚠️ En la pantalla, «Piezas que entran» se CALCULA**: manifiesto + sobrante −
+faltante, y con 0 o menos se bloquea el guardado. Dejarlo manual era la forma
+segura de inflar el teórico: anotar «faltan 2» y que entren las del manifiesto
+de todos modos. Sobrantes y faltantes se guardan aparte y no tocan el teórico
+—las piezas que entran ya son las que de verdad llegaron—, que es la regla que
+`CLAUDE.md` fija para el kardex.
