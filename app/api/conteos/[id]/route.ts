@@ -13,20 +13,28 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   const session = await requireSession();
   if (isApiError(session)) return session;
 
-  const [count, tags] = await Promise.all([
-    prisma.cycleCount.findFirst({
-      where: { id, storeId: session.storeId },
-      include: {
-        entries: true,
-        noUpcItems: { orderBy: { concept: "asc" } }
-      }
-    }),
-    prisma.cycleCountTag.findMany({
-      where: { storeId: session.storeId, active: true },
-      orderBy: [{ zone: "asc" }, { number: "asc" }]
-    })
-  ]);
+  const count = await prisma.cycleCount.findFirst({
+    where: { id, storeId: session.storeId },
+    include: {
+      entries: true,
+      noUpcItems: { orderBy: { concept: "asc" } }
+    }
+  });
   if (!count) return NextResponse.json({ error: "Conteo no encontrado." }, { status: 404 });
+
+  // La lista de marbetes sale del CATALOGO de la tienda, no de una foto por
+  // conteo. Como ahora se pueden agregar marbetes con el conteo abierto, uno
+  // YA CERRADO se llenaria de marbetes que no existian cuando se conto: se
+  // verian como pendientes y le bajarian el avance a un resultado ya
+  // entregado. Cerrado, solo se ven los que existian mientras estuvo abierto.
+  const tags = await prisma.cycleCountTag.findMany({
+    where: {
+      storeId: session.storeId,
+      active: true,
+      ...(count.closedAt ? { createdAt: { lte: count.closedAt } } : {})
+    },
+    orderBy: [{ zone: "asc" }, { number: "asc" }]
+  });
 
   // Conteo CIEGO: solo gerencia/subgerencia ve las piezas capturadas. El asesor
   // ve su avance (qué conteo va) pero no lo que contó otra persona, para que un

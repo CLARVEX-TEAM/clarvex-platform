@@ -163,3 +163,16 @@ export function zoneProgress(
   }
   return { zone, total: zoneTags.length, counted, pieces, pendingNumbers, discrepancies };
 }
+
+/**
+ * Siguiente número de marbete libre de la tienda.
+ *
+ * El número es único por TIENDA, no por zona (`@@unique([storeId, number])`),
+ * así que se mira el catálogo completo: si piso llega al 120, el marbete nuevo
+ * de bodega es el 121, no un 61 que chocaría.
+ */
+export function nextFreeTagNumber(taken: number[]): number {
+  let max = 0;
+  for (const number of taken) if (number > max) max = number;
+  return max + 1;
+}

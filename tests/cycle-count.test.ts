@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { entryCountsDone, entryDifference, entryNeedsRecount, entryReal, entryResolved, serializeEntry, slotFilled, zoneProgress } from "../lib/cycle-count";
+import { entryCountsDone, entryDifference, entryNeedsRecount, entryReal, entryResolved, nextFreeTagNumber, serializeEntry, slotFilled, zoneProgress } from "../lib/cycle-count";
 
 test("Real replica la regla de la mesa de control", () => {
   // Sin 2do conteo → vale el 1ro.
@@ -81,4 +81,21 @@ test("avance por zona: contados, piezas y pendientes", () => {
   assert.equal(bodega.counted, 1);
   assert.equal(bodega.pieces, 48);
   assert.equal(bodega.discrepancies, 1);
+});
+
+test("el siguiente marbete libre mira TODA la tienda, no solo una zona", () => {
+  // El numero es unico por tienda (@@unique([storeId, number])). Si piso llega
+  // al 120, el marbete nuevo de bodega es el 121: proponer un 61 chocaria con
+  // el indice y el alta fallaria sin que se entienda por que.
+  assert.equal(nextFreeTagNumber([1, 2, 3, 60, 120]), 121);
+});
+
+test("una tienda sin marbetes empieza en 1", () => {
+  assert.equal(nextFreeTagNumber([]), 1);
+});
+
+test("los huecos no se reciclan", () => {
+  // Reusar un hueco le daria a un mueble nuevo el numero de una etiqueta vieja
+  // que quiza sigue pegada en otro lado.
+  assert.equal(nextFreeTagNumber([1, 2, 7]), 8);
 });

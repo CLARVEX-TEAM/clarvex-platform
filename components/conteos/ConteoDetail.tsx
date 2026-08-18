@@ -7,7 +7,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { AlertTriangle, CheckCircle2, Download, Lock, LockOpen, Plus, ScanLine, Trash2, X } from "lucide-react";
 import { getSession } from "@/lib/auth";
 import type { User } from "@/lib/types";
-import { entryCountsDone, entryNeedsRecount, entryReal, entryResolved, parseTagQr, slotFilled, zoneProgress, type CycleZone, type SerializedEntry, type SerializedTag } from "@/lib/cycle-count";
+import { entryCountsDone, entryNeedsRecount, entryReal, entryResolved, nextFreeTagNumber, parseTagQr, slotFilled, zoneProgress, type CycleZone, type SerializedEntry, type SerializedTag } from "@/lib/cycle-count";
 import { useKeyboardInset } from "@/lib/use-keyboard-inset";
 import { Badge, Card, ProgressBar } from "@/components/ui";
 
@@ -201,6 +201,12 @@ export function ConteoDetailView({ countId: id, desktop = false }: { countId: st
                 </button>
               )}
             </div>
+
+            {/* Alta de marbete a media captura. Solo bodega y solo con el
+                conteo abierto: el piso se marbetea de antemano. */}
+            {manager && isOpen && zone === "BODEGA" && (
+              <AddBodegaTag countId={id} tags={tags} onAdded={load} />
+            )}
 
             {/* Grid de marbetes */}
             {zoneTags.length === 0 ? (
@@ -801,6 +807,101 @@ function ManagerPanel({ countId, count, isOpen, canDelete, onChanged, onToggleSt
           <Trash2 size={14} /> Eliminar conteo (admin)
         </button>
       )}
+    </Card>
+  );
+}
+
+// -- Alta de marbete con el conteo abierto (solo bodega) ---------------------
+//
+// Va EN LINEA, no en una ventana flotante: el modal de captura ya nos costo
+// dos fallos seguidos en telefono (el teclado tapando el boton y la barra
+// inferior comiendose el toque). Un bloque en el flujo normal de la pagina
+// hace scroll solo cuando sube el teclado y no pelea con nada.
+function AddBodegaTag({ countId, tags, onAdded }: { countId: string; tags: TagRow[]; onAdded: () => void }) {
+  // El numero es unico por TIENDA, asi que la sugerencia mira el catalogo
+  // completo, no solo bodega. El servidor manda de todos modos.
+  const suggested = useMemo(() => nextFreeTagNumber(tags.map((tag) => tag.number)), [tags]);
+  const [open, setOpen] = useState(false);
+  const [number, setNumber] = useState("");
+  const [label, setLabel] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [added, setAdded] = useState<number | null>(null);
+
+  async function add() {
+    setBusy(true);
+    setError("");
+    setAdded(null);
+    try {
+      const res = await fetch(`/api/conteos/${countId}/tags`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          number: number.trim() === "" ? undefined : Number(number),
+          label: label.trim() || undefined
+        })
+      });
+      const data = (await res.json()) as { tag?: { number: number }; error?: string };
+      if (!res.ok || !data.tag) { setError(data.error ?? "No se pudo agregar el marbete."); return; }
+      setAdded(data.tag.number);
+      setNumber("");
+      setLabel("");
+      onAdded();
+    } catch {
+      setError("Sin conexion. Intenta de nuevo.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="mb-3 flex min-h-11 w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-line text-sm font-semibold text-muted transition active:scale-95"
+      >
+        <Plus size={16} /> Agregar marbete a bodega
+      </button>
+    );
+  }
+
+  return (
+    <Card className="mb-3 p-3.5">
+      <div className="flex items-center justify-between">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">Marbete nuevo en bodega</p>
+        <button type="button" onClick={() => { setOpen(false); setError(""); }} aria-label="Cancelar" className="grid size-8 place-items-center rounded-full bg-slate-500/10 text-muted"><X size={14} /></button>
+      </div>
+      <div className="mt-2 flex gap-1.5">
+        <input
+          value={number}
+          onChange={(event) => setNumber(event.target.value.replace(/D/g, "").slice(0, 5))}
+          inputMode="numeric"
+          placeholder={String(suggested)}
+          aria-label="Numero del marbete"
+          className="w-20 shrink-0 rounded-2xl border border-line bg-panel px-2 py-2 text-center text-sm font-semibold tabular-nums text-ink outline-none focus:border-volt"
+        />
+        <input
+          value={label}
+          onChange={(event) => setLabel(event.target.value.slice(0, 60))}
+          placeholder="Donde esta (opcional)"
+          aria-label="Etiqueta del marbete"
+          className="min-w-0 flex-1 rounded-2xl border border-line bg-panel px-3 py-2 text-sm font-semibold text-ink outline-none focus:border-volt"
+        />
+        <button
+          type="button"
+          onClick={() => void add()}
+          disabled={busy}
+          className="shrink-0 rounded-2xl bg-volt px-4 text-sm font-semibold text-white transition active:scale-95 disabled:opacity-50"
+        >
+          {busy ? "..." : "Agregar"}
+        </button>
+      </div>
+      {error ? <p className="mt-1.5 text-xs font-semibold text-red-500">{error}</p> : null}
+      {added !== null && !error ? (
+        <p className="mt-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400">Marbete {added} agregado. Ya aparece abajo para capturarlo.</p>
+      ) : null}
+      <p className="mt-1 text-[11px] font-semibold text-muted">Sin numero se usa el {suggested}. Imprime su etiqueta desde Marbetes para poder escanearlo.</p>
     </Card>
   );
 }
