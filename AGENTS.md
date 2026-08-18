@@ -1230,3 +1230,65 @@ segura de inflar el teórico: anotar «faltan 2» y que entren las del manifiest
 de todos modos. Sobrantes y faltantes se guardan aparte y no tocan el teórico
 —las piezas que entran ya son las que de verdad llegaron—, que es la regla que
 `CLAUDE.md` fija para el kardex.
+
+### Lectura del reporte diario del POS (18 de agosto de 2026)
+
+Capturar venta, tickets y piezas asesor por asesor es lo más tedioso del día.
+El reporte «Productividad del vendedor sin no mercancía» del POS los trae todos,
+y de paso el bruto y el descuento con los que sale el margen.
+
+- `lib/pos-productivity.ts` — núcleo puro, sin Prisma ni red: verifica,
+  convierte y empareja. 18 pruebas.
+- `lib/pos-vision.ts` — lee una **captura de pantalla** con Gemini.
+- `POST /api/admin/capture/kpis/pos-report` — junta las dos cosas. **Solo lee.**
+  El guardado sigue siendo `POST /api/admin/capture/kpis`, tras la vista previa.
+
+#### Por qué se puede confiar en leer una captura
+
+El reporte trae **cuatro cuentas que deben cuadrar** en cada fila: bruto −
+descuento = neto tras descuentos; − devoluciones = neto; unidades ÷ tickets =
+prom. unidades; neto ÷ tickets = prom. monto. Se comprueban las cuatro. Si un
+dígito se leyó mal, alguna se rompe y la carga **se detiene entera**.
+
+Sin esa red, esto sería teclear a ciegas con pasos extra.
+
+#### Conversiones, verificadas contra la base
+
+- **Venta = «Neto Ventas» ÷ 1.16.** El POS la da con IVA y Clarvex la guarda sin.
+  El 8 de agosto: 17,697.16 del reporte = 15,256.17 capturados.
+- **Bruto y descuento se guardan CON IVA**, tal cual. También verificado: bruto
+  − descuento = neto × 1.16. Al margen el IVA no le afecta, es un cociente.
+- Tickets = «Ticket conteo». Piezas = «Unidades Vendido» (brutas; las
+  devoluciones vienen aparte, como las quiere el kardex).
+
+#### Emparejar nombres: por apellido y por PREFIJO
+
+El visor **corta** los nombres (`POPOCA, WAIRA ZITLAL`) y **estropea la Ñ**
+(`TREVIÃO` por TREVIÑO), así que comparar por igualdad no sirve. Se comparan
+cinco letras, o el apellido entero si es más corto. Ojo con Alonso: en el POS es
+*Eduardo Alonso Treviño*.
+
+⚠️ Si un apellido encaja con dos personas **no se elige**: colgarle la venta del
+día a quien no es le mueve el alcance y la comisión a dos personas a la vez.
+
+#### Lo aprendido peleando con el modelo
+
+- **El esquema se MANDA a Gemini**, no solo se valida al volver. Sin él, y con
+  el razonamiento apagado, devolvía JSON roto: se comía una llave de cierre y
+  fundía dos vendedores en uno. Los números bien, la estructura no.
+- **Sin razonamiento** (`thinkingBudget: 0`): es transcribir, no resolver.
+  `gemini-2.5-flash` acierta pero se pasaba de los 45 s; `gemini-3.1-flash-lite`
+  leyó las cuatro filas exactas en **11 s**. Configurable con `POS_VISION_MODEL`.
+- **Gemini devuelve 503 cuando está saturado** — pasó dos veces en una tarde. Se
+  reintenta una vez antes de mandar a teclear a mano.
+- Groq **no tiene modelos de visión** en esta cuenta; por eso este módulo va por
+  Gemini y aparte de `lib/ai/*`, que es el chat del copiloto.
+
+#### Pendiente
+
+- **Puerta PDF** del mismo reporte: falta un PDF exportado de muestra. El
+  manifiesto y este reporte los genera software distinto y no comparten formato.
+- **Margen diario**: el reporte ya trae bruto y descuento, pero pasarlos de
+  captura semanal a diaria exige el candado del patrón de fila ancla — ver la
+  sección del margen más arriba. No se pueden mezclar las dos formas en una
+  misma semana.
