@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { entryCountsDone, entryDifference, entryNeedsRecount, entryReal, entryResolved, nextFreeTagNumber, serializeEntry, slotFilled, zoneProgress } from "../lib/cycle-count";
+import { entryCountsDone, entryDifference, entryNeedsRecount, entryReal, entryResolved, nextFreeTagNumber, serializeEntry, suggestBodegaTagNumber, slotFilled, zoneProgress } from "../lib/cycle-count";
 
 test("Real replica la regla de la mesa de control", () => {
   // Sin 2do conteo → vale el 1ro.
@@ -98,4 +98,35 @@ test("los huecos no se reciclan", () => {
   // Reusar un hueco le daria a un mueble nuevo el numero de una etiqueta vieja
   // que quiza sigue pegada en otro lado.
   assert.equal(nextFreeTagNumber([1, 2, 7]), 8);
+});
+
+test("REUSA el marbete apagado mas bajo antes de inventar uno nuevo", () => {
+  // El caso real de TH SAN AGUSTIN: 136 al 160 dados de alta pero apagados.
+  // Proponer el 161 dejaba 25 marbetes buenos sin usar y estrenaba un numero
+  // sin etiqueta fisica. Los apagados YA tienen su etiqueta impresa y pegada.
+  const catalog = [
+    { number: 58, zone: "PISO" as const, active: true },
+    { number: 135, zone: "BODEGA" as const, active: true },
+    { number: 136, zone: "BODEGA" as const, active: false },
+    { number: 160, zone: "BODEGA" as const, active: false }
+  ];
+  assert.equal(suggestBodegaTagNumber(catalog), 136);
+});
+
+test("sin apagados que reusar, se estrena el siguiente", () => {
+  const catalog = [
+    { number: 58, zone: "PISO" as const, active: true },
+    { number: 120, zone: "BODEGA" as const, active: true }
+  ];
+  assert.equal(suggestBodegaTagNumber(catalog), 121);
+});
+
+test("un marbete apagado de PISO no se arrastra a bodega solo", () => {
+  // Reactivarlo le cambiaria la zona a una etiqueta que sigue pegada en piso.
+  // Si lo piden por numero se hace, pero no se sugiere.
+  const catalog = [
+    { number: 30, zone: "PISO" as const, active: false },
+    { number: 120, zone: "BODEGA" as const, active: true }
+  ];
+  assert.equal(suggestBodegaTagNumber(catalog), 121);
 });

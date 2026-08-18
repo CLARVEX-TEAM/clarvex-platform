@@ -164,15 +164,36 @@ export function zoneProgress(
   return { zone, total: zoneTags.length, counted, pieces, pendingNumbers, discrepancies };
 }
 
+/** Lo que hace falta del catálogo para proponer un número de marbete. */
+export type TagSlot = { number: number; zone: CycleZone; active: boolean };
+
 /**
  * Siguiente número de marbete libre de la tienda.
  *
  * El número es único por TIENDA, no por zona (`@@unique([storeId, number])`),
  * así que se mira el catálogo completo: si piso llega al 120, el marbete nuevo
- * de bodega es el 121, no un 61 que chocaría.
+ * es el 121, no un 61 que chocaría contra el índice.
  */
 export function nextFreeTagNumber(taken: number[]): number {
   let max = 0;
   for (const number of taken) if (number > max) max = number;
   return max + 1;
+}
+
+/**
+ * Qué número proponer al agregar un marbete a bodega.
+ *
+ * ⚠️ Primero se REUSA el marbete desactivado más bajo, y solo si no queda
+ * ninguno se inventa uno nuevo. Es la diferencia entre un número libre y uno
+ * dado de alta pero apagado: los apagados YA tienen su etiqueta impresa y
+ * pegada. Sin esta regla, una tienda con el 136 al 160 apagados saltaba al
+ * 161 —un número sin etiqueta física— y dejaba 25 marbetes buenos sin usar.
+ */
+export function suggestBodegaTagNumber(catalog: TagSlot[]): number {
+  const reusable = catalog
+    .filter((tag) => !tag.active && tag.zone === "BODEGA")
+    .map((tag) => tag.number)
+    .sort((left, right) => left - right);
+  if (reusable.length > 0) return reusable[0];
+  return nextFreeTagNumber(catalog.map((tag) => tag.number));
 }

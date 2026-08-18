@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requirePlatformAdmin, requireSession, isApiError, parseJson } from "@/lib/api";
 import { recordAudit } from "@/lib/audit";
-import { serializeEntry } from "@/lib/cycle-count";
+import { serializeEntry, suggestBodegaTagNumber } from "@/lib/cycle-count";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -27,15 +27,14 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   // YA CERRADO se llenaria de marbetes que no existian cuando se conto: se
   // verian como pendientes y le bajarian el avance a un resultado ya
   // entregado. Cerrado, solo se ven los que existian mientras estuvo abierto.
-  const tags = await prisma.cycleCountTag.findMany({
-    where: {
-      storeId: session.storeId,
-      active: true,
-      ...(count.closedAt ? { createdAt: { lte: count.closedAt } } : {})
-    },
+  const catalog = await prisma.cycleCountTag.findMany({
+    where: { storeId: session.storeId },
     orderBy: [{ zone: "asc" }, { number: "asc" }]
   });
-
+  const tags = catalog.filter((tag) => tag.active && (!count.closedAt || tag.createdAt <= count.closedAt));
+  // La sugerencia la calcula el SERVIDOR: reusa el marbete desactivado mas
+  // bajo, y esos no viajan en `tags`, asi que el navegador no puede verla.
+  const suggestedBodegaTag = suggestBodegaTagNumber(catalog);
   // Conteo CIEGO: solo gerencia/subgerencia ve las piezas capturadas. El asesor
   // ve su avance (qué conteo va) pero no lo que contó otra persona, para que un
   // 2do/3er conteo no copie al anterior.
@@ -52,6 +51,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       noUpcItems: canSeePieces ? count.noUpcItems.map((item) => ({ id: item.id, concept: item.concept, pieces: item.pieces })) : []
     },
     canSeePieces,
+    suggestedBodegaTag,
     tags: tags.map((tag) => ({ id: tag.id, number: tag.number, zone: tag.zone, label: tag.label })),
     entries: count.entries.map((entry) => serializeEntry({
       tagId: entry.tagId,
