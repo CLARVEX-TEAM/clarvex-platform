@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireAdminCapture } from "@/lib/admin-capture-auth";
 import { matchPosRows, posCaptureRows } from "@/lib/pos-productivity";
-import { isVisionConfigured, readPosReportImage } from "@/lib/pos-vision";
+import { isVisionConfigured, readPosReport } from "@/lib/pos-vision";
 import { prisma } from "@/lib/prisma";
 import { PERSON_WHERE } from "@/lib/store-people";
 
@@ -25,9 +25,10 @@ export const maxDuration = 60;
  */
 const bodySchema = z.object({
   storeId: z.string().min(1).max(64),
-  // Captura de pantalla del visor del POS. ~100 KB; el techo deja margen.
+  // Captura del visor (~100 KB) o el PDF exportado (~32 KB). El techo deja margen.
   imageBase64: z.string().min(1).max(12_000_000),
-  mimeType: z.enum(["image/png", "image/jpeg", "image/webp"]).default("image/png")
+  // Captura de pantalla o el PDF exportado: el lector acepta los dos.
+  mimeType: z.enum(["image/png", "image/jpeg", "image/webp", "application/pdf"]).default("image/png")
 });
 
 export async function POST(request: Request) {
@@ -56,10 +57,10 @@ export async function POST(request: Request) {
   const store = await prisma.store.findUnique({ where: { id: parsed.data.storeId }, select: { id: true } });
   if (!store) return NextResponse.json({ error: "Tienda no encontrada." }, { status: 404 });
 
-  const image = parsed.data.imageBase64.replace(/^data:.*?;base64,/, "");
-  const read = await readPosReportImage(image, parsed.data.mimeType);
+  const document = parsed.data.imageBase64.replace(/^data:.*?;base64,/, "");
+  const read = await readPosReport(document, parsed.data.mimeType);
   if (!read.ok) {
-    return NextResponse.json({ error: "No se pudo leer la captura.", detail: [read.error] }, { status: 422 });
+    return NextResponse.json({ error: "No se pudo leer el reporte.", detail: [read.error] }, { status: 422 });
   }
 
   const converted = posCaptureRows(read.value);

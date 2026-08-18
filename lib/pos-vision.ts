@@ -108,7 +108,19 @@ export function isVisionConfigured(): boolean {
   return (process.env.GEMINI_API_KEY ?? "").length > 0;
 }
 
-export async function readPosReportImage(imageBase64: string, mimeType: string): Promise<VisionOutcome> {
+/**
+ * Lee el reporte desde una captura de pantalla **o desde el PDF exportado**.
+ *
+ * El PDF va por aquí y no por un lector propio a propósito. Este reporte no se
+ * parece al manifiesto de carga: va **rotado 90°** y su texto está codificado
+ * con fuentes subconjunto, cada una con su propia tabla de glifos. Descifrarlo
+ * a mano es un extractor de PDF entero —y en la prueba salió a medias, con los
+ * nombres destrozados— mientras que mandarlo tal cual sale exacto en 7 s.
+ *
+ * Y la red es la misma: `posCaptureRows` comprueba después las cuatro cuentas
+ * del reporte, venga de donde venga la lectura.
+ */
+export async function readPosReport(imageBase64: string, mimeType: string): Promise<VisionOutcome> {
   const key = process.env.GEMINI_API_KEY ?? "";
   if (!key) return { ok: false, error: "La lectura de capturas no está configurada en el servidor." };
 
