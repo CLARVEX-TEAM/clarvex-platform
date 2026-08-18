@@ -132,3 +132,48 @@ test("sin trafico la conversion es null, no cero", () => {
   // desconocida. Un 0 diria "entro gente y no compro nadie", que es otra cosa.
   assert.equal(computeConversion(10, 0), null);
 });
+
+/* ─── Margen del dia (bruto y descuento del reporte del POS) ─────────────── */
+
+test("el margen es opcional: sin el, la fila no lo toca", () => {
+  const outcome = normalizeKpiEntry({ employeeNumber: "1", date: "2026-08-17", dailySales: 100, transactions: 1, pieces: 1 });
+  assert.equal(outcome.ok, true);
+  if (!outcome.ok) return;
+  assert.equal(outcome.value.grossSales, null);
+  assert.equal(outcome.value.discountAmount, null);
+});
+
+test("bruto y descuento van juntos o no van", () => {
+  // Con uno solo no hay margen que calcular, y guardar medio dato es peor que
+  // no guardar ninguno: parece capturado.
+  assert.equal(normalizeKpiEntry({ employeeNumber: "1", date: "2026-08-17", grossSales: 6396 }).ok, false);
+  assert.equal(normalizeKpiEntry({ employeeNumber: "1", date: "2026-08-17", discountAmount: 1558.8 }).ok, false);
+});
+
+test("acepta el margen real del 17 de agosto", () => {
+  const outcome = normalizeKpiEntry({
+    employeeNumber: "96383", date: "2026-08-17",
+    dailySales: 4170, transactions: 3, pieces: 4,
+    grossSales: 6396, discountAmount: 1558.8
+  });
+  assert.equal(outcome.ok, true);
+  if (!outcome.ok) return;
+  assert.equal(outcome.value.grossSales, 6396);
+  assert.equal(outcome.value.discountAmount, 1558.8);
+});
+
+test("un descuento mayor que la venta bruta se rechaza", () => {
+  // No existe: el descuento sale de la bruta. El margen pasaria del 100%, y el
+  // margen es un TECHO — un 120% se leeria como un descalabro que no paso.
+  const outcome = normalizeKpiEntry({
+    employeeNumber: "1", date: "2026-08-17", grossSales: 1000, discountAmount: 1200
+  });
+  assert.equal(outcome.ok, false);
+  if (outcome.ok) return;
+  assert.match(outcome.error, /mayor que la venta bruta/);
+});
+
+test("un descuento negativo se rechaza", () => {
+  // En el reporte del POS viene con signo menos; se manda en positivo.
+  assert.equal(normalizeKpiEntry({ employeeNumber: "1", date: "2026-08-17", grossSales: 1000, discountAmount: -200 }).ok, false);
+});

@@ -76,11 +76,23 @@ export async function captureDiscounts(
     const weekKpis = await prisma.kpi.findMany({
       where: { storeId, userId, weekNumber: item.weekNumber },
       orderBy: { date: "asc" },
-      select: { id: true }
+      select: { id: true, discountDaily: true, grossSales: true }
     });
 
     if (weekKpis.length === 0) {
       weeksWithoutKpis.push(`${item.employeeNumber} (semana ${item.weekNumber})`);
+      continue;
+    }
+
+    // ⚠️ Simétrico al candado de `lib/kpi-capture`: esta semana ya trae el
+    // margen día a día (del reporte del POS). Escribirle encima el total
+    // semanal en la fila ancla haría que la lectura sumara las dos cosas y el
+    // descuento saliera inflado — y el margen es un TECHO, así que pasarse se
+    // lee como que la tienda descontó de más.
+    if (weekKpis.some((row) => row.discountDaily && row.grossSales !== null)) {
+      writeErrors.push(
+        `${item.employeeNumber} (semana ${item.weekNumber}): esa semana ya tiene el margen capturado DÍA A DÍA desde el reporte del POS. No se captura también por semana.`
+      );
       continue;
     }
 

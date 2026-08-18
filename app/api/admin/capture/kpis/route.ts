@@ -27,7 +27,10 @@ const bodySchema = z.object({
         dailyGoal: z.union([z.number(), z.string()]).nullish(),
         dailySales: z.union([z.number(), z.string()]).nullish(),
         transactions: z.union([z.number(), z.string()]).nullish(),
-        pieces: z.union([z.number(), z.string()]).nullish()
+        pieces: z.union([z.number(), z.string()]).nullish(),
+        // Margen del día, del reporte del POS. Van juntos o no van.
+        grossSales: z.union([z.number(), z.string()]).nullish(),
+        discountAmount: z.union([z.number(), z.string()]).nullish()
       })
     )
     .min(1, "No se recibió ninguna fila.")

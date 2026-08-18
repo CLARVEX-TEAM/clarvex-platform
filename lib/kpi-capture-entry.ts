@@ -30,6 +30,14 @@ export type KpiCaptureEntry = {
   dailySales?: number | string | null;
   transactions?: number | string | null;
   pieces?: number | string | null;
+  /**
+   * Bruto y descuento del DIA, con IVA, tal como los da el reporte del POS.
+   * Van juntos o no van: con uno solo el margen no se puede calcular. Ausentes
+   * (undefined/null) NO se tocan — capturar KPIs a mano no debe borrar el
+   * margen que ya tenga la fila.
+   */
+  grossSales?: number | string | null;
+  discountAmount?: number | string | null;
 };
 
 export type NormalizedKpiEntry = {
@@ -39,6 +47,9 @@ export type NormalizedKpiEntry = {
   dailySales: number;
   transactions: number;
   pieces: number;
+  /** null = no se capturo, se deja como este. */
+  grossSales: number | null;
+  discountAmount: number | null;
 };
 
 export type NormalizeKpiOutcome =
@@ -97,6 +108,9 @@ export function normalizeKpiEntry(entry: KpiCaptureEntry): NormalizeKpiOutcome {
     };
   }
 
+  const margin = normalizeMargin(entry, `${employeeNumber} (${entry.date})`);
+  if (!margin.ok) return { ok: false, error: margin.error };
+
   return {
     ok: true,
     value: {
@@ -105,9 +119,43 @@ export function normalizeKpiEntry(entry: KpiCaptureEntry): NormalizeKpiOutcome {
       dailyGoal: values.dailyGoal,
       dailySales: values.dailySales,
       transactions: values.transactions,
-      pieces: values.pieces
+      pieces: values.pieces,
+      grossSales: margin.grossSales,
+      discountAmount: margin.discountAmount
     }
   };
+}
+
+/**
+ * Bruto y descuento del dia. Se validan aparte de las cuatro cifras porque
+ * pueden faltar: ausentes significan «no se capturo», no cero.
+ */
+function normalizeMargin(entry: KpiCaptureEntry, who: string): { ok: true; grossSales: number | null; discountAmount: number | null } | { ok: false; error: string } {
+  const absent = (raw: unknown) => raw === undefined || raw === null || raw === "";
+  const noGross = absent(entry.grossSales);
+  const noDiscount = absent(entry.discountAmount);
+  if (noGross && noDiscount) return { ok: true, grossSales: null, discountAmount: null };
+  if (noGross !== noDiscount) {
+    return { ok: false, error: `${who}: llego el bruto o el descuento, pero no los dos. Con uno solo no hay margen.` };
+  }
+
+  const grossSales = toNumber(entry.grossSales);
+  const discountAmount = toNumber(entry.discountAmount);
+  if (grossSales === null || discountAmount === null) {
+    return { ok: false, error: `${who}: el bruto o el descuento no son un numero.` };
+  }
+  if (grossSales < 0 || discountAmount < 0) {
+    return { ok: false, error: `${who}: el bruto y el descuento no pueden ser negativos.` };
+  }
+  if (grossSales > MAX_SALES || discountAmount > MAX_SALES) {
+    return { ok: false, error: `${who}: el bruto o el descuento parecen un error de captura.` };
+  }
+  // El descuento sale de la venta bruta: mayor que ella no existe, y el margen
+  // pasaria del 100%.
+  if (discountAmount > grossSales) {
+    return { ok: false, error: `${who}: el descuento (${discountAmount}) es mayor que la venta bruta (${grossSales}).` };
+  }
+  return { ok: true, grossSales, discountAmount };
 }
 
 /** Acepta número o texto con separadores de miles, comas y símbolo de moneda. */

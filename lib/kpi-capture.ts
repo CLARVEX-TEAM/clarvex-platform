@@ -114,6 +114,39 @@ export async function captureKpis(
   });
   const existingKeys = new Set(existing.map((row) => `${row.userId}:${row.date.toISOString()}`));
 
+  /**
+   * ⚠️ Las dos formas de capturar el margen NO se mezclan en una misma semana.
+   *
+   * El margen semanal vive en la **fila ancla** —el primer día de la semana
+   * lleva el total y el resto queda en `null`—. Si a esa semana se le añaden
+   * además los importes de cada día, la lectura suma las dos cosas y el
+   * descuento sale inflado, sin que nada avise: el margen es un TECHO, así que
+   * pasarse se lee como que la tienda descontó de más.
+   *
+   * `discountDaily` distingue una fila de la otra. Aquí se rechaza escribir el
+   * margen del día en una semana que ya trae el semanal, y `lib/discount-capture`
+   * hace lo simétrico.
+   */
+  const marginWeeks = new Map<string, { userId: string; employeeNumber: string; weekNumber: number }>();
+  for (const item of matched) {
+    if (item.grossSales === null || item.discountAmount === null) continue;
+    const { weekNumber } = reconstructRdvWeek(item.date);
+    marginWeeks.set(`${item.userId}:${weekNumber}`, { userId: item.userId, employeeNumber: item.employeeNumber, weekNumber });
+  }
+  const mixed: string[] = [];
+  for (const { userId, employeeNumber, weekNumber } of Array.from(marginWeeks.values())) {
+    const weekly = await prisma.kpi.findFirst({
+      where: { storeId, userId, weekNumber, grossSales: { not: null }, discountDaily: false },
+      select: { id: true }
+    });
+    if (weekly) {
+      mixed.push(
+        `${employeeNumber}: la semana ${weekNumber} ya tiene el margen capturado POR SEMANA. Bórralo desde Descuentos antes de capturarlo por día, o se sumarían los dos.`
+      );
+    }
+  }
+  if (mixed.length > 0) return { ok: false, errors: mixed };
+
   let recordsCreated = 0;
   let recordsUpdated = 0;
   const writeErrors: string[] = [];
@@ -132,7 +165,12 @@ export async function captureKpis(
       transactions: item.transactions,
       pieces: item.pieces,
       upt: computeUpt(item.pieces, item.transactions),
-      avgTicket: computeAvgTicket(item.dailySales, item.transactions)
+      avgTicket: computeAvgTicket(item.dailySales, item.transactions),
+      // El margen solo se toca cuando viene: capturar KPIs a mano no puede
+      // borrar el bruto y el descuento que la fila ya tuviera.
+      ...(item.grossSales !== null && item.discountAmount !== null
+        ? { grossSales: item.grossSales, discountAmount: item.discountAmount, discountDaily: true }
+        : {})
     };
     try {
       await prisma.kpi.upsert({

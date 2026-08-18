@@ -354,6 +354,11 @@ model Kpi {
   grossSales           Decimal?  @db.Decimal(12, 2)
   discountAmount       Decimal?  @db.Decimal(12, 2)
   discountLimit        Decimal?  @db.Decimal(5, 2)
+  /// El bruto y el descuento de ESTA fila son del día, no el total de la semana
+  /// puesto en la fila ancla. Distingue las dos formas de capturar el margen y
+  /// permite negarse a mezclarlas: sumar un total semanal más los días sueltos
+  /// de esa misma semana infla el descuento sin que nada avise.
+  discountDaily        Boolean   @default(false)
   weekNumber           Int?
   weekStart            DateTime?
   weekEnd              DateTime?
