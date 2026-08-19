@@ -149,6 +149,10 @@ model User {
   birthDate             DateTime?
   hireDate              DateTime?
   hoursOwed             Float                     @default(0)
+  /// Fecha de corte del banco de horas: `hoursOwed` ya cubre todo lo anterior.
+  /// Sin ella se sumaria dos veces el historico cada vez que alguien ajusta el
+  /// saldo a mano — la misma frontera que `vacationBaselineAt`.
+  hoursBaselineAt       DateTime?
   /// Saldo de vacaciones capturado a mano. NO es el saldo real: el que manda lo
   /// calcula lib/vacation-account (este + lo ganado en aniversarios − lo tomado).
   vacationDays          Float                     @default(0)

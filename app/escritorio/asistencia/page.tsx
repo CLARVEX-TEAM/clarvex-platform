@@ -32,7 +32,12 @@ import {
  * solo cambia la presentación; un arreglo de cálculo aplica a las dos.
  */
 
-type Teammate = { id: string; name: string; employeeNumber: string; role: string; photoUrl: string | null; hoursOwed: number; balanceMinutes: number };
+type Teammate = {
+  id: string; name: string; employeeNumber: string; role: string; photoUrl: string | null;
+  hoursOwed: number; balanceMinutes: number;
+  /** De dónde sale el acumulado: ajuste de gerencia + ganado − descontado. */
+  balanceAdjustment: number; balanceEarned: number; balanceSpent: number; balanceSince: string | null;
+};
 type DateRange = { start: string; end: string };
 type ReportReminder = { kind: "QUINCENA" | "MES"; daysLeft: number; message: string; periodKey: string; dueDate: string };
 
@@ -280,6 +285,16 @@ export default function EscritorioAsistencia() {
                                 {formatBalance(user.balanceMinutes)}
                               </span>
                             </p>
+                            {/* De dónde sale ese acumulado: ajuste de gerencia,
+                                más lo ganado y menos lo usado desde el corte.
+                                Reconstruirlo a mano cuesta media hora. */}
+                            {user.balanceSince ? (
+                              <p className="text-caption text-muted">
+                                {formatBalance(user.balanceAdjustment)} de ajuste
+                                {user.balanceEarned > 0 ? ` · +${formatBalance(user.balanceEarned).replace("+", "")} ganadas` : ""}
+                                {user.balanceSpent > 0 ? ` · −${formatBalance(user.balanceSpent).replace("+", "")} usadas` : ""}
+                              </p>
+                            ) : null}
                           </div>
                         </button>
                       </li>

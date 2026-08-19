@@ -6,7 +6,7 @@ import { recordAudit } from "@/lib/audit";
 import { isApiError, parseJson, requireSession } from "@/lib/api";
 import { classifyArrival, type AttendanceStatus } from "@/lib/attendance";
 import { dayBalanceMinutes } from "@/lib/hours-balance";
-import { hoursBalanceMinutes } from "@/lib/hours-account";
+import { hoursBalances } from "@/lib/hours-account";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -85,7 +85,7 @@ export async function GET(request: Request) {
 
   // Saldo acumulado REAL de cada quien: el inicial del Excel + TODO lo que la app
   // ha registrado (no solo el mes que se está viendo).
-  const balances = await hoursBalanceMinutes(users.map((user) => user.id));
+  const balances = await hoursBalances(users.map((user) => user.id));
 
   return NextResponse.json({
     month,
@@ -93,7 +93,19 @@ export async function GET(request: Request) {
     naturalRange: { start: natural.start.toISOString().slice(0, 10), end: new Date(natural.end.getTime() - 86_400_000).toISOString().slice(0, 10) },
     retailRange: { start: retail.start.toISOString().slice(0, 10), end: new Date(retail.end.getTime() - 86_400_000).toISOString().slice(0, 10) },
     canEdit: manager,
-    users: users.map((user) => ({ ...user, balanceMinutes: balances.get(user.id) ?? 0 })),
+    users: users.map((user) => {
+      const hours = balances.get(user.id);
+      return {
+        ...user,
+        balanceMinutes: hours?.balance ?? 0,
+        // Desglose: de dónde sale el acumulado. Sin esto hay que reconstruirlo
+        // a mano día por día, que es justo lo que cuesta media hora.
+        balanceAdjustment: hours?.adjustment ?? 0,
+        balanceEarned: hours?.earned ?? 0,
+        balanceSpent: hours?.spent ?? 0,
+        balanceSince: hours?.baselineAt ? hours.baselineAt.toISOString().slice(0, 10) : null
+      };
+    }),
     schedules: schedules.map((day) => ({
       userId: day.userId,
       date: day.date.toISOString().slice(0, 10),

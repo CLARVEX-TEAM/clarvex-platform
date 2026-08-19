@@ -31,7 +31,12 @@ import { cn } from "@/lib/utils";
 
 // balanceMinutes: saldo acumulado REAL (inicial del Excel + todo lo registrado),
 // no solo el del mes que se está viendo.
-type Teammate = { id: string; name: string; employeeNumber: string; role: string; photoUrl: string | null; hoursOwed: number; balanceMinutes: number };
+type Teammate = {
+  id: string; name: string; employeeNumber: string; role: string; photoUrl: string | null;
+  hoursOwed: number; balanceMinutes: number;
+  /** De dónde sale el acumulado: ajuste de gerencia + ganado − descontado. */
+  balanceAdjustment: number; balanceEarned: number; balanceSpent: number; balanceSince: string | null;
+};
 
 type DateRange = { start: string; end: string };
 type ReportReminder = { kind: "QUINCENA" | "MES"; daysLeft: number; message: string; periodKey: string; dueDate: string };
@@ -301,6 +306,15 @@ export default function AsistenciaPage() {
                         {" · Acumulado: "}
                         <span className="text-ink/70">{formatBalance(user.balanceMinutes)}</span>
                       </p>
+                      {/* De dónde sale ese acumulado. Sin esto hay que
+                          reconstruirlo día por día para explicarlo. */}
+                      {user.balanceSince ? (
+                        <p className="text-[10px] font-semibold text-muted">
+                          {formatBalance(user.balanceAdjustment)} de ajuste
+                          {user.balanceEarned > 0 ? ` · +${formatBalance(user.balanceEarned).replace("+", "")} ganadas` : ""}
+                          {user.balanceSpent > 0 ? ` · −${formatBalance(user.balanceSpent).replace("+", "")} usadas` : ""}
+                        </p>
+                      ) : null}
                     </div>
                     <ChevronRight size={16} className={cn("shrink-0 text-muted transition-transform", open && "rotate-90")} />
                   </button>
