@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requirePlatformAdmin, requireSession, isApiError, parseJson } from "@/lib/api";
 import { recordAudit } from "@/lib/audit";
 import { serializeEntry, suggestBodegaTagNumber } from "@/lib/cycle-count";
+import { kardexTheoreticalAt } from "@/lib/inventory-kardex";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -47,13 +48,32 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   // 2do/3er conteo no copie al anterior.
   const canSeePieces = session.role === "GERENTE" || session.role === "SUBGERENTE";
 
+  /**
+   * El teórico sale del KARDEX, calculado a la fecha del conteo. Antes se
+   * capturaba a mano y quedaba obsoleto en cuanto entraba la venta del día o un
+   * día atrasado; ahora se recalcula en cada lectura, igual que la existencia
+   * del propio kardex.
+   *
+   * ⚠️ Va en un solo sentido: el kardex le presta su teórico al conteo para
+   * comparar. Lo contado con marbetes NO mueve la existencia — eso solo lo hace
+   * un inventario que cierra la ronda.
+   *
+   * Si no hay ronda que lo sostenga, se cae al valor capturado a mano, que es
+   * lo único que queda de los conteos viejos.
+   */
+  const kardex = canSeePieces ? await kardexTheoreticalAt(session.storeId, count.date) : null;
+  const theoretical = kardex?.theoretical ?? (canSeePieces ? count.theoretical : null);
+
   return NextResponse.json({
     count: {
       id: count.id,
       date: count.date.toISOString().slice(0, 10),
       status: count.status,
       // El teórico (Kardex) y los faltantes sin UPC son datos de gerencia.
-      theoretical: canSeePieces ? count.theoretical : null,
+      theoretical,
+      /** De dónde salió: del kardex en vivo o capturado a mano en su día. */
+      theoreticalSource: kardex ? "KARDEX" : count.theoretical !== null ? "MANUAL" : null,
+      theoreticalRound: kardex?.roundName ?? null,
       notes: count.notes,
       noUpcItems: canSeePieces ? count.noUpcItems.map((item) => ({ id: item.id, concept: item.concept, pieces: item.pieces })) : []
     },

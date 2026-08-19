@@ -321,3 +321,57 @@ export async function listInventoryRounds(storeId: string) {
     }
   });
 }
+
+/**
+ * Existencia teórica del kardex **a una fecha**, para que un conteo no tenga
+ * que capturarla a mano.
+ *
+ * Se calcula igual que el resto del kardex y por el mismo motivo: guardarla
+ * sería una foto que envejece. Un conteo se abre por la mañana, la venta del
+ * día se captura por la noche y los días atrasados llegan cuando llegan — con
+ * el teórico guardado, cada una de esas capturas dejaría el número obsoleto sin
+ * avisar. Calculándolo, el conteo siempre compara contra lo que el kardex sabe
+ * en ese instante.
+ *
+ * ⚠️ Los conteos NO alimentan el kardex. Esto va en un solo sentido: el kardex
+ * le presta su teórico al conteo para comparar. Lo que se cuenta con marbetes
+ * no mueve la existencia; solo un inventario que cierra la ronda lo hace.
+ *
+ * Devuelve `null` cuando no hay ronda, o cuando la fecha es anterior a la que
+ * la abre: ahí no hay teórico que ofrecer, y un cero se leería como «no hay
+ * mercancía».
+ */
+export async function kardexTheoreticalAt(
+  storeId: string,
+  date: Date
+): Promise<{ theoretical: number; roundName: string; soldPieces: number } | null> {
+  const round = await getReadableRound(storeId);
+  if (!round) return null;
+  if (date.getTime() < round.startDate.getTime()) return null;
+
+  // Una ronda cerrada no sigue acumulando: se corta en su fecha de cierre.
+  const upper = round.endDate && date.getTime() > round.endDate.getTime() ? round.endDate : date;
+
+  const [movements, sold] = await Promise.all([
+    prisma.inventoryMovement.findMany({
+      where: { roundId: round.id, date: { lte: upper } },
+      select: { type: true, quantity: true }
+    }),
+    prisma.kpi.aggregate({
+      where: { storeId, date: { gte: round.startDate, lte: upper }, user: PERSON_WHERE },
+      _sum: { pieces: true }
+    })
+  ]);
+
+  const soldPieces = sold._sum.pieces ?? 0;
+  const summary = summarizeKardex({
+    basePieces: round.basePieces,
+    soldPieces,
+    movements: movements.map((movement) => ({
+      type: movement.type as InventoryMovementType,
+      quantity: movement.quantity
+    }))
+  });
+
+  return { theoretical: summary.theoretical, roundName: round.name, soldPieces };
+}

@@ -18,6 +18,9 @@ type CountDetail = {
   date: string;
   status: string;
   theoretical: number | null;
+  /** KARDEX = calculado en vivo desde la ronda; MANUAL = capturado en su día. */
+  theoreticalSource: "KARDEX" | "MANUAL" | null;
+  theoreticalRound: string | null;
   notes: string | null;
   noUpcItems: Array<{ id: string; concept: string; pieces: number }>;
 };
@@ -738,31 +741,47 @@ function ManagerPanel({ countId, count, isOpen, canDelete, onChanged, onToggleSt
     <Card className="mt-3 p-3.5">
       <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">Mesa de control</p>
 
-      {/* Inventario Kardex (teórico): la diferencia en vivo sale arriba */}
+      {/* Inventario Kardex (teórico). Ya NO se teclea cuando hay ronda abierta:
+          sale del kardex calculado a la fecha del conteo y se actualiza solo
+          conforme entran las ventas del día y los días atrasados. El campo
+          manual sobrevive únicamente para conteos sin ronda que los sostenga. */}
       <div className="mt-2">
         <p className="text-xs font-semibold text-ink">Inventario Kardex (teórico)</p>
-        <div className="mt-1.5 flex gap-1.5">
-          <input
-            value={kardex}
-            onChange={(e) => setKardex(e.target.value.replace(/\D/g, "").slice(0, 7))}
-            inputMode="numeric"
-            placeholder="Piezas según sistema"
-            aria-label="Inventario Kardex"
-            disabled={!isOpen}
-            className="min-w-0 flex-1 rounded-2xl border border-line bg-panel px-3 py-2 text-sm font-semibold tabular-nums text-ink outline-none focus:border-volt disabled:opacity-60"
-          />
-          {isOpen && (
-            <button
-              type="button"
-              onClick={() => void saveKardex()}
-              disabled={busy}
-              className={`shrink-0 rounded-2xl px-4 text-sm font-semibold transition active:scale-95 disabled:opacity-50 ${kardexSaved ? "bg-emerald-500/15 text-emerald-600" : "bg-volt text-white"}`}
-            >
-              {kardexSaved ? "✓" : "Guardar"}
-            </button>
-          )}
-        </div>
-        <p className="mt-1 text-[11px] font-semibold text-muted">Con el Kardex capturado, arriba verás en vivo la diferencia contra lo contado.</p>
+        {count.theoreticalSource === "KARDEX" ? (
+          <div className="mt-1.5 rounded-2xl border border-line bg-panel px-3 py-2.5">
+            <p className="text-lg font-semibold tabular-nums text-ink">
+              {count.theoretical?.toLocaleString("es-MX")} <span className="text-xs font-semibold text-muted">piezas</span>
+            </p>
+            <p className="mt-0.5 text-[11px] font-semibold text-muted">
+              Del kardex{count.theoreticalRound ? ` · ${count.theoreticalRound}` : ""} · se actualiza solo
+            </p>
+          </div>
+        ) : (
+          <>
+            <div className="mt-1.5 flex gap-1.5">
+              <input
+                value={kardex}
+                onChange={(e) => setKardex(e.target.value.replace(/\D/g, "").slice(0, 7))}
+                inputMode="numeric"
+                placeholder="Piezas según sistema"
+                aria-label="Inventario Kardex"
+                disabled={!isOpen}
+                className="min-w-0 flex-1 rounded-2xl border border-line bg-panel px-3 py-2 text-sm font-semibold tabular-nums text-ink outline-none focus:border-volt disabled:opacity-60"
+              />
+              {isOpen && (
+                <button
+                  type="button"
+                  onClick={() => void saveKardex()}
+                  disabled={busy}
+                  className={`shrink-0 rounded-2xl px-4 text-sm font-semibold transition active:scale-95 disabled:opacity-50 ${kardexSaved ? "bg-emerald-500/15 text-emerald-600" : "bg-volt text-white"}`}
+                >
+                  {kardexSaved ? "✓" : "Guardar"}
+                </button>
+              )}
+            </div>
+            <p className="mt-1 text-[11px] font-semibold text-muted">Sin ronda de kardex abierta hay que capturarlo a mano.</p>
+          </>
+        )}
       </div>
 
       {/* Piezas sin UPC */}
