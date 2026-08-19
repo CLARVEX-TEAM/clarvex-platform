@@ -3,8 +3,19 @@ name: CI
 on:
   push:
     branches: [main]
+    # Un commit que solo toca documentación no puede romper nada, y disparaba
+    # los tres trabajos —incluido el que instala Chromium y compila el proyecto
+    # entero—. En repo privado eso son minutos de cuota que se agotan.
+    paths-ignore: ["**.md"]
   pull_request:
     branches: [main]
+    paths-ignore: ["**.md"]
+
+# Varios pushes seguidos ya no acumulan ejecuciones: la anterior se cancela y
+# solo se comprueba el último commit, que es el que va a producción.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   quality:
