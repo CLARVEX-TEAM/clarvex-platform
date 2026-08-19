@@ -50,11 +50,21 @@ export function weekOf(date: Date): string {
 /**
  * Días ganados por persona, agrupando sus días por semana.
  *
- * ⚠️ Una semana INCOMPLETA no se cuenta. La semana en curso todavía puede recibir
- * un descanso el sábado, y darla por ganada el martes le sumaría un día que quizá
- * no le toca. Se exige que estén los siete días capturados.
+ * Solo cuentan las semanas que cumplen dos cosas:
+ *
+ * 1. **Ya empezaron.** ⚠️ Los horarios están capturados con meses de
+ *    anticipación, y esas semanas futuras vienen con siete días laborables y
+ *    ningún descanso porque todavía nadie las ha repartido. Contarlas daba
+ *    saldos absurdos —treinta y dos días de pago en agosto— por semanas que aún
+ *    no ocurren. Una semana que no ha empezado no puede haber ganado nada.
+ * 2. **Tienen los siete días capturados.** Con la semana a medias no se sabe
+ *    cuántos descansos va a tener.
+ *
+ * La semana EN CURSO sí cuenta, porque su reparto ya está hecho. Si después se
+ * le agrega un descanso, el día ganado desaparece solo: esto se calcula en cada
+ * lectura, nunca se guarda.
  */
-export function paidDaysEarned(days: WeekDay[]): number {
+export function paidDaysEarned(days: WeekDay[], today: Date): number {
   const byWeek = new Map<string, string[]>();
   for (const day of days) {
     const bucket = byWeek.get(day.week);
@@ -62,8 +72,10 @@ export function paidDaysEarned(days: WeekDay[]): number {
     else byWeek.set(day.week, [day.status]);
   }
 
+  const todayKey = today.toISOString().slice(0, 10);
   let earned = 0;
-  for (const statuses of Array.from(byWeek.values())) {
+  for (const [week, statuses] of Array.from(byWeek.entries())) {
+    if (week > todayKey) continue;
     if (statuses.length < 7) continue;
     earned += paidDaysEarnedInWeek(statuses);
   }

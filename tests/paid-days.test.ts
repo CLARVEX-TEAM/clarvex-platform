@@ -52,24 +52,50 @@ test("tomar un pago de dia NO cuenta como descanso", () => {
 
 const days = (weekLabel: string, statuses: string[]) => statuses.map((status) => ({ week: weekLabel, status }));
 
+/** Miercoles de la semana del 16 de agosto de 2026. */
+const HOY = new Date("2026-08-19T00:00:00.000Z");
+
 test("suma lo ganado de varias semanas", () => {
   const historia = [
     ...days("2026-08-02", full(2)),
     ...days("2026-08-09", full(2)),
     ...days("2026-08-16", full(1))
   ];
-  assert.equal(paidDaysEarned(historia), 1);
+  assert.equal(paidDaysEarned(historia, HOY), 1);
 });
 
 test("una semana INCOMPLETA no se cuenta todavia", () => {
   // La semana en curso puede recibir un descanso el sabado. Darla por ganada el
   // martes le sumaria un dia que quiza no le toca.
   const enCurso = days("2026-08-16", ["WORKING", "WORKING", "WORKING"]);
-  assert.equal(paidDaysEarned(enCurso), 0);
+  assert.equal(paidDaysEarned(enCurso, HOY), 0);
 });
 
 test("el domingo de la semana sale bien", () => {
   assert.equal(weekOf(new Date("2026-08-16T00:00:00.000Z")), "2026-08-16");
   assert.equal(weekOf(new Date("2026-08-22T00:00:00.000Z")), "2026-08-16");
   assert.equal(weekOf(new Date("2026-08-23T00:00:00.000Z")), "2026-08-23");
+});
+
+test("una semana FUTURA no cuenta, aunque venga completa", () => {
+  // Los horarios estan capturados hasta fin de ano y esas semanas vienen con
+  // siete dias laborables y ningun descanso, porque nadie las ha repartido
+  // todavia. Contarlas daba 32 dias de pago en agosto.
+  const futuro = days("2026-11-22", full(0));
+  assert.equal(paidDaysEarned(futuro, HOY), 0);
+});
+
+test("la semana EN CURSO si cuenta: su reparto ya esta hecho", () => {
+  const enCurso = days("2026-08-16", full(1));
+  assert.equal(paidDaysEarned(enCurso, HOY), 1);
+});
+
+test("mezcla de pasadas, en curso y futuras", () => {
+  const historia = [
+    ...days("2026-08-09", full(2)),
+    ...days("2026-08-16", full(1)),
+    ...days("2026-12-06", full(0)),
+    ...days("2026-12-13", full(0))
+  ];
+  assert.equal(paidDaysEarned(historia, HOY), 1);
 });

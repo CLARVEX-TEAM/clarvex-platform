@@ -90,7 +90,7 @@ export async function paidDaysBalances(userIds: string[], now = new Date()): Pro
     const baselineAt = user.paidDaysBaselineAt;
     const baseline = user.paidDays;
     // Sin corte no se cuenta nada: el saldo capturado manda.
-    const earned = baselineAt ? paidDaysEarned(daysByUser.get(user.id) ?? []) : 0;
+    const earned = baselineAt ? paidDaysEarned(daysByUser.get(user.id) ?? [], today) : 0;
     const counted = baselineAt ? takenByUser.get(user.id) : undefined;
 
     return [user.id, {
