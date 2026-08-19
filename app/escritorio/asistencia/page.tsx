@@ -5,7 +5,7 @@ import { BellRing, CalendarX2, ChevronLeft, ChevronRight, Clock, PartyPopper, Su
 import { getSession } from "@/lib/auth";
 import type { User } from "@/lib/types";
 import {
-  currentMonth, dayBadges, dayLabel, balanceOf, fortnightOf, incidentsFor, INCIDENT_TONE,
+  currentMonth, dayBadges, dayLabel, balanceOf, fortnightOf, hoursMovements, incidentsFor, INCIDENT_TONE,
   isSunday, STATUS_LABEL, STATUS_TONE, totalsByUser, totalsFor,
   type AttendanceRecord, type Incident, type ScheduleDay
 } from "@/lib/attendance-view";
@@ -378,29 +378,55 @@ function DayTable({ records, onEdit }: { records: AttendanceRecord[]; onEdit?: (
             <th className={deskTh}>Estado</th>
             <th className={deskThRight}>Entrada</th>
             <th className={deskThRight}>Salida</th>
+            <th className={deskTh}>Banco de horas</th>
             <th className={deskTh}>Nota</th>
           </tr>
         </thead>
         <tbody>
-          {records.map((record) => (
-            <tr
-              key={record.date}
-              className={cn(deskTr, onEdit && "cursor-pointer")}
-              onClick={onEdit ? () => onEdit(record) : undefined}
-            >
-              <td className={deskTd}>
-                <span className={cn(isSunday(record.date) && "text-accent")}>{dayLabel(record.date)}</span>
-              </td>
-              <td className={deskTd}>
-                {dayBadges(record).map((badge, index) => (
-                  <span key={badge.label} className={cn("font-medium", badge.tone, index > 0 && "ml-1.5")}>{badge.label}</span>
-                ))}
-              </td>
-              <td className={cn(deskTdMuted, "text-right tabular-nums")}>{record.arrivedAt ?? "—"}</td>
-              <td className={cn(deskTdMuted, "text-right tabular-nums")}>{record.leftAt ?? "—"}</td>
-              <td className={deskTdMuted}>{record.note || "—"}</td>
-            </tr>
-          ))}
+          {records.map((record) => {
+            // El mismo desglose que ya daba el móvil: no solo «−3:00», sino por
+            // qué. En escritorio cabe en su propia columna, y es lo que gerencia
+            // necesita para explicar un saldo sin reconstruirlo de memoria.
+            const movements = hoursMovements(record);
+            return (
+              <tr
+                key={record.date}
+                className={cn(deskTr, onEdit && "cursor-pointer")}
+                onClick={onEdit ? () => onEdit(record) : undefined}
+              >
+                <td className={deskTd}>
+                  <span className={cn(isSunday(record.date) && "text-accent")}>{dayLabel(record.date)}</span>
+                </td>
+                <td className={deskTd}>
+                  {dayBadges(record).map((badge, index) => (
+                    <span key={badge.label} className={cn("font-medium", badge.tone, index > 0 && "ml-1.5")}>{badge.label}</span>
+                  ))}
+                </td>
+                <td className={cn(deskTdMuted, "text-right tabular-nums")}>
+                  {record.arrivedAt ?? "—"}
+                  {record.minutesLate > 0 ? <span className="ml-1 text-amber-600 dark:text-amber-400">+{record.minutesLate}′</span> : null}
+                </td>
+                <td className={cn(deskTdMuted, "text-right tabular-nums")}>{record.leftAt ?? "—"}</td>
+                <td className={deskTd}>
+                  {movements.length === 0 ? (
+                    <span className="text-muted">—</span>
+                  ) : (
+                    <div className="flex flex-col gap-0.5">
+                      {movements.map((movement, index) => (
+                        <span key={index} className="whitespace-nowrap text-[12px]">
+                          <span className={cn("font-semibold tabular-nums", movement.minutes < 0 ? "text-rose-600 dark:text-rose-400" : "text-emerald-600 dark:text-emerald-400")}>
+                            {formatBalance(movement.minutes)}
+                          </span>{" "}
+                          <span className="text-muted">{movement.text}</span>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </td>
+                <td className={deskTdMuted}>{record.note || "—"}</td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>
