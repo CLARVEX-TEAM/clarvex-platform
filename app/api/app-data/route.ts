@@ -4,6 +4,7 @@ import { buildUserDashboardKpi, dashboardDateKey, dashboardDateRange } from "@/l
 import { toKpiPayload } from "@/lib/kpi-payload";
 import { prisma } from "@/lib/prisma";
 import { signR2Url } from "@/lib/r2";
+import { paidDaysBalances } from "@/lib/paid-days-account";
 import { vacationBalances } from "@/lib/vacation-account";
 
 export const dynamic = "force-dynamic";
@@ -74,6 +75,9 @@ export async function GET(request: Request) {
   // Horarios). El campo crudo de la BD es solo el punto de partida: mostrarlo tal
   // cual enseñaría un número que se desfasa en cuanto alguien toma vacaciones.
   const vacation = await vacationBalances(users.map((user) => user.id));
+  // Mismo motivo para el pago de días: se gana solo cada semana que se descansa
+  // de menos, y el campo crudo se desfasa en silencio.
+  const paid = await paidDaysBalances(users.map((user) => user.id));
 
   return NextResponse.json({
     // Los saldos de RH (horas, vacaciones, días pagados) son sensibles: solo los
@@ -82,6 +86,7 @@ export async function GET(request: Request) {
     users: users.map((user) => {
       const canSeeBalances = manager || user.id === session.userId;
       const days = vacation.get(user.id);
+      const paidBalance = paid.get(user.id);
       return {
         id: user.id, name: user.name, employeeNumber: user.employeeNumber, role: user.role, avatar: user.name.slice(0, 2).toUpperCase(), photoUrl: user.photoUrl, biometricEnabled: user.biometricEnabled, lastLoginAt: user.lastLoginAt?.toISOString() ?? null,
         birthDate: user.birthDate ? user.birthDate.toISOString().slice(0, 10) : null,

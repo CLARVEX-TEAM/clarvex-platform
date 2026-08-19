@@ -6,6 +6,7 @@ import { dispatchPushToUsers } from "@/lib/push";
 import { firstName } from "@/lib/daily-summary";
 import { DAY_BALANCE_LABELS, SHIFT_TYPE_LABELS, dayBalanceField, formatRequestDate, isHourType } from "@/lib/shift-requests";
 import { hoursBalanceFor } from "@/lib/hours-account";
+import { paidDaysAvailable } from "@/lib/paid-days-account";
 import { vacationDaysAvailable } from "@/lib/vacation-account";
 import { prisma } from "@/lib/prisma";
 
@@ -25,7 +26,9 @@ export async function GET() {
       orderBy: { createdAt: "desc" },
       include: { requester: { select: { name: true, photoUrl: true } } }
     }),
-    prisma.user.findUnique({ where: { id: session.userId }, select: { paidDays: true } }),
+    // El pago de día también se calcula: capturado + ganado en las semanas que
+    // se descansó de menos − tomado. Antes era un número a mano.
+    paidDaysAvailable(session.userId),
     // Saldo REAL: el inicial (del Excel) MÁS lo que la app acumuló sola. Leerlo
     // solo de hoursOwed dejaría atrapadas las horas ganadas automáticamente.
     hoursBalanceFor(session.userId),
@@ -37,7 +40,7 @@ export async function GET() {
   return NextResponse.json({
     balance,
     vacationDays: vacation,
-    paidDays: me?.paidDays ?? 0,
+    paidDays: me,
     requests: requests.map((request) => ({
       id: request.id,
       date: request.date,

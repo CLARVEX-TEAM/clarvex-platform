@@ -156,6 +156,10 @@ model User {
   /// Sin esta frontera, las vacaciones viejas se restarían dos veces.
   vacationBaselineAt    DateTime?
   paidDays              Float                     @default(0)
+  /// Fecha de corte del saldo de pago de días: lo capturado en `paidDays` ya
+  /// cubre todo lo anterior. Sin ella se recontarían semanas viejas y el saldo
+  /// saldría inflado — la misma frontera que `vacationBaselineAt`.
+  paidDaysBaselineAt    DateTime?
   lastSeenAt            DateTime?
   active                Boolean                   @default(true)
   platformAdmin         Boolean                   @default(false)
