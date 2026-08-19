@@ -17,13 +17,26 @@ import type { PosReport, PosRow } from "@/lib/pos-productivity";
  */
 
 /**
- * Modelo por defecto medido contra el reporte real de TH SAN AGUSTIN: leyó las
- * cuatro filas exactas en 11 s. `gemini-2.5-flash` también acierta, pero
- * «piensa» tanto para una transcripción que se pasaba de los 45 s.
+ * VARIOS modelos, no uno.
+ *
+ * ⚠️ No fijar uno solo. Medido con el mismo PDF con un día de diferencia:
+ * `gemini-3.1-flash-lite` tardó 7.6 s un día y 30.6 s al siguiente, y en medio
+ * los dos modelos devolvieron 503 «alta demanda» durante un rato. Elegir el más
+ * rápido de un día deja la captura a merced de cómo amanezca ese modelo.
+ *
+ * Se prueban en orden y se toma el primero que conteste. Todos leen igual de
+ * bien —lo que cambia es la latencia—, y la verificación de las cuentas del
+ * reporte protege contra cualquiera de ellos.
  */
-const MODEL = process.env.POS_VISION_MODEL ?? "gemini-3.1-flash-lite";
+const MODELS = (process.env.POS_VISION_MODEL ?? "gemini-2.5-flash,gemini-3.5-flash,gemini-3.1-flash-lite")
+  .split(",")
+  .map((model) => model.trim())
+  .filter(Boolean);
 const ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models";
-const TIMEOUT_MS = 45_000;
+/** Por intento. Si uno se atora, se pasa al siguiente en vez de esperar de más. */
+const TIMEOUT_MS = 25_000;
+/** Tope total, para no dejar a nadie mirando la pantalla un minuto largo. */
+const BUDGET_MS = 55_000;
 
 /** Forma OBJECT/ARRAY que entiende Gemini para forzar la estructura. */
 const NUMBER = { type: "NUMBER" } as const;
@@ -138,39 +151,47 @@ export async function readPosReport(imageBase64: string, mimeType: string): Prom
     }
   });
 
+  /**
+   * Se recorren los modelos hasta que uno conteste. Un 503 («alta demanda»),
+   * un 429 o un intento que se atora NO son el final: son ese modelo teniendo
+   * un mal momento, y el siguiente suele responder al instante.
+   */
+  const startedAt = Date.now();
   let payload: unknown;
-  // Un 503 de Gemini es «modelo saturado» y suele pasarse solo. Un reintento
-  // evita mandar a teclear a mano por una punta de demanda de treinta segundos.
-  for (let attempt = 0; attempt < 2; attempt += 1) {
+  let lastProblem = "";
+
+  for (const model of MODELS) {
+    if (Date.now() - startedAt > BUDGET_MS) break;
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
     try {
-      const response = await fetch(`${ENDPOINT}/${MODEL}:generateContent?key=${encodeURIComponent(key)}`, {
+      const response = await fetch(`${ENDPOINT}/${model}:generateContent?key=${encodeURIComponent(key)}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         signal: controller.signal,
         body
       });
-      if (response.status === 503 && attempt === 0) continue;
       if (!response.ok) {
-        return {
-          ok: false,
-          error: response.status === 503
-            ? "El lector de capturas está saturado. Intenta de nuevo en un momento, o sube el PDF."
-            : `El lector de capturas respondió ${response.status}. Intenta de nuevo o sube el PDF.`
-        };
+        lastProblem = response.status === 503 || response.status === 429
+          ? "saturado"
+          : `respondió ${response.status}`;
+        continue;
       }
       payload = await response.json();
       break;
     } catch (error) {
-      const aborted = error instanceof Error && error.name === "AbortError";
-      return { ok: false, error: aborted ? "El lector de capturas tardó demasiado." : "No se pudo contactar al lector de capturas." };
+      lastProblem = error instanceof Error && error.name === "AbortError" ? "tardó demasiado" : "no se pudo contactar";
+      continue;
     } finally {
       clearTimeout(timer);
     }
   }
+
   if (payload === undefined) {
-    return { ok: false, error: "El lector de capturas está saturado. Intenta de nuevo en un momento, o sube el PDF." };
+    return {
+      ok: false,
+      error: `El lector no está disponible ahora mismo (${lastProblem || "sin respuesta"}). Intenta de nuevo en un par de minutos; si corre prisa, captura los números a mano.`
+    };
   }
 
   const text = extractText(payload);
