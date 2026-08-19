@@ -446,7 +446,13 @@ function DayList({ records, onEdit }: { records: AttendanceRecord[]; onEdit?: (r
                     {record.minutesLate > 0 ? <span className="ml-1 text-amber-600 dark:text-amber-400">+{record.minutesLate}′</span> : null}
                   </p>
                 ) : null}
-                {record.source === "MANUAL" ? <p className="text-[10px] font-bold text-muted">corregido{onEdit ? " · toca para editar" : ""}</p> : null}
+                {/* Antes decía «corregido» cuando `source` era MANUAL. Tenía
+                    sentido mientras la base venía del Excel y lo manual era la
+                    excepción: marcaba la fila que alguien había tocado a mano.
+                    Ahora TODA la asistencia se captura a mano desde el panel,
+                    así que la etiqueta salía en todos los renglones y dejó de
+                    decir nada. Queda solo la invitación a editar. */}
+                {onEdit ? <p className="text-[10px] font-bold text-muted">toca para editar</p> : null}
               </div>
             </div>
             {/* Por qué se movió el banco de horas ese día. */}

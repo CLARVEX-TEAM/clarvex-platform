@@ -3,14 +3,19 @@ import { prisma } from "@/lib/prisma";
 /**
  * Saldo REAL de horas de una persona.
  *
- *   saldo = saldo inicial (User.hoursOwed, el que venía del Excel)
+ *   saldo = ajuste de gerencia (User.hoursOwed)
  *         + todo lo que la app ha registrado (suma de Attendance.minutesBalance)
  *
- * Por qué existe: `User.hoursOwed` es un número que gerencia captura a mano. La
- * app, además, acumula horas sola (entrar temprano suma, salir temprano resta).
- * Si el saldo se leyera solo de `hoursOwed`, las horas ganadas automáticamente
- * quedarían ATRAPADAS: el asesor las tendría, pero al pedir salir temprano la
- * pantalla le diría que no tiene saldo.
+ * Por qué existe: la app acumula horas sola —entrar temprano suma, salir
+ * temprano resta—, pero hay movimientos que no puede saber por su cuenta. El
+ * principal es **pagar horas**: cuando a alguien se le liquida su saldo, esas
+ * horas tienen que salir de algún lado, y no hay ningún día que las descuente.
+ * `hoursOwed` es esa palanca.
+ *
+ * ⚠️ Nació como el saldo heredado del Excel (18 de agosto de 2026: se dejó de
+ * usar para eso). Hoy es el **ajuste manual de gerencia** y no debe tocarse
+ * salvo para liquidar horas o corregir algo que la app no puede deducir. Sin
+ * él, el acumulado solo sabría crecer.
  *
  * Este es el número que manda: para mostrar y para validar una solicitud.
  */

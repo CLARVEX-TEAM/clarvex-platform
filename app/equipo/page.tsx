@@ -260,7 +260,7 @@ export default function TeamDatesPage() {
                     <input type="date" value={row.hireDate} onChange={(event) => update(row.id, "hireDate", event.target.value)} className={inputClass} />
                   </label>
                   <label className="col-span-2 grid gap-1">
-                    <span className="text-xs font-bold text-muted">Horas que se le deben (saldo)</span>
+                    <span className="text-xs font-bold text-muted">Ajuste de horas (para liquidar)</span>
                     <input type="number" step="0.5" inputMode="decimal" value={row.hoursOwed} onChange={(event) => update(row.id, "hoursOwed", event.target.value)} className={inputClass} />
                   </label>
                   <label className="grid gap-1">
