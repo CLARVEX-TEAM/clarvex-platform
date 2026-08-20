@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import test from "node:test";
-import { extractTextItems, parseManifest } from "../lib/manifest-pdf";
+import { extractTextItems, isPackagingBox, parseManifest } from "../lib/manifest-pdf";
 
 const fixture = (name: string) => readFileSync(path.join(__dirname, "fixtures", name));
 const read = (name: string) => parseManifest(extractTextItems(fixture(name)));
@@ -15,7 +15,8 @@ test("lee un manifiesto de una sola caja", () => {
   if (!outcome.ok) return;
   assert.equal(outcome.value.declaredBoxes, 1);
   assert.equal(outcome.value.declaredPieces, 2);
-  assert.deepEqual(outcome.value.boxes, [{ delivery: "81871256", box: "K23279926", pieces: 2 }]);
+  assert.deepEqual(outcome.value.boxes, [{ delivery: "81871256", box: "K23279926", pieces: 2, packaging: false }]);
+  assert.equal(outcome.value.packagingBoxes, 0);
 });
 
 test("lee un manifiesto de 22 cajas y 671 piezas", () => {
@@ -149,4 +150,52 @@ test("un PDF sin texto lo dice claro", () => {
   assert.equal(outcome.ok, false);
   if (outcome.ok) return;
   assert.match(outcome.error, /escaneo|imagen/);
+});
+
+/* ─── Empaque contra mercancía ───────────────────────────────────────────── */
+
+test("las cajas S son empaque y las K mercancia", () => {
+  // Manifiesto 591526: tres cajas K con 29 piezas y dos bolsas S con 1 pieza
+  // cada una. El CEDIS declara las cinco y 31 piezas, pero el empaque es insumo
+  // de la marca — al kardex solo entran las 29.
+  assert.equal(isPackagingBox("S00004A1Y452"), true);
+  assert.equal(isPackagingBox("S00004A1Y470"), true);
+  assert.equal(isPackagingBox("K23283937"), false);
+  // Minusculas por si el PDF cambia de estilo.
+  assert.equal(isPackagingBox("s00004a1y452"), true);
+});
+
+test("un prefijo desconocido NO se descarta como empaque", () => {
+  // Vale mas contar de mas: una caja de mas aparece en el conteo fisico, una
+  // que nunca entro al kardex no deja rastro de que falto.
+  assert.equal(isPackagingBox("X99999999"), false);
+});
+
+test("manifiesto 591526: las bolsas S no entran, pero cuadran el total", () => {
+  const outcome = read("manifiesto-591526.pdf");
+  assert.equal(outcome.ok, true);
+  if (!outcome.ok) return;
+  const manifest = outcome.value;
+
+  // El papel declara las cinco cajas y 31 piezas, empaque incluido.
+  assert.equal(manifest.declaredBoxes, 5);
+  assert.equal(manifest.declaredPieces, 31);
+
+  // Dos bolsas de la marca, una pieza cada una.
+  assert.equal(manifest.packagingBoxes, 2);
+  assert.equal(manifest.packagingPieces, 2);
+  assert.deepEqual(
+    manifest.boxes.filter((box) => box.packaging).map((box) => box.box),
+    ["S00004A1Y452", "S00004A1Y470"]
+  );
+
+  // Al kardex entran solo las tres cajas K: 21 + 3 + 5 = 29.
+  const merchandise = manifest.boxes.filter((box) => !box.packaging);
+  assert.equal(merchandise.length, 3);
+  assert.equal(merchandise.reduce((total, box) => total + box.pieces, 0), 29);
+  assert.deepEqual(merchandise.map((box) => box.box), ["K23283937", "K23272265", "K23284371"]);
+
+  // Nada raro que revisar a mano.
+  assert.deepEqual(manifest.unknownPrefix, []);
+  assert.equal(manifest.manifest, "M0030014346525");
 });

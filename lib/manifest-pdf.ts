@@ -22,7 +22,32 @@ export type ManifestBox = {
   /** Caja (HU). Es el folio que va al kardex. */
   box: string;
   pieces: number;
+  /**
+   * Insumo de empaque —bolsas de la marca—, no mercancía. Viene en el mismo
+   * manifiesto y cuenta para sus totales, pero NO es inventario de la tienda:
+   * meterla al kardex infla la existencia con material que nunca se vende.
+   */
+  packaging: boolean;
 };
+
+/**
+ * Mercancía o empaque, por el prefijo de la caja.
+ *
+ * En los manifiestos de Tommy la mercancía va con «K» y el empaque con «S».
+ *
+ * ⚠️ Un prefijo desconocido se toma como MERCANCÍA, no como empaque. Ante la
+ * duda conviene equivocarse contando de más: una caja de más se ve en el conteo
+ * físico y se corrige; una que nunca entró al kardex no deja rastro de que
+ * faltó. El aviso de `unknownPrefix` está para que se revise a mano.
+ */
+export function isPackagingBox(box: string): boolean {
+  return box.toUpperCase().startsWith("S");
+}
+
+function hasKnownPrefix(box: string): boolean {
+  const first = box.toUpperCase().charAt(0);
+  return first === "K" || first === "S";
+}
 
 export type Manifest = {
   /** MANIFIESTO DE CARGA. Es lo que el kardex guarda como documento. */
@@ -32,9 +57,21 @@ export type Manifest = {
   commercialOrder: string | null;
   /** Salida del CEDIS. NO es la fecha del kardex: esa es la del registro. */
   checkOut: string | null;
+  /** TODAS las cajas del manifiesto, empaque incluido. */
   boxes: ManifestBox[];
+  /**
+   * Lo que el manifiesto declara: incluye el empaque, porque el CEDIS lo cuenta.
+   * Se conserva tal cual para poder verificar que la lectura salió completa —
+   * si se restara el empaque antes, la comprobación dejaría de cuadrar y se
+   * perdería la única señal de que el PDF se leyó mal.
+   */
   declaredBoxes: number;
   declaredPieces: number;
+  /** Cajas de empaque halladas: se listan, pero no entran al kardex. */
+  packagingBoxes: number;
+  packagingPieces: number;
+  /** Cajas con un prefijo que no es ni K ni S. Se cuentan como mercancía y se avisa. */
+  unknownPrefix: string[];
 };
 
 export type ManifestResult = { ok: true; value: Manifest } | { ok: false; error: string };
@@ -136,7 +173,15 @@ function uniquePages(items: TextItem[]): TextItem[][] {
 }
 
 const DELIVERY = /^\d{6,14}$/;
-const BOX = /^[A-Z]\d{6,14}$/;
+/**
+ * Caja (HU). Letra inicial y luego alfanumérico: las de mercancía son `K` más
+ * dígitos, pero las de empaque llevan letras dentro (`S00004A1Y452`).
+ *
+ * ⚠️ Exigir solo dígitos dejaba fuera las bolsas, el total no cuadraba contra
+ * `Num.Cajas` y el manifiesto ENTERO se rechazaba — no se perdían dos piezas,
+ * se perdía la recepción completa.
+ */
+const BOX = /^[A-Z][A-Z0-9]{5,19}$/;
 /**
  * Cantidad en formato SAP: SIEMPRE tres decimales. `72.000` son 72 piezas, no
  * 72 mil — leerlo como separador de miles multiplicaría el inventario por mil.
@@ -214,7 +259,8 @@ export function parseManifest(items: TextItem[]): ManifestResult {
       // Los ceros de la izquierda no se usan en el kardex: 0081871303 → 81871303.
       delivery: delivery.replace(/^0+/, ""),
       box,
-      pieces
+      pieces,
+      packaging: isPackagingBox(box)
     });
   }
 
@@ -246,7 +292,12 @@ export function parseManifest(items: TextItem[]): ManifestResult {
       checkOut: below(all, "Fecha/Hora Fin Check Out"),
       boxes,
       declaredBoxes,
-      declaredPieces
+      declaredPieces,
+      packagingBoxes: boxes.filter((item) => item.packaging).length,
+      packagingPieces: boxes
+        .filter((item) => item.packaging)
+        .reduce((total, item) => total + item.pieces, 0),
+      unknownPrefix: boxes.filter((item) => !hasKnownPrefix(item.box)).map((item) => item.box)
     }
   };
 }

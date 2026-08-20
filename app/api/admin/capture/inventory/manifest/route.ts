@@ -93,15 +93,37 @@ export async function POST(request: Request) {
       commercialOrder: manifest.commercialOrder,
       checkOut: manifest.checkOut,
       boxes: manifest.declaredBoxes,
-      pieces: manifest.declaredPieces
+      pieces: manifest.declaredPieces,
+      // Lo que de verdad entra, ya sin el empaque. Se mandan los dos números
+      // porque el manifiesto seguirá declarando el total con bolsas incluidas y
+      // quien recibe tiene que poder cuadrar el papel con la pantalla.
+      merchandiseBoxes: manifest.declaredBoxes - manifest.packagingBoxes,
+      merchandisePieces: manifest.declaredPieces - manifest.packagingPieces,
+      packagingBoxes: manifest.packagingBoxes,
+      packagingPieces: manifest.packagingPieces
     },
-    warnings: looksLikeStore
-      ? []
-      : [`El manifiesto va dirigido a «${manifest.destination}», que no parece ${store.name}. Revisa que sea el PDF de tu tienda.`],
+    warnings: [
+      ...(looksLikeStore
+        ? []
+        : [`El manifiesto va dirigido a «${manifest.destination}», que no parece ${store.name}. Revisa que sea el PDF de tu tienda.`]),
+      ...(manifest.packagingBoxes > 0
+        ? [
+            `${manifest.packagingBoxes} caja(s) de empaque (${manifest.packagingPieces} pieza(s)) no entran al kardex: son insumo de la marca, no mercancía.`
+          ]
+        : []),
+      ...(manifest.unknownPrefix.length > 0
+        ? [
+            `La(s) caja(s) ${manifest.unknownPrefix.join(", ")} no empiezan por K ni por S. Se toman como mercancía; revisa que sea correcto.`
+          ]
+        : [])
+    ],
     // Listas para revisar y guardar con POST /api/admin/capture/inventory. La
     // fecha NO viaja: la pone quien registra la entrada, que es la que vale
     // para el kardex, no la de salida del CEDIS.
-    entries: manifest.boxes.map((box) => ({
+    // ⚠️ El empaque se queda FUERA del borrador. Se lee y se cuenta para
+    // verificar el manifiesto, pero prellenarlo como caja a recibir haría que
+    // una bolsa de la marca acabara sumando piezas al inventario.
+    entries: manifest.boxes.filter((box) => !box.packaging).map((box) => ({
       type: "RECEPCION",
       quantity: box.pieces,
       reference: box.box,
