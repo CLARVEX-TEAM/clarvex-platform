@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireSession, isApiError, parseJson } from "@/lib/api";
 import { recordAudit } from "@/lib/audit";
 import { entryReal } from "@/lib/cycle-count";
+import { COUNT_KIND_PHYSICAL } from "@/lib/daily-count";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -14,7 +15,10 @@ export async function GET() {
 
   const [counts, activeTags] = await Promise.all([
     prisma.cycleCount.findMany({
-      where: { storeId: session.storeId },
+      // Solo los físicos. El conteo diario de una sección vive en su propia
+      // pantalla: mezclarlos aquí llenaría la lista del inventario quincenal de
+      // conteos parciales con los que no se compara.
+      where: { storeId: session.storeId, kind: COUNT_KIND_PHYSICAL },
       include: { entries: { select: { count1: true, count2: true, count3: true } } },
       orderBy: { date: "desc" },
       take: 24
@@ -54,7 +58,12 @@ export async function POST(request: Request) {
   if ("response" in parsed) return parsed.response;
   const body = parsed.data;
 
-  const open = await prisma.cycleCount.findFirst({ where: { storeId: session.storeId, status: "OPEN" } });
+  // ⚠️ El candado de «un solo conteo abierto» es del FÍSICO. Sin acotarlo por
+  // tipo, el conteo diario de dama —que se abre todos los días— impediría abrir
+  // el inventario quincenal.
+  const open = await prisma.cycleCount.findFirst({
+    where: { storeId: session.storeId, status: "OPEN", kind: COUNT_KIND_PHYSICAL }
+  });
   if (open) return NextResponse.json({ error: "Ya hay un conteo abierto. Ciérralo antes de abrir otro." }, { status: 409 });
 
   const tags = await prisma.cycleCountTag.count({ where: { storeId: session.storeId, active: true } });

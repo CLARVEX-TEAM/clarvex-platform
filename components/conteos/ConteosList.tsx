@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ClipboardList, Plus, Settings2 } from "lucide-react";
+import { CalendarCheck, ClipboardList, Plus, Settings2 } from "lucide-react";
 import { getSession } from "@/lib/auth";
 import type { User } from "@/lib/types";
 import { Badge, Card, ProgressBar } from "@/components/ui";
@@ -89,6 +89,18 @@ export function ConteosListView({ desktop = false }: { desktop?: boolean }) {
             </Link>
           </div>
         )}
+        {/*
+          El conteo diario de sección es OTRA cosa que el físico: no lleva
+          teórico ni cierra ronda. Por eso entra por su propia puerta y no se
+          mezcla en la lista de abajo.
+        */}
+        <Link
+          href="/conteos/dama"
+          className="mb-3 flex items-center justify-between gap-2 rounded-2xl border border-line bg-panel px-4 py-3 text-sm font-semibold text-ink transition active:scale-95"
+        >
+          <span className="flex items-center gap-2"><CalendarCheck size={16} /> Conteo diario · Dama</span>
+          <span className="text-xs font-normal text-muted">Piso de venta</span>
+        </Link>
         {error && <p className="mb-2 text-xs font-semibold text-red-500">{error}</p>}
         {manager && totalTags === 0 && counts !== null && (
           <Card className="mb-3 p-4 text-sm font-semibold text-muted">

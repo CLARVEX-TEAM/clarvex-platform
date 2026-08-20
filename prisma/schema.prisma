@@ -1106,12 +1106,26 @@ model CycleCountTag {
   zone      CycleCountZone
   label     String?
   active    Boolean           @default(true)
+  /// Sección a la que pertenece el marbete («DAMA»). El juego se arma solo: el
+  /// primer conteo diario enrola cada marbete que se escanea.
+  section   String?
+  /// Posición en el export de la sección: 1, 2, 3… El número de marbete es
+  /// INTERNO —es lo que dice la etiqueta física— y no sirve para reportar.
+  ///
+  /// ⚠️ Se asigna UNA VEZ y no se reordena jamás. Un marbete que entra después
+  /// se va al final aunque su número interno sea más bajo, y el de un marbete
+  /// retirado queda vacío en vez de reciclarse. Si las posiciones se recorren,
+  /// el «marbete 3» de hoy deja de ser el de ayer y todo el histórico que ya
+  /// vio quien recibe el reporte queda mintiendo hacia atrás.
+  sectionPosition Int?
   createdAt DateTime          @default(now())
   entries   CycleCountEntry[]
   store     Store             @relation(fields: [storeId], references: [id], onDelete: Cascade)
 
   @@unique([storeId, number])
+  @@unique([storeId, section, sectionPosition])
   @@index([storeId, zone])
+  @@index([storeId, section])
 }
 
 model CycleCount {
@@ -1119,6 +1133,12 @@ model CycleCount {
   storeId     String
   date        DateTime
   status      String            @default("OPEN")
+  /// «FISICO» (el quincenal de toda la tienda) o «DIARIO» (una sección, a
+  /// diario). Son distintos de fondo: el diario no lleva teórico ni cierra
+  /// ronda, y compara contra el conteo anterior de la misma sección.
+  kind        String            @default("FISICO")
+  /// Sección del conteo diario. Nulo en el físico, que cubre todo.
+  section     String?
   theoretical Int?
   notes       String?
   createdAt   DateTime          @default(now())
@@ -1146,6 +1166,13 @@ model CycleCountEntry {
   count3ById   String?
   count3ByName String?
   count3At     DateTime?
+  /// Por qué bajó este marbete respecto al conteo anterior. Lista cerrada
+  /// (`lib/daily-count.ts`), nunca texto libre: un «se vendió» escrito a mano no
+  /// se puede verificar y acaba justificándolo todo.
+  reason       String?
+  /// Estilo, marbete destino o folio, según el motivo. Con «se movió», es lo que
+  /// permite comprobar que el marbete destino sí subió esas piezas.
+  reasonRef    String?
   count        CycleCount    @relation(fields: [countId], references: [id], onDelete: Cascade)
   tag          CycleCountTag @relation(fields: [tagId], references: [id], onDelete: Cascade)
 
