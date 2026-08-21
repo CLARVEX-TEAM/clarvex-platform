@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { PosReport, PosRow } from "@/lib/pos-productivity";
+import { bedrockConfigured, readWithBedrock } from "@/lib/pos-vision-bedrock";
 
 /**
  * Lee el reporte «Productividad del vendedor» desde una captura de pantalla.
@@ -118,7 +119,9 @@ const responseSchema = z.object({
 export type VisionOutcome = { ok: true; value: PosReport } | { ok: false; error: string };
 
 export function isVisionConfigured(): boolean {
-  return (process.env.GEMINI_API_KEY ?? "").length > 0;
+  // Con cualquiera de los dos basta: si solo hay Bedrock, la lectura funciona
+  // igual y el bloque de captura debe seguir apareciendo.
+  return (process.env.GEMINI_API_KEY ?? "").length > 0 || bedrockConfigured();
 }
 
 /**
@@ -134,6 +137,24 @@ export function isVisionConfigured(): boolean {
  * del reporte, venga de donde venga la lectura.
  */
 export async function readPosReport(imageBase64: string, mimeType: string): Promise<VisionOutcome> {
+  /*
+   * Bedrock va PRIMERO cuando está configurado, y Gemini queda de red.
+   *
+   * No es un cambio de bando: es que si Bedrock tiene un mal momento, la
+   * captura del día no puede quedarse sin leer. Es la misma lógica por la que
+   * abajo se recorren varios modelos de Gemini en vez de fijar uno.
+   *
+   * Con `BEDROCK_*` sin configurar, esto no se activa y todo sigue igual que
+   * antes — así el despliegue no cambia nada hasta que se quiera.
+   */
+  if (bedrockConfigured()) {
+    const outcome = await readWithBedrock(PROMPT, imageBase64, mimeType);
+    if (outcome.ok) {
+      const validated = validateVisionText(outcome.text);
+      if (validated) return validated;
+    }
+  }
+
   const key = process.env.GEMINI_API_KEY ?? "";
   if (!key) return { ok: false, error: "La lectura de capturas no está configurada en el servidor." };
 
@@ -197,17 +218,31 @@ export async function readPosReport(imageBase64: string, mimeType: string): Prom
   const text = extractText(payload);
   if (!text) return { ok: false, error: "El lector no devolvió nada legible." };
 
+  const validated = validateVisionText(text);
+  if (!validated) {
+    return { ok: false, error: "La tabla leída viene incompleta. Prueba con una captura más nítida, o sube el PDF." };
+  }
+  return validated;
+}
+
+/**
+ * Del texto del modelo a la tabla, o `null` si no cuadra.
+ *
+ * Es la misma puerta para los dos proveedores: **lo que devuelve el modelo NO
+ * se cree**, venga de Bedrock o de Gemini. Que la validación viva en un solo
+ * sitio es lo que evita que un proveedor nuevo se cuele por una puerta más
+ * floja que el otro.
+ */
+function validateVisionText(text: string): VisionOutcome | null {
   let json: unknown;
   try {
     json = JSON.parse(text);
   } catch {
-    return { ok: false, error: "El lector no devolvió una tabla válida." };
+    return null;
   }
 
   const parsed = responseSchema.safeParse(json);
-  if (!parsed.success) {
-    return { ok: false, error: "La tabla leída viene incompleta. Prueba con una captura más nítida, o sube el PDF." };
-  }
+  if (!parsed.success) return null;
 
   const rows: PosRow[] = parsed.data.rows.map((row) => ({
     name: row.name.trim(),
