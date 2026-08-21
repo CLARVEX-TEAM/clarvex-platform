@@ -291,6 +291,34 @@ GROQ_API_KEY=
 CLOUDFLARE_AI_TOKEN=
 ```
 
+#### Lectura del reporte del POS — Bedrock, con Gemini de respaldo
+
+```env
+BEDROCK_ACCESS_KEY_ID=
+BEDROCK_SECRET_ACCESS_KEY=
+BEDROCK_POS_MODEL=      # opcional; por omisión us.anthropic.claude-haiku-4-5-20251001-v1:0
+BEDROCK_REGION=         # opcional; por omisión us-east-1
+```
+
+Desde el 21 de agosto de 2026 `lib/pos-vision.ts` intenta **Bedrock primero** y
+deja **Gemini de red**. Medido con una captura real: 12 de 12 campos correctos
+en 3.7 s, contra los 10-15 s de Gemini. Sin estas variables no se activa y todo
+sigue como antes.
+
+⚠️ **Nombre propio, no `AWS_*`.** El cliente de R2 también es del SDK de AWS;
+unas variables genéricas sueltas en el entorno podrían acabar mandando las fotos
+a otra parte.
+
+⚠️ **El ID del modelo lleva prefijo `us.`** — es el perfil de inferencia. El ID
+que aparece en el catálogo de Bedrock **no se puede invocar directo**.
+
+⚠️ **Bedrock envuelve el JSON en ` ```json `.** `stripCodeFence` lo quita; sin
+eso el parseo falla siempre, y falla al final con el trabajo ya hecho.
+
+Las credenciales salen del usuario IAM **`clarvex-bedrock`**, acotado a invocar
+modelos de Anthropic y nada más. **Es temporal: sobra el día que la app corra en
+EC2** — ver `AGENTS.md`, sección AWS.
+
 ### Power BI
 
 ```env
@@ -490,6 +518,13 @@ El % de comisión difiere por puesto pero el mínimo de referencia es el mismo p
 
 ### 🔴 Abierto — requiere acción
 
+- **AWS está en marcha desde el 21 de agosto de 2026** — $1,000 anuales de
+  créditos por AWS Activate. Cuenta `775711761052`, acceso por SSO con el perfil
+  `clarvex`, alerta de presupuesto de $20/mes **midiendo antes de los créditos**.
+  Bedrock ya lee el reporte del POS en producción. **La migración del VPS no ha
+  empezado**; el plan completo, el orden acordado y las trampas están en la
+  sección **AWS** de `AGENTS.md`. Pendiente ligado: **borrar el usuario IAM
+  `clarvex-bedrock`** el día que la app corra en EC2.
 - **La app está ABIERTA** desde el 13 de agosto de 2026. El VPS tiene
   `MAINTENANCE_MODE=0`; ambas instancias PM2 están `online`, `/api/health`
   responde correctamente y el acceso normal llega a `/login` sin mostrar la

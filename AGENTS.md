@@ -843,6 +843,168 @@ El favicon continúa usando `public/favicon.ico`.
 - La API de grupos de Retool (`/api/v2/groups`) devuelve **403 «not available on
   your plan»**. El id del grupo se saca de la URL en Settings → Groups.
 
+---
+
+# 🟡 AWS — 21 de agosto de 2026
+
+Entraron **$1,000 anuales de créditos por AWS Activate**. Nada de la app se ha
+migrado todavía: Clarvex sigue en el VPS de Vultr.
+
+## Cómo se entra
+
+| Dato | Valor |
+|---|---|
+| Cuenta | `775711761052` |
+| Región | `us-east-1` |
+| Acceso | IAM Identity Center (SSO), **no** llaves permanentes |
+| Portal | `https://d-90667a3e8a.awsapps.com/start` |
+| Perfil del CLI | `clarvex` → todo lleva `--profile clarvex` |
+
+La sesión dura 8 horas; se renueva con `aws sso login --profile clarvex`.
+
+⚠️ En Windows el binario **no siempre está en el `PATH`** de una terminal ya
+abierta. Llamarlo por su ruta funciona siempre:
+`C:\Program Files\Amazon\AWSCLIV2\aws.exe`.
+
+⚠️ La instancia de Identity Center se creó **de región única** a propósito. La
+opción multi-región replica a Oregón y para eso usa una clave KMS propia, **que
+se cobra aparte** (~$1/mes fijo). Con una sola persona, esa resiliencia no
+compra nada.
+
+## Alerta de presupuesto — la parte que no es opcional
+
+Presupuesto `clarvex-mensual`: **$20 USD al mes**, avisa al 50 %, al 100 % y
+cuando la proyección del mes va a rebasarlo. Va a `contacto@clarvex.adrianluna.mx`.
+
+⚠️ Está creado con **`IncludeCredit: false`**, y ese detalle es todo el punto.
+Por omisión AWS cuenta los créditos como descuento: el costo «real» sale en cero
+mientras duren, la alerta no salta jamás, y uno se entera del gasto el día que
+llega la primera factura de verdad. Así mide el consumo **antes** de los
+créditos.
+
+## Bedrock — en producción desde el 21 de agosto
+
+La lectura del reporte del POS (`lib/pos-vision.ts`) ahora va por Bedrock
+primero, con **Gemini de respaldo**. No es cambiar de bando: si Bedrock tiene un
+mal momento, la captura del día no puede quedarse sin leer.
+
+Medido con una captura real y el mismo prompt de producción: **12 de 12 campos
+correctos en 3.7 s**, contra los 10-15 s de Gemini. Desde el VPS, 1.3 s en una
+llamada mínima. Con Haiku, el modelo pequeño.
+
+Costo real, con las tarifas de lista: **~$0.002 por lectura**. Una al día son
+seis centavos de dólar al mes.
+
+Trampas que costaron tiempo y están cubiertas por prueba:
+
+- ⚠️ **El ID del catálogo NO se puede invocar directo.** Hay que usar el perfil
+  de inferencia, con prefijo `us.`:
+  `us.anthropic.claude-haiku-4-5-20251001-v1:0`. Sin él, Bedrock responde que el
+  modelo «no admite rendimiento bajo demanda», que no dice nada.
+- ⚠️ **Bedrock envuelve el JSON en ` ```json `**, a diferencia de Gemini, que lo
+  entrega limpio por el `responseSchema`. Sin quitar la envoltura el parseo falla
+  SIEMPRE, y falla al final, con el trabajo ya hecho. Lo resuelve
+  `stripCodeFence` en `lib/pos-vision-bedrock.ts`.
+- ⚠️ Las credenciales llevan **nombre propio** (`BEDROCK_ACCESS_KEY_ID`,
+  `BEDROCK_SECRET_ACCESS_KEY`), no las genéricas `AWS_*`. El cliente de R2
+  también es del SDK de AWS: unas variables `AWS_*` sueltas en el entorno
+  podrían acabar mandando las fotos a otra parte.
+
+La validación se sacó a **una sola función** (`validateVisionText`): venga de
+donde venga la lectura, pasa por el mismo esquema y por la comprobación de las
+cuentas del reporte. Un proveedor nuevo no puede colarse por una puerta más
+floja que el otro.
+
+**Cuenta nueva, dos trámites de una sola vez** —ya hechos—: la verificación
+automática de AWS (bloquea Bedrock hasta ~2 h) y el formulario de caso de uso de
+Anthropic.
+
+## ⚠️ Pendiente: borrar la llave `clarvex-bedrock`
+
+Hay un usuario IAM **`clarvex-bedrock`** con una llave permanente en el `.env`
+del VPS, acotado a `bedrock:InvokeModel` y `bedrock:Converse` sobre modelos de
+Anthropic y nada más.
+
+Existe SOLO porque Clarvex vive fuera de AWS. **El día que la app corra en EC2 esa
+llave sobra**: se le asigna un rol a la instancia y AWS entrega credenciales
+temporales solas. Borrarla es parte de la migración, no un extra:
+
+```bash
+aws iam delete-access-key --user-name clarvex-bedrock --access-key-id <id> --profile clarvex
+aws iam delete-user-policy --user-name clarvex-bedrock --policy-name solo-invocar-bedrock --profile clarvex
+aws iam delete-user --user-name clarvex-bedrock --profile clarvex
+```
+
+Las credenciales que sobran y nadie borra son las que se filtran dos años después.
+
+## La migración — plan y estado
+
+**No empezada.** El VPS va sobrado: 2 vCPU, 4 GB, carga 0.09, 33 días de
+servicio. Migrar es por aprovechar los créditos, no por necesidad.
+
+Tamaños reales medidos, que corrigen la intuición: **25 GB usados de 94**, y la
+**base de datos son 25 MB**. Para AWS bastan **30 GB de EBS** (~$2.40/mes) — un
+volumen se puede agrandar en caliente pero **nunca encoger**, así que empezar
+chico es estrictamente mejor. En Vultr los 100 GB venían con el plan; aquí se
+pagan.
+
+Costo estimado de la máquina equivalente (`t4g.medium` + 30 GB): **~$27/mes**,
+frente a los ~$24-30 de Vultr. Los créditos cubren unos dos años y medio.
+
+### Orden acordado, y por qué
+
+1. Alerta de presupuesto ✅
+2. Bedrock ✅
+3. Máquina en AWS con 30 GB
+4. Postgres y la app, en un **dominio de prueba**
+5. Los demás servicios: n8n, Uptime Kuma, Portainer
+6. **Vaultwarden aparte y con calma** — es el gestor de contraseñas; ahí se
+   verifica que se puede entrar ANTES de tocar nada más
+7. **DNS al final**
+8. Vultr encendido **un mes** como red de seguridad
+
+Mientras el DNS no se toque, la tienda no se entera de nada. Ese es todo el
+truco: el paso reversible va al último.
+
+### DNS en Cloudflare
+
+Token de API acotado a `Zona · DNS · Editar` sobre `adrianluna.mx`, con
+caducidad de un mes. Vive en la variable de usuario de Windows
+`CLOUDFLARE_API_TOKEN`. Ojo: no aparece en una terminal ya abierta; se lee con
+`[Environment]::GetEnvironmentVariable("CLOUDFLARE_API_TOKEN","User")`.
+
+⚠️ **El filtro de IP del token se dejó vacío a propósito.** Con IP dinámica, el
+token deja de funcionar justo el día de la migración, sin avisar y sin razón
+aparente. La protección es la caducidad corta.
+
+Cinco registros A apuntan a `216.238.88.93`, **todos con proxy activo**:
+
+| Registro | Qué es |
+|---|---|
+| `app` | Clarvex |
+| `n8n` | webhook de fotos a Telegram |
+| `vault` | Vaultwarden |
+| `status` | Uptime Kuma |
+| `docker` | Portainer |
+
+Que estén *proxied* es la clave del día de la migración: el tráfico entra por
+Cloudflare, así que el cambio de IP se propaga casi al instante **y la reversa
+también**, sin esperar TTL. El paso más temido acaba siendo el más reversible.
+
+### Qué NO montar
+
+Los que se comen créditos sin que nadie lo note:
+
+| Servicio | Costo | Por qué no |
+|---|---|---|
+| NAT Gateway | ~$32/mes | El clásico. Cuesta más que el servidor entero |
+| Load Balancer | ~$16/mes | Con una sola máquina no balancea nada |
+| EKS | ~$73/mes | Para una app en PM2 es artillería |
+| RDS Multi-AZ | doble | La alta disponibilidad no sirve con una sola app |
+
+Y **CloudWatch Logs** con retención larga: barato por GB, pero una app habladora
+llena gigas sin avisar.
+
 ## Reglas que salieron de esto y no hay que romper
 
 **La tienda sale de la IDENTIDAD, nunca del cliente.** Ni `/api/retool/embed-url`
