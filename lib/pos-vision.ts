@@ -94,6 +94,33 @@ Reglas:
 - Copia los números exactamente como se ven. No calcules, no corrijas, no
   redondees. Si un dato no se alcanza a leer, pon null.`;
 
+/**
+ * La forma exacta del JSON, para Bedrock.
+ *
+ * ⚠️ Gemini NO la necesita: se le manda `RESPONSE_SCHEMA` y el formato deja de
+ * ser cosa suya. Bedrock no tiene ese mecanismo, y sin describirle la forma
+ * **se inventa los nombres de los campos** — devolvía `vendorName` por `name` y
+ * `bruttoSales` por `gross`, y de paso confundía columnas.
+ *
+ * El daño no era una lectura fallida: la validación la rechazaba, se caía a
+ * Gemini, y la captura acababa tardando la SUMA de los dos. Más lenta que antes
+ * de tener Bedrock.
+ *
+ * Si se agrega o renombra un campo en `rowSchema`, hay que tocarlo aquí también.
+ */
+const SHAPE = `Devuelve SOLO el JSON, sin texto alrededor, con esta forma exacta
+y estos nombres de campo:
+
+{"from":"AAAA-MM-DD","to":"AAAA-MM-DD","storeNumber":"","rows":[{"name":"","tickets":0,"units":0,"unitsReturned":0,"gross":0,"discount":0,"afterDiscount":0,"returns":0,"net":0,"avgUnits":0,"avgAmount":0}]}
+
+Correspondencia con las columnas del reporte:
+- name = Nombre del vendedor
+- tickets = Tickets, units = Unidades Vendido, unitsReturned = Unidades Dev.
+- gross = Bruto Ventas, discount = Ventas Descuento (en positivo)
+- afterDiscount = Ventas posteriores Descuentos
+- returns = Bruto Devoluciones, net = Neto Ventas
+- avgUnits = Prom. Unidades, avgAmount = Prom. Monto`;
+
 const rowSchema = z.object({
   name: z.string().min(1).max(120),
   tickets: z.number().int().min(0).max(100_000),
@@ -148,10 +175,22 @@ export async function readPosReport(imageBase64: string, mimeType: string): Prom
    * antes — así el despliegue no cambia nada hasta que se quiera.
    */
   if (bedrockConfigured()) {
-    const outcome = await readWithBedrock(PROMPT, imageBase64, mimeType);
+    const outcome = await readWithBedrock(`${PROMPT}\n\n${SHAPE}`, imageBase64, mimeType);
     if (outcome.ok) {
       const validated = validateVisionText(outcome.text);
       if (validated) return validated;
+      /*
+       * Si llegó respuesta pero no valida, hay que ENTERARSE.
+       *
+       * El respaldo a Gemini salva la captura, pero al hacerlo esconde el
+       * problema: la lectura empieza a tardar la suma de los dos y desde fuera
+       * parece que Bedrock «no sirve». Fue exactamente lo que pasó el 21 de
+       * agosto de 2026 —el modelo devolvía `vendorName` en vez de `name`— y sin
+       * este aviso no había forma de verlo en los logs.
+       */
+      console.warn("[pos-vision] Bedrock respondió pero la tabla no validó; se cae a Gemini.");
+    } else {
+      console.warn(`[pos-vision] Bedrock no respondió (${outcome.problem}); se cae a Gemini.`);
     }
   }
 
