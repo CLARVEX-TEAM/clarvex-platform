@@ -4,6 +4,7 @@ import {
   checkRow,
   copyLines,
   nextSectionPosition,
+  nextSlot,
   rowMovement,
   summarize,
   type DailyRow
@@ -14,6 +15,10 @@ function row(partial: Partial<DailyRow> & { number: number; position: number }):
     label: null,
     previous: null,
     current: null,
+    count1: null,
+    count2: null,
+    count3: null,
+    needsRecount: false,
     reason: null,
     reasonRef: null,
     ...partial
@@ -150,4 +155,19 @@ test("copiar rellena el hueco de un marbete retirado", () => {
 
 test("copiar un conteo vacío no ofrece nada", () => {
   assert.equal(copyLines([]).positions, 0);
+});
+
+test("el 3er conteo solo se pide cuando el 2do no cuadro", () => {
+  const base = { number: 35, position: 1 };
+  // Sin nada: toca el 1ro.
+  assert.equal(nextSlot(row({ ...base })), 1);
+  // Con el 1ro puesto: toca el 2do.
+  assert.equal(nextSlot(row({ ...base, count1: 67 })), 2);
+  // 1ro y 2do coinciden: ya no hace falta nada mas. Pedir un 3ro invitaria a
+  // "ajustar" un numero que ya cuadro.
+  assert.equal(nextSlot(row({ ...base, count1: 67, count2: 67 })), null);
+  // No coinciden: falta el 3ro que desempate.
+  assert.equal(nextSlot(row({ ...base, count1: 67, count2: 65 })), 3);
+  // Ya estan los tres: nada pendiente.
+  assert.equal(nextSlot(row({ ...base, count1: 67, count2: 65, count3: 65 })), null);
 });

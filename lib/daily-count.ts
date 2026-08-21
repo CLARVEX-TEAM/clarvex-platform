@@ -78,8 +78,17 @@ export type DailyRow = {
   label: string | null;
   /** Piezas del conteo anterior. `null` si ese día no se contó. */
   previous: number | null;
-  /** Piezas de hoy. `null` mientras no se cuenta. */
+  /**
+   * Piezas de hoy, ya resueltas con la regla de la mesa de control: vale el 1º,
+   * salvo que el 2º difiera —entonces manda el 3º—. `null` mientras no se cuenta.
+   */
   current: number | null;
+  /** Los tres conteos tal cual se capturaron. */
+  count1: number | null;
+  count2: number | null;
+  count3: number | null;
+  /** El 2º no coincidió con el 1º y todavía falta el 3º que desempate. */
+  needsRecount: boolean;
   reason: DropReason | null;
   reasonRef: string | null;
 };
@@ -238,3 +247,20 @@ export function copyLines(rows: DailyRow[]): { text: string; positions: number; 
   return { text: lines.join("\n"), positions: last, pending };
 }
 
+
+/**
+ * Qué conteo toca capturar en un marbete.
+ *
+ * El 3º solo se ofrece cuando hace falta: si el 1º y el 2º coinciden, pedirlo
+ * sería trabajo de más y además invitaría a "ajustar" un número que ya cuadró.
+ */
+export function nextSlot(row: {
+  count1: number | null;
+  count2: number | null;
+  count3: number | null;
+}): 1 | 2 | 3 | null {
+  if (row.count1 === null) return 1;
+  if (row.count2 === null) return 2;
+  if (row.count3 === null && row.count1 !== row.count2) return 3;
+  return null;
+}

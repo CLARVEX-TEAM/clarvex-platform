@@ -12,6 +12,7 @@ import {
   REASON_LABEL,
   REASON_REF_LABEL,
   copyLines,
+  nextSlot,
   rowMovement,
   type DailyRow,
   type DailySummary,
@@ -77,7 +78,7 @@ export function ConteoDiarioView({ section = "DAMA", desktop = false }: { sectio
   }
 
   /** Guarda piezas y/o motivo de un marbete. El servidor devuelve el estado ya recalculado. */
-  async function save(number: number, patch: { pieces?: number; reason?: string | null; reasonRef?: string | null }) {
+  async function save(number: number, patch: { pieces?: number; slot?: 1 | 2 | 3; reason?: string | null; reasonRef?: string | null }) {
     if (!state?.countId) return;
     setBusy(true);
     setError("");
@@ -106,6 +107,10 @@ export function ConteoDiarioView({ section = "DAMA", desktop = false }: { sectio
       label: null,
       previous: null,
       current: null,
+      count1: null,
+      count2: null,
+      count3: null,
+      needsRecount: false,
       reason: null,
       reasonRef: null
     });
@@ -293,6 +298,7 @@ function SummaryBar({ summary }: { summary: DailySummary }) {
 function RowCard({ row, rows, onEdit }: { row: DailyRow; rows: DailyRow[]; onEdit: () => void }) {
   const movement = rowMovement(row);
   const check = checkRow(row, rows);
+  const pendingSlot = nextSlot(row);
 
   return (
     <button
@@ -310,6 +316,15 @@ function RowCard({ row, rows, onEdit }: { row: DailyRow; rows: DailyRow[]; onEdi
         <p className="text-xs text-muted">
           Etiqueta {row.number} · antes {row.previous ?? "—"} · hoy {row.current ?? "—"}
         </p>
+        {/* Qué conteo falta. Es lo que la persona necesita saber de un vistazo
+            cuando va pasando marbete por marbete con la lista en la mano. */}
+        {row.needsRecount ? (
+          <p className="mt-0.5 text-xs font-semibold text-amber-700">
+            1º {row.count1} y 2º {row.count2} no coinciden · falta el 3º
+          </p>
+        ) : pendingSlot !== null && row.count1 !== null ? (
+          <p className="mt-0.5 text-xs text-muted">Falta el {pendingSlot}º conteo</p>
+        ) : null}
         {check.status !== "NONE" ? (
           <p
             className={`mt-0.5 text-xs font-semibold ${
@@ -348,12 +363,23 @@ function CaptureSheet({
   rows: DailyRow[];
   busy: boolean;
   onClose: () => void;
-  onSave: (patch: { pieces?: number; reason?: string | null; reasonRef?: string | null }) => void;
+  onSave: (patch: { pieces?: number; slot?: 1 | 2 | 3; reason?: string | null; reasonRef?: string | null }) => void;
 }) {
-  const [pieces, setPieces] = useState(row.current === null ? "" : String(row.current));
+  /*
+   * Qué conteo se está capturando. Arranca en el que toca: 1º si no hay nada,
+   * 2º si ya hay uno, 3º solo cuando el 2º no coincidió con el 1º.
+   *
+   * ⚠️ El campo de piezas nace VACÍO, no con lo ya contado. Es un conteo ciego:
+   * enseñarle a la segunda persona lo que puso la primera convierte el recuento
+   * en una confirmación, que es justo lo que no sirve.
+   */
+  const pending = nextSlot(row) ?? 1;
+  const [slot, setSlot] = useState<1 | 2 | 3>(pending);
+  const [pieces, setPieces] = useState("");
   const [reason, setReason] = useState<DropReason | "">(row.reason ?? "");
   const [reasonRef, setReasonRef] = useState(row.reasonRef ?? "");
   const inset = useKeyboardInset();
+  const already = slot === 1 ? row.count1 : slot === 2 ? row.count2 : row.count3;
 
   const typed = pieces.trim() === "" ? null : Number(pieces.replace(/\D/g, ""));
   // El motivo se pide con lo que se está tecleando, no con lo ya guardado: así
@@ -394,8 +420,44 @@ function CaptureSheet({
           </button>
         </div>
 
+        <div className="mb-3 flex gap-1.5">
+          {([1, 2, 3] as const).map((option) => {
+            // El 3º solo se ofrece cuando hace falta desempate: pedirlo con el
+            // 1º y el 2º ya cuadrados invita a «ajustar» un número que ya está
+            // bien.
+            const useful = option <= 2 || row.needsRecount || row.count3 !== null;
+            if (!useful) return null;
+            const done = option === 1 ? row.count1 : option === 2 ? row.count2 : row.count3;
+            return (
+              <button
+                key={option}
+                type="button"
+                onClick={() => {
+                  setSlot(option);
+                  setPieces("");
+                }}
+                className={`flex-1 rounded-xl border px-2 py-2 text-xs font-bold ${
+                  slot === option ? "border-volt bg-panel text-volt" : "border-line text-muted"
+                }`}
+              >
+                {option}º conteo
+                <span className="block text-[10px] font-semibold">
+                  {done === null ? "pendiente" : "capturado"}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        {row.needsRecount ? (
+          <p className="mb-2 flex items-start gap-1.5 text-xs font-semibold text-amber-700">
+            <AlertTriangle size={14} className="mt-px shrink-0" />
+            El 1º y el 2º no coincidieron. El 3º decide.
+          </p>
+        ) : null}
+
         <label className="block text-xs font-bold uppercase text-muted" htmlFor="daily-pieces">
-          Piezas contadas
+          Piezas contadas · {slot}º conteo
         </label>
         <input
           id="daily-pieces"
@@ -403,6 +465,7 @@ function CaptureSheet({
           autoFocus
           value={pieces}
           onChange={(event) => setPieces(event.target.value.replace(/\D/g, ""))}
+          placeholder={already === null ? "" : "ya capturado, escribe para reemplazar"}
           className="mt-1 w-full rounded-xl border border-line px-4 py-3 text-2xl font-black text-ink"
         />
 
@@ -450,7 +513,7 @@ function CaptureSheet({
         <button
           type="button"
           disabled={busy || typed === null}
-          onClick={() => onSave({ pieces: typed ?? undefined, reason: reason || null, reasonRef })}
+          onClick={() => onSave({ pieces: typed ?? undefined, slot, reason: reason || null, reasonRef })}
           className="mt-4 w-full rounded-xl bg-volt px-4 py-3 text-base font-black text-white disabled:opacity-50"
         >
           Guardar

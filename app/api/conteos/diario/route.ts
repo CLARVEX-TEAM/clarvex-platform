@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireSession, isApiError, parseJson } from "@/lib/api";
 import { recordAudit } from "@/lib/audit";
-import { entryReal } from "@/lib/cycle-count";
+import { entryNeedsRecount, entryReal } from "@/lib/cycle-count";
 import {
   COUNT_KIND_DAILY,
   isDropReason,
@@ -58,6 +58,10 @@ async function buildState(storeId: string, section: string, date: string) {
       label: tag.label,
       previous: before ? entryReal(before) : null,
       current: current ? entryReal(current) : null,
+      count1: current?.count1 ?? null,
+      count2: current?.count2 ?? null,
+      count3: current?.count3 ?? null,
+      needsRecount: current ? entryNeedsRecount(current) : false,
       reason: reason && isDropReason(reason) ? reason : null,
       reasonRef: current?.reasonRef ?? null
     };
@@ -132,6 +136,12 @@ const saveSchema = z.object({
   countId: z.string().min(1),
   /** Marbete FÍSICO, el de la etiqueta que se escanea. */
   number: z.number().int().min(1).max(9_999),
+  /**
+   * Qué conteo se está capturando. Como en el conteo físico: vale el 1º, salvo
+   * que el 2º difiera —ahí manda el 3º—. La resolución la hace `entryReal`, no
+   * esta ruta.
+   */
+  slot: z.union([z.literal(1), z.literal(2), z.literal(3)]).optional(),
   pieces: z.number().int().min(0).max(99_999).nullable().optional(),
   reason: z.string().max(24).nullable().optional(),
   reasonRef: z.string().max(64).nullable().optional()
@@ -206,14 +216,15 @@ export async function PATCH(request: Request) {
   // Las piezas solo se tocan si vienen: guardar un motivo no puede borrar el
   // conteo, y volver a contar no puede borrar el motivo que ya se escribió.
   const pieces = body.pieces === undefined ? undefined : body.pieces;
+  const slot = body.slot ?? 1;
   const countedData =
     pieces === undefined
       ? {}
       : {
-          count1: pieces,
-          count1ById: session.userId,
-          count1ByName: session.name,
-          count1At: new Date()
+          [`count${slot}`]: pieces,
+          [`count${slot}ById`]: session.userId,
+          [`count${slot}ByName`]: session.name,
+          [`count${slot}At`]: new Date()
         };
 
   if (existing) {
