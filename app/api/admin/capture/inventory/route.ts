@@ -81,7 +81,11 @@ export async function GET(request: Request) {
       ...movement,
       date: movement.date.toISOString().slice(0, 10),
       label: movementLabel(movement.type)
-    }))
+    })),
+    // El libro completo, ya con signo y con la venta del día incluida. Va
+    // aparte de `movements` porque trae filas DERIVADAS que no se pueden
+    // editar ni borrar: no existe una fila detrás de ellas.
+    ledger: state.ledger
   });
 }
 

@@ -6,7 +6,9 @@ import {
   normalizeRoundEntry,
   normalizeMovementEntry,
   signedQuantity,
-  summarizeKardex
+  summarizeKardex,
+  buildLedger,
+  type LedgerMovement
 } from "../lib/inventory-kardex-entry";
 
 const BASE = new Date("2026-08-18T00:00:00.000Z"); // inventario inicial
@@ -313,4 +315,66 @@ test("sin codigo se admite texto libre", () => {
 test("cada tipo tiene etiqueta legible", () => {
   assert.equal(movementLabel("DEVOLUCION_CLIENTE"), "Devolución de cliente");
   assert.equal(movementLabel("TRANSFERENCIA_SALIDA"), "Traspaso de salida");
+});
+
+/* ─── Libro de la ronda: lo capturado Y lo vendido ───────────────────────── */
+
+function mov(row: { id: string; date: string; type: string; quantity: number }): LedgerMovement {
+  return {
+    id: row.id,
+    date: new Date(`${row.date}T00:00:00.000Z`),
+    createdAt: new Date(`${row.date}T12:00:00.000Z`),
+    type: row.type,
+    quantity: row.quantity,
+    reference: null,
+    document: null,
+    delivery: null,
+    counterpart: null,
+    counterpartCode: null,
+    surplus: null,
+    missing: null,
+    note: null,
+    createdBy: null
+  };
+}
+
+test("el libro trae la venta junto a lo capturado, cada uno con su signo", () => {
+  const rows = buildLedger(
+    [
+      mov({ id: "a", date: "2026-08-20", type: "RECEPCION", quantity: 29 }),
+      mov({ id: "b", date: "2026-08-21", type: "DEVOLUCION_CLIENTE", quantity: 1 }),
+      mov({ id: "c", date: "2026-08-21", type: "TRANSFERENCIA_SALIDA", quantity: 4 })
+    ],
+    [
+      { date: new Date("2026-08-20T00:00:00.000Z"), pieces: 6 },
+      { date: new Date("2026-08-21T00:00:00.000Z"), pieces: 10 }
+    ]
+  );
+
+  // Más reciente primero, y la venta cierra su día.
+  assert.deepEqual(
+    rows.map((row) => [row.date, row.type, row.signed]),
+    [
+      ["2026-08-21", "DEVOLUCION_CLIENTE", 1],
+      ["2026-08-21", "TRANSFERENCIA_SALIDA", -4],
+      ["2026-08-21", "VENTA", -10],
+      ["2026-08-20", "RECEPCION", 29],
+      ["2026-08-20", "VENTA", -6]
+    ]
+  );
+
+  // La suma del libro es exactamente lo que el teórico le agrega a la base.
+  assert.equal(rows.reduce((total, row) => total + row.signed, 0), 29 + 1 - 4 - 16);
+});
+
+test("la venta es derivada: sin id, para que no se pueda borrar como un movimiento", () => {
+  const rows = buildLedger([], [{ date: new Date("2026-08-20T00:00:00.000Z"), pieces: 3 }]);
+  assert.equal(rows[0].id, null);
+  assert.equal(rows[0].source, "KPIS");
+  assert.equal(rows[0].label, "Venta del día");
+});
+
+test("un día sin piezas vendidas no ensucia el libro", () => {
+  const rows = buildLedger([], [{ date: new Date("2026-08-20T00:00:00.000Z"), pieces: 0 }]);
+  assert.equal(rows.length, 0);
 });

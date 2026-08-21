@@ -4,10 +4,12 @@ import {
   normalizeRoundEntry,
   summarizeKardex,
   validatePieces,
+  buildLedger,
   type InventoryMovementType,
   type KardexSummary,
   type MovementEntry,
   type NormalizedMovement,
+  type LedgerRow,
   type RoundEntry
 } from "@/lib/inventory-kardex-entry";
 import { prisma } from "@/lib/prisma";
@@ -43,6 +45,7 @@ export type KardexState = {
   summary: KardexSummary | null;
   /** Diferencia contra el conteo de cierre. `null` mientras la ronda siga abierta. */
   difference: number | null;
+  ledger: LedgerRow[];
   movements: {
     id: string;
     date: Date;
@@ -100,9 +103,9 @@ export async function getKardexState(storeId: string, roundId?: string): Promise
     ? await prisma.inventoryRound.findFirst({ where: { id: roundId, storeId } })
     : await getReadableRound(storeId);
 
-  if (!round) return { round: null, summary: null, difference: null, movements: [] };
+  if (!round) return { round: null, summary: null, difference: null, movements: [], ledger: [] };
 
-  const [movements, sold] = await Promise.all([
+  const [movements, sold, soldByDay] = await Promise.all([
     prisma.inventoryMovement.findMany({
       where: { roundId: round.id },
       orderBy: [{ date: "desc" }, { createdAt: "desc" }]
@@ -113,6 +116,18 @@ export async function getKardexState(storeId: string, roundId?: string): Promise
     // conteo y pertenece a la ronda. `PERSON_WHERE` excluye al usuario del
     // kiosko, que está dado de alta como ASESOR — ver `lib/store-people`.
     prisma.kpi.aggregate({
+      where: {
+        storeId,
+        date: { gte: round.startDate, ...(round.endDate ? { lte: round.endDate } : {}) },
+        user: PERSON_WHERE
+      },
+      _sum: { pieces: true }
+    }),
+    // Las mismas piezas, pero DÍA POR DÍA: es lo que permite enseñar la venta
+    // como una línea más del libro, junto a lo que se capturó a mano. Mismo
+    // filtro que el agregado de arriba para que los dos números cuadren.
+    prisma.kpi.groupBy({
+      by: ["date"],
       where: {
         storeId,
         date: { gte: round.startDate, ...(round.endDate ? { lte: round.endDate } : {}) },
@@ -159,7 +174,17 @@ export async function getKardexState(storeId: string, roundId?: string): Promise
       missing: movement.missing,
       note: movement.note,
       createdBy: movement.createdBy
-    }))
+    })),
+    /*
+     * El libro completo: lo capturado y lo vendido, con signo.
+     *
+     * Sin las ventas, la lista enseña todo lo que entró y casi nada de lo que
+     * salió, y no hay manera de seguir a mano cómo se llegó al teórico.
+     */
+    ledger: buildLedger(
+      movements,
+      soldByDay.map((day) => ({ date: day.date, pieces: day._sum.pieces ?? 0 }))
+    )
   };
 }
 

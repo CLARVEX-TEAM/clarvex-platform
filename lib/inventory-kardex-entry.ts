@@ -449,3 +449,109 @@ function toNumber(raw: unknown): number | null {
   const parsed = Number(cleaned);
   return Number.isFinite(parsed) ? parsed : null;
 }
+
+/**
+ * El libro completo de la ronda: lo capturado Y lo vendido, con su signo.
+ *
+ * La venta NO es un movimiento capturado —sale de los KPIs del día— pero es la
+ * salida más grande del kardex. Sin ella, la lista de movimientos enseña todo
+ * lo que entró y casi nada de lo que salió, y no hay forma de seguir a mano
+ * cómo se llegó a la existencia teórica.
+ *
+ * ⚠️ Las filas de venta son DERIVADAS: no tienen `id`, no se editan y no se
+ * borran. Corregir una venta se hace en KPIs, que es donde vive el dato.
+ */
+export type LedgerRow = {
+  /** `null` en las filas derivadas: no existe una fila que borrar. */
+  id: string | null;
+  date: string;
+  type: string;
+  label: string;
+  /** Piezas con signo: positivo entra al inventario, negativo sale. */
+  signed: number;
+  reference: string | null;
+  document: string | null;
+  delivery: string | null;
+  counterpart: string | null;
+  counterpartCode: string | null;
+  surplus: number | null;
+  missing: number | null;
+  note: string | null;
+  createdBy: string | null;
+  /** De dónde viene: capturado a mano o derivado de los KPIs del día. */
+  source: "CAPTURA" | "KPIS";
+};
+
+export type LedgerMovement = {
+  id: string;
+  date: Date;
+  createdAt: Date;
+  type: string;
+  quantity: number;
+  reference: string | null;
+  document: string | null;
+  delivery: string | null;
+  counterpart: string | null;
+  counterpartCode: string | null;
+  surplus: number | null;
+  missing: number | null;
+  note: string | null;
+  createdBy: string | null;
+};
+
+const iso = (date: Date) => date.toISOString().slice(0, 10);
+
+export function buildLedger(
+  movements: LedgerMovement[],
+  sales: Array<{ date: Date; pieces: number }>
+): LedgerRow[] {
+  const rows: LedgerRow[] = movements.map((movement) => ({
+    id: movement.id,
+    date: iso(movement.date),
+    type: movement.type,
+    label: movementLabel(movement.type as InventoryMovementType),
+    signed: signedQuantity(movement.type as InventoryMovementType, movement.quantity),
+    reference: movement.reference,
+    document: movement.document,
+    delivery: movement.delivery,
+    counterpart: movement.counterpart,
+    counterpartCode: movement.counterpartCode,
+    surplus: movement.surplus,
+    missing: movement.missing,
+    note: movement.note,
+    createdBy: movement.createdBy,
+    source: "CAPTURA"
+  }));
+
+  for (const day of sales) {
+    // Un día sin piezas vendidas no aporta nada y solo alarga la lista.
+    if (day.pieces === 0) continue;
+    rows.push({
+      id: null,
+      date: iso(day.date),
+      type: "VENTA",
+      label: "Venta del día",
+      // La venta SALE del inventario, de ahí el signo. Las piezas de `Kpi` son
+      // brutas y siempre positivas; el sentido lo pone el kardex.
+      signed: -day.pieces,
+      reference: null,
+      document: null,
+      delivery: null,
+      counterpart: null,
+      counterpartCode: null,
+      surplus: null,
+      missing: null,
+      note: null,
+      createdBy: null,
+      source: "KPIS"
+    });
+  }
+
+  // Más reciente primero, y dentro del mismo día la venta al final: es el
+  // cierre natural de la jornada, después de lo que se recibió o se traspasó.
+  return rows.sort((left, right) => {
+    if (left.date !== right.date) return left.date < right.date ? 1 : -1;
+    if (left.source === right.source) return 0;
+    return left.source === "KPIS" ? 1 : -1;
+  });
+}
