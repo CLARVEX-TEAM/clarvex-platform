@@ -319,6 +319,32 @@ Las credenciales salen del usuario IAM **`clarvex-bedrock`**, acotado a invocar
 modelos de Anthropic y nada más. **Es temporal: sobra el día que la app corra en
 EC2** — ver `AGENTS.md`, sección AWS.
 
+#### Cómo se prepara la imagen antes de mandarla (`frontend/utils/shrinkImage.ts` en Retool)
+
+Tres hallazgos del 21 de agosto de 2026, todos medidos contra el mismo reporte
+real. Van juntos porque tirar de uno rompe otro:
+
+1. ⚠️ **Una captura PEQUEÑA se AGRANDA.** Contra toda intuición. La ventana del
+   visor del POS mide 1024 px y ahí cada dígito queda de ocho o nueve píxeles:
+   el modelo leía `4,498` como `4499` y «JAZMIN» como «JASMIN». Al doble, la
+   misma imagen y el mismo modelo la leen perfecta. Lo confirmó el caso opuesto:
+   una **foto del monitor** de 4080 px se leía BIEN pese a estar peor tomada.
+   **Manda cuántos píxeles tiene cada dígito, no lo nítida que se ve.**
+2. ⚠️ **No recomprimir lo que ya cabe.** Una versión anterior pasaba a JPEG
+   cualquier imagen de más de 400 KB aunque no hiciera falta reducirla. Una
+   captura es texto nítido: al 85 % los dígitos finos se emborronan y empieza a
+   leer mal.
+3. ⚠️ **Al agrandar, JPEG al 95 %, no PNG.** El PNG conserva todo pero pesaba
+   788 KB en base64 contra 418 en JPEG. Ese archivo **sube dos veces** —al panel
+   y de ahí al servidor—, así que el peso se paga doble: con PNG la captura
+   tardaba **hasta un minuto** aunque el servidor respondiera en 3.4 s.
+
+Medido para separar culpas: `readPosReport` en el servidor tarda **3.4 s** con
+la lectura correcta. Todo lo que exceda eso es subida, no modelo.
+
+**El PDF exportado sigue siendo lo más exacto y lo más ligero** (~32 KB): el
+modelo lee su texto embebido en vez de descifrar píxeles.
+
 ### Power BI
 
 ```env
