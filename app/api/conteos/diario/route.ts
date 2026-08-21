@@ -251,3 +251,85 @@ export async function PATCH(request: Request) {
   const date = count.date.toISOString().slice(0, 10);
   return NextResponse.json(await buildState(session.storeId, section, date));
 }
+
+const removeSchema = z.object({
+  countId: z.string().min(1),
+  number: z.number().int().min(1).max(9_999)
+});
+
+/**
+ * DELETE — saca un marbete de la sección.
+ *
+ * ⚠️ Las posiciones solo se recorren mientras la sección va en su PRIMER
+ * conteo. Ahí la lista se está armando y reordenar no rompe nada. En cuanto
+ * existe un segundo conteo hay histórico —y reportes ya entregados— así que
+ * quitar un marbete deja su posición vacía para siempre: si las de atrás se
+ * recorrieran, el «marbete 3» de un reporte viejo pasaría a ser otro rack.
+ */
+export async function DELETE(request: Request) {
+  const session = await requireSession(["GERENTE", "SUBGERENTE"]);
+  if (isApiError(session)) return session;
+  const parsed = await parseJson(request, removeSchema);
+  if ("response" in parsed) return parsed.response;
+  const body = parsed.data;
+
+  const count = await prisma.cycleCount.findFirst({
+    where: { id: body.countId, storeId: session.storeId, kind: COUNT_KIND_DAILY }
+  });
+  if (!count) return NextResponse.json({ error: "Conteo diario no encontrado." }, { status: 404 });
+  if (count.status !== "OPEN") {
+    return NextResponse.json({ error: "El conteo ya está cerrado." }, { status: 409 });
+  }
+  const section = count.section ?? SECTION_DAMA;
+
+  const tag = await prisma.cycleCountTag.findFirst({
+    where: { storeId: session.storeId, number: body.number, section }
+  });
+  if (!tag) {
+    return NextResponse.json(
+      { error: `El marbete ${body.number} no es de ${section}.` },
+      { status: 404 }
+    );
+  }
+
+  const totalCounts = await prisma.cycleCount.count({
+    where: { storeId: session.storeId, kind: COUNT_KIND_DAILY, section }
+  });
+  const building = totalCounts <= 1;
+
+  await prisma.$transaction(async (tx) => {
+    // La captura de hoy se va con él: dejarla huérfana falsearía el avance.
+    await tx.cycleCountEntry.deleteMany({ where: { countId: count.id, tagId: tag.id } });
+    await tx.cycleCountTag.update({
+      where: { id: tag.id },
+      data: { section: null, sectionPosition: null }
+    });
+
+    if (!building) return;
+    // Primer conteo: se recompactan las posiciones para que la lista quede 1..N
+    // sin huecos, que es lo que se espera mientras se está armando.
+    const rest = await tx.cycleCountTag.findMany({
+      where: { storeId: session.storeId, section },
+      orderBy: { sectionPosition: "asc" },
+      select: { id: true }
+    });
+    for (let index = 0; index < rest.length; index += 1) {
+      await tx.cycleCountTag.update({
+        where: { id: rest[index].id },
+        data: { sectionPosition: index + 1 }
+      });
+    }
+  });
+
+  await recordAudit({
+    session,
+    storeId: session.storeId,
+    action: "cyclecount.daily.remove",
+    entity: "CycleCountTag",
+    entityId: tag.id,
+    detail: `Marbete ${tag.number} fuera de ${section}${building ? " (posiciones recompactadas)" : ""}`
+  });
+
+  const date = count.date.toISOString().slice(0, 10);
+  return NextResponse.json(await buildState(session.storeId, section, date));
+}

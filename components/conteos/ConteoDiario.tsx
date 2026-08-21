@@ -92,6 +92,21 @@ export function ConteoDiarioView({ section = "DAMA", desktop = false }: { sectio
     setBusy(false);
   }
 
+  /** Saca un marbete de la sección: se escaneó uno que no era. */
+  async function remove(number: number) {
+    if (!state?.countId) return;
+    setBusy(true);
+    setError("");
+    const response = await fetch("/api/conteos/diario", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ countId: state.countId, number })
+    });
+    if (response.ok) setState(await response.json());
+    else setError((await response.json()).error ?? "No se pudo quitar el marbete.");
+    setBusy(false);
+  }
+
   function handleScan(number: number) {
     setScanning(false);
     const known = state?.rows.find((row) => row.number === number);
@@ -200,9 +215,14 @@ export function ConteoDiarioView({ section = "DAMA", desktop = false }: { sectio
             row={editing}
             rows={state.rows}
             busy={busy}
+            canRemove={manager && editing.position > 0}
             onClose={() => setEditing(null)}
             onSave={async (patch) => {
               await save(editing.number, patch);
+              setEditing(null);
+            }}
+            onRemove={async () => {
+              await remove(editing.number);
               setEditing(null);
             }}
           />
@@ -356,14 +376,18 @@ function CaptureSheet({
   row,
   rows,
   busy,
+  canRemove,
   onClose,
-  onSave
+  onSave,
+  onRemove
 }: {
   row: DailyRow;
   rows: DailyRow[];
   busy: boolean;
+  canRemove: boolean;
   onClose: () => void;
   onSave: (patch: { pieces?: number; slot?: 1 | 2 | 3; reason?: string | null; reasonRef?: string | null }) => void;
+  onRemove: () => void;
 }) {
   /*
    * Qué conteo se está capturando. Arranca en el que toca: 1º si no hay nada,
@@ -518,6 +542,26 @@ function CaptureSheet({
         >
           Guardar
         </button>
+
+        {/*
+          Quitar el marbete de la sección: se escaneó uno que no era. Solo
+          gerencia, y con confirmación — borra también lo contado hoy.
+        */}
+        {canRemove ? (
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => {
+              if (confirm(`¿Quitar el marbete ${row.number} de la sección? Se borra lo que lleve contado hoy.`)) {
+                onRemove();
+              }
+            }}
+            className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-xl border border-line px-4 py-2.5 text-sm font-bold text-rose-600 disabled:opacity-50"
+          >
+            <X size={16} />
+            Quitar de la sección
+          </button>
+        ) : null}
       </motion.div>
     </motion.div>,
     document.body
