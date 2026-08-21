@@ -70,6 +70,16 @@ export async function readWithBedrock(
   if (!accessKeyId || !secretAccessKey) return { ok: false, problem: "sin credenciales" };
 
   const bytes = Buffer.from(dataBase64, "base64");
+  /*
+   * ⚠️ Bedrock rechaza imágenes de más de 5 MB, y lo hace DESPUÉS de subirlas:
+   * se paga la espera para nada y luego se cae a Gemini. Una foto del monitor
+   * con el celular pesa 5-8 MB y llega aquí tal cual si el navegador no la
+   * encogió (el recorte de Retool lo evita, pero este módulo no puede darlo
+   * por hecho). Mejor ni intentarlo y dejar que Gemini lo lea de una vez.
+   */
+  if (bytes.length > 4_500_000) {
+    return { ok: false, problem: `la imagen pesa ${(bytes.length / 1024 / 1024).toFixed(1)} MB y el máximo son 5` };
+  }
   const format = imageFormat(mimeType);
   const content = format
     ? [{ image: { format, source: { bytes } } }, { text: prompt }]

@@ -111,7 +111,11 @@ Reglas:
 const SHAPE = `Devuelve SOLO el JSON, sin texto alrededor, con esta forma exacta
 y estos nombres de campo:
 
-{"from":"AAAA-MM-DD","to":"AAAA-MM-DD","storeNumber":"","rows":[{"name":"","tickets":0,"units":0,"unitsReturned":0,"gross":0,"discount":0,"afterDiscount":0,"returns":0,"net":0,"avgUnits":0,"avgAmount":0}]}
+{"from":"AAAA-MM-DD","to":"AAAA-MM-DD","storeNumber":"","rows":[{"name":"","tickets":0,"units":0,"unitsReturned":0,"gross":1499.00,"discount":599.60,"afterDiscount":899.40,"returns":0.00,"net":899.40,"avgUnits":1.00,"avgAmount":899.40}]}
+
+⚠️ LOS IMPORTES LLEVAN DOS DECIMALES. Cópialos completos y mira bien cada
+dígito: las cuentas del reporte se comprueban después y basta un número mal
+leído para que la captura se detenga.
 
 Correspondencia con las columnas del reporte:
 - name = Nombre del vendedor
