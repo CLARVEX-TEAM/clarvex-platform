@@ -92,6 +92,21 @@ export function ConteoDiarioView({ section = "DAMA", desktop = false }: { sectio
     setBusy(false);
   }
 
+  /** Corrige el número de etiqueta de una posición: se anotó mal. */
+  async function renumber(number: number, newNumber: number) {
+    if (!state?.countId) return;
+    setBusy(true);
+    setError("");
+    const response = await fetch("/api/conteos/diario", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ countId: state.countId, number, newNumber })
+    });
+    if (response.ok) setState(await response.json());
+    else setError((await response.json()).error ?? "No se pudo cambiar el marbete.");
+    setBusy(false);
+  }
+
   /** Saca un marbete de la sección: se escaneó uno que no era. */
   async function remove(number: number) {
     if (!state?.countId) return;
@@ -223,6 +238,10 @@ export function ConteoDiarioView({ section = "DAMA", desktop = false }: { sectio
             }}
             onRemove={async () => {
               await remove(editing.number);
+              setEditing(null);
+            }}
+            onRenumber={async (newNumber) => {
+              await renumber(editing.number, newNumber);
               setEditing(null);
             }}
           />
@@ -379,7 +398,8 @@ function CaptureSheet({
   canRemove,
   onClose,
   onSave,
-  onRemove
+  onRemove,
+  onRenumber
 }: {
   row: DailyRow;
   rows: DailyRow[];
@@ -388,6 +408,7 @@ function CaptureSheet({
   onClose: () => void;
   onSave: (patch: { pieces?: number; slot?: 1 | 2 | 3; reason?: string | null; reasonRef?: string | null }) => void;
   onRemove: () => void;
+  onRenumber: (newNumber: number) => void;
 }) {
   /*
    * Qué conteo se está capturando. Arranca en el que toca: 1º si no hay nada,
@@ -402,6 +423,7 @@ function CaptureSheet({
   const [pieces, setPieces] = useState("");
   const [reason, setReason] = useState<DropReason | "">(row.reason ?? "");
   const [reasonRef, setReasonRef] = useState(row.reasonRef ?? "");
+  const [newNumber, setNewNumber] = useState("");
   const inset = useKeyboardInset();
   const already = slot === 1 ? row.count1 : slot === 2 ? row.count2 : row.count3;
 
@@ -548,19 +570,43 @@ function CaptureSheet({
           gerencia, y con confirmación — borra también lo contado hoy.
         */}
         {canRemove ? (
-          <button
-            type="button"
-            disabled={busy}
-            onClick={() => {
-              if (confirm(`¿Quitar el marbete ${row.number} de la sección? Se borra lo que lleve contado hoy.`)) {
-                onRemove();
-              }
-            }}
-            className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-xl border border-line px-4 py-2.5 text-sm font-bold text-rose-600 disabled:opacity-50"
-          >
-            <X size={16} />
-            Quitar de la sección
-          </button>
+          <div className="mt-3 space-y-2 border-t border-line pt-3">
+            <p className="text-xs font-bold uppercase text-muted">Corregir el marbete</p>
+            <div className="flex gap-2">
+              <input
+                inputMode="numeric"
+                value={newNumber}
+                onChange={(event) => setNewNumber(event.target.value.replace(/\D/g, ""))}
+                placeholder={`Va la etiqueta ${row.number}`}
+                className="flex-1 rounded-xl border border-line px-3 py-2 text-sm text-ink"
+              />
+              <button
+                type="button"
+                disabled={busy || newNumber.trim() === "" || Number(newNumber) === row.number}
+                onClick={() => onRenumber(Number(newNumber))}
+                className="rounded-xl border border-line px-3 py-2 text-sm font-bold text-ink disabled:opacity-40"
+              >
+                Cambiar
+              </button>
+            </div>
+            <p className="text-xs text-muted">
+              Se anotó mal la etiqueta. Las piezas contadas se quedan: se contaron en ese mueble.
+            </p>
+
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => {
+                if (confirm(`¿Quitar el marbete ${row.number} de la sección? Se borra lo que lleve contado hoy.`)) {
+                  onRemove();
+                }
+              }}
+              className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-line px-4 py-2.5 text-sm font-bold text-rose-600 disabled:opacity-50"
+            >
+              <X size={16} />
+              Quitar de la sección
+            </button>
+          </div>
         ) : null}
       </motion.div>
     </motion.div>,

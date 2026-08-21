@@ -333,3 +333,116 @@ export async function DELETE(request: Request) {
   const date = count.date.toISOString().slice(0, 10);
   return NextResponse.json(await buildState(session.storeId, section, date));
 }
+
+const renumberSchema = z.object({
+  countId: z.string().min(1),
+  /** El marbete que está mal puesto. */
+  number: z.number().int().min(1).max(9_999),
+  /** La etiqueta correcta, la que de verdad está pegada en ese mueble. */
+  newNumber: z.number().int().min(1).max(9_999)
+});
+
+/**
+ * PUT — corrige el número de etiqueta de una posición.
+ *
+ * Es para cuando se anotó mal la etiqueta: las piezas contadas SÍ valen —se
+ * contaron en ese mueble—, lo que estaba mal era el número. Por eso la captura
+ * se muda con la posición en vez de borrarse.
+ *
+ * ⚠️ Solo mientras la sección va en su PRIMER conteo. Después, cambiar quién
+ * ocupa una posición reescribe hacia atrás lo que significaba en los reportes
+ * ya entregados; ahí lo correcto es quitar el marbete y dar de alta el nuevo al
+ * final.
+ */
+export async function PUT(request: Request) {
+  const session = await requireSession(["GERENTE", "SUBGERENTE"]);
+  if (isApiError(session)) return session;
+  const parsed = await parseJson(request, renumberSchema);
+  if ("response" in parsed) return parsed.response;
+  const body = parsed.data;
+
+  if (body.number === body.newNumber) {
+    return NextResponse.json({ error: "Es el mismo marbete." }, { status: 400 });
+  }
+
+  const count = await prisma.cycleCount.findFirst({
+    where: { id: body.countId, storeId: session.storeId, kind: COUNT_KIND_DAILY }
+  });
+  if (!count) return NextResponse.json({ error: "Conteo diario no encontrado." }, { status: 404 });
+  if (count.status !== "OPEN") {
+    return NextResponse.json({ error: "El conteo ya está cerrado." }, { status: 409 });
+  }
+  const section = count.section ?? SECTION_DAMA;
+
+  const total = await prisma.cycleCount.count({
+    where: { storeId: session.storeId, kind: COUNT_KIND_DAILY, section }
+  });
+  if (total > 1) {
+    return NextResponse.json(
+      {
+        error:
+          "Ya hay conteos anteriores de esta sección: cambiar el marbete de una posición cambiaría lo que significan los reportes ya entregados. Quita este marbete y da de alta el nuevo al final."
+      },
+      { status: 409 }
+    );
+  }
+
+  const [current, replacement] = await Promise.all([
+    prisma.cycleCountTag.findFirst({ where: { storeId: session.storeId, number: body.number, section } }),
+    prisma.cycleCountTag.findFirst({ where: { storeId: session.storeId, number: body.newNumber } })
+  ]);
+  if (!current) {
+    return NextResponse.json({ error: `El marbete ${body.number} no es de ${section}.` }, { status: 404 });
+  }
+  if (!replacement) {
+    return NextResponse.json(
+      { error: `El marbete ${body.newNumber} no está dado de alta en la tienda.` },
+      { status: 404 }
+    );
+  }
+  if (replacement.section === section) {
+    return NextResponse.json(
+      { error: `El marbete ${body.newNumber} ya está en ${section}.` },
+      { status: 409 }
+    );
+  }
+  if (replacement.section) {
+    return NextResponse.json(
+      { error: `El marbete ${body.newNumber} ya es de ${replacement.section}.` },
+      { status: 409 }
+    );
+  }
+
+  const position = current.sectionPosition;
+
+  await prisma.$transaction(async (tx) => {
+    // El viejo suelta la posición ANTES de que el nuevo la tome: el índice
+    // único no admite dos marbetes en la misma posición ni por un instante.
+    await tx.cycleCountTag.update({
+      where: { id: current.id },
+      data: { section: null, sectionPosition: null }
+    });
+    await tx.cycleCountTag.update({
+      where: { id: replacement.id },
+      data: { section, sectionPosition: position }
+    });
+    // La captura de hoy se muda: las piezas se contaron en ese mueble, lo que
+    // estaba mal era el número de la etiqueta.
+    await tx.cycleCountEntry.updateMany({
+      where: { countId: count.id, tagId: current.id },
+      data: { tagId: replacement.id }
+    });
+  });
+
+  await recordAudit({
+    session,
+    storeId: session.storeId,
+    action: "cyclecount.daily.renumber",
+    entity: "CycleCountTag",
+    entityId: replacement.id,
+    detail: `Posición ${position} de ${section}: marbete ${body.number} → ${body.newNumber}`
+  });
+
+  const date = count.date.toISOString().slice(0, 10);
+  return NextResponse.json(await buildState(session.storeId, section, date));
+}
