@@ -41,7 +41,7 @@ type State = {
 
 const today = () => new Date().toISOString().slice(0, 10);
 
-export function ConteoDiarioView({ section = "DAMA" }: { section?: string }) {
+export function ConteoDiarioView({ section = "DAMA", desktop = false }: { section?: string; desktop?: boolean }) {
   const [user, setUser] = useState<User | null>(null);
   const [state, setState] = useState<State | null>(null);
   const [error, setError] = useState("");
@@ -117,7 +117,7 @@ export function ConteoDiarioView({ section = "DAMA" }: { section?: string }) {
   const first = state.rows.length === 0;
 
   return (
-    <div className="space-y-4">
+    <div className={desktop ? "mx-auto max-w-2xl space-y-4" : "space-y-4"}>
       {error ? (
         <Card className="border-rose-200 bg-rose-50 p-3 text-sm font-semibold text-rose-700">{error}</Card>
       ) : null}

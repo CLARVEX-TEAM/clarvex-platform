@@ -94,8 +94,14 @@ export function ConteosListView({ desktop = false }: { desktop?: boolean }) {
           teórico ni cierra ronda. Por eso entra por su propia puerta y no se
           mezcla en la lista de abajo.
         */}
+        {/*
+          ⚠️ Relativo a `base`, NUNCA absoluto. Un `/conteos/dama` fijo mandaba
+          al escritorio a la pantalla del móvil: son subárboles con layouts
+          distintos, así que el navegador recargaba el documento entero y con el
+          service worker de por medio la navegación moría en un error.
+        */}
         <Link
-          href="/conteos/dama"
+          href={`${base}/dama`}
           className="mb-3 flex items-center justify-between gap-2 rounded-2xl border border-line bg-panel px-4 py-3 text-sm font-semibold text-ink transition active:scale-95"
         >
           <span className="flex items-center gap-2"><CalendarCheck size={16} /> Conteo diario · Dama</span>
