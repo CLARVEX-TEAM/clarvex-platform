@@ -845,6 +845,61 @@ El favicon continúa usando `public/favicon.ico`.
 
 ---
 
+# 🔧 Cómo se edita la app de Retool — desde el 18 de agosto de 2026
+
+**Ya no se edita desde el agente de Retool ni desde el navegador.** La app vive
+clonada en local y se trabaja con el CLI (beta privada, habilitada para la
+organización el 18 de agosto de 2026).
+
+**Ruta del clon: `D:\Documents\captura-clarvex`** — fuera del repo de Clarvex, a
+propósito, para no mezclar dos historiales de git.
+
+## El ciclo
+
+```bash
+retool check      # hooks, validate, typecheck y build en local
+retool push       # sube a la rama; corre check antes por su cuenta
+retool preview --wait   # opcional: URL de vista previa
+retool publish    # publica a producción
+```
+
+`retool pull` sincroniza el clon con la rama. La sesión se renueva con:
+
+```bash
+retool auth login --device --host https://clarvex.retool.com
+```
+
+⚠️ **El flujo de navegador normal falla** — su retorno a localhost da
+`ERR_CONNECTION_REFUSED`. Hay que usar `--device`, que imprime un código.
+
+## Trampas del CLI
+
+- ⚠️ **`pnpm-workspace.yaml` es un archivo inmutable de la plataforma.** El gate
+  rechaza el push si se le añade siquiera un comentario. Su `allowBuilds.esbuild`
+  debe quedar en `true` a secas.
+- ⚠️ **Si cambia una función de backend, `retool publish` se bloquea** con
+  `fingerprint_mismatch`. Hay que revisar el cambio y publicar con
+  `retool publish --approve-functions`.
+- ⚠️ **`retool publish` no acepta `--message` ni `--note`.** Va sin argumentos.
+- ⚠️ **La vista previa corre dentro de un iframe aislado.** Ni `read_page` ni
+  `document.querySelector` desde la pestaña padre alcanzan el DOM: para
+  verificar hay que usar capturas de pantalla e interacción real.
+
+## El orden al desplegar
+
+Cuando el contrato entre las dos partes cambia —un campo nuevo que Clarvex
+manda y Retool lee— **primero Clarvex, después Retool**. Al revés, la pantalla
+lee un campo que el servidor todavía no envía y muestra `NaN` o avisos falsos.
+
+## Cómo hablan entre sí
+
+El frontend de Retool **nunca** llama a la base. Llama a funciones de backend
+(`/backend/**`) que a su vez pegan a `/api/admin/capture/*` de Clarvex con
+`ADMIN_CAPTURE_SECRET`. La tienda sale de `requireManagerIdentity`, nunca de un
+parámetro del cliente.
+
+---
+
 # 🟡 AWS — 21 de agosto de 2026
 
 Entraron **$1,000 anuales de créditos por AWS Activate**. Nada de la app se ha

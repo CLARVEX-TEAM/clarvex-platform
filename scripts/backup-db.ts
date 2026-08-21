@@ -126,6 +126,57 @@ async function main() {
     }
   }
   console.log(`[backup] retención ${RETENTION_DAYS} días: ${deleted} backup(s) viejos borrados. Total OK.`);
+
+  await copyToS3(key, dump);
+}
+
+/**
+ * Segunda copia en Amazon S3, en OTRA nube.
+ *
+ * Por qué una segunda copia y no una retención más larga en R2: hoy los
+ * respaldos y las fotos viven en el mismo proveedor. Si esa cuenta se
+ * compromete, o alguien vacía el bucket, se van los datos **y** las copias en
+ * el mismo movimiento. Una copia en otro proveedor, con otras credenciales, es
+ * la que sobrevive a eso.
+ *
+ * ⚠️ Estas credenciales **solo pueden escribir** (`s3:PutObject`). No pueden
+ * listar, leer ni borrar. Por eso la retención NO se hace aquí: la aplica una
+ * regla de ciclo de vida del propio bucket, del lado de AWS. Si el script
+ * pudiera borrar, un servidor comprometido podría vaciar el respaldo remoto —
+ * que es exactamente de lo que esta copia protege.
+ *
+ * Nunca lanza: si S3 falla, el respaldo de R2 ya está hecho y ese es el que
+ * corre a diario. Tumbar el cron por la copia secundaria sería cambiar una
+ * protección por otra.
+ */
+async function copyToS3(key: string, dump: Buffer): Promise<void> {
+  const bucket = process.env.BACKUP_S3_BUCKET ?? "";
+  const accessKeyId = process.env.BACKUP_S3_ACCESS_KEY_ID ?? "";
+  const secretAccessKey = process.env.BACKUP_S3_SECRET_ACCESS_KEY ?? "";
+  if (!bucket || !accessKeyId || !secretAccessKey) {
+    console.log("[backup] sin copia en S3 (BACKUP_S3_* no configurado).");
+    return;
+  }
+
+  try {
+    const s3 = new S3Client({
+      region: process.env.BACKUP_S3_REGION ?? "us-east-1",
+      credentials: { accessKeyId, secretAccessKey }
+    });
+    await s3.send(
+      new PutObjectCommand({
+        Bucket: bucket,
+        Key: key,
+        Body: dump,
+        ContentType: "application/octet-stream"
+      })
+    );
+    console.log(`[backup] copia cruzada en s3://${bucket}/${key}`);
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error);
+    console.warn(`[backup] ⚠️  La copia en S3 falló: ${detail}`);
+    console.warn("[backup] ⚠️  El respaldo de R2 SÍ se hizo. Revisa las credenciales BACKUP_S3_*.");
+  }
 }
 
 main().catch((error) => {

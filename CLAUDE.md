@@ -830,6 +830,68 @@ siete días, sumar la semana multiplicaría por siete.
 
 Ver `lib/data-source-sync.ts:597` y `app/api/electronic-tickets/route.ts`.
 
+## Conteo diario de sección (dama) — agosto de 2026
+
+En el inventario de agosto faltó producto de dama y el supervisor pidió contarla
+a diario. Vive en `/conteos/dama` y `/escritorio/conteos/dama`, sobre las mismas
+tablas del conteo físico (`CycleCount` con `kind = "DIARIO"`).
+
+**Es una cosa APARTE del conteo físico y APARTE del kardex.** No lleva teórico,
+no cierra ronda y **contar no mueve existencias**. El candado de «un solo conteo
+abierto» está acotado a `kind = "FISICO"`: sin eso, el conteo diario impediría
+abrir el inventario quincenal.
+
+Cuatro reglas que no hay que cambiar sin hablarlo:
+
+1. **El juego de marbetes se arma escaneando.** Nadie tenía la lista de qué
+   marbetes son de dama. El primer conteo enrola cada uno que se pasa.
+2. ⚠️ **La posición de export (1, 2, 3…) se asigna una vez y NO se recicla.** Un
+   marbete nuevo va al final aunque su número interno sea más bajo; el de uno
+   retirado queda vacío. Si las posiciones se recorrieran, el «marbete 3» de un
+   reporte ya entregado pasaría a apuntar a otro rack. Corregir o recompactar
+   **solo se permite mientras la sección va en su PRIMER conteo**; después el
+   servidor lo rechaza y explica por qué.
+3. **El conteo es ciego.** El campo de piezas nace vacío, nunca con lo ya
+   contado: enseñarle a la segunda persona lo que puso la primera convierte el
+   recuento en una confirmación. El 3er conteo solo se ofrece si el 2º no cuadró.
+4. **Un marbete que baja NO es una pérdida.** Puede haberse vendido, agotado o
+   movido. Solo cuenta lo que queda sin explicar, y el motivo es **lista
+   cerrada**: con texto libre, a las dos semanas todo dice «se vendió».
+   «Se movió al marbete N» **se verifica** contra ese marbete — es la única
+   causa que no se puede inventar.
+
+Al copiar el conteo para pegarlo en Excel, un marbete sin contar deja su renglón
+**en blanco**. Saltárselo recorrería la columna entera y pegaría las piezas en el
+marbete equivocado.
+
+## La venta del día SÍ puede ser negativa
+
+Una devolución de cliente que no se compensa con otra venta deja el día en rojo,
+y así se registra: se resta del acumulado de la persona y del total de la tienda.
+
+⚠️ **Las PIEZAS no.** Las de `Kpi` son brutas — el POS reporta las devoluciones
+aparte y el kardex las toma como su propio movimiento. Una pieza negativa aquí
+devolvería la mercancía al inventario **dos veces**, y el descuadre aparecería
+hasta el conteo físico sin rastro de dónde salió. Meta y tickets tampoco.
+
+El tope de captura mide el **valor absoluto**: un cero de más en rojo es tan
+error como en verde.
+
+## Manifiesto del CEDIS: las cajas `S` son empaque, no inventario
+
+Los manifiestos traen bolsas de la marca junto con la mercancía. **`K` es
+mercancía, `S` es empaque.** El empaque se lee y se cuenta —los totales que
+declara el CEDIS lo incluyen y son la única verificación de que el PDF se leyó
+completo— pero **no baja al borrador** de recepción.
+
+⚠️ Un prefijo desconocido se toma como **mercancía** y se avisa. Conviene
+equivocarse contando de más: una caja de más aparece en el conteo físico, una que
+nunca entró al kardex no deja rastro de que faltó.
+
+Detalle que costó una recepción entera: el patrón de caja exigía letra + dígitos,
+y las bolsas llevan letras dentro (`S00004A1Y452`). No se reconocían, el total no
+cuadraba y **se rechazaba el manifiesto completo**.
+
 ## Kardex de inventario — la existencia se CALCULA, no se guarda
 
 ```
@@ -889,6 +951,24 @@ del conteo y el otro no, ese día se cuenta dos veces o se pierde entero.
 
 Un `AJUSTE` exige motivo: sin él, una merma desaparece sin explicación, que es
 justo lo que el kardex existe para evitar.
+
+### El libro de la ronda incluye la VENTA
+
+La pantalla de movimientos enseñaba todo lo que entró al inventario y casi nada
+de lo que salió: la venta no es un movimiento capturado, sale de los KPIs del
+día. Sin ella no había forma de seguir a mano cómo se llegó al teórico.
+
+`buildLedger` (`lib/inventory-kardex-entry.ts`) mezcla lo capturado con la venta
+de cada día y le pone signo: **positivo entra, negativo sale**. La suma del libro
+es exactamente lo que el teórico le agrega a la base de la ronda.
+
+⚠️ Las filas de venta son **derivadas**: van sin `id` a propósito, para que no se
+puedan borrar como un movimiento. Corregir una venta se hace en KPIs, que es
+donde vive el dato.
+
+El **export del kardex no usa esto**: sigue leyendo `state.movements` y arma sus
+ventas con su propia consulta. Son dos caminos separados y los números no
+cambiaron.
 
 ## Avisos globales y la paleta del escritorio
 
