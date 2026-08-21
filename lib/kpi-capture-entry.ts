@@ -70,23 +70,37 @@ export function normalizeKpiEntry(entry: KpiCaptureEntry): NormalizeKpiOutcome {
     return { ok: false, error: `Fecha inexistente en ${employeeNumber}: ${entry.date}.` };
   }
 
-  const fields: Array<[keyof NormalizedKpiEntry, unknown, string, number]> = [
-    ["dailyGoal", entry.dailyGoal, "meta diaria", MAX_SALES],
-    ["dailySales", entry.dailySales, "venta", MAX_SALES],
-    ["transactions", entry.transactions, "tickets", MAX_COUNT],
-    ["pieces", entry.pieces, "piezas", MAX_COUNT]
+  /*
+   * `signed` marca los campos que SÍ pueden ir en negativo.
+   *
+   * Solo la venta. Una devolución de cliente que no se compensa con otra venta
+   * deja el día en rojo, y así hay que registrarlo: se resta del acumulado de
+   * la persona y del total de la tienda.
+   *
+   * ⚠️ Las PIEZAS no. Las de `Kpi` son brutas —el POS reporta las devoluciones
+   * aparte y el kardex las toma como su propio movimiento—, así que una pieza
+   * negativa aquí regresaría la mercancía al inventario dos veces. Meta y
+   * tickets tampoco: no significan nada en negativo.
+   */
+  const fields: Array<[keyof NormalizedKpiEntry, unknown, string, number, boolean]> = [
+    ["dailyGoal", entry.dailyGoal, "meta diaria", MAX_SALES, false],
+    ["dailySales", entry.dailySales, "venta", MAX_SALES, true],
+    ["transactions", entry.transactions, "tickets", MAX_COUNT, false],
+    ["pieces", entry.pieces, "piezas", MAX_COUNT, false]
   ];
 
   const values: Record<string, number> = {};
-  for (const [key, raw, label, max] of fields) {
+  for (const [key, raw, label, max, signed] of fields) {
     const parsed = toNumber(raw);
     if (parsed === null) {
       return { ok: false, error: `${employeeNumber} (${entry.date}): ${label} no es un número.` };
     }
-    if (parsed < 0) {
+    if (parsed < 0 && !signed) {
       return { ok: false, error: `${employeeNumber} (${entry.date}): ${label} no puede ser negativa.` };
     }
-    if (parsed > max) {
+    // El tope de captura vale en los dos sentidos: −1,000,000 de venta es tan
+    // imposible como +1,000,000, y suele ser un cero de más.
+    if (Math.abs(parsed) > max) {
       return { ok: false, error: `${employeeNumber} (${entry.date}): ${label} parece un error de captura (${parsed}).` };
     }
     values[key as string] = parsed;

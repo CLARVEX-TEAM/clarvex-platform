@@ -56,9 +56,29 @@ test("rechaza venta con cero tickets", () => {
   assert.match(outcome.error, /cero tickets/);
 });
 
-test("rechaza negativos", () => {
-  assert.equal(normalizeKpiEntry({ ...base, dailySales: -1 }).ok, false);
+test("la VENTA sí puede ser negativa: una devolución sin venta que la compense", () => {
+  // Pasó el 20 de agosto de 2026: una clienta devolvió y no se recuperó la
+  // venta, así que el día de esa persona cerró en rojo. Se resta de su
+  // acumulado y del total de la tienda, que es lo que de verdad ocurrió.
+  const outcome = normalizeKpiEntry({ ...base, dailySales: -1031, transactions: 1, pieces: 1 });
+  assert.equal(outcome.ok, true);
+  if (!outcome.ok) return;
+  assert.equal(outcome.value.dailySales, -1031);
+});
+
+test("piezas, tickets y meta siguen sin poder ser negativos", () => {
+  // Las piezas de `Kpi` son BRUTAS: la devolución entra al kardex como su
+  // propio movimiento. Una pieza negativa aquí la regresaría al inventario dos
+  // veces, y el descuadre solo aparecería en el conteo físico.
   assert.equal(normalizeKpiEntry({ ...base, pieces: -3 }).ok, false);
+  assert.equal(normalizeKpiEntry({ ...base, transactions: -1 }).ok, false);
+  assert.equal(normalizeKpiEntry({ ...base, dailyGoal: -100 }).ok, false);
+});
+
+test("el tope de captura también aplica a las ventas negativas", () => {
+  // Un cero de más al capturar en rojo es tan error como en verde.
+  const outcome = normalizeKpiEntry({ ...base, dailySales: -99_000_000 });
+  assert.equal(outcome.ok, false);
 });
 
 test("rechaza un importe absurdo", () => {
