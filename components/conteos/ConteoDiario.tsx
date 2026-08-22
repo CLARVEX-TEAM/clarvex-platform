@@ -18,6 +18,7 @@ import {
   type DailySummary,
   type DropReason
 } from "@/lib/daily-count";
+import { dashboardDateKey } from "@/lib/dashboard-kpi";
 import { useKeyboardInset } from "@/lib/use-keyboard-inset";
 import { Badge, Card } from "@/components/ui";
 import { ScannerOverlay } from "@/components/conteos/ScannerOverlay";
@@ -40,7 +41,8 @@ type State = {
   summary: DailySummary;
 };
 
-const today = () => new Date().toISOString().slice(0, 10);
+/** Hoy en la hora de la tienda: en UTC, después de las 18:00 ya sería mañana. */
+const today = () => dashboardDateKey();
 
 export function ConteoDiarioView({ section = "DAMA", desktop = false }: { section?: string; desktop?: boolean }) {
   const [user, setUser] = useState<User | null>(null);

@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireSession, isApiError, parseJson } from "@/lib/api";
 import { recordAudit } from "@/lib/audit";
 import { entryNeedsRecount, entryReal } from "@/lib/cycle-count";
+import { dashboardDateKey } from "@/lib/dashboard-kpi";
 import {
   COUNT_KIND_DAILY,
   isDropReason,
@@ -85,7 +86,15 @@ export async function GET(request: Request) {
 
   const url = new URL(request.url);
   const section = sectionParam.parse(url.searchParams.get("section") ?? undefined);
-  const date = url.searchParams.get("date") ?? new Date().toISOString().slice(0, 10);
+  /*
+   * ⚠️ «Hoy» en la hora de la TIENDA, no en UTC.
+   *
+   * El servidor corre en UTC y Monterrey va seis horas atrás: a partir de las
+   * 18:00 locales, `toISOString()` ya devuelve el día siguiente. Un conteo
+   * abierto por la noche se habría guardado con la fecha de mañana, y al día
+   * siguiente aparecería como «ya contado» sin que nadie contara nada.
+   */
+  const date = url.searchParams.get("date") ?? dashboardDateKey();
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
     return NextResponse.json({ error: "Fecha inválida." }, { status: 400 });
   }
