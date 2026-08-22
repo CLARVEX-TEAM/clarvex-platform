@@ -190,3 +190,59 @@ test("dos letras nunca emparejan, cinco si", () => {
   assert.equal(sameSurname("CRUZ", "CRUZADO"), true);
   assert.equal(sameSurname("CRUZ", "CORONA"), false);
 });
+
+test("el promedio de unidades va sobre las NETAS cuando hubo devoluciones", () => {
+  // Reporte real del 21 de agosto de 2026: 9 vendidas, 4 devueltas, 3 tickets.
+  // El reporte dice 1.67, que es (9-4)/3. Comprobarlo contra las 9 brutas
+  // detenia capturas buenas justo los dias en que hubo una devolucion.
+  const row = {
+    name: "HERNANDEZ, JESUS AD",
+    tickets: 3,
+    units: 9,
+    unitsReturned: 4,
+    gross: 11391,
+    discount: 2427.64,
+    afterDiscount: 8963.36,
+    returns: 5896,
+    net: 3067.36,
+    avgUnits: 1.67,
+    avgAmount: 1022.45
+  };
+  assert.deepEqual(rowProblems(row), []);
+});
+
+test("sin devoluciones el promedio sigue siendo unidades entre tickets", () => {
+  const row = {
+    name: "CASTRO, JAZMIN",
+    tickets: 6,
+    units: 8,
+    unitsReturned: 0,
+    gross: 18392,
+    discount: 8284.52,
+    afterDiscount: 10107.48,
+    returns: 0,
+    net: 10107.48,
+    avgUnits: 1.33,
+    avgAmount: 1684.58
+  };
+  assert.deepEqual(rowProblems(row), []);
+});
+
+test("un promedio que NO cuadra ni con netas ni con brutas se detiene", () => {
+  const row = {
+    name: "PRUEBA",
+    tickets: 3,
+    units: 9,
+    unitsReturned: 4,
+    gross: 100,
+    discount: 0,
+    afterDiscount: 100,
+    returns: 0,
+    net: 100,
+    avgUnits: 9,
+    avgAmount: 33.33
+  };
+  const problems = rowProblems(row);
+  assert.equal(problems.length > 0, true);
+  assert.match(problems[0], /4 devueltas/);
+});

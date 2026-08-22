@@ -90,7 +90,9 @@ Reglas:
 - Una entrada en "rows" por VENDEDOR. NO incluyas la fila "Promedio".
 - Copia el nombre del vendedor TAL CUAL aparece, aunque esté cortado.
 - Todos los importes como número, sin signo de pesos ni comas.
-- "discount" en POSITIVO aunque en el reporte tenga el signo menos.
+- "discount", "unitsReturned" y "returns" en POSITIVO aunque en el reporte
+  aparezcan con el signo menos. Son las tres columnas que el reporte muestra en
+  negativo.
 - Copia los números exactamente como se ven. No calcules, no corrijas, no
   redondees. Si un dato no se alcanza a leer, pon null.`;
 
@@ -129,11 +131,21 @@ const rowSchema = z.object({
   name: z.string().min(1).max(120),
   tickets: z.number().int().min(0).max(100_000),
   units: z.number().int().min(0).max(1_000_000),
-  unitsReturned: z.number().int().min(0).max(1_000_000).nullable().optional(),
+  /*
+   * ⚠️ Se acepta con signo y se normaliza después con `Math.abs`.
+   *
+   * El reporte muestra las devoluciones en NEGATIVO («-4», «-$5,896.00») y el
+   * modelo a veces las copia tal cual, aunque el prompt pida positivo. Con
+   * `.min(0)` toda la lectura se caía por un signo, y el día que se cae es
+   * justo el día que hubo una devolución. Aquí solo interesa la magnitud: el
+   * sentido ya lo da el nombre de la columna.
+   */
+  unitsReturned: z.number().int().min(-1_000_000).max(1_000_000).nullable().optional(),
   gross: z.number().min(0).max(100_000_000),
   discount: z.number().min(0).max(100_000_000),
   afterDiscount: z.number().min(0).max(100_000_000),
-  returns: z.number().min(0).max(100_000_000).nullable().optional(),
+  /** Igual que `unitsReturned`: llega en negativo y se normaliza con `Math.abs`. */
+  returns: z.number().min(-100_000_000).max(100_000_000).nullable().optional(),
   net: z.number().min(0).max(100_000_000),
   avgUnits: z.number().min(0).max(100_000),
   avgAmount: z.number().min(0).max(100_000_000)
@@ -291,11 +303,12 @@ function validateVisionText(text: string): VisionOutcome | null {
     name: row.name.trim(),
     tickets: row.tickets,
     units: row.units,
-    unitsReturned: row.unitsReturned ?? 0,
+    // Solo interesa la magnitud: el reporte las muestra en negativo.
+    unitsReturned: Math.abs(row.unitsReturned ?? 0),
     gross: row.gross,
     discount: row.discount,
     afterDiscount: row.afterDiscount,
-    returns: row.returns ?? 0,
+    returns: Math.abs(row.returns ?? 0),
     net: row.net,
     avgUnits: row.avgUnits,
     avgAmount: row.avgAmount

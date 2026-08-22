@@ -79,9 +79,24 @@ export function rowProblems(row: PosRow): string[] {
     problems.push(`${who}: al restar devoluciones ${row.returns} no da el neto ${row.net}.`);
   }
   if (row.tickets > 0) {
-    // Dos decimales de tolerancia: el reporte redondea los promedios.
-    if (!close(row.units / row.tickets, row.avgUnits, 0.011)) {
-      problems.push(`${who}: ${row.units} unidades entre ${row.tickets} tickets no da ${row.avgUnits}.`);
+    /*
+     * ⚠️ El promedio de unidades del reporte va sobre las unidades NETAS, no
+     * sobre las vendidas.
+     *
+     * Con devoluciones de por medio: 9 vendidas, 4 devueltas y 3 tickets dan
+     * 1.67, no 3.00. Comprobarlo contra las brutas detenía capturas buenas
+     * justo los días en que hubo una devolución — que son los días en que más
+     * cuidado hay que tener con los números.
+     *
+     * Dos decimales de tolerancia: el reporte redondea los promedios.
+     */
+    const netUnits = row.units - row.unitsReturned;
+    if (!close(netUnits / row.tickets, row.avgUnits, 0.011)) {
+      problems.push(
+        row.unitsReturned > 0
+          ? `${who}: ${row.units} unidades menos ${row.unitsReturned} devueltas, entre ${row.tickets} tickets, no da ${row.avgUnits}.`
+          : `${who}: ${row.units} unidades entre ${row.tickets} tickets no da ${row.avgUnits}.`
+      );
     }
     if (!close(row.net / row.tickets, row.avgAmount, 0.011)) {
       problems.push(`${who}: el neto entre ${row.tickets} tickets no da ${row.avgAmount}.`);
