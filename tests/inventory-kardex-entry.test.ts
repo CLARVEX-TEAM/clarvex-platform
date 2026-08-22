@@ -351,15 +351,16 @@ test("el libro trae la venta junto a lo capturado, cada uno con su signo", () =>
     ]
   );
 
-  // Más reciente primero, y la venta cierra su día.
+  // Más reciente primero, y la venta ENCABEZA su día: enterrada al final se
+  // pierde entre las recepciones y parece que ese día no se vendió nada.
   assert.deepEqual(
     rows.map((row) => [row.date, row.type, row.signed]),
     [
+      ["2026-08-21", "VENTA", -10],
       ["2026-08-21", "DEVOLUCION_CLIENTE", 1],
       ["2026-08-21", "TRANSFERENCIA_SALIDA", -4],
-      ["2026-08-21", "VENTA", -10],
-      ["2026-08-20", "RECEPCION", 29],
-      ["2026-08-20", "VENTA", -6]
+      ["2026-08-20", "VENTA", -6],
+      ["2026-08-20", "RECEPCION", 29]
     ]
   );
 

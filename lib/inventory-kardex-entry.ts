@@ -547,11 +547,20 @@ export function buildLedger(
     });
   }
 
-  // Más reciente primero, y dentro del mismo día la venta al final: es el
-  // cierre natural de la jornada, después de lo que se recibió o se traspasó.
+  /*
+   * Más reciente primero, y dentro del mismo día **la venta PRIMERO**.
+   *
+   * ⚠️ Antes iba al final, con la idea de que «cierra la jornada». En la
+   * práctica se perdía: un día con diez recepciones deja el renglón de la venta
+   * enterrado abajo, y desde arriba parece que ese día no se vendió nada. Pasó
+   * de verdad — se reportó como datos faltantes cuando estaban ahí.
+   *
+   * Pegada al cambio de fecha se encuentra de un vistazo, que es lo que se
+   * busca: es la salida más grande del kardex.
+   */
   return rows.sort((left, right) => {
     if (left.date !== right.date) return left.date < right.date ? 1 : -1;
     if (left.source === right.source) return 0;
-    return left.source === "KPIS" ? 1 : -1;
+    return left.source === "KPIS" ? -1 : 1;
   });
 }
