@@ -14,6 +14,7 @@ import { DesktopRouteGuard } from "@/components/desktop/DesktopRouteGuard";
 import { ClarvexCopilot } from "@/components/ClarvexCopilot";
 import { DemoBanner } from "@/components/DemoBanner";
 import { EmailBanner } from "@/components/EmailBanner";
+import { DomainMoveBanner } from "@/components/DomainMoveBanner";
 import { AppChrome } from "@/components/AppChrome";
 import { SplashIntro } from "@/components/SplashIntro";
 import { Meteors } from "@/components/magic/Meteors";
@@ -99,6 +100,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <PwaRegister />
             <UpdatePrompt />
             <OfflineBanner />
+            <DomainMoveBanner />
             <DesktopRouteGuard />
             <DemoBanner />
             <EmailBanner />

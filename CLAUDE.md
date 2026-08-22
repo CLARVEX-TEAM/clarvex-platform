@@ -560,6 +560,11 @@ El % de comisión difiere por puesto pero el mínimo de referencia es el mismo p
   completo, el orden y las trampas, en la sección **AWS** de `AGENTS.md`.
   Pendiente ligado: **borrar el usuario IAM `clarvex-bedrock`** cuando la app
   corra en EC2.
+- **El aviso de cambio de dominio ya está implementado.** En
+  `app.adrianluna.mx` aparece una banda global con Marquee y Animated Beam que
+  anuncia `team.clarvex.tech` y explica que la huella se registrará otra vez.
+  No aparece ni enlaza al servidor AWS mientras las bases conviven, para evitar
+  capturas que se perderían con el volcado final.
 - **La app está ABIERTA** desde el 13 de agosto de 2026. El VPS tiene
   `MAINTENANCE_MODE=0`; ambas instancias PM2 están `online`, `/api/health`
   responde correctamente y el acceso normal llega a `/login` sin mostrar la

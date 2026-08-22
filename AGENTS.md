@@ -1099,6 +1099,20 @@ instalada apunta al dominio viejo.
 
 Con 19 usuarios es asumible, pero **hay que avisarlo**, no descubrirlo.
 
+El aviso previo al corte ya está construido en el layout global:
+
+- `components/DomainMoveBanner.tsx` aparece únicamente en
+  `app.adrianluna.mx`; nunca en `team.clarvex.tech`.
+- anuncia que Clarvex se mudará próximamente, muestra el dominio nuevo y avisa
+  que la huella deberá registrarse otra vez;
+- **no enlaza a AWS mientras las dos bases conviven**, porque cualquier captura
+  hecha ahí se perderá con el volcado final;
+- usa un `Marquee` y una línea `AnimatedBeam` reutilizables de
+  `components/magic/`, respeta `prefers-reduced-motion` y no se superpone a las
+  cabeceras;
+- el descarte dura solo la sesión. No usar `localStorage`: cerrarlo una vez no
+  debe silenciar para siempre un cambio de dirección.
+
 Pendiente de ese cambio: los **textos legales** (`lib/legal-content.ts`) citan
 `https://app.adrianluna.mx` como la dirección de la Plataforma en términos,
 aviso de privacidad y política de cookies. Eso se actualiza con cuidado, no con
