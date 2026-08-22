@@ -76,3 +76,31 @@ test("rellena CJ y RDS conservando el libro original y sin resultados viejos", a
   assert.match(workbookXml, /fullCalcOnLoad="1"/);
   assert.equal(Boolean(zip.file("xl/calcChain.xml")), false);
 });
+
+test("exporta Cuota Justa y RDS como archivos independientes sin eliminar hojas", async () => {
+  const quotaBuffer = await buildWeeklyPerformanceWorkbook(state, "quota");
+  if (process.env.XLSX_VERIFY_QUOTA_OUTPUT) await fs.writeFile(process.env.XLSX_VERIFY_QUOTA_OUTPUT, quotaBuffer);
+  const quotaBook = new ExcelJS.Workbook();
+  await quotaBook.xlsx.load(quotaBuffer as unknown as ArrayBuffer);
+  assert.equal(quotaBook.getWorksheet("CJ")!.state, "visible");
+  assert.equal(quotaBook.getWorksheet("RDS")!.state, "hidden");
+  assert.deepEqual(quotaBook.worksheets.map((sheet) => sheet.name), ["INSTRUCCIONES", "CJ", "RDS", "Consulta1", "HORARIOS"]);
+  const quotaZip = await JSZip.loadAsync(quotaBuffer);
+  const quotaWorkbookXml = await quotaZip.file("xl/workbook.xml")!.async("string");
+  assert.match(quotaWorkbookXml, /activeTab="1"/);
+  assert.match(await quotaZip.file("xl/worksheets/sheet2.xml")!.async("string"), /tabSelected="1"/);
+  assert.doesNotMatch(await quotaZip.file("xl/worksheets/sheet3.xml")!.async("string"), /tabSelected="1"/);
+
+  const rdsBuffer = await buildWeeklyPerformanceWorkbook(state, "rds");
+  if (process.env.XLSX_VERIFY_RDS_OUTPUT) await fs.writeFile(process.env.XLSX_VERIFY_RDS_OUTPUT, rdsBuffer);
+  const rdsBook = new ExcelJS.Workbook();
+  await rdsBook.xlsx.load(rdsBuffer as unknown as ArrayBuffer);
+  assert.equal(rdsBook.getWorksheet("CJ")!.state, "hidden");
+  assert.equal(rdsBook.getWorksheet("RDS")!.state, "visible");
+  assert.deepEqual(rdsBook.worksheets.map((sheet) => sheet.name), ["INSTRUCCIONES", "CJ", "RDS", "Consulta1", "HORARIOS"]);
+  const rdsZip = await JSZip.loadAsync(rdsBuffer);
+  const rdsWorkbookXml = await rdsZip.file("xl/workbook.xml")!.async("string");
+  assert.match(rdsWorkbookXml, /activeTab="2"/);
+  assert.doesNotMatch(await rdsZip.file("xl/worksheets/sheet2.xml")!.async("string"), /tabSelected="1"/);
+  assert.match(await rdsZip.file("xl/worksheets/sheet3.xml")!.async("string"), /tabSelected="1"/);
+});

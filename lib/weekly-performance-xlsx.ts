@@ -7,8 +7,12 @@ import type { WeeklyPerformanceState } from "@/lib/weekly-performance";
 const TEMPLATE_PATH = path.join(process.cwd(), "templates", "cuota-justa-rds.xlsx");
 const DAY_COLUMNS = ["D", "F", "H", "J", "L", "N", "P"];
 const RDS_COLUMNS = Array.from({ length: 10 }, (_, index) => columnLetter(4 + index));
+export type WeeklyPerformanceDocument = "combined" | "quota" | "rds";
 
-export async function buildWeeklyPerformanceWorkbook(state: WeeklyPerformanceState) {
+export async function buildWeeklyPerformanceWorkbook(
+  state: WeeklyPerformanceState,
+  document: WeeklyPerformanceDocument = "combined"
+) {
   const people = state.quota.days[0]?.allocations ?? [];
   if (people.length > 10) throw new Error("El formato original admite un máximo de 10 colaboradores.");
   const zip = await JSZip.loadAsync(await fs.readFile(TEMPLATE_PATH));
@@ -47,7 +51,6 @@ export async function buildWeeklyPerformanceWorkbook(state: WeeklyPerformanceSta
     });
   }
   cj = clearFormulaCaches(cj);
-  zip.file(cjPath, cj);
 
   const rdsPath = requiredSheet(sheets, "RDS");
   let rds = await readPart(zip, rdsPath);
@@ -71,11 +74,12 @@ export async function buildWeeklyPerformanceWorkbook(state: WeeklyPerformanceSta
   // original trae como dato y no como SUMA de columnas.
   rds = writeCell(rds, "O13", state.report.store.traffic ?? 0);
   rds = clearFormulaCaches(rds);
-  zip.file(rdsPath, rds);
-
   const schedulesPath = sheets.get("HORARIOS");
   if (schedulesPath) zip.file(schedulesPath, clearAllFormulaCells(await readPart(zip, schedulesPath)));
-  zip.file("xl/workbook.xml", forceFullRecalculation(await readPart(zip, "xl/workbook.xml")));
+  const workbook = selectDocumentSheets(await readPart(zip, "xl/workbook.xml"), document);
+  zip.file("xl/workbook.xml", forceFullRecalculation(workbook));
+  zip.file(cjPath, selectWorksheet(cj, document !== "rds"));
+  zip.file(rdsPath, selectWorksheet(rds, document === "rds"));
   zip.remove("xl/calcChain.xml");
   return zip.generateAsync({ type: "nodebuffer", compression: "DEFLATE" });
 }
@@ -110,6 +114,40 @@ function clearAllFormulaCells(xml: string) {
 function forceFullRecalculation(xml: string) {
   const calc = '<calcPr calcId="191028" calcMode="auto" fullCalcOnLoad="1" forceFullCalc="1"/>';
   return /<calcPr[^>]*\/>/.test(xml) ? xml.replace(/<calcPr[^>]*\/>/, calc) : xml.replace("</workbook>", `${calc}</workbook>`);
+}
+
+/**
+ * Conserva todas las hojas para no romper formulas, nombres definidos ni
+ * estilos. Los archivos individuales solo ocultan la seccion no solicitada.
+ */
+function selectDocumentSheets(xml: string, document: WeeklyPerformanceDocument) {
+  const states: Record<WeeklyPerformanceDocument, { activeTab: number; hidden: string | null }> = {
+    combined: { activeTab: 1, hidden: null },
+    quota: { activeTab: 1, hidden: "RDS" },
+    rds: { activeTab: 2, hidden: "CJ" }
+  };
+  const selection = states[document];
+  let next = xml.replace(
+    /<workbookView\b([^>]*?)\bactiveTab="\d+"([^>]*)\/>/,
+    `<workbookView$1activeTab="${selection.activeTab}"$2/>`
+  );
+  next = next.replace(
+    /<sheet\b([^>]*?)\bname="(CJ|RDS)"([^>]*?)\sstate="(?:hidden|veryHidden)"([^>]*)\/>/g,
+    '<sheet$1name="$2"$3$4/>'
+  );
+  if (selection.hidden) {
+    next = next.replace(
+      new RegExp(`<sheet\\b([^>]*?)\\bname="${selection.hidden}"([^>]*)\\/>`),
+      `<sheet$1name="${selection.hidden}"$2 state="hidden"/>`
+    );
+  }
+  return next;
+}
+
+function selectWorksheet(xml: string, selected: boolean) {
+  let next = xml.replace(/\stabSelected="1"/g, "");
+  if (selected) next = next.replace(/<sheetView\b/, '<sheetView tabSelected="1"');
+  return next;
 }
 function requiredSheet(sheets: Map<string, string>, name: string) {
   const value = sheets.get(name);
