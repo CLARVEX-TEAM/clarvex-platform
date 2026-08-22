@@ -1444,10 +1444,42 @@ Single Next.js 15 (App Router) PWA backed by PostgreSQL via Prisma. `pnpm` is th
 * Login: seeded users `81893` (GERENTE), `102259` (SUBGERENTE), `95739` (ASESOR) were given PIN `1234` during setup. Brand-new users have no PIN and PIN setup requires an authenticated manager/subgerente (see `app/api/auth/employee-login/route.ts`); set a PIN directly with bcrypt (`hashPin`) if you need a fresh login.
 
 ### Lint / typecheck / test / build (matches `.github/workflows/ci.yml`)
-* `pnpm lint`, `pnpm exec tsc --noEmit`, `pnpm test` (687 tests al 13 de agosto de 2026; la integración usa `clarvex_test` migrada y sembrada), `pnpm audit --audit-level=high`. `pnpm test:security-protection` también pasa.
+* `pnpm lint`, `pnpm exec tsc --noEmit`, `pnpm test` (897 pruebas al 22 de agosto de 2026; la integración usa `clarvex_test` migrada y sembrada), `pnpm audit --audit-level=high`. `pnpm test:security-protection` también pasa.
 * Known-broken: `pnpm test:integration` fails because it spawns `next dev` with `NODE_ENV=test`, which Next forces back to `development`, tripping the `lib/prisma.ts` guard. It is not part of CI. The harness also SIGKILLs only the parent, leaving orphaned `next-server` processes on port 3101 — kill them by PID if you hit `EADDRINUSE`.
 
-### Metas desde la Cuota Justa (17 de agosto de 2026)
+### Cuota Justa + RDS nativos (22 de agosto de 2026)
+
+La operacion semanal ya no necesita armar el Excel a mano. Retool tiene una
+ruta nueva, **`/cuota-justa`**, que captura minimos diarios, reparte porcentajes,
+muestra el RDS en vivo y exporta el mismo libro de la tienda ya lleno. El pegado
+de CJ en KPIs se conserva temporalmente como respaldo, pero deja de ser el flujo
+principal.
+
+- `lib/fair-quota.ts` es el motor puro. La meta diaria es `minimo x 1.15`.
+  Gerente recibe 10 %, subgerente 15 % y el remanente se divide entre asesores
+  presentes. Si cambia el horario, los porcentajes se ajustan; `INVENTORY`
+  cuenta como laborado. Un ajuste manual tiene que sumar exactamente 100 % y
+  quien no labora no puede recibir porcentaje. El residuo monetario va a la
+  ultima persona para que la suma cierre hasta el centavo.
+- `WeeklyPerformanceClose` guarda una copia por tienda/semana. `DRAFT` admite
+  cambios; `FINALIZED` congela un snapshot del RDS y ya no se edita.
+- `GET|POST /api/admin/capture/weekly-performance` lee/guarda. Guardar solo toca
+  `Kpi.dailyGoal` y el `KpiTarget` semanal de WhatsApp: **nunca ventas**.
+- `GET /api/admin/capture/weekly-performance/export` devuelve el XLSX completo,
+  tambien en base64 para Retool. La plantilla exacta esta en
+  `templates/cuota-justa-rds.xlsx` y se modifica con JSZip, sin redisenarla.
+  Se rellenan `CJ` y `RDS`, se eliminan los `#REF!` heredados de la hoja oculta
+  `HORARIOS` y Excel recalcula las formulas al abrir.
+- Retool usa `backend/weeklyPerformance/`, fotos del equipo, historial de 12
+  semanas, borrador, cierre protegido y descarga. `retool check` pasa hooks,
+  validate, typecheck y build.
+- Validacion local: ESLint limpio, build Next limpio y **897 pruebas** en verde,
+  incluida la apertura real del XLSX generado con sus cinco hojas.
+
+El orden de salida es obligatorio: migracion + API de Clarvex primero; Retool
+despues con `retool publish --approve-functions`.
+
+#### Importador CJ heredado (respaldo; construido el 17 de agosto de 2026)
 
 Pegar la tabla de la hoja **CJ** del archivo de la tienda y sembrar las metas
 diarias, en vez de teclearlas día a día. Retool `0.0.11`, bloque arriba de KPIs.
@@ -1458,7 +1490,8 @@ diarias, en vez de teclearlas día a día. Retool `0.0.11`, bloque arriba de KPI
 - **Cada día ocupa DOS columnas** (% e importe) y la fila `FECHA` solo trae la
   fecha en la primera: el importe está en la columna SIGUIENTE. La fila `META`
   es la excepción —está combinada— y su importe cae en la MISMA columna.
-- **WhatsApp se ignora** por decisión de Adrian: son ~$102 al día de tienda.
+- Este importador heredado ignora WhatsApp; la pantalla nativa sí lo captura y
+  lo guarda como `KpiTarget` semanal.
 - **Nunca se pisan las ventas**: si el día ya tiene KPIs, solo se toca
   `dailyGoal`. Verificado contra base real.
 - **Nunca se adivina una persona**: si un nombre encaja con varias, la carga se

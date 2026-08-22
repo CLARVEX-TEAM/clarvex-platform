@@ -10,5 +10,9 @@ export function buildWorkingScheduleKeys(schedules: ScheduleStatusRow[]): Set<st
     const quality = (schedule.statusRaw ? 2 : 0) + (schedule.date.getUTCHours() === 0 ? 1 : 0);
     if (!byUserDate.has(key) || quality > byUserDate.get(key)!.quality) byUserDate.set(key, { status: schedule.status, quality });
   }
-  return new Set(Array.from(byUserDate.entries()).filter(([, entry]) => entry.status === "WORKING").map(([key]) => key));
+  return new Set(
+    Array.from(byUserDate.entries())
+      .filter(([, entry]) => entry.status === "WORKING" || entry.status === "INVENTORY")
+      .map(([key]) => key)
+  );
 }

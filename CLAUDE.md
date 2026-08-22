@@ -1,5 +1,31 @@
 # Clarvex Team — CLAUDE.md
 
+## Cuota Justa y cierre semanal nativos — 22 de agosto de 2026
+
+La Cuota Justa y el RDS se administran en Retool desde `/cuota-justa`; el Excel
+deja de ser la base y pasa a ser una exportacion.
+
+- `lib/fair-quota.ts`: minimo diario + 15 %, gerente 10 %, subgerente 15 % y
+  remanente entre asesores presentes. `INVENTORY` cuenta como laborado. Cada dia
+  suma 100 % y el dinero cierra al centavo.
+- `WeeklyPerformanceClose`: un registro por tienda/semana. Borrador editable y
+  cierre final congelado con snapshot; una semana finalizada no se reabre.
+- API: `GET|POST /api/admin/capture/weekly-performance` y
+  `GET /api/admin/capture/weekly-performance/export`, con
+  `ADMIN_CAPTURE_SECRET`. Guardar actualiza solo metas diarias y el presupuesto
+  semanal de WhatsApp; no toca ventas.
+- La plantilla exacta esta en `templates/cuota-justa-rds.xlsx`. El exportador
+  usa JSZip para conservar hojas, estilos y formato de impresion, limpia los
+  `#REF!` de la hoja oculta `HORARIOS` y fuerza recalculo al abrir.
+- El importador por pegado de CJ sigue disponible como respaldo en KPIs.
+- Retool: `backend/weeklyPerformance/*`, `frontend/pages/WeeklyPerformance.tsx`
+  y ruta `/cuota-justa`. Desplegar siempre Clarvex antes que Retool.
+
+Validacion: 897 pruebas, ESLint y build de produccion en verde; `retool check`
+pasa las cuatro fases locales.
+
+---
+
 ## Proyecto
 
 **Nombre:** Clarvex Team  

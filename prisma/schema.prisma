@@ -8,18 +8,18 @@ datasource db {
 }
 
 model Store {
-  id                    String                    @id @default(cuid())
-  name                  String
-  createdAt             DateTime                  @default(now())
-  updatedAt             DateTime                  @updatedAt
-  billingExempt         Boolean                   @default(true)
-  subscriptionPaidUntil DateTime?
-  pricePerUserMxn       Decimal?                  @db.Decimal(10, 2)
+  id                      String                    @id @default(cuid())
+  name                    String
+  createdAt               DateTime                  @default(now())
+  updatedAt               DateTime                  @updatedAt
+  billingExempt           Boolean                   @default(true)
+  subscriptionPaidUntil   DateTime?
+  pricePerUserMxn         Decimal?                  @db.Decimal(10, 2)
   /// Etiqueta del tabulador de comisiones de la tienda (E, D, C…). En GUESS los
   /// importes cambian según esta letra, así que se guarda tal como la capturó la
   /// tienda para poder contrastarla después con el documento de central. NO
   /// interviene en el cálculo: la comisión sale de las CommissionRule.
-  commissionTier        String?
+  commissionTier          String?
   /// Contra qué se mide el alcance de comisión.
   ///
   /// `MINIMO` (venta ÷ mínimo) es el histórico y el valor por defecto, así que
@@ -30,7 +30,7 @@ model Store {
   ///
   /// El valor por defecto es el conservador a propósito: si alguien da de alta
   /// una tienda y olvida configurarlo, se comporta como siempre.
-  commissionBasis       CommissionBasis @default(MINIMO)
+  commissionBasis         CommissionBasis           @default(MINIMO)
   /// Interruptor para ocultar la sección de KPIs a una tienda.
   ///
   /// Existe porque un KPI vacío no es neutro: una pantalla llena de ceros se
@@ -40,46 +40,47 @@ model Store {
   ///
   /// Es una bandera y no una condición deducida a propósito: se enciende y se
   /// apaga sin desplegar, y no ata un estado temporal a la marca de la tienda.
-  kpisEnabled           Boolean         @default(true)
-  announcements         Announcement[]
-  chatRooms             ChatRoom[]
-  checklistEntries      ChecklistEntry[]
-  checklistScans        ChecklistScan[]
-  checklistItems        ChecklistItem[]
-  choreAssignments      ChoreAssignment[]
-  comments              Comment[]
-  commissionRules       CommissionRule[]
-  commissionSeasons     CommissionSeason[]
-  cycleCounts           CycleCount[]
-  inventoryRounds       InventoryRound[]
-  inventoryMovements    InventoryMovement[]
-  cycleCountTags        CycleCountTag[]
-  dataSources           DataSource[]
-  plans                 DayPlan[]
-  evidences             Evidence[]
-  inventoryReports      InventoryReport[]
-  kpis                  Kpi[]
-  kpiTargets            KpiTarget[]
-  kudos                 Kudo[]
-  notifications         Notification[]
-  pendings              Pending[]
-  schedules             Schedule[]
-  attendances           Attendance[]
-  shiftSwaps            ShiftSwap[]
-  uniformDays           UniformDay[]
-  shiftRequests         ShiftRequest[]
-  fixtures              StoreFixture[]
-  logEntries            StoreLog[]
-  subscriptionPayments  SubscriptionPayment[]
-  surveys               Survey[]
-  trainingResources     TrainingResource[]
-  users                 User[]
-  aiMemories            AiMemory[]
-  aiPlanHistories       AiPlanHistory[]
-  aiRecommendations     AiRecommendationHistory[]
-  aiDailySummaries      AiDailySummary[]
-  retailAlertLogs       RetailAlertLog[]
-  reportDeliveries      ReportDelivery[]
+  kpisEnabled             Boolean                   @default(true)
+  announcements           Announcement[]
+  chatRooms               ChatRoom[]
+  checklistEntries        ChecklistEntry[]
+  checklistScans          ChecklistScan[]
+  checklistItems          ChecklistItem[]
+  choreAssignments        ChoreAssignment[]
+  comments                Comment[]
+  commissionRules         CommissionRule[]
+  commissionSeasons       CommissionSeason[]
+  cycleCounts             CycleCount[]
+  inventoryRounds         InventoryRound[]
+  inventoryMovements      InventoryMovement[]
+  cycleCountTags          CycleCountTag[]
+  dataSources             DataSource[]
+  plans                   DayPlan[]
+  evidences               Evidence[]
+  inventoryReports        InventoryReport[]
+  kpis                    Kpi[]
+  kpiTargets              KpiTarget[]
+  kudos                   Kudo[]
+  notifications           Notification[]
+  pendings                Pending[]
+  schedules               Schedule[]
+  attendances             Attendance[]
+  shiftSwaps              ShiftSwap[]
+  uniformDays             UniformDay[]
+  shiftRequests           ShiftRequest[]
+  fixtures                StoreFixture[]
+  logEntries              StoreLog[]
+  subscriptionPayments    SubscriptionPayment[]
+  surveys                 Survey[]
+  trainingResources       TrainingResource[]
+  users                   User[]
+  aiMemories              AiMemory[]
+  aiPlanHistories         AiPlanHistory[]
+  aiRecommendations       AiRecommendationHistory[]
+  aiDailySummaries        AiDailySummary[]
+  retailAlertLogs         RetailAlertLog[]
+  reportDeliveries        ReportDelivery[]
+  weeklyPerformanceCloses WeeklyPerformanceClose[]
 }
 
 model StoreFixture {
@@ -413,6 +414,33 @@ model Schedule {
   @@index([storeId, date])
 }
 
+/// Copia auditable de la Cuota Justa y del cierre semanal de una tienda.
+/// El snapshot se congela al finalizar para que capturas posteriores de KPIs
+/// no cambien silenciosamente un cierre ya entregado.
+model WeeklyPerformanceClose {
+  id             String                  @id @default(cuid())
+  storeId        String
+  weekStart      DateTime                @db.Date
+  weekEnd        DateTime                @db.Date
+  weekNumber     Int
+  status         WeeklyPerformanceStatus @default(DRAFT)
+  upliftPercent  Decimal                 @default(15) @db.Decimal(5, 2)
+  whatsappBudget Decimal                 @default(0) @db.Decimal(12, 2)
+  plan           Json
+  snapshot       Json?
+  note           String?
+  createdBy      String
+  updatedBy      String
+  finalizedBy    String?
+  finalizedAt    DateTime?
+  createdAt      DateTime                @default(now())
+  updatedAt      DateTime                @updatedAt
+  store          Store                   @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@unique([storeId, weekStart])
+  @@index([storeId, status, weekStart])
+}
+
 /// Uniforme que toca cada día de la semana. Editable por gerencia: los uniformes
 /// cambian con las temporadas y no se puede depender de un despliegue para
 /// cambiar "roja" por "guinda".
@@ -675,13 +703,13 @@ model CommissionRule {
   // Los tres campos son aditivos a propósito: con `payoutType = PERCENT` y los
   // importes en null, el cálculo es exactamente el de siempre. Las reglas ya
   // existentes de las demás marcas no cambian de comportamiento.
-  payoutType        CommissionPayoutType @default(PERCENT)
+  payoutType      CommissionPayoutType @default(PERCENT)
   /// Importe fijo en temporada regular. Solo se lee si payoutType = FIXED.
-  fixedAmount       Decimal? @db.Decimal(12, 2)
+  fixedAmount     Decimal?             @db.Decimal(12, 2)
   /// Importe fijo en temporada alta. Si es null, se usa `fixedAmount`.
-  fixedAmountHigh   Decimal? @db.Decimal(12, 2)
+  fixedAmountHigh Decimal?             @db.Decimal(12, 2)
 
-  store             Store    @relation(fields: [storeId], references: [id])
+  store Store @relation(fields: [storeId], references: [id])
 }
 
 /// Rangos de TEMPORADA ALTA por tienda. Un periodo sin fila que lo cubra se
@@ -1111,15 +1139,15 @@ model MatchEvent {
 }
 
 model CycleCountTag {
-  id        String            @id @default(cuid())
-  storeId   String
-  number    Int
-  zone      CycleCountZone
-  label     String?
-  active    Boolean           @default(true)
+  id              String            @id @default(cuid())
+  storeId         String
+  number          Int
+  zone            CycleCountZone
+  label           String?
+  active          Boolean           @default(true)
   /// Sección a la que pertenece el marbete («DAMA»). El juego se arma solo: el
   /// primer conteo diario enrola cada marbete que se escanea.
-  section   String?
+  section         String?
   /// Posición en el export de la sección: 1, 2, 3… El número de marbete es
   /// INTERNO —es lo que dice la etiqueta física— y no sirve para reportar.
   ///
@@ -1129,9 +1157,9 @@ model CycleCountTag {
   /// el «marbete 3» de hoy deja de ser el de ayer y todo el histórico que ya
   /// vio quien recibe el reporte queda mintiendo hacia atrás.
   sectionPosition Int?
-  createdAt DateTime          @default(now())
-  entries   CycleCountEntry[]
-  store     Store             @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  createdAt       DateTime          @default(now())
+  entries         CycleCountEntry[]
+  store           Store             @relation(fields: [storeId], references: [id], onDelete: Cascade)
 
   @@unique([storeId, number])
   @@unique([storeId, section, sectionPosition])
@@ -1257,40 +1285,40 @@ model InventoryRound {
 /// Nada se sobrescribe ni se borra para corregir: se registra otro movimiento.
 /// Un kardex que se puede editar deja de poder explicar su propio número.
 model InventoryMovement {
-  id          String                @id @default(cuid())
-  storeId     String
+  id              String                @id @default(cuid())
+  storeId         String
   /// Ronda a la que pertenece. Un movimiento sin ronda no tiene base contra la
   /// cual significar nada.
-  roundId     String
-  date        DateTime
-  type        InventoryMovementType
+  roundId         String
+  date            DateTime
+  type            InventoryMovementType
   /// Piezas, siempre > 0. El sentido lo da `type`.
-  quantity    Int
+  quantity        Int
   /// Caja, folio del traspaso o número de pedido en SFS.
-  reference   String?
+  reference       String?
   /// Manifiesto. Es lo que permite rastrear el envío con Axo.
-  document    String?
+  document        String?
   /// Entrega, en la recepción de mercancía.
-  delivery    String?
+  delivery        String?
   /// Tienda destino/origen, CEDIS, o de dónde vino la mercancía. Es la etiqueta
   /// legible; el APTO va en `counterpartCode`.
-  counterpart String?
+  counterpart     String?
   /// APTO del catálogo (`lib/inventory-counterparts.ts`). Sin él, «CUERNAVACA»
   /// puede ser dos tiendas distintas y el traspaso deja de ser rastreable.
   counterpartCode String?
   /// Piezas de más y de menos halladas al abrir la caja. NO entran al teórico
   /// —`quantity` ya son las piezas realmente recibidas—, pero son la primera
   /// pista cuando el conteo de cierre no cuadra.
-  surplus     Int?
-  missing     Int?
-  note        String?
+  surplus         Int?
+  missing         Int?
+  note            String?
   /// Quién recibe o quién recolecta. Texto libre: la captura entra por API
   /// externa y ahí aparecen tanto personas como paqueterías («ESTAFETA»).
-  createdBy   String?
-  createdAt   DateTime              @default(now())
-  updatedAt   DateTime              @updatedAt
-  store       Store                 @relation(fields: [storeId], references: [id], onDelete: Cascade)
-  round       InventoryRound        @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  createdBy       String?
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+  store           Store                 @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  round           InventoryRound        @relation(fields: [roundId], references: [id], onDelete: Cascade)
 
   @@index([storeId, date])
   @@index([roundId, date])
@@ -1423,6 +1451,11 @@ enum ScheduleStatus {
   PAID_DAY
   INVENTORY
   TERMINATED
+}
+
+enum WeeklyPerformanceStatus {
+  DRAFT
+  FINALIZED
 }
 
 enum NotificationType {

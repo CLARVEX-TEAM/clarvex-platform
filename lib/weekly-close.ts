@@ -11,6 +11,7 @@ import type { KpiReportItem } from "./kpi-report";
 export type WeeklyCloseFocus = "UPT" | "AUR" | "FELICIDADES" | "SIN DATOS";
 
 export type WeeklyCloseColumn = {
+  userId: string;
   name: string;
   role: KpiReportItem["role"];
   goal: number;
@@ -118,6 +119,7 @@ export function buildWeeklyCloseColumn(item: KpiReportItem, store: KpiReportItem
   const lossUpt = hasOwn && hasStore ? round2((item.pieces / item.transactions - store.pieces / store.transactions) * item.transactions * (item.sales / item.pieces)) : null;
   const lossAur = hasOwn && hasStore ? round2((item.sales / item.pieces - store.sales / store.pieces) * item.pieces) : null;
   return {
+    userId: item.userId,
     name: firstName(item.userName),
     role: item.role,
     goal: item.goal,
