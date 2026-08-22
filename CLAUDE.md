@@ -564,7 +564,10 @@ El % de comisión difiere por puesto pero el mínimo de referencia es el mismo p
   `app.adrianluna.mx` aparece una banda global con Marquee y Animated Beam que
   anuncia `team.clarvex.tech` y explica que la huella se registrará otra vez.
   No aparece ni enlaza al servidor AWS mientras las bases conviven, para evitar
-  capturas que se perderían con el volcado final.
+  capturas que se perderían con el volcado final. Se desplegó en Vultr como
+  `c48d95e`; respaldo previo
+  `/root/pre-domain-banner-c48d95e-20260821.dump`, migración WebAuthn aplicada,
+  dos procesos PM2 `online` y health correcto. AWS no se tocó.
 - **La app está ABIERTA** desde el 13 de agosto de 2026. El VPS tiene
   `MAINTENANCE_MODE=0`; ambas instancias PM2 están `online`, `/api/health`
   responde correctamente y el acceso normal llega a `/login` sin mostrar la

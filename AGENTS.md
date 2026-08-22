@@ -1113,6 +1113,15 @@ El aviso previo al corte ya está construido en el layout global:
 - el descarte dura solo la sesión. No usar `localStorage`: cerrarlo una vez no
   debe silenciar para siempre un cambio de dirección.
 
+**Desplegado en Vultr el 21 de agosto de 2026** como `c48d95e`. El servidor
+estaba atrasado respecto de `main` y el primer build se detuvo correctamente
+antes de recargar PM2 porque faltaba regenerar Prisma para `rpId`. Se creó el
+respaldo `/root/pre-domain-banner-c48d95e-20260821.dump`, se ejecutaron
+`prisma generate` y `prisma migrate deploy`, se aplicó
+`20260822020000_webauthn_rp_id`, el segundo build terminó limpio y las dos
+instancias quedaron `online`; `/api/health` respondió `status=ok`. AWS no se
+tocó.
+
 Pendiente de ese cambio: los **textos legales** (`lib/legal-content.ts`) citan
 `https://app.adrianluna.mx` como la dirección de la Plataforma en términos,
 aviso de privacidad y política de cookies. Eso se actualiza con cuidado, no con
