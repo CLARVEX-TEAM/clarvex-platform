@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { signR2Url } from "@/lib/r2";
 import { paidDaysBalances } from "@/lib/paid-days-account";
 import { vacationBalances } from "@/lib/vacation-account";
+import { RP_ID } from "@/lib/webauthn";
 
 export const dynamic = "force-dynamic";
 
@@ -79,6 +80,23 @@ export async function GET(request: Request) {
   // de menos, y el campo crudo se desfasa en silencio.
   const paid = await paidDaysBalances(users.map((user) => user.id));
 
+  /*
+   * Quién tiene biometría USABLE EN ESTE DOMINIO.
+   *
+   * El booleano `biometricEnabled` del usuario no basta: una credencial vale
+   * solo en el dominio donde se registró. Al mudar la app, el perfil decía
+   * «Face ID / Huella activos» y por eso no ofrecía registrarla — dejando al
+   * usuario sin forma de activarla en el dominio nuevo.
+   */
+  const withCredential = new Set(
+    (
+      await prisma.webAuthnCredential.findMany({
+        where: { userId: { in: users.map((user) => user.id) }, rpId: RP_ID },
+        select: { userId: true }
+      })
+    ).map((credential) => credential.userId)
+  );
+
   return NextResponse.json({
     // Los saldos de RH (horas, vacaciones, días pagados) son sensibles: solo los
     // ve gerencia o el propio colaborador. Cumpleaños y aniversario (birthDate/
@@ -88,7 +106,7 @@ export async function GET(request: Request) {
       const days = vacation.get(user.id);
       const paidBalance = paid.get(user.id);
       return {
-        id: user.id, name: user.name, employeeNumber: user.employeeNumber, role: user.role, avatar: user.name.slice(0, 2).toUpperCase(), photoUrl: user.photoUrl, biometricEnabled: user.biometricEnabled, lastLoginAt: user.lastLoginAt?.toISOString() ?? null,
+        id: user.id, name: user.name, employeeNumber: user.employeeNumber, role: user.role, avatar: user.name.slice(0, 2).toUpperCase(), photoUrl: user.photoUrl, biometricEnabled: withCredential.has(user.id), lastLoginAt: user.lastLoginAt?.toISOString() ?? null,
         birthDate: user.birthDate ? user.birthDate.toISOString().slice(0, 10) : null,
         hireDate: user.hireDate ? user.hireDate.toISOString().slice(0, 10) : null,
         ...(canSeeBalances ? {
