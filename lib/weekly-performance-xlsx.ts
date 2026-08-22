@@ -17,7 +17,7 @@ export async function buildWeeklyPerformanceWorkbook(state: WeeklyPerformanceSta
   const cjPath = requiredSheet(sheets, "CJ");
   let cj = await readPart(zip, cjPath);
   cj = writeCell(cj, "J2", state.store.name);
-  cj = writeCell(cj, "T2", state.week.weekNumber);
+  cj = writeCell(cj, "T2", state.quotaWeek.weekNumber);
   state.quota.days.forEach((day, index) => {
     const left = DAY_COLUMNS[index];
     const right = columnLetter(columnIndex(left) + 1);
@@ -51,7 +51,7 @@ export async function buildWeeklyPerformanceWorkbook(state: WeeklyPerformanceSta
 
   const rdsPath = requiredSheet(sheets, "RDS");
   let rds = await readPart(zip, rdsPath);
-  rds = writeCell(rds, "M2", state.week.weekNumber);
+  rds = writeCell(rds, "M2", state.reportWeek.weekNumber);
   for (let index = 0; index < 10; index += 1) {
     const column = RDS_COLUMNS[index];
     const report = state.report.columns[index];

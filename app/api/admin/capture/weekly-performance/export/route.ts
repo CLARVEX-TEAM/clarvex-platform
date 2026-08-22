@@ -17,7 +17,7 @@ export async function GET(request: Request) {
   try {
     const state = await getWeeklyPerformance(storeId, weekStart);
     const buffer = await buildWeeklyPerformanceWorkbook(state);
-    const filename = `CUOTA-JUSTA-RDS-SEMANA-${state.week.weekNumber}.xlsx`;
+    const filename = `CUOTA-JUSTA-S${state.quotaWeek.weekNumber}-RDS-S${state.reportWeek.weekNumber}.xlsx`;
     if (params.get("format") === "base64") {
       return NextResponse.json({
         ok: true, filename,

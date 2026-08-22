@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import fs from "node:fs/promises";
 import test from "node:test";
 import ExcelJS from "exceljs";
 import JSZip from "jszip";
@@ -14,6 +15,7 @@ const people = [
   { userId: "a2", name: "Asesor Dos", role: "ASESOR" as const }
 ];
 const dates = ["2026-08-23", "2026-08-24", "2026-08-25", "2026-08-26", "2026-08-27", "2026-08-28", "2026-08-29"];
+const reportDates = ["2026-08-16", "2026-08-17", "2026-08-18", "2026-08-19", "2026-08-20", "2026-08-21", "2026-08-22"];
 const presence = Object.fromEntries(dates.map((date) => [date, people.map((person) => person.userId)]));
 const minimums = Object.fromEntries(dates.map((date, index) => [date, 10_000 + index * 1_000]));
 const quota = calculateFairQuota({ dates, people, presence, minimums, whatsappBudget: 700 });
@@ -33,15 +35,17 @@ storeColumn.sales = 4_000;
 
 const state: WeeklyPerformanceState = {
   store: { id: "store-1", name: "TH SAN AGUSTIN" },
-  week: { weekNumber: 34, weekStart: dates[0], weekEnd: dates[6], dates },
+  reportWeek: { weekNumber: 33, weekStart: reportDates[0], weekEnd: reportDates[6], dates: reportDates },
+  quotaWeek: { weekNumber: 34, weekStart: dates[0], weekEnd: dates[6], dates },
   status: "DRAFT", recordId: "close-1", finalizedAt: null, finalizedBy: null,
   plan: { minimums, upliftPercent: 15, whatsappBudget: 700 }, quota,
   schedules: Object.fromEntries(people.map((person) => [person.userId, Object.fromEntries(dates.map((date) => [date, "WORKING"]))])),
-  report: { columns, store: storeColumn }, history: []
+  report: { columns, store: storeColumn, whatsappBudget: 700 }, history: []
 };
 
 test("rellena CJ y RDS conservando el libro original y sin resultados viejos", async () => {
   const buffer = await buildWeeklyPerformanceWorkbook(state);
+  if (process.env.XLSX_VERIFY_OUTPUT) await fs.writeFile(process.env.XLSX_VERIFY_OUTPUT, buffer);
   const diagnosticZip = await JSZip.loadAsync(buffer);
   for (const name of Object.keys(diagnosticZip.files).filter((part) => /^xl\/worksheets\/sheet\d+\.xml$/.test(part))) {
     const xml = await diagnosticZip.file(name)!.async("string");
@@ -54,10 +58,12 @@ test("rellena CJ y RDS conservando el libro original y sin resultados viejos", a
   assert.deepEqual(workbook.worksheets.map((sheet) => sheet.name), ["INSTRUCCIONES", "CJ", "RDS", "Consulta1", "HORARIOS"]);
   assert.equal(workbook.getWorksheet("CJ")!.getCell("J2").value, "TH SAN AGUSTIN");
   assert.equal(workbook.getWorksheet("CJ")!.getCell("T2").value, 34);
+  assert.equal((workbook.getWorksheet("CJ")!.getCell("D6").value as Date).toISOString().slice(0, 10), "2026-08-23");
   assert.equal(workbook.getWorksheet("CJ")!.getCell("D8").value, 10_000);
   assert.equal(workbook.getWorksheet("CJ")!.getCell("C14").value, "Gerente");
   assert.equal(workbook.getWorksheet("CJ")!.getCell("D14").value, 0.1);
   assert.equal(workbook.getWorksheet("RDS")!.getCell("D8").value, 1_000);
+  assert.equal(workbook.getWorksheet("RDS")!.getCell("M2").value, 33);
   assert.equal(workbook.getWorksheet("RDS")!.getCell("M8").value, null);
   assert.equal(workbook.getWorksheet("HORARIOS")!.state, "hidden");
   assert.equal(workbook.getWorksheet("RDS")!.pageSetup.orientation, "landscape");
