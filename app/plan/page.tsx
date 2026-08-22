@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { dashboardDateKey } from "@/lib/dashboard-kpi";
 import { motion } from "framer-motion";
 import { ClipboardList, Flame, Moon, Plus, Sparkles, SunMedium } from "lucide-react";
 import { fetchAppData, type AppData } from "@/lib/app-data";
@@ -32,7 +33,7 @@ export default function PlanPage() {
   const [session, setSession] = useState<User | null>(null);
   const [selectedDay, setSelectedDay] = useState("Hoy");
   const [userId, setUserId] = useState("");
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(dashboardDateKey());
   const [dailyGoal, setDailyGoal] = useState("");
   const [focus, setFocus] = useState("");
   const [message, setMessage] = useState("");
@@ -40,7 +41,7 @@ export default function PlanPage() {
   const toast = useToast();
   const [submitting, setSubmitting] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [genDate, setGenDate] = useState(new Date().toISOString().slice(0, 10));
+  const [genDate, setGenDate] = useState(dashboardDateKey());
   const [generating, setGenerating] = useState(false);
   const [genSaved, setGenSaved] = useState(false);
   const [publishing, setPublishing] = useState(false);

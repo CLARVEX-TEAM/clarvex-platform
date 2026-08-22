@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { dashboardDateKey } from "@/lib/dashboard-kpi";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { CalendarCheck, ClipboardList, Plus, Settings2 } from "lucide-react";
@@ -55,7 +56,7 @@ export function ConteosListView({ desktop = false }: { desktop?: boolean }) {
       const res = await fetch("/api/conteos", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ date: new Date().toISOString().slice(0, 10) })
+        body: JSON.stringify({ date: dashboardDateKey() })
       });
       const data = (await res.json()) as { id?: string; error?: string };
       if (data.error) { setError(data.error); return; }

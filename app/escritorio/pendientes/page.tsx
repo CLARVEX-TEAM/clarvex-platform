@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { dashboardDateKey } from "@/lib/dashboard-kpi";
 import { AnimatePresence, motion } from "framer-motion";
 import { ClipboardCheck, Search, Sparkles, Trash2, X } from "lucide-react";
 import type { Pending } from "@/lib/types";
@@ -40,7 +41,7 @@ const priorityOptions: SelectOption[] = [
   { value: "BAJA", label: "Baja" }
 ];
 
-const todayKey = () => new Date().toISOString().slice(0, 10);
+const todayKey = () => dashboardDateKey();
 
 export default function EscritorioPendientes() {
   const { data, setData, error, reload } = useDesktopData();

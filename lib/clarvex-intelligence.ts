@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { dashboardDateKey } from "@/lib/dashboard-kpi";
 import { AI_CONFIG } from "@/lib/ai/config";
 import { createProviderRouter } from "@/lib/ai/providers/provider-router";
 import { isJsonGenerationFailure, parseModelJson } from "@/lib/ai/parse-model-json";
@@ -392,7 +393,7 @@ Debes responder estrictamente en formato JSON utilizando el siguiente esquema:
       sales: Number(k.dailySales),
       goal: Number(k.dailyGoal),
     }));
-    const todayStr = new Date().toISOString().slice(0, 10);
+    const todayStr = dashboardDateKey();
     const streakResult = computeDailyStreak(streakRows, todayStr);
     const achievements = computeAchievements({
       userKpis: kpis.map((k) => ({

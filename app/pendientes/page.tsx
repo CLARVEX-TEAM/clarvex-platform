@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { dashboardDateKey } from "@/lib/dashboard-kpi";
 import { AnimatePresence, motion } from "framer-motion";
 import { AlertTriangle, ClipboardCheck, Plus, Sparkles, UserRound, X } from "lucide-react";
 import { fetchAppData, type AppData } from "@/lib/app-data";
@@ -26,7 +27,7 @@ export default function PendientesPage() {
   const [category, setCategory] = useState("OPERACION");
   const [priority, setPriority] = useState("MEDIA");
   const [ownerId, setOwnerId] = useState("");
-  const [dueDate, setDueDate] = useState(new Date().toISOString().slice(0, 10));
+  const [dueDate, setDueDate] = useState(dashboardDateKey());
   const [editId, setEditId] = useState<string | null>(null);
   const toast = useToast();
   const [submitting, setSubmitting] = useState(false);
@@ -109,7 +110,7 @@ export default function PendientesPage() {
   const basePendings = isAdvisor && session ? data.pendings.filter((pending) => pending.ownerId === session.id) : data.pendings;
   // El filtro "Hoy" traía una fecha FIJA de junio ("2026-06-05") con un OR que
   // dejaba pasar todo lo no completado: la pestaña nunca mostró los de hoy.
-  const todayKey = new Date().toISOString().slice(0, 10);
+  const todayKey = dashboardDateKey();
   const visiblePendings = basePendings.filter((pending) => {
     if (filter === "urgentes") return pending.priority === "critica" || pending.priority === "alta";
     if (filter === "hoy") return isOpenPending(pending) && pending.dueDate === todayKey;
@@ -118,7 +119,7 @@ export default function PendientesPage() {
 
   function resetForm() {
     setTitle(""); setDescription(""); setCategory("OPERACION"); setPriority("MEDIA");
-    setOwnerId(""); setDueDate(new Date().toISOString().slice(0, 10)); setEditId(null);
+    setOwnerId(""); setDueDate(dashboardDateKey()); setEditId(null);
   }
 
   function editPending(pending: Pending) {

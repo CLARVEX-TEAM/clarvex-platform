@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { dashboardDateKey } from "@/lib/dashboard-kpi";
 import { ClipboardList, Flame, Moon, Plus, Sparkles, SunMedium } from "lucide-react";
 import { fetchAppData, type AppData } from "@/lib/app-data";
 import { money } from "@/lib/format";
@@ -31,14 +32,14 @@ export default function EscritorioPlan() {
   const { data, setData, error, reload } = useDesktopData();
   const toast = useToast();
   const [userId, setUserId] = useState("");
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(dashboardDateKey());
   const [dailyGoal, setDailyGoal] = useState("");
   const [focus, setFocus] = useState("");
   const [message, setMessage] = useState("");
   const [activityChips, setActivityChips] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [genDate, setGenDate] = useState(new Date().toISOString().slice(0, 10));
+  const [genDate, setGenDate] = useState(dashboardDateKey());
   const [generating, setGenerating] = useState(false);
   const [genSaved, setGenSaved] = useState(false);
   const [publishing, setPublishing] = useState(false);

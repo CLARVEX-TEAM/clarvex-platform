@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { dashboardDateKey } from "@/lib/dashboard-kpi";
 import { enforceAiRateLimit, requireSession, isApiError } from "@/lib/api";
 import { ClarvexIntelligence } from "@/lib/clarvex-intelligence";
 import { prisma } from "@/lib/prisma";
@@ -14,7 +15,7 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json().catch(() => ({}));
-    const date = body.date || new Date().toISOString().slice(0, 10);
+    const date = body.date || dashboardDateKey();
     const userId = body.userId;
 
     if (!userId) {
