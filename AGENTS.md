@@ -992,7 +992,70 @@ aws iam delete-user --user-name clarvex-bedrock --profile clarvex
 
 Las credenciales que sobran y nadie borra son las que se filtran dos años después.
 
-## La migración — plan y estado
+## La migración — EN CURSO desde el 21 de agosto de 2026
+
+**Los dos entornos conviven a propósito.** Vultr sigue siendo producción con
+`app.adrianluna.mx`; AWS corre en paralelo con un dominio NUEVO,
+`team.clarvex.tech`. Así no hay un momento de corte: el dominio viejo vive hasta
+que se decida apagarlo.
+
+| Pieza | Estado en AWS |
+|---|---|
+| Instancia | `i-06fd0869766482dc1`, `t4g.medium`, IP `44.200.176.214` |
+| Sistema | Ubuntu 24.04 LTS **ARM (aarch64)**, 30 GB, **8 GB de swap** |
+| Postgres 16 | corriendo, datos restaurados de un respaldo de S3 y **verificados** |
+| Clarvex | PM2 en **cluster con 2 instancias**, health en verde |
+| Proxy | Nginx Proxy Manager con certificado Let's Encrypt |
+| Dominio | `https://team.clarvex.tech` |
+| Crons | **APAGADOS a propósito** |
+
+### ⚠️ Reglas mientras convivan los dos
+
+**Ningún cron en AWS.** Si los dos servidores corren los mismos crons, el equipo
+recibe cada notificación push **por duplicado** y los respaldos se pisan. Se
+encienden el día que se apague Vultr, no antes.
+
+**En AWS solo pruebas, nunca captura real.** Todo lo que se capture ahí se
+pierde: el día del cambio se trae un volcado fresco de Vultr y se restaura
+encima. Dos sistemas vivos son dos bases de datos, y bifurcadas no se reúnen.
+
+**Retool sigue apuntando a Vultr.** Es lo que usa la gerencia a diario.
+
+### Lo que costó tiempo, para no repetirlo
+
+- ⚠️ **El build muere por falta de memoria sin swap.** Misma RAM que Vultr, pero
+  aquel tiene 8 GB de swap y la instancia nueva venía sin nada. `next build` se
+  mataba con código 137 al verificar tipos.
+- ⚠️ **PM2 en modo `fork` no sirve.** `pm2 start "pnpm run start"` deja las dos
+  instancias peleando por el puerto 3000 (una acumulaba 7 reinicios). Hay que
+  apuntar al binario: `pm2 start node_modules/next/dist/bin/next -i 2 -- start`.
+- ⚠️ **Nginx NO resuelve `host.docker.internal`.** Está en el `/etc/hosts` del
+  contenedor —`curl` desde dentro funciona— pero nginx usa su propio resolutor
+  para nombres en variables y devuelve 502. Hay que poner la **IP del puente**:
+  `172.17.0.1` en AWS, `172.18.0.1` en Vultr. Es lo que Vultr siempre usó.
+- ⚠️ **El repositorio es privado**: el clon necesita una llave de despliegue,
+  generada en la propia máquina y dada de alta en GitHub **sin permiso de
+  escritura**.
+- ⚠️ **Falta el rol `retool` en la base restaurada.** Son los 76 errores
+  ignorados del `pg_restore`. No afecta a los datos, pero hay que crearlo antes
+  del corte o el panel se queda sin poder leer.
+
+### El cambio de dominio: lo que se rompe
+
+Medido antes de decidir: **5 credenciales biométricas** y **15 suscripciones
+push** se invalidan, porque unas y otras van atadas al dominio. Es una garantía
+del estándar WebAuthn, no un detalle: impide que un sitio falso reutilice una
+huella. Las 5 personas tienen que volver a registrarla, y quien tenga la PWA
+instalada apunta al dominio viejo.
+
+Con 19 usuarios es asumible, pero **hay que avisarlo**, no descubrirlo.
+
+Pendiente de ese cambio: los **textos legales** (`lib/legal-content.ts`) citan
+`https://app.adrianluna.mx` como la dirección de la Plataforma en términos,
+aviso de privacidad y política de cookies. Eso se actualiza con cuidado, no con
+un buscar y reemplazar.
+
+## La migración — el plan original
 
 **No empezada.** El VPS va sobrado: 2 vCPU, 4 GB, carga 0.09, 33 días de
 servicio. Migrar es por aprovechar los créditos, no por necesidad.
