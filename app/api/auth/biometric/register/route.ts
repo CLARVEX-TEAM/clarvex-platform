@@ -56,11 +56,14 @@ export async function POST(request: Request) {
       credentialId: credential.id,
       publicKey: Buffer.from(credential.publicKey).toString("base64url"),
       counter: credential.counter,
-      transports: body.response.transports ? JSON.stringify(body.response.transports) : null
+      transports: body.response.transports ? JSON.stringify(body.response.transports) : null,
+      // El dominio donde se registró: una credencial no vale en otro.
+      rpId: RP_ID
     },
     update: {
       publicKey: Buffer.from(credential.publicKey).toString("base64url"),
-      counter: credential.counter
+      counter: credential.counter,
+      rpId: RP_ID
     }
   });
 

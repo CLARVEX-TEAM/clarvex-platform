@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { rateLimitAuth, rateLimitInspect } from "@/lib/rate-limit";
 import { clientIp } from "@/lib/request-ip";
 import { hashPin, publicUser, publicUserPreAuth, verifyPin, canSetupPin } from "@/lib/security";
+import { RP_ID } from "@/lib/webauthn";
 import { createSessionToken, SESSION_COOKIE, sessionCookieOptions, getServerSession } from "@/lib/session";
 import { hasRealEmail } from "@/lib/email";
 
@@ -42,9 +43,23 @@ export async function POST(request: Request) {
   if (isInspect) {
     // Los usuarios desactivados se tratan como inexistentes.
     if (!user || !user.active) return NextResponse.json({ error: "Numero de empleado no encontrado." }, { status: 404 });
+    /*
+     * El botón de huella se ofrece solo si hay credencial PARA ESTE DOMINIO.
+     *
+     * `biometricEnabled` no alcanza: es un booleano del usuario y no sabe de
+     * dominios. Al mudar la app a `team.clarvex.tech`, las credenciales viejas
+     * seguían contando y el botón aparecía para fallar con «no hay llaves de
+     * acceso» — un error que no le dice nada a quien lo vive.
+     */
+    const usableCredentials = user.biometricEnabled
+      ? await prisma.webAuthnCredential.count({ where: { userId: user.id, rpId: RP_ID } })
+      : 0;
     // Sin sesión: solo lo mínimo (ver publicUserPreAuth). Nada de foto, rol,
     // último acceso ni id interno — es cosechable tecleando números de empleado.
-    return NextResponse.json({ user: publicUserPreAuth(user), requiresPinSetup: !user.pinHash });
+    return NextResponse.json({
+      user: publicUserPreAuth({ ...user, biometricEnabled: usableCredentials > 0 }),
+      requiresPinSetup: !user.pinHash
+    });
   }
 
   // Unified error for "not found", "deactivated" and "wrong PIN" to prevent user enumeration via login

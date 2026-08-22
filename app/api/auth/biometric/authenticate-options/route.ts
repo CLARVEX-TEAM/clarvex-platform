@@ -24,7 +24,11 @@ export async function POST(request: Request) {
 
   const user = await prisma.user.findUnique({
     where: { employeeNumber: parsed.data.employeeNumber },
-    include: { webAuthnCredentials: { select: { credentialId: true, transports: true } } }
+    // Solo las credenciales de ESTE dominio: una registrada en otro no sirve
+    // aquí, y ofrecerla es lo que produce el «no hay llaves de acceso».
+    include: {
+      webAuthnCredentials: { where: { rpId: RP_ID }, select: { credentialId: true, transports: true } }
+    }
   });
   // Misma respuesta para inexistente / inactivo / sin biometría: evita enumerar
   // qué empleados tienen Face ID / huella registrada.

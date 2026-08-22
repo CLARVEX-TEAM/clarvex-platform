@@ -746,10 +746,21 @@ model WebAuthnCredential {
   publicKey    String
   counter      BigInt   @default(0)
   transports   String?
+  /// Dominio donde se registró (el «RP ID» de WebAuthn).
+  ///
+  /// ⚠️ Una credencial vale SOLO en su dominio: es una garantía del estándar,
+  /// no un detalle de implementación — impide que un sitio falso reutilice una
+  /// huella. Sin guardarlo, al mudar de dominio la app seguía ofreciendo
+  /// «Entrar con huella» y el teléfono respondía «no hay llaves de acceso», un
+  /// error incomprensible para quien lo vive.
+  ///
+  /// Nulo = registrada antes de que esto existiera, o sea en el dominio viejo.
+  rpId         String?
   createdAt    DateTime @default(now())
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+  @@index([userId, rpId])
 }
 
 model WebAuthnChallenge {
