@@ -1006,8 +1006,29 @@ que se decida apagarlo.
 | Postgres 16 | corriendo, datos restaurados de un respaldo de S3 y **verificados** |
 | Clarvex | PM2 en **cluster con 2 instancias**, health en verde |
 | Proxy | Nginx Proxy Manager con certificado Let's Encrypt |
-| Dominio | `https://team.clarvex.tech` |
+| Dominio | `https://team.clarvex.tech` — **funcionando, probado con PIN** |
 | Crons | **APAGADOS a propósito** |
+
+Falta ahí: n8n, Uptime Kuma, Portainer, Vaultwarden, el rol `retool` de la base
+y los textos legales.
+
+### Cómo se despliega en la máquina nueva
+
+```bash
+ssh -i ~/.ssh/clarvex_vultr_2026 ubuntu@44.200.176.214
+cd ~/clarvex-app && git pull
+pnpm install && pnpm exec prisma generate
+pnpm exec prisma migrate deploy     # solo si hay migración nueva
+pnpm run build                       # ⚠️ VERIFICAR que termina bien
+pm2 restart clarvex-team --update-env
+```
+
+⚠️ **`prisma generate` ANTES del build, y comprobar el build ANTES de
+reiniciar.** El 21 de agosto la app se quedó en 502 unos minutos por saltarse
+las dos cosas: el cliente de Prisma no conocía una columna nueva, el build
+falló, y PM2 reinició igual — dejando las dos instancias sin nada que servir.
+Con `| tail` en la tubería, el código de salida es el de `tail`, así que un
+`&&` NO detiene la cadena. Hay que mirar la salida.
 
 ### ⚠️ Reglas mientras convivan los dos
 
@@ -1039,6 +1060,34 @@ encima. Dos sistemas vivos son dos bases de datos, y bifurcadas no se reúnen.
 - ⚠️ **Falta el rol `retool` en la base restaurada.** Son los 76 errores
   ignorados del `pg_restore`. No afecta a los datos, pero hay que crearlo antes
   del corte o el panel se queda sin poder leer.
+
+### La biometría ahora sabe de dominios
+
+Una credencial WebAuthn vale **solo en el dominio donde se registró**. Es una
+garantía del estándar —impide que un sitio falso reutilice una huella—, pero la
+app no guardaba cuál era, así que en `team.clarvex.tech` seguía ofreciendo
+«Entrar con huella» para fallar con «no hay llaves de acceso»: un mensaje del
+W3C en inglés que no le dice nada a quien lo vive.
+
+`WebAuthnCredential.rpId` guarda el dominio. Las filas existentes se marcaron
+con `app.adrianluna.mx` — es el único que ha existido, así que es un hecho.
+
+⚠️ **La bandera se lee en TRES sitios, y los tres tienen que coincidir.**
+Arreglar uno solo deja al usuario peor que antes:
+
+| Ruta | Qué controla |
+|---|---|
+| `/api/auth/employee-login` | el botón de huella en el login |
+| `/api/auth/session` | **el perfil**, que es donde se registra |
+| `/api/app-data` | la lista de usuarios |
+
+Se arreglaron de uno en uno y en medio quedó el peor estado posible: el login ya
+no ofrecía la huella (correcto) pero el perfil seguía diciendo «Face ID activo»
+y por eso **no ofrecía registrarla** — sin ninguna de las dos formas de usarla.
+Si aparece un cuarto sitio que lea `biometricEnabled`, va con la misma regla.
+
+Efecto en la mudanza: quien tenía huella en el dominio viejo simplemente no ve
+el botón hasta registrarla de nuevo desde su perfil.
 
 ### El cambio de dominio: lo que se rompe
 

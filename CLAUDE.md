@@ -547,10 +547,19 @@ El % de comisión difiere por puesto pero el mínimo de referencia es el mismo p
 - **AWS está en marcha desde el 21 de agosto de 2026** — $1,000 anuales de
   créditos por AWS Activate. Cuenta `775711761052`, acceso por SSO con el perfil
   `clarvex`, alerta de presupuesto de $20/mes **midiendo antes de los créditos**.
-  Bedrock ya lee el reporte del POS en producción. **La migración del VPS no ha
-  empezado**; el plan completo, el orden acordado y las trampas están en la
-  sección **AWS** de `AGENTS.md`. Pendiente ligado: **borrar el usuario IAM
-  `clarvex-bedrock`** el día que la app corra en EC2.
+  Bedrock ya lee el reporte del POS en producción y los respaldos se copian
+  también a S3, con una llave que **solo puede escribir**.
+- **La migración del VPS está EN CURSO, con los dos entornos vivos.** Vultr
+  sigue siendo producción en `app.adrianluna.mx`; en AWS corre una copia en
+  `https://team.clarvex.tech` (Ubuntu ARM, Postgres 16, PM2 en cluster, TLS).
+  Los datos se restauraron de un respaldo real de S3 y **se verificaron tabla
+  por tabla** — primera vez que se comprueba que los respaldos sirven.
+  ⚠️ **Mientras convivan: ningún cron en AWS y ninguna captura real ahí.** Dos
+  servidores con los mismos crons mandan cada notificación por duplicado, y lo
+  que se capture en AWS se pierde al restaurar el volcado del corte. El plan
+  completo, el orden y las trampas, en la sección **AWS** de `AGENTS.md`.
+  Pendiente ligado: **borrar el usuario IAM `clarvex-bedrock`** cuando la app
+  corra en EC2.
 - **La app está ABIERTA** desde el 13 de agosto de 2026. El VPS tiene
   `MAINTENANCE_MODE=0`; ambas instancias PM2 están `online`, `/api/health`
   responde correctamente y el acceso normal llega a `/login` sin mostrar la
@@ -1004,6 +1013,26 @@ tokens del escritorio y se pintarían con la paleta del móvil sobre el lienzo
 oscuro. Solución: la clase **`desk-adopt`**, definida en `app/escritorio/desktop.css`.
 
 Mismo motivo por el que los Meteors se ocultan con `body:has([data-surface="desk"])`.
+
+## ⚠️ La huella vale SOLO en el dominio donde se registró
+
+Es una garantía del estándar WebAuthn, no un detalle: impide que un sitio falso
+reutilice una huella. `WebAuthnCredential.rpId` guarda ese dominio, y la app
+solo ofrece las credenciales del dominio actual.
+
+**La bandera se lee en TRES sitios y los tres tienen que coincidir:**
+
+| Ruta | Qué controla |
+|---|---|
+| `/api/auth/employee-login` | el botón de huella en el login |
+| `/api/auth/session` | **el perfil**, que es donde se registra |
+| `/api/app-data` | la lista de usuarios |
+
+⚠️ **Arreglar solo uno deja al usuario peor que antes.** Pasó el 21 de agosto:
+el login ya no ofrecía la huella (correcto) pero el perfil seguía diciendo «Face
+ID activo» y por eso no ofrecía registrarla — sin ninguna de las dos formas de
+usarla. Si aparece un cuarto sitio que lea `biometricEnabled`, va con la misma
+regla: la pregunta no es «¿tiene biometría?» sino «¿tiene credencial AQUÍ?».
 
 ## ⚠️ El usuario kiosko NO es un asesor
 
