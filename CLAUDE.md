@@ -5,10 +5,10 @@
 La Cuota Justa y el RDS se administran en Retool desde `/cuota-justa`; el Excel
 deja de ser la base y pasa a ser una exportacion.
 
-**Son periodos distintos:** la fecha seleccionada identifica la semana que
-termina y alimenta el RDS; la Cuota Justa usa automaticamente la semana
-inmediata siguiente. Ejemplo vigente: RDS S33 (16-22 ago) y CJ S34 (23-29 ago).
-El parametro `weekStart` del API siempre es el inicio de la semana del RDS.
+**Son periodos independientes:** Retool tiene un selector para RDS y otro para
+Cuota Justa. Por defecto abre RDS en la semana anterior y CJ en la semana
+actual, que es el flujo real de los domingos. El API usa `reportWeekStart` y
+`quotaWeekStart`; `weekStart` queda solo como compatibilidad heredada.
 
 - `lib/fair-quota.ts`: minimo diario + 15 %, gerente 10 %, subgerente 15 % y
   remanente entre asesores presentes. `INVENTORY` cuenta como laborado. Cada dia
@@ -39,7 +39,13 @@ Correccion de periodos desplegada el mismo dia: Clarvex `17c1826` y Retool
 con su meta historica de $132,962.06 y CJ S34 por separado; el export fue
 `CUOTA-JUSTA-S34-RDS-S33.xlsx` (51,058 bytes). No requirio migracion.
 
-Validacion: 898 pruebas, ESLint y build de produccion en verde; `retool check`
+Selectores independientes desplegados el mismo dia: Clarvex `ada8c46` y Retool
+`afa34f8` (commit posterior al publish `e617f3f`). Produccion acepto RDS S33 con
+CJ S35 en una prueba de solo lectura, demostrando que ya no fuerza semanas
+consecutivas. Al guardar el primer borrador, la pareja elegida queda fija para
+evitar mover metas ya aplicadas a otra semana.
+
+Validacion: 899 pruebas, ESLint y build de produccion en verde; `retool check`
 pasa las cuatro fases locales.
 
 ---
