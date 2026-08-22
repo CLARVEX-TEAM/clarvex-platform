@@ -20,6 +20,7 @@
 import { getKardexState } from "@/lib/inventory-kardex";
 import { prisma } from "@/lib/prisma";
 import { PERSON_WHERE } from "@/lib/store-people";
+import { sendOpsAlert } from "@/lib/webhooks";
 
 /** Entradas y salidas, con el signo que les toca. Escrito aparte a propósito. */
 const ENTRADAS = ["RECEPCION", "TRANSFERENCIA_ENTRADA", "DEVOLUCION_CLIENTE", "AJUSTE_POSITIVO"];
@@ -137,7 +138,20 @@ async function main() {
 
   console.error(`[kardex] ⚠️  ${problems.length} problema(s):`);
   for (const problem of problems) console.error(`[kardex]   - ${problem}`);
+
+  /*
+   * El aviso va DESPUÉS de imprimir y de fijar el código de salida.
+   *
+   * El registro y el código de salida son la comprobación; el mensaje a Telegram
+   * es un extra para que alguien se entere hoy y no dentro de un mes. Si n8n
+   * está caído, esto no puede hacer que la auditoría parezca exitosa.
+   */
   process.exitCode = 1;
+  await sendOpsAlert({
+    source: "kardex",
+    title: `Kardex: ${problems.length} problema(s)`,
+    text: problems.map((problem) => `• ${problem}`).join("\n")
+  });
 }
 
 main()

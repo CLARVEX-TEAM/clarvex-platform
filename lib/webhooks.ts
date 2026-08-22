@@ -88,3 +88,55 @@ export async function sendPhotoWebhook(payload: PhotoWebhookPayload): Promise<vo
     // sería mucho peor.
   }
 }
+
+/**
+ * Aviso de operación hacia el mismo n8n: texto, sin foto.
+ *
+ * Nace para la auditoría del kardex, que corre de madrugada por cron: un
+ * registro que nadie lee no es una alarma. Esto sí llega al teléfono.
+ *
+ * ⚠️ **NO usa la lista `WEBHOOK_STORE_IDS`.** Esa lista existe para que las
+ * FOTOS de una tienda no acaben en el canal de otra, y es un filtro por tienda.
+ * Un aviso de operación no es de una tienda: es del sistema, y va a quien
+ * administra. Filtrarlo por tienda lo dejaría mudo justo donde importa —el día
+ * que una tienda sin webhook tenga el problema.
+ *
+ * Igual de silencioso ante fallos que el de fotos: un n8n caído no puede hacer
+ * que la auditoría reporte éxito ni que reviente.
+ */
+export type OpsAlertPayload = {
+  /** n8n bifurca por aquí: `alert` va a `sendMessage`, no a `sendPhoto`. */
+  format: "alert";
+  /** Qué lo produjo, para poder enrutar o filtrar después. */
+  source: string;
+  title: string;
+  /** Ya viene armado y listo para leerse en el teléfono. */
+  text: string;
+  createdAt: string;
+};
+
+export async function sendOpsAlert(payload: Omit<OpsAlertPayload, "format" | "createdAt">): Promise<void> {
+  const url = process.env.WEBHOOK_URL;
+  if (!url) return;
+
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+    await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(process.env.WEBHOOK_SECRET ? { "X-Clarvex-Secret": process.env.WEBHOOK_SECRET } : {})
+      },
+      body: JSON.stringify({
+        ...payload,
+        format: "alert" as const,
+        createdAt: new Date().toISOString()
+      }),
+      signal: controller.signal
+    });
+    clearTimeout(timer);
+  } catch {
+    // Silencio a propósito: el aviso es un extra, no la comprobación.
+  }
+}
