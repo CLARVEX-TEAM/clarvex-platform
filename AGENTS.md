@@ -1478,11 +1478,14 @@ valor anterior. El historial siempre reabre las dos semanas asociadas.
   congela ambos periodos y ya no se edita.
 - `GET|POST /api/admin/capture/weekly-performance` lee/guarda. Guardar solo toca
   `Kpi.dailyGoal` y el `KpiTarget` semanal de WhatsApp: **nunca ventas**.
-- `GET /api/admin/capture/weekly-performance/export` devuelve el XLSX completo,
-  tambien en base64 para Retool. La plantilla exacta esta en
+- `GET /api/admin/capture/weekly-performance/export` devuelve el XLSX, tambien
+  en base64 para Retool. Acepta `document=quota|rds|combined`: genera
+  `CUOTA-JUSTA-S{n}.xlsx`, `RDS-S{n}.xlsx` o el libro combinado. La plantilla exacta esta en
   `templates/cuota-justa-rds.xlsx` y se modifica con JSZip, sin redisenarla.
   Se rellenan `CJ` y `RDS`, se eliminan los `#REF!` heredados de la hoja oculta
-  `HORARIOS` y Excel recalcula las formulas al abrir.
+  `HORARIOS` y Excel recalcula las formulas al abrir. Los archivos separados no
+  borran hojas: ocultan la seccion ajena y abren en `CJ` o `RDS`, conservando
+  formulas, nombres definidos y compatibilidad con la plantilla corporativa.
 - Retool usa `backend/weeklyPerformance/`, fotos del equipo, historial de 12
   semanas, borrador, cierre protegido y descarga. `retool check` pasa hooks,
   validate, typecheck y build.
@@ -1515,6 +1518,16 @@ errores de formula. Build de produccion limpio, dos PM2 `online` y health `ok`.
 rangos exactos, confirmando que no se fuerza `+1 semana`. Retool abre por defecto
 RDS anterior/CJ actual, muestra flechas propias en cada bloque y fija la pareja
 despues del primer borrador.
+
+**Exportaciones separadas desplegadas el 22 de agosto de 2026.** Clarvex
+`72c011a`; Retool `1136ccf`, con commit posterior al publish `586cc23`. La pantalla
+ofrece `Exportar Cuota Justa`, `Exportar RDS` y `Archivo completo`. Cuota abre
+directamente en `CJ` con `RDS` oculta; RDS abre en `RDS` con `CJ` oculta. Los
+dos libros individuales se recalcularon con Microsoft Excel: pestaña activa
+correcta y cero errores de formula. En la prueba real de TH San Agustin se
+generaron `CUOTA-JUSTA-S34.xlsx` (51,060 bytes), `RDS-S33.xlsx` (51,063 bytes)
+y `CUOTA-JUSTA-S34-RDS-S33.xlsx` (51,057 bytes). La suite queda en 900 pruebas;
+build de produccion limpio, dos procesos PM2 online y health `ok`.
 
 #### Importador CJ heredado (respaldo; construido el 17 de agosto de 2026)
 

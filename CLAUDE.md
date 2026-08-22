@@ -19,9 +19,14 @@ actual, que es el flujo real de los domingos. El API usa `reportWeekStart` y
   `GET /api/admin/capture/weekly-performance/export`, con
   `ADMIN_CAPTURE_SECRET`. Guardar actualiza solo metas diarias y el presupuesto
   semanal de WhatsApp; no toca ventas.
+- El export acepta `document=quota|rds|combined`. Retool muestra tres acciones:
+  `Exportar Cuota Justa`, `Exportar RDS` y `Archivo completo`. Los nombres son
+  `CUOTA-JUSTA-S{n}.xlsx`, `RDS-S{n}.xlsx` y el combinado de ambas semanas.
 - La plantilla exacta esta en `templates/cuota-justa-rds.xlsx`. El exportador
   usa JSZip para conservar hojas, estilos y formato de impresion, limpia los
-  `#REF!` de la hoja oculta `HORARIOS` y fuerza recalculo al abrir.
+  `#REF!` de la hoja oculta `HORARIOS` y fuerza recalculo al abrir. En las
+  descargas individuales no elimina hojas: oculta la otra seccion y selecciona
+  la pestaña correcta, para preservar formulas y nombres definidos.
 - El importador por pegado de CJ sigue disponible como respaldo en KPIs.
 - Retool: `backend/weeklyPerformance/*`, `frontend/pages/WeeklyPerformance.tsx`
   y ruta `/cuota-justa`. Desplegar siempre Clarvex antes que Retool.
@@ -45,7 +50,16 @@ CJ S35 en una prueba de solo lectura, demostrando que ya no fuerza semanas
 consecutivas. Al guardar el primer borrador, la pareja elegida queda fija para
 evitar mover metas ya aplicadas a otra semana.
 
-Validacion: 899 pruebas, ESLint y build de produccion en verde; `retool check`
+Exportaciones separadas desplegadas el mismo dia: Clarvex `72c011a`; Retool
+`1136ccf`, con commit posterior al publish `586cc23`. Cuota Justa abre en `CJ`, RDS
+abre en `RDS` y el archivo completo conserva ambas visibles. Los dos archivos
+individuales se abrieron y recalcularon con Microsoft Excel, sin errores de
+formula. Produccion genero `CUOTA-JUSTA-S34.xlsx` (51,060 bytes),
+`RDS-S33.xlsx` (51,063 bytes) y el combinado (51,057 bytes). La validacion queda
+en 900 pruebas, lint, tipos y build limpios; `retool check` pasa sus cuatro
+fases, PM2 tiene dos procesos online y health esta `ok`.
+
+Validacion base anterior: 899 pruebas, ESLint y build de produccion en verde; `retool check`
 pasa las cuatro fases locales.
 
 ---
