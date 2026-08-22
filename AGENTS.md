@@ -1177,6 +1177,30 @@ Cinco registros A apuntan a `216.238.88.93`, **todos con proxy activo**:
 | `status` | Uptime Kuma |
 | `docker` | Portainer |
 
+### n8n: fotos, PDF y alertas de operación — 22 de agosto de 2026
+
+El workflow activo `Clarvex — Fotos y PDF a Telegram`
+(`l8q88gnWzcwYDpvp`) recibe los tres formatos por el mismo webhook. El orden es
+obligatorio: primero `body.format == "alert"`; solo la salida falsa pasa al IF
+existente `body.format == "document"`. Así una alerta de texto nunca llega a
+`sendPhoto` ni a `sendDocument`.
+
+```text
+Webhook → Es alerta? ─true──→ Telegram - Alerta (sendMessage)
+                     └false─→ Es PDF? ─true──→ Telegram - Documento (PDF)
+                                        └false─→ Telegram - Foto
+```
+
+La app ya arma el contenido: alertas con `title` + `text`, archivos con
+`caption` + `imageUrl`. n8n solo enruta y reenvía. El filtro reproducible está
+en `scripts/n8n-add-alert-routing.jq`; antes de aplicarlo se guardó
+`/root/n8n-workflow-backups/20260822-before-alert-routing-v6.json`.
+
+Validación real: ejecución webhook `139` en `success`, sobre la versión
+publicada `e06417f4-2bd6-41a5-82fa-15394849e78d`, recorrió únicamente
+`Es alerta? → Telegram - Alerta`. El workflow quedó activo después de reiniciar
+solo el contenedor `n8n`.
+
 Que estén *proxied* es la clave del día de la migración: el tráfico entra por
 Cloudflare, así que el cambio de IP se propaga casi al instante **y la reversa
 también**, sin esperar TTL. El paso más temido acaba siendo el más reversible.

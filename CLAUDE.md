@@ -395,6 +395,28 @@ Cuando un asesor sube una **evidencia** o un **faltante con foto**, la app avisa
 - La `imageUrl` es una URL **firmada de 6 h** (el bucket R2 es privado); ese margen le permite a n8n reintentar.
 - ⚠️ Las fotos salen de la infraestructura propia: quien esté en el canal las ve.
 
+### Alertas de operación por el mismo webhook — 22 de agosto de 2026
+
+El workflow activo `Clarvex — Fotos y PDF a Telegram`
+(`l8q88gnWzcwYDpvp`) ahora bifurca el payload antes de tocar archivos:
+
+```text
+Webhook → Es alerta?
+              true  → Telegram - Alerta (sendMessage)
+              false → Es PDF?
+                           true  → Telegram - Documento (PDF)
+                           false → Telegram - Foto
+```
+
+- El contrato es `body.format`: `alert`, `document` o `photo`.
+- Una alerta usa `body.title` y `body.text`; no intenta leer `imageUrl`.
+- El cambio se conserva de forma reproducible en
+  `scripts/n8n-add-alert-routing.jq`.
+- Respaldo anterior en el VPS:
+  `/root/n8n-workflow-backups/20260822-before-alert-routing-v6.json`.
+- Prueba de webhook: ejecución n8n `139`, estado `success`, versión publicada
+  `e06417f4-2bd6-41a5-82fa-15394849e78d`; solo ejecutó la rama de alerta.
+
 ## Backups
 
 - **Script:** `scripts/backup-db.ts` (pg_dump → R2 bajo `backups/`, retención 30 días). Corre por crontab diario en el VPS.
