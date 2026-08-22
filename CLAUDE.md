@@ -5,6 +5,11 @@
 La Cuota Justa y el RDS se administran en Retool desde `/cuota-justa`; el Excel
 deja de ser la base y pasa a ser una exportacion.
 
+**Son periodos distintos:** la fecha seleccionada identifica la semana que
+termina y alimenta el RDS; la Cuota Justa usa automaticamente la semana
+inmediata siguiente. Ejemplo vigente: RDS S33 (16-22 ago) y CJ S34 (23-29 ago).
+El parametro `weekStart` del API siempre es el inicio de la semana del RDS.
+
 - `lib/fair-quota.ts`: minimo diario + 15 %, gerente 10 %, subgerente 15 % y
   remanente entre asesores presentes. `INVENTORY` cuenta como laborado. Cada dia
   suma 100 % y el dinero cierra al centavo.
@@ -29,7 +34,12 @@ semana 33, 7 dias y 5 colaboradores, y genero
 `CUOTA-JUSTA-RDS-SEMANA-33.xlsx` valido (51,098 bytes). PM2 quedo con dos
 instancias online y `/api/health` en estado `ok`.
 
-Validacion: 897 pruebas, ESLint y build de produccion en verde; `retool check`
+Correccion de periodos desplegada el mismo dia: Clarvex `17c1826` y Retool
+`ce2b0f3` (commit posterior al publish `ae511d5`). Produccion devolvio RDS S33
+con su meta historica de $132,962.06 y CJ S34 por separado; el export fue
+`CUOTA-JUSTA-S34-RDS-S33.xlsx` (51,058 bytes). No requirio migracion.
+
+Validacion: 898 pruebas, ESLint y build de produccion en verde; `retool check`
 pasa las cuatro fases locales.
 
 ---

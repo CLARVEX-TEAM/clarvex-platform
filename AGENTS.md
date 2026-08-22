@@ -1444,7 +1444,7 @@ Single Next.js 15 (App Router) PWA backed by PostgreSQL via Prisma. `pnpm` is th
 * Login: seeded users `81893` (GERENTE), `102259` (SUBGERENTE), `95739` (ASESOR) were given PIN `1234` during setup. Brand-new users have no PIN and PIN setup requires an authenticated manager/subgerente (see `app/api/auth/employee-login/route.ts`); set a PIN directly with bcrypt (`hashPin`) if you need a fresh login.
 
 ### Lint / typecheck / test / build (matches `.github/workflows/ci.yml`)
-* `pnpm lint`, `pnpm exec tsc --noEmit`, `pnpm test` (897 pruebas al 22 de agosto de 2026; la integración usa `clarvex_test` migrada y sembrada), `pnpm audit --audit-level=high`. `pnpm test:security-protection` también pasa.
+* `pnpm lint`, `pnpm exec tsc --noEmit`, `pnpm test` (898 pruebas al 22 de agosto de 2026; la integración usa `clarvex_test` migrada y sembrada), `pnpm audit --audit-level=high`. `pnpm test:security-protection` también pasa.
 * Known-broken: `pnpm test:integration` fails because it spawns `next dev` with `NODE_ENV=test`, which Next forces back to `development`, tripping the `lib/prisma.ts` guard. It is not part of CI. The harness also SIGKILLs only the parent, leaving orphaned `next-server` processes on port 3101 — kill them by PID if you hit `EADDRINUSE`.
 
 ### Cuota Justa + RDS nativos (22 de agosto de 2026)
@@ -1455,14 +1455,22 @@ muestra el RDS en vivo y exporta el mismo libro de la tienda ya lleno. El pegado
 de CJ en KPIs se conserva temporalmente como respaldo, pero deja de ser el flujo
 principal.
 
+🔴 **La Cuota Justa y el RDS NO son de la misma semana.** La semana seleccionada
+es la que esta terminando y alimenta el RDS; la Cuota Justa se prepara para la
+semana inmediata siguiente. `weekStart` en los endpoints identifica siempre la
+semana del RDS. `lib/weekly-performance-periods.ts` deriva la CJ sumando siete
+dias en UTC. Ejemplo verificado el 22 de agosto: **RDS S33, 16-22 ago; CJ S34,
+23-29 ago**.
+
 - `lib/fair-quota.ts` es el motor puro. La meta diaria es `minimo x 1.15`.
   Gerente recibe 10 %, subgerente 15 % y el remanente se divide entre asesores
   presentes. Si cambia el horario, los porcentajes se ajustan; `INVENTORY`
   cuenta como laborado. Un ajuste manual tiene que sumar exactamente 100 % y
   quien no labora no puede recibir porcentaje. El residuo monetario va a la
   ultima persona para que la suma cierre hasta el centavo.
-- `WeeklyPerformanceClose` guarda una copia por tienda/semana. `DRAFT` admite
-  cambios; `FINALIZED` congela un snapshot del RDS y ya no se edita.
+- `WeeklyPerformanceClose` se identifica por la semana del RDS y enlaza la
+  Cuota Justa de la semana siguiente. `DRAFT` admite cambios; `FINALIZED`
+  congela ambos periodos y ya no se edita.
 - `GET|POST /api/admin/capture/weekly-performance` lee/guarda. Guardar solo toca
   `Kpi.dailyGoal` y el `KpiTarget` semanal de WhatsApp: **nunca ventas**.
 - `GET /api/admin/capture/weekly-performance/export` devuelve el XLSX completo,
@@ -1473,7 +1481,7 @@ principal.
 - Retool usa `backend/weeklyPerformance/`, fotos del equipo, historial de 12
   semanas, borrador, cierre protegido y descarga. `retool check` pasa hooks,
   validate, typecheck y build.
-- Validacion local: ESLint limpio, build Next limpio y **897 pruebas** en verde,
+- Validacion local: ESLint limpio, build Next limpio y **898 pruebas** en verde,
   incluida la apertura real del XLSX generado con sus cinco hojas.
 
 El orden de salida es obligatorio: migracion + API de Clarvex primero; Retool
@@ -1487,6 +1495,14 @@ Retool publico el commit funcional `7fb6cbf` y avanzo la rama al commit de
 publicacion `d433df9`. La prueba real de solo lectura cargo TH San Agustin,
 semana 33, siete dias y cinco colaboradores; el exportador produjo
 `CUOTA-JUSTA-RDS-SEMANA-33.xlsx` valido, de 51,098 bytes, sin escribir datos.
+
+**Correccion de periodos desplegada el 22 de agosto de 2026.** Clarvex
+`17c1826`, sin migracion adicional; Retool `ce2b0f3`, con commit posterior al
+publish `ae511d5`. La pantalla muestra por separado "RDS, semana que termina" y
+"Cuota Justa, proxima semana". La prueba real devolvio meta historica de
+$132,962.06 para el RDS S33 y una CJ independiente para S34. El libro se genero
+como `CUOTA-JUSTA-S34-RDS-S33.xlsx` (51,058 bytes), recalculo en Excel con cero
+errores de formula. Build de produccion limpio, dos PM2 `online` y health `ok`.
 
 #### Importador CJ heredado (respaldo; construido el 17 de agosto de 2026)
 
