@@ -31,6 +31,8 @@ export type WeeklyPerformancePlan = {
   whatsappBudget: number;
   /** Presupuesto histórico usado por el RDS; se congela al crear el borrador. */
   reportWhatsappBudget?: number;
+  /** Semana elegida para CJ; permite que RDS y cuota se seleccionen por separado. */
+  quotaWeekStart?: string;
 };
 
 export type WeeklyPerformanceState = {
@@ -68,13 +70,27 @@ export type SaveWeeklyPerformanceInput = {
   note?: string;
 };
 
-export async function getWeeklyPerformance(storeId: string, requestedDate: Date): Promise<WeeklyPerformanceState> {
-  const { report, quota: quotaPeriod } = weeklyPerformancePeriods(requestedDate);
+export async function getWeeklyPerformance(
+  storeId: string,
+  reportDate: Date,
+  quotaDate?: Date
+): Promise<WeeklyPerformanceState> {
+  const { report } = weeklyPerformancePeriods(reportDate, quotaDate);
+  const saved = await prisma.weeklyPerformanceClose.findUnique({
+    where: { storeId_weekStart: { storeId, weekStart: report.weekStart } }
+  });
+  const storedQuotaStart = saved
+    ? readPlan(saved.plan)?.quotaWeekStart ?? dayKey(new Date(report.weekStart.getTime() + 7 * DAY_MS))
+    : null;
+  const effectiveQuotaDate = storedQuotaStart
+    ? new Date(`${storedQuotaStart}T00:00:00.000Z`)
+    : quotaDate;
+  const { quota: quotaPeriod } = weeklyPerformancePeriods(reportDate, effectiveQuotaDate);
   const reportDates = weekDates(report.weekStart);
   const quotaDates = weekDates(quotaPeriod.weekStart);
   const previousReportStart = new Date(report.weekStart.getTime() - 7 * DAY_MS);
   const [
-    store, people, quotaSchedules, reportSchedules, saved, previousSaved,
+    store, people, quotaSchedules, reportSchedules, previousSaved,
     history, reportRows, quotaRows, whatsappTarget
   ] = await Promise.all([
     prisma.store.findUnique({ where: { id: storeId }, select: { id: true, name: true } }),
@@ -92,15 +108,12 @@ export async function getWeeklyPerformance(storeId: string, requestedDate: Date)
       select: { userId: true, date: true, status: true, statusRaw: true }
     }),
     prisma.weeklyPerformanceClose.findUnique({
-      where: { storeId_weekStart: { storeId, weekStart: report.weekStart } }
-    }),
-    prisma.weeklyPerformanceClose.findUnique({
       where: { storeId_weekStart: { storeId, weekStart: previousReportStart } },
       select: { plan: true }
     }),
     prisma.weeklyPerformanceClose.findMany({
       where: { storeId }, orderBy: { weekStart: "desc" }, take: 12,
-      select: { weekStart: true, weekEnd: true, weekNumber: true, status: true, updatedAt: true }
+      select: { weekStart: true, weekEnd: true, weekNumber: true, status: true, updatedAt: true, plan: true }
     }),
     prisma.kpi.findMany({
       where: { storeId, date: { gte: report.weekStart, lte: report.weekEnd } },
@@ -119,7 +132,10 @@ export async function getWeeklyPerformance(storeId: string, requestedDate: Date)
   if (!store) throw new Error("Tienda no encontrada.");
 
   const historyView = history.map((item) => {
-    const next = reconstructRdvWeek(new Date(item.weekStart.getTime() + 7 * DAY_MS));
+    const savedQuotaStart = readPlan(item.plan)?.quotaWeekStart;
+    const next = reconstructRdvWeek(savedQuotaStart
+      ? new Date(`${savedQuotaStart}T00:00:00.000Z`)
+      : new Date(item.weekStart.getTime() + 7 * DAY_MS));
     return {
       reportWeekStart: dayKey(item.weekStart),
       reportWeekEnd: dayKey(item.weekEnd),
@@ -154,7 +170,12 @@ export async function getWeeklyPerformance(storeId: string, requestedDate: Date)
     date,
     team.filter((person) => isWorkingStatus(scheduleGrid[person.userId]?.[date])).map((person) => person.userId)
   ]));
-  const savedPlan = readPlan(saved?.plan);
+  const rawSavedPlan = readPlan(saved?.plan);
+  const legacyQuotaStart = dayKey(new Date(report.weekStart.getTime() + 7 * DAY_MS));
+  const savedPlan = rawSavedPlan
+    && (rawSavedPlan.quotaWeekStart ?? legacyQuotaStart) === dayKey(quotaPeriod.weekStart)
+    ? rawSavedPlan
+    : null;
   const priorPlan = readPlan(previousSaved?.plan);
   const defaultReportWhatsappBudget = priorPlan?.whatsappBudget
     ?? (whatsappTarget ? Number(whatsappTarget.value) : 0);
@@ -162,7 +183,8 @@ export async function getWeeklyPerformance(storeId: string, requestedDate: Date)
     minimums: deriveMinimums(quotaDates, quotaRows),
     upliftPercent: 15,
     whatsappBudget: whatsappTarget ? Number(whatsappTarget.value) : 0,
-    reportWhatsappBudget: defaultReportWhatsappBudget
+    reportWhatsappBudget: defaultReportWhatsappBudget,
+    quotaWeekStart: dayKey(quotaPeriod.weekStart)
   };
   const quota = calculateFairQuota({ dates: quotaDates, people: team, presence: quotaPresence, ...plan });
 
@@ -189,24 +211,26 @@ export async function getWeeklyPerformance(storeId: string, requestedDate: Date)
 
 export async function saveWeeklyPerformance(
   storeId: string,
-  requestedDate: Date,
+  reportDate: Date,
+  quotaDate: Date,
   input: SaveWeeklyPerformanceInput,
   actor: string
 ): Promise<WeeklyPerformanceState> {
-  const { report } = weeklyPerformancePeriods(requestedDate);
+  const { report, quota: quotaPeriod } = weeklyPerformancePeriods(reportDate, quotaDate);
   const current = await prisma.weeklyPerformanceClose.findUnique({
     where: { storeId_weekStart: { storeId, weekStart: report.weekStart } },
     select: { status: true }
   });
   if (current?.status === "FINALIZED") throw new Error("Este cierre ya fue finalizado y no admite cambios.");
 
-  const preview = await getWeeklyPerformance(storeId, requestedDate);
+  const preview = await getWeeklyPerformance(storeId, reportDate, quotaDate);
   const plan: WeeklyPerformancePlan = {
     minimums: input.minimums,
     percentages: input.percentages,
     upliftPercent: input.upliftPercent ?? 15,
     whatsappBudget: input.whatsappBudget ?? 0,
-    reportWhatsappBudget: preview.report.whatsappBudget
+    reportWhatsappBudget: preview.report.whatsappBudget,
+    quotaWeekStart: dayKey(quotaPeriod.weekStart)
   };
   const presence = Object.fromEntries(preview.quotaWeek.dates.map((date) => [
     date,
@@ -284,7 +308,7 @@ export async function saveWeeklyPerformance(
   });
   await recalculateMonths(storeId, goalRows.map(({ userId, date }) => ({ userId, date })));
 
-  const refreshed = await getWeeklyPerformance(storeId, requestedDate);
+  const refreshed = await getWeeklyPerformance(storeId, reportDate, quotaDate);
   if (input.action === "finalize") {
     const finalizedAt = new Date();
     const snapshot: WeeklyPerformanceState = {
@@ -303,7 +327,7 @@ export async function saveWeeklyPerformance(
         updatedBy: actor
       }
     });
-    return getWeeklyPerformance(storeId, requestedDate);
+    return getWeeklyPerformance(storeId, reportDate, quotaDate);
   }
   return refreshed;
 }
@@ -403,7 +427,8 @@ function readPlan(value: unknown): WeeklyPerformancePlan | null {
     whatsappBudget: numberOr(item.whatsappBudget, 0),
     reportWhatsappBudget: item.reportWhatsappBudget === undefined
       ? undefined
-      : numberOr(item.reportWhatsappBudget, 0)
+      : numberOr(item.reportWhatsappBudget, 0),
+    quotaWeekStart: typeof item.quotaWeekStart === "string" ? item.quotaWeekStart : undefined
   };
 }
 

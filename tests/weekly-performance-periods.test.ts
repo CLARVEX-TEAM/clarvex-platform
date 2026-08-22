@@ -11,3 +11,13 @@ test("RDS usa la semana que termina y Cuota Justa la inmediata siguiente", () =>
   assert.equal(periods.quota.weekStart.toISOString().slice(0, 10), "2026-08-23");
   assert.equal(periods.quota.weekEnd.toISOString().slice(0, 10), "2026-08-29");
 });
+
+test("los selectores permiten elegir semanas independientes", () => {
+  const periods = weeklyPerformancePeriods(
+    new Date("2026-08-16T00:00:00.000Z"),
+    new Date("2026-08-30T00:00:00.000Z")
+  );
+  assert.equal(periods.report.weekNumber, 33);
+  assert.equal(periods.quota.weekNumber, 35);
+  assert.equal(periods.quota.weekStart.toISOString().slice(0, 10), "2026-08-30");
+});

@@ -12,10 +12,11 @@ export async function GET(request: Request) {
   if (unauthorized) return unauthorized;
   const params = new URL(request.url).searchParams;
   const storeId = params.get("storeId") ?? "";
-  const weekStart = parseDay(params.get("weekStart"));
-  if (!storeId || !weekStart) return NextResponse.json({ error: "Tienda o semana inválida." }, { status: 400 });
+  const reportWeekStart = parseDay(params.get("reportWeekStart") ?? params.get("weekStart"));
+  const quotaWeekStart = parseDay(params.get("quotaWeekStart")) ?? nextWeek(reportWeekStart);
+  if (!storeId || !reportWeekStart || !quotaWeekStart) return NextResponse.json({ error: "Tienda o semanas inválidas." }, { status: 400 });
   try {
-    const state = await getWeeklyPerformance(storeId, weekStart);
+    const state = await getWeeklyPerformance(storeId, reportWeekStart, quotaWeekStart);
     const buffer = await buildWeeklyPerformanceWorkbook(state);
     const filename = `CUOTA-JUSTA-S${state.quotaWeek.weekNumber}-RDS-S${state.reportWeek.weekNumber}.xlsx`;
     if (params.get("format") === "base64") {
@@ -42,3 +43,4 @@ function parseDay(value: string | null) {
   const date = new Date(`${value}T00:00:00.000Z`);
   return Number.isNaN(date.getTime()) ? null : date;
 }
+function nextWeek(value: Date | null) { return value ? new Date(value.getTime() + 7 * 86_400_000) : null; }
