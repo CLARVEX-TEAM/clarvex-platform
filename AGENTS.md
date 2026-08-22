@@ -1196,10 +1196,11 @@ La app ya arma el contenido: alertas con `title` + `text`, archivos con
 en `scripts/n8n-add-alert-routing.jq`; antes de aplicarlo se guardó
 `/root/n8n-workflow-backups/20260822-before-alert-routing-v6.json`.
 
-Validación real: ejecución webhook `139` en `success`, sobre la versión
-publicada `e06417f4-2bd6-41a5-82fa-15394849e78d`, recorrió únicamente
-`Es alerta? → Telegram - Alerta`. El workflow quedó activo después de reiniciar
-solo el contenedor `n8n`.
+Validación real de las tres ramas sobre la versión publicada
+`e06417f4-2bd6-41a5-82fa-15394849e78d`: ejecución `140` → alerta,
+`141` → foto y `142` → documento PDF. Las tres terminaron en `success` y
+recorrieron únicamente su nodo final correspondiente de Telegram. El workflow
+quedó activo después de reiniciar solo el contenedor `n8n`.
 
 Que estén *proxied* es la clave del día de la migración: el tráfico entra por
 Cloudflare, así que el cambio de IP se propaga casi al instante **y la reversa

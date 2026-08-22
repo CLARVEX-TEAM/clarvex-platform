@@ -414,8 +414,10 @@ Webhook → Es alerta?
   `scripts/n8n-add-alert-routing.jq`.
 - Respaldo anterior en el VPS:
   `/root/n8n-workflow-backups/20260822-before-alert-routing-v6.json`.
-- Prueba de webhook: ejecución n8n `139`, estado `success`, versión publicada
-  `e06417f4-2bd6-41a5-82fa-15394849e78d`; solo ejecutó la rama de alerta.
+- Prueba completa de las tres ramas sobre la versión publicada
+  `e06417f4-2bd6-41a5-82fa-15394849e78d`: ejecución `140` → alerta,
+  `141` → foto y `142` → documento PDF. Las tres terminaron en `success` y
+  cada una ejecutó únicamente su nodo final correspondiente de Telegram.
 
 ## Backups
 
