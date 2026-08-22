@@ -21,6 +21,14 @@ deja de ser la base y pasa a ser una exportacion.
 - Retool: `backend/weeklyPerformance/*`, `frontend/pages/WeeklyPerformance.tsx`
   y ruta `/cuota-justa`. Desplegar siempre Clarvex antes que Retool.
 
+Desplegado el 22 de agosto de 2026: Clarvex `2c358cb`, migracion
+`20260822183000_weekly_performance_close` y Retool `7fb6cbf` (commit posterior
+al publish `d433df9`). Respaldo previo:
+`/root/pre-weekly-performance-20260822.dump`. Produccion cargo TH San Agustin,
+semana 33, 7 dias y 5 colaboradores, y genero
+`CUOTA-JUSTA-RDS-SEMANA-33.xlsx` valido (51,098 bytes). PM2 quedo con dos
+instancias online y `/api/health` en estado `ok`.
+
 Validacion: 897 pruebas, ESLint y build de produccion en verde; `retool check`
 pasa las cuatro fases locales.
 

@@ -1479,6 +1479,15 @@ principal.
 El orden de salida es obligatorio: migracion + API de Clarvex primero; Retool
 despues con `retool publish --approve-functions`.
 
+**Desplegado el 22 de agosto de 2026.** Clarvex `2c358cb`, migracion
+`20260822183000_weekly_performance_close` aplicada y respaldo previo en
+`/root/pre-weekly-performance-20260822.dump` (827K). El build de produccion
+paso, las dos instancias PM2 quedaron `online` y `/api/health` respondio `ok`.
+Retool publico el commit funcional `7fb6cbf` y avanzo la rama al commit de
+publicacion `d433df9`. La prueba real de solo lectura cargo TH San Agustin,
+semana 33, siete dias y cinco colaboradores; el exportador produjo
+`CUOTA-JUSTA-RDS-SEMANA-33.xlsx` valido, de 51,098 bytes, sin escribir datos.
+
 #### Importador CJ heredado (respaldo; construido el 17 de agosto de 2026)
 
 Pegar la tabla de la hoja **CJ** del archivo de la tienda y sembrar las metas
