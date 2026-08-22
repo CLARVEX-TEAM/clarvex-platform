@@ -3,6 +3,7 @@ import { getServerSession, SESSION_COOKIE, sessionCookieOptions } from "@/lib/se
 import { prisma } from "@/lib/prisma";
 import { publicUser } from "@/lib/security";
 import { hasRealEmail } from "@/lib/email";
+import { RP_ID } from "@/lib/webauthn";
 
 export const dynamic = "force-dynamic";
 
@@ -13,7 +14,18 @@ export async function GET() {
   if (!user) return NextResponse.json({ error: "Usuario no encontrado." }, { status: 404 });
   // `needsEmail`: sin correo real no puede recuperar su PIN solo (la app le puso
   // un relleno al darlo de alta). Lo consume el aviso global EmailBanner.
-  return NextResponse.json({ user: { ...publicUser(user), storeName: user.store.name, kpisEnabled: user.store.kpisEnabled, platformAdmin: user.platformAdmin, checklistOnly: user.checklistOnly, demo: user.isDemo, needsEmail: !hasRealEmail(user.email) } }, { headers: { "Cache-Control": "private, no-store" } });
+  /*
+   * Biometría USABLE EN ESTE DOMINIO, no el booleano crudo.
+   *
+   * Tercer sitio con la misma regla, junto a `/api/auth/employee-login` (el
+   * botón del login) y `/api/app-data` (la lista de usuarios). Una credencial
+   * vale solo donde se registró: con el booleano a secas, el perfil decía
+   * «Face ID activo» y no ofrecía registrarla, dejando al usuario sin salida.
+   */
+  const usableBiometric = user.biometricEnabled
+    ? (await prisma.webAuthnCredential.count({ where: { userId: user.id, rpId: RP_ID } })) > 0
+    : false;
+  return NextResponse.json({ user: { ...publicUser({ ...user, biometricEnabled: usableBiometric }), storeName: user.store.name, kpisEnabled: user.store.kpisEnabled, platformAdmin: user.platformAdmin, checklistOnly: user.checklistOnly, demo: user.isDemo, needsEmail: !hasRealEmail(user.email) } }, { headers: { "Cache-Control": "private, no-store" } });
 }
 
 export async function DELETE() {
