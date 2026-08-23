@@ -21,7 +21,7 @@ export async function buildWeeklyPerformanceWorkbook(
   const sheets = await mapSheets(zip);
 
   const cjPath = requiredSheet(sheets, "CJ");
-  let cj = await readPart(zip, cjPath);
+  let cj = expandSharedFormulas(await readPart(zip, cjPath));
   cj = writeCell(cj, "J2", state.store.name);
   cj = writeCell(cj, "T2", state.quotaWeek.weekNumber);
   state.quota.days.forEach((day, index) => {
@@ -56,7 +56,8 @@ export async function buildWeeklyPerformanceWorkbook(
   }
   cj = clearFormulaCaches(cj);
   const rdsPath = requiredSheet(sheets, "RDS");
-  let rds = await readPart(zip, rdsPath);
+  let rds = expandSharedFormulas(await readPart(zip, rdsPath));
+  rds = writeCell(rds, "H2", state.store.name);
   rds = writeCell(rds, "M2", state.reportWeek.weekNumber);
   for (let index = 0; index < 10; index += 1) {
     const column = RDS_COLUMNS[index];
@@ -67,10 +68,14 @@ export async function buildWeeklyPerformanceWorkbook(
     }
     const fullName = peopleById.get(report.userId)?.name ?? report.name;
     rds = writeCell(rds, `${column}6`, firstName(fullName));
+    // RDS resume la semana historica seleccionada. La plantilla enlaza estas
+    // celdas a CJ, pero CJ contiene la cuota de la semana siguiente.
+    rds = writeCell(rds, `${column}7`, report.goal);
     rds = writeCell(rds, `${column}8`, report.sales);
     rds = writeCell(rds, `${column}11`, report.transactions);
     rds = writeCell(rds, `${column}12`, report.pieces);
     rds = writeCell(rds, `${column}13`, report.traffic ?? 0);
+    rds = writeCell(rds, `${column}25`, report.waMeta);
     rds = writeCell(rds, `${column}26`, report.waSales ?? 0);
     rds = writeCell(rds, `${column}28`, report.waTransactions ?? 0);
     rds = writeCell(rds, `${column}29`, report.waPieces ?? 0);
@@ -85,7 +90,7 @@ export async function buildWeeklyPerformanceWorkbook(
   zip.file("xl/workbook.xml", forceFullRecalculation(workbook));
   zip.file(cjPath, selectWorksheet(cj, document !== "rds"));
   zip.file(rdsPath, selectWorksheet(rds, document === "rds"));
-  zip.remove("xl/calcChain.xml");
+  await removeStaleCalculationParts(zip);
   return zip.generateAsync({ type: "nodebuffer", compression: "DEFLATE" });
 }
 
@@ -93,6 +98,61 @@ function clearRange(xml: string, row: number, from: number, to: number) {
   let next = xml;
   for (let column = from; column <= to; column += 1) next = writeCell(next, `${columnLetter(column)}${row}`, null);
   return next;
+}
+
+/**
+ * Convierte los grupos `<f t="shared">` de la plantilla en formulas A1
+ * independientes. Despues podemos vaciar personas/columnas no utilizadas sin
+ * dejar un `ref` compartido apuntando a celdas que ya no contienen formula.
+ */
+function expandSharedFormulas(xml: string) {
+  const anchors = new Map<string, { address: string; formula: string }>();
+  for (const cell of xml.matchAll(/<c r="([A-Z]+\d+)"[^>]*?(?<!\/)>([\s\S]*?)<\/c>/g)) {
+    const formula = cell[2].match(/<f\b([^>]*\bt="shared"[^>]*)>([\s\S]*?)<\/f>/);
+    const sharedIndex = formula?.[1].match(/\bsi="(\d+)"/)?.[1];
+    if (sharedIndex !== undefined && formula?.[2]) {
+      anchors.set(sharedIndex, { address: cell[1], formula: formula[2] });
+    }
+  }
+
+  return xml.replace(
+    /<c r="([A-Z]+\d+)"([^>]*?)(?<!\/)>([\s\S]*?)<\/c>/g,
+    (cell, address: string, attrs: string, body: string) => {
+      const expanded = body.replace(
+        /<f\b([^>]*\bt="shared"[^>]*?)(?:\/>|>([\s\S]*?)<\/f>)/,
+        (formulaTag, formulaAttrs: string, formula: string | undefined) => {
+          if (formula) return `<f>${formula}</f>`;
+          const sharedIndex = formulaAttrs.match(/\bsi="(\d+)"/)?.[1];
+          const anchor = sharedIndex === undefined ? undefined : anchors.get(sharedIndex);
+          if (!anchor) throw new Error(`Formula compartida sin ancla en ${address}.`);
+          return `<f>${translateFormula(anchor.formula, anchor.address, address)}</f>`;
+        }
+      );
+      return expanded === body ? cell : `<c r="${address}"${attrs}>${expanded}</c>`;
+    }
+  );
+}
+
+function translateFormula(formula: string, sourceAddress: string, targetAddress: string) {
+  const source = splitAddress(sourceAddress);
+  const target = splitAddress(targetAddress);
+  const columnOffset = target.column - source.column;
+  const rowOffset = target.row - source.row;
+  return formula.replace(
+    /(?<![A-Z0-9_])(\$?)([A-Z]{1,3})(\$?)(\d+)/g,
+    (reference, absoluteColumn: string, letters: string, absoluteRow: string, rowText: string) => {
+      const column = columnIndex(letters) + (absoluteColumn ? 0 : columnOffset);
+      const row = Number(rowText) + (absoluteRow ? 0 : rowOffset);
+      if (column < 1 || row < 1) throw new Error(`Referencia invalida al expandir ${reference} en ${targetAddress}.`);
+      return `${absoluteColumn}${columnLetter(column)}${absoluteRow}${row}`;
+    }
+  );
+}
+
+function splitAddress(address: string) {
+  const match = address.match(/^([A-Z]+)(\d+)$/);
+  if (!match) throw new Error(`Celda invalida: ${address}.`);
+  return { column: columnIndex(match[1]), row: Number(match[2]) };
 }
 
 /** Conserva cada fórmula, pero quita resultados viejos y errores cacheados. */
@@ -119,6 +179,30 @@ function clearAllFormulaCells(xml: string) {
 function forceFullRecalculation(xml: string) {
   const calc = '<calcPr calcId="191028" calcMode="auto" fullCalcOnLoad="1" forceFullCalc="1"/>';
   return /<calcPr[^>]*\/>/.test(xml) ? xml.replace(/<calcPr[^>]*\/>/, calc) : xml.replace("</workbook>", `${calc}</workbook>`);
+}
+
+/**
+ * calcChain es opcional, pero si se elimina la parte tambien deben eliminarse
+ * sus declaraciones. HORARIOS era la unica hoja con metadatos de matrices
+ * dinamicas; al vaciar sus formulas ya no queda ninguna celda `cm`/`vm`, por lo
+ * que metadata.xml tambien queda huerfano. Cualquiera de esas referencias hace
+ * que Excel repare el archivo antes de abrirlo.
+ */
+async function removeStaleCalculationParts(zip: JSZip) {
+  zip.remove("xl/calcChain.xml");
+  zip.remove("xl/metadata.xml");
+  const contentTypesPath = "[Content_Types].xml";
+  const relationshipsPath = "xl/_rels/workbook.xml.rels";
+  const contentTypes = await readPart(zip, contentTypesPath);
+  const relationships = await readPart(zip, relationshipsPath);
+  zip.file(
+    contentTypesPath,
+    contentTypes.replace(/<Override[^>]*(?:calcChain|metadata)\.xml"[^>]*\/>/g, "")
+  );
+  zip.file(
+    relationshipsPath,
+    relationships.replace(/<Relationship[^>]*(?:calcChain|metadata)\.xml"[^>]*\/>/g, "")
+  );
 }
 
 /**

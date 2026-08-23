@@ -30,7 +30,9 @@ function column(person: typeof people[number], goal: number): WeeklyCloseColumn 
   };
 }
 
-const columns = people.map((person) => column(person, quota.personTotals[person.userId].goal));
+// Las metas historicas del RDS son deliberadamente distintas de la CJ siguiente.
+// Asi una formula residual CJ!T14 no puede pasar la prueba por coincidencia.
+const columns = people.map((person, index) => column(person, 2_000 + index * 500));
 const storeColumn = column({ userId: "store", name: "Tienda", role: "GERENTE" }, quota.storeTotal);
 storeColumn.sales = 4_000;
 
@@ -78,6 +80,9 @@ test("rellena CJ y RDS conservando el libro original y sin resultados viejos", a
     ["Itzel", "Adrian", "Alonso", "Jazmín", "Waira"]
   );
   assert.equal(workbook.getWorksheet("RDS")!.getCell("D8").value, 1_000);
+  assert.equal(workbook.getWorksheet("RDS")!.getCell("D7").value, 2_000);
+  assert.equal(workbook.getWorksheet("RDS")!.getCell("D25").value, 100);
+  assert.equal(workbook.getWorksheet("RDS")!.getCell("H2").value, "TH SAN AGUSTIN");
   assert.equal(workbook.getWorksheet("RDS")!.getCell("M2").value, 33);
   assert.equal(workbook.getWorksheet("RDS")!.getCell("M8").value, null);
   assert.equal(workbook.getWorksheet("HORARIOS")!.state, "hidden");
@@ -86,10 +91,15 @@ test("rellena CJ y RDS conservando el libro original y sin resultados viejos", a
   const zip = await JSZip.loadAsync(buffer);
   const xmlParts = await Promise.all(Object.keys(zip.files).filter((name) => /^xl\/worksheets\/sheet\d+\.xml$/.test(name)).map((name) => zip.file(name)!.async("string")));
   assert.equal(xmlParts.some((xml) => xml.includes("#REF!")), false);
+  assert.doesNotMatch(await zip.file("xl/worksheets/sheet2.xml")!.async("string"), /<f[^>]*t="shared"/);
+  assert.doesNotMatch(await zip.file("xl/worksheets/sheet3.xml")!.async("string"), /<f[^>]*t="shared"/);
   const workbookXml = await zip.file("xl/workbook.xml")!.async("string");
   assert.match(workbookXml, /calcMode="auto"/);
   assert.match(workbookXml, /fullCalcOnLoad="1"/);
   assert.equal(Boolean(zip.file("xl/calcChain.xml")), false);
+  assert.equal(Boolean(zip.file("xl/metadata.xml")), false);
+  assert.doesNotMatch(await zip.file("[Content_Types].xml")!.async("string"), /(?:calcChain|metadata)\.xml/);
+  assert.doesNotMatch(await zip.file("xl\/_rels\/workbook.xml.rels")!.async("string"), /(?:calcChain|metadata)\.xml/);
 });
 
 function formulaResult(value: unknown) {
