@@ -1444,7 +1444,7 @@ Single Next.js 15 (App Router) PWA backed by PostgreSQL via Prisma. `pnpm` is th
 * Login: seeded users `81893` (GERENTE), `102259` (SUBGERENTE), `95739` (ASESOR) were given PIN `1234` during setup. Brand-new users have no PIN and PIN setup requires an authenticated manager/subgerente (see `app/api/auth/employee-login/route.ts`); set a PIN directly with bcrypt (`hashPin`) if you need a fresh login.
 
 ### Lint / typecheck / test / build (matches `.github/workflows/ci.yml`)
-* `pnpm lint`, `pnpm exec tsc --noEmit`, `pnpm test` (899 pruebas al 22 de agosto de 2026; la integración usa `clarvex_test` migrada y sembrada), `pnpm audit --audit-level=high`. `pnpm test:security-protection` también pasa.
+* `pnpm lint`, `pnpm exec tsc --noEmit`, `pnpm test` (900 pruebas al 22 de agosto de 2026; la integración usa `clarvex_test` migrada y sembrada), `pnpm audit --audit-level=high`. `pnpm test:security-protection` también pasa.
 * Known-broken: `pnpm test:integration` fails because it spawns `next dev` with `NODE_ENV=test`, which Next forces back to `development`, tripping the `lib/prisma.ts` guard. It is not part of CI. The harness also SIGKILLs only the parent, leaving orphaned `next-server` processes on port 3101 — kill them by PID if you hit `EADDRINUSE`.
 
 ### Cuota Justa + RDS nativos (22 de agosto de 2026)
@@ -1486,10 +1486,14 @@ valor anterior. El historial siempre reabre las dos semanas asociadas.
   `HORARIOS` y Excel recalcula las formulas al abrir. Los archivos separados no
   borran hojas: ocultan la seccion ajena y abren en `CJ` o `RDS`, conservando
   formulas, nombres definidos y compatibilidad con la plantilla corporativa.
+- En las dos tablas de `CJ` y en los encabezados de `RDS` se escribe solo el
+  nombre corto de operacion. `firstName()` conserva el primer nombre salvo la
+  excepcion explicita `JESUS ADRIAN ...` -> `Adrian`. No reordena personas ni
+  altera porcentajes, metas, ventas o formulas.
 - Retool usa `backend/weeklyPerformance/`, fotos del equipo, historial de 12
   semanas, borrador, cierre protegido y descarga. `retool check` pasa hooks,
   validate, typecheck y build.
-- Validacion local: ESLint limpio, build Next limpio y **899 pruebas** en verde,
+- Validacion local: ESLint limpio, build Next limpio y **900 pruebas** en verde,
   incluida la apertura real del XLSX generado con sus cinco hojas.
 
 El orden de salida es obligatorio: migracion + API de Clarvex primero; Retool
@@ -1528,6 +1532,12 @@ correcta y cero errores de formula. En la prueba real de TH San Agustin se
 generaron `CUOTA-JUSTA-S34.xlsx` (51,060 bytes), `RDS-S33.xlsx` (51,063 bytes)
 y `CUOTA-JUSTA-S34-RDS-S33.xlsx` (51,057 bytes). La suite queda en 900 pruebas;
 build de produccion limpio, dos procesos PM2 online y health `ok`.
+
+**Nombres cortos ajustados el 22 de agosto de 2026.**
+`lib/weekly-performance-xlsx.ts` aplica la regla comun de
+`lib/weekly-close.ts` a `CJ!C14:C23`, `CJ!C29:C38` y `RDS!D6:M6`. La cobertura
+usa los cinco nombres reales de TH San Agustin y verifica Itzel, Adrian, Alonso,
+Jazmin y Waira. No requiere migracion ni publicacion de Retool.
 
 #### Importador CJ heredado (respaldo; construido el 17 de agosto de 2026)
 

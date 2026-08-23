@@ -9,10 +9,11 @@ import type { WeeklyPerformanceState } from "../lib/weekly-performance";
 import { buildWeeklyPerformanceWorkbook } from "../lib/weekly-performance-xlsx";
 
 const people = [
-  { userId: "g", name: "Gerente", role: "GERENTE" as const },
-  { userId: "s", name: "Subgerente", role: "SUBGERENTE" as const },
-  { userId: "a1", name: "Asesor Uno", role: "ASESOR" as const },
-  { userId: "a2", name: "Asesor Dos", role: "ASESOR" as const }
+  { userId: "g", name: "ITZEL SAIDY REYES BAUTISTA", role: "GERENTE" as const },
+  { userId: "s", name: "JESUS ADRIAN HERNANDEZ LUNA", role: "SUBGERENTE" as const },
+  { userId: "a1", name: "ALONSO TREVIÑO", role: "ASESOR" as const },
+  { userId: "a2", name: "JAZMÍN CASTRO ZUÑIGA", role: "ASESOR" as const },
+  { userId: "a3", name: "WAIRA ZITLALI POPOCA", role: "ASESOR" as const }
 ];
 const dates = ["2026-08-23", "2026-08-24", "2026-08-25", "2026-08-26", "2026-08-27", "2026-08-28", "2026-08-29"];
 const reportDates = ["2026-08-16", "2026-08-17", "2026-08-18", "2026-08-19", "2026-08-20", "2026-08-21", "2026-08-22"];
@@ -60,8 +61,19 @@ test("rellena CJ y RDS conservando el libro original y sin resultados viejos", a
   assert.equal(workbook.getWorksheet("CJ")!.getCell("T2").value, 34);
   assert.equal((workbook.getWorksheet("CJ")!.getCell("D6").value as Date).toISOString().slice(0, 10), "2026-08-23");
   assert.equal(workbook.getWorksheet("CJ")!.getCell("D8").value, 10_000);
-  assert.equal(workbook.getWorksheet("CJ")!.getCell("C14").value, "Gerente");
+  assert.deepEqual(
+    ["C14", "C15", "C16", "C17", "C18"].map((cell) => workbook.getWorksheet("CJ")!.getCell(cell).value),
+    ["Itzel", "Adrian", "Alonso", "Jazmín", "Waira"]
+  );
+  assert.deepEqual(
+    ["C29", "C30", "C31", "C32", "C33"].map((cell) => formulaResult(workbook.getWorksheet("CJ")!.getCell(cell).value)),
+    ["Itzel", "Adrian", "Alonso", "Jazmín", "Waira"]
+  );
   assert.equal(workbook.getWorksheet("CJ")!.getCell("D14").value, 0.1);
+  assert.deepEqual(
+    ["D6", "E6", "F6", "G6", "H6"].map((cell) => formulaResult(workbook.getWorksheet("RDS")!.getCell(cell).value)),
+    ["Itzel", "Adrian", "Alonso", "Jazmín", "Waira"]
+  );
   assert.equal(workbook.getWorksheet("RDS")!.getCell("D8").value, 1_000);
   assert.equal(workbook.getWorksheet("RDS")!.getCell("M2").value, 33);
   assert.equal(workbook.getWorksheet("RDS")!.getCell("M8").value, null);
@@ -76,6 +88,10 @@ test("rellena CJ y RDS conservando el libro original y sin resultados viejos", a
   assert.match(workbookXml, /fullCalcOnLoad="1"/);
   assert.equal(Boolean(zip.file("xl/calcChain.xml")), false);
 });
+
+function formulaResult(value: unknown) {
+  return value && typeof value === "object" && "result" in value ? value.result : value;
+}
 
 test("exporta Cuota Justa y RDS como archivos independientes sin eliminar hojas", async () => {
   const quotaBuffer = await buildWeeklyPerformanceWorkbook(state, "quota");

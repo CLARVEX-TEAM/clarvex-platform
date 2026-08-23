@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import JSZip from "jszip";
 import { columnLetter, mapSheets, readPart, writeCell } from "@/lib/kardex-xlsx";
+import { firstName } from "@/lib/weekly-close";
 import type { WeeklyPerformanceState } from "@/lib/weekly-performance";
 
 const TEMPLATE_PATH = path.join(process.cwd(), "templates", "cuota-justa-rds.xlsx");
@@ -14,6 +15,7 @@ export async function buildWeeklyPerformanceWorkbook(
   document: WeeklyPerformanceDocument = "combined"
 ) {
   const people = state.quota.days[0]?.allocations ?? [];
+  const peopleById = new Map(people.map((person) => [person.userId, person]));
   if (people.length > 10) throw new Error("El formato original admite un máximo de 10 colaboradores.");
   const zip = await JSZip.loadAsync(await fs.readFile(TEMPLATE_PATH));
   const sheets = await mapSheets(zip);
@@ -44,14 +46,15 @@ export async function buildWeeklyPerformanceWorkbook(
       cj = clearRange(cj, whatsappRow, 3, 20);
       continue;
     }
-    cj = writeCell(cj, `C${quotaRow}`, person.name);
+    const displayName = firstName(person.name);
+    cj = writeCell(cj, `C${quotaRow}`, displayName);
+    cj = writeCell(cj, `C${whatsappRow}`, displayName);
     state.quota.days.forEach((day, dayIndex) => {
       const allocation = day.allocations.find((item) => item.userId === person.userId);
       cj = writeCell(cj, `${DAY_COLUMNS[dayIndex]}${quotaRow}`, (allocation?.percentage ?? 0) / 100);
     });
   }
   cj = clearFormulaCaches(cj);
-
   const rdsPath = requiredSheet(sheets, "RDS");
   let rds = await readPart(zip, rdsPath);
   rds = writeCell(rds, "M2", state.reportWeek.weekNumber);
@@ -62,6 +65,8 @@ export async function buildWeeklyPerformanceWorkbook(
       for (let row = 6; row <= 29; row += 1) rds = writeCell(rds, `${column}${row}`, null);
       continue;
     }
+    const fullName = peopleById.get(report.userId)?.name ?? report.name;
+    rds = writeCell(rds, `${column}6`, firstName(fullName));
     rds = writeCell(rds, `${column}8`, report.sales);
     rds = writeCell(rds, `${column}11`, report.transactions);
     rds = writeCell(rds, `${column}12`, report.pieces);

@@ -174,6 +174,7 @@ test("encabezados usan solo el primer nombre en formato título", () => {
   assert.equal(firstName("WAIRA ZITLALI POPOCA"), "Waira");
   assert.equal(firstName("jazmín castro"), "Jazmín");
   assert.equal(firstName("  Alonso Treviño "), "Alonso");
+  assert.equal(firstName("JESUS ADRIAN HERNANDEZ LUNA"), "Adrian");
   const full = member({ userId: "w2", userName: "WAIRA ZITLALI POPOCA", sales: 100, transactions: 1, pieces: 1 });
   assert.equal(buildWeeklyCloseColumn(full, storeTotal).name, "Waira");
 });

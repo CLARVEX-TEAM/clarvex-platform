@@ -27,6 +27,10 @@ actual, que es el flujo real de los domingos. El API usa `reportWeekStart` y
   `#REF!` de la hoja oculta `HORARIOS` y fuerza recalculo al abrir. En las
   descargas individuales no elimina hojas: oculta la otra seccion y selecciona
   la pestaña correcta, para preservar formulas y nombres definidos.
+- Los encabezados de asesores usan el nombre corto de operacion en las dos
+  tablas de `CJ` y en `RDS`: Itzel, Adrian, Waira, Jazmin y Alonso. La unica
+  excepcion explicita es `JESUS ADRIAN ...`, que se muestra como `Adrian`; esto
+  no cambia el orden, porcentajes, cuotas ni formulas del archivo.
 - El importador por pegado de CJ sigue disponible como respaldo en KPIs.
 - Retool: `backend/weeklyPerformance/*`, `frontend/pages/WeeklyPerformance.tsx`
   y ruta `/cuota-justa`. Desplegar siempre Clarvex antes que Retool.
@@ -58,6 +62,11 @@ formula. Produccion genero `CUOTA-JUSTA-S34.xlsx` (51,060 bytes),
 `RDS-S33.xlsx` (51,063 bytes) y el combinado (51,057 bytes). La validacion queda
 en 900 pruebas, lint, tipos y build limpios; `retool check` pasa sus cuatro
 fases, PM2 tiene dos procesos online y health esta `ok`.
+
+Nombres cortos del Excel ajustados el mismo dia: `lib/weekly-close.ts` concentra
+la regla y `lib/weekly-performance-xlsx.ts` la aplica a `CJ!C14:C23`,
+`CJ!C29:C38` y `RDS!D6:M6`. Validacion local: 900 pruebas, ESLint, tipos y build
+limpios. Sin migracion ni cambios en Retool.
 
 Validacion base anterior: 899 pruebas, ESLint y build de produccion en verde; `retool check`
 pasa las cuatro fases locales.

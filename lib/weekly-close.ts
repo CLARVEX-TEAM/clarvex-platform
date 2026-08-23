@@ -156,8 +156,15 @@ function computeFocus(item: KpiReportItem, lossUpt: number | null, lossAur: numb
 
 function round2(value: number) { return Math.round(value * 100) / 100; }
 
-/** Primer nombre en formato título ("WAIRA ZITLALI POPOCA" → "Waira"), como el formato de tienda. */
+/**
+ * Nombre corto en formato título, como el formato de tienda.
+ * Adrian usa su segundo nombre de forma habitual, no "Jesus".
+ */
 export function firstName(fullName: string) {
-  const first = fullName.trim().split(/\s+/)[0] ?? "";
+  const parts = fullName.trim().split(/\s+/).filter(Boolean);
+  const first = parts[0]?.toLocaleUpperCase("es-MX") === "JESUS"
+    && parts[1]?.toLocaleUpperCase("es-MX") === "ADRIAN"
+    ? parts[1]
+    : parts[0] ?? "";
   return first.charAt(0).toUpperCase() + first.slice(1).toLowerCase();
 }
