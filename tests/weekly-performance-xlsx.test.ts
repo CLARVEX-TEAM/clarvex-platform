@@ -38,7 +38,10 @@ const state: WeeklyPerformanceState = {
   store: { id: "store-1", name: "TH SAN AGUSTIN" },
   reportWeek: { weekNumber: 33, weekStart: reportDates[0], weekEnd: reportDates[6], dates: reportDates },
   quotaWeek: { weekNumber: 34, weekStart: dates[0], weekEnd: dates[6], dates },
-  status: "DRAFT", recordId: "close-1", finalizedAt: null, finalizedBy: null,
+  status: "DRAFT", recordId: "close-1",
+  quotaSavedAt: "2026-08-22T18:00:00.000Z", quotaSavedBy: "Gerencia",
+  reportSavedAt: null, reportSavedBy: null, reportDirty: false,
+  finalizedAt: null, finalizedBy: null,
   plan: { minimums, upliftPercent: 15, whatsappBudget: 700 }, quota,
   schedules: Object.fromEntries(people.map((person) => [person.userId, Object.fromEntries(dates.map((date) => [date, "WORKING"]))])),
   report: { columns, store: storeColumn, whatsappBudget: 700 }, history: []

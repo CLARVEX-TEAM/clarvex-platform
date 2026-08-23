@@ -428,6 +428,11 @@ model WeeklyPerformanceClose {
   whatsappBudget Decimal                 @default(0) @db.Decimal(12, 2)
   plan           Json
   snapshot       Json?
+  quotaSavedAt   DateTime?
+  quotaSavedBy   String?
+  reportSnapshot Json?
+  reportSavedAt  DateTime?
+  reportSavedBy  String?
   note           String?
   createdBy      String
   updatedBy      String

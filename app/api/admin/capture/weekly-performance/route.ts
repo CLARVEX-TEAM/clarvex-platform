@@ -14,7 +14,8 @@ const bodySchema = z.object({
   reportWeekStart: z.string().regex(DATE_RE).optional(),
   quotaWeekStart: z.string().regex(DATE_RE).optional(),
   weekStart: z.string().regex(DATE_RE).optional(),
-  action: z.enum(["draft", "finalize"]),
+  scope: z.enum(["quota", "report"]).optional(),
+  action: z.enum(["draft", "finalize"]).optional(),
   actor: z.string().min(1).max(180),
   minimums: z.record(z.string(), z.number().finite().min(0).max(100_000_000)),
   percentages: percentagesSchema.optional(),
@@ -23,6 +24,8 @@ const bodySchema = z.object({
   note: z.string().max(500).optional()
 }).refine((value) => Boolean(value.reportWeekStart || value.weekStart), {
   message: "Falta la semana del RDS."
+}).refine((value) => Boolean(value.scope || value.action), {
+  message: "Falta indicar que documento se va a guardar."
 });
 
 export async function GET(request: Request) {

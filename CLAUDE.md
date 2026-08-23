@@ -71,6 +71,15 @@ Una exportacion real de TH San Agustin confirmo `Itzel`, `Adrian`, `Alonso`,
 `Jazmin` y `Waira` en las tres zonas; PM2 quedo con dos procesos online y health
 en `ok`.
 
+Guardado independiente preparado el 22 de agosto de 2026: Cuota Justa y RDS ya
+no comparten una accion de borrador/cierre. `POST /weekly-performance` acepta
+`scope=quota|report`; cuota escribe sus metas y RDS guarda su propio snapshot.
+La migracion `20260823004500_weekly_performance_independent_documents` agrega
+marcas de guardado separadas y conserva los cierres anteriores. Retool coloca
+`Guardar` y `Exportar` dentro de cada seccion, mantiene `Exportar Excel completo`
+y avisa si los datos del RDS cambiaron desde su ultimo guardado. Validacion
+local: 903 pruebas, ESLint, tipos, build y `retool check` limpios.
+
 Validacion base anterior: 899 pruebas, ESLint y build de produccion en verde; `retool check`
 pasa las cuatro fases locales.
 

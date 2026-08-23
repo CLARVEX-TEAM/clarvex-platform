@@ -1444,7 +1444,7 @@ Single Next.js 15 (App Router) PWA backed by PostgreSQL via Prisma. `pnpm` is th
 * Login: seeded users `81893` (GERENTE), `102259` (SUBGERENTE), `95739` (ASESOR) were given PIN `1234` during setup. Brand-new users have no PIN and PIN setup requires an authenticated manager/subgerente (see `app/api/auth/employee-login/route.ts`); set a PIN directly with bcrypt (`hashPin`) if you need a fresh login.
 
 ### Lint / typecheck / test / build (matches `.github/workflows/ci.yml`)
-* `pnpm lint`, `pnpm exec tsc --noEmit`, `pnpm test` (900 pruebas al 22 de agosto de 2026; la integración usa `clarvex_test` migrada y sembrada), `pnpm audit --audit-level=high`. `pnpm test:security-protection` también pasa.
+* `pnpm lint`, `pnpm exec tsc --noEmit`, `pnpm test` (903 pruebas al 22 de agosto de 2026; la integración usa `clarvex_test` migrada y sembrada), `pnpm audit --audit-level=high`. `pnpm test:security-protection` también pasa.
 * Known-broken: `pnpm test:integration` fails because it spawns `next dev` with `NODE_ENV=test`, which Next forces back to `development`, tripping the `lib/prisma.ts` guard. It is not part of CI. The harness also SIGKILLs only the parent, leaving orphaned `next-server` processes on port 3101 — kill them by PID if you hit `EADDRINUSE`.
 
 ### Cuota Justa + RDS nativos (22 de agosto de 2026)
@@ -1541,6 +1541,30 @@ Jazmin y Waira. Desplegado en Clarvex `434cc6a`, sin migracion ni publicacion de
 Retool. El smoke de produccion descargo el archivo combinado y confirmo esos
 cinco nombres en las dos tablas de CJ y en RDS; PM2 quedo con dos procesos
 online y `/api/health` en `ok`.
+
+**Guardado independiente de Cuota Justa y RDS (22 de agosto de 2026).** La UI
+ya no presenta un borrador o cierre compartido. Cada seccion tiene su propio
+boton `Guardar` y su propia exportacion; al final solo permanece `Exportar Excel
+completo`. El selector tampoco muestra una flecha entre periodos, porque son
+documentos independientes.
+
+- `POST /api/admin/capture/weekly-performance` acepta `scope: quota|report`.
+  `quota` conserva el comportamiento de negocio existente: valida el reparto,
+  escribe `dailyGoal`, actualiza WhatsApp y recalcula acumulados. `report` no
+  toca metas ni Cuota Justa: guarda exclusivamente el snapshot actual del RDS.
+- La migracion aditiva
+  `20260823004500_weekly_performance_independent_documents` agrega
+  `quotaSavedAt/By`, `reportSnapshot` y `reportSavedAt/By`. El backfill marca
+  todos los registros anteriores como cuotas guardadas y solo trata como RDS
+  guardados a los cierres que ya estaban `FINALIZED`.
+- Un RDS guardado se compara con los KPIs actuales. Si venta, meta o indicadores
+  cambian despues, `reportDirty` obliga a volver a guardar antes de exportar; la
+  Cuota Justa permanece intacta.
+- Compatibilidad durante el despliegue: `action=draft|finalize` sigue aceptado
+  para la version anterior de Retool. Los cierres antiguos finalizados siguen
+  congelados; la interfaz nueva ya no crea cierres conjuntos.
+- Validacion local: 903 pruebas, ESLint, tipos y build Next limpios; `retool
+  check` pasa hooks, validate, typecheck y build.
 
 #### Importador CJ heredado (respaldo; construido el 17 de agosto de 2026)
 

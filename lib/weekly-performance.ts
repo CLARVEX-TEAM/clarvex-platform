@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { reconstructRdvWeek } from "@/lib/rdv-week";
 import { PERSON_WHERE } from "@/lib/store-people";
 import { weeklyPerformancePeriods } from "@/lib/weekly-performance-periods";
+import { weeklyReportChanged } from "@/lib/weekly-performance-documents";
 import {
   buildWeeklyCloseColumn,
   buildWeeklyCloseColumns,
@@ -43,6 +44,11 @@ export type WeeklyPerformanceState = {
   quotaWeek: WeeklyPeriod;
   status: "NEW" | "DRAFT" | "FINALIZED";
   recordId: string | null;
+  quotaSavedAt: string | null;
+  quotaSavedBy: string | null;
+  reportSavedAt: string | null;
+  reportSavedBy: string | null;
+  reportDirty: boolean;
   finalizedAt: string | null;
   finalizedBy: string | null;
   plan: WeeklyPerformancePlan;
@@ -57,6 +63,8 @@ export type WeeklyPerformanceState = {
     quotaWeekEnd: string;
     quotaWeekNumber: number;
     status: "DRAFT" | "FINALIZED";
+    quotaSavedAt: string | null;
+    reportSavedAt: string | null;
     updatedAt: string;
   }>;
 };
@@ -66,7 +74,8 @@ export type SaveWeeklyPerformanceInput = {
   percentages?: Record<string, Record<string, number>>;
   upliftPercent?: number;
   whatsappBudget?: number;
-  action: "draft" | "finalize";
+  scope?: "quota" | "report";
+  action?: "draft" | "finalize";
   note?: string;
 };
 
@@ -79,7 +88,7 @@ export async function getWeeklyPerformance(
   const saved = await prisma.weeklyPerformanceClose.findUnique({
     where: { storeId_weekStart: { storeId, weekStart: report.weekStart } }
   });
-  const storedQuotaStart = saved
+  const storedQuotaStart = saved?.quotaSavedAt
     ? readPlan(saved.plan)?.quotaWeekStart ?? dayKey(new Date(report.weekStart.getTime() + 7 * DAY_MS))
     : null;
   const effectiveQuotaDate = storedQuotaStart
@@ -113,7 +122,10 @@ export async function getWeeklyPerformance(
     }),
     prisma.weeklyPerformanceClose.findMany({
       where: { storeId }, orderBy: { weekStart: "desc" }, take: 12,
-      select: { weekStart: true, weekEnd: true, weekNumber: true, status: true, updatedAt: true, plan: true }
+      select: {
+        weekStart: true, weekEnd: true, weekNumber: true, status: true,
+        quotaSavedAt: true, reportSavedAt: true, updatedAt: true, plan: true
+      }
     }),
     prisma.kpi.findMany({
       where: { storeId, date: { gte: report.weekStart, lte: report.weekEnd } },
@@ -132,7 +144,7 @@ export async function getWeeklyPerformance(
   if (!store) throw new Error("Tienda no encontrada.");
 
   const historyView = history.map((item) => {
-    const savedQuotaStart = readPlan(item.plan)?.quotaWeekStart;
+    const savedQuotaStart = item.quotaSavedAt ? readPlan(item.plan)?.quotaWeekStart : null;
     const next = reconstructRdvWeek(savedQuotaStart
       ? new Date(`${savedQuotaStart}T00:00:00.000Z`)
       : new Date(item.weekStart.getTime() + 7 * DAY_MS));
@@ -144,6 +156,8 @@ export async function getWeeklyPerformance(
       quotaWeekEnd: dayKey(next.weekEnd),
       quotaWeekNumber: next.weekNumber,
       status: item.status,
+      quotaSavedAt: item.quotaSavedAt?.toISOString() ?? null,
+      reportSavedAt: item.reportSavedAt?.toISOString() ?? null,
       updatedAt: item.updatedAt.toISOString()
     };
   });
@@ -153,6 +167,11 @@ export async function getWeeklyPerformance(
       ...frozen,
       status: "FINALIZED",
       recordId: saved!.id,
+      quotaSavedAt: saved!.quotaSavedAt?.toISOString() ?? null,
+      quotaSavedBy: saved!.quotaSavedBy ?? null,
+      reportSavedAt: saved!.reportSavedAt?.toISOString() ?? saved!.finalizedAt?.toISOString() ?? null,
+      reportSavedBy: saved!.reportSavedBy ?? saved!.finalizedBy ?? null,
+      reportDirty: false,
       finalizedAt: saved!.finalizedAt?.toISOString() ?? frozen.finalizedAt,
       finalizedBy: saved!.finalizedBy ?? frozen.finalizedBy,
       history: historyView
@@ -172,7 +191,7 @@ export async function getWeeklyPerformance(
   ]));
   const rawSavedPlan = readPlan(saved?.plan);
   const legacyQuotaStart = dayKey(new Date(report.weekStart.getTime() + 7 * DAY_MS));
-  const savedPlan = rawSavedPlan
+  const savedPlan = saved?.quotaSavedAt && rawSavedPlan
     && (rawSavedPlan.quotaWeekStart ?? legacyQuotaStart) === dayKey(quotaPeriod.weekStart)
     ? rawSavedPlan
     : null;
@@ -192,6 +211,8 @@ export async function getWeeklyPerformance(
   // anterior. Mientras no exista ese cierre, se conserva el target vigente.
   const reportWhatsappBudget = plan.reportWhatsappBudget ?? defaultReportWhatsappBudget;
   const reportView = buildReport(reportRows, people, reportSchedules, reportDates, reportWhatsappBudget);
+  const reportDirty = Boolean(saved?.reportSavedAt)
+    && weeklyReportChanged(saved?.reportSnapshot, reportView);
 
   return {
     store,
@@ -199,6 +220,11 @@ export async function getWeeklyPerformance(
     quotaWeek: periodView(quotaPeriod, quotaDates),
     status: saved?.status ?? "NEW",
     recordId: saved?.id ?? null,
+    quotaSavedAt: saved?.quotaSavedAt?.toISOString() ?? null,
+    quotaSavedBy: saved?.quotaSavedBy ?? null,
+    reportSavedAt: saved?.reportSavedAt?.toISOString() ?? null,
+    reportSavedBy: saved?.reportSavedBy ?? null,
+    reportDirty,
     finalizedAt: saved?.finalizedAt?.toISOString() ?? null,
     finalizedBy: saved?.finalizedBy ?? null,
     plan,
@@ -217,6 +243,7 @@ export async function saveWeeklyPerformance(
   actor: string
 ): Promise<WeeklyPerformanceState> {
   const { report, quota: quotaPeriod } = weeklyPerformancePeriods(reportDate, quotaDate);
+  const scope = input.scope ?? "quota";
   const current = await prisma.weeklyPerformanceClose.findUnique({
     where: { storeId_weekStart: { storeId, weekStart: report.weekStart } },
     select: { status: true }
@@ -224,6 +251,47 @@ export async function saveWeeklyPerformance(
   if (current?.status === "FINALIZED") throw new Error("Este cierre ya fue finalizado y no admite cambios.");
 
   const preview = await getWeeklyPerformance(storeId, reportDate, quotaDate);
+  if (scope === "report") {
+    const reportSavedAt = new Date();
+    const reportSnapshot = {
+      reportWeek: preview.reportWeek,
+      report: preview.report,
+      savedAt: reportSavedAt.toISOString(),
+      savedBy: actor
+    } as unknown as Prisma.InputJsonValue;
+    const fallbackPlan = {
+      ...preview.plan,
+      quotaWeekStart: dayKey(quotaPeriod.weekStart)
+    } as unknown as Prisma.InputJsonValue;
+    await prisma.weeklyPerformanceClose.upsert({
+      where: { storeId_weekStart: { storeId, weekStart: report.weekStart } },
+      update: {
+        weekEnd: report.weekEnd,
+        weekNumber: report.weekNumber,
+        reportSnapshot,
+        reportSavedAt,
+        reportSavedBy: actor,
+        updatedBy: actor
+      },
+      create: {
+        storeId,
+        weekStart: report.weekStart,
+        weekEnd: report.weekEnd,
+        weekNumber: report.weekNumber,
+        upliftPercent: preview.plan.upliftPercent,
+        whatsappBudget: preview.plan.whatsappBudget,
+        plan: fallbackPlan,
+        reportSnapshot,
+        reportSavedAt,
+        reportSavedBy: actor,
+        note: input.note?.trim() || null,
+        createdBy: actor,
+        updatedBy: actor
+      }
+    });
+    return getWeeklyPerformance(storeId, reportDate, quotaDate);
+  }
+
   const plan: WeeklyPerformancePlan = {
     minimums: input.minimums,
     percentages: input.percentages,
@@ -284,6 +352,8 @@ export async function saveWeeklyPerformance(
         upliftPercent: plan.upliftPercent,
         whatsappBudget: plan.whatsappBudget,
         plan: planJson,
+        quotaSavedAt: new Date(),
+        quotaSavedBy: actor,
         note: input.note?.trim() || null,
         updatedBy: actor
       },
@@ -295,6 +365,8 @@ export async function saveWeeklyPerformance(
         upliftPercent: plan.upliftPercent,
         whatsappBudget: plan.whatsappBudget,
         plan: planJson,
+        quotaSavedAt: new Date(),
+        quotaSavedBy: actor,
         note: input.note?.trim() || null,
         createdBy: actor,
         updatedBy: actor
@@ -324,6 +396,14 @@ export async function saveWeeklyPerformance(
         finalizedAt,
         finalizedBy: actor,
         snapshot: snapshot as unknown as Prisma.InputJsonValue,
+        reportSnapshot: {
+          reportWeek: refreshed.reportWeek,
+          report: refreshed.report,
+          savedAt: finalizedAt.toISOString(),
+          savedBy: actor
+        } as unknown as Prisma.InputJsonValue,
+        reportSavedAt: finalizedAt,
+        reportSavedBy: actor,
         updatedBy: actor
       }
     });
