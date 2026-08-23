@@ -1601,6 +1601,24 @@ existentes. `document=quota|rds|combined` aplica igual a ambos formatos.
   verde.
 - Validacion: 905 pruebas, ESLint, tipos y build de produccion en verde.
 
+**Correccion del XLSX de RDS desplegada el 22 de agosto de 2026 (`d63da30`).**
+El archivo tenia tres fallos relacionados que no detectaba ExcelJS:
+
+- `RDS!D7:M7` y `RDS!D25:M25` conservaban formulas hacia `CJ`, por lo que
+  mostraban la meta de la semana siguiente en vez de la meta historica del RDS;
+- al borrar personas/columnas vacias se partian grupos de formulas compartidas
+  (`t="shared"`), y Excel obligaba a usar **Fix it** para reconstruirlos;
+- se quitaba `calcChain.xml` sin retirar todas las partes de calculo huerfanas.
+
+El exportador expande primero las formulas compartidas a formulas A1
+independientes, escribe `report.goal` y `report.waMeta` directamente en RDS y
+elimina `calcChain.xml`/`metadata.xml` junto con sus declaraciones. Cuota, RDS y
+combinado se abrieron con Microsoft Excel en modo normal y recalcularon sin
+reparacion. La prueba real de produccion genero RDS S33: `D7` fue `$12,315.33`
+y `D25` `$118.38`, exactamente iguales al contrato JSON de la misma semana.
+Retool no requirio cambio: sus botones ya consumen este endpoint. Build, tipos,
+ESLint y 905 pruebas en verde; dos procesos PM2 online y health `ok`.
+
 #### Importador CJ heredado (respaldo; construido el 17 de agosto de 2026)
 
 Pegar la tabla de la hoja **CJ** del archivo de la tienda y sembrar las metas

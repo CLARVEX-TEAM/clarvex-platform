@@ -105,6 +105,17 @@ avanzo la rama al commit posterior a publicacion `820daca`. `retool push` paso
 hooks, validacion, tipos y build, y la publicacion aprobo explicitamente la
 funcion de backend modificada.
 
+Correccion del XLSX de RDS desplegada el 22 de agosto de 2026 en Clarvex
+`d63da30`, sin cambios en Retool. Las metas del RDS ya se escriben desde
+`report.goal` y `report.waMeta`, no mediante formulas hacia la CJ de la semana
+siguiente. El exportador tambien expande las formulas compartidas antes de
+vaciar espacios sin colaborador y elimina las partes huerfanas de calculo; esto
+quita la alerta **Fix it** de Excel. Cuota, RDS y combinado abrieron y
+recalcularon en Microsoft Excel sin reparacion. Un RDS S33 generado por la API
+real mostro `$12,315.33` de meta y `$118.38` de meta WhatsApp, iguales al JSON
+de esa misma semana. Validacion: 905 pruebas, ESLint, tipos y build limpios; PM2
+con dos instancias online y health `ok`.
+
 Validacion base anterior: 899 pruebas, ESLint y build de produccion en verde; `retool check`
 pasa las cuatro fases locales.
 
