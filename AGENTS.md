@@ -1575,6 +1575,30 @@ post-publicacion `c8d3873`. Respaldo previo replicado en R2 y S3 como
 Esto demuestra que hacer solo Cuota Justa ya no crea ni guarda un RDS. Build de
 produccion limpio, dos PM2 online y `/api/health` en `ok`.
 
+### PDF de Cuota Justa y RDS - API desplegada, Retool pendiente
+
+`GET /api/admin/capture/weekly-performance/export` acepta ahora
+`output=xlsx|pdf`; si se omite conserva XLSX para no romper las funciones
+existentes. `document=quota|rds|combined` aplica igual a ambos formatos.
+
+- `lib/weekly-performance-pdf.ts` genera Carta horizontal con `pdf-lib`; no usa
+  Excel, LibreOffice ni un navegador en produccion.
+- Cuota Justa replica el archivo corporativo compartido por Adrian: cabecera de
+  tienda y semana, minimo/meta por dia, Punto de Venta, PPTO y WhatsApp.
+- RDS conserva el mismo lenguaje visual y separa Punto de Venta, indicadores,
+  perdidas, indicador a trabajar y WhatsApp. El combinado tiene dos paginas.
+- Los nombres pasan por `firstName`, incluida la excepcion de Adrian.
+- Los tres PDF de prueba se renderizaron a PNG y se revisaron completos; no hay
+  texto cortado, tablas fuera de pagina ni glifos rotos.
+- Clarvex `20edcb3` esta desplegado en Vultr. Una prueba real de TH San Agustin
+  genero un PDF de 22,408 bytes, `%PDF-`, una pagina de 792 x 612 puntos. PM2
+  quedo con dos procesos online y `/api/health` en `ok`.
+- Retool local `cfc5e4a` agrega en cada seccion `Exportar Excel` y `Exportar
+  PDF`, con estado de carga propio, y mantiene `Exportar Excel completo`.
+  **Pendiente:** subir y publicar ese commit. La credencial Git de Retool
+  expiro; no seguir reintentando pushes sin que Adrian vuelva a autenticarse.
+- Validacion: 905 pruebas, ESLint, tipos y build de produccion en verde.
+
 #### Importador CJ heredado (respaldo; construido el 17 de agosto de 2026)
 
 Pegar la tabla de la hoja **CJ** del archivo de la tienda y sembrar las metas

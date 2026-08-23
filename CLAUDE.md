@@ -22,6 +22,13 @@ actual, que es el flujo real de los domingos. El API usa `reportWeekStart` y
 - El export acepta `document=quota|rds|combined`. Retool muestra tres acciones:
   `Exportar Cuota Justa`, `Exportar RDS` y `Archivo completo`. Los nombres son
   `CUOTA-JUSTA-S{n}.xlsx`, `RDS-S{n}.xlsx` y el combinado de ambas semanas.
+- El mismo endpoint acepta `output=xlsx|pdf` (XLSX por omision). Los PDF se
+  generan directamente con `pdf-lib`, sin depender de Excel o LibreOffice en
+  el servidor. Cuota Justa replica el formato corporativo en una pagina Carta
+  horizontal: tienda, semana, minimo/meta, Punto de Venta y WhatsApp. RDS usa
+  una pagina independiente con Punto de Venta, indicadores, perdidas,
+  indicador a trabajar y WhatsApp. `document=combined&output=pdf` produce ambas
+  paginas en un solo archivo.
 - La plantilla exacta esta en `templates/cuota-justa-rds.xlsx`. El exportador
   usa JSZip para conservar hojas, estilos y formato de impresion, limpia los
   `#REF!` de la hoja oculta `HORARIOS` y fuerza recalculo al abrir. En las
@@ -85,6 +92,15 @@ Retool funcional `4781945` (commit posterior al publish `c8d3873`). Respaldo en
 R2 y S3: `backups/clarvex_team-2026-08-23-01-13.dump`. La prueba real guardo
 solo Cuota Justa S34 y confirmo que RDS S33 siguio sin guardar. Build de
 produccion limpio, dos procesos PM2 online y health en `ok`.
+
+Exportacion PDF preparada el 22 de agosto de 2026: Clarvex `20edcb3` ya esta
+desplegado en Vultr. Produccion genero `CUOTA-JUSTA-S34.pdf` valido (22,408
+bytes), una pagina Carta horizontal; PM2 conserva dos procesos online y health
+esta `ok`. Validacion local: 905 pruebas, ESLint, tipos y build limpios; Cuota,
+RDS y combinado se renderizaron a PNG y se revisaron visualmente sin cortes ni
+traslapes. Retool local `cfc5e4a` agrega `Exportar Excel` y `Exportar PDF` dentro
+de cada seccion, pero queda pendiente subir y publicar ese commit porque la
+credencial Git de Retool expiro y requiere que Adrian vuelva a iniciar sesion.
 
 Validacion base anterior: 899 pruebas, ESLint y build de produccion en verde; `retool check`
 pasa las cuatro fases locales.

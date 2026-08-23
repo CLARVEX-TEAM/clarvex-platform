@@ -31,6 +31,10 @@ npm-debug.log*
 *.tsbuildinfo
 .DS_Store
 
+# Artefactos locales de revision de documentos.
+tmp/
+output/pdf/
+
 # Claude Code / agent tooling — no pertenecen al repo del proyecto
 .claude/
 .agents/
