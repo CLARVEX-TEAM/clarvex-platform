@@ -1619,6 +1619,23 @@ y `D25` `$118.38`, exactamente iguales al contrato JSON de la misma semana.
 Retool no requirio cambio: sus botones ya consumen este endpoint. Build, tipos,
 ESLint y 905 pruebas en verde; dos procesos PM2 online y health `ok`.
 
+**Indicadores de alcance del PDF desplegados el 22 de agosto de 2026
+(`2bfe121`).** El RDS en PDF replica los iconos condicionales de la plantilla,
+incluido el total de tienda:
+
+- Punto de venta: punto rojo por debajo de 85 %, punto negro desde 85 % y menos
+  de 100 %, estrella dorada desde 100 %.
+- WhatsApp: punto rojo por debajo de 100 % y estrella dorada desde 100 %; no usa
+  el estado negro, exactamente como el XLSX.
+- Sin meta o sin venta capturada se conserva `-` sin inventar un indicador.
+
+Los iconos son vectores de `pdf-lib`, no glifos dependientes de una fuente. Se
+renderizaron y revisaron el RDS independiente y la pagina RDS del combinado. La
+prueba real de produccion genero RDS S33 de 15,661 bytes, una pagina Carta
+horizontal; sus cinco alcances y el total, todos mayores a 100 %, mostraron
+estrella. Validacion: 906 pruebas, ESLint, tipos y build limpios; dos procesos
+PM2 online y `/api/health` en `ok`. Retool no requirio cambio ni republicacion.
+
 #### Importador CJ heredado (respaldo; construido el 17 de agosto de 2026)
 
 Pegar la tabla de la hoja **CJ** del archivo de la tienda y sembrar las metas

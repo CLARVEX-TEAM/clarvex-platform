@@ -116,6 +116,16 @@ real mostro `$12,315.33` de meta y `$118.38` de meta WhatsApp, iguales al JSON
 de esa misma semana. Validacion: 905 pruebas, ESLint, tipos y build limpios; PM2
 con dos instancias online y health `ok`.
 
+Indicadores del PDF de RDS desplegados el 22 de agosto de 2026 en Clarvex
+`2bfe121`, sin cambios en Retool. El PDF replica el formato condicional del
+Excel: Punto de venta usa rojo `<85 %`, negro `85-<100 %` y estrella `>=100 %`;
+WhatsApp usa rojo `<100 %` y estrella `>=100 %`. Tambien se aplica al total de
+tienda y los valores sin datos quedan sin icono. Los marcadores son vectores,
+por lo que no dependen de fuentes del servidor. El RDS y el combinado se
+renderizaron y revisaron completos. Produccion genero RDS S33 valido de 15,661
+bytes con estrella en las cinco personas y el total. Validacion: 906 pruebas,
+ESLint, tipos y build limpios; dos PM2 online y health `ok`.
+
 Validacion base anterior: 899 pruebas, ESLint y build de produccion en verde; `retool check`
 pasa las cuatro fases locales.
 
