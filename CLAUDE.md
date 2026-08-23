@@ -126,6 +126,17 @@ renderizaron y revisaron completos. Produccion genero RDS S33 valido de 15,661
 bytes con estrella en las cinco personas y el total. Validacion: 906 pruebas,
 ESLint, tipos y build limpios; dos PM2 online y health `ok`.
 
+Correccion del estado guardado de RDS desplegada el 22 de agosto de 2026 en
+Clarvex `46e4a41`, sin cambios en Retool. El guardado si se realizaba, pero
+`reportDirty` seguia en `true` porque el snapshot `jsonb` se comparaba mediante
+`JSON.stringify`: PostgreSQL reordena claves y algunos calculos regresan con
+ruido de punto flotante. La comparacion ahora es semantica, ignora el orden de
+claves, respeta el de arreglos y tolera diferencias numericas menores a
+`0.000001`; un cambio real de un centavo sigue detectandose. Produccion confirmo
+RDS S33 con `reportDirty=false` y PDF valido de una pagina. Validacion: 908
+pruebas, ESLint, tipos y build limpios; dos PM2 online y health `ok`. Retool no
+necesito republicarse.
+
 Validacion base anterior: 899 pruebas, ESLint y build de produccion en verde; `retool check`
 pasa las cuatro fases locales.
 

@@ -1636,6 +1636,23 @@ horizontal; sus cinco alcances y el total, todos mayores a 100 %, mostraron
 estrella. Validacion: 906 pruebas, ESLint, tipos y build limpios; dos procesos
 PM2 online y `/api/health` en `ok`. Retool no requirio cambio ni republicacion.
 
+**Estado guardado del RDS corregido el 22 de agosto de 2026 (`46e4a41`).** El
+boton `Guardar RDS` si persistia el snapshot y actualizaba `reportSavedAt`, pero
+la respuesta seguia enviando `reportDirty=true`; por eso el aviso no
+desaparecia y las exportaciones permanecian bloqueadas. La causa era comparar
+el snapshot `jsonb` con `JSON.stringify`: PostgreSQL no conserva el orden de
+las claves y algunos totales vuelven con ruido de punto flotante, por ejemplo
+`213319.71` frente a `213319.71000000002`.
+
+`lib/weekly-performance-documents.ts` ahora hace una comparacion semantica:
+ignora el orden de claves de objetos, conserva el orden de arreglos y considera
+iguales los numeros dentro de una tolerancia de `0.000001`. Un cambio real de
+un centavo sigue marcando el RDS como pendiente. Produccion confirmo TH San
+Agustin S33 con `reportDirty=false`, sello de guardado vigente y exportacion PDF
+valida de una pagina; dos procesos PM2 online y `/api/health` en `ok`.
+Validacion local: 908 pruebas, ESLint, tipos y build limpios. Fue solo un parche
+del backend de Clarvex: Retool no requirio cambio ni republicacion.
+
 #### Importador CJ heredado (respaldo; construido el 17 de agosto de 2026)
 
 Pegar la tabla de la hoja **CJ** del archivo de la tienda y sembrar las metas
