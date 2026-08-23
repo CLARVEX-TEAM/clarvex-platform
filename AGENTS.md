@@ -1566,6 +1566,15 @@ documentos independientes.
 - Validacion local: 903 pruebas, ESLint, tipos y build Next limpios; `retool
   check` pasa hooks, validate, typecheck y build.
 
+**Desplegado el 22 de agosto de 2026.** Clarvex `3c5a3f0`; migracion aplicada;
+Retool publico el commit funcional `4781945` y avanzo la rama al commit
+post-publicacion `c8d3873`. Respaldo previo replicado en R2 y S3 como
+`backups/clarvex_team-2026-08-23-01-13.dump` (0.81 MB). La prueba real envio
+`scope=quota` para TH San Agustin, S34, usando exactamente su plan vigente:
+`quotaSaved=true`, `reportUnchanged=true` y `reportSaved=false` para RDS S33.
+Esto demuestra que hacer solo Cuota Justa ya no crea ni guarda un RDS. Build de
+produccion limpio, dos PM2 online y `/api/health` en `ok`.
+
 #### Importador CJ heredado (respaldo; construido el 17 de agosto de 2026)
 
 Pegar la tabla de la hoja **CJ** del archivo de la tienda y sembrar las metas

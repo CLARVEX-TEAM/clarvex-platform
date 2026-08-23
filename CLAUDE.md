@@ -80,6 +80,12 @@ marcas de guardado separadas y conserva los cierres anteriores. Retool coloca
 y avisa si los datos del RDS cambiaron desde su ultimo guardado. Validacion
 local: 903 pruebas, ESLint, tipos, build y `retool check` limpios.
 
+Desplegado el 22 de agosto de 2026: Clarvex `3c5a3f0`, migracion aplicada y
+Retool funcional `4781945` (commit posterior al publish `c8d3873`). Respaldo en
+R2 y S3: `backups/clarvex_team-2026-08-23-01-13.dump`. La prueba real guardo
+solo Cuota Justa S34 y confirmo que RDS S33 siguio sin guardar. Build de
+produccion limpio, dos procesos PM2 online y health en `ok`.
+
 Validacion base anterior: 899 pruebas, ESLint y build de produccion en verde; `retool check`
 pasa las cuatro fases locales.
 
