@@ -35,6 +35,23 @@ test("RDS guardado permanece limpio mientras sus datos no cambien", () => {
   assert.equal(weeklyReportChanged({ report }, structuredClone(report)), false);
 });
 
+test("RDS guardado permanece limpio tras pasar por jsonb y sumar decimales", () => {
+  const persisted = {
+    whatsappBudget: report.whatsappBudget,
+    store: Object.fromEntries(Object.entries(report.store).reverse()),
+    columns: report.columns
+  };
+  const current = structuredClone(report);
+  current.store.sales = 90.00000000002;
+  assert.equal(weeklyReportChanged({ report: persisted }, current), false);
+});
+
+test("RDS guardado detecta un cambio real de un centavo", () => {
+  const current = structuredClone(report);
+  current.store.sales += 0.01;
+  assert.equal(weeklyReportChanged({ report }, current), true);
+});
+
 test("RDS guardado detecta cambios posteriores en ventas", () => {
   const current = structuredClone(report);
   current.store.sales = 120;
