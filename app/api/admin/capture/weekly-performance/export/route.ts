@@ -5,6 +5,7 @@ import {
   buildWeeklyPerformanceWorkbook,
   type WeeklyPerformanceDocument
 } from "@/lib/weekly-performance-xlsx";
+import { buildWeeklyPerformancePdf } from "@/lib/weekly-performance-pdf";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -18,28 +19,35 @@ export async function GET(request: Request) {
   const reportWeekStart = parseDay(params.get("reportWeekStart") ?? params.get("weekStart"));
   const quotaWeekStart = parseDay(params.get("quotaWeekStart")) ?? nextWeek(reportWeekStart);
   const document = parseDocument(params.get("document"));
+  const output = parseOutput(params.get("output"));
   if (!document) return NextResponse.json({ error: "Tipo de archivo invalido." }, { status: 400 });
+  if (!output) return NextResponse.json({ error: "Formato de exportacion invalido." }, { status: 400 });
   if (!storeId || !reportWeekStart || !quotaWeekStart) return NextResponse.json({ error: "Tienda o semanas inválidas." }, { status: 400 });
   try {
     const state = await getWeeklyPerformance(storeId, reportWeekStart, quotaWeekStart);
-    const buffer = await buildWeeklyPerformanceWorkbook(state, document);
-    const filename = documentFilename(document, state.quotaWeek.weekNumber, state.reportWeek.weekNumber);
+    const buffer = output === "pdf"
+      ? await buildWeeklyPerformancePdf(state, document)
+      : await buildWeeklyPerformanceWorkbook(state, document);
+    const filename = documentFilename(document, state.quotaWeek.weekNumber, state.reportWeek.weekNumber, output);
+    const contentType = output === "pdf"
+      ? "application/pdf"
+      : "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
     if (params.get("format") === "base64") {
       return NextResponse.json({
         ok: true, filename,
-        contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        contentType,
         base64: buffer.toString("base64")
       });
     }
     return new NextResponse(buffer as unknown as BodyInit, {
       headers: {
-        "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "Content-Type": contentType,
         "Content-Disposition": `attachment; filename="${filename}"`,
         "Cache-Control": "no-store"
       }
     });
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : "No se pudo exportar el cierre." }, { status: 422 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : "No se pudo exportar el documento." }, { status: 422 });
   }
 }
 
@@ -53,8 +61,12 @@ function parseDocument(value: string | null): WeeklyPerformanceDocument | null {
   if (!value) return "combined";
   return value === "combined" || value === "quota" || value === "rds" ? value : null;
 }
-function documentFilename(document: WeeklyPerformanceDocument, quotaWeek: number, reportWeek: number) {
-  if (document === "quota") return `CUOTA-JUSTA-S${quotaWeek}.xlsx`;
-  if (document === "rds") return `RDS-S${reportWeek}.xlsx`;
-  return `CUOTA-JUSTA-S${quotaWeek}-RDS-S${reportWeek}.xlsx`;
+function parseOutput(value: string | null): "xlsx" | "pdf" | null {
+  if (!value) return "xlsx";
+  return value === "xlsx" || value === "pdf" ? value : null;
+}
+function documentFilename(document: WeeklyPerformanceDocument, quotaWeek: number, reportWeek: number, output: "xlsx" | "pdf") {
+  if (document === "quota") return `CUOTA-JUSTA-S${quotaWeek}.${output}`;
+  if (document === "rds") return `RDS-S${reportWeek}.${output}`;
+  return `CUOTA-JUSTA-S${quotaWeek}-RDS-S${reportWeek}.${output}`;
 }
