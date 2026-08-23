@@ -6,7 +6,7 @@ import { PDFDocument } from "pdf-lib";
 import { calculateFairQuota } from "../lib/fair-quota";
 import type { WeeklyCloseColumn } from "../lib/weekly-close";
 import type { WeeklyPerformanceState } from "../lib/weekly-performance";
-import { buildWeeklyPerformancePdf } from "../lib/weekly-performance-pdf";
+import { buildWeeklyPerformancePdf, rdsAchievementMarker } from "../lib/weekly-performance-pdf";
 
 const people = [
   { userId: "g", name: "ITZEL SAIDY REYES BAUTISTA", role: "GERENTE" as const },
@@ -41,6 +41,8 @@ function reportColumn(person: typeof people[number], index: number): WeeklyClose
 }
 
 const columns = people.map(reportColumn);
+const pointOfSaleAchievements = [75, 90, 100, 120, 110];
+columns.forEach((column, index) => { column.achievement = pointOfSaleAchievements[index]; });
 const store: WeeklyCloseColumn = {
   ...reportColumn({ userId: "store", name: "Tienda", role: "GERENTE" }, 0),
   userId: "store", name: "Tienda", goal: sum(columns.map((item) => item.goal)), sales: sum(columns.map((item) => item.sales)),
@@ -85,6 +87,16 @@ test("el PDF completo conserva Cuota Justa y RDS como dos paginas", async () => 
   assert.equal(pdf.getPageCount(), 2);
   assert.deepEqual(pdf.getPages().map((page) => [page.getWidth(), page.getHeight()]), [[792, 612], [792, 612]]);
   await writeVerificationPdf("combined", buffer);
+});
+
+test("el semaforo del PDF replica los umbrales del Excel", () => {
+  assert.equal(rdsAchievementMarker(84.99, "pointOfSale"), "red");
+  assert.equal(rdsAchievementMarker(85, "pointOfSale"), "black");
+  assert.equal(rdsAchievementMarker(99.99, "pointOfSale"), "black");
+  assert.equal(rdsAchievementMarker(100, "pointOfSale"), "star");
+  assert.equal(rdsAchievementMarker(99.99, "whatsapp"), "red");
+  assert.equal(rdsAchievementMarker(100, "whatsapp"), "star");
+  assert.equal(rdsAchievementMarker(null, "whatsapp"), null);
 });
 
 async function writeVerificationPdf(name: string, buffer: Buffer) {

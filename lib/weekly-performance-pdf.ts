@@ -12,6 +12,9 @@ const PALE_GRAY = rgb(0.9, 0.9, 0.9);
 const YELLOW = rgb(1, 0.95, 0);
 const GREEN = rgb(0, 176 / 255, 80 / 255);
 const RED = rgb(235 / 255, 87 / 255, 87 / 255);
+const ACHIEVEMENT_RED = rgb(218 / 255, 73 / 255, 66 / 255);
+const ACHIEVEMENT_BLACK = rgb(32 / 255, 32 / 255, 32 / 255);
+const ACHIEVEMENT_GOLD = rgb(218 / 255, 164 / 255, 52 / 255);
 
 type Fonts = { regular: PDFFont; bold: PDFFont };
 type Align = "left" | "center" | "right";
@@ -209,7 +212,7 @@ function drawRdsPage(page: PDFPage, state: WeeklyPerformanceState, fonts: Fonts)
     ["META", (item) => money(item.goal), (item) => money(item.goal)],
     ["VENTA", (item) => money(item.sales), (item) => money(item.sales)],
     ["DIFERENCIA", (item) => money(item.difference), (item) => money(item.difference)],
-    ["ALCANCE", (item) => percent(item.achievement), (item) => percent(item.achievement)],
+    ["ALCANCE", (item) => percent(item.achievement), (item) => percent(item.achievement), "pointOfSale"],
     ["TICKETS", (item) => integer(item.transactions), (item) => integer(item.transactions)],
     ["ARTICULOS", (item) => integer(item.pieces), (item) => integer(item.pieces)],
     ["TRAFICO", (item) => nullableInteger(item.traffic), (item) => nullableInteger(item.traffic)]
@@ -238,14 +241,21 @@ function drawRdsPage(page: PDFPage, state: WeeklyPerformanceState, fonts: Fonts)
   rdsRows(page, fonts, columns, state.report.store, y, x, labelWidth, personWidth, gapWidth, totalWidth, [
     ["META", (item) => nullableMoney(item.waMeta), (item) => nullableMoney(item.waMeta)],
     ["VENTA", (item) => nullableMoney(item.waSales), (item) => nullableMoney(item.waSales)],
-    ["ALCANCE", (item) => whatsappAchievement(item), (item) => whatsappAchievement(item)],
+    ["ALCANCE", (item) => whatsappAchievement(item), (item) => whatsappAchievement(item), "whatsapp"],
     ["TICKETS", (item) => nullableInteger(item.waTransactions), (item) => nullableInteger(item.waTransactions)],
     ["ARTICULOS", (item) => nullableInteger(item.waPieces), (item) => nullableInteger(item.waPieces)]
   ]);
   footer(page, fonts, `${rangeLabel(state.reportWeek.weekStart, state.reportWeek.weekEnd)} | Generado por Clarvex Team`);
 }
 
-type RdsRow = [string, (item: WeeklyCloseColumn) => string, (item: WeeklyCloseColumn) => string];
+type RdsAchievementKind = "pointOfSale" | "whatsapp";
+export type RdsAchievementMarker = "star" | "black" | "red" | null;
+type RdsRow = [
+  string,
+  (item: WeeklyCloseColumn) => string,
+  (item: WeeklyCloseColumn) => string,
+  RdsAchievementKind?
+];
 
 function rdsSection(page: PDFPage, fonts: Fonts, title: string, y: number, x: number, labelWidth: number, personWidth: number, gapWidth: number, totalWidth: number) {
   cell(page, title, x, y, labelWidth + personWidth * 10 + gapWidth + totalWidth, 12, blueCell(fonts, 7));
@@ -267,20 +277,31 @@ function rdsRows(
   colorLosses = false
 ) {
   const totalX = x + labelWidth + personWidth * 10 + gapWidth;
-  rows.forEach(([label, value, total], rowIndex) => {
+  rows.forEach(([label, value, total, achievementKind], rowIndex) => {
     const y = top - rowIndex * 14;
     cell(page, label, x, y, labelWidth, 14, blueCell(fonts, 6.6));
     for (let slot = 0; slot < 10; slot += 1) {
       const item = columns[slot];
       const isLoss = colorLosses && label.startsWith("PERDIDA");
       const rawLoss = item ? label === "PERDIDA EPT" ? item.lossEpt : label === "PERDIDA UPT" ? item.lossUpt : label === "PERDIDA AUR" ? item.lossAur : null : null;
-      cell(page, item ? value(item) : "", x + labelWidth + personWidth * slot, y, personWidth, 14, {
+      const cellX = x + labelWidth + personWidth * slot;
+      const options: CellOptions = {
         fill: !item ? YELLOW : isLoss && rawLoss !== null ? rawLoss < 0 ? RED : GREEN : WHITE,
         font: isLoss ? fonts.bold : fonts.regular,
         size: 6.4
-      });
+      };
+      if (item && achievementKind) {
+        achievementCell(page, value(item), achievementValue(item, achievementKind), achievementKind, cellX, y, personWidth, 14, options);
+      } else {
+        cell(page, item ? value(item) : "", cellX, y, personWidth, 14, options);
+      }
     }
-    cell(page, total(store), totalX, y, totalWidth, 14, blueCell(fonts, 6.8));
+    const totalOptions = blueCell(fonts, 6.8);
+    if (achievementKind) {
+      achievementCell(page, total(store), achievementValue(store, achievementKind), achievementKind, totalX, y, totalWidth, 14, totalOptions);
+    } else {
+      cell(page, total(store), totalX, y, totalWidth, 14, totalOptions);
+    }
   });
   return top - rows.length * 14;
 }
@@ -308,6 +329,81 @@ function cell(page: PDFPage, text: string, x: number, y: number, width: number, 
   const borderWidth = options.borderWidth ?? 0.65;
   page.drawRectangle({ x, y, width, height, color: fill, borderColor: BLACK, borderWidth });
   drawFitted(page, text, x + padding, y + (height - size) / 2 + 0.8, width - padding * 2, size, font, align, color);
+}
+
+export function rdsAchievementMarker(value: number | null, kind: RdsAchievementKind): RdsAchievementMarker {
+  if (value === null || !Number.isFinite(value)) return null;
+  if (value >= 100) return "star";
+  // La plantilla original usa un punto negro entre 85 % y 99.99 % solo para
+  // Punto de venta. WhatsApp conserva el punto rojo hasta alcanzar el 100 %.
+  if (kind === "pointOfSale" && value >= 85) return "black";
+  return "red";
+}
+
+function achievementValue(item: WeeklyCloseColumn, kind: RdsAchievementKind) {
+  if (kind === "pointOfSale") return item.achievement;
+  if (item.waMeta === null || item.waMeta <= 0 || item.waSales === null) return null;
+  return item.waSales / item.waMeta * 100;
+}
+
+function achievementCell(
+  page: PDFPage,
+  text: string,
+  value: number | null,
+  kind: RdsAchievementKind,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  options: CellOptions
+) {
+  cell(page, "", x, y, width, height, options);
+  const marker = rdsAchievementMarker(value, kind);
+  const font = options.font!;
+  const color = options.color ?? BLACK;
+  const preferredSize = options.size ?? 7;
+  const cleanText = sanitize(text);
+  let size = preferredSize;
+  const markerSize = marker === "star" ? 7 : marker ? 6 : 0;
+  const gap = marker ? 2.25 : 0;
+  const available = width - 4 - markerSize - gap;
+  while (size > 4.5 && font.widthOfTextAtSize(cleanText, size) > available) size -= 0.25;
+  const textWidth = font.widthOfTextAtSize(cleanText, size);
+  const groupWidth = markerSize + gap + textWidth;
+  const startX = x + (width - groupWidth) / 2;
+  if (marker) {
+    const markerY = marker === "star"
+      ? y + (height + markerSize) / 2
+      : y + (height - markerSize) / 2;
+    drawAchievementMarker(page, marker, startX, markerY, markerSize);
+  }
+  page.drawText(cleanText, {
+    x: startX + markerSize + gap,
+    y: y + (height - size) / 2 + 0.8,
+    size,
+    font,
+    color
+  });
+}
+
+function drawAchievementMarker(page: PDFPage, marker: Exclude<RdsAchievementMarker, null>, x: number, y: number, size: number) {
+  if (marker === "star") {
+    page.drawSvgPath("M5 0 L6.18 3.38 L9.76 3.45 L6.9 5.62 L7.94 9.05 L5 7 L2.06 9.05 L3.1 5.62 L0.24 3.45 L3.82 3.38 Z", {
+      x,
+      y,
+      scale: size / 10,
+      color: ACHIEVEMENT_GOLD,
+      borderColor: rgb(160 / 255, 111 / 255, 21 / 255),
+      borderWidth: 0.45
+    });
+    return;
+  }
+  page.drawCircle({
+    x: x + size / 2,
+    y: y + size / 2,
+    size: size / 2,
+    color: marker === "black" ? ACHIEVEMENT_BLACK : ACHIEVEMENT_RED
+  });
 }
 
 function drawFitted(page: PDFPage, raw: string, x: number, y: number, width: number, preferredSize: number, font: PDFFont, align: Align, color: ReturnType<typeof rgb>) {
