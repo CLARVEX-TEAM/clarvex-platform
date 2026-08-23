@@ -66,7 +66,10 @@ fases, PM2 tiene dos procesos online y health esta `ok`.
 Nombres cortos del Excel ajustados el mismo dia: `lib/weekly-close.ts` concentra
 la regla y `lib/weekly-performance-xlsx.ts` la aplica a `CJ!C14:C23`,
 `CJ!C29:C38` y `RDS!D6:M6`. Validacion local: 900 pruebas, ESLint, tipos y build
-limpios. Sin migracion ni cambios en Retool.
+limpios. Desplegado en Clarvex `434cc6a`, sin migracion ni cambios en Retool.
+Una exportacion real de TH San Agustin confirmo `Itzel`, `Adrian`, `Alonso`,
+`Jazmin` y `Waira` en las tres zonas; PM2 quedo con dos procesos online y health
+en `ok`.
 
 Validacion base anterior: 899 pruebas, ESLint y build de produccion en verde; `retool check`
 pasa las cuatro fases locales.

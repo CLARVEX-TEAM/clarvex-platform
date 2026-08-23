@@ -1537,7 +1537,10 @@ build de produccion limpio, dos procesos PM2 online y health `ok`.
 `lib/weekly-performance-xlsx.ts` aplica la regla comun de
 `lib/weekly-close.ts` a `CJ!C14:C23`, `CJ!C29:C38` y `RDS!D6:M6`. La cobertura
 usa los cinco nombres reales de TH San Agustin y verifica Itzel, Adrian, Alonso,
-Jazmin y Waira. No requiere migracion ni publicacion de Retool.
+Jazmin y Waira. Desplegado en Clarvex `434cc6a`, sin migracion ni publicacion de
+Retool. El smoke de produccion descargo el archivo combinado y confirmo esos
+cinco nombres en las dos tablas de CJ y en RDS; PM2 quedo con dos procesos
+online y `/api/health` en `ok`.
 
 #### Importador CJ heredado (respaldo; construido el 17 de agosto de 2026)
 
