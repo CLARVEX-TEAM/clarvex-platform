@@ -1575,7 +1575,7 @@ post-publicacion `c8d3873`. Respaldo previo replicado en R2 y S3 como
 Esto demuestra que hacer solo Cuota Justa ya no crea ni guarda un RDS. Build de
 produccion limpio, dos PM2 online y `/api/health` en `ok`.
 
-### PDF de Cuota Justa y RDS - API desplegada, Retool pendiente
+### PDF de Cuota Justa y RDS - desplegado
 
 `GET /api/admin/capture/weekly-performance/export` acepta ahora
 `output=xlsx|pdf`; si se omite conserva XLSX para no romper las funciones
@@ -1593,10 +1593,12 @@ existentes. `document=quota|rds|combined` aplica igual a ambos formatos.
 - Clarvex `20edcb3` esta desplegado en Vultr. Una prueba real de TH San Agustin
   genero un PDF de 22,408 bytes, `%PDF-`, una pagina de 792 x 612 puntos. PM2
   quedo con dos procesos online y `/api/health` en `ok`.
-- Retool local `cfc5e4a` agrega en cada seccion `Exportar Excel` y `Exportar
-  PDF`, con estado de carga propio, y mantiene `Exportar Excel completo`.
-  **Pendiente:** subir y publicar ese commit. La credencial Git de Retool
-  expiro; no seguir reintentando pushes sin que Adrian vuelva a autenticarse.
+- Retool `cfc5e4a` agrega en cada seccion `Exportar Excel` y `Exportar PDF`, con
+  estado de carga propio, y mantiene `Exportar Excel completo`. Se publico el
+  22 de agosto de 2026 y Retool avanzo la rama al commit posterior a publicacion
+  `820daca`. La sesion del CLI se renovo con el flujo `retool auth login
+  --device`; `retool push` y `retool publish --approve-functions` terminaron en
+  verde.
 - Validacion: 905 pruebas, ESLint, tipos y build de produccion en verde.
 
 #### Importador CJ heredado (respaldo; construido el 17 de agosto de 2026)

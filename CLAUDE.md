@@ -98,9 +98,12 @@ desplegado en Vultr. Produccion genero `CUOTA-JUSTA-S34.pdf` valido (22,408
 bytes), una pagina Carta horizontal; PM2 conserva dos procesos online y health
 esta `ok`. Validacion local: 905 pruebas, ESLint, tipos y build limpios; Cuota,
 RDS y combinado se renderizaron a PNG y se revisaron visualmente sin cortes ni
-traslapes. Retool local `cfc5e4a` agrega `Exportar Excel` y `Exportar PDF` dentro
-de cada seccion, pero queda pendiente subir y publicar ese commit porque la
-credencial Git de Retool expiro y requiere que Adrian vuelva a iniciar sesion.
+traslapes. Retool `cfc5e4a` agrega `Exportar Excel` y `Exportar PDF` dentro de
+cada seccion y conserva `Exportar Excel completo`. Se publico el 22 de agosto de
+2026 despues de renovar la sesion del CLI con el flujo de dispositivo; Retool
+avanzo la rama al commit posterior a publicacion `820daca`. `retool push` paso
+hooks, validacion, tipos y build, y la publicacion aprobo explicitamente la
+funcion de backend modificada.
 
 Validacion base anterior: 899 pruebas, ESLint y build de produccion en verde; `retool check`
 pasa las cuatro fases locales.
