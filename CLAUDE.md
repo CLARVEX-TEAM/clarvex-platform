@@ -203,6 +203,15 @@ global de otra versión instala un árbol de dependencias distinto al del servid
 - PM2 — proceso: `clarvex-team`, modo **cluster con 2 instancias**
 - Docker — contenedor PostgreSQL: `clarvex_postgres` (imagen `postgres:16`)
 - PostgreSQL — base: `clarvex_team`, host: `localhost`, puerto: `5432`
+
+⚠️ **El usuario de Postgres es `clarvex`, NO `postgres`.** El contenedor se creó
+con `POSTGRES_USER=clarvex`, así que el rol `postgres` **no existe**: cualquier
+`psql -U postgres` falla con `FATAL: role "postgres" does not exist`. Los únicos
+roles son `clarvex` (superusuario) y `retool` (el de solo lectura del panel).
+
+```bash
+docker exec -i clarvex_postgres psql -U clarvex -d clarvex_team
+```
 - Nginx Proxy Manager (contenedor `npm`)
 - Cloudflare R2 (fotos de perfil y evidencias)
 - Cloudflare DNS
@@ -597,7 +606,12 @@ Webhook → Es alerta?
 
 - **Script:** `scripts/backup-db.ts` (pg_dump → R2 bajo `backups/`, retención 30 días). Corre por crontab diario en el VPS.
 - **Bucket aislado:** los respaldos deben ir a un bucket R2 **propio**, con su **propio token** (`BACKUP_R2_*`). Si comparten bucket y credenciales con la app, la misma llave que sube las fotos puede borrar los backups — un VPS comprometido destruiría datos y copias de un tirón.
-- **Restaurar:** `docker exec -i clarvex_postgres pg_restore -d "$DB" --clean --if-exists < archivo.dump`
+- **Restaurar:** `docker exec -i clarvex_postgres pg_restore -U clarvex -d clarvex_team --clean --if-exists < archivo.dump`
+
+  ⚠️ **`-U clarvex` no es opcional**: sin él `pg_restore` asume el rol `postgres`,
+  que en este contenedor no existe, y falla. Se descubrió el 24 de agosto de
+  2026 corriendo un `psql` a mano; el día que haga falta restaurar de verdad no
+  es momento de averiguarlo. Ver [Infraestructura](#infraestructura).
 
 ## Monitoreo
 
@@ -1299,6 +1313,48 @@ el login ya no ofrecía la huella (correcto) pero el perfil seguía diciendo «F
 ID activo» y por eso no ofrecía registrarla — sin ninguna de las dos formas de
 usarla. Si aparece un cuarto sitio que lea `biometricEnabled`, va con la misma
 regla: la pregunta no es «¿tiene biometría?» sino «¿tiene credencial AQUÍ?».
+
+## ⚠️ Un fallo de RED no es «no hay sesión»
+
+Costó meses de «la app no carga» en todos los celulares. `getSession()` hacía un
+solo `fetch` sin timeout ni reintentos; cuando la petición ni siquiera lograba
+salir —señal intermitente, o el navegador abortándola al **reanudar la PWA desde
+segundo plano**, que es como se abre la app en tienda— la promesa se rechazaba.
+
+En `/advisor` nadie la atrapaba, `user` se quedaba en `null`, y su pantalla de
+error exigía `user && !data && loadFailed`: con `user` en `null` **nunca podía
+aparecer**. Esqueletos para siempre, sin mensaje y sin botón. `/manager` ya
+tenía su `.catch` y su condición sin `user`; nunca se portó a `/advisor`, y por
+eso lo sufrían los asesores y gerencia no.
+
+Tres reglas que no hay que romper:
+
+1. **`getSession()` devuelve `null` solo si el servidor CONTESTÓ que no.** Si no
+   pudo preguntar, **lanza**. Confundirlos mandaría al login a gente con sesión
+   válida cada vez que parpadea la señal. Una respuesta del servidor manda sin
+   reintentos: repetir un 401 no lo va a validar.
+2. **Un `.catch` vacío NO arregla el cuelgue.** No lo causa el rechazo sin
+   atender, sino que `session` nunca se asigna; el catch vacío solo silencia el
+   error y deja la pantalla igual de pegada, pero pareciendo corregida.
+3. **La recuperación va por evento, no por temporizador.** `useSession`
+   (`lib/use-session.ts`) reintenta al volver a la app y al recuperar internet
+   —lo mismo que hace `useAppData`—, así que la pantalla se destraba sola sin
+   que cada una dibuje su propia pantalla de error. Insistir cada X segundos
+   gastaría batería sin ninguna señal de que algo cambió.
+
+Desplegado el 24 de agosto de 2026: Clarvex `7d5e4c4` (la raíz y `/advisor`) y
+`d9c6ed3` (doce pantallas del teléfono migradas a `useSession`: KPIs, Horarios,
+Comunicados, Notificaciones, Pendientes, Plan, Chat, Faltantes, Kudos,
+Solicitudes, Encuestas y Capacitación). 912 pruebas, ESLint, tipos y build
+limpios; dos PM2 online y health `ok`.
+
+⚠️ **No todas las pantallas se colgaban.** `/plan` y `/pendientes` condicionan su
+esqueleto a `!data`, no a `!session`, así que renderizaban igual; `LiquidBottomNav`
+ya traía `.catch`. Las que sí se colgaban son las que cortan con
+`if (!session) return;` **antes** de pedir sus datos.
+
+Pendiente: las pantallas de `/escritorio/*` siguen con el patrón viejo. Son de
+escritorio y sobre conexión estable, así que no es donde vive el problema.
 
 ## ⚠️ El usuario kiosko NO es un asesor
 
