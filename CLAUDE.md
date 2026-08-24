@@ -1061,16 +1061,27 @@ la última**: enseñaba un día como si fuera la semana. En producción, la sema
 33 de Adrián se veía como `$2,539` de bruto cuando eran `$59,708`.
 
 Ahora la consulta agrega por persona y devuelve además `daily`, `daysCaptured`
-y `daysMissing`. Las filas que vienen del POS se muestran sumadas y de solo
+y `missingDates`. Las filas que vienen del POS se muestran sumadas y de solo
 lectura; las demás se capturan como siempre.
 
-⚠️ **`daysMissing` solo significa algo cuando `daily` es true.** En la captura
-semanal el resto de la semana está vacío a propósito, así que ahí el conteo es
-ruido y la pantalla lo ignora. El aviso tampoco afirma hacia dónde se mueve el
-margen: al faltar un día faltan su bruto y su descuento a la vez, y puede subir
-o bajar. Lo único cierto es que no es la semana completa.
+⚠️ **`missingDates` solo significa algo cuando `daily` es true.** En la captura
+semanal los días sin margen están vacíos a propósito —el total vive en la fila
+ancla—, así que ahí la lista es ruido y la pantalla la ignora. El aviso tampoco
+afirma hacia dónde se mueve el margen: al faltar un día faltan su bruto y su
+descuento a la vez, y puede subir o bajar. Lo único cierto es que no es la
+semana completa.
 
-Retool `5ac14e8` (commit posterior al publish `6710583`). La consulta se probó
+Son **fechas y no un conteo** porque «faltan 2 días» no se puede accionar. La
+pantalla las junta de todas las personas y las deduplica: el reporte del POS es
+de la tienda entera por día, así que cada archivo que se sube tapa el mismo
+hueco en todos los que lo tengan. En la semana 33 de producción, cuatro de
+cinco personas fallaban exactamente los mismos dos días.
+
+⚠️ **`to_char` sobre `date` va sin conversión de zona.** La columna guarda la
+medianoche UTC del día de tienda; convertirla correría la fecha un día — el
+mismo fallo de las devoluciones. Comprobado contra producción.
+
+Retool `b468cad` (commit posterior al publish `c004bc7`). La consulta se probó
 contra producción en solo lectura sobre la semana 33 (diaria) y la 32
 (semanal); `retool check` pasó sus cuatro fases. No requirió cambios en
 Clarvex.
