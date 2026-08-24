@@ -800,11 +800,27 @@ El % de comisión difiere por puesto pero el mínimo de referencia es el mismo p
   cron que «ya funcionaba». También lo usa el chequeo profundo
   `GET /api/health?deep=1`, que es de donde conviene confirmar el cambio.
 
-- **AWS está en marcha desde el 21 de agosto de 2026** — $1,000 anuales de
-  créditos por AWS Activate. Cuenta `775711761052`, acceso por SSO con el perfil
-  `clarvex`, alerta de presupuesto de $20/mes **midiendo antes de los créditos**.
-  Bedrock ya lee el reporte del POS en producción y los respaldos se copian
-  también a S3, con una llave que **solo puede escribir**.
+- **AWS está en marcha desde el 21 de agosto de 2026.** Cuenta `775711761052`,
+  acceso por SSO con el perfil `clarvex`, alerta de presupuesto de $20/mes
+  **midiendo antes de los créditos**. Bedrock ya lee el reporte del POS en
+  producción y los respaldos se copian también a S3, con una llave que **solo
+  puede escribir**.
+
+  Los créditos de Activate se emitieron el **24 de agosto de 2026**: crédito
+  `10066304006`, $1,000 USD, `Promotion`, activo.
+
+  ⚠️ **No son anuales** —como decía antes esta línea— sino un único importe
+  que **vence el 31 de agosto de 2028**. No se renueva: lo que no se gaste para
+  entonces se pierde, y después de esa fecha AWS se paga entero.
+
+  ⚠️ **Lo consumido ANTES del 24 de agosto no lo cubre el crédito.** Bedrock
+  llevaba en producción desde el 21 y los respaldos ya iban a S3, así que ese
+  consumo se facturó a la tarjeta. El historial de uso del crédito en cero no es
+  un fallo: empieza a contar desde su emisión.
+
+  Antes de mover el VPS a EC2, revisar **Productos aplicables** en la ficha del
+  crédito: los promocionales no cubren todos los servicios, y EC2 más el
+  almacenamiento son justo donde se va a ir la mayor parte de los $1,000.
 - **La migración del VPS está EN CURSO, con los dos entornos vivos.** Vultr
   sigue siendo producción en `app.adrianluna.mx`; en AWS corre una copia en
   `https://team.clarvex.tech` (Ubuntu ARM, Postgres 16, PM2 en cluster, TLS).
