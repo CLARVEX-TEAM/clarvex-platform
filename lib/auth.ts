@@ -31,10 +31,44 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
   return payload;
 }
 
+/**
+ * ⚠️ Un fallo de RED no es «no hay sesión».
+ *
+ * Devolver `null` cuando la petición ni siquiera llegó mandaría al login a
+ * alguien que sí tiene sesión, y en un celular con señal intermitente eso pasa
+ * a diario. Así que aquí se reintenta, y si se agotan los intentos se LANZA:
+ * quien llama tiene que distinguir «el servidor dice que no» de «no pude
+ * preguntar».
+ *
+ * Sin esto, `/advisor` se quedaba en esqueletos para siempre: la promesa se
+ * rechazaba, nadie la atrapaba, y su pantalla de error exigía tener usuario —
+ * justo lo que nunca llegaba. Pasaba sobre todo al reanudar la PWA desde
+ * segundo plano, que es como se abre la app en tienda.
+ */
+const SESSION_TIMEOUT_MS = 8000;
+const SESSION_ATTEMPTS = 3;
+
 export async function getSession(): Promise<User | null> {
-  const response = await fetch("/api/auth/session", { cache: "no-store" });
-  if (!response.ok) return null;
-  return ((await response.json()) as { user: User }).user;
+  let lastError: unknown;
+  for (let attempt = 0; attempt < SESSION_ATTEMPTS; attempt += 1) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), SESSION_TIMEOUT_MS);
+    try {
+      const response = await fetch("/api/auth/session", { cache: "no-store", signal: controller.signal });
+      // El servidor CONTESTÓ. Su respuesta manda, sin reintentos: un 401 es una
+      // sesión inválida de verdad y repetir la petición no la va a validar.
+      if (!response.ok) return null;
+      return ((await response.json()) as { user: User }).user;
+    } catch (error) {
+      lastError = error;
+      if (attempt < SESSION_ATTEMPTS - 1) {
+        await new Promise((resolve) => setTimeout(resolve, 500 * (attempt + 1)));
+      }
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+  throw lastError instanceof Error ? lastError : new Error("No se pudo verificar la sesión.");
 }
 
 export async function inspectEmployee(employeeNumber: string) {

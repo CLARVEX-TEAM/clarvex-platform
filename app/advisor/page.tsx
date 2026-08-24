@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { Receipt, ShoppingBag, Target, Trophy, Sparkles } from "lucide-react";
@@ -41,6 +41,8 @@ export default function AdvisorDashboard() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [celebrate, setCelebrate] = useState(false);
+  // El fetch de sesion no pudo ni preguntar (red). Distinto de «no hay sesion».
+  const [sessionFailed, setSessionFailed] = useState(false);
   const { data, lastUpdated, loadFailed, setLoadFailed, load } = useAppData();
   const [tips, setTips] = useState<{ title: string; description: string }[]>([]);
   const [profile, setProfile] = useState<any | null>(null);
@@ -68,12 +70,25 @@ export default function AdvisorDashboard() {
     }
   }
 
-  useEffect(() => {
-    getSession().then((session) => {
-      if (!session) router.replace("/login");
-      else setUser(session);
-    });
+  /*
+   * `getSession` reintenta por dentro y LANZA si no logró preguntar. Atraparlo
+   * es obligatorio: sin `.catch` la promesa quedaba sin atender, `user` se
+   * quedaba en null y la pantalla se congelaba en esqueletos, porque su rama de
+   * error exigía tener usuario. Ahora el fallo se marca y se puede reintentar.
+   */
+  const loadSession = useCallback(() => {
+    setSessionFailed(false);
+    return getSession()
+      .then((session) => {
+        if (!session) router.replace("/login");
+        else setUser(session);
+      })
+      .catch(() => setSessionFailed(true));
   }, [router]);
+
+  useEffect(() => {
+    void loadSession();
+  }, [loadSession]);
 
   // Confetti al alcanzar la meta del día (una sola vez por día/sesión).
   useEffect(() => {
@@ -96,7 +111,15 @@ export default function AdvisorDashboard() {
     router.push("/login");
   };
 
-  if (user && !data && loadFailed) {
+  /*
+   * ⚠️ Esta rama NO puede exigir `user`.
+   *
+   * Antes decía `user && !data && loadFailed`, así que el caso más común —no se
+   * pudo resolver la sesión— caía al esqueleto de abajo y ahí se quedaba: sin
+   * mensaje, sin botón, para siempre. La pantalla de error tiene que poder
+   * aparecer justamente cuando falta el usuario.
+   */
+  if ((!user && sessionFailed) || (!data && loadFailed)) {
     return (
       <div className="grid min-h-screen place-items-center px-8 text-center">
         <div>
@@ -105,7 +128,11 @@ export default function AdvisorDashboard() {
           <p className="mt-1 text-sm font-semibold text-muted">Revisa tu conexión e intenta de nuevo.</p>
           <button
             type="button"
-            onClick={() => { setLoadFailed(false); void load(); }}
+            onClick={() => {
+              setLoadFailed(false);
+              void loadSession();
+              void load();
+            }}
             className="mt-4 rounded-full bg-volt px-7 py-2.5 text-sm font-semibold text-white transition active:scale-95"
           >
             Reintentar
