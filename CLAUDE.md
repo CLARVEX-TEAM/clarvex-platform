@@ -818,9 +818,24 @@ El % de comisión difiere por puesto pero el mínimo de referencia es el mismo p
   consumo se facturó a la tarjeta. El historial de uso del crédito en cero no es
   un fallo: empieza a contar desde su emisión.
 
-  Antes de mover el VPS a EC2, revisar **Productos aplicables** en la ficha del
-  crédito: los promocionales no cubren todos los servicios, y EC2 más el
-  almacenamiento son justo donde se va a ir la mayor parte de los $1,000.
+  **Productos aplicables ya revisado** (24 de agosto de 2026): la lista cubre
+  todo lo que la migración necesita —EC2, S3, Bedrock, Data Transfer, VPC,
+  Certificate Manager, Route 53, CloudWatch y RDS—, además de **SES**, que es
+  una alternativa al envío por Resend ahora que la pagaría el crédito.
+
+  ⚠️ **EBS no aparece por nombre** en la lista. No es un descuido: AWS lo
+  factura dentro de «Amazon Elastic Compute Cloud», así que debería entrar. Se
+  confirma en la primera factura, viendo si el crédito se aplicó a esa línea.
+
+  ⚠️ Los créditos promocionales suelen excluir el **registro de dominios en
+  Route 53** y las compras de **AWS Marketplace**, aunque el servicio esté
+  listado. Hoy no se usa ninguno; importa si en el corte se mueve el dominio.
+
+  ⚠️ **La alerta de $20/mes se va a disparar** en cuanto EC2 corra a tiempo
+  completo: una instancia ARM equivalente al VPS ronda los $25-30 mensuales con
+  disco. No será un fallo, sino un umbral por debajo del costo normal —subirlo
+  al hacer el corte, o se vuelve una alerta que nadie mira. Con ese gasto, los
+  $1,000 dan más margen que los 24 meses que quedan hasta el vencimiento.
 - **La migración del VPS está EN CURSO, con los dos entornos vivos.** Vultr
   sigue siendo producción en `app.adrianluna.mx`; en AWS corre una copia en
   `https://team.clarvex.tech` (Ubuntu ARM, Postgres 16, PM2 en cluster, TLS).
