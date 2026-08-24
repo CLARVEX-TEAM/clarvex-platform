@@ -414,15 +414,23 @@ en local basta con ponerlas en `.env.local` con valores de `localhost`.
 
 ```env
 MP_ACCESS_TOKEN=
-MERCADOPAGO_WEBHOOK_SECRET=   # ⚠️ FALTA EN EL VPS — ver aviso abajo
+MERCADOPAGO_WEBHOOK_SECRET=
 ```
 
-> 🔴 **`MERCADOPAGO_WEBHOOK_SECRET` no está configurada en producción.**
-> `lib/mercadopago-webhook.ts` es *fail-closed*: si el secreto falta y
-> `NODE_ENV=production`, la verificación de firma falla y
-> `app/api/webhooks/mercadopago/route.ts` responde **401 a todo webhook entrante**.
-> Es decir: los pagos de suscripción no se procesan solos. Hay que darla de alta
-> desde el panel de Mercado Pago y añadirla al `.env`.
+> ✅ **Configurado en producción el 23 de agosto de 2026.** Antes faltaba el
+> secreto y el webhook respondía **401 a todo**, así que ninguna suscripción se
+> acreditaba sola.
+>
+> `lib/mercadopago-webhook.ts` es *fail-closed*: sin secreto y con
+> `NODE_ENV=production`, la verificación falla y
+> `app/api/webhooks/mercadopago/route.ts` devuelve 401. No relajar eso.
+>
+> Verificación de extremo a extremo con **«Simular notificación»** del panel: la
+> firma pasó —ninguna línea de «firma inválida»— y el código llegó a consultar
+> el pago, que devolvió el `404 Payment not found` de la propia API de Mercado
+> Pago porque el pago simulado no existe. Ese 404 confirma de paso que
+> `MP_ACCESS_TOKEN` es válido: un token malo habría dado 401. Seis sondas sin
+> firmar comprobaron antes que las **dos** instancias de PM2 tenían el secreto.
 
 Se copia de **Mercado Pago → Tus integraciones → la aplicación → Webhooks →
 Clave secreta**. La URL de notificación no hay que registrarla: cada preferencia
@@ -877,16 +885,6 @@ El % de comisión difiere por puesto pero el mínimo de referencia es el mismo p
   Commit Clarvex `a531f46`, desplegado; lint, TypeScript, build y 687 pruebas
   correctos. La pantalla pública y ambos temas fueron verificados.
   Falta definir el remitente de correo. Detalle completo en `AGENTS.md`.
-- **`MERCADOPAGO_WEBHOOK_SECRET` sin configurar en el VPS.** El webhook de Mercado
-  Pago responde 401 a todo: las suscripciones no se procesan automáticamente.
-  Ver [Variables de entorno](#variables-de-entorno).
-  Desde el 23 de agosto de 2026 **el fallo ya se delata solo**: Clarvex `532d0dd`
-  distingue el secreto faltante de una firma inválida, lo escribe literal en el
-  log y manda aviso a Telegram. Verificado en producción con una sonda al
-  endpoint: `webhook mercadopago: FALTA MERCADOPAGO_WEBHOOK_SECRET; se rechazan
-  todos los pagos`. Validación: 909 pruebas, ESLint, tipos y build limpios; dos
-  PM2 online y health `ok`. **Lo que sigue faltando es el secreto en sí** — el
-  cambio hace ruidoso el problema, no lo resuelve.
 - **Respaldo de `.env` suelto en el servidor:** `/root/clarvex-app/.env.bak-1784486367`.
   Ya está cubierto por `.gitignore`, pero conviene sacarlo del directorio del repo.
 
@@ -910,6 +908,11 @@ El % de comisión difiere por puesto pero el mínimo de referencia es el mismo p
 - Producción estable en app.adrianluna.mx
 - Modo demo público de solo lectura (`/api/demo/manager`, `/api/demo/advisor`),
   con el candado cerrado también en los GET que escriben y en los que gastan IA
+- Webhook de Mercado Pago vivo desde el 23 de agosto de 2026: el secreto de firma
+  ya está en el VPS y una notificación simulada pasó la verificación. Antes
+  respondía 401 a todo y las suscripciones no se acreditaban solas. Clarvex
+  `532d0dd` deja además el fallo a la vista si el secreto volviera a faltar
+  (log explícito y aviso a Telegram) — ver [Variables de entorno](#variables-de-entorno)
 
 ### ⚠️ Áreas a no tocar sin revisión previa
 
