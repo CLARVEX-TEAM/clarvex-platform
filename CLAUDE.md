@@ -737,6 +737,18 @@ El % de comisión difiere por puesto pero el mínimo de referencia es el mismo p
 
 ### 🔴 Abierto — requiere acción
 
+- **Rotar `CRON_SECRET`** — quedó expuesto en una transcripción de trabajo, así
+  que hay que darlo por comprometido. Aplazado al **martes 25 de agosto de 2026**
+  a petición de Adrian; no es urgente porque el Bearer solo abre `/api/cron/*`,
+  pero sigue abierto hasta que se cambie.
+
+  ⚠️ **El `.env` y el crontab tienen que moverse a la vez.** El secreto vive en
+  los dos sitios: `CRON_SECRET` en `/root/clarvex-app/.env` y repetido en cada
+  línea `curl` de `crontab -l`. Cambiar solo uno deja **todos** los crons
+  respondiendo 401 — y fallan calladamente, porque nadie mira la salida de un
+  cron que «ya funcionaba». También lo usa el chequeo profundo
+  `GET /api/health?deep=1`, que es de donde conviene confirmar el cambio.
+
 - **AWS está en marcha desde el 21 de agosto de 2026** — $1,000 anuales de
   créditos por AWS Activate. Cuenta `775711761052`, acceso por SSO con el perfil
   `clarvex`, alerta de presupuesto de $20/mes **midiendo antes de los créditos**.
