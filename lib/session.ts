@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import type { User } from "@/lib/types";
 import { SESSION_COOKIE, verifySessionToken, type Session } from "@/lib/session-token";
 
-export { createSessionToken, SESSION_COOKIE, sessionCookieOptions, verifySessionToken } from "@/lib/session-token";
+export { clearedSessionCookieHeader, createSessionToken, SESSION_COOKIE, sessionCookieOptions, verifySessionToken } from "@/lib/session-token";
 export type { Session } from "@/lib/session-token";
 
 export async function getServerSession() {

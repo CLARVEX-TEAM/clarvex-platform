@@ -1,15 +1,32 @@
 import { NextResponse } from "next/server";
 import { ZodError, type ZodType } from "zod";
-import { getServerSession, type Session } from "@/lib/session";
+import { clearedSessionCookieHeader, getServerSession, type Session } from "@/lib/session";
 import { rateLimitAi, rateLimitUpload } from "@/lib/rate-limit";
 import type { Role } from "@/lib/types";
+
+/**
+ * 401 que además BORRA la cookie de sesión.
+ *
+ * ⚠️ Negar sin borrarla encierra al usuario. El middleware solo verifica la
+ * firma del token; el `sessionVersion` se comprueba aquí, contra la base. Un
+ * token revocado —por logout, cambio de PIN o cierre forzado— le sigue
+ * pareciendo válido al middleware, así que la app rebotaba para siempre entre
+ * `/advisor` y `/login` sin poder mostrar nunca el teclado del PIN. La cookie
+ * es `httpOnly`: el cliente no puede quitarla, tiene que hacerlo el servidor.
+ */
+function sessionRevoked(): NextResponse {
+  return NextResponse.json(
+    { error: "Sesion requerida." },
+    { status: 401, headers: { "Set-Cookie": clearedSessionCookieHeader() } }
+  );
+}
 
 export async function requireSession(
   roles?: Role[],
   options?: { allowSuspended?: boolean }
 ): Promise<Session | NextResponse> {
   const session = await getServerSession();
-  if (!session) return NextResponse.json({ error: "Sesion requerida." }, { status: 401 });
+  if (!session) return sessionRevoked();
   // Los endpoints de pago (allowSuspended) deben funcionar aun con la tienda
   // suspendida: es justo donde el gerente paga para reactivarla.
   if (session.storeSuspended && !session.platformAdmin && !options?.allowSuspended) {
@@ -38,7 +55,7 @@ export function denyDemo(session: Session): NextResponse | null {
 
 export async function requirePlatformAdmin(): Promise<Session | NextResponse> {
   const session = await getServerSession();
-  if (!session) return NextResponse.json({ error: "Sesion requerida." }, { status: 401 });
+  if (!session) return sessionRevoked();
   if (!session.platformAdmin) {
     return NextResponse.json({ error: "No tienes permiso para esta accion." }, { status: 403 });
   }

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getServerSession, SESSION_COOKIE, sessionCookieOptions } from "@/lib/session";
+import { clearedSessionCookieHeader, getServerSession, SESSION_COOKIE, sessionCookieOptions } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { publicUser } from "@/lib/security";
 import { hasRealEmail } from "@/lib/email";
@@ -9,7 +9,16 @@ export const dynamic = "force-dynamic";
 
 export async function GET() {
   const session = await getServerSession();
-  if (!session) return NextResponse.json({ error: "Sesion requerida." }, { status: 401 });
+  // Se borra la cookie al negar: es la puerta que consulta la app en cada
+  // arranque, y sin esto un token revocado deja al usuario rebotando entre
+  // /advisor y /login sin llegar nunca al teclado del PIN. Ver
+  // `clearedSessionCookieHeader` en lib/session-token.
+  if (!session) {
+    return NextResponse.json(
+      { error: "Sesion requerida." },
+      { status: 401, headers: { "Set-Cookie": clearedSessionCookieHeader() } }
+    );
+  }
   const user = await prisma.user.findFirst({ where: { id: session.userId, storeId: session.storeId }, include: { store: { select: { name: true, kpisEnabled: true } } } });
   if (!user) return NextResponse.json({ error: "Usuario no encontrado." }, { status: 404 });
   // `needsEmail`: sin correo real no puede recuperar su PIN solo (la app le puso

@@ -93,3 +93,33 @@ export const sessionCookieOptions = {
   path: "/",
   maxAge: SESSION_TTL_SECONDS
 };
+
+/**
+ * Cabecera que BORRA la cookie de sesión.
+ *
+ * ⚠️ Sin esto, revocar una sesión deja al usuario encerrado.
+ *
+ * El middleware solo verifica la FIRMA del token; el `sessionVersion` lo
+ * comprueban los handlers contra la base. Así que un token revocado —tras subir
+ * `sessionVersion` por logout, cambio de PIN o cierre forzado— sigue pareciendo
+ * válido en el middleware:
+ *
+ *   /advisor → /api/auth/session responde 401 → la app va a /login
+ *           → el middleware ve el token «válido» y lo devuelve a /advisor → …
+ *
+ * Un bucle infinito del que no se sale ni cerrando la app, porque la cookie es
+ * `httpOnly` y el cliente no puede borrarla. Al expirarla en la propia respuesta
+ * 401, la siguiente petición a /login ya llega sin cookie y el login aparece.
+ */
+export function clearedSessionCookieHeader(): string {
+  const parts = [
+    `${SESSION_COOKIE}=`,
+    "Path=/",
+    "Max-Age=0",
+    "Expires=Thu, 01 Jan 1970 00:00:00 GMT",
+    "HttpOnly",
+    "SameSite=Lax"
+  ];
+  if (process.env.NODE_ENV === "production") parts.push("Secure");
+  return parts.join("; ");
+}
