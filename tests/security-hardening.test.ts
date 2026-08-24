@@ -39,8 +39,11 @@ test("requireCron rechaza sin secreto o con Bearer inválido", () => {
 
 test("verifyMpSignature falla cerrado en producción sin secreto", () => {
   const req = new Request("http://localhost/api/webhooks/mercadopago");
-  assert.equal(verifyMpSignature(req, "123", { secret: undefined, nodeEnv: "production" }), false);
-  assert.equal(verifyMpSignature(req, "123", { secret: undefined, nodeEnv: "development" }), true);
+  assert.deepEqual(verifyMpSignature(req, "123", { secret: undefined, nodeEnv: "production" }), {
+    ok: false,
+    reason: "sin-secreto"
+  });
+  assert.deepEqual(verifyMpSignature(req, "123", { secret: undefined, nodeEnv: "development" }), { ok: true });
 
   const ts = "1710000000";
   const requestId = "req-1";
@@ -54,6 +57,31 @@ test("verifyMpSignature falla cerrado en producción sin secreto", () => {
       "x-signature": `ts=${ts},v1=${v1}`
     }
   });
-  assert.equal(verifyMpSignature(signed, dataId, { secret, nodeEnv: "production" }), true);
-  assert.equal(verifyMpSignature(signed, "other", { secret, nodeEnv: "production" }), false);
+  assert.deepEqual(verifyMpSignature(signed, dataId, { secret, nodeEnv: "production" }), { ok: true });
+  assert.deepEqual(verifyMpSignature(signed, "other", { secret, nodeEnv: "production" }), {
+    ok: false,
+    reason: "no-coincide"
+  });
+});
+
+test("verifyMpSignature distingue el secreto faltante de la firma que no cuadra", () => {
+  const secret = "whsec-test";
+
+  // Con secreto pero sin cabecera: el motivo NO puede ser `sin-secreto`, o el
+  // aviso de configuración se dispararía con cada sonda al endpoint público.
+  const desnudo = new Request("http://localhost/api/webhooks/mercadopago");
+  assert.deepEqual(verifyMpSignature(desnudo, "123", { secret, nodeEnv: "production" }), {
+    ok: false,
+    reason: "sin-firma"
+  });
+
+  // Mercado Pago arma el manifiesto con el id en minúsculas.
+  const ts = "1710000000";
+  const requestId = "req-2";
+  const manifest = `id:pay-abc;request-id:${requestId};ts:${ts};`;
+  const v1 = crypto.createHmac("sha256", secret).update(manifest).digest("hex");
+  const signed = new Request("http://localhost/api/webhooks/mercadopago", {
+    headers: { "x-request-id": requestId, "x-signature": `ts=${ts},v1=${v1}` }
+  });
+  assert.deepEqual(verifyMpSignature(signed, "PAY-ABC", { secret, nodeEnv: "production" }), { ok: true });
 });

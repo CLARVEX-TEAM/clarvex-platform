@@ -6,9 +6,40 @@ import { verifyMpSignature } from "@/lib/mercadopago-webhook";
 import { createNotifications } from "@/lib/notifications";
 import { prisma } from "@/lib/prisma";
 import { dispatchPushToUsers } from "@/lib/push";
+import { sendOpsAlert } from "@/lib/webhooks";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
+
+/*
+ * Aviso de configuración, con freno.
+ *
+ * Solo se avisa cuando FALTA el secreto: eso es un problema nuestro y hay que
+ * arreglarlo hoy. Una firma que no coincide NO avisa a propósito — este
+ * endpoint es público, así que cualquiera podría convertir el canal de
+ * Telegram en su propio timbre mandando basura firmada al azar.
+ *
+ * El freno es por proceso y PM2 corre dos instancias: como mucho salen dos
+ * avisos por ventana. Es aceptable; multiplicarlo por cada webhook no.
+ */
+const AVISO_CADA_MS = 6 * 60 * 60 * 1000;
+let ultimoAviso = 0;
+
+async function avisarSecretoFaltante() {
+  const now = Date.now();
+  if (now - ultimoAviso < AVISO_CADA_MS) return;
+  ultimoAviso = now;
+  await sendOpsAlert({
+    source: "mercadopago",
+    title: "Webhook de Mercado Pago rechazando TODO",
+    text:
+      "Falta MERCADOPAGO_WEBHOOK_SECRET en el servidor, así que la verificación " +
+      "de firma falla cerrada y cada pago recibe 401. Las suscripciones no se " +
+      "están acreditando solas.\n\n" +
+      "Se copia de Mercado Pago → Tus integraciones → la aplicación → Webhooks → " +
+      "Clave secreta, se agrega al .env y se reinicia la app."
+  });
+}
 
 // Webhook de Mercado Pago. MP solo envía el id del pago; NO se confía en el
 // cuerpo: se vuelve a consultar el pago a la API de MP con nuestro token (fuente
@@ -26,8 +57,17 @@ export async function POST(request: Request) {
     if (!paymentId) return NextResponse.json({ ok: true, ignored: "sin id" });
 
     // Firma (si hay secreto configurado): rechaza webhooks no firmados.
-    if (!verifyMpSignature(request, paymentId)) {
-      console.error("webhook mercadopago: firma inválida", paymentId);
+    const firma = verifyMpSignature(request, paymentId);
+    if (!firma.ok) {
+      if (firma.reason === "sin-secreto") {
+        console.error(
+          "webhook mercadopago: FALTA MERCADOPAGO_WEBHOOK_SECRET; se rechazan todos los pagos",
+          paymentId
+        );
+        await avisarSecretoFaltante();
+      } else {
+        console.error(`webhook mercadopago: firma inválida (${firma.reason})`, paymentId);
+      }
       return NextResponse.json({ error: "Firma inválida." }, { status: 401 });
     }
 
