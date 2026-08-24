@@ -1,4 +1,5 @@
 import type { CommissionBasis } from "@/lib/commission";
+import { noteLoginBounce } from "@/lib/session-loop";
 import type { DashboardDailyKpi } from "@/lib/dashboard-kpi";
 import type { Announcement, CommissionRule, DayPlan, Evidence, Kpi, LogEntry, Pending, ScheduleShift, User } from "@/lib/types";
 
@@ -132,6 +133,10 @@ export async function fetchAppData(options?: { includeInactive?: boolean }): Pro
         // Se vacía la caché antes de salir: quien entre después no debe heredar
         // los datos de la sesión que acaba de caducar.
         clearAppDataCache();
+        // Si esto se repite, la app está rebotando contra el login sin poder
+        // entrar. Nada de esto lanza por sí solo, así que hay que contarlo a
+        // mano o Sentry nunca se entera. Ver lib/session-loop.
+        noteLoginBounce("app-data");
         window.location.href = "/login";
         throw new Error("Sesión expirada.");
       }

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { Receipt, ShoppingBag, Target, Trophy, Sparkles } from "lucide-react";
 import { getSession, logout } from "@/lib/auth";
+import { clearLoginBounces, noteLoginBounce } from "@/lib/session-loop";
 import { accruedCommission } from "@/lib/commission";
 import { completion, money } from "@/lib/format";
 import { haptic } from "@/lib/haptics";
@@ -80,8 +81,13 @@ export default function AdvisorDashboard() {
     setSessionFailed(false);
     return getSession()
       .then((session) => {
-        if (!session) router.replace("/login");
-        else setUser(session);
+        if (!session) {
+          noteLoginBounce("advisor");
+          router.replace("/login");
+        } else {
+          clearLoginBounces();
+          setUser(session);
+        }
       })
       .catch(() => setSessionFailed(true));
   }, [router]);

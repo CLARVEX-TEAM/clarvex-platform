@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getSession } from "@/lib/auth";
+import { clearLoginBounces, noteLoginBounce } from "@/lib/session-loop";
 import type { User } from "@/lib/types";
 
 /**
@@ -40,8 +41,13 @@ export function useSession(options?: { redirectOnMissing?: boolean }) {
       .then((current) => {
         // `null` aquí SÍ es una respuesta: el servidor dijo que no hay sesión.
         // `getSession` lanza cuando no pudo ni preguntar, y eso cae al catch.
-        if (!current && redirectOnMissing) router.replace("/login");
-        else setSession(current);
+        if (!current && redirectOnMissing) {
+          noteLoginBounce("use-session");
+          router.replace("/login");
+        } else {
+          if (current) clearLoginBounces();
+          setSession(current);
+        }
       })
       .catch(() => setFailed(true));
   }, [router, redirectOnMissing]);

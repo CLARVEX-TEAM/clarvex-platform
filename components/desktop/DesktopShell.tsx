@@ -84,7 +84,11 @@ export function DesktopShell({ children }: { children: React.ReactNode }) {
     }
 
     if (consumeDesktopFreshLogin() || sessionStorage.getItem("desktop_unlocked") === "true") {
-      getSession().then(finishCheck);
+      // Un fallo de RED no es «no hay sesión»: no se pasa por `finishCheck`,
+      // que borraría el desbloqueo. Solo se deja de esperar, para no quedar en
+      // la comprobación para siempre; la marca de `sessionStorage` sobrevive y
+      // al recargar se vuelve a intentar.
+      getSession().then(finishCheck).catch(() => setChecking(false));
       return;
     }
 

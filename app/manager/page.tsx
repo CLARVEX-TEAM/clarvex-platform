@@ -17,6 +17,7 @@ import {
   UsersRound
 } from "lucide-react";
 import { getSession, logout } from "@/lib/auth";
+import { clearLoginBounces, noteLoginBounce } from "@/lib/session-loop";
 import { completion, money, performanceTextClass } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { computeDailyStreak } from "@/lib/streaks";
@@ -55,8 +56,13 @@ export default function ManagerDashboard() {
   useEffect(() => {
     getSession()
       .then((session) => {
-        if (!session) router.replace("/login");
-        else setManager(session);
+        if (!session) {
+          noteLoginBounce("manager");
+          router.replace("/login");
+        } else {
+          clearLoginBounces();
+          setManager(session);
+        }
       })
       .catch(() => {}); // un fallo de red no debe tumbar la pantalla; el reintento de fetchAppData recupera
   }, [router]);

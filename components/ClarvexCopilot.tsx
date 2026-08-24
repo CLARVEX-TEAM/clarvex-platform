@@ -77,7 +77,11 @@ export function ClarvexCopilot() {
         setUser(null);
         setMessages([]);
       }
-    });
+    })
+      // Sin sesión resuelta el copiloto no se muestra (`if (!user) return null`)
+      // y ya está: es un extra, no puede tirar un error a Sentry desde CUALQUIER
+      // pantalla por un bache de señal. Monta en todas.
+      .catch(() => undefined);
   }, [pathname, isOpen, lockUpdate]);
 
   // `useCallback` para que TypingText no reinicie el efecto en cada render al

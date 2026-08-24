@@ -14,9 +14,13 @@ export function DesktopAutoRedirect() {
   const router = useRouter();
   useEffect(() => {
     if (!prefersDesktop()) return;
-    getSession().then((session) => {
-      if (session && session.role !== "ASESOR") { noteViewRedirect(); router.replace("/escritorio"); }
-    });
+    getSession()
+      .then((session) => {
+        if (session && session.role !== "ASESOR") { noteViewRedirect(); router.replace("/escritorio"); }
+      })
+      // Sin sesión resuelta simplemente no se redirige: quedarse donde está es
+      // el comportamiento correcto, y el error no tiene por qué subir a Sentry.
+      .catch(() => undefined);
   }, [router]);
   return null;
 }
