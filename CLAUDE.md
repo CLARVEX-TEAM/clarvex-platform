@@ -38,7 +38,12 @@ actual, que es el flujo real de los domingos. El API usa `reportWeekStart` y
   tablas de `CJ` y en `RDS`: Itzel, Adrian, Waira, Jazmin y Alonso. La unica
   excepcion explicita es `JESUS ADRIAN ...`, que se muestra como `Adrian`; esto
   no cambia el orden, porcentajes, cuotas ni formulas del archivo.
-- El importador por pegado de CJ sigue disponible como respaldo en KPIs.
+- El importador por pegado de CJ **se retiró** el 23 de agosto de 2026 (Retool
+  `0448797`, publish `1c80ce6`). Existía como respaldo mientras las metas
+  vivían en el Excel; con Cuota Justa escribiéndolas era una segunda puerta al
+  mismo dato, y pegar un bloque viejo sobrescribía metas ya aplicadas sin que
+  nada avisara. El endpoint `POST /api/admin/capture/goals` sigue en Clarvex,
+  ya sin nadie que lo llame.
 - Retool: `backend/weeklyPerformance/*`, `frontend/pages/WeeklyPerformance.tsx`
   y ruta `/cuota-justa`. Desplegar siempre Clarvex antes que Retool.
 
@@ -1034,6 +1039,41 @@ git status   # debe quedar limpio
 Fuente histórica: archivo XLSX de SharePoint. Desde el 14 de agosto de 2026 la
 captura operativa vive en Retool y escribe por la API segura de Clarvex; este
 bloque solo documenta el parser heredado.
+
+### ⚠️ El margen se captura de DOS formas y nunca a la vez
+
+`Kpi.discountDaily` distingue una de otra, y el servidor impide mezclarlas en
+los dos sentidos (`lib/discount-capture.ts` y `lib/kpi-capture.ts`):
+
+| Forma | Dónde vive | `discountDaily` |
+|---|---|---|
+| **Semanal** | fila ancla; el resto de la semana en `null` | `false` |
+| **Diaria** | cada día con su bruto y su descuento, del reporte del POS | `true` |
+
+Sumar las dos en la misma semana inflaría el descuento sin que nada avise — y
+el margen es un **techo**, así que pasarse se lee como que la tienda descontó
+de más.
+
+Desde el 23 de agosto de 2026 la pantalla de Descuentos lo respeta. Antes
+`getDiscounts` devolvía las filas crudas, así que una semana capturada día a
+día llegaba como varias filas con la misma clave y **la pantalla se quedaba con
+la última**: enseñaba un día como si fuera la semana. En producción, la semana
+33 de Adrián se veía como `$2,539` de bruto cuando eran `$59,708`.
+
+Ahora la consulta agrega por persona y devuelve además `daily`, `daysCaptured`
+y `daysMissing`. Las filas que vienen del POS se muestran sumadas y de solo
+lectura; las demás se capturan como siempre.
+
+⚠️ **`daysMissing` solo significa algo cuando `daily` es true.** En la captura
+semanal el resto de la semana está vacío a propósito, así que ahí el conteo es
+ruido y la pantalla lo ignora. El aviso tampoco afirma hacia dónde se mueve el
+margen: al faltar un día faltan su bruto y su descuento a la vez, y puede subir
+o bajar. Lo único cierto es que no es la semana completa.
+
+Retool `5ac14e8` (commit posterior al publish `6710583`). La consulta se probó
+contra producción en solo lectura sobre la semana 33 (diaria) y la 32
+(semanal); `retool check` pasó sus cuatro fases. No requirió cambios en
+Clarvex.
 
 ### Estructura hoja "MARGEN DTO"
 
