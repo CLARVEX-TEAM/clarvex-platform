@@ -204,6 +204,18 @@ global de otra versión instala un árbol de dependencias distinto al del servid
 - Docker — contenedor PostgreSQL: `clarvex_postgres` (imagen `postgres:16`)
 - PostgreSQL — base: `clarvex_team`, host: `localhost`, puerto: `5432`
 
+⚠️ **El VPS tiene 3.3 GB de RAM, no 8.** Los 8 GB son de **swap** (`/swapfile`).
+Desde que se suben source maps a Sentry, `next build` no cabe en el heap por
+omisión y muere con `Reached heap limit`. Por eso el script `build` de
+`package.json` fija `--max-old-space-size=6144`: se apoya en el swap, así que
+tarda más, pero termina.
+
+⚠️ **Nunca `rm -rf .next` antes de construir en producción.** Los chunks se
+sirven desde ahí en caliente: borrarlo tumba el sitio con 500 aunque PM2 siga
+`online`, y si el build falla no hay a qué volver. `next build` reemplaza lo que
+tiene que reemplazar él solo. Pasó el 24 de agosto de 2026: cuatro minutos de
+`/login` en 500.
+
 ⚠️ **El usuario de Postgres es `clarvex`, NO `postgres`.** El contenedor se creó
 con `POSTGRES_USER=clarvex`, así que el rol `postgres` **no existe**: cualquier
 `psql -U postgres` falla con `FATAL: role "postgres" does not exist`. Los únicos
@@ -554,7 +566,27 @@ NEXT_PUBLIC_SENTRY_DSN=
 SENTRY_ORG=          # solo para subir source maps
 SENTRY_PROJECT=      # solo para subir source maps
 SENTRY_AUTH_TOKEN=   # solo para subir source maps
+```
 
+✅ **Configurado en producción el 24 de agosto de 2026.** Sin las tres, las
+trazas llegaban minificadas (`at u (chunks/6834-….js:18:106653)`) y no había
+forma de leerlas; el build tampoco avisaba, porque `silent: true`. El token es
+personal, con **solo dos permisos**: `project:releases` (crear la release y
+adjuntarle los mapas) y `org:read` (para que el CLI encuentre la organización).
+Nada más — no puede leer errores ni tocar la configuración.
+
+Se comprueba desde fuera, sin entrar a Sentry: los chunks servidos traen
+`_sentryDebugId`. Si no aparece, no se están subiendo.
+
+⚠️ Activarlo **dispara la memoria del build** — ver la advertencia de RAM en
+[Infraestructura](#infraestructura).
+
+Además, `instrumentation-client.ts` retitula en español lo que llega del
+navegador (`lib/sentry-humanize.ts`) y baja los cortes de red a `warning`, así
+que lo que queda en rojo es lo accionable. **Se retitulan, no se descartan**: un
+`AbortError` fue justo lo que delató tres componentes globales sin `.catch`.
+
+```env
 # Webhook de fotos → n8n → Telegram. Sin WEBHOOK_URL queda desactivado.
 WEBHOOK_URL=
 WEBHOOK_STORE_IDS=   # obligatorio para activarlo: lista de storeId separados por coma
