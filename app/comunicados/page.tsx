@@ -5,7 +5,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import NextImage from "next/image";
 import { ImagePlus, Megaphone, MessageCircle, Sparkles, X } from "lucide-react";
 import { fetchAppData, type AppData } from "@/lib/app-data";
-import { getSession } from "@/lib/auth";
+import { useSession } from "@/lib/use-session";
 import { ANNOUNCEMENT_REACTIONS } from "@/lib/reactions";
 import type { Announcement, AnnouncementReaction, User } from "@/lib/types";
 import { AppFrame, AppHeader, Badge, Card, NotificationCard, ProfileAvatar, ProgressBar, Skeleton } from "@/components/ui";
@@ -20,6 +20,7 @@ import { useToast } from "@/components/Toast";
 type Filter = "todos" | "no-leidos" | "importantes";
 
 export default function ComunicadosPage() {
+  const { session } = useSession();
   const [data, setData] = useState<AppData | null>(null);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [title, setTitle] = useState("");
@@ -32,7 +33,6 @@ export default function ComunicadosPage() {
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [session, setSession] = useState<User | null>(null);
   const [filter, setFilter] = useState<Filter>("todos");
   const [generatingAnnouncement, setGeneratingAnnouncement] = useState(false);
   const [announcementPrompt, setAnnouncementPrompt] = useState("");
@@ -69,7 +69,6 @@ export default function ComunicadosPage() {
   );
 
   useEffect(() => {
-    getSession().then(setSession);
     void load();
   }, [load]);
 

@@ -5,7 +5,7 @@ import { dashboardDateKey } from "@/lib/dashboard-kpi";
 import { motion } from "framer-motion";
 import { ClipboardList, Flame, Moon, Plus, Sparkles, SunMedium } from "lucide-react";
 import { fetchAppData, type AppData } from "@/lib/app-data";
-import { getSession } from "@/lib/auth";
+import { useSession } from "@/lib/use-session";
 import { money } from "@/lib/format";
 import type { Activity, User } from "@/lib/types";
 import { CHORE_LABELS, ROTATING_ORDER } from "@/lib/chore-rules";
@@ -29,8 +29,8 @@ function groupedActivities(activities: Activity[]) {
 }
 
 export default function PlanPage() {
+  const { session } = useSession();
   const [data, setData] = useState<AppData | null>(null);
-  const [session, setSession] = useState<User | null>(null);
   const [selectedDay, setSelectedDay] = useState("Hoy");
   const [userId, setUserId] = useState("");
   const [date, setDate] = useState(dashboardDateKey());
@@ -102,7 +102,6 @@ export default function PlanPage() {
   }
 
   useEffect(() => {
-    getSession().then(setSession);
     fetchAppData().then(setData).catch(() => setData(null));
   }, []);
 

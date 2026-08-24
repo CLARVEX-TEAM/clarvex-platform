@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ExternalLink, FileText, GraduationCap, ImagePlus, X } from "lucide-react";
-import { getSession } from "@/lib/auth";
+import { useSession } from "@/lib/use-session";
 import { TRAINING_CATEGORIES, TRAINING_CATEGORY_LABELS } from "@/lib/training";
 import type { User } from "@/lib/types";
 import { AppFrame, AppHeader, Badge, Card } from "@/components/ui";
@@ -28,8 +28,8 @@ type Resource = {
 };
 
 export default function CapacitacionPage() {
+  const { session } = useSession({ redirectOnMissing: true });
   const router = useRouter();
-  const [session, setSession] = useState<User | null>(null);
   const [resources, setResources] = useState<Resource[]>([]);
   const [advisorCount, setAdvisorCount] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -46,10 +46,6 @@ export default function CapacitacionPage() {
   const fileRef = useRef<HTMLInputElement>(null);
 
   const isManager = Boolean(session && session.role !== "ASESOR");
-
-  useEffect(() => {
-    getSession().then((current) => { if (!current) router.replace("/login"); else setSession(current); });
-  }, [router]);
 
   useEffect(() => {
     if (!session) return;

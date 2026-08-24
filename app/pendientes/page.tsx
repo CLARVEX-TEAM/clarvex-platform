@@ -5,7 +5,7 @@ import { dashboardDateKey } from "@/lib/dashboard-kpi";
 import { AnimatePresence, motion } from "framer-motion";
 import { AlertTriangle, ClipboardCheck, Plus, Sparkles, UserRound, X } from "lucide-react";
 import { fetchAppData, type AppData } from "@/lib/app-data";
-import { getSession } from "@/lib/auth";
+import { useSession } from "@/lib/use-session";
 import { isOpenPending, type Pending, type User } from "@/lib/types";
 import { AppFrame, AppHeader, Badge, Card, EmptyState, FloatingActionButton, priorityTone, Skeleton, statusTone } from "@/components/ui";
 import { ResourceDiscussion } from "@/components/ResourceDiscussion";
@@ -19,8 +19,8 @@ import { RippleButton } from "@/components/magic/RippleButton";
 type Filter = "todos" | "urgentes" | "hoy";
 
 export default function PendientesPage() {
+  const { session } = useSession();
   const [data, setData] = useState<AppData | null>(null);
-  const [session, setSession] = useState<User | null>(null);
   const [filter, setFilter] = useState<Filter>("todos");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -56,7 +56,6 @@ export default function PendientesPage() {
   const load = useCallback(() => fetchAppData().then(setData).catch(() => setData(null)), []);
 
   useEffect(() => {
-    getSession().then(setSession);
     void load();
   }, [load]);
 

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CalendarOff, Check, Send, X } from "lucide-react";
-import { getSession } from "@/lib/auth";
+import { useSession } from "@/lib/use-session";
 import { DAY_BALANCE_LABELS, SHIFT_TYPE_LABELS, dayBalanceField, formatRequestDate, isHourType } from "@/lib/shift-requests";
 import type { User } from "@/lib/types";
 import { AppFrame, AppHeader, Badge, Button, Card, EmptyState, ProfileAvatar, Skeleton } from "@/components/ui";
@@ -30,8 +30,8 @@ const statusTone: Record<string, "warn" | "success" | "danger"> = { PENDIENTE: "
 const statusLabel: Record<string, string> = { PENDIENTE: "Pendiente", APROBADO: "Aprobada", RECHAZADO: "Rechazada" };
 
 export default function SolicitudesPage() {
+  const { session } = useSession({ redirectOnMissing: true });
   const router = useRouter();
-  const [session, setSession] = useState<User | null>(null);
   const [requests, setRequests] = useState<ShiftRequest[]>([]);
   const [balance, setBalance] = useState(0);
   const [vacationDays, setVacationDays] = useState(0);
@@ -46,10 +46,6 @@ export default function SolicitudesPage() {
   const [busyId, setBusyId] = useState<string | null>(null);
 
   const isManager = Boolean(session && session.role !== "ASESOR");
-
-  useEffect(() => {
-    getSession().then((current) => { if (!current) router.replace("/login"); else setSession(current); });
-  }, [router]);
 
   useEffect(() => {
     if (!session) return;

@@ -5,7 +5,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, LabelList, Line, LineChart, ResponsiveContainer, Tooltip, XAxis } from "recharts";
 import { barCursor, ChartTooltip, lineCursor, shortName } from "@/components/ChartTooltip";
 import { Calculator, CalendarDays, Download, Receipt, Settings2, ShoppingBag, Sparkles, Target, TrendingUp, Trophy, UsersRound, X } from "lucide-react";
-import { getSession } from "@/lib/auth";
+import { useSession } from "@/lib/use-session";
 import { computeNextBracketGap, formatCommissionLevel, resolveCommissionMinimum } from "@/lib/commission";
 import { money } from "@/lib/format";
 import type { KpiPeriod } from "@/lib/kpi-period";
@@ -31,7 +31,7 @@ const PERIOD_TABS: ReadonlyArray<SegmentedTabOption<KpiPeriod>> = [
 ];
 
 export default function KpisPage() {
-  const [session, setSession] = useState<User | null>(null);
+  const { session } = useSession();
   const [period, setPeriod] = useState<KpiPeriod>("week");
   const [selectedDate, setSelectedDate] = useState(localDateKey(new Date()));
   const [activeTab, setActiveTab] = useState<Tab>("resumen");
@@ -62,7 +62,6 @@ export default function KpisPage() {
     }
   }
 
-  useEffect(() => { getSession().then(setSession); }, []);
 
   // iOS: al volver al frente, refrescar para no quedar pegado en el esqueleto.
   useEffect(() => {

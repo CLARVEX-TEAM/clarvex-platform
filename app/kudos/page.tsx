@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { HeartHandshake, Send, Trophy } from "lucide-react";
-import { getSession } from "@/lib/auth";
+import { useSession } from "@/lib/use-session";
 import { fetchAppData } from "@/lib/app-data";
 import { KUDO_OPTIONS } from "@/lib/kudos";
 import type { User } from "@/lib/types";
@@ -16,8 +16,8 @@ type TopWeek = { name: string; photoUrl: string | null; count: number } | null;
 type Teammate = { id: string; name: string; photoUrl?: string | null };
 
 export default function KudosPage() {
+  const { session } = useSession({ redirectOnMissing: true });
   const router = useRouter();
-  const [session, setSession] = useState<User | null>(null);
   const [team, setTeam] = useState<Teammate[]>([]);
   const [kudos, setKudos] = useState<KudoItem[]>([]);
   const [topWeek, setTopWeek] = useState<TopWeek>(null);
@@ -28,10 +28,6 @@ export default function KudosPage() {
   const [status, setStatus] = useState("");
   const [loading, setLoading] = useState(true);
   const [showConfetti, setShowConfetti] = useState(false);
-
-  useEffect(() => {
-    getSession().then((current) => { if (!current) router.replace("/login"); else setSession(current); });
-  }, [router]);
 
   useEffect(() => {
     if (!session) return;

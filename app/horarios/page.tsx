@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { CalendarClock, CalendarDays, ChevronLeft, ChevronRight, Clock3 } from "lucide-react";
-import { getSession } from "@/lib/auth";
+import { useSession } from "@/lib/use-session";
 import { addWeeks, dateKey, startOfWeek } from "@/lib/schedule-week";
 import { SHIFT_TYPE_LABELS } from "@/lib/shift-requests";
 import type { Role, User } from "@/lib/types";
@@ -43,7 +43,7 @@ const statusConfig: Record<ScheduleStatus, { label: string; tone: "success" | "d
 };
 
 export default function HorariosPage() {
-  const [session, setSession] = useState<User | null>(null);
+  const { session } = useSession();
   const [weekStart, setWeekStart] = useState(() => dateKey(startOfWeek(new Date())));
   const [view, setView] = useState<"mine" | "team">("mine");
   const [payload, setPayload] = useState<ScheduleResponse | null>(null);
@@ -55,7 +55,6 @@ export default function HorariosPage() {
   const isManager = session?.role === "GERENTE" || session?.role === "SUBGERENTE";
 
   useEffect(() => {
-    getSession().then(setSession);
   }, []);
 
   useEffect(() => {

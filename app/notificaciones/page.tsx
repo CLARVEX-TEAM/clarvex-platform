@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Bell, Cake, CalendarClock, Check, CheckCheck, ClipboardCheck, GraduationCap, HeartHandshake, ImagePlus, Megaphone, MessageCircle, PackageSearch, Sparkles, Target, Trash2, Trophy, X } from "lucide-react";
-import { getSession } from "@/lib/auth";
+import { useSession } from "@/lib/use-session";
 import type { User } from "@/lib/types";
 import { AppFrame, AppHeader, Badge, Button, Card } from "@/components/ui";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
@@ -53,7 +53,7 @@ const typeHref: Record<NotificationType, string> = {
 };
 
 export default function NotificationsPage() {
-  const [session, setSession] = useState<User | null>(null);
+  const { session } = useSession();
   const [items, setItems] = useState<NotificationItem[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -63,7 +63,6 @@ export default function NotificationsPage() {
   const toast = useToast();
   const homeHref = session?.role === "ASESOR" ? "/advisor" : "/manager";
 
-  useEffect(() => { getSession().then(setSession); }, []);
   useEffect(() => { void loadNotifications(); }, []);
 
   async function loadNotifications() {

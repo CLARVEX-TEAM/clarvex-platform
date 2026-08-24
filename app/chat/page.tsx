@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { MessageSquare, Users } from "lucide-react";
-import { getSession } from "@/lib/auth";
+import { useSession } from "@/lib/use-session";
 import { fetchAppData } from "@/lib/app-data";
 import type { User } from "@/lib/types";
 import { AppFrame, AppHeader, Card, ProfileAvatar } from "@/components/ui";
@@ -22,16 +22,13 @@ type RoomSummary = {
 type Teammate = { id: string; name: string; photoUrl: string | null };
 
 export default function ChatPage() {
+  const { session } = useSession({ redirectOnMissing: true });
   const router = useRouter();
   const toast = useToast();
-  const [session, setSession] = useState<User | null>(null);
   const [rooms, setRooms] = useState<RoomSummary[]>([]);
   const [team, setTeam] = useState<Teammate[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    getSession().then((s) => { if (!s) router.replace("/login"); else setSession(s); });
-  }, [router]);
 
   useEffect(() => {
     if (!session) return;

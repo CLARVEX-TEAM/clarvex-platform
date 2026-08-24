@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 
 import { useRouter } from "next/navigation";
 import { ClipboardCheck, Lock, Star } from "lucide-react";
-import { getSession } from "@/lib/auth";
+import { useSession } from "@/lib/use-session";
 import type { User } from "@/lib/types";
 import { AppFrame, AppHeader, Badge, Button, Card, EmptyState } from "@/components/ui";
 import { useToast } from "@/components/Toast";
@@ -16,9 +16,9 @@ type Question = { id: string; text: string; type: "RATING" | "TEXT"; order: numb
 type Survey = { id: string; title: string; description: string | null; anonymous: boolean; active: boolean; audience?: "ALL" | "ADVISORS"; targeted?: boolean; createdAt: string; questions: Question[]; responded: boolean; responseCount: number };
 
 function EncuestasContent() {
+  const { session } = useSession({ redirectOnMissing: true });
   const router = useRouter();
   const toast = useToast();
-  const [session, setSession] = useState<User | null>(null);
   const [surveys, setSurveys] = useState<Survey[]>([]);
   const [loading, setLoading] = useState(true);
   const [answers, setAnswers] = useState<Record<string, Record<string, { rating?: number; text?: string }>>>({});
@@ -34,7 +34,6 @@ function EncuestasContent() {
   }, [focusId, loading]);
 
   useEffect(() => {
-    getSession().then((current) => { if (!current) router.replace("/login"); else setSession(current); });
   }, [router]);
 
   useEffect(() => {

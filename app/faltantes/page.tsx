@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import NextImage from "next/image";
 import { Check, ImagePlus, PackageSearch, RotateCcw, X } from "lucide-react";
-import { getSession } from "@/lib/auth";
+import { useSession } from "@/lib/use-session";
 import { INVENTORY_CATEGORIES, INVENTORY_CATEGORY_LABELS } from "@/lib/inventory";
 import type { User } from "@/lib/types";
 import { AppFrame, AppHeader, Badge, Button, Card, ProfileAvatar } from "@/components/ui";
@@ -31,8 +31,8 @@ function formatDate(iso: string) {
 }
 
 export default function FaltantesPage() {
+  const { session } = useSession({ redirectOnMissing: true });
   const router = useRouter();
-  const [session, setSession] = useState<User | null>(null);
   const [reports, setReports] = useState<Report[]>([]);
   const [loading, setLoading] = useState(true);
   const [productName, setProductName] = useState("");
@@ -48,10 +48,6 @@ export default function FaltantesPage() {
   const fileRef = useRef<HTMLInputElement>(null);
 
   const isManager = Boolean(session && session.role !== "ASESOR");
-
-  useEffect(() => {
-    getSession().then((current) => { if (!current) router.replace("/login"); else setSession(current); });
-  }, [router]);
 
   useEffect(() => {
     if (!session) return;
