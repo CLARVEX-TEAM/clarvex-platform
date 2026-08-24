@@ -1287,6 +1287,20 @@ Cinco reglas que NO hay que cambiar sin hablarlo:
    Corolario: al devolver ese sobrante al CEDIS **no se captura un traspaso de
    salida**. Nunca entró, así que restarlo lo contaría dos veces.
 
+   La captura de Retool respeta la regla por las dos vías desde el 24 de agosto
+   de 2026 (Retool `029997a`, sin cambios en Clarvex). La recepción por
+   manifiesto ya calculaba `min(contadas, manifiesto)`; el **alta manual** no
+   tenía nada equivalente y su texto de ayuda —uno solo para Sobrantes y
+   Faltantes— decía «las piezas recibidas ya son las reales», que invita a
+   teclear las 7 que llegaron. Ahora cada campo lleva su propia regla, porque
+   **no son la misma**: con faltante van las que llegaron, con sobrante van las
+   del manifiesto. Además el formulario confirma en pantalla cuántas entran y
+   cuántas se apartan.
+
+   ⚠️ **Sobrante y faltante no pueden ser mayores que cero a la vez.** Salen de
+   una sola comparación contra el manifiesto, así que por construcción como
+   mucho uno puede serlo. El alta manual lo aceptaba y ahora lo rechaza.
+
 Tipos de movimiento: recepción, traspaso de entrada, devolución de cliente,
 traspaso de salida, **SFS** (Ship From Store) y ajuste ±. El corte de la ronda
 ⚠️ **El día del inventario SÍ entra en la ronda**: movimientos y ventas usan
