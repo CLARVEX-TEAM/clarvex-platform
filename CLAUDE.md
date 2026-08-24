@@ -419,10 +419,29 @@ MERCADOPAGO_WEBHOOK_SECRET=   # ⚠️ FALTA EN EL VPS — ver aviso abajo
 
 > 🔴 **`MERCADOPAGO_WEBHOOK_SECRET` no está configurada en producción.**
 > `lib/mercadopago-webhook.ts` es *fail-closed*: si el secreto falta y
-> `NODE_ENV=production`, la verificación de firma devuelve `false` y
+> `NODE_ENV=production`, la verificación de firma falla y
 > `app/api/webhooks/mercadopago/route.ts` responde **401 a todo webhook entrante**.
 > Es decir: los pagos de suscripción no se procesan solos. Hay que darla de alta
 > desde el panel de Mercado Pago y añadirla al `.env`.
+
+Se copia de **Mercado Pago → Tus integraciones → la aplicación → Webhooks →
+Clave secreta**. La URL de notificación no hay que registrarla: cada preferencia
+la manda en `notification_url`, armada con `WEBAUTHN_ORIGIN`, así que sigue sola
+al dominio nuevo cuando se haga el corte. El secreto es de la aplicación, no del
+dominio, y también sobrevive la mudanza.
+
+⚠️ **`verifyMpSignature` devuelve un MOTIVO, no un booleano** (`532d0dd`). Los
+dos «no» significan cosas opuestas y antes escribían la misma línea de log:
+
+| Motivo | Qué es |
+|---|---|
+| `sin-secreto` | error de configuración **nuestro**: se caen todos los pagos |
+| `sin-firma` / `no-coincide` | la defensa funcionando: alguien firmó mal |
+
+Solo `sin-secreto` manda aviso a Telegram, con freno de seis horas por proceso.
+Una firma que no cuadra **no avisa a propósito**: el endpoint es público y
+cualquiera convertiría el canal en su timbre mandando basura firmada al azar.
+El manifiesto usa el id en minúsculas, como lo arma Mercado Pago.
 
 ### Inteligencia artificial
 
@@ -861,6 +880,13 @@ El % de comisión difiere por puesto pero el mínimo de referencia es el mismo p
 - **`MERCADOPAGO_WEBHOOK_SECRET` sin configurar en el VPS.** El webhook de Mercado
   Pago responde 401 a todo: las suscripciones no se procesan automáticamente.
   Ver [Variables de entorno](#variables-de-entorno).
+  Desde el 23 de agosto de 2026 **el fallo ya se delata solo**: Clarvex `532d0dd`
+  distingue el secreto faltante de una firma inválida, lo escribe literal en el
+  log y manda aviso a Telegram. Verificado en producción con una sonda al
+  endpoint: `webhook mercadopago: FALTA MERCADOPAGO_WEBHOOK_SECRET; se rechazan
+  todos los pagos`. Validación: 909 pruebas, ESLint, tipos y build limpios; dos
+  PM2 online y health `ok`. **Lo que sigue faltando es el secreto en sí** — el
+  cambio hace ruidoso el problema, no lo resuelve.
 - **Respaldo de `.env` suelto en el servidor:** `/root/clarvex-app/.env.bak-1784486367`.
   Ya está cubierto por `.gitignore`, pero conviene sacarlo del directorio del repo.
 
