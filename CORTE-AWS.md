@@ -54,24 +54,25 @@ Revisado entrando a las dos máquinas, no de memoria.
 
 ### Lo que todavía bloquea
 
-- [ ] **El usuario Unix `retool` no existe en AWS.** El rol de base de datos es
-      solo la mitad: Retool Cloud entra por **túnel SSH** con un usuario
-      dedicado (`/usr/sbin/nologin`, con `restrict,port-forwarding` y
-      `permitopen="127.0.0.1:5432"` en su `authorized_keys`). Sin él, el panel
-      de captura se queda a oscuras tras el corte.
-- [ ] **El grupo de seguridad no deja entrar a Retool.** `clarvex-app` abre el
-      puerto 22 **solo a `187.138.86.217/32`**. Los rangos de Retool
-      (`35.90.103.132/30`, `44.208.168.68/30`, `3.77.79.248/30`) están fuera, así
-      que el túnel no llegaría ni con el usuario creado.
-- [ ] **Mover los cuatro contenedores**: `n8n`, `uptime-kuma`, `vaultwarden` y
-      `portainer`. En AWS solo corren `npm` y `clarvex_postgres`.
-      ⚠️ Los datos son bind mounts pequeños (~120 MB en total) bajo
-      `/root/stack/` y `/root/n8n/` en Vultr, pero en AWS viven en
-      `/home/ubuntu/stack/` y **no hay ningún compose ni red propia**: los
-      contenedores actuales se crearon con `docker run` sobre el bridge por
-      omisión. `status`, `vault` y `docker` se resuelven hoy por NOMBRE de
-      contenedor, así que en AWS necesitan una red compartida con `npm` o dejan
-      de resolver.
+- [x] **Usuario Unix `retool` creado en AWS**, idéntico al de Vultr: shell
+      `nologin`, `600 retool:retool` y el mismo `permitopen="127.0.0.1:5432"`.
+      ⚠️ **Al copiarlo con una tubería de PowerShell llegó corrupto** —BOM de
+      UTF-8 y CRLF— y los dos comandos salieron sin ningún error. El BOM habría
+      hecho que sshd rechazara la llave. Solo se vio comparando huellas.
+      Ver la memoria `powershell-corrompe-tuberias`.
+- [x] **Los cuatro contenedores, preparados.** `/home/ubuntu/stack/` tiene sus
+      carpetas y un `docker-compose.yml` con `n8n`, `uptime-kuma`, `vaultwarden`
+      y `portainer`, con las imágenes ya descargadas. **Falta solo copiar los
+      datos**, que se hace en la ventana para que no diverjan.
+      ⚠️ El compose NO incluye `postgres` ni `npm`: en AWS esos dos ya corren,
+      creados con `docker run` sueltos. Meterlos ahí los recrearía y se perdería
+      lo que ya sirve `team.clarvex.tech`.
+
+- [ ] **Mover los DATOS de los cuatro contenedores** (~120 MB): desde
+      `/root/stack/{uptime-kuma,vaultwarden,portainer}` y `/root/n8n/n8n_data`
+      en Vultr, hacia `/home/ubuntu/stack/` en AWS. Va en la ventana, con los
+      contenedores parados en los dos lados: son bases SQLite y copiarlas en
+      caliente puede dejarlas a medias.
 - [ ] **`WEBHOOK_URL` sigue apuntando a `n8n.adrianluna.mx`**, que es el n8n de
       Vultr. Tras el corte, AWS mandaría las fotos al servidor viejo.
 - [ ] **Textos legales** apuntando al dominio nuevo.
@@ -149,6 +150,40 @@ El secreto de firma es de la aplicación, no del dominio, y también sobrevive.
    por delante lo que hubiera.
 7. Contar filas de las tablas grandes en los dos lados y comparar. Si no cuadran,
    se para aquí: todavía se puede volver sin consecuencias.
+
+### Fase 2b — Los servicios de al lado (15-20 min)
+
+Todo lo de abajo está preparado: carpetas creadas, compose escrito e imágenes
+descargadas. Aquí solo se copian los datos y se levanta.
+
+7a. **Parar los cuatro en Vultr**, para que las SQLite no se copien a medias:
+    ```
+    ssh clarvex 'cd /root/stack && docker compose stop uptime-kuma vaultwarden portainer && cd /root/n8n && docker compose stop n8n'
+    ```
+
+7b. **Copiar los datos.** ⚠️ Desde una shell POSIX (el Bash de Git), **nunca
+    desde PowerShell**: su tubería mete BOM y CRLF y no avisa.
+    ```
+    ssh clarvex 'tar -C /root/stack -cz uptime-kuma vaultwarden portainer; tar -C /root/n8n -cz n8n_data' | ssh clarvex-aws 'tar -C /home/ubuntu/stack -xz'
+    ```
+
+7c. **Abrir el puerto 22 a Retool** — sin esto el túnel no llega y el panel de
+    captura se queda a oscuras:
+    ```
+    for r in 35.90.103.132/30 44.208.168.68/30 3.77.79.248/30; do aws ec2 authorize-security-group-ingress --group-name clarvex-app --protocol tcp --port 22 --cidr "$r" --profile clarvex --region us-east-1; done
+    ```
+
+7d. **Levantar y conectar npm a la red compartida:**
+    ```
+    ssh clarvex-aws 'cd /home/ubuntu/stack && sudo docker compose up -d && sudo docker network connect clarvex_net npm'
+    ```
+    ⚠️ Sin el `network connect`, los proxys de `status`, `vault` y `docker`
+    responden **502** y el síntoma no dice por qué: el bridge por omisión de
+    Docker no resuelve nombres de contenedor.
+
+7e. **Recrear los cinco proxys en el npm de AWS**, con sus certificados:
+    `app`, `n8n`, `status`, `vault` y `docker`. Los tres últimos apuntan a
+    `uptime-kuma:3001`, `vaultwarden:80` y `portainer:9000`.
 
 ### Fase 3 — Conmutación
 

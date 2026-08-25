@@ -1,0 +1,72 @@
+# Los cuatro servicios que faltaban en AWS, replicando Vultr.
+#
+# NO incluye postgres ni npm: en AWS esos dos ya corren, creados con `docker
+# run` sueltos y con su propia configuracion. Meterlos aqui los recrearia y se
+# perderia lo que ya sirve team.clarvex.tech.
+#
+# ⚠️ RED COMPARTIDA. En Vultr, npm alcanza a uptime-kuma, vaultwarden y
+# portainer POR NOMBRE de contenedor, porque comparten la red de compose. En
+# AWS los contenedores existentes estan en el bridge por omision, que NO
+# resuelve nombres. Por eso esto crea `clarvex_net` y npm hay que conectarlo:
+#
+#   sudo docker network connect clarvex_net npm
+#
+# Sin ese paso, los tres proxys responden 502 y el sintoma no dice por que.
+#
+# Los nombres de contenedor tienen que coincidir EXACTAMENTE con los de Vultr:
+# son los que npm usa como destino.
+
+name: clarvex
+
+services:
+  n8n:
+    image: n8nio/n8n:2.30.4
+    container_name: n8n
+    restart: unless-stopped
+    ports:
+      - "5678:5678"
+    environment:
+      - N8N_HOST=n8n.adrianluna.mx
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=https
+      - NODE_ENV=production
+      - WEBHOOK_URL=https://n8n.adrianluna.mx/
+      - N8N_SECURE_COOKIE=false
+    volumes:
+      - ./n8n_data:/home/node/.n8n
+    dns:
+      - 1.1.1.1
+      - 8.8.8.8
+    networks: [clarvex_net]
+
+  uptime-kuma:
+    image: louislam/uptime-kuma:2
+    container_name: uptime-kuma
+    restart: unless-stopped
+    dns: ["1.1.1.1", "8.8.8.8"]
+    volumes:
+      - ./uptime-kuma:/app/data
+    expose:
+      - "3001"
+    networks: [clarvex_net]
+
+  vaultwarden:
+    image: vaultwarden/server:latest
+    container_name: vaultwarden
+    restart: unless-stopped
+    volumes:
+      - ./vaultwarden:/data
+    networks: [clarvex_net]
+
+  portainer:
+    image: portainer/portainer-ce:latest
+    container_name: portainer
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./portainer:/data
+    networks: [clarvex_net]
+
+networks:
+  clarvex_net:
+    name: clarvex_net
