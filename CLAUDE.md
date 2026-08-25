@@ -151,7 +151,8 @@ pasa las cuatro fases locales.
 
 **Nombre:** Clarvex Team  
 **Propósito:** Aplicación web interna para gestión de asesores y gerencia en tienda retail.  
-**Producción:** https://app.adrianluna.mx  
+**Producción:** https://team.clarvex.tech — desde el 24 de agosto de 2026.
+`app.adrianluna.mx` ya solo sirve una pantalla estática de mudanza.  
 **Branch principal:** `main`
 
 ---
@@ -246,6 +247,30 @@ docker exec -i clarvex_postgres psql -U clarvex -d clarvex_team
 ---
 
 ## Acceso al servidor
+
+⚠️ **Desde el 24 de agosto de 2026 producción es AWS.** El servidor de abajo es
+Vultr, que quedó **congelado** como camino de vuelta.
+
+| Dato | Producción (AWS) |
+|---|---|
+| Alias en `~/.ssh/config` | `clarvex-aws` |
+| Host | `44.200.176.214` — instancia `i-06fd0869766482dc1`, `us-east-1f` |
+| Usuario | `ubuntu` (la app corre como `ubuntu`, no como root) |
+| Ruta de la app | `/home/ubuntu/clarvex-app` |
+| Datos de los contenedores | `/home/ubuntu/stack/` |
+| Llave | `~/.ssh/clarvex_aws` |
+
+⚠️ El puerto 22 del grupo `clarvex-app` solo admite la IP de Adrian y los tres
+rangos de Retool. **Desde otra red no entra ni con la llave**: hay que añadir la
+IP al grupo primero. Desde fuera de esa lista da *timeout*, no *permiso
+denegado* — el síntoma distingue cortafuegos de llave.
+
+⚠️ La llave original del par de EC2 **se perdió** y no se recupera: AWS solo
+guarda la pública. Si vuelve a pasar, se entra con **EC2 Instance Connect**
+(empuja una llave temporal de 60 s por API) y se instala una permanente. Ver la
+memoria `acceso-ssh-instancia-aws`.
+
+### El servidor viejo (Vultr, congelado)
 
 > ⚠️ **Este archivo se commitea al repositorio.** Aquí van solo rutas y nombres de host —
 > **nunca** llaves privadas, tokens ni contenido de `.env`.
@@ -788,10 +813,10 @@ El % de comisión difiere por puesto pero el mínimo de referencia es el mismo p
 
 ### 🔴 Abierto — requiere acción
 
-- **Rotar `CRON_SECRET`** — quedó expuesto en una transcripción de trabajo, así
-  que hay que darlo por comprometido. Aplazado al **martes 25 de agosto de 2026**
-  a petición de Adrian; no es urgente porque el Bearer solo abre `/api/cron/*`,
-  pero sigue abierto hasta que se cambie.
+- ✅ **`CRON_SECRET` rotado** la noche del 24 de agosto de 2026, durante el
+  corte a AWS. Se hizo ahí porque era gratis: el `.env` y el crontab se
+  escribieron en la misma operación, que es justo donde estaba la trampa.
+  El valor viejo murió con el crontab de Vultr.
 
   ⚠️ **El `.env` y el crontab tienen que moverse a la vez.** El secreto vive en
   los dos sitios: `CRON_SECRET` en `/root/clarvex-app/.env` y repetido en cada
@@ -836,17 +861,24 @@ El % de comisión difiere por puesto pero el mínimo de referencia es el mismo p
   disco. No será un fallo, sino un umbral por debajo del costo normal —subirlo
   al hacer el corte, o se vuelve una alerta que nadie mira. Con ese gasto, los
   $1,000 dan más margen que los 24 meses que quedan hasta el vencimiento.
-- **La migración del VPS está EN CURSO, con los dos entornos vivos.** Vultr
-  sigue siendo producción en `app.adrianluna.mx`; en AWS corre una copia en
-  `https://team.clarvex.tech` (Ubuntu ARM, Postgres 16, PM2 en cluster, TLS).
-  Los datos se restauraron de un respaldo real de S3 y **se verificaron tabla
-  por tabla** — primera vez que se comprueba que los respaldos sirven.
-  ⚠️ **Mientras convivan: ningún cron en AWS y ninguna captura real ahí.** Dos
-  servidores con los mismos crons mandan cada notificación por duplicado, y lo
-  que se capture en AWS se pierde al restaurar el volcado del corte. El plan
-  completo, el orden y las trampas, en la sección **AWS** de `AGENTS.md`.
-  Pendiente ligado: **borrar el usuario IAM `clarvex-bedrock`** cuando la app
-  corra en EC2.
+- ✅ **La migración a AWS SE COMPLETÓ** la noche del 24 de agosto de 2026.
+  Producción es **`team.clarvex.tech`** sobre EC2 `t4g.medium` en `us-east-1`
+  (Ubuntu 24.04 ARM, Postgres 16 en Docker, PM2 en cluster, 8 GB de swap).
+
+  ⚠️ **Las reglas de convivencia YA NO APLICAN y estaban invertidas aquí.**
+  Los 16 crons corren **solo en AWS**; el crontab de Vultr quedó vacío. La
+  captura real ocurre **en AWS**. Lo contrario —que es lo que decía este
+  documento hasta el corte— desharía la mudanza.
+
+  Vultr sigue **encendido pero congelado** (PM2 parado, crontab vacío), con sus
+  datos intactos: es el camino de vuelta. No apagarlo hasta pasados unos días.
+  Al apagarlo: borrar la alarma `clarvex-caido-vultr` (hoy silenciada, no
+  eliminada), subir la alerta de presupuesto de $20 a algo realista y repetir
+  el barrido de recursos de costo fijo.
+
+  El guion completo del corte, con lo que falló y por qué, en `CORTE-AWS.md`.
+  Pendiente ligado: **borrar el usuario IAM `clarvex-bedrock`** y pasar la app
+  al rol de instancia.
 - **El aviso de cambio de dominio ya está implementado.** En
   `app.adrianluna.mx` aparece una banda global con Marquee y Animated Beam que
   anuncia `team.clarvex.tech` y explica que la huella se registrará otra vez.
