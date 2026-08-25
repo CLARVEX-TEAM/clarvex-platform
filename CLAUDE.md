@@ -200,12 +200,23 @@ global de otra versión instala un árbol de dependencias distinto al del servid
 
 ## Infraestructura
 
-- **VPS Ubuntu en Vultr** — `216.238.88.93` (no es AWS; la documentación anterior estaba desactualizada)
-- PM2 — proceso: `clarvex-team`, modo **cluster con 2 instancias**
-- Docker — contenedor PostgreSQL: `clarvex_postgres` (imagen `postgres:16`)
-- PostgreSQL — base: `clarvex_team`, host: `localhost`, puerto: `5432`
+**Producción desde el 24 de agosto de 2026: AWS.**
 
-⚠️ **El VPS tiene 3.3 GB de RAM, no 8.** Los 8 GB son de **swap** (`/swapfile`).
+- **EC2 `t4g.medium`** (Ubuntu 24.04 ARM, 3.7 GB de RAM) en `us-east-1f`,
+  instancia `i-06fd0869766482dc1`, IP pública `44.200.176.214`.
+- **Ruta de la app:** `/home/ubuntu/clarvex-app`. PM2 corre como `ubuntu`,
+  **no como root**, en cluster con 2 instancias.
+- Docker — PostgreSQL: `clarvex_postgres` (`postgres:16`), datos en
+  `/home/ubuntu/stack/postgres`.
+- PostgreSQL — base: `clarvex_team`, host: `localhost`, puerto: `5432`.
+- 8 GB de swap; el disco de 30 GB va al **76 %** desde que se bajaron las
+  imágenes de los contenedores.
+
+**Vultr (`216.238.88.93`) sigue encendido pero CONGELADO** — PM2 parado y
+crontab vacío — como camino de vuelta. No desplegar ahí.
+
+⚠️ **La RAM es escasa en los dos servidores** — 3.3 GB en Vultr y 3.7 GB en
+AWS. Los 8 GB que se ven son de **swap** (`/swapfile`), no de memoria.
 Desde que se suben source maps a Sentry, `next build` no cabe en el heap por
 omisión y muere con `Reached heap limit`. Por eso el script `build` de
 `package.json` fija `--max-old-space-size=6144`: se apoya en el swap, así que
@@ -233,16 +244,69 @@ docker exec -i clarvex_postgres psql -U clarvex -d clarvex_team
 
 ### Contenedores Docker en el mismo servidor
 
-| Contenedor | Imagen | Para qué |
-|---|---|---|
-| `clarvex_postgres` | postgres:16 | Base de datos de la app |
-| `npm` | jc21/nginx-proxy-manager | Proxy inverso + TLS |
-| `n8n` | n8nio/n8n | Webhook de fotos → Telegram |
-| `uptime-kuma` | louislam/uptime-kuma:2 | Monitoreo de `/api/health` |
-| `vaultwarden` | vaultwarden/server | Gestor de contraseñas |
-| `portainer` | portainer/portainer-ce | Administración de Docker |
+| Contenedor | Imagen | Para qué | Alcance |
+|---|---|---|---|
+| `clarvex_postgres` | postgres:16 | Base de datos de la app | interno |
+| `npm` | jc21/nginx-proxy-manager | Proxy inverso + TLS | público |
+| `mudanza` | nginx:alpine | Pantalla estática de `app.adrianluna.mx` | público |
+| `n8n` | n8nio/n8n:2.30.4 | Webhook de fotos → Telegram | público |
+| `uptime-kuma` | louislam/uptime-kuma:2 | Monitoreo de `/api/health` | **solo Tailscale** |
+| `vaultwarden` | vaultwarden/server | Gestor de contraseñas | **solo Tailscale** |
+| `portainer` | portainer/portainer-ce | Administración de Docker | **solo Tailscale** |
+
+Los cuatro últimos viven en `/home/ubuntu/stack/` con su propio
+`docker-compose.yml` (copia versionada en `scripts/aws-servicios-compose.yml`).
+`clarvex_postgres` y `npm` **NO** están en ese compose: se crearon con
+`docker run` sueltos y meterlos ahí los recrearía.
+
+⚠️ **`npm` hay que conectarlo a mano a la red compartida** con
+`docker network connect clarvex_net npm`. El bridge por omisión de Docker no
+resuelve nombres de contenedor, así que sin eso los proxys dan **502** sin
+decir por qué. Y nginx usa un archivo de resolvers que **npm genera al
+arrancar**: si se conecta a la red con el contenedor ya en marcha, hay que
+reiniciarlo para que lo regenere.
 
 ⚠️ El VPS aloja **más servicios que esta app**. Un `docker compose down` o un reinicio a la ligera tumba también el proxy, el monitoreo y el gestor de contraseñas.
+
+---
+
+## Tailscale: la red privada — 25 de agosto de 2026
+
+Los tres aparatos (`desktop-9jsgakh`, `pixel-10-pro-xl` y `clarvex-aws`) están
+en una red privada de Tailscale, dominio `taile59f37.ts.net` con MagicDNS.
+
+### Tres servicios salieron de internet
+
+Vaultwarden, Portainer y Uptime Kuma **ya no tienen DNS público**. Antes
+cualquiera en el mundo llegaba a sus pantallas de acceso. Ahora se sirven con
+`tailscale serve`, con certificado propio que se renueva solo:
+
+| Servicio | Dirección | Puerto local |
+|---|---|---|
+| Vaultwarden | `https://clarvex-aws.taile59f37.ts.net` | `127.0.0.1:8080` |
+| Portainer | `https://clarvex-aws.taile59f37.ts.net:8443` | `127.0.0.1:9000` |
+| Uptime Kuma | `https://clarvex-aws.taile59f37.ts.net:9443` | `127.0.0.1:3001` |
+
+⚠️ **Los clientes de Bitwarden guardan la URL del servidor.** Al mover
+Vaultwarden hubo que reconfigurar la extensión del navegador y la app del
+teléfono; hasta entonces daban Â«Failed to fetchÂ» sin explicar por qué.
+
+⚠️ **El certificado `npm-2` se reemitió solo para `app` y `n8n`.** Cubría los
+cinco dominios; si tres dejan de tener DNS público y no se reemite, la
+renovación valida por HTTP-01 y **falla para los cinco**, llevándose por delante
+también la pantalla de mudanza y el webhook de fotos.
+
+### El ACL está en `accept`, no en `check`
+
+El bloque `ssh` del ACL usa `"action": "accept"`. Con `check` —el valor por
+omisión— Tailscale pide confirmación por navegador **cada 12 horas**, y como el
+puerto 22 ya no admite la IP de casa, eso rompería cualquier acceso automatico
+dos veces al día.
+
+⚠️ **El término medio no existe en el plan gratuito.** `checkPeriod` es de pago
+y además su máximo es 168h. La elección es binaria: `check` cada 12 horas o
+`accept`. Se eligió `accept` sabiendo qué se pierde: quien tuviera la PC
+desbloqueada y con Tailscale activo entraría al servidor sin segundo factor.
 
 ---
 
@@ -251,24 +315,48 @@ docker exec -i clarvex_postgres psql -U clarvex -d clarvex_team
 ⚠️ **Desde el 24 de agosto de 2026 producción es AWS.** El servidor de abajo es
 Vultr, que quedó **congelado** como camino de vuelta.
 
+```bash
+ssh clarvex-aws
+```
+
+Sin llave y sin contraseña: entra por **Tailscale SSH**, que autentica con la
+identidad de Tailscale. El único requisito es tener Tailscale conectado en la
+máquina desde la que se entra.
+
 | Dato | Producción (AWS) |
 |---|---|
-| Alias en `~/.ssh/config` | `clarvex-aws` |
-| Host | `44.200.176.214` — instancia `i-06fd0869766482dc1`, `us-east-1f` |
-| Usuario | `ubuntu` (la app corre como `ubuntu`, no como root) |
+| Entrada | `ssh clarvex-aws` → `clarvex-aws.taile59f37.ts.net` por Tailscale |
+| Instancia | `i-06fd0869766482dc1`, `us-east-1f`, IP pública `44.200.176.214` |
+| IP en Tailscale | `100.64.207.65` |
+| Usuario | `ubuntu` (la app corre como `ubuntu`, **no como root**) |
 | Ruta de la app | `/home/ubuntu/clarvex-app` |
 | Datos de los contenedores | `/home/ubuntu/stack/` |
-| Llave | `~/.ssh/clarvex_aws` |
+| Grupo de seguridad | `sg-0c695d897d47788f7` |
 
-⚠️ El puerto 22 del grupo `clarvex-app` solo admite la IP de Adrian y los tres
-rangos de Retool. **Desde otra red no entra ni con la llave**: hay que añadir la
-IP al grupo primero. Desde fuera de esa lista da *timeout*, no *permiso
-denegado* — el síntoma distingue cortafuegos de llave.
+⚠️ **El puerto 22 ya NO admite la IP de casa** (25 de agosto de 2026). Solo
+quedan los tres rangos de Retool —`35.90.103.132/30`, `44.208.168.68/30` y
+`3.77.79.248/30`—, que son imprescindibles: por ahí entra el túnel que alimenta
+toda la captura de la tienda. **Cerrarlo del todo dejaría a la tienda sin poder
+capturar.**
+
+El alias `clarvex-aws-directo` sigue en el `~/.ssh/config` con la llave
+`~/.ssh/clarvex_aws`, pero **ya no funciona** — apunta a la IP pública. Se deja
+a propósito para cuando vuelva a hacer falta.
+
+### Si Tailscale fallara
+
+No hay bloqueo permanente: el cortafuegos sigue siendo nuestro. Dos salidas:
+
+```bash
+# a) reabrir el 22 a la IP actual y usar clarvex-aws-directo
+aws ec2 authorize-security-group-ingress --group-id sg-0c695d897d47788f7 \n  --protocol tcp --port 22 --cidr TU_IP/32 --profile clarvex --region us-east-1
+```
+
+b) **EC2 Instance Connect**, que no necesita llave ni Tailscale, solo la sesión
+de AWS. Es lo que se usó cuando la llave del par de EC2 resultó perdida.
 
 ⚠️ La llave original del par de EC2 **se perdió** y no se recupera: AWS solo
-guarda la pública. Si vuelve a pasar, se entra con **EC2 Instance Connect**
-(empuja una llave temporal de 60 s por API) y se instala una permanente. Ver la
-memoria `acceso-ssh-instancia-aws`.
+guarda la pública. Ver la memoria `acceso-ssh-instancia-aws`.
 
 ### El servidor viejo (Vultr, congelado)
 
@@ -279,12 +367,16 @@ memoria `acceso-ssh-instancia-aws`.
 |---|---|
 | Host | `216.238.88.93` (Vultr) |
 | Usuario | `root` |
-| Llave privada | `~/.ssh/clarvex_vultr` (Windows: `C:\Users\<usuario>\.ssh\clarvex_vultr`) |
+| Llave privada | `~/.ssh/clarvex_vultr_2026` |
 | Alias en `~/.ssh/config` | `clarvex` |
 
 ```bash
-ssh -i ~/.ssh/clarvex_vultr root@216.238.88.93
+ssh clarvex
 ```
+
+⚠️ **La llave que esta página documentó durante meses —`clarvex_vultr`— no
+existe.** Se rotó y la buena es `clarvex_vultr_2026`. Usar el alias `clarvex`
+evita el problema, porque ya la lleva configurada.
 
 **Nota para Windows:** si la ruta del perfil lleva espacios (`C:\Users\Adrian L\...`), **no** la pases
 en `-o UserKnownHostsFile=`: esa opción admite varios archivos separados por espacios y ssh parte
@@ -298,7 +390,7 @@ la herencia desactivada:
 ```powershell
 # Las llaves ${...} son obligatorias: sin ellas PowerShell interpreta
 # "$env:USERNAME:F" como un nombre de variable e icacls falla con "Parametro no valido".
-icacls "$env:USERPROFILE\.ssh\clarvex_vultr" /inheritance:r /grant:r "${env:USERDOMAIN}\${env:USERNAME}:F"
+icacls "$env:USERPROFILE\.ssh\clarvex_vultr_2026" /inheritance:r /grant:r "${env:USERDOMAIN}\${env:USERNAME}:F"
 ```
 
 Si el archivo pertenece a `BUILTIN\Administradores`, `icacls` falla con «Acceso denegado» sin
@@ -325,9 +417,10 @@ git add <archivo> [<archivo>...]
 git commit -m "descripcion"
 git push origin main
 
-# 2. En el VPS
-ssh -i ~/.ssh/clarvex_vultr root@216.238.88.93
-cd /root/clarvex-app
+# 2. En el servidor de PRODUCCION (AWS)
+#    Entra por Tailscale, sin llave. Requiere Tailscale conectado en tu maquina.
+ssh clarvex-aws
+cd /home/ubuntu/clarvex-app
 git pull
 pnpm install
 pnpm exec prisma generate
@@ -337,7 +430,7 @@ pm2 restart clarvex-team --update-env
 
 # 3. Verificar
 pm2 list
-curl -s https://app.adrianluna.mx/api/health
+curl -s https://team.clarvex.tech/api/health
 ```
 
 La operación ya no usa «Sincronizar ahora» ni Centro de Datos. Horarios,
@@ -1031,7 +1124,7 @@ El % de comisión difiere por puesto pero el mínimo de referencia es el mismo p
 - Fotos de perfil visibles para todos los usuarios (Cloudflare R2)
 - Push Notifications funcionando con app cerrada (Android + PWA)
 - Botón eliminar para gerente/subgerente en comunicados, planes y pendientes
-- Producción estable en app.adrianluna.mx
+- Producción estable en team.clarvex.tech (AWS, desde el 24 de agosto de 2026)
 - Modo demo público de solo lectura (`/api/demo/manager`, `/api/demo/advisor`),
   con el candado cerrado también en los GET que escriben y en los que gastan IA
 - Webhook de Mercado Pago vivo desde el 23 de agosto de 2026: el secreto de firma
@@ -1139,7 +1232,7 @@ git status   # debe quedar limpio
 - [x] Push Notifications funcionales (Android + PWA)
 - [x] Botón eliminar para gerente/subgerente
 - [x] PWA instalable en móvil
-- [x] Producción estable en app.adrianluna.mx
+- [x] Producción estable en team.clarvex.tech (AWS)
 
 ---
 
