@@ -1,0 +1,169 @@
+[
+  {
+    "id": "clarvexbuzonpersonal",
+    "name": "Buzón personal",
+    "active": false,
+    "nodes": [
+      {
+        "parameters": {
+          "updates": ["message"],
+          "additionalFields": {}
+        },
+        "id": "b0000000-0001-4000-8000-000000000001",
+        "name": "Buzon",
+        "type": "n8n-nodes-base.telegramTrigger",
+        "typeVersion": 1.4,
+        "position": [-720, 0],
+        "webhookId": "b0000000-9999-4000-8000-000000000099",
+        "credentials": {
+          "telegramApi": {
+            "id": "c7bIjyLeljGWy3yc",
+            "name": "Telegram account 2"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "mode": "expression",
+          "numberOutputs": 3,
+          "output": "={{ $json.message.chat.id !== 8328057325 ? 2 : (($json.message.voice || $json.message.audio) ? 0 : 1) }}",
+          "options": {}
+        },
+        "id": "b0000000-0002-4000-8000-000000000002",
+        "name": "Que llego",
+        "type": "n8n-nodes-base.switch",
+        "typeVersion": 3.4,
+        "position": [-480, 0]
+      },
+      {
+        "parameters": {
+          "resource": "file",
+          "fileId": "={{ $json.message.voice ? $json.message.voice.file_id : $json.message.audio.file_id }}",
+          "download": true
+        },
+        "id": "b0000000-0003-4000-8000-000000000003",
+        "name": "Bajar el audio",
+        "type": "n8n-nodes-base.telegram",
+        "typeVersion": 1.2,
+        "position": [-220, -140],
+        "credentials": {
+          "telegramApi": {
+            "id": "c7bIjyLeljGWy3yc",
+            "name": "Telegram account 2"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "https://api.groq.com/openai/v1/audio/transcriptions",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "=Bearer {{ $env.GROQ_API_KEY }}"
+              }
+            ]
+          },
+          "sendBody": true,
+          "contentType": "multipart-form-data",
+          "bodyParameters": {
+            "parameters": [
+              {
+                "parameterType": "formBinaryData",
+                "name": "file",
+                "inputDataFieldName": "data"
+              },
+              {
+                "name": "model",
+                "value": "whisper-large-v3-turbo"
+              },
+              {
+                "name": "language",
+                "value": "es"
+              },
+              {
+                "name": "response_format",
+                "value": "json"
+              }
+            ]
+          },
+          "options": {
+            "timeout": 120000
+          }
+        },
+        "id": "b0000000-0004-4000-8000-000000000004",
+        "name": "Transcribir",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [40, -140]
+      },
+      {
+        "parameters": {
+          "chatId": "8328057325",
+          "text": "={{ $json.text ? $json.text.trim() : '(no se entendio nada en el audio)' }}",
+          "additionalFields": {
+            "appendAttribution": false,
+            "reply_to_message_id": "={{ $('Buzon').item.json.message.message_id }}"
+          }
+        },
+        "id": "b0000000-0005-4000-8000-000000000005",
+        "name": "Devolver el texto",
+        "type": "n8n-nodes-base.telegram",
+        "typeVersion": 1.2,
+        "position": [300, -140],
+        "webhookId": "b0000000-8888-4000-8000-000000000088",
+        "credentials": {
+          "telegramApi": {
+            "id": "c7bIjyLeljGWy3yc",
+            "name": "Telegram account 2"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "chatId": "8328057325",
+          "text": "Por ahora solo se transcribir notas de voz. Fotos, enlaces y documentos vienen despues.",
+          "additionalFields": {
+            "appendAttribution": false,
+            "reply_to_message_id": "={{ $('Buzon').item.json.message.message_id }}"
+          }
+        },
+        "id": "b0000000-0006-4000-8000-000000000006",
+        "name": "Todavia no se",
+        "type": "n8n-nodes-base.telegram",
+        "typeVersion": 1.2,
+        "position": [40, 120],
+        "webhookId": "b0000000-7777-4000-8000-000000000077",
+        "credentials": {
+          "telegramApi": {
+            "id": "c7bIjyLeljGWy3yc",
+            "name": "Telegram account 2"
+          }
+        }
+      }
+    ],
+    "connections": {
+      "Buzon": {
+        "main": [[{ "node": "Que llego", "type": "main", "index": 0 }]]
+      },
+      "Que llego": {
+        "main": [
+          [{ "node": "Bajar el audio", "type": "main", "index": 0 }],
+          [{ "node": "Todavia no se", "type": "main", "index": 0 }],
+          []
+        ]
+      },
+      "Bajar el audio": {
+        "main": [[{ "node": "Transcribir", "type": "main", "index": 0 }]]
+      },
+      "Transcribir": {
+        "main": [[{ "node": "Devolver el texto", "type": "main", "index": 0 }]]
+      }
+    },
+    "settings": {
+      "executionOrder": "v1"
+    }
+  }
+]

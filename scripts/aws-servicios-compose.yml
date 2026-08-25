@@ -32,6 +32,13 @@ services:
       - NODE_ENV=production
       - WEBHOOK_URL=https://n8n.adrianluna.mx/
       - N8N_SECURE_COOKIE=false
+      # Llave de Groq para transcribir las notas de voz del buzon personal.
+      # El VALOR vive en /home/ubuntu/stack/.env (chmod 600), no aqui: este
+      # archivo se versiona en el repo y no puede llevar secretos.
+      - GROQ_API_KEY=${GROQ_API_KEY}
+      # Sin esto las expresiones de n8n no pueden leer $env y la llave no llega
+      # al nodo. n8n lo bloquea por omision en produccion.
+      - N8N_BLOCK_ENV_ACCESS_IN_NODE=false
     volumes:
       - ./n8n_data:/home/node/.n8n
     dns:
@@ -46,8 +53,10 @@ services:
     dns: ["1.1.1.1", "8.8.8.8"]
     volumes:
       - ./uptime-kuma:/app/data
-    expose:
-      - "3001"
+    # Solo en localhost: quien lo sirve al exterior es `tailscale serve`,
+    # no el proxy. Sin el 127.0.0.1 quedaria escuchando en toda la red.
+    ports:
+      - "127.0.0.1:3001:3001"
     networks: [clarvex_net]
 
   vaultwarden:
@@ -56,6 +65,8 @@ services:
     restart: unless-stopped
     volumes:
       - ./vaultwarden:/data
+    ports:
+      - "127.0.0.1:8080:80"
     networks: [clarvex_net]
 
   portainer:
@@ -65,6 +76,8 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./portainer:/data
+    ports:
+      - "127.0.0.1:9000:9000"
     networks: [clarvex_net]
 
   # Pantalla de mudanza para el dominio viejo (app.adrianluna.mx).
