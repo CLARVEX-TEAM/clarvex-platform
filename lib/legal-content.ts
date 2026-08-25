@@ -15,7 +15,7 @@ export const LEGAL_CONTENT: Record<string, LegalContent> = {
       },
       {
         "t": "p",
-        "x": "Los presentes Términos de Uso para Usuario Final (los \"Términos\") regulan el acceso y la utilización de la plataforma de software como servicio accesible a través de https://app.adrianluna.mx (la \"Plataforma\") por parte de los usuarios finales, entendiéndose por tales los empleados, colaboradores, asesores, gerentes y demás personas físicas a quienes la Empresa Cliente autorice para acceder y usar la Plataforma (el \"Usuario Final\")."
+        "x": "Los presentes Términos de Uso para Usuario Final (los \"Términos\") regulan el acceso y la utilización de la plataforma de software como servicio accesible a través de https://team.clarvex.tech (la \"Plataforma\") por parte de los usuarios finales, entendiéndose por tales los empleados, colaboradores, asesores, gerentes y demás personas físicas a quienes la Empresa Cliente autorice para acceder y usar la Plataforma (el \"Usuario Final\")."
       },
       {
         "t": "p",
@@ -55,7 +55,7 @@ export const LEGAL_CONTENT: Record<string, LegalContent> = {
       },
       {
         "t": "p",
-        "x": "\"Plataforma\" significa la aplicación de software como servicio desarrollada y operada por el Proveedor, accesible a través de https://app.adrianluna.mx."
+        "x": "\"Plataforma\" significa la aplicación de software como servicio desarrollada y operada por el Proveedor, accesible a través de https://team.clarvex.tech."
       },
       {
         "t": "p",
@@ -317,7 +317,7 @@ export const LEGAL_CONTENT: Record<string, LegalContent> = {
       },
       {
         "t": "p",
-        "x": "El tratamiento de datos personales se realiza principalmente a través de la plataforma tecnológica accesible en la dirección https://app.adrianluna.mx (en lo sucesivo, la \"Plataforma\")."
+        "x": "El tratamiento de datos personales se realiza principalmente a través de la plataforma tecnológica accesible en la dirección https://team.clarvex.tech (en lo sucesivo, la \"Plataforma\")."
       },
       {
         "t": "p",
@@ -357,7 +357,7 @@ export const LEGAL_CONTENT: Record<string, LegalContent> = {
       },
       {
         "t": "p",
-        "x": "\"Plataforma\": el sistema y aplicación tecnológica de CLARVEX accesible en https://app.adrianluna.mx."
+        "x": "\"Plataforma\": el sistema y aplicación tecnológica de CLARVEX accesible en https://team.clarvex.tech."
       },
       {
         "t": "p",
@@ -605,7 +605,7 @@ export const LEGAL_CONTENT: Record<string, LegalContent> = {
       },
       {
         "t": "p",
-        "x": "Cualquier modificación al presente Aviso de Privacidad será puesta a disposición del titular a través de la Plataforma en la dirección https://app.adrianluna.mx o mediante el correo electrónico registrado, indicando la fecha de la última actualización."
+        "x": "Cualquier modificación al presente Aviso de Privacidad será puesta a disposición del titular a través de la Plataforma en la dirección https://team.clarvex.tech o mediante el correo electrónico registrado, indicando la fecha de la última actualización."
       },
       {
         "t": "h",
@@ -635,7 +635,7 @@ export const LEGAL_CONTENT: Record<string, LegalContent> = {
       },
       {
         "t": "p",
-        "x": "La presente Política de Uso Aceptable (la \"Política\") establece las reglas de conducta que todo usuario (el \"Usuario\") debe observar al acceder y utilizar la plataforma de software como servicio accesible a través de https://app.adrianluna.mx (la \"Plataforma\"), cuyo titular es Jesús Adrián Hernández Luna, persona física con actividad empresarial (RFC HELJ0102235X0), quien opera bajo los nombres comerciales \"Clarvex Technology\" (nombre comercial principal) y su sub-marca \"CLARVEX Team\" (el \"Titular\")."
+        "x": "La presente Política de Uso Aceptable (la \"Política\") establece las reglas de conducta que todo usuario (el \"Usuario\") debe observar al acceder y utilizar la plataforma de software como servicio accesible a través de https://team.clarvex.tech (la \"Plataforma\"), cuyo titular es Jesús Adrián Hernández Luna, persona física con actividad empresarial (RFC HELJ0102235X0), quien opera bajo los nombres comerciales \"Clarvex Technology\" (nombre comercial principal) y su sub-marca \"CLARVEX Team\" (el \"Titular\")."
       },
       {
         "t": "p",
@@ -925,7 +925,7 @@ export const LEGAL_CONTENT: Record<string, LegalContent> = {
       },
       {
         "t": "p",
-        "x": "La presente Política de Privacidad (la \"Política\") describe de manera integral y detallada la forma en que Clarvex Technology y su submarca CLARVEX Team recopilan, utilizan, almacenan, protegen, transfieren y eliminan los datos personales tratados a través de la plataforma accesible en https://app.adrianluna.mx (la \"Plataforma\")."
+        "x": "La presente Política de Privacidad (la \"Política\") describe de manera integral y detallada la forma en que Clarvex Technology y su submarca CLARVEX Team recopilan, utilizan, almacenan, protegen, transfieren y eliminan los datos personales tratados a través de la plataforma accesible en https://team.clarvex.tech (la \"Plataforma\")."
       },
       {
         "t": "p",
@@ -1001,7 +1001,7 @@ export const LEGAL_CONTENT: Record<string, LegalContent> = {
       },
       {
         "t": "p",
-        "x": "\"Plataforma\": el sistema y aplicación de CLARVEX accesible en https://app.adrianluna.mx."
+        "x": "\"Plataforma\": el sistema y aplicación de CLARVEX accesible en https://team.clarvex.tech."
       },
       {
         "t": "p",
@@ -1297,7 +1297,7 @@ export const LEGAL_CONTENT: Record<string, LegalContent> = {
       },
       {
         "t": "p",
-        "x": "El Responsable podrá modificar la presente Política en cualquier momento para atender novedades legislativas, técnicas u operativas. Cualquier modificación se pondrá a disposición del titular a través de la Plataforma en https://app.adrianluna.mx o mediante el correo electrónico registrado, indicando la fecha de la última actualización."
+        "x": "El Responsable podrá modificar la presente Política en cualquier momento para atender novedades legislativas, técnicas u operativas. Cualquier modificación se pondrá a disposición del titular a través de la Plataforma en https://team.clarvex.tech o mediante el correo electrónico registrado, indicando la fecha de la última actualización."
       },
       {
         "t": "h",
@@ -1319,7 +1319,7 @@ export const LEGAL_CONTENT: Record<string, LegalContent> = {
       },
       {
         "t": "p",
-        "x": "La presente Política de Cookies (la \"Política\") tiene por objeto informar a los usuarios de la plataforma accesible en https://app.adrianluna.mx (la \"Plataforma\") acerca del uso de cookies y otras tecnologías de almacenamiento, su finalidad y los mecanismos disponibles para gestionarlas o deshabilitarlas."
+        "x": "La presente Política de Cookies (la \"Política\") tiene por objeto informar a los usuarios de la plataforma accesible en https://team.clarvex.tech (la \"Plataforma\") acerca del uso de cookies y otras tecnologías de almacenamiento, su finalidad y los mecanismos disponibles para gestionarlas o deshabilitarlas."
       },
       {
         "t": "p",
@@ -1489,7 +1489,7 @@ export const LEGAL_CONTENT: Record<string, LegalContent> = {
       },
       {
         "t": "p",
-        "x": "La presente Política de Reembolsos y Cancelaciones (en lo sucesivo, la \"Política\") establece los términos y condiciones aplicables a la cancelación, renovación y suspensión de los servicios prestados a través de la plataforma accesible en https://app.adrianluna.mx (en lo sucesivo, la \"Plataforma\" o el \"Servicio\"), así como a la procedencia y cálculo de reembolsos, por parte del C. Jesús Adrián Hernández Luna, persona física con actividad empresarial, con Registro Federal de Contribuyentes HELJ0102235X0 y domicilio en Loma Alta 164, Las Lomas Residencial, Juárez, Nuevo León, C.P. 67257, quien opera bajo los nombres comerciales \"Clarvex Technology\" y su sub-marca \"CLARVEX Team\" (en lo sucesivo, el \"Proveedor\"), en favor de sus clientes (en lo sucesivo, el \"Cliente\")."
+        "x": "La presente Política de Reembolsos y Cancelaciones (en lo sucesivo, la \"Política\") establece los términos y condiciones aplicables a la cancelación, renovación y suspensión de los servicios prestados a través de la plataforma accesible en https://team.clarvex.tech (en lo sucesivo, la \"Plataforma\" o el \"Servicio\"), así como a la procedencia y cálculo de reembolsos, por parte del C. Jesús Adrián Hernández Luna, persona física con actividad empresarial, con Registro Federal de Contribuyentes HELJ0102235X0 y domicilio en Loma Alta 164, Las Lomas Residencial, Juárez, Nuevo León, C.P. 67257, quien opera bajo los nombres comerciales \"Clarvex Technology\" y su sub-marca \"CLARVEX Team\" (en lo sucesivo, el \"Proveedor\"), en favor de sus clientes (en lo sucesivo, el \"Cliente\")."
       },
       {
         "t": "p",
@@ -1787,7 +1787,7 @@ export const LEGAL_CONTENT: Record<string, LegalContent> = {
       },
       {
         "t": "p",
-        "x": "La presente Política de Seguridad de la Información (en lo sucesivo, la \"Política\") establece el marco de medidas de seguridad administrativas, técnicas y físicas que el C. Jesús Adrián Hernández Luna, persona física con actividad empresarial, con Registro Federal de Contribuyentes HELJ0102235X0 y domicilio en Loma Alta 164, Las Lomas Residencial, Juárez, Nuevo León, C.P. 67257, quien opera bajo los nombres comerciales \"Clarvex Technology\" y su sub-marca \"CLARVEX Team\" (en lo sucesivo, el \"Responsable\" o el \"Proveedor\"), implementa para proteger la confidencialidad, integridad y disponibilidad de la información y de los datos personales tratados a través de la plataforma accesible en https://app.adrianluna.mx (en lo sucesivo, la \"Plataforma\")."
+        "x": "La presente Política de Seguridad de la Información (en lo sucesivo, la \"Política\") establece el marco de medidas de seguridad administrativas, técnicas y físicas que el C. Jesús Adrián Hernández Luna, persona física con actividad empresarial, con Registro Federal de Contribuyentes HELJ0102235X0 y domicilio en Loma Alta 164, Las Lomas Residencial, Juárez, Nuevo León, C.P. 67257, quien opera bajo los nombres comerciales \"Clarvex Technology\" y su sub-marca \"CLARVEX Team\" (en lo sucesivo, el \"Responsable\" o el \"Proveedor\"), implementa para proteger la confidencialidad, integridad y disponibilidad de la información y de los datos personales tratados a través de la plataforma accesible en https://team.clarvex.tech (en lo sucesivo, la \"Plataforma\")."
       },
       {
         "t": "p",
