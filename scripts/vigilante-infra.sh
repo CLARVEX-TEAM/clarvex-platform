@@ -3,10 +3,11 @@
 # Vigilante de infraestructura: comprueba lo que falla en SILENCIO y avisa por
 # Telegram al chat privado a traves de n8n.
 #
-# Los tres fallos que cubre son invisibles hasta que ya es tarde:
+# Los cuatro fallos que cubre son invisibles hasta que ya es tarde:
 #   - un respaldo que dejo de correr se ve igual que uno que funciona
 #   - un certificado caducado tumba el sitio sin previo aviso
 #   - un disco lleno hace que Postgres deje de escribir
+#   - un cron que deja de correr no avisa a nadie: solo deja de escribir su log
 #
 # MODO NORMAL (diario): calla si todo esta bien, avisa solo si algo falla.
 # MODO RESUMEN (semanal): manda siempre un parte, aunque este todo bien.
@@ -76,7 +77,50 @@ else
   parte+=("Disco: ${uso}% usado, $libre libres.")
 fi
 
-# --- 4) la app responde -------------------------------------------------------
+# --- 4) los crons que se callan -----------------------------------------------
+# Solo se revisan los logs que YA EXISTEN. Un cron que nunca ha corrido puede
+# ser simplemente que su horario no ha llegado todavia; el fallo que importa es
+# el del cron que funcionaba y dejo de hacerlo.
+#
+# Los margenes van holgados a proposito: un cron diario con tope de 30 h tolera
+# un retraso normal sin despertar a nadie.
+declare -A MAX_HORAS=(
+  [goal-celebration]=3          # cada hora
+  [morning-summary]=30          # diario
+  [daily-summary]=30
+  [midday-alert]=30
+  [celebrations]=30
+  [low-performance]=30
+  [pending-due]=30
+  [plan-reminder]=30
+  [pending-overdue-managers]=30
+  [report-reminder]=30
+  [capture-alert]=30
+  [kardex-audit]=30
+  [weekly-summary]=192          # semanal, con un dia de margen
+  [weekly-close-report]=192
+)
+
+callados=()
+vivos=0
+for nombre in "${!MAX_HORAS[@]}"; do
+  archivo="$LOGS/$nombre.log"
+  [ -f "$archivo" ] || continue
+  horas=$(( ( $(date +%s) - $(stat -c %Y "$archivo") ) / 3600 ))
+  if [ "$horas" -ge "${MAX_HORAS[$nombre]}" ]; then
+    callados+=("$nombre (${horas} h)")
+  else
+    vivos=$(( vivos + 1 ))
+  fi
+done
+
+if [ "${#callados[@]}" -gt 0 ]; then
+  problemas+=("Crons que dejaron de escribir: $(IFS=', '; echo "${callados[*]}")")
+else
+  parte+=("Crons: $vivos al dia, ninguno callado.")
+fi
+
+# --- 5) la app responde -------------------------------------------------------
 salud=$(curl -s --max-time 20 https://team.clarvex.tech/api/health 2>/dev/null)
 if ! echo "$salud" | grep -q '"status":"ok"'; then
   problemas+=("La app no responde sana: ${salud:-sin respuesta}")
