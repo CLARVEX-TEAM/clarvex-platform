@@ -28,17 +28,41 @@ Revisado entrando a las dos máquinas, no de memoria.
 - [x] **Crontab de root vacío en AWS**, como manda la regla de convivencia.
 - [x] **Vigilante externo** montado y probado hasta el correo.
 
+### Resuelto el 24 de agosto por la noche
+
+- [x] **`.env` a la par.** 44 variables efectivas en los dos lados; no falta
+      ninguna y **solo difieren las tres que deben diferir**: `DATABASE_URL`
+      (las dos bases tienen contraseñas distintas), `WEBAUTHN_ORIGIN` y
+      `WEBAUTHN_RP_ID`.
+      ⚠️ **Copiar el `.env` entero habría roto dos cosas a la vez:** la conexión
+      a la base, y WebAuthn devuelto al dominio viejo.
+      ⚠️ **El `.env` de Vultr tiene cada variable de Sentry TRES veces**, con
+      valores distintos. Funciona porque gana la última. En AWS quedó
+      deduplicado; en Vultr sigue sucio y conviene limpiarlo.
+- [x] **Rol `retool` recreado en AWS**, idéntico al de Vultr y con su contraseña
+      intacta (el hash viaja en `pg_dumpall --roles-only`, sin verla nadie):
+      SELECT sobre 71 tablas, privilegios por omisión para las tablas futuras, y
+      los cuatro `GRANT UPDATE` por columna —`Store.commissionTier`,
+      `Store.commissionBasis`, `Store.kpisEnabled` y `DataSource.url`—.
+      ⚠️ Esos cuatro **no salen** en `information_schema.table_privileges` ni en
+      `pg_class.relacl`: viven en `pg_attribute.attacl`. Buscarlos donde no
+      están hace creer que el rol es de solo lectura.
+- [x] **Dos migraciones que faltaban, aplicadas.** La copia se restauró el 21 de
+      agosto y las de Cuota Justa son del 22 y 23, así que a AWS le faltaba la
+      tabla `WeeklyPerformanceClose` entera. El volcado final lo habría tapado,
+      pero se habría descubierto a las tres de la mañana.
+
 ### Lo que todavía bloquea
 
-- [ ] **Cuatro variables del `.env`**, comprobado que faltan en AWS:
-      `MERCADOPAGO_WEBHOOK_SECRET` (sin ella el webhook responde 401 a todo y
-      las suscripciones dejan de acreditarse), `SENTRY_ORG`, `SENTRY_PROJECT` y
-      `SENTRY_AUTH_TOKEN` (sin ellas las trazas vuelven a llegar minificadas).
-      Conviene añadir también `APP_URL`.
-- [ ] **El rol `retool` no existe en AWS.** Vultr tiene `clarvex` y `retool`;
-      AWS solo `clarvex`. Se puede copiar con su contraseña intacta:
-      `pg_dumpall --roles-only` incluye el hash, así Retool sigue conectando sin
-      cambiar su recurso.
+- [ ] **El usuario Unix `retool` no existe en AWS.** El rol de base de datos es
+      solo la mitad: Retool Cloud entra por **túnel SSH** con un usuario
+      dedicado (`/usr/sbin/nologin`, con `restrict,port-forwarding` y
+      `permitopen="127.0.0.1:5432"` en su `authorized_keys`). Sin él, el panel
+      de captura se queda a oscuras tras el corte.
+- [ ] **El grupo de seguridad no deja entrar a Retool.** `clarvex-app` abre el
+      puerto 22 **solo a `187.138.86.217/32`**. Los rangos de Retool
+      (`35.90.103.132/30`, `44.208.168.68/30`, `3.77.79.248/30`) están fuera, así
+      que el túnel no llegaría ni con el usuario creado.
 - [ ] **Mover los cuatro contenedores**: `n8n`, `uptime-kuma`, `vaultwarden` y
       `portainer`. En AWS solo corren `npm` y `clarvex_postgres`.
       ⚠️ Los datos son bind mounts pequeños (~120 MB en total) bajo
