@@ -46,12 +46,23 @@
     line-height: 1.55;
     -webkit-font-smoothing: antialiased;
     display: flex;
-    align-items: center;
     justify-content: center;
     padding: 20px 16px 40px;
   }
 
+  /*
+   * ⚠️ El centrado vertical va con `margin: auto`, NO con
+   * `align-items: center` en el body.
+   *
+   * Con `align-items: center`, cuando la tarjeta es mas alta que la pantalla
+   * el navegador la desborda HACIA ARRIBA y no deja llegar ahi con el scroll.
+   * En un telefono de 812 px la tarjeta mide 1446: el titulo «Clarvex se mudo»
+   * y el logotipo quedaban cortados e inalcanzables — justo lo unico que la
+   * pagina existe para decir. Con `margin: auto` se centra igual cuando cabe y
+   * no recorta nada cuando no cabe.
+   */
   .card {
+    margin: auto;
     width: 100%;
     max-width: 30rem;
     background: var(--card);
