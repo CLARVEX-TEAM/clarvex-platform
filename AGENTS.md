@@ -6,7 +6,67 @@
 
 ---
 
-# 🔴 EN QUÉ ESTAMOS AHORA — 14 de agosto de 2026
+# 🔴 EN QUÉ ESTAMOS AHORA — 25 de agosto de 2026
+
+## Producción vive en AWS
+
+El corte se hizo la noche del **24 de agosto**, entre las 21:30 y las 22:51.
+Producción es **`team.clarvex.tech`** sobre EC2; Vultr quedó encendido pero
+**congelado** —PM2 parado y crontab vacío— como camino de vuelta.
+
+Se verificó con uso real, no con comprobaciones sintéticas: login, registro de
+huella en el dominio nuevo, el panel de Retool pintando datos y una captura de
+KPIs que escribió 51 filas en la base nueva.
+
+La base se movió entera: **71 tablas y 17,488 filas, idénticas al origen**,
+comparadas tabla por tabla antes de abrir la app.
+
+## Lo que salió mal, porque es lo que enseña
+
+**Retool no se mueve con el DNS.** Sus tres recursos apuntan al servidor por
+configuración propia. Al cortar, las lecturas seguían funcionando —el túnel
+entraba a un Postgres que sigue vivo en Vultr— así que las pantallas pintaban
+datos **congelados en el tiempo**, mientras las escrituras devolvían 404. Media
+hora de captura rota antes de detectarlo. Está en `CORTE-AWS.md`, fase 3b.
+
+**Un `.env` no se reescribe con un filtro de lista blanca.** Un `^[A-Z_]+=`
+descartó las once variables con dígito en el nombre —las cinco de `R2_*` y las
+seis de respaldos— y la comprobación de paridad usaba el mismo patrón, así que
+confirmaba que todo estaba bien. Salió por `r2: fail` en el chequeo profundo.
+Ver la memoria `regex-de-variables-come-digitos`.
+
+**El certificado cubría cinco dominios.** Al sacar tres de internet hubo que
+reemitirlo: si no, la renovación de octubre habría fallado **para los cinco**,
+llevándose por delante la pantalla de mudanza y el webhook de fotos.
+
+## Lo que se cerró el 25 de agosto
+
+- **Puerto 22 cerrado a la IP de casa.** Se conservan los tres rangos de Retool,
+  que son imprescindibles: por ahí entra el túnel de la captura.
+- **Vaultwarden, Portainer y Uptime Kuma salieron de internet.** Ahora se sirven
+  con `tailscale serve` y solo se alcanzan desde la red privada.
+- **Respaldo de la nube personal** con Kopia a R2, con restauración probada
+  comparando hash por hash. No es parte de Clarvex, pero comparte infraestructura.
+- **`CRON_SECRET` rotado** durante el corte, escribiendo `.env` y crontab en la
+  misma operación.
+
+## Lo que queda
+
+- **Apagar Vultr.** Conviene dejar pasar unos días. Al hacerlo: borrar la alarma
+  `clarvex-caido-vultr` (está silenciada, no eliminada), subir la alerta de
+  presupuesto de $20 a algo realista y repetir el barrido de recursos de costo
+  fijo.
+- **Borrar el usuario IAM `clarvex-bedrock`** y pasar la app al rol de instancia.
+- **El remitente de correo** sigue sin definir.
+
+---
+
+# ✅ FASE ANTERIOR, YA CERRADA — 14 de agosto de 2026
+
+> El reemplazo del RDV por captura propia en Retool. Se completó y sigue en
+> servicio; lo que hay debajo es el registro de cómo se hizo y por qué, no
+> trabajo pendiente.
+
 
 ## Qué pasó
 
@@ -900,10 +960,16 @@ parámetro del cliente.
 
 ---
 
-# 🟡 AWS — 21 de agosto de 2026
+# ✅ AWS — desde el 21 de agosto de 2026
 
-Entraron **$1,000 anuales de créditos por AWS Activate**. Nada de la app se ha
-migrado todavía: Clarvex sigue en el VPS de Vultr.
+Entraron **$1,000 de créditos por AWS Activate** (crédito `10066304006`).
+
+⚠️ **No son anuales**, como decía antes esta línea: es un único importe que
+**vence el 31 de agosto de 2028** y no se renueva. Y lo consumido antes de su
+emisión el 24 de agosto se facturó a la tarjeta.
+
+**Clarvex ya corre en AWS** desde el corte del 24 de agosto. Lo que sigue en
+esta sección es cómo se entra a la cuenta y las trampas que costaron tiempo.
 
 ## Cómo se entra
 
