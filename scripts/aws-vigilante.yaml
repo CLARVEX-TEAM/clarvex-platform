@@ -1,0 +1,240 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+# Vigilante externo de Clarvex.
+#
+# POR QUE EXISTE: Uptime Kuma corre en el MISMO servidor que vigila. Si la
+# maquina muere entera, el monitor muere con ella y nadie recibe nada - y ahi
+# dentro viven tambien n8n, Vaultwarden y Portainer. Este vigilante vive en AWS,
+# fuera del servidor, y no comparte destino con lo que observa.
+#
+# NO reemplaza a Uptime Kuma: Kuma da el detalle fino mientras la maquina vive,
+# esto ve lo unico que Kuma no puede ver.
+#
+# OJO: EL AVISO NO PUEDE IR POR TELEGRAM. Ese canal pasa por n8n, que corre en el
+# servidor vigilado: el aviso moriria en el sitio que esta reportando. Por eso
+# SNS manda a correo, que no depende de nada nuestro.
+#
+# Aplicar:
+#   aws cloudformation deploy --template-file scripts/aws-vigilante.yaml \
+#     --stack-name clarvex-vigilante --profile clarvex --region us-east-1 \
+#     --capabilities CAPABILITY_IAM \
+#     --parameter-overrides EmailAlerta=tu@correo.com
+#
+# Borrar (deja la cuenta como estaba):
+#   aws cloudformation delete-stack --stack-name clarvex-vigilante \
+#     --profile clarvex --region us-east-1
+
+Description: Vigila /api/health desde fuera del servidor y avisa por correo.
+
+Parameters:
+  EmailAlerta:
+    Type: String
+    Description: >-
+      Correo que recibe los avisos. AWS manda una peticion de confirmacion:
+      hasta que se abra ese enlace, la suscripcion no entrega nada.
+    AllowedPattern: '.+@.+\..+'
+
+  UrlVultr:
+    Type: String
+    Default: https://app.adrianluna.mx/api/health
+    Description: Produccion actual. Se apaga despues del corte.
+
+  UrlAws:
+    Type: String
+    Default: https://team.clarvex.tech/api/health
+    Description: Copia en AWS. Pasa a ser produccion con el corte.
+
+Resources:
+
+  # --- Canal de avisos -------------------------------------------------------
+  Avisos:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: clarvex-vigilante
+      DisplayName: Clarvex
+
+  AvisoPorCorreo:
+    Type: AWS::SNS::Subscription
+    Properties:
+      TopicArn: !Ref Avisos
+      Protocol: email
+      Endpoint: !Ref EmailAlerta
+
+  # --- Permisos de la funcion ------------------------------------------------
+  # Solo dos cosas: escribir sus propios logs y publicar la metrica. No puede
+  # leer nada de la cuenta ni tocar ningun otro recurso.
+  RolVigilante:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: { Service: lambda.amazonaws.com }
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: publicar-metrica
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: cloudwatch:PutMetricData
+                Resource: '*'
+                Condition:
+                  StringEquals:
+                    cloudwatch:namespace: Clarvex/Vigilante
+
+  # Con retencion explicita: por omision los logs se guardan para siempre y
+  # acaban costando sin que nadie lo note.
+  LogsVigilante:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /aws/lambda/clarvex-vigilante
+      RetentionInDays: 14
+
+  # --- La comprobacion -------------------------------------------------------
+  # No decide nada: llama y apunta el resultado. Quien decide es la alarma, que
+  # se encarga sola de no avisar al primer fallo, de avisar una sola vez y de
+  # avisar tambien cuando el sitio se recupera.
+  Vigilante:
+    Type: AWS::Lambda::Function
+    DependsOn: LogsVigilante
+    Properties:
+      FunctionName: clarvex-vigilante
+      Description: Comprueba /api/health de Clarvex desde fuera del servidor.
+      Runtime: nodejs22.x
+      Architectures: [arm64]
+      Handler: index.handler
+      Timeout: 30
+      MemorySize: 128
+      Role: !GetAtt RolVigilante.Arn
+      Environment:
+        Variables:
+          SITIOS: !Sub '{"vultr":"${UrlVultr}","aws":"${UrlAws}"}'
+      Code:
+        ZipFile: |
+          const { CloudWatchClient, PutMetricDataCommand } = require("@aws-sdk/client-cloudwatch");
+          const cw = new CloudWatchClient({});
+
+          // 1 = vivo, 0 = caido. El 0 se publica SIEMPRE que falla: si solo se
+          // publicara el 1, un sitio caido se veria igual que uno sin datos.
+          exports.handler = async () => {
+            const sitios = JSON.parse(process.env.SITIOS);
+            const datos = [];
+            for (const [nombre, url] of Object.entries(sitios)) {
+              let vivo = 0;
+              let detalle = "";
+              try {
+                const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
+                const cuerpo = await res.json().catch(() => ({}));
+                // /api/health devuelve 200 {status:"ok"} o 503 {status:"degraded"}.
+                // Un 503 es la base caida con la app viva: tambien es estar caido.
+                vivo = res.status === 200 && cuerpo.status === "ok" ? 1 : 0;
+                detalle = `HTTP ${res.status} ${cuerpo.status ?? "?"}`;
+              } catch (err) {
+                detalle = err instanceof Error ? err.message : String(err);
+              }
+              console.log(`${nombre} ${vivo ? "OK" : "CAIDO"} - ${detalle}`);
+              datos.push({
+                MetricName: "Vivo",
+                Dimensions: [{ Name: "Sitio", Value: nombre }],
+                Value: vivo,
+                Unit: "None"
+              });
+            }
+            await cw.send(new PutMetricDataCommand({
+              Namespace: "Clarvex/Vigilante",
+              MetricData: datos
+            }));
+          };
+
+  # --- El reloj --------------------------------------------------------------
+  Cada5Minutos:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: clarvex-vigilante-cada-5-min
+      ScheduleExpression: rate(5 minutes)
+      State: ENABLED
+      Targets:
+        - Id: vigilante
+          Arn: !GetAtt Vigilante.Arn
+          RetryPolicy:
+            # Sin reintentos: el propio reloj vuelve a llamar en cinco minutos.
+            # Reintentar aqui publicaria varias medidas del mismo instante.
+            MaximumRetryAttempts: 0
+
+  PermisoDelReloj:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref Vigilante
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt Cada5Minutos.Arn
+
+  # --- Las alarmas -----------------------------------------------------------
+  # Dos fallos seguidos = diez minutos. Un parpadeo de red no despierta a nadie.
+  #
+  # `TreatMissingData: breaching` es deliberado: si la Lambda deja de correr, no
+  # hay dato, y eso tambien tiene que avisar - si no, el vigilante puede morirse
+  # en silencio y creeriamos que todo esta bien.
+  #
+  # OJO: Efecto secundario: al crear la pila todavia no hay datos, asi que la
+  # alarma entra en rojo y manda un aviso. Se resuelve sola en ~10 minutos, con
+  # su correo de recuperacion. Ese primer aviso es esperado.
+  AlarmaVultr:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: clarvex-caido-vultr
+      AlarmDescription: app.adrianluna.mx no responde ok desde hace 10 minutos.
+      Namespace: Clarvex/Vigilante
+      MetricName: Vivo
+      Dimensions:
+        - Name: Sitio
+          Value: vultr
+      Statistic: Minimum
+      Period: 300
+      EvaluationPeriods: 2
+      DatapointsToAlarm: 2
+      Threshold: 1
+      ComparisonOperator: LessThanThreshold
+      TreatMissingData: breaching
+      AlarmActions: [!Ref Avisos]
+      OKActions: [!Ref Avisos]
+
+  AlarmaAws:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: clarvex-caido-aws
+      AlarmDescription: team.clarvex.tech no responde ok desde hace 10 minutos.
+      Namespace: Clarvex/Vigilante
+      MetricName: Vivo
+      Dimensions:
+        - Name: Sitio
+          Value: aws
+      Statistic: Minimum
+      Period: 300
+      EvaluationPeriods: 2
+      DatapointsToAlarm: 2
+      Threshold: 1
+      ComparisonOperator: LessThanThreshold
+      TreatMissingData: breaching
+      AlarmActions: [!Ref Avisos]
+      OKActions: [!Ref Avisos]
+
+Outputs:
+  Canal:
+    Description: Tema de SNS al que llegan los avisos.
+    Value: !Ref Avisos
+
+  Confirmar:
+    Description: Siguiente paso obligatorio.
+    Value: !Sub 'Abre el correo en ${EmailAlerta} y confirma la suscripcion de SNS. Sin eso no llega ningun aviso.'
+
+  QuitarTrasElCorte:
+    Description: Recordatorio para el dia del corte.
+    Value: >-
+      Al apagar Vultr, borra la alarma clarvex-caido-vultr (o quita ese sitio de
+      la variable SITIOS): si no, quedara sonando por un servidor apagado a
+      proposito y se convertira en una alarma que nadie mira.
