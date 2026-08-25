@@ -76,9 +76,17 @@ Revisado entrando a las dos máquinas, no de memoria.
 - [ ] **`WEBHOOK_URL` sigue apuntando a `n8n.adrianluna.mx`**, que es el n8n de
       Vultr. Tras el corte, AWS mandaría las fotos al servidor viejo.
 - [ ] **Textos legales** apuntando al dominio nuevo.
-- [ ] **Bajar el TTL del DNS a 60 s en Cloudflare**, al menos 24 h antes.
-      Si se hace el mismo día, el cambio tarda lo que diga el TTL viejo y la
-      tienda queda repartida entre dos servidores durante horas.
+- [x] **El TTL NO es un problema** — comprobado, y desmiente lo que decía antes
+      este documento. Los cinco subdominios de `.adrianluna.mx` resuelven a
+      `104.21.39.155` y `172.67.146.111`: **están proxeados por Cloudflare**, así
+      que la gente resuelve a IP que nunca cambian y mover el origen surte
+      efecto en segundos. `team.clarvex.tech` va directo pero ya tiene TTL de
+      300 s. Lo peor que puede tardar la conmutación son cinco minutos.
+      No hace falta preparar nada 24 h antes.
+
+- [x] **Textos legales al dominio nuevo** (`8614094`): las doce menciones en los
+      Términos, el Aviso de Privacidad y las políticas de cookies, reembolsos y
+      seguridad. Verificado que el archivo queda idéntico salvo el dominio.
 
 ### La base va 35 filas atrás
 
@@ -181,9 +189,17 @@ descargadas. Aquí solo se copian los datos y se levanta.
     responden **502** y el síntoma no dice por qué: el bridge por omisión de
     Docker no resuelve nombres de contenedor.
 
-7e. **Recrear los cinco proxys en el npm de AWS**, con sus certificados:
-    `app`, `n8n`, `status`, `vault` y `docker`. Los tres últimos apuntan a
-    `uptime-kuma:3001`, `vaultwarden:80` y `portainer:9000`.
+7e. **Recrear los proxys en el npm de AWS**, con sus certificados:
+    `n8n`, `status`, `vault` y `docker`. Los tres últimos apuntan a
+    `uptime-kuma:3001`, `vaultwarden:80` y `portainer:9000`; `n8n` a `n8n:5678`.
+
+7f. ⚠️ **`app.adrianluna.mx` va como REDIRECCIÓN, no como segundo origen.**
+    La app tiene `WEBAUTHN_ORIGIN=https://team.clarvex.tech`: si se sirviera
+    también por el dominio viejo, el navegador rechazaría las credenciales por
+    venir de otro origen y **la biometría no funcionaría**, sin que el fallo
+    explique por qué. Se configura como *Redirection Host* hacia
+    `https://team.clarvex.tech`. Sin esto, quien tenga el marcador viejo se
+    encuentra un sitio caído.
 
 ### Fase 3 — Conmutación
 
