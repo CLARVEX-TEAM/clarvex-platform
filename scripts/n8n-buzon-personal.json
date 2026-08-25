@@ -17,8 +17,8 @@
         "webhookId": "b0000000-9999-4000-8000-000000000099",
         "credentials": {
           "telegramApi": {
-            "id": "c7bIjyLeljGWy3yc",
-            "name": "Telegram account 2"
+            "id": "buzonpersonalbot",
+            "name": "Telegram personal"
           }
         }
       },
@@ -48,10 +48,20 @@
         "position": [-220, -140],
         "credentials": {
           "telegramApi": {
-            "id": "c7bIjyLeljGWy3yc",
-            "name": "Telegram account 2"
+            "id": "buzonpersonalbot",
+            "name": "Telegram personal"
           }
         }
+      },
+      {
+        "parameters": {
+          "jsCode": "// Telegram entrega las notas de voz como `.oga` y Groq rechaza esa\n// extension, aunque el contenido sea exactamente el mismo OGG/Opus que si\n// acepta: valida por el nombre del archivo, no por el contenido.\n//\n// Aqui SOLO se renombra. No se reconvierte nada y el audio no se toca.\nfor (const item of $input.all()) {\n  const b = item.binary && item.binary.data;\n  if (b) {\n    b.fileName = 'nota.ogg';\n    b.fileExtension = 'ogg';\n    b.mimeType = 'audio/ogg';\n  }\n}\nreturn $input.all();"
+        },
+        "id": "b0000000-0007-4000-8000-000000000007",
+        "name": "Renombrar a ogg",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [-90, -140]
       },
       {
         "parameters": {
@@ -116,8 +126,8 @@
         "webhookId": "b0000000-8888-4000-8000-000000000088",
         "credentials": {
           "telegramApi": {
-            "id": "c7bIjyLeljGWy3yc",
-            "name": "Telegram account 2"
+            "id": "buzonpersonalbot",
+            "name": "Telegram personal"
           }
         }
       },
@@ -138,8 +148,8 @@
         "webhookId": "b0000000-7777-4000-8000-000000000077",
         "credentials": {
           "telegramApi": {
-            "id": "c7bIjyLeljGWy3yc",
-            "name": "Telegram account 2"
+            "id": "buzonpersonalbot",
+            "name": "Telegram personal"
           }
         }
       }
@@ -156,6 +166,9 @@
         ]
       },
       "Bajar el audio": {
+        "main": [[{ "node": "Renombrar a ogg", "type": "main", "index": 0 }]]
+      },
+      "Renombrar a ogg": {
         "main": [[{ "node": "Transcribir", "type": "main", "index": 0 }]]
       },
       "Transcribir": {
