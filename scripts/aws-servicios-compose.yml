@@ -34,13 +34,16 @@ services:
       - N8N_SECURE_COOKIE=false
       # Llave de Groq para transcribir las notas de voz del buzon personal.
       # El VALOR vive en /home/ubuntu/stack/.env (chmod 600), no aqui: este
-      # archivo se versiona en el repo y no puede llevar secretos.
+      # archivo se versiona en el repo como scripts/aws-servicios-compose.yml.
       - GROQ_API_KEY=${GROQ_API_KEY}
       # Sin esto las expresiones de n8n no pueden leer $env y la llave no llega
       # al nodo. n8n lo bloquea por omision en produccion.
       - N8N_BLOCK_ENV_ACCESS_IN_NODE=false
     volumes:
       - ./n8n_data:/home/node/.n8n
+      # La carpeta del buzon, compartida con syncthing. Los dos contenedores
+      # corren con uid 1000, asi que lo que escribe n8n lo lee syncthing.
+      - /home/ubuntu/buzon:/buzon
     dns:
       - 1.1.1.1
       - 8.8.8.8
@@ -94,6 +97,35 @@ services:
       - ./mudanza:/usr/share/nginx/html:ro
     expose:
       - "80"
+    networks: [clarvex_net]
+
+  # Syncthing: la unica pieza que conecta n8n con la nube personal.
+  #
+  # ⚠️ NO sincroniza la nube entera, solo la carpeta `Buzon` que deja el bot.
+  # Al servidor le quedan ~6 GB libres; traer aqui una nube de 200 GB llenaria
+  # el disco y Postgres dejaria de escribir. Seria tumbar la app de la tienda
+  # por guardar fotos personales.
+  #
+  # ⚠️ NADA de esto sale a internet. El GUI y el puerto de sincronizacion se
+  # publican SOLO en la IP de Tailscale: los dispositivos que sincronizan ya
+  # estan todos en esa red, asi que abrir el 22000 al mundo no aportaria nada
+  # y expondria el contenido.
+  syncthing:
+    image: syncthing/syncthing:1
+    container_name: syncthing
+    restart: unless-stopped
+    hostname: clarvex-aws
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - STGUIADDRESS=0.0.0.0:8384
+    ports:
+      - "100.64.207.65:8384:8384"
+      - "100.64.207.65:22000:22000/tcp"
+      - "100.64.207.65:22000:22000/udp"
+    volumes:
+      - ./syncthing:/var/syncthing/config
+      - /home/ubuntu/buzon:/var/syncthing/Buzon
     networks: [clarvex_net]
 
 networks:

@@ -13,7 +13,7 @@
         "name": "Buzon",
         "type": "n8n-nodes-base.telegramTrigger",
         "typeVersion": 1.4,
-        "position": [-720, 0],
+        "position": [-1120, 40],
         "webhookId": "b0000000-9999-4000-8000-000000000099",
         "credentials": {
           "telegramApi": {
@@ -25,16 +25,17 @@
       {
         "parameters": {
           "mode": "expression",
-          "numberOutputs": 3,
-          "output": "={{ $json.message.chat.id !== 8328057325 ? 2 : (($json.message.voice || $json.message.audio) ? 0 : 1) }}",
+          "numberOutputs": 4,
+          "output": "={{ $json.message.chat.id !== 8328057325 ? 3 : (($json.message.voice || $json.message.audio) ? 0 : (($json.message.photo || $json.message.video || $json.message.document || $json.message.video_note) ? 1 : 2)) }}",
           "options": {}
         },
         "id": "b0000000-0002-4000-8000-000000000002",
         "name": "Que llego",
         "type": "n8n-nodes-base.switch",
         "typeVersion": 3.4,
-        "position": [-480, 0]
+        "position": [-900, 40]
       },
+
       {
         "parameters": {
           "resource": "file",
@@ -46,7 +47,7 @@
         "type": "n8n-nodes-base.telegram",
         "typeVersion": 1.2,
         "onError": "continueErrorOutput",
-        "position": [-220, -140],
+        "position": [-660, -200],
         "credentials": {
           "telegramApi": {
             "id": "buzonpersonalbot",
@@ -62,7 +63,7 @@
         "name": "Renombrar a ogg",
         "type": "n8n-nodes-base.code",
         "typeVersion": 2,
-        "position": [-90, -140]
+        "position": [-460, -200]
       },
       {
         "parameters": {
@@ -86,52 +87,19 @@
                 "name": "file",
                 "inputDataFieldName": "data"
               },
-              {
-                "name": "model",
-                "value": "whisper-large-v3-turbo"
-              },
-              {
-                "name": "language",
-                "value": "es"
-              },
-              {
-                "name": "response_format",
-                "value": "json"
-              }
+              { "name": "model", "value": "whisper-large-v3-turbo" },
+              { "name": "language", "value": "es" },
+              { "name": "response_format", "value": "json" }
             ]
           },
-          "options": {
-            "timeout": 120000
-          }
+          "options": { "timeout": 120000 }
         },
         "id": "b0000000-0004-4000-8000-000000000004",
         "name": "Transcribir",
         "type": "n8n-nodes-base.httpRequest",
         "typeVersion": 4.2,
         "onError": "continueErrorOutput",
-        "position": [40, -140]
-      },
-      {
-        "parameters": {
-          "chatId": "8328057325",
-          "text": "={{ 'No pude con esa nota de voz.\\n\\n' + ($json.error && ($json.error.description || $json.error.message) ? ($json.error.description || $json.error.message) : JSON.stringify($json).slice(0, 300)) }}",
-          "additionalFields": {
-            "appendAttribution": false,
-            "reply_to_message_id": "={{ $('Buzon').item.json.message.message_id }}"
-          }
-        },
-        "id": "b0000000-0008-4000-8000-000000000008",
-        "name": "Avisar del fallo",
-        "type": "n8n-nodes-base.telegram",
-        "typeVersion": 1.2,
-        "position": [300, 20],
-        "webhookId": "b0000000-6666-4000-8000-000000000066",
-        "credentials": {
-          "telegramApi": {
-            "id": "buzonpersonalbot",
-            "name": "Telegram personal"
-          }
-        }
+        "position": [-260, -200]
       },
       {
         "parameters": {
@@ -146,7 +114,7 @@
         "name": "Devolver el texto",
         "type": "n8n-nodes-base.telegram",
         "typeVersion": 1.2,
-        "position": [300, -140],
+        "position": [-40, -300],
         "webhookId": "b0000000-8888-4000-8000-000000000088",
         "credentials": {
           "telegramApi": {
@@ -157,19 +125,133 @@
       },
       {
         "parameters": {
+          "jsCode": "// La transcripcion tambien se guarda, para que la nota de voz sea\n// buscable dentro de la nube y no solo dentro de Telegram.\nconst texto = ($json.text || '').trim();\nif (!texto) { return []; }\nreturn [{\n  json: { rutaNombre: $sello() + ' - voz.txt' },\n  binary: {\n    data: {\n      data: Buffer.from(texto, 'utf8').toString('base64'),\n      mimeType: 'text/plain',\n      fileName: $sello() + ' - voz.txt'\n    }\n  }\n}];\n\n// Monterrey es UTC-6 todo el ano desde 2022, sin horario de verano. El sello\n// va en hora local para que el nombre coincida con cuando lo mandaste.\nfunction $sello() {\n  const l = new Date(Date.now() - 6 * 3600 * 1000);\n  return l.toISOString().slice(0, 16).replace('T', ' ').replace(':', '');\n}"
+        },
+        "id": "b0000000-0009-4000-8000-000000000009",
+        "name": "Transcripcion a txt",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [-40, -140]
+      },
+
+      {
+        "parameters": {
+          "jsCode": "// Cada tipo de mensaje guarda el archivo en un sitio distinto del payload.\n// Aqui se normaliza a un solo par: que bajar y como llamarlo.\nconst m = $json.message;\nlet fileId = null;\nlet nombre = 'archivo';\n\nif (m.photo) {\n  // Telegram manda la MISMA foto en varias resoluciones; la ultima es la mayor.\n  // Quedarse con otra guardaria una miniatura sin que nada avisara.\n  fileId = m.photo[m.photo.length - 1].file_id;\n  nombre = 'foto.jpg';\n} else if (m.video) {\n  fileId = m.video.file_id;\n  nombre = m.video.file_name || 'video.mp4';\n} else if (m.video_note) {\n  fileId = m.video_note.file_id;\n  nombre = 'videonota.mp4';\n} else if (m.document) {\n  fileId = m.document.file_id;\n  nombre = m.document.file_name || 'documento';\n}\n\nreturn [{ json: { fileId: fileId, nombre: nombre } }];"
+        },
+        "id": "b0000000-0010-4000-8000-000000000010",
+        "name": "Que archivo es",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [-660, 40]
+      },
+      {
+        "parameters": {
+          "resource": "file",
+          "fileId": "={{ $json.fileId }}",
+          "download": true
+        },
+        "id": "b0000000-0011-4000-8000-000000000011",
+        "name": "Bajar el archivo",
+        "type": "n8n-nodes-base.telegram",
+        "typeVersion": 1.2,
+        "onError": "continueErrorOutput",
+        "position": [-460, 40],
+        "credentials": {
+          "telegramApi": {
+            "id": "buzonpersonalbot",
+            "name": "Telegram personal"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "jsCode": "// El nombre lleva fecha y hora delante para que la carpeta se ordene sola\n// por cuando llegaron las cosas, que es como uno las busca.\nconst l = new Date(Date.now() - 6 * 3600 * 1000);\nconst sello = l.toISOString().slice(0, 16).replace('T', ' ').replace(':', '');\nconst nombre = $('Que archivo es').first().json.nombre;\n\nfor (const item of $input.all()) {\n  const b = item.binary && item.binary.data;\n  const final = sello + ' - ' + nombre;\n  if (b) { b.fileName = final; }\n  item.json = { rutaNombre: final };\n}\nreturn $input.all();"
+        },
+        "id": "b0000000-0012-4000-8000-000000000012",
+        "name": "Ponerle fecha",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [-260, 40]
+      },
+
+      {
+        "parameters": {
+          "jsCode": "// Un mensaje de texto se guarda como .txt, con las primeras palabras en el\n// nombre para poder encontrarlo en la carpeta sin abrirlo.\nconst texto = ($json.message.text || '').trim();\nif (!texto) { return []; }\n\nconst l = new Date(Date.now() - 6 * 3600 * 1000);\nconst sello = l.toISOString().slice(0, 16).replace('T', ' ').replace(':', '');\n\n// Se filtra por lista blanca en vez de prohibir caracteres: los nombres de\n// archivo tienen reglas distintas en Windows, Android y Linux, y esta carpeta\n// se sincroniza a los tres.\nconst PERMITIDOS = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 .,-_áéíóúüñÁÉÍÓÚÜÑ';\nlet titulo = '';\nfor (const c of texto) {\n  titulo += PERMITIDOS.indexOf(c) >= 0 ? c : ' ';\n}\ntitulo = titulo.replace('  ', ' ').trim().slice(0, 40).trim() || 'nota';\n\nconst final = sello + ' - ' + titulo + '.txt';\nreturn [{\n  json: { rutaNombre: final },\n  binary: {\n    data: {\n      data: Buffer.from(texto, 'utf8').toString('base64'),\n      mimeType: 'text/plain',\n      fileName: final\n    }\n  }\n}];"
+        },
+        "id": "b0000000-0013-4000-8000-000000000013",
+        "name": "Texto a txt",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [-660, 260]
+      },
+
+      {
+        "parameters": {
+          "operation": "write",
+          "fileName": "=/buzon/{{ $json.rutaNombre }}",
+          "dataPropertyName": "data",
+          "options": {}
+        },
+        "id": "b0000000-0014-4000-8000-000000000014",
+        "name": "Guardar en la nube",
+        "type": "n8n-nodes-base.readWriteFile",
+        "typeVersion": 1.1,
+        "onError": "continueErrorOutput",
+        "position": [-40, 140]
+      },
+      {
+        "parameters": {
           "chatId": "8328057325",
-          "text": "Por ahora solo se transcribir notas de voz. Fotos, enlaces y documentos vienen despues.",
+          "text": "={{ 'Guardado en tu nube:\\n' + $json.rutaNombre }}",
           "additionalFields": {
             "appendAttribution": false,
             "reply_to_message_id": "={{ $('Buzon').item.json.message.message_id }}"
           }
         },
-        "id": "b0000000-0006-4000-8000-000000000006",
-        "name": "Todavia no se",
+        "id": "b0000000-0015-4000-8000-000000000015",
+        "name": "Confirmar",
         "type": "n8n-nodes-base.telegram",
         "typeVersion": 1.2,
-        "position": [40, 120],
-        "webhookId": "b0000000-7777-4000-8000-000000000077",
+        "position": [200, 140],
+        "webhookId": "b0000000-5555-4000-8000-000000000055",
+        "credentials": {
+          "telegramApi": {
+            "id": "buzonpersonalbot",
+            "name": "Telegram personal"
+          }
+        }
+      },
+
+      {
+        "parameters": {
+          "operation": "write",
+          "fileName": "=/buzon/{{ $json.rutaNombre }}",
+          "dataPropertyName": "data",
+          "options": {}
+        },
+        "id": "b0000000-0016-4000-8000-000000000016",
+        "name": "Guardar la voz",
+        "type": "n8n-nodes-base.readWriteFile",
+        "typeVersion": 1.1,
+        "onError": "continueRegularOutput",
+        "position": [200, -140]
+      },
+
+      {
+        "parameters": {
+          "chatId": "8328057325",
+          "text": "={{ 'No pude con eso.\\n\\n' + ($json.error && ($json.error.description || $json.error.message) ? ($json.error.description || $json.error.message) : JSON.stringify($json).slice(0, 300)) }}",
+          "additionalFields": {
+            "appendAttribution": false,
+            "reply_to_message_id": "={{ $('Buzon').item.json.message.message_id }}"
+          }
+        },
+        "id": "b0000000-0008-4000-8000-000000000008",
+        "name": "Avisar del fallo",
+        "type": "n8n-nodes-base.telegram",
+        "typeVersion": 1.2,
+        "position": [200, 380],
+        "webhookId": "b0000000-6666-4000-8000-000000000066",
         "credentials": {
           "telegramApi": {
             "id": "buzonpersonalbot",
@@ -185,10 +267,12 @@
       "Que llego": {
         "main": [
           [{ "node": "Bajar el audio", "type": "main", "index": 0 }],
-          [{ "node": "Todavia no se", "type": "main", "index": 0 }],
+          [{ "node": "Que archivo es", "type": "main", "index": 0 }],
+          [{ "node": "Texto a txt", "type": "main", "index": 0 }],
           []
         ]
       },
+
       "Bajar el audio": {
         "main": [
           [{ "node": "Renombrar a ogg", "type": "main", "index": 0 }],
@@ -200,7 +284,37 @@
       },
       "Transcribir": {
         "main": [
-          [{ "node": "Devolver el texto", "type": "main", "index": 0 }],
+          [
+            { "node": "Devolver el texto", "type": "main", "index": 0 },
+            { "node": "Transcripcion a txt", "type": "main", "index": 0 }
+          ],
+          [{ "node": "Avisar del fallo", "type": "main", "index": 0 }]
+        ]
+      },
+      "Transcripcion a txt": {
+        "main": [[{ "node": "Guardar la voz", "type": "main", "index": 0 }]]
+      },
+
+      "Que archivo es": {
+        "main": [[{ "node": "Bajar el archivo", "type": "main", "index": 0 }]]
+      },
+      "Bajar el archivo": {
+        "main": [
+          [{ "node": "Ponerle fecha", "type": "main", "index": 0 }],
+          [{ "node": "Avisar del fallo", "type": "main", "index": 0 }]
+        ]
+      },
+      "Ponerle fecha": {
+        "main": [[{ "node": "Guardar en la nube", "type": "main", "index": 0 }]]
+      },
+
+      "Texto a txt": {
+        "main": [[{ "node": "Guardar en la nube", "type": "main", "index": 0 }]]
+      },
+
+      "Guardar en la nube": {
+        "main": [
+          [{ "node": "Confirmar", "type": "main", "index": 0 }],
           [{ "node": "Avisar del fallo", "type": "main", "index": 0 }]
         ]
       }
