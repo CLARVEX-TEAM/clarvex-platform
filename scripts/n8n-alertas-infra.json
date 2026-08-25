@@ -1,0 +1,59 @@
+[
+  {
+    "id": "clarvexinfraalert",
+    "name": "Clarvex — Alertas de infraestructura",
+    "active": false,
+    "nodes": [
+      {
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "alerta-infra",
+          "options": {}
+        },
+        "id": "a1b2c3d4-0001-4000-8000-000000000001",
+        "name": "Webhook",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2,
+        "position": [-400, 0],
+        "webhookId": "alerta-infra"
+      },
+      {
+        "parameters": {
+          "chatId": "8328057325",
+          "text": "={{ '<b>' + ($json.body.title || 'Aviso') + '</b>\\n\\n' + ($json.body.text || '') }}",
+          "additionalFields": {
+            "parse_mode": "HTML"
+          }
+        },
+        "id": "a1b2c3d4-0002-4000-8000-000000000002",
+        "name": "Telegram - Privado",
+        "type": "n8n-nodes-base.telegram",
+        "typeVersion": 1.2,
+        "position": [-80, 0],
+        "webhookId": "b2c3d4e5-0003-4000-8000-000000000003",
+        "credentials": {
+          "telegramApi": {
+            "id": "c7bIjyLeljGWy3yc",
+            "name": "Telegram account 2"
+          }
+        }
+      }
+    ],
+    "connections": {
+      "Webhook": {
+        "main": [
+          [
+            {
+              "node": "Telegram - Privado",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {
+      "executionOrder": "v1"
+    }
+  }
+]
