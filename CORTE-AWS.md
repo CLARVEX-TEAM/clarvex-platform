@@ -10,29 +10,80 @@ explicación del proyecto: eso está en `CLAUDE.md` y `AGENTS.md`.
 
 ---
 
-## Lo que NO está listo todavía
+## Estado verificado — 24 de agosto de 2026
 
-⚠️ **Esta lista bloquea el corte.** Mientras quede algo sin marcar, la ventana
-de madrugada no se abre: son cosas que llevan tiempo y no se improvisan a las
-tres de la mañana.
+Revisado entrando a las dos máquinas, no de memoria.
 
-- [ ] **Mover los cuatro contenedores** a la instancia de AWS: `n8n`,
-      `uptime-kuma`, `vaultwarden` y `portainer`. Hoy solo viven en Vultr.
-- [ ] **Crear el rol `retool`** (solo lectura + 3 columnas de `Store`) en la
-      base restaurada de AWS. Sin él, el panel de captura no entra.
+### Ya resuelto
+
+- [x] **Acceso SSH a la instancia** — alias `clarvex-aws`. La llave original del
+      par de EC2 se había perdido; se recuperó con EC2 Instance Connect y se
+      instaló una permanente. Ver la memoria `acceso-ssh-instancia-aws`.
+- [x] **Swap de 8 GB** configurado en AWS, con 3.7 GB de RAM y 13 GB de disco
+      libres. El build cabe.
+- [x] **`pnpm run build` comprobado en AWS**, actualizado al commit de `main`,
+      health en `ok` y dos procesos PM2 online.
+- [x] **WebAuthn ya apunta al dominio nuevo**: `WEBAUTHN_RP_ID` y
+      `WEBAUTHN_ORIGIN` con `team.clarvex.tech`.
+- [x] **Crontab de root vacío en AWS**, como manda la regla de convivencia.
+- [x] **Vigilante externo** montado y probado hasta el correo.
+
+### Lo que todavía bloquea
+
+- [ ] **Cuatro variables del `.env`**, comprobado que faltan en AWS:
+      `MERCADOPAGO_WEBHOOK_SECRET` (sin ella el webhook responde 401 a todo y
+      las suscripciones dejan de acreditarse), `SENTRY_ORG`, `SENTRY_PROJECT` y
+      `SENTRY_AUTH_TOKEN` (sin ellas las trazas vuelven a llegar minificadas).
+      Conviene añadir también `APP_URL`.
+- [ ] **El rol `retool` no existe en AWS.** Vultr tiene `clarvex` y `retool`;
+      AWS solo `clarvex`. Se puede copiar con su contraseña intacta:
+      `pg_dumpall --roles-only` incluye el hash, así Retool sigue conectando sin
+      cambiar su recurso.
+- [ ] **Mover los cuatro contenedores**: `n8n`, `uptime-kuma`, `vaultwarden` y
+      `portainer`. En AWS solo corren `npm` y `clarvex_postgres`.
+      ⚠️ Los datos son bind mounts pequeños (~120 MB en total) bajo
+      `/root/stack/` y `/root/n8n/` en Vultr, pero en AWS viven en
+      `/home/ubuntu/stack/` y **no hay ningún compose ni red propia**: los
+      contenedores actuales se crearon con `docker run` sobre el bridge por
+      omisión. `status`, `vault` y `docker` se resuelven hoy por NOMBRE de
+      contenedor, así que en AWS necesitan una red compartida con `npm` o dejan
+      de resolver.
+- [ ] **`WEBHOOK_URL` sigue apuntando a `n8n.adrianluna.mx`**, que es el n8n de
+      Vultr. Tras el corte, AWS mandaría las fotos al servidor viejo.
 - [ ] **Textos legales** apuntando al dominio nuevo.
-- [ ] **`.env` completo en AWS** — 37 variables. Las que CAMBIAN de valor:
-      - `WEBAUTHN_RP_ID` → `team.clarvex.tech`
-      - `WEBAUTHN_ORIGIN` → `https://team.clarvex.tech`
-      - `APP_URL` → `https://team.clarvex.tech`
-      - `WEBHOOK_URL` → la dirección nueva de n8n
-      - `DATABASE_URL` → apunta al Postgres local de la instancia
-- [ ] **Comprobar que `pnpm run build` termina** en la instancia de AWS. Tiene
-      4 GB contra los 3.3 de Vultr, así que debería ir mejor — pero se confirma
-      antes, no durante.
 - [ ] **Bajar el TTL del DNS a 60 s en Cloudflare**, al menos 24 h antes.
       Si se hace el mismo día, el cambio tarda lo que diga el TTL viejo y la
       tienda queda repartida entre dos servidores durante horas.
+
+### La base va 35 filas atrás
+
+`User` 19 = 19 y `Store` 5 = 5, pero `Kpi` está en 483 en Vultr contra 448 en
+AWS: son las capturas hechas desde que se restauró la copia el 21 de agosto. Es
+lo esperado y es justo lo que arregla el volcado final de la Fase 2.
+
+---
+
+## No es un dominio, son cinco
+
+⚠️ **El punto que más se subestima.** `npm` en Vultr no sirve solo la app:
+
+| Dominio | Va a | Estado |
+|---|---|---|
+| `app.adrianluna.mx` | la app (`:3000`) | activo |
+| `n8n.adrianluna.mx` | n8n (`:5678`) | activo |
+| `status.adrianluna.mx` | `uptime-kuma:3001` | activo |
+| `vault.adrianluna.mx` | `vaultwarden:80` | activo |
+| `docker.adrianluna.mx` | `portainer:9000` | activo |
+| `proxy.adrianluna.mx` | `npm:81` | desactivado |
+| `dns.adrianluna.mx` | `78.14.12.58:8053` | desactivado |
+
+Los cinco activos hay que recrearlos en el `npm` de AWS **con sus certificados**,
+y mover sus registros de DNS. Apagar Vultr sin esto deja sin gestor de
+contraseñas (`vault`), sin monitoreo (`status`) y sin el webhook de fotos
+(`n8n`) — y de los tres, nadie se acuerda hasta que hacen falta.
+
+Los dos desactivados no se migran. `dns` además apunta a una IP que ni siquiera
+es de este servidor: es un resto de otra época.
 
 ### Dos avisos que ahorran trabajo
 
