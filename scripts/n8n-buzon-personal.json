@@ -45,6 +45,7 @@
         "name": "Bajar el audio",
         "type": "n8n-nodes-base.telegram",
         "typeVersion": 1.2,
+        "onError": "continueErrorOutput",
         "position": [-220, -140],
         "credentials": {
           "telegramApi": {
@@ -107,7 +108,30 @@
         "name": "Transcribir",
         "type": "n8n-nodes-base.httpRequest",
         "typeVersion": 4.2,
+        "onError": "continueErrorOutput",
         "position": [40, -140]
+      },
+      {
+        "parameters": {
+          "chatId": "8328057325",
+          "text": "={{ 'No pude con esa nota de voz.\\n\\n' + ($json.error && ($json.error.description || $json.error.message) ? ($json.error.description || $json.error.message) : JSON.stringify($json).slice(0, 300)) }}",
+          "additionalFields": {
+            "appendAttribution": false,
+            "reply_to_message_id": "={{ $('Buzon').item.json.message.message_id }}"
+          }
+        },
+        "id": "b0000000-0008-4000-8000-000000000008",
+        "name": "Avisar del fallo",
+        "type": "n8n-nodes-base.telegram",
+        "typeVersion": 1.2,
+        "position": [300, 20],
+        "webhookId": "b0000000-6666-4000-8000-000000000066",
+        "credentials": {
+          "telegramApi": {
+            "id": "buzonpersonalbot",
+            "name": "Telegram personal"
+          }
+        }
       },
       {
         "parameters": {
@@ -166,13 +190,19 @@
         ]
       },
       "Bajar el audio": {
-        "main": [[{ "node": "Renombrar a ogg", "type": "main", "index": 0 }]]
+        "main": [
+          [{ "node": "Renombrar a ogg", "type": "main", "index": 0 }],
+          [{ "node": "Avisar del fallo", "type": "main", "index": 0 }]
+        ]
       },
       "Renombrar a ogg": {
         "main": [[{ "node": "Transcribir", "type": "main", "index": 0 }]]
       },
       "Transcribir": {
-        "main": [[{ "node": "Devolver el texto", "type": "main", "index": 0 }]]
+        "main": [
+          [{ "node": "Devolver el texto", "type": "main", "index": 0 }],
+          [{ "node": "Avisar del fallo", "type": "main", "index": 0 }]
+        ]
       }
     },
     "settings": {
