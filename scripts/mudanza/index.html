@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Clarvex se mudó</title>
+<meta name="robots" content="noindex">
+<meta name="description" content="Clarvex Team ahora vive en team.clarvex.tech">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='1' x2='1' y2='0'%3E%3Cstop offset='0' stop-color='%23071F47'/%3E%3Cstop offset='.58' stop-color='%231458BD'/%3E%3Cstop offset='1' stop-color='%23287DFF'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect x='1' y='1' width='510' height='510' rx='88' fill='url(%23g)'/%3E%3Cpath fill='%23fff' d='M108 171 256 86 403 171 210 283v-57l93-53-47-27-95 55v111l95 56 48-28v-57l99 58-147 85-148-84V171Z'/%3E%3C/svg%3E">
+<style>
+  :root {
+    --bg: #F4F6FA;
+    --card: #FFFFFF;
+    --text: #0F172A;
+    --muted: #55617A;
+    --line: #E1E6EF;
+    --accent: #2563EB;
+    --accent-ink: #FFFFFF;
+    --chip: #EEF3FF;
+    --shadow: 0 1px 2px rgba(15,23,42,.06), 0 18px 40px -24px rgba(15,23,42,.35);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0B0C0F;
+      --card: #14161C;
+      --text: #E8EBF2;
+      --muted: #A2ACBE;
+      --line: #262B36;
+      --accent: #3B82F6;
+      --accent-ink: #FFFFFF;
+      --chip: #172033;
+      --shadow: 0 1px 2px rgba(0,0,0,.5), 0 20px 44px -26px rgba(0,0,0,.9);
+    }
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body { height: 100%; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    font-size: 17px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px 16px 40px;
+  }
+
+  .card {
+    width: 100%;
+    max-width: 30rem;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    box-shadow: var(--shadow);
+    padding: 28px 22px 24px;
+  }
+
+  /* El logotipo va INCRUSTADO, no enlazado: la pagina tiene que cargar entera
+     de un tiron aunque la senal este mal, que es justo cuando se va a ver. */
+  .logo {
+    display: block;
+    width: 190px;
+    max-width: 62%;
+    height: auto;
+    margin-bottom: 22px;
+  }
+  /* El azul del logotipo se apaga sobre fondo oscuro; en ese modo la palabra
+     va en el color del texto. El icono lleva su propio degradado y funciona
+     igual en los dos. */
+  .logo .wordmark { fill: #2563EB; }
+  @media (prefers-color-scheme: dark) {
+    .logo .wordmark { fill: #E8EBF2; }
+  }
+
+  h1 {
+    margin: 0;
+    font-size: 1.95rem;
+    line-height: 1.12;
+    letter-spacing: -.02em;
+    font-weight: 700;
+  }
+
+  .lead { margin: 10px 0 0; color: var(--muted); }
+
+  .addr {
+    display: block;
+    margin-top: 16px;
+    padding: 12px 14px;
+    background: var(--chip);
+    border: 1px solid var(--line);
+    border-radius: 11px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 1.02rem;
+    font-weight: 600;
+    color: var(--accent);
+    text-align: center;
+    word-break: break-all;
+  }
+
+  .go {
+    display: block;
+    margin-top: 16px;
+    padding: 16px 20px;
+    background: var(--accent);
+    color: var(--accent-ink);
+    border-radius: 12px;
+    text-align: center;
+    text-decoration: none;
+    font-size: 1.06rem;
+    font-weight: 650;
+    min-height: 54px;
+    line-height: 22px;
+  }
+  .go:active { filter: brightness(.93); }
+  .go:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+
+  .steps {
+    list-style: none;
+    margin: 26px 0 0;
+    padding: 0;
+    border-top: 1px solid var(--line);
+  }
+  .steps li {
+    display: grid;
+    grid-template-columns: 30px 1fr;
+    gap: 4px 12px;
+    padding: 17px 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .n {
+    grid-row: span 2;
+    width: 30px; height: 30px;
+    border-radius: 50%;
+    background: var(--chip);
+    color: var(--accent);
+    display: grid; place-items: center;
+    font-weight: 700; font-size: .92rem;
+  }
+  .steps b { font-weight: 650; font-size: 1rem; }
+  .steps p { margin: 3px 0 0; color: var(--muted); font-size: .94rem; }
+
+  /* El porque va DESPUES de los pasos: quien abre esto esta bloqueado y
+     primero necesita saber que hacer. La explicacion es para quien la quiera. */
+  .why {
+    margin-top: 22px;
+    padding: 18px 18px 16px;
+    background: var(--chip);
+    border: 1px solid var(--line);
+    border-radius: 13px;
+  }
+  .why h2 {
+    margin: 0 0 8px;
+    font-size: 1rem;
+    font-weight: 650;
+  }
+  .why p {
+    margin: 0 0 10px;
+    color: var(--muted);
+    font-size: .93rem;
+  }
+  .why p:last-of-type { margin-bottom: 14px; }
+
+  /* Nombres en TEXTO, no logotipos: son marcas registradas de terceros y no
+     tenemos sus archivos oficiales. Dibujar una aproximacion queda peor. */
+  .partners {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .partner {
+    flex: 1 1 auto;
+    padding: 9px 12px;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 9px;
+    font-size: .8rem;
+    line-height: 1.35;
+    color: var(--muted);
+  }
+  .partner b {
+    display: block;
+    color: var(--text);
+    font-size: .88rem;
+    font-weight: 650;
+  }
+
+  footer {
+    margin-top: 20px;
+    color: var(--muted);
+    font-size: .84rem;
+    line-height: 1.5;
+  }
+  footer a { color: var(--accent); }
+</style>
+</head>
+<body>
+
+  <main class="card">
+    <svg class="logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 300" role="img" aria-label="Clarvex Team">
+      <defs>
+        <linearGradient id="iconBlue" x1="0" y1="1" x2="1" y2="0">
+          <stop offset="0" stop-color="#071F47" />
+          <stop offset="0.58" stop-color="#1458BD" />
+          <stop offset="1" stop-color="#287DFF" />
+        </linearGradient>
+      </defs>
+      <g transform="translate(36 36) scale(.4453125)">
+        <rect x="1" y="1" width="510" height="510" rx="88" fill="url(#iconBlue)" stroke="#8BB8FF" stroke-width="2" />
+        <path fill="#FFFFFF" d="M108 171 256 86 403 171 210 283v-57l93-53-47-27-95 55v111l95 56 48-28v-57l99 58-147 85-148-84V171Z" />
+      </g>
+      <g class="wordmark" font-family="Arial, Helvetica, sans-serif">
+        <text x="312" y="142" font-size="112" font-weight="700" letter-spacing="7">CLARVEX</text>
+        <text x="319" y="214" font-size="46" font-weight="700" letter-spacing="20">TEAM</text>
+      </g>
+    </svg>
+
+    <h1>Clarvex se mudó</h1>
+    <p class="lead">Esta dirección ya no funciona. La app ahora vive aquí:</p>
+
+    <span class="addr">team.clarvex.tech</span>
+
+    <a class="go" href="https://team.clarvex.tech">Ir a Clarvex</a>
+
+    <ol class="steps">
+      <li>
+        <span class="n">1</span>
+        <b>Entra con tu número y tu PIN</b>
+        <p>Como siempre. Tu cuenta, tus ventas y tu historial están intactos.</p>
+      </li>
+      <li>
+        <span class="n">2</span>
+        <b>Registra tu huella otra vez</b>
+        <p>Solo esta vez. Por seguridad, la huella únicamente vale en la dirección
+           donde se registró, así que hay que darla de alta en la nueva.</p>
+      </li>
+      <li>
+        <span class="n">3</span>
+        <b>¿Tenías la app en tu teléfono? Instálala de nuevo</b>
+        <p>Borra el icono viejo e instálala desde la dirección nueva.
+           Si no lo haces, <strong>dejarás de recibir notificaciones</strong>.</p>
+      </li>
+    </ol>
+
+    <section class="why">
+      <h2>¿Por qué nos mudamos?</h2>
+      <p>En agosto se cayeron los archivos externos de los que dependían tus KPIs
+         y tuvimos que cerrar la app varios días. Desde entonces reconstruimos
+         todo para no volver a depender de nadie más.</p>
+      <p>La app entera cambió de servidor y la captura de la operación tiene su
+         propio panel. Hoy hay respaldos diarios —probados restaurándolos, no
+         solo guardados— y un vigilante que avisa si algo se cae, aunque sea de
+         madrugada.</p>
+      <div class="partners">
+        <span class="partner">
+          <b>Amazon Web Services</b>
+          Donde vive la app, dentro de su programa para empresas en crecimiento
+        </span>
+        <span class="partner">
+          <b>Retool</b>
+          Donde se captura la operación, dentro de su programa para startups
+        </span>
+      </div>
+    </section>
+
+    <footer>
+      Nada se perdió: es la misma app, en una casa mejor.
+      Si algo no te funciona, escríbenos a
+      <a href="mailto:contacto@clarvex.adrianluna.mx">contacto@clarvex.adrianluna.mx</a>.
+    </footer>
+  </main>
+
+</body>
+</html>

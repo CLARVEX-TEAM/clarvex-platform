@@ -67,6 +67,22 @@ services:
       - ./portainer:/data
     networks: [clarvex_net]
 
+  # Pantalla de mudanza para el dominio viejo (app.adrianluna.mx).
+  #
+  # Es un contenedor APARTE y no la app: si el dominio viejo sirviera Clarvex,
+  # el navegador rechazaria las huellas por venir de otro origen —la app tiene
+  # WEBAUTHN_ORIGIN en team.clarvex.tech— y el fallo no explicaria por que.
+  # Aqui solo hay un HTML de 8 KB, sin peticiones externas.
+  mudanza:
+    image: nginx:alpine
+    container_name: mudanza
+    restart: unless-stopped
+    volumes:
+      - ./mudanza:/usr/share/nginx/html:ro
+    expose:
+      - "80"
+    networks: [clarvex_net]
+
 networks:
   clarvex_net:
     name: clarvex_net
