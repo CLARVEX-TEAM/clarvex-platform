@@ -214,6 +214,43 @@ descargadas. Aquí solo se copian los datos y se levanta.
 > devolver el DNS a Vultr y no se ha perdido nada. En cuanto se abre, empiezan a
 > entrar capturas reales en AWS — y volver atrás significaría tirarlas.
 
+### Fase 3b — Los recursos de Retool
+
+⚠️ **Esto faltaba en la primera versión de este guion y rompió la captura
+entera durante media hora.** Retool apunta al servidor por configuración
+propia, y mover el DNS no la cambia: sus tres recursos siguen mirando al
+dominio viejo, que después del corte solo sirve la pantalla de mudanza.
+
+El síntoma es engañoso: las **lecturas siguen funcionando** —el túnel entra a
+un Postgres que sigue vivo en Vultr— así que las pantallas pintan datos, solo
+que congelados. Y las **escrituras devuelven 404**, porque `app.adrianluna.mx`
+ya no tiene esas rutas.
+
+Se cambia a mano en la interfaz de Retool, **no por el MCP**: el campo de
+opciones se escribe entero y borraría la cabecera con `ADMIN_CAPTURE_SECRET`.
+
+| Recurso | Campo | Valor nuevo |
+|---|---|---|
+| Clarvex API (captura) | Base URL | `https://team.clarvex.tech` |
+| Clarvex API (sincronizar fuente) | Base URL | `https://team.clarvex.tech` |
+| Clarvex producción (solo lectura) | Bastion host | `44.200.176.214` |
+
+El resto no se toca: el usuario del túnel sigue siendo `retool`, el puerto 22,
+la base en `127.0.0.1:5432` y la contraseña del rol es la misma —el hash viajó
+con `pg_dumpall`—.
+
+**Cómo comprobarlo sin adivinar.** Una consulta que distinga las dos bases:
+
+```sql
+SELECT inet_server_addr()::text,
+       (SELECT count(*) FROM "WebAuthnCredential" WHERE "rpId"='team.clarvex.tech');
+```
+
+En AWS la IP es `172.17.x` y la cuenta es ≥1; en Vultr es `172.18.x` y da 0.
+Para las escrituras, abrir **Inicio** en Captura Clarvex y buscar en
+`proxy-host-1_access.log` una línea `200 GET /api/admin/retool/dashboard` con
+un cliente en `35.90.x`, `44.208.x` o `3.77.x` — esos son los rangos de Retool.
+
 ### Fase 4 — Verificación
 
 12. Entrar con PIN desde un teléfono.
