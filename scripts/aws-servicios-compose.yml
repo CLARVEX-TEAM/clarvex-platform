@@ -39,6 +39,15 @@ services:
       # Sin esto las expresiones de n8n no pueden leer $env y la llave no llega
       # al nodo. n8n lo bloquea por omision en produccion.
       - N8N_BLOCK_ENV_ACCESS_IN_NODE=false
+      # ⚠️ n8n 2.x restringe POR OMISION donde pueden escribir los nodos, a
+      # `~/.n8n-files`. Sin esta linea el nodo de guardar falla con "is not
+      # writable" aunque los permisos del sistema esten bien: la carpeta se
+      # puede escribir desde la shell del contenedor y el nodo aun asi la
+      # rechaza, porque el bloqueo es de n8n, no del sistema de archivos.
+      #
+      # Apuntarlo a /buzon deja la app MAS acotada que por omision: es el
+      # unico sitio del disco que los nodos pueden tocar.
+      - N8N_RESTRICT_FILE_ACCESS_TO=/buzon
     volumes:
       - ./n8n_data:/home/node/.n8n
       # La carpeta del buzon, compartida con syncthing. Los dos contenedores
