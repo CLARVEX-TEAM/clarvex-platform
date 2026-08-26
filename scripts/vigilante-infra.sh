@@ -3,7 +3,7 @@
 # Vigilante de infraestructura: comprueba lo que falla en SILENCIO y avisa por
 # Telegram al chat privado a traves de n8n.
 #
-# Los cuatro fallos que cubre son invisibles hasta que ya es tarde:
+# Los fallos que cubre son invisibles hasta que ya es tarde:
 #   - un respaldo que dejo de correr se ve igual que uno que funciona
 #   - un certificado caducado tumba el sitio sin previo aviso
 #   - un disco lleno hace que Postgres deje de escribir
@@ -50,6 +50,25 @@ else
   else
     tam=$(tail -20 "$log_respaldo" | grep -oE "dump listo: [0-9.]+ MB" | tail -1)
     parte+=("Respaldo: hace ${edad_h} h, ${tam:-tamano desconocido}, en R2 y S3.")
+  fi
+fi
+
+# --- 1b) el respaldo de los servicios de al lado -------------------------------
+# Vaultwarden, n8n, el proxy y Kuma. Este respaldo es el unico que existe para
+# esos cuatro: si deja de correr, no hay una segunda copia detras como si la hay
+# para la base de la app.
+log_servicios="$LOGS/servicios.log"
+if [ ! -f "$log_servicios" ]; then
+  problemas+=("No existe $log_servicios: el respaldo de Vaultwarden y n8n nunca ha corrido aqui.")
+else
+  edad_h=$(( ( $(date +%s) - $(stat -c %Y "$log_servicios") ) / 3600 ))
+  if [ "$edad_h" -ge "$RESPALDO_MAX_HORAS" ]; then
+    problemas+=("El respaldo de los servicios no corre desde hace ${edad_h} h. Vaultwarden lleva ese tiempo sin copia nueva.")
+  elif ! tail -20 "$log_servicios" | grep -q "subido a r2://"; then
+    problemas+=("El respaldo de los servicios corrio hace ${edad_h} h pero NO subio a R2. Revisa $log_servicios.")
+  else
+    tam=$(tail -20 "$log_servicios" | grep -oE "archivo listo: [0-9.]+ MB" | tail -1)
+    parte+=("Respaldo de servicios: hace ${edad_h} h, ${tam:-tamano desconocido}.")
   fi
 fi
 
