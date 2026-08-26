@@ -96,8 +96,13 @@ async function main() {
     return;
   }
 
-  const archivos = readdirSync(PENDIENTES).filter((f) => f.endsWith(".json")).sort();
-  if (archivos.length === 0) {
+  const todos = readdirSync(PENDIENTES).filter((f) => f.endsWith(".json")).sort();
+  // Las altas se aplican ANTES que las bajas. Si llegara un ticket y un
+  // /borrar en el mismo minuto, la intencion es deshacer ese ticket: al reves
+  // borraria el gasto anterior, que estaba bien.
+  const archivos = todos.filter((f) => !f.startsWith("borrar-"));
+  const bajas = todos.filter((f) => f.startsWith("borrar-"));
+  if (archivos.length === 0 && bajas.length === 0) {
     console.log("[gastos] sin pendientes.");
     return;
   }
@@ -139,6 +144,31 @@ async function main() {
 
     fila += 1;
     siguienteId += 1;
+    integrados.push(ruta);
+  }
+
+  // --- bajas: cada orden quita la ULTIMA fila con datos -----------------------
+  // La fila se vacia, no se elimina: quitar el elemento correria la numeracion
+  // de todas las de abajo y el libro dejaria de cuadrar con su propia tabla.
+  for (const archivo of bajas) {
+    const ruta = join(PENDIENTES, archivo);
+    const conDatos = [...hoja.matchAll(/<x:c r="A(\d+)"[^>]*>\s*<x:v>([^<]*)<\/x:v>/g)]
+      .map((m) => ({ fila: Number(m[1]), id: m[2] }))
+      .filter((x) => x.fila > 1);
+    if (conDatos.length === 0) {
+      console.log("[gastos] /borrar sin nada que quitar.");
+      integrados.push(ruta);
+      continue;
+    }
+    const ultima = conDatos.reduce((a, b) => (b.fila > a.fila ? b : a));
+    const vacia =
+      `<x:row r="${ultima.fila}">` +
+      `<x:c r="B${ultima.fila}" s="4" />` +
+      `<x:c r="H${ultima.fila}" s="2" />` +
+      `<x:c r="M${ultima.fila}" t="str"><x:f>TEXT(B${ultima.fila},"yyyy-mm")</x:f></x:c>` +
+      `</x:row>`;
+    hoja = hoja.replace(new RegExp(`<x:row r="${ultima.fila}"[^>]*>.*?</x:row>`, "s"), vacia);
+    console.log(`[gastos] quitada la fila ${ultima.fila} (${ultima.id})`);
     integrados.push(ruta);
   }
 
