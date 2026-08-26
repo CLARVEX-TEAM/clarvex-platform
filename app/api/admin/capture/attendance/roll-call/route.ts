@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireAdminCapture } from "@/lib/admin-capture-auth";
-import { rollCall } from "@/lib/attendance-roll-call";
+import { rollCall, rosterDelDia } from "@/lib/attendance-roll-call";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -40,6 +40,34 @@ const bodySchema = z.object({
     .optional()
     .default([])
 });
+
+/**
+ * Quien trabaja hoy y quien ya tiene asistencia. Solo lee.
+ *
+ * Sin esta lectura, la unica forma de saber a quien se va a marcar seria
+ * marcarlo, que es justo lo que no se quiere con datos de nomina.
+ */
+export async function GET(request: Request) {
+  const unauthorized = requireAdminCapture(request);
+  if (unauthorized) return unauthorized;
+
+  const url = new URL(request.url);
+  const storeId = (url.searchParams.get("storeId") ?? "").trim();
+  const date = (url.searchParams.get("date") ?? "").trim();
+  if (!storeId || date.length !== 10) {
+    return NextResponse.json({ error: "Faltan storeId o date (AAAA-MM-DD)." }, { status: 400 });
+  }
+
+  const store = await prisma.store.findUnique({ where: { id: storeId }, select: { id: true, name: true } });
+  if (!store) return NextResponse.json({ error: "Tienda no encontrada." }, { status: 404 });
+
+  const outcome = await rosterDelDia(storeId, date);
+  if (!outcome.ok) {
+    return NextResponse.json({ error: "Fecha invalida.", detail: outcome.errors }, { status: 422 });
+  }
+
+  return NextResponse.json({ ok: true, store: store.name, ...outcome.result });
+}
 
 export async function POST(request: Request) {
   const unauthorized = requireAdminCapture(request);

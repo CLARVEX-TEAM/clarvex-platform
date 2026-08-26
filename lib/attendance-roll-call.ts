@@ -1,7 +1,9 @@
+import { expectedEntry } from "@/lib/attendance";
 import { captureAttendance } from "@/lib/attendance-capture";
 import { planPaseDeLista, type RollCallException } from "@/lib/attendance-roll-call-plan";
 import { prisma } from "@/lib/prisma";
 import { PERSON_WHERE } from "@/lib/store-people";
+import { firstName } from "@/lib/weekly-close";
 
 export type { RollCallException } from "@/lib/attendance-roll-call-plan";
 
@@ -48,6 +50,59 @@ export type RollCallOutcome = {
 
 /** Estados de horario en los que se espera que la persona venga a trabajar. */
 const TRABAJA = ["WORKING", "INVENTORY"] as const;
+
+export type RosterPerson = {
+  employeeNumber: string;
+  name: string;
+  shortName: string;
+  expectedAt: string;
+  yaCapturado: boolean;
+  arrivedAt: string | null;
+  status: string | null;
+};
+
+/**
+ * Quien trabaja ese dia y quien ya tiene asistencia. NO escribe nada.
+ *
+ * Existe para poder enseñar la lista antes de capturar. Sin esto, la unica
+ * forma de saber a quien se va a marcar seria marcarlo.
+ */
+export async function rosterDelDia(
+  storeId: string,
+  fecha: string
+): Promise<{ ok: false; errors: string[] } | { ok: true; result: { date: string; personas: RosterPerson[] } }> {
+  const dia = new Date(`${fecha}T00:00:00.000Z`);
+  if (Number.isNaN(dia.getTime()) || dia.toISOString().slice(0, 10) !== fecha) {
+    return { ok: false, errors: [`Fecha inexistente: ${fecha}.`] };
+  }
+
+  const turnos = await prisma.schedule.findMany({
+    where: { storeId, date: dia, status: { in: [...TRABAJA] }, user: PERSON_WHERE },
+    select: { startTime: true, user: { select: { id: true, name: true, employeeNumber: true } } }
+  });
+
+  const asistencias = await prisma.attendance.findMany({
+    where: { storeId, date: dia, userId: { in: turnos.map((t) => t.user.id) } },
+    select: { userId: true, arrivedAt: true, status: true }
+  });
+  const porUsuario = new Map(asistencias.map((a) => [a.userId, a]));
+
+  const personas: RosterPerson[] = turnos.map((t) => {
+    const ya = porUsuario.get(t.user.id);
+    return {
+      employeeNumber: t.user.employeeNumber,
+      name: t.user.name,
+      shortName: firstName(t.user.name),
+      expectedAt: expectedEntry(t.startTime),
+      yaCapturado: Boolean(ya),
+      arrivedAt: ya?.arrivedAt ?? null,
+      status: ya?.status ?? null
+    };
+  });
+  personas.sort((a, b) => a.expectedAt.localeCompare(b.expectedAt) || a.name.localeCompare(b.name, "es"));
+
+  return { ok: true, result: { date: fecha, personas } };
+}
 
 export async function rollCall(
   storeId: string,
