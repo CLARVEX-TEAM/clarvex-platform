@@ -26,7 +26,7 @@
         "parameters": {
           "mode": "expression",
           "numberOutputs": 6,
-          "output": "={{ $json.message.chat.id !== 8328057325 ? 5 : (($json.message.voice || $json.message.audio) ? 0 : (($json.message.photo && ($json.message.caption || '').trim().toLowerCase().startsWith('gasto')) ? 3 : (($json.message.photo || $json.message.video || $json.message.document || $json.message.video_note) ? 1 : ((($json.message.text || '').trim().startsWith('/')) ? 4 : 2)))) }}",
+          "output": "={{ $json.message.chat.id !== 8328057325 ? 5 : (($json.message.voice || $json.message.audio) ? 0 : (($json.message.photo && ($json.message.caption || '').trim().toLowerCase().startsWith('gasto')) ? 3 : (($json.message.photo || $json.message.video || $json.message.document || $json.message.video_note) ? 1 : ((($json.message.text || '').trim().startsWith('/') || ($json.message.text || '').trim().toLowerCase().startsWith('asistencia') || ($json.message.text || '').trim().toLowerCase().startsWith('sin novedad')) ? 4 : 2)))) }}",
           "options": {}
         },
         "id": "b0000000-0002-4000-8000-000000000002",
@@ -240,8 +240,8 @@
       {
         "parameters": {
           "mode": "expression",
-          "numberOutputs": 3,
-          "output": "={{ $json.message.text.trim().toLowerCase().startsWith('/gastos') ? 0 : ($json.message.text.trim().toLowerCase().startsWith('/borrar') ? 1 : 2) }}",
+          "numberOutputs": 5,
+          "output": "={{ $json.message.text.trim().toLowerCase().startsWith('/gastos') ? 0 : ($json.message.text.trim().toLowerCase().startsWith('/borrar') ? 1 : ($json.message.text.trim().toLowerCase().startsWith('asistencia') ? 2 : ($json.message.text.trim().toLowerCase().startsWith('sin novedad') ? 3 : 4))) }}",
           "options": {}
         },
         "id": "b0000000-0030-4000-8000-000000000030",
@@ -311,6 +311,80 @@
         "typeVersion": 1.1,
         "onError": "continueErrorOutput",
         "position": [-240, 720]
+      },
+      {
+        "parameters": {
+          "method": "GET",
+          "url": "=https://team.clarvex.tech/api/admin/capture/attendance/roll-call?storeId=clarvex-demo-store&date={{ new Date(Date.now() - 6 * 3600 * 1000).toISOString().slice(0, 10) }}",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              { "name": "Authorization", "value": "=Bearer {{ $env.ADMIN_CAPTURE_SECRET }}" }
+            ]
+          },
+          "options": { "timeout": 30000 }
+        },
+        "id": "b0000000-0040-4000-8000-000000000040",
+        "name": "Ver quien trabaja",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "onError": "continueErrorOutput",
+        "position": [-440, 1040]
+      },
+      {
+        "parameters": {
+          "jsCode": "// Enseña la plantilla ANTES de capturar nada. Es la unica forma de saber a\n// quien se va a marcar sin marcarlo, y esto es nomina.\nconst d = $json;\nconst gente = d.personas || [];\n\nif (gente.length === 0) {\n  return [{ json: { respuesta: 'Hoy no hay nadie con turno en ' + d.store + '.\\nRevisa los horarios en Retool.' } }];\n}\n\nconst filas = gente.map((p) => {\n  const marca = p.yaCapturado\n    ? '  [ya: ' + (p.arrivedAt || p.status) + ']'\n    : '';\n  return '  ' + p.shortName.padEnd(10) + ' entra ' + p.expectedAt + marca;\n});\n\nconst pendientes = gente.filter((p) => !p.yaCapturado).length;\n\nconst lineas = [\n  'Bien, vamos con la asistencia de ' + d.store + '.',\n  'Hoy ' + d.date + ', ' + gente.length + ' con turno:',\n  '',\n  ...filas,\n  ''\n];\n\nif (pendientes === 0) {\n  lineas.push('Ya estan todos capturados. No hay nada que hacer.');\n} else {\n  lineas.push('Responde:');\n  lineas.push('  sin novedad');\n  lineas.push('     si todos llegaron a su hora');\n  lineas.push('');\n  lineas.push('  sin novedad, Itzel 11:05, Jazmin falta');\n  lineas.push('     nombrando solo a quien se salio de lo normal');\n}\n\nreturn [{ json: { respuesta: lineas.join('\\n') } }];"
+        },
+        "id": "b0000000-0041-4000-8000-000000000041",
+        "name": "Formatear plantilla",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "onError": "continueErrorOutput",
+        "position": [-240, 1040]
+      },
+      {
+        "parameters": {
+          "jsCode": "// Lee \"sin novedad, Itzel 11:05, Jazmin falta\".\n//\n// Lo que NO se entienda se devuelve como aviso en vez de ignorarse: una\n// excepcion que se pierde en silencio deja a alguien marcado a su hora\n// cuando llego tarde, y eso es dinero.\nconst texto = ($json.message.text || '').trim();\nconst partes = texto.split(',').map((p) => p.trim()).filter(Boolean);\n\nconst exceptions = [];\nconst noEntendidas = [];\n\n// La primera parte es siempre \"sin novedad\"; el resto son excepciones.\nfor (const parte of partes.slice(1)) {\n  const conHora = parte.match(/^(.+?)\\s+(\\d{1,2}:\\d{2})$/);\n  if (conHora) {\n    exceptions.push({ name: conHora[1].trim(), arrivedAt: conHora[2] });\n    continue;\n  }\n  const ausente = parte.match(/^(.+?)\\s+(falta|falto|no vino|ausente)$/i);\n  if (ausente) {\n    exceptions.push({ name: ausente[1].trim(), entryText: 'FALTA' });\n    continue;\n  }\n  noEntendidas.push(parte);\n}\n\nreturn [{\n  json: {\n    noEntendidas: noEntendidas,\n    cuerpo: {\n      // ⚠️ El id dice \"demo\" por herencia, pero es TH SAN AGUSTIN de verdad.\n      storeId: 'clarvex-demo-store',\n      date: new Date(Date.now() - 6 * 3600 * 1000).toISOString().slice(0, 10),\n      exceptions: exceptions\n    }\n  }\n}];"
+        },
+        "id": "b0000000-0042-4000-8000-000000000042",
+        "name": "Leer las excepciones",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "onError": "continueErrorOutput",
+        "position": [-440, 1220]
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "https://team.clarvex.tech/api/admin/capture/attendance/roll-call",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              { "name": "Authorization", "value": "=Bearer {{ $env.ADMIN_CAPTURE_SECRET }}" }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify($json.cuerpo) }}",
+          "options": { "timeout": 45000 }
+        },
+        "id": "b0000000-0043-4000-8000-000000000043",
+        "name": "Pasar lista",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "onError": "continueErrorOutput",
+        "position": [-240, 1220]
+      },
+      {
+        "parameters": {
+          "jsCode": "// Se responde con lo que quedo GUARDADO, que es lo que devuelve el servidor\n// leyendo la base. Confirmar lo que uno pretendia escribir no comprobaria\n// nada; asi, si una regla clasifico distinto, aqui se ve.\nconst d = $json;\nconst NOMBRE = { ON_TIME: 'a tiempo', LATE: 'retardo', EXCUSED: 'permiso de entrada', ABSENT: 'FALTA' };\n\nconst lineas = [];\n\nif (d.marcados && d.marcados.length) {\n  lineas.push('Asistencia guardada:');\n  lineas.push('');\n  for (const p of d.marcados) {\n    const corto = p.name.split(/\\s+/)[0];\n    const hora = p.arrivedAt || '--';\n    const estado = NOMBRE[p.status] || p.status;\n    const tarde = p.minutesLate ? '  (+' + p.minutesLate + ' min)' : '';\n    lineas.push('  ' + corto.padEnd(10) + hora + '  ' + estado + tarde);\n  }\n} else {\n  lineas.push('No se marco a nadie nuevo.');\n}\n\nif (d.respetados && d.respetados.length) {\n  lineas.push('');\n  lineas.push('Ya tenian asistencia, no se tocaron:');\n  lineas.push('  ' + d.respetados.map((r) => r.name.split(/\\s+/)[0]).join(', '));\n}\n\n// Los avisos van al final y siempre: una excepcion que no se aplico es\n// justo lo que hay que ver.\nconst avisos = [];\nfor (const n of ($('Leer las excepciones').first().json.noEntendidas || [])) {\n  avisos.push('No entendi \"' + n + '\". Usa \"Nombre 11:05\" o \"Nombre falta\".');\n}\nfor (const n of (d.sinTurno || [])) avisos.push('\"' + n + '\" no tiene turno hoy; no lo marque.');\nfor (const n of (d.ambiguos || [])) avisos.push('\"' + n + '\" coincide con varias personas; no marque a ninguna.');\nfor (const e of (d.errors || [])) avisos.push(e);\n\nif (avisos.length) {\n  lineas.push('');\n  lineas.push('OJO:');\n  for (const a of avisos) lineas.push('  ' + a);\n}\n\nreturn [{ json: { respuesta: lineas.join('\\n') } }];"
+        },
+        "id": "b0000000-0044-4000-8000-000000000044",
+        "name": "Formatear pase",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "onError": "continueErrorOutput",
+        "position": [-40, 1220]
       },
       {
         "parameters": {
@@ -503,7 +577,40 @@
         "main": [
           [{ "node": "Leer el resumen", "type": "main", "index": 0 }],
           [{ "node": "Pedir el borrado", "type": "main", "index": 0 }],
+          [{ "node": "Ver quien trabaja", "type": "main", "index": 0 }],
+          [{ "node": "Leer las excepciones", "type": "main", "index": 0 }],
           [{ "node": "Texto de ayuda", "type": "main", "index": 0 }]
+        ]
+      },
+
+      "Ver quien trabaja": {
+        "main": [
+          [{ "node": "Formatear plantilla", "type": "main", "index": 0 }],
+          [{ "node": "Avisar del fallo", "type": "main", "index": 0 }]
+        ]
+      },
+      "Formatear plantilla": {
+        "main": [
+          [{ "node": "Responder comando", "type": "main", "index": 0 }],
+          [{ "node": "Avisar del fallo", "type": "main", "index": 0 }]
+        ]
+      },
+      "Leer las excepciones": {
+        "main": [
+          [{ "node": "Pasar lista", "type": "main", "index": 0 }],
+          [{ "node": "Avisar del fallo", "type": "main", "index": 0 }]
+        ]
+      },
+      "Pasar lista": {
+        "main": [
+          [{ "node": "Formatear pase", "type": "main", "index": 0 }],
+          [{ "node": "Avisar del fallo", "type": "main", "index": 0 }]
+        ]
+      },
+      "Formatear pase": {
+        "main": [
+          [{ "node": "Responder comando", "type": "main", "index": 0 }],
+          [{ "node": "Avisar del fallo", "type": "main", "index": 0 }]
         ]
       },
       "Leer el resumen": {

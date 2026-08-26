@@ -51,6 +51,9 @@ services:
       # proposito: el buzon es de PASO --se vacia cada cinco minutos desde la
       # PC-- y el libro de gastos tiene que quedarse quieto en algun sitio.
       - N8N_RESTRICT_FILE_ACCESS_TO=/buzon;/gastos
+      # Secreto de la API de captura de Clarvex, para el pase de lista desde
+      # el bot. El VALOR vive en /home/ubuntu/stack/.env, no aqui.
+      - ADMIN_CAPTURE_SECRET=${ADMIN_CAPTURE_SECRET}
     volumes:
       - ./n8n_data:/home/node/.n8n
       # La carpeta del buzon, compartida con syncthing. Los dos contenedores
