@@ -246,3 +246,32 @@ test("un promedio que NO cuadra ni con netas ni con brutas se detiene", () => {
   assert.equal(problems.length > 0, true);
   assert.match(problems[0], /4 devueltas/);
 });
+
+test("una letra metida a mitad del apellido sigue emparejando", () => {
+  // El caso real del 26 de agosto de 2026: el lector devolvio POPCOCA por
+  // POPOCA y el prefijo comun se quedaba en 3 letras, asi que la venta del
+  // dia de Waira no se cargaba.
+  assert.equal(sameSurname("POPCOCA", "POPOCA"), true);
+  assert.equal(sameSurname("POPOCA", "POPCOCA"), true);
+});
+
+test("una letra cambiada o de menos tambien emparejan", () => {
+  assert.equal(sameSurname("HERNANDEZ", "HERNANDES"), true);
+  assert.equal(sameSurname("BAUTISTA", "BAUTSTA"), true);
+});
+
+test("dos erratas ya NO emparejan", () => {
+  // Con dos, la puerta se abre demasiado y acabaria colgandole la venta a
+  // quien no es.
+  assert.equal(sameSurname("POPOCA", "PAPCOCA"), false);
+});
+
+test("en apellidos cortos no se tolera ninguna errata", () => {
+  // "LARA" y "LERA" difieren en una letra y pueden ser dos personas.
+  assert.equal(sameSurname("LARA", "LERA"), false);
+});
+
+test("apellidos distintos de verdad siguen sin emparejar", () => {
+  assert.equal(sameSurname("REYES", "POPOCA"), false);
+  assert.equal(sameSurname("CASTRO", "TREVINO"), false);
+});

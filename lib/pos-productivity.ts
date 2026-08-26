@@ -170,19 +170,59 @@ function commonPrefix(left: string, right: string): number {
 }
 
 /**
+ * ¿Difieren en UNA sola letra? (una de más, una de menos, o una cambiada)
+ *
+ * Se escribe a mano en vez de una distancia de edición completa porque solo
+ * interesa el caso de una errata: con un recorrido lineal basta y no hay que
+ * elegir un umbral.
+ */
+function withinOneEdit(a: string, b: string): boolean {
+  if (Math.abs(a.length - b.length) > 1) return false;
+
+  const [corto, largo] = a.length <= b.length ? [a, b] : [b, a];
+  let i = 0;
+  let j = 0;
+  let fallos = 0;
+
+  while (i < corto.length && j < largo.length) {
+    if (corto[i] === largo[j]) {
+      i += 1;
+      j += 1;
+      continue;
+    }
+    fallos += 1;
+    if (fallos > 1) return false;
+    // Si son igual de largos, la letra esta cambiada; si no, sobra en el largo.
+    if (corto.length === largo.length) i += 1;
+    j += 1;
+  }
+  return fallos + (largo.length - j) + (corto.length - i) <= 1;
+}
+
+/**
  * ¿Estos dos apellidos son el mismo?
  *
  * No se puede comparar por igualdad. El visor del POS **corta** los nombres
  * («POPOCA, WAIRA ZITLAL») y además estropea la Ñ («TREVIÃO» por TREVIÑO), así
  * que se compara por prefijo: cinco letras, o el apellido entero si es más
  * corto. Menos de tres letras nunca empareja — con dos, media tienda encaja.
+ *
+ * ⚠️ El prefijo NO basta cuando el lector mete una letra a mitad de palabra.
+ * Paso el 26 de agosto de 2026: leyó «POPCOCA» por POPOCA y el prefijo comun
+ * se quedo en 3 letras, asi que Waira no se emparejo y su venta del dia no se
+ * cargo. Por eso se acepta ademas una sola errata.
+ *
+ * Se exige que el apellido tenga al menos cinco letras para esa tolerancia: en
+ * uno corto, una letra de diferencia puede ser otra persona. Y aunque se cuele
+ * un parecido, `matchPosRows` rechaza lo ambiguo antes de asignar nada.
  */
 export function sameSurname(left: string, right: string): boolean {
   const a = normalize(left);
   const b = normalize(right);
   const required = Math.min(5, a.length, b.length);
   if (required < 3) return false;
-  return commonPrefix(a, b) >= required;
+  if (commonPrefix(a, b) >= required) return true;
+  return Math.min(a.length, b.length) >= 5 && withinOneEdit(a, b);
 }
 
 export type PosPerson = { id: string; name: string; employeeNumber: string };
