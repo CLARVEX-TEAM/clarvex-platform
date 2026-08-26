@@ -6,14 +6,19 @@
     "nodes": [
       {
         "parameters": {
-          "updates": ["message"],
+          "updates": [
+            "message"
+          ],
           "additionalFields": {}
         },
         "id": "b0000000-0001-4000-8000-000000000001",
         "name": "Buzon",
         "type": "n8n-nodes-base.telegramTrigger",
         "typeVersion": 1.4,
-        "position": [-1120, 40],
+        "position": [
+          -1120,
+          40
+        ],
         "webhookId": "b0000000-9999-4000-8000-000000000099",
         "credentials": {
           "telegramApi": {
@@ -33,9 +38,11 @@
         "name": "Que llego",
         "type": "n8n-nodes-base.switch",
         "typeVersion": 3.4,
-        "position": [-900, 40]
+        "position": [
+          -900,
+          40
+        ]
       },
-
       {
         "parameters": {
           "resource": "file",
@@ -47,7 +54,10 @@
         "type": "n8n-nodes-base.telegram",
         "typeVersion": 1.2,
         "onError": "continueErrorOutput",
-        "position": [-660, -200],
+        "position": [
+          -660,
+          -200
+        ],
         "credentials": {
           "telegramApi": {
             "id": "buzonpersonalbot",
@@ -63,7 +73,10 @@
         "name": "Renombrar a ogg",
         "type": "n8n-nodes-base.code",
         "typeVersion": 2,
-        "position": [-460, -200]
+        "position": [
+          -460,
+          -200
+        ]
       },
       {
         "parameters": {
@@ -87,19 +100,33 @@
                 "name": "file",
                 "inputDataFieldName": "data"
               },
-              { "name": "model", "value": "whisper-large-v3-turbo" },
-              { "name": "language", "value": "es" },
-              { "name": "response_format", "value": "json" }
+              {
+                "name": "model",
+                "value": "whisper-large-v3-turbo"
+              },
+              {
+                "name": "language",
+                "value": "es"
+              },
+              {
+                "name": "response_format",
+                "value": "json"
+              }
             ]
           },
-          "options": { "timeout": 120000 }
+          "options": {
+            "timeout": 120000
+          }
         },
         "id": "b0000000-0004-4000-8000-000000000004",
         "name": "Transcribir",
         "type": "n8n-nodes-base.httpRequest",
         "typeVersion": 4.2,
         "onError": "continueErrorOutput",
-        "position": [-260, -200]
+        "position": [
+          -260,
+          -200
+        ]
       },
       {
         "parameters": {
@@ -114,7 +141,10 @@
         "name": "Devolver el texto",
         "type": "n8n-nodes-base.telegram",
         "typeVersion": 1.2,
-        "position": [-40, -300],
+        "position": [
+          -40,
+          -300
+        ],
         "webhookId": "b0000000-8888-4000-8000-000000000088",
         "credentials": {
           "telegramApi": {
@@ -131,9 +161,11 @@
         "name": "Transcripcion a txt",
         "type": "n8n-nodes-base.code",
         "typeVersion": 2,
-        "position": [-40, -140]
+        "position": [
+          -40,
+          -140
+        ]
       },
-
       {
         "parameters": {
           "jsCode": "// Cada tipo de mensaje guarda el archivo en un sitio distinto del payload.\n// Aqui se normaliza a un solo par: que bajar y como llamarlo.\nconst m = $json.message;\nlet fileId = null;\nlet nombre = 'archivo';\n\nif (m.photo) {\n  // Telegram manda la MISMA foto en varias resoluciones; la ultima es la mayor.\n  // Quedarse con otra guardaria una miniatura sin que nada avisara.\n  fileId = m.photo[m.photo.length - 1].file_id;\n  nombre = 'foto.jpg';\n} else if (m.video) {\n  fileId = m.video.file_id;\n  nombre = m.video.file_name || 'video.mp4';\n} else if (m.video_note) {\n  fileId = m.video_note.file_id;\n  nombre = 'videonota.mp4';\n} else if (m.document) {\n  fileId = m.document.file_id;\n  nombre = m.document.file_name || 'documento';\n}\n\nreturn [{ json: { fileId: fileId, nombre: nombre } }];"
@@ -142,7 +174,10 @@
         "name": "Que archivo es",
         "type": "n8n-nodes-base.code",
         "typeVersion": 2,
-        "position": [-660, 40]
+        "position": [
+          -660,
+          40
+        ]
       },
       {
         "parameters": {
@@ -155,7 +190,10 @@
         "type": "n8n-nodes-base.telegram",
         "typeVersion": 1.2,
         "onError": "continueErrorOutput",
-        "position": [-460, 40],
+        "position": [
+          -460,
+          40
+        ],
         "credentials": {
           "telegramApi": {
             "id": "buzonpersonalbot",
@@ -171,9 +209,11 @@
         "name": "Ponerle fecha",
         "type": "n8n-nodes-base.code",
         "typeVersion": 2,
-        "position": [-260, 40]
+        "position": [
+          -260,
+          40
+        ]
       },
-
       {
         "parameters": {
           "jsCode": "// Un mensaje de texto se guarda como .txt, con las primeras palabras en el\n// nombre para poder encontrarlo en la carpeta sin abrirlo.\nconst texto = ($json.message.text || '').trim();\nif (!texto) { return []; }\n\nconst l = new Date(Date.now() - 6 * 3600 * 1000);\nconst sello = l.toISOString().slice(0, 16).replace('T', ' ').replace(':', '');\n\n// Se filtra por lista blanca en vez de prohibir caracteres: los nombres de\n// archivo tienen reglas distintas en Windows, Android y Linux, y esta carpeta\n// se sincroniza a los tres.\nconst PERMITIDOS = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 .,-_áéíóúüñÁÉÍÓÚÜÑ';\nlet titulo = '';\nfor (const c of texto) {\n  titulo += PERMITIDOS.indexOf(c) >= 0 ? c : ' ';\n}\ntitulo = titulo.replace('  ', ' ').trim().slice(0, 40).trim() || 'nota';\n\n// El id del mensaje evita que dos notas del mismo minuto que empiecen igual\n// se sobrescriban entre ellas.\nconst id = $json.message.message_id;\nconst final = sello + ' - ' + titulo + ' ' + id + '.txt';\nreturn [{\n  json: { rutaNombre: final },\n  binary: {\n    data: {\n      data: Buffer.from(texto, 'utf8').toString('base64'),\n      mimeType: 'text/plain',\n      fileName: final\n    }\n  }\n}];"
@@ -182,9 +222,11 @@
         "name": "Texto a txt",
         "type": "n8n-nodes-base.code",
         "typeVersion": 2,
-        "position": [-660, 260]
+        "position": [
+          -660,
+          260
+        ]
       },
-
       {
         "parameters": {
           "operation": "write",
@@ -197,7 +239,10 @@
         "type": "n8n-nodes-base.readWriteFile",
         "typeVersion": 1.1,
         "onError": "continueErrorOutput",
-        "position": [-40, 140]
+        "position": [
+          -40,
+          140
+        ]
       },
       {
         "parameters": {
@@ -212,7 +257,10 @@
         "name": "Confirmar",
         "type": "n8n-nodes-base.telegram",
         "typeVersion": 1.2,
-        "position": [200, 140],
+        "position": [
+          200,
+          140
+        ],
         "webhookId": "b0000000-5555-4000-8000-000000000055",
         "credentials": {
           "telegramApi": {
@@ -221,7 +269,6 @@
           }
         }
       },
-
       {
         "parameters": {
           "operation": "write",
@@ -234,9 +281,11 @@
         "type": "n8n-nodes-base.readWriteFile",
         "typeVersion": 1.1,
         "onError": "continueRegularOutput",
-        "position": [200, -140]
+        "position": [
+          200,
+          -140
+        ]
       },
-
       {
         "parameters": {
           "mode": "expression",
@@ -248,7 +297,10 @@
         "name": "Que comando",
         "type": "n8n-nodes-base.switch",
         "typeVersion": 3.4,
-        "position": [-660, 640]
+        "position": [
+          -660,
+          640
+        ]
       },
       {
         "parameters": {
@@ -260,7 +312,10 @@
         "type": "n8n-nodes-base.readWriteFile",
         "typeVersion": 1.1,
         "onError": "continueErrorOutput",
-        "position": [-440, 560]
+        "position": [
+          -440,
+          560
+        ]
       },
       {
         "parameters": {
@@ -274,7 +329,10 @@
         "type": "n8n-nodes-base.extractFromFile",
         "typeVersion": 1.1,
         "onError": "continueErrorOutput",
-        "position": [-240, 560]
+        "position": [
+          -240,
+          560
+        ]
       },
       {
         "parameters": {
@@ -285,7 +343,10 @@
         "type": "n8n-nodes-base.code",
         "typeVersion": 2,
         "onError": "continueErrorOutput",
-        "position": [-40, 560]
+        "position": [
+          -40,
+          560
+        ]
       },
       {
         "parameters": {
@@ -296,7 +357,10 @@
         "type": "n8n-nodes-base.code",
         "typeVersion": 2,
         "onError": "continueErrorOutput",
-        "position": [-440, 720]
+        "position": [
+          -440,
+          720
+        ]
       },
       {
         "parameters": {
@@ -310,7 +374,10 @@
         "type": "n8n-nodes-base.readWriteFile",
         "typeVersion": 1.1,
         "onError": "continueErrorOutput",
-        "position": [-240, 720]
+        "position": [
+          -240,
+          720
+        ]
       },
       {
         "parameters": {
@@ -319,28 +386,39 @@
           "sendHeaders": true,
           "headerParameters": {
             "parameters": [
-              { "name": "Authorization", "value": "=Bearer {{ $env.ADMIN_CAPTURE_SECRET }}" }
+              {
+                "name": "Authorization",
+                "value": "=Bearer {{ $env.ADMIN_CAPTURE_SECRET }}"
+              }
             ]
           },
-          "options": { "timeout": 30000 }
+          "options": {
+            "timeout": 30000
+          }
         },
         "id": "b0000000-0040-4000-8000-000000000040",
         "name": "Ver quien trabaja",
         "type": "n8n-nodes-base.httpRequest",
         "typeVersion": 4.2,
         "onError": "continueErrorOutput",
-        "position": [-440, 1040]
+        "position": [
+          -440,
+          1040
+        ]
       },
       {
         "parameters": {
-          "jsCode": "// Enseña la plantilla ANTES de capturar nada. Es la unica forma de saber a\n// quien se va a marcar sin marcarlo, y esto es nomina.\nconst d = $json;\nconst gente = d.personas || [];\n\nif (gente.length === 0) {\n  return [{ json: { respuesta: 'Hoy no hay nadie con turno en ' + d.store + '.\\nRevisa los horarios en Retool.' } }];\n}\n\nconst filas = gente.map((p) => {\n  const marca = p.yaCapturado\n    ? '  [ya: ' + (p.arrivedAt || p.status) + ']'\n    : '';\n  return '  ' + p.shortName.padEnd(10) + ' entra ' + p.expectedAt + marca;\n});\n\nconst pendientes = gente.filter((p) => !p.yaCapturado).length;\n\nconst lineas = [\n  'Bien, vamos con la asistencia de ' + d.store + '.',\n  'Hoy ' + d.date + ', ' + gente.length + ' con turno:',\n  '',\n  ...filas,\n  ''\n];\n\nif (pendientes === 0) {\n  lineas.push('Ya estan todos capturados. No hay nada que hacer.');\n} else {\n  lineas.push('Responde:');\n  lineas.push('  sin novedad');\n  lineas.push('     si todos llegaron a su hora');\n  lineas.push('');\n  lineas.push('  sin novedad, Itzel 11:05, Jazmin falta');\n  lineas.push('     nombrando solo a quien se salio de lo normal');\n}\n\nreturn [{ json: { respuesta: lineas.join('\\n') } }];"
+          "jsCode": "// Enseña la plantilla ANTES de capturar nada. Es la unica forma de saber a\n// quien se va a marcar sin marcarlo, y esto es nomina.\nconst d = $json;\nconst gente = d.personas || [];\n\nif (gente.length === 0) {\n  return [{ json: { respuesta: 'Hoy no hay nadie con horario en ' + d.store + '.\\nRevisa los horarios en Retool.' } }];\n}\n\n// Enseñar \"entra 10:30\" a quien descansa confunde: parece que se le espera.\nconst ESTADO = {\n  WORKING: null, INVENTORY: 'inventario',\n  OFF: 'descanso', VACATION: 'vacaciones', PAID_DAY: 'dia pagado'\n};\n\nconst filas = gente.map((p) => {\n  const etiqueta = ESTADO[p.scheduled];\n  const cuando = etiqueta ? etiqueta : 'entra ' + p.expectedAt;\n  const marca = p.yaCapturado ? '  [ya: ' + (p.arrivedAt || p.status) + ']' : '';\n  return '  ' + p.shortName.padEnd(10) + cuando + marca;\n});\n\nconst pendientes = gente.filter((p) => !p.yaCapturado).length;\n\nconst lineas = [\n  'Bien, vamos con la asistencia de ' + d.store + '.',\n  'Hoy ' + d.date + ', ' + gente.length + ' en plantilla:',\n  '',\n  ...filas,\n  ''\n];\n\nif (pendientes === 0) {\n  lineas.push('Ya estan todos capturados. No hay nada que hacer.');\n} else {\n  lineas.push('Responde:');\n  lineas.push('  sin novedad');\n  lineas.push('     marca a cada quien segun su horario');\n  lineas.push('');\n  lineas.push('  sin novedad, Itzel 11:05, Jazmin falta');\n  lineas.push('     nombrando solo a quien se salio de lo normal');\n}\n\nreturn [{ json: { respuesta: lineas.join('\\n') } }];"
         },
         "id": "b0000000-0041-4000-8000-000000000041",
         "name": "Formatear plantilla",
         "type": "n8n-nodes-base.code",
         "typeVersion": 2,
         "onError": "continueErrorOutput",
-        "position": [-240, 1040]
+        "position": [
+          -240,
+          1040
+        ]
       },
       {
         "parameters": {
@@ -351,7 +429,10 @@
         "type": "n8n-nodes-base.code",
         "typeVersion": 2,
         "onError": "continueErrorOutput",
-        "position": [-440, 1220]
+        "position": [
+          -440,
+          1220
+        ]
       },
       {
         "parameters": {
@@ -360,20 +441,28 @@
           "sendHeaders": true,
           "headerParameters": {
             "parameters": [
-              { "name": "Authorization", "value": "=Bearer {{ $env.ADMIN_CAPTURE_SECRET }}" }
+              {
+                "name": "Authorization",
+                "value": "=Bearer {{ $env.ADMIN_CAPTURE_SECRET }}"
+              }
             ]
           },
           "sendBody": true,
           "specifyBody": "json",
           "jsonBody": "={{ JSON.stringify($json.cuerpo) }}",
-          "options": { "timeout": 45000 }
+          "options": {
+            "timeout": 45000
+          }
         },
         "id": "b0000000-0043-4000-8000-000000000043",
         "name": "Pasar lista",
         "type": "n8n-nodes-base.httpRequest",
         "typeVersion": 4.2,
         "onError": "continueErrorOutput",
-        "position": [-240, 1220]
+        "position": [
+          -240,
+          1220
+        ]
       },
       {
         "parameters": {
@@ -384,7 +473,10 @@
         "type": "n8n-nodes-base.code",
         "typeVersion": 2,
         "onError": "continueErrorOutput",
-        "position": [-40, 1220]
+        "position": [
+          -40,
+          1220
+        ]
       },
       {
         "parameters": {
@@ -394,7 +486,10 @@
         "name": "Texto de ayuda",
         "type": "n8n-nodes-base.code",
         "typeVersion": 2,
-        "position": [-440, 880]
+        "position": [
+          -440,
+          880
+        ]
       },
       {
         "parameters": {
@@ -409,10 +504,16 @@
         "name": "Responder comando",
         "type": "n8n-nodes-base.telegram",
         "typeVersion": 1.2,
-        "position": [200, 720],
+        "position": [
+          200,
+          720
+        ],
         "webhookId": "b0000000-3333-4000-8000-000000000033",
         "credentials": {
-          "telegramApi": { "id": "buzonpersonalbot", "name": "Telegram personal" }
+          "telegramApi": {
+            "id": "buzonpersonalbot",
+            "name": "Telegram personal"
+          }
         }
       },
       {
@@ -426,9 +527,15 @@
         "type": "n8n-nodes-base.telegram",
         "typeVersion": 1.2,
         "onError": "continueErrorOutput",
-        "position": [-660, 380],
+        "position": [
+          -660,
+          380
+        ],
         "credentials": {
-          "telegramApi": { "id": "buzonpersonalbot", "name": "Telegram personal" }
+          "telegramApi": {
+            "id": "buzonpersonalbot",
+            "name": "Telegram personal"
+          }
         }
       },
       {
@@ -443,7 +550,10 @@
         "type": "n8n-nodes-base.extractFromFile",
         "typeVersion": 1.1,
         "onError": "continueErrorOutput",
-        "position": [-560, 380]
+        "position": [
+          -560,
+          380
+        ]
       },
       {
         "parameters": {
@@ -453,7 +563,10 @@
         "name": "Armar la consulta",
         "type": "n8n-nodes-base.code",
         "typeVersion": 2,
-        "position": [-460, 380]
+        "position": [
+          -460,
+          380
+        ]
       },
       {
         "parameters": {
@@ -462,20 +575,28 @@
           "sendHeaders": true,
           "headerParameters": {
             "parameters": [
-              { "name": "Authorization", "value": "=Bearer {{ $env.GROQ_API_KEY }}" }
+              {
+                "name": "Authorization",
+                "value": "=Bearer {{ $env.GROQ_API_KEY }}"
+              }
             ]
           },
           "sendBody": true,
           "specifyBody": "json",
           "jsonBody": "={{ JSON.stringify($json.cuerpo) }}",
-          "options": { "timeout": 120000 }
+          "options": {
+            "timeout": 120000
+          }
         },
         "id": "b0000000-0022-4000-8000-000000000022",
         "name": "Leer el ticket",
         "type": "n8n-nodes-base.httpRequest",
         "typeVersion": 4.2,
         "onError": "continueErrorOutput",
-        "position": [-260, 380]
+        "position": [
+          -260,
+          380
+        ]
       },
       {
         "parameters": {
@@ -486,7 +607,10 @@
         "type": "n8n-nodes-base.code",
         "typeVersion": 2,
         "onError": "continueErrorOutput",
-        "position": [-40, 380]
+        "position": [
+          -40,
+          380
+        ]
       },
       {
         "parameters": {
@@ -500,7 +624,10 @@
         "type": "n8n-nodes-base.readWriteFile",
         "typeVersion": 1.1,
         "onError": "continueErrorOutput",
-        "position": [180, 380]
+        "position": [
+          180,
+          380
+        ]
       },
       {
         "parameters": {
@@ -514,7 +641,10 @@
         "type": "n8n-nodes-base.readWriteFile",
         "typeVersion": 1.1,
         "onError": "continueErrorOutput",
-        "position": [400, 380]
+        "position": [
+          400,
+          380
+        ]
       },
       {
         "parameters": {
@@ -529,10 +659,16 @@
         "name": "Confirmar el gasto",
         "type": "n8n-nodes-base.telegram",
         "typeVersion": 1.2,
-        "position": [620, 380],
+        "position": [
+          620,
+          380
+        ],
         "webhookId": "b0000000-4444-4000-8000-000000000044",
         "credentials": {
-          "telegramApi": { "id": "buzonpersonalbot", "name": "Telegram personal" }
+          "telegramApi": {
+            "id": "buzonpersonalbot",
+            "name": "Telegram personal"
+          }
         }
       },
       {
@@ -548,7 +684,10 @@
         "name": "Avisar del fallo",
         "type": "n8n-nodes-base.telegram",
         "typeVersion": 1.2,
-        "position": [200, 380],
+        "position": [
+          200,
+          380
+        ],
         "webhookId": "b0000000-6666-4000-8000-000000000066",
         "credentials": {
           "telegramApi": {
@@ -560,176 +699,535 @@
     ],
     "connections": {
       "Buzon": {
-        "main": [[{ "node": "Que llego", "type": "main", "index": 0 }]]
+        "main": [
+          [
+            {
+              "node": "Que llego",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
       },
       "Que llego": {
         "main": [
-          [{ "node": "Bajar el audio", "type": "main", "index": 0 }],
-          [{ "node": "Que archivo es", "type": "main", "index": 0 }],
-          [{ "node": "Texto a txt", "type": "main", "index": 0 }],
-          [{ "node": "Bajar el ticket", "type": "main", "index": 0 }],
-          [{ "node": "Que comando", "type": "main", "index": 0 }],
+          [
+            {
+              "node": "Bajar el audio",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Que archivo es",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Texto a txt",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Bajar el ticket",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Que comando",
+              "type": "main",
+              "index": 0
+            }
+          ],
           []
         ]
       },
-
       "Que comando": {
         "main": [
-          [{ "node": "Leer el resumen", "type": "main", "index": 0 }],
-          [{ "node": "Pedir el borrado", "type": "main", "index": 0 }],
-          [{ "node": "Ver quien trabaja", "type": "main", "index": 0 }],
-          [{ "node": "Leer las excepciones", "type": "main", "index": 0 }],
-          [{ "node": "Texto de ayuda", "type": "main", "index": 0 }]
+          [
+            {
+              "node": "Leer el resumen",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Pedir el borrado",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Ver quien trabaja",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Leer las excepciones",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Texto de ayuda",
+              "type": "main",
+              "index": 0
+            }
+          ]
         ]
       },
-
       "Ver quien trabaja": {
         "main": [
-          [{ "node": "Formatear plantilla", "type": "main", "index": 0 }],
-          [{ "node": "Avisar del fallo", "type": "main", "index": 0 }]
+          [
+            {
+              "node": "Formatear plantilla",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Avisar del fallo",
+              "type": "main",
+              "index": 0
+            }
+          ]
         ]
       },
       "Formatear plantilla": {
         "main": [
-          [{ "node": "Responder comando", "type": "main", "index": 0 }],
-          [{ "node": "Avisar del fallo", "type": "main", "index": 0 }]
+          [
+            {
+              "node": "Responder comando",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Avisar del fallo",
+              "type": "main",
+              "index": 0
+            }
+          ]
         ]
       },
       "Leer las excepciones": {
         "main": [
-          [{ "node": "Pasar lista", "type": "main", "index": 0 }],
-          [{ "node": "Avisar del fallo", "type": "main", "index": 0 }]
+          [
+            {
+              "node": "Pasar lista",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Avisar del fallo",
+              "type": "main",
+              "index": 0
+            }
+          ]
         ]
       },
       "Pasar lista": {
         "main": [
-          [{ "node": "Formatear pase", "type": "main", "index": 0 }],
-          [{ "node": "Avisar del fallo", "type": "main", "index": 0 }]
+          [
+            {
+              "node": "Formatear pase",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Avisar del fallo",
+              "type": "main",
+              "index": 0
+            }
+          ]
         ]
       },
       "Formatear pase": {
         "main": [
-          [{ "node": "Responder comando", "type": "main", "index": 0 }],
-          [{ "node": "Avisar del fallo", "type": "main", "index": 0 }]
+          [
+            {
+              "node": "Responder comando",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Avisar del fallo",
+              "type": "main",
+              "index": 0
+            }
+          ]
         ]
       },
       "Leer el resumen": {
         "main": [
-          [{ "node": "Sacar el resumen", "type": "main", "index": 0 }],
-          [{ "node": "Avisar del fallo", "type": "main", "index": 0 }]
+          [
+            {
+              "node": "Sacar el resumen",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Avisar del fallo",
+              "type": "main",
+              "index": 0
+            }
+          ]
         ]
       },
       "Sacar el resumen": {
         "main": [
-          [{ "node": "Formatear resumen", "type": "main", "index": 0 }],
-          [{ "node": "Avisar del fallo", "type": "main", "index": 0 }]
+          [
+            {
+              "node": "Formatear resumen",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Avisar del fallo",
+              "type": "main",
+              "index": 0
+            }
+          ]
         ]
       },
       "Formatear resumen": {
         "main": [
-          [{ "node": "Responder comando", "type": "main", "index": 0 }],
-          [{ "node": "Avisar del fallo", "type": "main", "index": 0 }]
+          [
+            {
+              "node": "Responder comando",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Avisar del fallo",
+              "type": "main",
+              "index": 0
+            }
+          ]
         ]
       },
       "Pedir el borrado": {
         "main": [
-          [{ "node": "Guardar la orden", "type": "main", "index": 0 }],
-          [{ "node": "Avisar del fallo", "type": "main", "index": 0 }]
+          [
+            {
+              "node": "Guardar la orden",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Avisar del fallo",
+              "type": "main",
+              "index": 0
+            }
+          ]
         ]
       },
       "Guardar la orden": {
         "main": [
-          [{ "node": "Responder comando", "type": "main", "index": 0 }],
-          [{ "node": "Avisar del fallo", "type": "main", "index": 0 }]
+          [
+            {
+              "node": "Responder comando",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Avisar del fallo",
+              "type": "main",
+              "index": 0
+            }
+          ]
         ]
       },
       "Texto de ayuda": {
-        "main": [[{ "node": "Responder comando", "type": "main", "index": 0 }]]
+        "main": [
+          [
+            {
+              "node": "Responder comando",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
       },
-
       "Bajar el ticket": {
         "main": [
-          [{ "node": "Sacar el base64", "type": "main", "index": 0 }],
-          [{ "node": "Avisar del fallo", "type": "main", "index": 0 }]
+          [
+            {
+              "node": "Sacar el base64",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Avisar del fallo",
+              "type": "main",
+              "index": 0
+            }
+          ]
         ]
       },
       "Sacar el base64": {
         "main": [
-          [{ "node": "Armar la consulta", "type": "main", "index": 0 }],
-          [{ "node": "Avisar del fallo", "type": "main", "index": 0 }]
+          [
+            {
+              "node": "Armar la consulta",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Avisar del fallo",
+              "type": "main",
+              "index": 0
+            }
+          ]
         ]
       },
       "Armar la consulta": {
-        "main": [[{ "node": "Leer el ticket", "type": "main", "index": 0 }]]
+        "main": [
+          [
+            {
+              "node": "Leer el ticket",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
       },
       "Leer el ticket": {
         "main": [
-          [{ "node": "Interpretar el ticket", "type": "main", "index": 0 }],
-          [{ "node": "Avisar del fallo", "type": "main", "index": 0 }]
+          [
+            {
+              "node": "Interpretar el ticket",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Avisar del fallo",
+              "type": "main",
+              "index": 0
+            }
+          ]
         ]
       },
       "Interpretar el ticket": {
         "main": [
-          [{ "node": "Guardar el comprobante", "type": "main", "index": 0 }],
-          [{ "node": "Avisar del fallo", "type": "main", "index": 0 }]
+          [
+            {
+              "node": "Guardar el comprobante",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Avisar del fallo",
+              "type": "main",
+              "index": 0
+            }
+          ]
         ]
       },
       "Guardar el comprobante": {
         "main": [
-          [{ "node": "Guardar el pendiente", "type": "main", "index": 0 }],
-          [{ "node": "Avisar del fallo", "type": "main", "index": 0 }]
+          [
+            {
+              "node": "Guardar el pendiente",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Avisar del fallo",
+              "type": "main",
+              "index": 0
+            }
+          ]
         ]
       },
       "Guardar el pendiente": {
         "main": [
-          [{ "node": "Confirmar el gasto", "type": "main", "index": 0 }],
-          [{ "node": "Avisar del fallo", "type": "main", "index": 0 }]
+          [
+            {
+              "node": "Confirmar el gasto",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Avisar del fallo",
+              "type": "main",
+              "index": 0
+            }
+          ]
         ]
       },
-
       "Bajar el audio": {
         "main": [
-          [{ "node": "Renombrar a ogg", "type": "main", "index": 0 }],
-          [{ "node": "Avisar del fallo", "type": "main", "index": 0 }]
+          [
+            {
+              "node": "Renombrar a ogg",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Avisar del fallo",
+              "type": "main",
+              "index": 0
+            }
+          ]
         ]
       },
       "Renombrar a ogg": {
-        "main": [[{ "node": "Transcribir", "type": "main", "index": 0 }]]
+        "main": [
+          [
+            {
+              "node": "Transcribir",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
       },
       "Transcribir": {
         "main": [
           [
-            { "node": "Devolver el texto", "type": "main", "index": 0 },
-            { "node": "Transcripcion a txt", "type": "main", "index": 0 }
+            {
+              "node": "Devolver el texto",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "Transcripcion a txt",
+              "type": "main",
+              "index": 0
+            }
           ],
-          [{ "node": "Avisar del fallo", "type": "main", "index": 0 }]
+          [
+            {
+              "node": "Avisar del fallo",
+              "type": "main",
+              "index": 0
+            }
+          ]
         ]
       },
       "Transcripcion a txt": {
-        "main": [[{ "node": "Guardar la voz", "type": "main", "index": 0 }]]
+        "main": [
+          [
+            {
+              "node": "Guardar la voz",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
       },
-
       "Que archivo es": {
-        "main": [[{ "node": "Bajar el archivo", "type": "main", "index": 0 }]]
+        "main": [
+          [
+            {
+              "node": "Bajar el archivo",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
       },
       "Bajar el archivo": {
         "main": [
-          [{ "node": "Ponerle fecha", "type": "main", "index": 0 }],
-          [{ "node": "Avisar del fallo", "type": "main", "index": 0 }]
+          [
+            {
+              "node": "Ponerle fecha",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Avisar del fallo",
+              "type": "main",
+              "index": 0
+            }
+          ]
         ]
       },
       "Ponerle fecha": {
-        "main": [[{ "node": "Guardar en la nube", "type": "main", "index": 0 }]]
+        "main": [
+          [
+            {
+              "node": "Guardar en la nube",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
       },
-
       "Texto a txt": {
-        "main": [[{ "node": "Guardar en la nube", "type": "main", "index": 0 }]]
+        "main": [
+          [
+            {
+              "node": "Guardar en la nube",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
       },
-
       "Guardar en la nube": {
         "main": [
-          [{ "node": "Confirmar", "type": "main", "index": 0 }],
-          [{ "node": "Avisar del fallo", "type": "main", "index": 0 }]
+          [
+            {
+              "node": "Confirmar",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Avisar del fallo",
+              "type": "main",
+              "index": 0
+            }
+          ]
         ]
       }
     },
