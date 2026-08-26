@@ -1,15 +1,49 @@
 name: CI
 
+# Lo que NO dispara la CI. Un commit que solo toca documentación o guiones de
+# operación no puede romper la app, y disparaba los tres trabajos —incluido el
+# que instala Chromium y compila el proyecto entero—. En repo privado eso son
+# minutos de cuota que se agotan.
+#
+# ⚠️ Se agotaron de verdad: el 19 de agosto de 2026 la cuota del mes se acabó y
+# GitHub empezó a cancelar TODAS las ejecuciones antes de arrancarlas. Los tres
+# trabajos aparecían en rojo sin una sola línea de registro, que es un síntoma
+# fácil de confundir con un fallo del código. No se facturó nada: el límite de
+# gasto estaba en cero, así que Actions se detuvo en vez de cobrar.
+#
+# ⚠️ Se listan EXTENSIONES concretas, no `scripts/**` entero, porque ahí viven
+# nueve archivos `.ts` --entre ellos `scripts/backup-db.ts`-- que sí son código
+# del proyecto y sí los revisa el typecheck.
+#
+# Y se usa `paths-ignore` y no una lista positiva de `paths` a propósito: con
+# una lista positiva, el día que se añada una carpeta nueva y se olvide
+# apuntarla, sus cambios dejarían de pasar por CI sin que nada avise. Aquí el
+# olvido se paga con una ejecución de más, no con una comprobación de menos.
+#
+# La lista va repetida en los dos disparadores a mano: GitHub Actions NO admite
+# anclajes de YAML (`&nombre` / `*nombre`), aunque sean YAML válido. Al tocar
+# una, tocar la otra.
 on:
   push:
     branches: [main]
-    # Un commit que solo toca documentación no puede romper nada, y disparaba
-    # los tres trabajos —incluido el que instala Chromium y compila el proyecto
-    # entero—. En repo privado eso son minutos de cuota que se agotan.
-    paths-ignore: ["**.md"]
+    paths-ignore:
+      - "**.md"
+      - "scripts/**.sh"
+      - "scripts/**.json"
+      - "scripts/**.yml"
+      - "scripts/**.yaml"
+      - "scripts/**.jq"
+      - "scripts/mudanza/**"
   pull_request:
     branches: [main]
-    paths-ignore: ["**.md"]
+    paths-ignore:
+      - "**.md"
+      - "scripts/**.sh"
+      - "scripts/**.json"
+      - "scripts/**.yml"
+      - "scripts/**.yaml"
+      - "scripts/**.jq"
+      - "scripts/mudanza/**"
 
 # Varios pushes seguidos ya no acumulan ejecuciones: la anterior se cancela y
 # solo se comprueba el último commit, que es el que va a producción.
