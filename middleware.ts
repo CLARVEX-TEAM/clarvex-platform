@@ -52,6 +52,9 @@ const publicApiExact = new Set([
 const captureRoutes = new Set([
   "/api/admin/capture/schedules",
   "/api/admin/capture/attendance",
+  // Pase de lista: marca a su hora a quien tenia turno y solo se nombra la
+  // excepcion. Escribe asistencia, con el mismo secreto y las mismas reglas.
+  "/api/admin/capture/attendance/roll-call",
   "/api/admin/capture/kpis",
   // Lectura del reporte diario del POS desde una captura. Solo lee y devuelve.
   "/api/admin/capture/kpis/pos-report",
