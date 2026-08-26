@@ -25,7 +25,12 @@ export type TurnoDelDia = {
   employeeNumber: string;
   name: string;
   startTime: string | null;
+  /** Estado del HORARIO: WORKING, INVENTORY, OFF, VACATION, PAID_DAY. */
+  scheduled: string;
 };
+
+/** Estados de horario en los que se espera que la persona venga a trabajar. */
+export const TRABAJA = ["WORKING", "INVENTORY"];
 
 export type PlanPaseDeLista = {
   entries: AttendanceCaptureEntry[];
@@ -120,7 +125,15 @@ export function planPaseDeLista(
       // decide estados: clasificar es cosa de `captureAttendance`, con las
       // mismas reglas de siempre. Dejarla marcar "a tiempo" por su cuenta
       // permitiria blanquear un retardo, y el retardo es dinero.
-      arrivedAt: excepcion ? (excepcion.arrivedAt ?? null) : expectedEntry(turno.startTime),
+      //
+      // A quien NO le tocaba trabajar se le manda SIN hora: classifyDay deriva
+      // descanso o vacaciones de su propio horario. Ponerle la hora esperada
+      // lo marcaria como si hubiera venido a trabajar.
+      arrivedAt: excepcion
+        ? (excepcion.arrivedAt ?? null)
+        : TRABAJA.includes(turno.scheduled)
+          ? expectedEntry(turno.startTime)
+          : null,
       entryText: excepcion?.entryText ?? null,
       note: excepcion?.note ?? null
     });

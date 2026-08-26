@@ -48,14 +48,24 @@ export type RollCallOutcome = {
   errors: string[];
 };
 
-/** Estados de horario en los que se espera que la persona venga a trabajar. */
-const TRABAJA = ["WORKING", "INVENTORY"] as const;
+/**
+ * Estados de horario que entran al pase de lista: TODOS menos el de baja.
+ *
+ * No solo quien trabaja. Si solo entraran los de turno, a quien descansa no
+ * se le crearia ninguna marca y su dia quedaria vacio en la tabla, aunque la
+ * pantalla lo rellene desde el horario.
+ *
+ * TERMINATED queda fuera a proposito: ya no esta en la tienda.
+ */
+const EN_PLANTILLA = ["WORKING", "INVENTORY", "OFF", "VACATION", "PAID_DAY"] as const;
 
 export type RosterPerson = {
   employeeNumber: string;
   name: string;
   shortName: string;
   expectedAt: string;
+  /** Estado del horario: WORKING, OFF, VACATION, PAID_DAY, INVENTORY. */
+  scheduled: string;
   yaCapturado: boolean;
   arrivedAt: string | null;
   status: string | null;
@@ -77,8 +87,8 @@ export async function rosterDelDia(
   }
 
   const turnos = await prisma.schedule.findMany({
-    where: { storeId, date: dia, status: { in: [...TRABAJA] }, user: PERSON_WHERE },
-    select: { startTime: true, user: { select: { id: true, name: true, employeeNumber: true } } }
+    where: { storeId, date: dia, status: { in: [...EN_PLANTILLA] }, user: PERSON_WHERE },
+    select: { startTime: true, status: true, user: { select: { id: true, name: true, employeeNumber: true } } }
   });
 
   const asistencias = await prisma.attendance.findMany({
@@ -94,6 +104,7 @@ export async function rosterDelDia(
       name: t.user.name,
       shortName: firstName(t.user.name),
       expectedAt: expectedEntry(t.startTime),
+      scheduled: t.status,
       yaCapturado: Boolean(ya),
       arrivedAt: ya?.arrivedAt ?? null,
       status: ya?.status ?? null
@@ -115,9 +126,10 @@ export async function rollCall(
   }
 
   const turnos = await prisma.schedule.findMany({
-    where: { storeId, date: dia, status: { in: [...TRABAJA] }, user: PERSON_WHERE },
+    where: { storeId, date: dia, status: { in: [...EN_PLANTILLA] }, user: PERSON_WHERE },
     select: {
       startTime: true,
+      status: true,
       user: { select: { id: true, name: true, employeeNumber: true } }
     }
   });
@@ -131,7 +143,8 @@ export async function rollCall(
     turnos.map((t) => ({
       employeeNumber: t.user.employeeNumber,
       name: t.user.name,
-      startTime: t.startTime
+      startTime: t.startTime,
+      scheduled: t.status
     })),
     excepciones,
     new Set(yaCapturados.map((a) => a.user.employeeNumber)),

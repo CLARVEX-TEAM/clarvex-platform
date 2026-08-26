@@ -5,9 +5,9 @@ import { planPaseDeLista, type TurnoDelDia } from "../lib/attendance-roll-call-p
 const FECHA = "2026-08-26";
 
 const TURNOS: TurnoDelDia[] = [
-  { employeeNumber: "81893", name: "ITZEL", startTime: "10:30" },
-  { employeeNumber: "95739", name: "WAIRA", startTime: "11:00" },
-  { employeeNumber: "102259", name: "ADRIAN", startTime: null }
+  { employeeNumber: "81893", name: "ITZEL", startTime: "10:30", scheduled: "WORKING" },
+  { employeeNumber: "95739", name: "WAIRA", startTime: "11:00", scheduled: "WORKING" },
+  { employeeNumber: "102259", name: "ADRIAN", startTime: null, scheduled: "WORKING" }
 ];
 
 test("sin novedad marca a cada quien a SU hora, no a una hora comun", () => {
@@ -93,7 +93,7 @@ test("se puede nombrar a la persona en vez de teclear su numero", () => {
 });
 
 test("el nombre casa sin acentos ni mayusculas", () => {
-  const conAcento: TurnoDelDia[] = [{ employeeNumber: "1", name: "JAZMIN CASTRO ZUÑIGA", startTime: "10:30" }];
+  const conAcento: TurnoDelDia[] = [{ employeeNumber: "1", name: "JAZMIN CASTRO ZUÑIGA", startTime: "10:30", scheduled: "WORKING" }];
   const plan = planPaseDeLista(conAcento, [{ name: "jazmín", arrivedAt: "10:45" }], new Set(), FECHA);
 
   assert.equal(plan.entries[0].arrivedAt, "10:45");
@@ -102,7 +102,7 @@ test("el nombre casa sin acentos ni mayusculas", () => {
 test("Adrian se busca por su segundo nombre, no por Jesus", () => {
   // La tienda le dice Adrian; su nombre completo empieza por JESUS.
   const plan = planPaseDeLista(
-    [{ employeeNumber: "102259", name: "JESUS ADRIAN HERNANDEZ LUNA", startTime: "10:30" }],
+    [{ employeeNumber: "102259", name: "JESUS ADRIAN HERNANDEZ LUNA", startTime: "10:30", scheduled: "WORKING" }],
     [{ name: "Adrian", arrivedAt: "11:00" }],
     new Set(),
     FECHA
@@ -114,8 +114,8 @@ test("un nombre que casa con DOS personas no marca a ninguna", () => {
   // Marcar a la equivocada toca el sueldo de dos a la vez y en silencio: la
   // que no vino saldria puntual y la que llego tarde no constaria.
   const dosMarias: TurnoDelDia[] = [
-    { employeeNumber: "1", name: "MARIA LOPEZ", startTime: "10:30" },
-    { employeeNumber: "2", name: "MARIA GOMEZ", startTime: "10:30" }
+    { employeeNumber: "1", name: "MARIA LOPEZ", startTime: "10:30", scheduled: "WORKING" },
+    { employeeNumber: "2", name: "MARIA GOMEZ", startTime: "10:30", scheduled: "WORKING" }
   ];
   const plan = planPaseDeLista(dosMarias, [{ name: "Maria", arrivedAt: "12:00" }], new Set(), FECHA);
 
@@ -129,4 +129,41 @@ test("un nombre que no existe se avisa y no marca a nadie de mas", () => {
   const plan = planPaseDeLista(TURNOS, [{ name: "Fulanito" }], new Set(), FECHA);
   assert.deepEqual(plan.sinTurno, ["Fulanito"]);
   assert.equal(plan.entries.length, 3);
+});
+
+test("a quien descansa se le marca SIN hora, no a la hora esperada", () => {
+  // El caso que faltaba: quien no tenia turno se quedaba sin ninguna marca y
+  // su dia salia vacio en la tabla. Ahora entra, pero sin hora: `classifyDay`
+  // deriva descanso o vacaciones de su propio horario. Ponerle la hora
+  // esperada lo marcaria como si hubiera venido a trabajar.
+  const plantilla: TurnoDelDia[] = [
+    { employeeNumber: "81893", name: "ITZEL", startTime: "10:30", scheduled: "WORKING" },
+    { employeeNumber: "95739", name: "WAIRA", startTime: "10:30", scheduled: "OFF" },
+    { employeeNumber: "113642", name: "ALONSO", startTime: "10:30", scheduled: "VACATION" }
+  ];
+  const plan = planPaseDeLista(plantilla, [], new Set(), FECHA);
+  const porNumero = new Map(plan.entries.map((e) => [e.employeeNumber, e.arrivedAt]));
+
+  assert.equal(plan.entries.length, 3);
+  assert.equal(porNumero.get("81893"), "10:30");
+  assert.equal(porNumero.get("95739"), null);
+  assert.equal(porNumero.get("113642"), null);
+});
+
+test("quien descansa PERO vino se marca con la hora que le pongas", () => {
+  // Trabajar en tu descanso es tiempo extra, y hay que poder registrarlo.
+  const plantilla: TurnoDelDia[] = [
+    { employeeNumber: "95739", name: "WAIRA", startTime: "10:30", scheduled: "OFF" }
+  ];
+  const plan = planPaseDeLista(plantilla, [{ name: "Waira", arrivedAt: "09:00" }], new Set(), FECHA);
+
+  assert.equal(plan.entries[0].arrivedAt, "09:00");
+});
+
+test("el dia de inventario cuenta como trabajado", () => {
+  const plantilla: TurnoDelDia[] = [
+    { employeeNumber: "1", name: "ITZEL", startTime: "07:00", scheduled: "INVENTORY" }
+  ];
+  const plan = planPaseDeLista(plantilla, [], new Set(), FECHA);
+  assert.equal(plan.entries[0].arrivedAt, "07:00");
 });
