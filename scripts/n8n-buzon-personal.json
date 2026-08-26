@@ -25,8 +25,8 @@
       {
         "parameters": {
           "mode": "expression",
-          "numberOutputs": 4,
-          "output": "={{ $json.message.chat.id !== 8328057325 ? 3 : (($json.message.voice || $json.message.audio) ? 0 : (($json.message.photo || $json.message.video || $json.message.document || $json.message.video_note) ? 1 : 2)) }}",
+          "numberOutputs": 5,
+          "output": "={{ $json.message.chat.id !== 8328057325 ? 4 : (($json.message.voice || $json.message.audio) ? 0 : (($json.message.photo && ($json.message.caption || '').trim().toLowerCase().startsWith('gasto')) ? 3 : (($json.message.photo || $json.message.video || $json.message.document || $json.message.video_note) ? 1 : 2))) }}",
           "options": {}
         },
         "id": "b0000000-0002-4000-8000-000000000002",
@@ -239,6 +239,112 @@
 
       {
         "parameters": {
+          "resource": "file",
+          "fileId": "={{ $json.message.photo[$json.message.photo.length - 1].file_id }}",
+          "download": true
+        },
+        "id": "b0000000-0020-4000-8000-000000000020",
+        "name": "Bajar el ticket",
+        "type": "n8n-nodes-base.telegram",
+        "typeVersion": 1.2,
+        "onError": "continueErrorOutput",
+        "position": [-660, 380],
+        "credentials": {
+          "telegramApi": { "id": "buzonpersonalbot", "name": "Telegram personal" }
+        }
+      },
+      {
+        "parameters": {
+          "jsCode": "// Se arma el cuerpo aqui y no en el nodo HTTP porque la imagen va en base64\n// dentro del JSON: meterla en una expresion del nodo seria ilegible.\nconst b64 = $binary.data.data;\nconst tipo = $binary.data.mimeType || 'image/jpeg';\n\n// ⚠️ Las categorias son LISTA CERRADA y salen de la hoja `Categorias` del\n// libro. Con texto libre, a las dos semanas todo dice \"varios\" y el\n// Dashboard deja de sumar nada util: sus SUMIFS comparan contra estos\n// nombres exactos.\nconst CATEGORIAS = ['Comida', 'Transporte', 'Vivienda', 'Servicios', 'Suscripciones',\n                    'Compras', 'Entretenimiento', 'Salud', 'Viajes', 'Otros'];\n\nconst instrucciones = [\n  'Lee este ticket de compra mexicano y responde SOLO con un objeto JSON.',\n  'Sin explicaciones, sin texto antes ni despues, sin bloques de codigo.',\n  '',\n  'Formato exacto:',\n  '{\"fecha\":\"AAAA-MM-DD\",\"hora\":\"HH:MM\",\"comercio\":\"...\",\"total\":0.00,\"metodo_pago\":\"Efectivo|Tarjeta|Transferencia\",\"categoria\":\"...\",\"descripcion\":\"...\"}',\n  '',\n  'Reglas:',\n  '- total es el importe FINAL pagado, no el subtotal ni antes de impuestos.',\n  '- categoria debe ser exactamente una de: ' + CATEGORIAS.join(', '),\n  '- descripcion: tres o cuatro palabras sobre que se compro.',\n  '- Si un dato no aparece en el ticket, pon null. Menos categoria, que siempre eliges la mas cercana.',\n  '- Las fechas mexicanas suelen venir DD/MM/AAAA: no las confundas con MM/DD.'\n].join('\\n');\n\nreturn [{\n  json: {\n    cuerpo: {\n      model: 'qwen/qwen3.6-27b',\n      temperature: 0,\n      max_completion_tokens: 500,\n      messages: [{\n        role: 'user',\n        content: [\n          { type: 'text', text: instrucciones },\n          { type: 'image_url', image_url: { url: 'data:' + tipo + ';base64,' + b64 } }\n        ]\n      }]\n    }\n  },\n  binary: $input.first().binary\n}];"
+        },
+        "id": "b0000000-0021-4000-8000-000000000021",
+        "name": "Armar la consulta",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [-460, 380]
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "https://api.groq.com/openai/v1/chat/completions",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              { "name": "Authorization", "value": "=Bearer {{ $env.GROQ_API_KEY }}" }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify($json.cuerpo) }}",
+          "options": { "timeout": 120000 }
+        },
+        "id": "b0000000-0022-4000-8000-000000000022",
+        "name": "Leer el ticket",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "onError": "continueErrorOutput",
+        "position": [-260, 380]
+      },
+      {
+        "parameters": {
+          "jsCode": "// Interpreta lo que devolvio el modelo y prepara las dos cosas que hay que\n// guardar: el apunte del gasto y la foto del ticket como comprobante.\nconst crudo = ($json.choices && $json.choices[0] && $json.choices[0].message.content) || '';\n\n// ⚠️ Los modelos envuelven el JSON en ```json aunque se les diga que no.\n// Sin quitarlo, el parseo falla SIEMPRE y falla al final, con el trabajo ya\n// hecho y pagado.\nconst limpio = crudo.replace(/^[\\s\\S]*?\\{/, '{').replace(/\\}[^}]*$/, '}');\n\nlet d;\ntry {\n  d = JSON.parse(limpio);\n} catch (e) {\n  throw new Error('El modelo no devolvio JSON: ' + crudo.slice(0, 200));\n}\n\nconst monto = Number(d.total);\nif (!Number.isFinite(monto) || monto <= 0) {\n  throw new Error('No pude leer el importe del ticket. Devolvio: ' + JSON.stringify(d));\n}\n\nconst l = new Date(Date.now() - 6 * 3600 * 1000);\nconst hoy = l.toISOString().slice(0, 10);\nconst sello = l.toISOString().slice(0, 16).replace('T', ' ').replace(':', '');\nconst id = $('Buzon').first().json.message.message_id;\n\n// Si el ticket no traia fecha, se usa la de hoy: un gasto sin fecha no entra\n// en ningun mes y desaparece del Dashboard sin que nada avise.\nconst fecha = /^\\d{4}-\\d{2}-\\d{2}$/.test(d.fecha || '') ? d.fecha : hoy;\nconst comprobante = sello + ' - ticket ' + id + '.jpg';\n\nconst gasto = {\n  fecha: fecha,\n  hora: /^\\d{2}:\\d{2}$/.test(d.hora || '') ? d.hora : sello.slice(11, 13) + ':' + sello.slice(13, 15),\n  categoria: d.categoria || 'Otros',\n  descripcion: d.descripcion || '',\n  monto: Math.round(monto * 100) / 100,\n  metodoPago: d.metodo_pago || '',\n  comercio: d.comercio || '',\n  comprobante: comprobante\n};\n\nconst aviso = [\n  'Gasto apuntado:',\n  '',\n  'Comercio:  ' + (gasto.comercio || '(no lo vi)'),\n  'Importe:   $' + gasto.monto.toFixed(2),\n  'Fecha:     ' + gasto.fecha + (fecha === hoy && d.fecha !== hoy ? '  (no venia en el ticket)' : ''),\n  'Pago:      ' + (gasto.metodoPago || '(no lo vi)'),\n  'Categoria: ' + gasto.categoria,\n  '',\n  'Aparece en el libro en menos de un minuto.',\n  'Si algo esta mal, corrigelo en Excel.'\n].join('\\n');\n\nreturn [{\n  json: {\n    rutaPendiente: 'gasto-' + id + '.json',\n    rutaComprobante: comprobante,\n    aviso: aviso\n  },\n  binary: {\n    data: $('Bajar el ticket').first().binary.data,\n    pendiente: {\n      data: Buffer.from(JSON.stringify(gasto, null, 2), 'utf8').toString('base64'),\n      mimeType: 'application/json',\n      fileName: 'gasto-' + id + '.json'\n    }\n  }\n}];"
+        },
+        "id": "b0000000-0023-4000-8000-000000000023",
+        "name": "Interpretar el ticket",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "onError": "continueErrorOutput",
+        "position": [-40, 380]
+      },
+      {
+        "parameters": {
+          "operation": "write",
+          "fileName": "=/gastos/comprobantes/{{ $json.rutaComprobante }}",
+          "dataPropertyName": "data",
+          "options": {}
+        },
+        "id": "b0000000-0024-4000-8000-000000000024",
+        "name": "Guardar el comprobante",
+        "type": "n8n-nodes-base.readWriteFile",
+        "typeVersion": 1.1,
+        "onError": "continueErrorOutput",
+        "position": [180, 380]
+      },
+      {
+        "parameters": {
+          "operation": "write",
+          "fileName": "=/gastos/pendientes/{{ $json.rutaPendiente }}",
+          "dataPropertyName": "pendiente",
+          "options": {}
+        },
+        "id": "b0000000-0025-4000-8000-000000000025",
+        "name": "Guardar el pendiente",
+        "type": "n8n-nodes-base.readWriteFile",
+        "typeVersion": 1.1,
+        "onError": "continueErrorOutput",
+        "position": [400, 380]
+      },
+      {
+        "parameters": {
+          "chatId": "8328057325",
+          "text": "={{ $json.aviso }}",
+          "additionalFields": {
+            "appendAttribution": false,
+            "reply_to_message_id": "={{ $('Buzon').item.json.message.message_id }}"
+          }
+        },
+        "id": "b0000000-0026-4000-8000-000000000026",
+        "name": "Confirmar el gasto",
+        "type": "n8n-nodes-base.telegram",
+        "typeVersion": 1.2,
+        "position": [620, 380],
+        "webhookId": "b0000000-4444-4000-8000-000000000044",
+        "credentials": {
+          "telegramApi": { "id": "buzonpersonalbot", "name": "Telegram personal" }
+        }
+      },
+      {
+        "parameters": {
           "chatId": "8328057325",
           "text": "={{ 'No pude con eso.\\n\\n' + ($json.error && ($json.error.description || $json.error.message) ? ($json.error.description || $json.error.message) : JSON.stringify($json).slice(0, 300)) }}",
           "additionalFields": {
@@ -269,7 +375,42 @@
           [{ "node": "Bajar el audio", "type": "main", "index": 0 }],
           [{ "node": "Que archivo es", "type": "main", "index": 0 }],
           [{ "node": "Texto a txt", "type": "main", "index": 0 }],
+          [{ "node": "Bajar el ticket", "type": "main", "index": 0 }],
           []
+        ]
+      },
+
+      "Bajar el ticket": {
+        "main": [
+          [{ "node": "Armar la consulta", "type": "main", "index": 0 }],
+          [{ "node": "Avisar del fallo", "type": "main", "index": 0 }]
+        ]
+      },
+      "Armar la consulta": {
+        "main": [[{ "node": "Leer el ticket", "type": "main", "index": 0 }]]
+      },
+      "Leer el ticket": {
+        "main": [
+          [{ "node": "Interpretar el ticket", "type": "main", "index": 0 }],
+          [{ "node": "Avisar del fallo", "type": "main", "index": 0 }]
+        ]
+      },
+      "Interpretar el ticket": {
+        "main": [
+          [{ "node": "Guardar el comprobante", "type": "main", "index": 0 }],
+          [{ "node": "Avisar del fallo", "type": "main", "index": 0 }]
+        ]
+      },
+      "Guardar el comprobante": {
+        "main": [
+          [{ "node": "Guardar el pendiente", "type": "main", "index": 0 }],
+          [{ "node": "Avisar del fallo", "type": "main", "index": 0 }]
+        ]
+      },
+      "Guardar el pendiente": {
+        "main": [
+          [{ "node": "Confirmar el gasto", "type": "main", "index": 0 }],
+          [{ "node": "Avisar del fallo", "type": "main", "index": 0 }]
         ]
       },
 
