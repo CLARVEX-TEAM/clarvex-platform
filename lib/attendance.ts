@@ -50,6 +50,20 @@ export function toMinutes(time: string | null | undefined): number | null {
   return hours * 60 + minutes;
 }
 
+/**
+ * Hora a la que se espera a alguien: la de su horario, y si no la tiene (o es
+ * ilegible) la estándar de tienda.
+ *
+ * Vive AQUÍ, en el módulo de reglas, y no junto al importador, porque todas las
+ * vías de captura tienen que clasificar el día con exactamente el mismo
+ * criterio; si divergieran, el mismo retardo contaría distinto según quién lo
+ * registró. Estar aquí además la deja libre de Prisma, así que las vías nuevas
+ * pueden probarse sin levantar la base.
+ */
+export function expectedEntry(startTime: string | null): string {
+  return startTime && toMinutes(startTime) !== null ? startTime : DEFAULT_EXPECTED_ENTRY;
+}
+
 export type ArrivalInput = {
   /** Hora que debía entrar ("10:30"). */
   expected: string;

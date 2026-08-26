@@ -47,12 +47,18 @@ services:
       #
       # Apuntarlo a /buzon deja la app MAS acotada que por omision: es el
       # unico sitio del disco que los nodos pueden tocar.
-      - N8N_RESTRICT_FILE_ACCESS_TO=/buzon
+      # Varias rutas se separan con `;`. /gastos es aparte de /buzon a
+      # proposito: el buzon es de PASO --se vacia cada cinco minutos desde la
+      # PC-- y el libro de gastos tiene que quedarse quieto en algun sitio.
+      - N8N_RESTRICT_FILE_ACCESS_TO=/buzon;/gastos
     volumes:
       - ./n8n_data:/home/node/.n8n
       # La carpeta del buzon, compartida con syncthing. Los dos contenedores
       # corren con uid 1000, asi que lo que escribe n8n lo lee syncthing.
       - /home/ubuntu/buzon:/buzon
+      # El libro de gastos y sus comprobantes. Carpeta PERMANENTE, con su propia
+      # carpeta de Syncthing, para que nada de aqui se lo lleve el movedor.
+      - /home/ubuntu/gastos:/gastos
     dns:
       - 1.1.1.1
       - 8.8.8.8
@@ -147,6 +153,7 @@ services:
     volumes:
       - ./syncthing:/var/syncthing/config
       - /home/ubuntu/buzon:/var/syncthing/Buzon
+      - /home/ubuntu/gastos:/var/syncthing/Gastos
     networks: [clarvex_net]
 
 networks:

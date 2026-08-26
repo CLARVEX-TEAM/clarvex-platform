@@ -1,4 +1,4 @@
-import { classifyDay, TOLERANCE_MINUTES, CUTOFF_MINUTES, DEFAULT_EXPECTED_ENTRY, toMinutes, type ScheduledStatus } from "@/lib/attendance";
+import { classifyDay, TOLERANCE_MINUTES, CUTOFF_MINUTES, expectedEntry, toMinutes, type ScheduledStatus } from "@/lib/attendance";
 import { parseAttendanceWorkbook } from "@/lib/attendance-parser";
 import { dayBalanceMinutes, DEFAULT_EXIT } from "@/lib/hours-balance";
 import { monterreyMinutesOfDay, resolveMonterreyDate } from "@/lib/cron-time";
@@ -51,9 +51,10 @@ export type AttendanceSyncMetrics = {
  * mismo criterio que el archivo; si divergieran, el mismo retardo contaría
  * distinto según quién lo registró.
  */
-export function expectedEntry(startTime: string | null): string {
-  return startTime && toMinutes(startTime) !== null ? startTime : DEFAULT_EXPECTED_ENTRY;
-}
+// Se reexporta desde `lib/attendance` para no romper a quien ya la importaba
+// de aqui. Se movio alli porque este modulo carga Prisma, y eso impedia probar
+// las vias de captura nuevas sin levantar la base.
+export { expectedEntry };
 
 export async function importAttendance(workbook: WorkBook, storeId: string, now = new Date()): Promise<AttendanceSyncMetrics> {
   const parsed = parseAttendanceWorkbook(workbook);
