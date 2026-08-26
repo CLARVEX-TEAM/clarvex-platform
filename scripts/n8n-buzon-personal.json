@@ -25,8 +25,8 @@
       {
         "parameters": {
           "mode": "expression",
-          "numberOutputs": 5,
-          "output": "={{ $json.message.chat.id !== 8328057325 ? 4 : (($json.message.voice || $json.message.audio) ? 0 : (($json.message.photo && ($json.message.caption || '').trim().toLowerCase().startsWith('gasto')) ? 3 : (($json.message.photo || $json.message.video || $json.message.document || $json.message.video_note) ? 1 : 2))) }}",
+          "numberOutputs": 6,
+          "output": "={{ $json.message.chat.id !== 8328057325 ? 5 : (($json.message.voice || $json.message.audio) ? 0 : (($json.message.photo && ($json.message.caption || '').trim().toLowerCase().startsWith('gasto')) ? 3 : (($json.message.photo || $json.message.video || $json.message.document || $json.message.video_note) ? 1 : ((($json.message.text || '').trim().startsWith('/')) ? 4 : 2)))) }}",
           "options": {}
         },
         "id": "b0000000-0002-4000-8000-000000000002",
@@ -239,6 +239,110 @@
 
       {
         "parameters": {
+          "mode": "expression",
+          "numberOutputs": 3,
+          "output": "={{ $json.message.text.trim().toLowerCase().startsWith('/gastos') ? 0 : ($json.message.text.trim().toLowerCase().startsWith('/borrar') ? 1 : 2) }}",
+          "options": {}
+        },
+        "id": "b0000000-0030-4000-8000-000000000030",
+        "name": "Que comando",
+        "type": "n8n-nodes-base.switch",
+        "typeVersion": 3.4,
+        "position": [-660, 640]
+      },
+      {
+        "parameters": {
+          "fileSelector": "/gastos/resumen.txt",
+          "options": {}
+        },
+        "id": "b0000000-0031-4000-8000-000000000031",
+        "name": "Leer el resumen",
+        "type": "n8n-nodes-base.readWriteFile",
+        "typeVersion": 1.1,
+        "onError": "continueErrorOutput",
+        "position": [-440, 560]
+      },
+      {
+        "parameters": {
+          "operation": "binaryToPropery",
+          "binaryPropertyName": "data",
+          "destinationKey": "textoB64",
+          "options": {}
+        },
+        "id": "b0000000-0032-4000-8000-000000000032",
+        "name": "Sacar el resumen",
+        "type": "n8n-nodes-base.extractFromFile",
+        "typeVersion": 1.1,
+        "onError": "continueErrorOutput",
+        "position": [-240, 560]
+      },
+      {
+        "parameters": {
+          "jsCode": "// Se pasa por base64 y se decodifica aqui en vez de usar la operacion de\n// texto del nodo: `binaryToPropery` es la unica via de este nodo que ya\n// esta comprobada en este flujo, y un comando que falla en silencio no se\n// distingue de un bot que te ignora.\nconst b64 = $json.textoB64 || '';\nconst texto = Buffer.from(b64, 'base64').toString('utf8').trim();\nreturn [{ json: { respuesta: texto || 'Todavia no hay resumen. Manda un ticket primero.' } }];"
+        },
+        "id": "b0000000-0033-4000-8000-000000000033",
+        "name": "Formatear resumen",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "onError": "continueErrorOutput",
+        "position": [-40, 560]
+      },
+      {
+        "parameters": {
+          "jsCode": "// El borrado NO se hace aqui: se deja una orden que recoge el proceso del\n// servidor, igual que con las altas. Escribir el .xlsx desde el bot es lo\n// que se pierde cuando tienes el libro abierto en Excel.\nconst id = $('Buzon').first().json.message.message_id;\nconst orden = { pedido: 'borrar-ultimo', desde: 'telegram', id: id };\nreturn [{\n  json: {\n    ruta: 'borrar-' + id + '.json',\n    respuesta: 'Quitando el ultimo gasto del libro.\\nEn menos de un minuto ya no esta. Comprueba con /gastos.'\n  },\n  binary: {\n    orden: {\n      data: Buffer.from(JSON.stringify(orden), 'utf8').toString('base64'),\n      mimeType: 'application/json',\n      fileName: 'borrar-' + id + '.json'\n    }\n  }\n}];"
+        },
+        "id": "b0000000-0034-4000-8000-000000000034",
+        "name": "Pedir el borrado",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "onError": "continueErrorOutput",
+        "position": [-440, 720]
+      },
+      {
+        "parameters": {
+          "operation": "write",
+          "fileName": "=/gastos/pendientes/{{ $json.ruta }}",
+          "dataPropertyName": "orden",
+          "options": {}
+        },
+        "id": "b0000000-0035-4000-8000-000000000035",
+        "name": "Guardar la orden",
+        "type": "n8n-nodes-base.readWriteFile",
+        "typeVersion": 1.1,
+        "onError": "continueErrorOutput",
+        "position": [-240, 720]
+      },
+      {
+        "parameters": {
+          "jsCode": "// Este texto existe porque la regla del pie \"gasto\" solo vive en la cabeza\n// de quien lo monto. En dos semanas nadie recuerda por que una foto se\n// guardo como foto en vez de apuntarse como gasto.\nconst ayuda = [\n  'Esto es lo que se hacer:',\n  '',\n  'FOTO con el pie \"gasto\"',\n  '   la leo, apunto el gasto y guardo el ticket',\n  '',\n  'NOTA DE VOZ',\n  '   te devuelvo el texto y lo guardo',\n  '',\n  'FOTO, VIDEO, PDF o DOCUMENTO',\n  '   lo guardo en tu nube con la fecha delante',\n  '',\n  'TEXTO normal',\n  '   lo guardo como .txt',\n  '',\n  'COMANDOS',\n  '   /gastos   como va el mes, por categoria',\n  '   /borrar   deshace el ultimo gasto',\n  '   /ayuda    esto',\n  '',\n  'Los archivos de mas de 20 MB no los puedo bajar: es un limite de Telegram.'\n].join('\\n');\nreturn [{ json: { respuesta: ayuda } }];"
+        },
+        "id": "b0000000-0036-4000-8000-000000000036",
+        "name": "Texto de ayuda",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [-440, 880]
+      },
+      {
+        "parameters": {
+          "chatId": "8328057325",
+          "text": "={{ $json.respuesta }}",
+          "additionalFields": {
+            "appendAttribution": false,
+            "reply_to_message_id": "={{ $('Buzon').item.json.message.message_id }}"
+          }
+        },
+        "id": "b0000000-0037-4000-8000-000000000037",
+        "name": "Responder comando",
+        "type": "n8n-nodes-base.telegram",
+        "typeVersion": 1.2,
+        "position": [200, 720],
+        "webhookId": "b0000000-3333-4000-8000-000000000033",
+        "credentials": {
+          "telegramApi": { "id": "buzonpersonalbot", "name": "Telegram personal" }
+        }
+      },
+      {
+        "parameters": {
           "resource": "file",
           "fileId": "={{ $json.message.photo[$json.message.photo.length - 1].file_id }}",
           "download": true
@@ -255,7 +359,21 @@
       },
       {
         "parameters": {
-          "jsCode": "// Se arma el cuerpo aqui y no en el nodo HTTP porque la imagen va en base64\n// dentro del JSON: meterla en una expresion del nodo seria ilegible.\nconst b64 = $binary.data.data;\nconst tipo = $binary.data.mimeType || 'image/jpeg';\n\n// ⚠️ Las categorias son LISTA CERRADA y salen de la hoja `Categorias` del\n// libro. Con texto libre, a las dos semanas todo dice \"varios\" y el\n// Dashboard deja de sumar nada util: sus SUMIFS comparan contra estos\n// nombres exactos.\nconst CATEGORIAS = ['Comida', 'Transporte', 'Vivienda', 'Servicios', 'Suscripciones',\n                    'Compras', 'Entretenimiento', 'Salud', 'Viajes', 'Otros'];\n\nconst instrucciones = [\n  'Lee este ticket de compra mexicano y responde SOLO con un objeto JSON.',\n  'Sin explicaciones, sin texto antes ni despues, sin bloques de codigo.',\n  '',\n  'Formato exacto:',\n  '{\"fecha\":\"AAAA-MM-DD\",\"hora\":\"HH:MM\",\"comercio\":\"...\",\"total\":0.00,\"metodo_pago\":\"Efectivo|Tarjeta|Transferencia\",\"categoria\":\"...\",\"descripcion\":\"...\"}',\n  '',\n  'Reglas:',\n  '- total es el importe FINAL pagado, no el subtotal ni antes de impuestos.',\n  '- categoria debe ser exactamente una de: ' + CATEGORIAS.join(', '),\n  '- descripcion: tres o cuatro palabras sobre que se compro.',\n  '- Si un dato no aparece en el ticket, pon null. Menos categoria, que siempre eliges la mas cercana.',\n  '- Las fechas mexicanas suelen venir DD/MM/AAAA: no las confundas con MM/DD.'\n].join('\\n');\n\nreturn [{\n  json: {\n    cuerpo: {\n      model: 'qwen/qwen3.6-27b',\n      temperature: 0,\n      max_completion_tokens: 500,\n      messages: [{\n        role: 'user',\n        content: [\n          { type: 'text', text: instrucciones },\n          { type: 'image_url', image_url: { url: 'data:' + tipo + ';base64,' + b64 } }\n        ]\n      }]\n    }\n  },\n  binary: $input.first().binary\n}];"
+          "operation": "binaryToPropery",
+          "binaryPropertyName": "data",
+          "destinationKey": "imagenB64",
+          "options": {}
+        },
+        "id": "b0000000-0027-4000-8000-000000000027",
+        "name": "Sacar el base64",
+        "type": "n8n-nodes-base.extractFromFile",
+        "typeVersion": 1.1,
+        "onError": "continueErrorOutput",
+        "position": [-560, 380]
+      },
+      {
+        "parameters": {
+          "jsCode": "// Se arma el cuerpo aqui y no en el nodo HTTP porque la imagen va en base64\n// dentro del JSON: meterla en una expresion del nodo seria ilegible.\n//\n// ⚠️ El base64 llega ya resuelto por el nodo anterior, y esto NO es un rodeo.\n// n8n guarda los binarios en DISCO (`filesystem-v2`), asi que\n// `$binary.data.data` no trae la imagen sino el literal \"filesystem-v2\", 13\n// caracteres: mandarlo tal cual hizo que Groq contestara \"failed to decode\n// base64 data\". Y `this.helpers.getBinaryDataBuffer` tampoco vale: no existe\n// dentro del sandbox de este nodo. El nodo `Sacar el base64` es la via buena.\nconst b64 = $json.imagenB64;\nif (!b64 || b64.length < 100) { throw new Error('La imagen no llego como base64.'); }\nconst tipo = $('Bajar el ticket').first().binary.data.mimeType || 'image/jpeg';\n\n// ⚠️ Las categorias son LISTA CERRADA y salen de la hoja `Categorias` del\n// libro. Con texto libre, a las dos semanas todo dice \"varios\" y el\n// Dashboard deja de sumar nada util: sus SUMIFS comparan contra estos\n// nombres exactos.\nconst CATEGORIAS = ['Comida', 'Transporte', 'Vivienda', 'Servicios', 'Suscripciones',\n                    'Compras', 'Entretenimiento', 'Salud', 'Viajes', 'Otros'];\n\nconst instrucciones = [\n  'Lee este ticket de compra mexicano y responde SOLO con un objeto JSON.',\n  'Sin explicaciones, sin texto antes ni despues, sin bloques de codigo.',\n  '',\n  'Formato exacto:',\n  '{\"fecha\":\"AAAA-MM-DD\",\"hora\":\"HH:MM\",\"comercio\":\"...\",\"total\":0.00,\"metodo_pago\":\"Efectivo|Tarjeta|Transferencia\",\"categoria\":\"...\",\"descripcion\":\"...\"}',\n  '',\n  'Reglas:',\n  '- total es el importe FINAL pagado, no el subtotal ni antes de impuestos.',\n  '- categoria debe ser exactamente una de: ' + CATEGORIAS.join(', '),\n  '- descripcion: tres o cuatro palabras sobre que se compro.',\n  '- Si un dato no aparece en el ticket, pon null. Menos categoria, que siempre eliges la mas cercana.',\n  '- Las fechas mexicanas suelen venir DD/MM/AAAA: no las confundas con MM/DD.'\n].join('\\n');\n\nreturn [{\n  json: {\n    cuerpo: {\n      model: 'qwen/qwen3.6-27b',\n      temperature: 0,\n      // ⚠️ Este modelo RAZONA en voz alta: escribe un bloque <think> largo antes\n      // de contestar. Con 500 tokens se quedaba sin espacio pensando y nunca\n      // llegaba al JSON --devolvia finish_reason \"length\"--, aunque habia\n      // leido el ticket bien. `reasoning_effort: none` le quita el monologo y\n      // el limite alto queda de red por si lo ignora.\n      reasoning_effort: 'none',\n      max_completion_tokens: 2000,\n      messages: [{\n        role: 'user',\n        content: [\n          { type: 'text', text: instrucciones },\n          { type: 'image_url', image_url: { url: 'data:' + tipo + ';base64,' + b64 } }\n        ]\n      }]\n    }\n  },\n  binary: $('Bajar el ticket').first().binary\n}];"
         },
         "id": "b0000000-0021-4000-8000-000000000021",
         "name": "Armar la consulta",
@@ -287,7 +405,7 @@
       },
       {
         "parameters": {
-          "jsCode": "// Interpreta lo que devolvio el modelo y prepara las dos cosas que hay que\n// guardar: el apunte del gasto y la foto del ticket como comprobante.\nconst crudo = ($json.choices && $json.choices[0] && $json.choices[0].message.content) || '';\n\n// ⚠️ Los modelos envuelven el JSON en ```json aunque se les diga que no.\n// Sin quitarlo, el parseo falla SIEMPRE y falla al final, con el trabajo ya\n// hecho y pagado.\nconst limpio = crudo.replace(/^[\\s\\S]*?\\{/, '{').replace(/\\}[^}]*$/, '}');\n\nlet d;\ntry {\n  d = JSON.parse(limpio);\n} catch (e) {\n  throw new Error('El modelo no devolvio JSON: ' + crudo.slice(0, 200));\n}\n\nconst monto = Number(d.total);\nif (!Number.isFinite(monto) || monto <= 0) {\n  throw new Error('No pude leer el importe del ticket. Devolvio: ' + JSON.stringify(d));\n}\n\nconst l = new Date(Date.now() - 6 * 3600 * 1000);\nconst hoy = l.toISOString().slice(0, 10);\nconst sello = l.toISOString().slice(0, 16).replace('T', ' ').replace(':', '');\nconst id = $('Buzon').first().json.message.message_id;\n\n// Si el ticket no traia fecha, se usa la de hoy: un gasto sin fecha no entra\n// en ningun mes y desaparece del Dashboard sin que nada avise.\nconst fecha = /^\\d{4}-\\d{2}-\\d{2}$/.test(d.fecha || '') ? d.fecha : hoy;\nconst comprobante = sello + ' - ticket ' + id + '.jpg';\n\nconst gasto = {\n  fecha: fecha,\n  hora: /^\\d{2}:\\d{2}$/.test(d.hora || '') ? d.hora : sello.slice(11, 13) + ':' + sello.slice(13, 15),\n  categoria: d.categoria || 'Otros',\n  descripcion: d.descripcion || '',\n  monto: Math.round(monto * 100) / 100,\n  metodoPago: d.metodo_pago || '',\n  comercio: d.comercio || '',\n  comprobante: comprobante\n};\n\nconst aviso = [\n  'Gasto apuntado:',\n  '',\n  'Comercio:  ' + (gasto.comercio || '(no lo vi)'),\n  'Importe:   $' + gasto.monto.toFixed(2),\n  'Fecha:     ' + gasto.fecha + (fecha === hoy && d.fecha !== hoy ? '  (no venia en el ticket)' : ''),\n  'Pago:      ' + (gasto.metodoPago || '(no lo vi)'),\n  'Categoria: ' + gasto.categoria,\n  '',\n  'Aparece en el libro en menos de un minuto.',\n  'Si algo esta mal, corrigelo en Excel.'\n].join('\\n');\n\nreturn [{\n  json: {\n    rutaPendiente: 'gasto-' + id + '.json',\n    rutaComprobante: comprobante,\n    aviso: aviso\n  },\n  binary: {\n    data: $('Bajar el ticket').first().binary.data,\n    pendiente: {\n      data: Buffer.from(JSON.stringify(gasto, null, 2), 'utf8').toString('base64'),\n      mimeType: 'application/json',\n      fileName: 'gasto-' + id + '.json'\n    }\n  }\n}];"
+          "jsCode": "// Interpreta lo que devolvio el modelo y prepara las dos cosas que hay que\n// guardar: el apunte del gasto y la foto del ticket como comprobante.\nconst eleccion = ($json.choices && $json.choices[0]) || {};\nconst crudo = (eleccion.message && eleccion.message.content) || '';\n\n// Si se quedo sin espacio, no hay JSON que rescatar y conviene decirlo con\n// esas palabras en vez de fallar al parsear algo que nunca llego.\nif (eleccion.finish_reason === 'length') {\n  throw new Error('El modelo se quedo sin espacio antes de responder. Sube max_completion_tokens.');\n}\n\n// ⚠️ Dos cosas que ensucian la respuesta y hay que quitar en este orden:\n// el bloque <think> de los modelos que razonan en voz alta, y las vallas\n// ```json que ponen aunque se les pida que no. Buscar la primera llave SIN\n// quitar el <think> antes encontraria una llave del monologo.\nconst texto = crudo.replace(/<think>[\\s\\S]*?<\\/think>/g, '').replace(/```[a-z]*/gi, '').trim();\nconst ini = texto.indexOf('{');\nconst fin = texto.lastIndexOf('}');\nif (ini === -1 || fin <= ini) {\n  throw new Error('No hay JSON en la respuesta: ' + texto.slice(0, 200));\n}\n\nlet d;\ntry {\n  d = JSON.parse(texto.slice(ini, fin + 1));\n} catch (e) {\n  throw new Error('JSON invalido: ' + texto.slice(ini, ini + 200));\n}\n\nconst monto = Number(d.total);\nif (!Number.isFinite(monto) || monto <= 0) {\n  throw new Error('No pude leer el importe del ticket. Devolvio: ' + JSON.stringify(d));\n}\n\nconst l = new Date(Date.now() - 6 * 3600 * 1000);\nconst hoy = l.toISOString().slice(0, 10);\nconst sello = l.toISOString().slice(0, 16).replace('T', ' ').replace(':', '');\nconst id = $('Buzon').first().json.message.message_id;\n\n// Si el ticket no traia fecha, se usa la de hoy: un gasto sin fecha no entra\n// en ningun mes y desaparece del Dashboard sin que nada avise.\nconst fecha = /^\\d{4}-\\d{2}-\\d{2}$/.test(d.fecha || '') ? d.fecha : hoy;\nconst comprobante = sello + ' - ticket ' + id + '.jpg';\n\nconst gasto = {\n  fecha: fecha,\n  hora: /^\\d{2}:\\d{2}$/.test(d.hora || '') ? d.hora : sello.slice(11, 13) + ':' + sello.slice(13, 15),\n  categoria: d.categoria || 'Otros',\n  descripcion: d.descripcion || '',\n  monto: Math.round(monto * 100) / 100,\n  metodoPago: d.metodo_pago || '',\n  comercio: d.comercio || '',\n  comprobante: comprobante\n};\n\nconst aviso = [\n  'Gasto apuntado:',\n  '',\n  'Comercio:  ' + (gasto.comercio || '(no lo vi)'),\n  'Importe:   $' + gasto.monto.toFixed(2),\n  'Fecha:     ' + gasto.fecha + (fecha === hoy && d.fecha !== hoy ? '  (no venia en el ticket)' : ''),\n  'Pago:      ' + (gasto.metodoPago || '(no lo vi)'),\n  'Categoria: ' + gasto.categoria,\n  '',\n  'Aparece en el libro en menos de un minuto.',\n  'Si algo esta mal, corrigelo en Excel.'\n].join('\\n');\n\nreturn [{\n  json: {\n    rutaPendiente: 'gasto-' + id + '.json',\n    rutaComprobante: comprobante,\n    aviso: aviso\n  },\n  binary: {\n    data: $('Bajar el ticket').first().binary.data,\n    pendiente: {\n      data: Buffer.from(JSON.stringify(gasto, null, 2), 'utf8').toString('base64'),\n      mimeType: 'application/json',\n      fileName: 'gasto-' + id + '.json'\n    }\n  }\n}];"
         },
         "id": "b0000000-0023-4000-8000-000000000023",
         "name": "Interpretar el ticket",
@@ -376,11 +494,59 @@
           [{ "node": "Que archivo es", "type": "main", "index": 0 }],
           [{ "node": "Texto a txt", "type": "main", "index": 0 }],
           [{ "node": "Bajar el ticket", "type": "main", "index": 0 }],
+          [{ "node": "Que comando", "type": "main", "index": 0 }],
           []
         ]
       },
 
+      "Que comando": {
+        "main": [
+          [{ "node": "Leer el resumen", "type": "main", "index": 0 }],
+          [{ "node": "Pedir el borrado", "type": "main", "index": 0 }],
+          [{ "node": "Texto de ayuda", "type": "main", "index": 0 }]
+        ]
+      },
+      "Leer el resumen": {
+        "main": [
+          [{ "node": "Sacar el resumen", "type": "main", "index": 0 }],
+          [{ "node": "Avisar del fallo", "type": "main", "index": 0 }]
+        ]
+      },
+      "Sacar el resumen": {
+        "main": [
+          [{ "node": "Formatear resumen", "type": "main", "index": 0 }],
+          [{ "node": "Avisar del fallo", "type": "main", "index": 0 }]
+        ]
+      },
+      "Formatear resumen": {
+        "main": [
+          [{ "node": "Responder comando", "type": "main", "index": 0 }],
+          [{ "node": "Avisar del fallo", "type": "main", "index": 0 }]
+        ]
+      },
+      "Pedir el borrado": {
+        "main": [
+          [{ "node": "Guardar la orden", "type": "main", "index": 0 }],
+          [{ "node": "Avisar del fallo", "type": "main", "index": 0 }]
+        ]
+      },
+      "Guardar la orden": {
+        "main": [
+          [{ "node": "Responder comando", "type": "main", "index": 0 }],
+          [{ "node": "Avisar del fallo", "type": "main", "index": 0 }]
+        ]
+      },
+      "Texto de ayuda": {
+        "main": [[{ "node": "Responder comando", "type": "main", "index": 0 }]]
+      },
+
       "Bajar el ticket": {
+        "main": [
+          [{ "node": "Sacar el base64", "type": "main", "index": 0 }],
+          [{ "node": "Avisar del fallo", "type": "main", "index": 0 }]
+        ]
+      },
+      "Sacar el base64": {
         "main": [
           [{ "node": "Armar la consulta", "type": "main", "index": 0 }],
           [{ "node": "Avisar del fallo", "type": "main", "index": 0 }]
