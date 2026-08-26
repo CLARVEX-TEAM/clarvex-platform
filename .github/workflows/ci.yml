@@ -33,6 +33,7 @@ on:
       - "scripts/**.yml"
       - "scripts/**.yaml"
       - "scripts/**.jq"
+      - "scripts/**.ps1"
       - "scripts/mudanza/**"
   pull_request:
     branches: [main]
@@ -43,6 +44,7 @@ on:
       - "scripts/**.yml"
       - "scripts/**.yaml"
       - "scripts/**.jq"
+      - "scripts/**.ps1"
       - "scripts/mudanza/**"
 
 # Varios pushes seguidos ya no acumulan ejecuciones: la anterior se cancela y
