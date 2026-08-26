@@ -110,6 +110,18 @@ services:
   # publican SOLO en la IP de Tailscale: los dispositivos que sincronizan ya
   # estan todos en esa red, asi que abrir el 22000 al mundo no aportaria nada
   # y expondria el contenido.
+  #
+  # ⚠️ Publicar los puertos aqui NO BASTA, y esto no se ve en este archivo.
+  # Con el descubrimiento global encendido, Syncthing averigua la IP publica
+  # del otro aparato y SALE SOLO a internet a buscarlo, aunque el servidor
+  # solo escuche en Tailscale. En la configuracion propia de Syncthing
+  # (/home/ubuntu/stack/syncthing/config.xml, que este repo NO versiona) estan
+  # apagados `globalAnnounceEnabled`, `relaysEnabled` y `natEnabled`, y la PC
+  # tiene una sola direccion fija: tcp://100.85.3.24:22000.
+  #
+  # Al comprobarlo, ojo: cambiar esa configuracion no tira la conexion que ya
+  # estaba abierta, asi que sigue mostrando la ruta vieja. Hay que reiniciar el
+  # contenedor y mirar entonces, o se da por bueno un cambio que no aplico.
   syncthing:
     image: syncthing/syncthing:1
     container_name: syncthing
