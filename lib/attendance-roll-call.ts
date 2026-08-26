@@ -40,6 +40,8 @@ export type RollCallOutcome = {
   marcados: RollCallPerson[];
   respetados: { employeeNumber: string; name: string }[];
   sinTurno: string[];
+  /** Nombres que casaron con mas de una persona. No se marco a ninguna. */
+  ambiguos: string[];
   noEncontrados: string[];
   errors: string[];
 };
@@ -70,7 +72,7 @@ export async function rollCall(
     select: { user: { select: { employeeNumber: true } } }
   });
 
-  const { entries, respetados, sinTurno } = planPaseDeLista(
+  const { entries, respetados, sinTurno, ambiguos } = planPaseDeLista(
     turnos.map((t) => ({
       employeeNumber: t.user.employeeNumber,
       name: t.user.name,
@@ -84,7 +86,7 @@ export async function rollCall(
   if (entries.length === 0) {
     return {
       ok: true,
-      result: { date: fecha, marcados: [], respetados, sinTurno, noEncontrados: [], errors: [] }
+      result: { date: fecha, marcados: [], respetados, sinTurno, ambiguos, noEncontrados: [], errors: [] }
     };
   }
 
@@ -127,6 +129,7 @@ export async function rollCall(
       marcados,
       respetados,
       sinTurno,
+      ambiguos,
       noEncontrados: captura.result.employeesNotFound,
       errors: captura.result.errors
     }

@@ -21,12 +21,20 @@ const bodySchema = z.object({
   date: z.string().length(10),
   exceptions: z
     .array(
-      z.object({
-        employeeNumber: z.string().min(1).max(32),
-        arrivedAt: z.string().max(5).nullish(),
-        entryText: z.string().max(40).nullish(),
-        note: z.string().max(300).nullish()
-      })
+      z
+        .object({
+          employeeNumber: z.string().min(1).max(32).optional(),
+          // Nombre tal como se dice en tienda ("Itzel"). Se resuelve contra
+          // quien tenia turno ese dia; si casa con dos personas no se marca a
+          // ninguna y se avisa.
+          name: z.string().min(1).max(60).optional(),
+          arrivedAt: z.string().max(5).nullish(),
+          entryText: z.string().max(40).nullish(),
+          note: z.string().max(300).nullish()
+        })
+        .refine((e) => Boolean(e.employeeNumber || e.name), {
+          message: "Cada excepcion necesita employeeNumber o name."
+        })
     )
     .max(50)
     .optional()

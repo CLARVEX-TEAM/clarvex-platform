@@ -82,3 +82,51 @@ test("todas las filas llevan la fecha que se pidio", () => {
   const plan = planPaseDeLista(TURNOS, [], new Set(), FECHA);
   assert.equal(plan.entries.every((e) => e.date === FECHA), true);
 });
+
+test("se puede nombrar a la persona en vez de teclear su numero", () => {
+  const plan = planPaseDeLista(TURNOS, [{ name: "Waira", arrivedAt: "11:40" }], new Set(), FECHA);
+  const waira = plan.entries.find((e) => e.employeeNumber === "95739");
+
+  assert.ok(waira);
+  assert.equal(waira.arrivedAt, "11:40");
+  assert.deepEqual(plan.sinTurno, []);
+});
+
+test("el nombre casa sin acentos ni mayusculas", () => {
+  const conAcento: TurnoDelDia[] = [{ employeeNumber: "1", name: "JAZMIN CASTRO ZUÑIGA", startTime: "10:30" }];
+  const plan = planPaseDeLista(conAcento, [{ name: "jazmín", arrivedAt: "10:45" }], new Set(), FECHA);
+
+  assert.equal(plan.entries[0].arrivedAt, "10:45");
+});
+
+test("Adrian se busca por su segundo nombre, no por Jesus", () => {
+  // La tienda le dice Adrian; su nombre completo empieza por JESUS.
+  const plan = planPaseDeLista(
+    [{ employeeNumber: "102259", name: "JESUS ADRIAN HERNANDEZ LUNA", startTime: "10:30" }],
+    [{ name: "Adrian", arrivedAt: "11:00" }],
+    new Set(),
+    FECHA
+  );
+  assert.equal(plan.entries[0].arrivedAt, "11:00");
+});
+
+test("un nombre que casa con DOS personas no marca a ninguna", () => {
+  // Marcar a la equivocada toca el sueldo de dos a la vez y en silencio: la
+  // que no vino saldria puntual y la que llego tarde no constaria.
+  const dosMarias: TurnoDelDia[] = [
+    { employeeNumber: "1", name: "MARIA LOPEZ", startTime: "10:30" },
+    { employeeNumber: "2", name: "MARIA GOMEZ", startTime: "10:30" }
+  ];
+  const plan = planPaseDeLista(dosMarias, [{ name: "Maria", arrivedAt: "12:00" }], new Set(), FECHA);
+
+  assert.deepEqual(plan.ambiguos, ["Maria"]);
+  // Las dos siguen entrando, pero a SU hora: nadie recibe la excepcion.
+  assert.equal(plan.entries.length, 2);
+  assert.equal(plan.entries.every((e) => e.arrivedAt === "10:30"), true);
+});
+
+test("un nombre que no existe se avisa y no marca a nadie de mas", () => {
+  const plan = planPaseDeLista(TURNOS, [{ name: "Fulanito" }], new Set(), FECHA);
+  assert.deepEqual(plan.sinTurno, ["Fulanito"]);
+  assert.equal(plan.entries.length, 3);
+});

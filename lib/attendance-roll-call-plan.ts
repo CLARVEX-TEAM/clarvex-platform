@@ -1,17 +1,21 @@
 import { expectedEntry } from "@/lib/attendance";
 import type { AttendanceCaptureEntry } from "@/lib/attendance-capture-entry";
+import { firstName } from "@/lib/weekly-close";
 
 /**
  * Decide a quien se marca en un pase de lista y a quien no.
  *
  * ⚠️ Este modulo NO puede importar Prisma, ni directa ni indirectamente. Aqui
- * viven las dos reglas capaces de estropear nomina, y se separo justamente para
+ * viven las reglas capaces de estropear nomina, y se separo justamente para
  * poder probarlas sin levantar la base: `lib/prisma` lanza si lo cargas fuera
  * de la configuracion de integracion, y eso hacia imposible cubrirlas.
  */
 
 export type RollCallException = {
-  employeeNumber: string;
+  /** Numero de empleado, o `name` si se prefiere escribir el nombre. */
+  employeeNumber?: string;
+  /** Nombre tal como se dice en tienda: "Itzel", "Adrian". */
+  name?: string;
   arrivedAt?: string | null;
   entryText?: string | null;
   note?: string | null;
@@ -26,8 +30,54 @@ export type TurnoDelDia = {
 export type PlanPaseDeLista = {
   entries: AttendanceCaptureEntry[];
   respetados: { employeeNumber: string; name: string }[];
+  /** Excepciones que no casaron con nadie de turno. */
   sinTurno: string[];
+  /** Excepciones que casaron con MAS de una persona. No se marca ninguna. */
+  ambiguos: string[];
 };
+
+/** Sin acentos ni mayusculas: "Jazmín" y "jazmin" tienen que ser la misma. */
+function plano(texto: string): string {
+  return texto
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toLowerCase();
+}
+
+/**
+ * Empareja una excepcion con alguien de turno.
+ *
+ * ⚠️ Si el nombre casa con DOS personas no se elige ninguna. Marcar a la
+ * equivocada es tocar el sueldo de dos personas a la vez, y en silencio: la
+ * que no vino saldria puntual y la que vino tarde no constaria.
+ */
+function emparejar(
+  excepcion: RollCallException,
+  turnos: TurnoDelDia[]
+): { turno: TurnoDelDia } | { problema: "sin-turno" | "ambiguo"; etiqueta: string } {
+  const etiqueta = String(excepcion.employeeNumber ?? excepcion.name ?? "").trim();
+
+  if (excepcion.employeeNumber) {
+    const numero = String(excepcion.employeeNumber).trim();
+    const turno = turnos.find((t) => t.employeeNumber === numero);
+    return turno ? { turno } : { problema: "sin-turno", etiqueta };
+  }
+
+  const buscado = plano(String(excepcion.name ?? ""));
+  if (!buscado) return { problema: "sin-turno", etiqueta };
+
+  // Primero por nombre corto, que es como se llaman en tienda; si no, por
+  // cualquier parte del nombre completo.
+  let candidatos = turnos.filter((t) => plano(firstName(t.name)) === buscado);
+  if (candidatos.length === 0) {
+    candidatos = turnos.filter((t) => plano(t.name).split(/\s+/).includes(buscado));
+  }
+
+  if (candidatos.length === 1) return { turno: candidatos[0] };
+  if (candidatos.length === 0) return { problema: "sin-turno", etiqueta };
+  return { problema: "ambiguo", etiqueta };
+}
 
 export function planPaseDeLista(
   turnos: TurnoDelDia[],
@@ -35,11 +85,16 @@ export function planPaseDeLista(
   yaCapturados: Set<string>,
   fecha: string
 ): PlanPaseDeLista {
-  const porNumero = new Map(excepciones.map((e) => [String(e.employeeNumber).trim(), e]));
-  const conTurno = new Set(turnos.map((t) => t.employeeNumber));
-  // Una excepcion sobre alguien sin turno se avisa en vez de inventarle uno:
-  // puede ser un numero mal escrito, y marcarle asistencia seria peor.
-  const sinTurno = [...porNumero.keys()].filter((n) => !conTurno.has(n));
+  const porNumero = new Map<string, RollCallException>();
+  const sinTurno: string[] = [];
+  const ambiguos: string[] = [];
+
+  for (const excepcion of excepciones) {
+    const resultado = emparejar(excepcion, turnos);
+    if ("turno" in resultado) porNumero.set(resultado.turno.employeeNumber, excepcion);
+    else if (resultado.problema === "ambiguo") ambiguos.push(resultado.etiqueta);
+    else sinTurno.push(resultado.etiqueta);
+  }
 
   const entries: AttendanceCaptureEntry[] = [];
   const respetados: { employeeNumber: string; name: string }[] = [];
@@ -55,9 +110,9 @@ export function planPaseDeLista(
       continue;
     }
 
-    // Regla 2: salvo que lo nombres. No es una contradiccion --escribir el
-    // numero de alguien es una instruccion explicita, y lo que se protege es lo
-    // que pasaria sin querer.
+    // Regla 2: salvo que lo nombres. No es una contradiccion --nombrar a
+    // alguien es una instruccion explicita, y lo que se protege es lo que
+    // pasaria sin querer.
     entries.push({
       employeeNumber: turno.employeeNumber,
       date: fecha,
@@ -71,5 +126,5 @@ export function planPaseDeLista(
     });
   }
 
-  return { entries, respetados, sinTurno };
+  return { entries, respetados, sinTurno, ambiguos };
 }
