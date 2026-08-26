@@ -275,3 +275,49 @@ test("apellidos distintos de verdad siguen sin emparejar", () => {
   assert.equal(sameSurname("REYES", "POPOCA"), false);
   assert.equal(sameSurname("CASTRO", "TREVINO"), false);
 });
+
+test("basta con que acierte el nombre aunque estropee el apellido", () => {
+  // El caso real: el lector devolvio POPCOCA y ZITTAL, ambos mal, pero
+  // "WAIRA" venia intacto justo despues de la coma.
+  const gente = [
+    { id: "1", name: "WAIRA ZITLALI POPOCA", employeeNumber: "95739" },
+    { id: "2", name: "ITZEL SAIDY REYES BAUTISTA", employeeNumber: "81893" }
+  ];
+  const filas = [{ name: "PXPCXCA, WAIRA ZITTAL", sale: 1, tickets: 1, units: 1, gross: 1, discount: 0 }];
+  const m = matchPosRows(filas as never, gente);
+
+  assert.equal(m.matched.length, 1);
+  assert.equal(m.matched[0].user.name, "WAIRA ZITLALI POPOCA");
+  assert.deepEqual(m.unmatched, []);
+});
+
+test("tambien empareja por el apellido si el nombre viene mal", () => {
+  const gente = [{ id: "1", name: "JOSE EDUARDO SORIA MONTES", employeeNumber: "13853" }];
+  const filas = [{ name: "SORIA, XDUARDX", sale: 1, tickets: 1, units: 1, gross: 1, discount: 0 }];
+  const m = matchPosRows(filas as never, gente);
+
+  assert.equal(m.matched.length, 1);
+});
+
+test("si una parte del nombre encaja con DOS personas no se elige ninguna", () => {
+  // Es la red que hace segura la busqueda por cualquier parte: dos personas
+  // que comparten nombre de pila no pueden repartirse la venta a ciegas.
+  const gente = [
+    { id: "1", name: "ADRIAN HERNANDEZ LUNA", employeeNumber: "1" },
+    { id: "2", name: "ADRIAN GOMEZ PEREZ", employeeNumber: "2" }
+  ];
+  const filas = [{ name: "XXXXXX, ADRIAN", sale: 1, tickets: 1, units: 1, gross: 1, discount: 0 }];
+  const m = matchPosRows(filas as never, gente);
+
+  assert.equal(m.matched.length, 0);
+  assert.equal(m.ambiguous.length, 1);
+});
+
+test("un nombre que no se parece a nadie sigue sin emparejar", () => {
+  const gente = [{ id: "1", name: "WAIRA ZITLALI POPOCA", employeeNumber: "95739" }];
+  const filas = [{ name: "MARTINEZ, RICARDO", sale: 1, tickets: 1, units: 1, gross: 1, discount: 0 }];
+  const m = matchPosRows(filas as never, gente);
+
+  assert.equal(m.matched.length, 0);
+  assert.deepEqual(m.unmatched, ["MARTINEZ, RICARDO"]);
+});

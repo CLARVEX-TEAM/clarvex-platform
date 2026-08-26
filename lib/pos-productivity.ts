@@ -234,10 +234,16 @@ export type PosMatch = {
 };
 
 /**
- * Empareja por el APELLIDO, que es lo primero del reporte y lo único que nunca
- * viene cortado.
+ * Empareja comparando CUALQUIER parte del nombre contra cualquier parte de la
+ * suya: basta con que coincida una.
  *
- * ⚠️ Si un apellido encaja con dos personas, NO se elige: se reporta ambiguo.
+ * Antes solo se miraba el apellido, y eso deja fuera el caso mas comun de
+ * error: que el lector estropee el apellido pero acierte el nombre de pila.
+ * Con «POPCOCA, WAIRA ZITTAL», el apellido venia mal y «WAIRA» estaba ahi al
+ * lado, intacto.
+ *
+ * ⚠️ La red de seguridad es la que hace esto seguro: si alguna parte del
+ * nombre encaja con DOS personas, no se elige ninguna y se reporta ambiguo.
  * Colgarle la venta del día a quien no es le mueve el alcance y la comisión a
  * dos personas a la vez, y nadie lo nota hasta el recibo.
  */
@@ -247,12 +253,16 @@ export function matchPosRows(rows: PosCapture[], people: PosPerson[]): PosMatch 
   const ambiguous: PosMatch["ambiguous"] = [];
 
   for (const row of rows) {
-    // «CASTRO, JAZMIN» → el apellido es lo que va antes de la coma.
-    const surname = normalize(row.name).split(",")[0].trim();
+    // «CASTRO, JAZMIN» → todas sus partes, la coma es solo separador.
+    const partes = normalize(row.name)
+      .split(/[\s,]+/)
+      .map((parte) => parte.trim())
+      .filter(Boolean);
+
     const candidates = people.filter((person) =>
       normalize(person.name)
         .split(/\s+/)
-        .some((token) => sameSurname(token, surname))
+        .some((token) => partes.some((parte) => sameSurname(token, parte)))
     );
 
     if (candidates.length === 1) matched.push({ row, user: candidates[0] });
