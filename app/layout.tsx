@@ -11,7 +11,6 @@ import { WhatsNewModal } from "@/components/WhatsNewModal";
 import { TermsGate } from "@/components/TermsGate";
 import { GuessSchemeNotice } from "@/components/GuessSchemeNotice";
 import { DesktopRouteGuard } from "@/components/desktop/DesktopRouteGuard";
-import { ClarvexCopilot } from "@/components/ClarvexCopilot";
 import { DemoBanner } from "@/components/DemoBanner";
 import { EmailBanner } from "@/components/EmailBanner";
 import { DomainMoveBanner } from "@/components/DomainMoveBanner";
@@ -115,7 +114,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 la pastilla activa. */}
             <AppChrome />
             <WhatsNewModal />
-            <ClarvexCopilot />
+            {/* El copiloto flotante se retiró el 26 de agosto de 2026: nadie lo
+                usaba y su botón estorbaba en todas las pantallas. Se quitó el
+                montaje, no el componente, para poder devolverlo con una línea.
+                Esto NO desactiva la IA del resto de la app: el coach del
+                asesor, la redacción de comunicados, los reportes de KPIs, la
+                optimización de pendientes y el plan del día siguen igual, cada
+                uno con su propio endpoint. */}
           </ToastProvider>
         </ThemeProvider>
       </body>
