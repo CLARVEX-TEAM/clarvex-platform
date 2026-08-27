@@ -50,7 +50,7 @@ services:
       # Varias rutas se separan con `;`. /gastos es aparte de /buzon a
       # proposito: el buzon es de PASO --se vacia cada cinco minutos desde la
       # PC-- y el libro de gastos tiene que quedarse quieto en algun sitio.
-      - N8N_RESTRICT_FILE_ACCESS_TO=/buzon;/gastos
+      - N8N_RESTRICT_FILE_ACCESS_TO=/buzon;/gastos;/visual
       # Secreto de la API de captura de Clarvex, para el pase de lista desde
       # el bot. El VALOR vive en /home/ubuntu/stack/.env, no aqui.
       - ADMIN_CAPTURE_SECRET=${ADMIN_CAPTURE_SECRET}
@@ -62,6 +62,9 @@ services:
       # El libro de gastos y sus comprobantes. Carpeta PERMANENTE, con su propia
       # carpeta de Syncthing, para que nada de aqui se lo lleve el movedor.
       - /home/ubuntu/gastos:/gastos
+      # Fotos del reporte fotografico semanal. Las deja el bot y las recoge
+      # Clarvex desde el disco del anfitrion, sin pasarlas por HTTP.
+      - /home/ubuntu/visual:/visual
     dns:
       - 1.1.1.1
       - 8.8.8.8

@@ -1,0 +1,291 @@
+[
+  {
+    "id": "clarvexvisualsemanal",
+    "name": "Clarvex — Visual semanal",
+    "active": false,
+    "nodes": [
+      {
+        "parameters": {
+          "updates": ["message"],
+          "additionalFields": {}
+        },
+        "id": "v0000000-0001-4000-8000-000000000001",
+        "name": "Mensaje",
+        "type": "n8n-nodes-base.telegramTrigger",
+        "typeVersion": 1.4,
+        "position": [-900, 0],
+        "webhookId": "v0000000-9999-4000-8000-000000000099",
+        "credentials": {
+          "telegramApi": { "id": "c7bIjyLeljGWy3yc", "name": "Telegram account 2" }
+        }
+      },
+      {
+        "parameters": {
+          "mode": "expression",
+          "numberOutputs": 4,
+          "output": "={{ $json.message.chat.id !== 8328057325 ? 3 : (($json.message.photo && ($json.message.caption || '').trim().toLowerCase().startsWith('visual')) ? 0 : ((($json.message.text || '').trim().toLowerCase() === 'visual armar') ? 1 : ((($json.message.text || '').trim().toLowerCase() === 'visual') ? 2 : 3))) }}",
+          "options": {}
+        },
+        "id": "v0000000-0002-4000-8000-000000000002",
+        "name": "Que quiere",
+        "type": "n8n-nodes-base.switch",
+        "typeVersion": 3.4,
+        "position": [-680, 0]
+      },
+
+      {
+        "parameters": {
+          "resource": "file",
+          "fileId": "={{ $json.message.photo[$json.message.photo.length - 1].file_id }}",
+          "download": true
+        },
+        "id": "v0000000-0003-4000-8000-000000000003",
+        "name": "Bajar la foto",
+        "type": "n8n-nodes-base.telegram",
+        "typeVersion": 1.2,
+        "onError": "continueErrorOutput",
+        "position": [-440, -180],
+        "credentials": {
+          "telegramApi": { "id": "c7bIjyLeljGWy3yc", "name": "Telegram account 2" }
+        }
+      },
+      {
+        "parameters": {
+          "jsCode": "// El pie \"visual WSW ZONA 1\" da el nombre del archivo, y ese nombre ES lo\n// que despues casa con la etiqueta de su diapositiva.\nconst pie = ($('Mensaje').first().json.message.caption || '').trim();\nconst etiqueta = pie.replace(/^visual\\s*/i, '').trim();\n\nif (!etiqueta) {\n  throw new Error('Dime que es: \"visual fachada\", \"visual wsw zona 1\"...');\n}\n\n// ⚠️ Lista blanca en el nombre del archivo. Esta carpeta la lee un proceso del\n// servidor, y una barra o dos puntos en el pie podrian sacar la escritura de\n// su sitio.\nconst PERMITIDOS = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 ';\nlet limpio = '';\nfor (const c of etiqueta) limpio += PERMITIDOS.indexOf(c) >= 0 ? c : ' ';\nlimpio = limpio.replace(/\\s+/g, ' ').trim();\nif (!limpio) { throw new Error('Ese nombre no tiene letras ni numeros.'); }\n\nconst item = $input.first();\nreturn [{\n  json: { etiqueta: limpio, archivo: limpio + '.jpg' },\n  binary: item.binary\n}];"
+        },
+        "id": "v0000000-0004-4000-8000-000000000004",
+        "name": "Nombrar la foto",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "onError": "continueErrorOutput",
+        "position": [-240, -180]
+      },
+      {
+        "parameters": {
+          "operation": "write",
+          "fileName": "=/visual/pendientes/{{ $json.archivo }}",
+          "dataPropertyName": "data",
+          "options": {}
+        },
+        "id": "v0000000-0005-4000-8000-000000000005",
+        "name": "Guardar la foto",
+        "type": "n8n-nodes-base.readWriteFile",
+        "typeVersion": 1.1,
+        "onError": "continueErrorOutput",
+        "position": [-40, -180]
+      },
+      {
+        "parameters": {
+          "method": "GET",
+          "url": "https://team.clarvex.tech/api/admin/capture/visual",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              { "name": "Authorization", "value": "=Bearer {{ $env.ADMIN_CAPTURE_SECRET }}" }
+            ]
+          },
+          "options": { "timeout": 30000 }
+        },
+        "id": "v0000000-0006-4000-8000-000000000006",
+        "name": "Como va",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "onError": "continueErrorOutput",
+        "position": [180, -180]
+      },
+      {
+        "parameters": {
+          "jsCode": "// Se confirma con lo que el SERVIDOR ve en la carpeta, no con lo que\n// acabamos de escribir. Si el archivo no llego, aqui se nota.\nconst d = $json;\nconst faltan = d.faltan || [];\nconst etiqueta = $('Nombrar la foto').first().json.etiqueta;\n\nconst lineas = ['Guardada: ' + etiqueta, ''];\nif (faltan.length === 0) {\n  lineas.push('Ya estan las ' + (d.huecos || []).length + '. Manda \"visual armar\".');\n} else {\n  lineas.push('Faltan ' + faltan.length + ':');\n  for (const f of faltan) lineas.push('  ' + f);\n}\nreturn [{ json: { respuesta: lineas.join('\\n') } }];"
+        },
+        "id": "v0000000-0007-4000-8000-000000000007",
+        "name": "Decir que falta",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "onError": "continueErrorOutput",
+        "position": [380, -180]
+      },
+
+      {
+        "parameters": {
+          "method": "GET",
+          "url": "https://team.clarvex.tech/api/admin/capture/visual",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              { "name": "Authorization", "value": "=Bearer {{ $env.ADMIN_CAPTURE_SECRET }}" }
+            ]
+          },
+          "options": { "timeout": 30000 }
+        },
+        "id": "v0000000-0008-4000-8000-000000000008",
+        "name": "Estado",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "onError": "continueErrorOutput",
+        "position": [-440, 200]
+      },
+      {
+        "parameters": {
+          "jsCode": "const d = $json;\nconst huecos = d.huecos || [];\nconst listas = d.fotosListas || [];\nconst faltan = d.faltan || [];\n\nconst lineas = ['Reporte fotografico — ' + huecos.length + ' fotos', ''];\nfor (const h of huecos) {\n  const puesta = listas.some((l) => l.toLowerCase() === h.etiqueta.toLowerCase());\n  lineas.push((puesta ? '  [si] ' : '  [  ] ') + h.etiqueta);\n}\nlineas.push('');\nif (faltan.length === 0) {\n  lineas.push('Estan todas. Manda \"visual armar\".');\n} else {\n  lineas.push('Manda cada foto con su pie, por ejemplo:');\n  lineas.push('  visual ' + faltan[0].toLowerCase());\n}\nreturn [{ json: { respuesta: lineas.join('\\n') } }];"
+        },
+        "id": "v0000000-0009-4000-8000-000000000009",
+        "name": "Formatear estado",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "onError": "continueErrorOutput",
+        "position": [-240, 200]
+      },
+
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "https://team.clarvex.tech/api/admin/capture/visual?storeId=clarvex-demo-store",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              { "name": "Authorization", "value": "=Bearer {{ $env.ADMIN_CAPTURE_SECRET }}" }
+            ]
+          },
+          "options": { "timeout": 180000, "response": { "response": { "responseFormat": "file", "outputPropertyName": "data" } } }
+        },
+        "id": "v0000000-0010-4000-8000-000000000010",
+        "name": "Armar el visual",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "onError": "continueErrorOutput",
+        "position": [-440, 20]
+      },
+      {
+        "parameters": {
+          "operation": "sendDocument",
+          "chatId": "8328057325",
+          "binaryData": true,
+          "binaryPropertyName": "data",
+          "additionalFields": { "appendAttribution": false }
+        },
+        "id": "v0000000-0011-4000-8000-000000000011",
+        "name": "Mandar el archivo",
+        "type": "n8n-nodes-base.telegram",
+        "typeVersion": 1.2,
+        "onError": "continueErrorOutput",
+        "position": [-40, 20],
+        "webhookId": "v0000000-7777-4000-8000-000000000077",
+        "credentials": {
+          "telegramApi": { "id": "c7bIjyLeljGWy3yc", "name": "Telegram account 2" }
+        }
+      },
+
+      {
+        "parameters": {
+          "chatId": "8328057325",
+          "text": "={{ $json.respuesta }}",
+          "additionalFields": {
+            "appendAttribution": false,
+            "reply_to_message_id": "={{ $('Mensaje').item.json.message.message_id }}"
+          }
+        },
+        "id": "v0000000-0012-4000-8000-000000000012",
+        "name": "Responder",
+        "type": "n8n-nodes-base.telegram",
+        "typeVersion": 1.2,
+        "position": [600, 0],
+        "webhookId": "v0000000-6666-4000-8000-000000000066",
+        "credentials": {
+          "telegramApi": { "id": "c7bIjyLeljGWy3yc", "name": "Telegram account 2" }
+        }
+      },
+      {
+        "parameters": {
+          "chatId": "8328057325",
+          "text": "={{ 'No pude con eso.\\n\\n' + ($json.error && ($json.error.description || $json.error.message) ? ($json.error.description || $json.error.message) : JSON.stringify($json).slice(0, 300)) }}",
+          "additionalFields": {
+            "appendAttribution": false,
+            "reply_to_message_id": "={{ $('Mensaje').item.json.message.message_id }}"
+          }
+        },
+        "id": "v0000000-0013-4000-8000-000000000013",
+        "name": "Avisar del fallo",
+        "type": "n8n-nodes-base.telegram",
+        "typeVersion": 1.2,
+        "position": [600, 340],
+        "webhookId": "v0000000-5555-4000-8000-000000000055",
+        "credentials": {
+          "telegramApi": { "id": "c7bIjyLeljGWy3yc", "name": "Telegram account 2" }
+        }
+      }
+    ],
+    "connections": {
+      "Mensaje": {
+        "main": [[{ "node": "Que quiere", "type": "main", "index": 0 }]]
+      },
+      "Que quiere": {
+        "main": [
+          [{ "node": "Bajar la foto", "type": "main", "index": 0 }],
+          [{ "node": "Armar el visual", "type": "main", "index": 0 }],
+          [{ "node": "Estado", "type": "main", "index": 0 }],
+          []
+        ]
+      },
+
+      "Bajar la foto": {
+        "main": [
+          [{ "node": "Nombrar la foto", "type": "main", "index": 0 }],
+          [{ "node": "Avisar del fallo", "type": "main", "index": 0 }]
+        ]
+      },
+      "Nombrar la foto": {
+        "main": [
+          [{ "node": "Guardar la foto", "type": "main", "index": 0 }],
+          [{ "node": "Avisar del fallo", "type": "main", "index": 0 }]
+        ]
+      },
+      "Guardar la foto": {
+        "main": [
+          [{ "node": "Como va", "type": "main", "index": 0 }],
+          [{ "node": "Avisar del fallo", "type": "main", "index": 0 }]
+        ]
+      },
+      "Como va": {
+        "main": [
+          [{ "node": "Decir que falta", "type": "main", "index": 0 }],
+          [{ "node": "Avisar del fallo", "type": "main", "index": 0 }]
+        ]
+      },
+      "Decir que falta": {
+        "main": [
+          [{ "node": "Responder", "type": "main", "index": 0 }],
+          [{ "node": "Avisar del fallo", "type": "main", "index": 0 }]
+        ]
+      },
+
+      "Estado": {
+        "main": [
+          [{ "node": "Formatear estado", "type": "main", "index": 0 }],
+          [{ "node": "Avisar del fallo", "type": "main", "index": 0 }]
+        ]
+      },
+      "Formatear estado": {
+        "main": [
+          [{ "node": "Responder", "type": "main", "index": 0 }],
+          [{ "node": "Avisar del fallo", "type": "main", "index": 0 }]
+        ]
+      },
+
+      "Armar el visual": {
+        "main": [
+          [{ "node": "Mandar el archivo", "type": "main", "index": 0 }],
+          [{ "node": "Avisar del fallo", "type": "main", "index": 0 }]
+        ]
+      },
+      "Mandar el archivo": {
+        "main": [
+          [],
+          [{ "node": "Avisar del fallo", "type": "main", "index": 0 }]
+        ]
+      }
+    },
+    "settings": {
+      "executionOrder": "v1"
+    }
+  }
+]
