@@ -674,7 +674,7 @@
       {
         "parameters": {
           "chatId": "8328057325",
-          "text": "={{ 'No pude con eso.\\n\\n' + ($json.error && ($json.error.description || $json.error.message) ? ($json.error.description || $json.error.message) : JSON.stringify($json).slice(0, 300)) }}",
+          "text": "={{ ('No pude con eso.\\n\\n' + ($json.error && ($json.error.description || $json.error.message) ? ($json.error.description || $json.error.message) : JSON.stringify($json).slice(0, 300))).replace(/[_*`\\[\\]]/g, ' ') }}",
           "additionalFields": {
             "appendAttribution": false,
             "reply_to_message_id": "={{ $('Buzon').item.json.message.message_id }}"

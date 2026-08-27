@@ -46,7 +46,7 @@
       {
         "parameters": {
           "resource": "file",
-          "fileId": "={{ $json.message.photo[$json.message.photo.length - 1].file_id }}",
+          "fileId": "={{ $('Mensaje').first().json.message.photo[$('Mensaje').first().json.message.photo.length - 1].file_id }}",
           "download": true
         },
         "id": "v0000000-0003-4000-8000-000000000003",
@@ -252,7 +252,7 @@
       {
         "parameters": {
           "chatId": "8328057325",
-          "text": "={{ 'No pude con eso.\\n\\n' + ($json.error && ($json.error.description || $json.error.message) ? ($json.error.description || $json.error.message) : JSON.stringify($json).slice(0, 300)) }}",
+          "text": "={{ ('No pude con eso.\\n\\n' + ($json.error && ($json.error.description || $json.error.message) ? ($json.error.description || $json.error.message) : JSON.stringify($json).slice(0, 300))).replace(/[_*`\\[\\]]/g, ' ') }}",
           "additionalFields": {
             "appendAttribution": false,
             "reply_to_message_id": "={{ $('Mensaje').item.json.message.message_id }}"
