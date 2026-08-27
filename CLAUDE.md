@@ -1,5 +1,92 @@
 # Clarvex Team — CLAUDE.md
 
+## Captura por Telegram — 26 y 27 de agosto de 2026
+
+Tres cosas nuevas, todas por el bot de Clarvex (`@AdrianAssitBot`) en **chat
+privado**. El mismo bot manda las evidencias al grupo, así que cada flujo filtra
+por el chat: los mensajes del grupo no disparan nada.
+
+### Pase de lista: «sin novedad» y solo la excepción
+
+`POST|GET /api/admin/capture/attendance/roll-call`, con `ADMIN_CAPTURE_SECRET`.
+Marca a su hora a todo el que tenía horario ese día; solo se nombra a quien se
+salió de lo normal.
+
+```
+asistencia                            enseña la plantilla del día (NO escribe)
+sin novedad                           marca a cada quien según su horario
+sin novedad, Itzel 11:05, Jazmin falta
+```
+
+- ⚠️ **NO decide estados.** La hora que pone es la que el horario ya esperaba, y
+  clasifica `captureAttendance` con las reglas de siempre. Dejar que esta vía
+  marcara «a tiempo» por su cuenta permitiría blanquear un retardo.
+- ⚠️ **No pisa lo ya capturado** — salvo que nombres a la persona. Mandarlo dos
+  veces, o después de corregir en Retool, no deshace ese trabajo en silencio.
+  Nombrar a alguien sí manda: es explícito, y lo que se protege es el descuido.
+- ⚠️ **Incluye a quien descansa o está de vacaciones**, y a esos se les manda
+  **sin hora**: `classifyDay` deriva el estado de su horario. Ponerles la hora
+  esperada los marcaría como si hubieran venido. Comprobado: su banco de minutos
+  queda en 0.
+- Un nombre que casa con **dos** personas no marca a ninguna. Elegir mal tocaría
+  el sueldo de dos a la vez y en silencio.
+- Las reglas viven en `lib/attendance-roll-call-plan.ts`, **sin Prisma a
+  propósito**: `lib/prisma` lanza fuera de la configuración de integración, y eso
+  hacía imposible cubrirlas con pruebas.
+
+### El lector del POS empareja por cualquier parte del nombre
+
+Antes solo miraba el apellido y por prefijo de cinco letras. Eso cubría los
+nombres que el visor **corta** (`POPOCA, WAIRA ZITLAL`) y la Ñ estropeada
+(`TREVIÃO`), pero no que el lector metiera una letra a mitad de palabra.
+
+⚠️ Pasó con un reporte real: leyó `POPCOCA` por POPOCA, el prefijo común se
+quedó en 3 letras y **la venta del día de Waira no se cargó**. El aviso decía
+«revisa que estén dados de alta con ese apellido», que manda a buscar donde no
+estaba el problema.
+
+Ahora basta con que coincida cualquier parte del nombre con cualquier parte del
+suyo, y se tolera **una** errata en apellidos de cinco letras o más. La red no
+cambia: un nombre que encaja con dos personas se reporta ambiguo y no se asigna.
+
+### Reporte fotográfico semanal
+
+`GET|POST /api/admin/capture/visual`. Lee las fotos que el bot dejó en
+`/home/ubuntu/visual/pendientes`, las coloca en `plantilla.pptx` y devuelve el
+archivo bautizado `RF_W34_SAN_AGUSTIN.pptx`.
+
+```
+visual                muestra los 12 huecos y cuáles faltan
+visual <etiqueta>     con una foto: la guarda con ese nombre
+visual armar          devuelve el .pptx
+```
+
+- Los **huecos y su nombre se deducen de la plantilla**: la etiqueta es el texto
+  que cae justo debajo del hueco y centrado en su ancho. No hay que marcar nada.
+- ⚠️ Las fotos **no se recortan**: llegan ya editadas, así que se escalan para
+  caber enteras y se centran. El hueco es muy apaisado (31.7 × 12.4 cm), así que
+  una foto vertical sale como una tira estrecha — es correcto, pero conviene
+  mandarlas panorámicas.
+- ⚠️ Las fotos **no viajan por HTTP**: son doce y pesadas, y en base64 dentro de
+  un JSON crecen un tercio. Se dejan en un volumen compartido y el endpoint las
+  lee del disco.
+- ⚠️ El número de semana **se lee de `Kpi.weekNumber`**, no se calcula. Inventar
+  aquí una cuenta propia crearía una segunda numeración que acabaría separándose
+  de la real.
+- Solo se borran las fotos que se colocaron. Las que no casaron con ningún hueco
+  se quedan: son las que hay que revisar.
+
+### Y el copiloto flotante se retiró
+
+Nadie lo usaba y su botón estorbaba en todas las pantallas. Se quitó el
+**montaje** en `app/layout.tsx`, no el componente: devolverlo es una línea.
+
+⚠️ Esto **no desactiva la IA del resto de la app**. Cada pantalla tiene su
+propio endpoint y siguen igual: `coach-advisor`, `announcements-gen`, `reports`,
+`tasks-optimize` y `plan-manager`.
+
+---
+
 ## Cuota Justa y cierre semanal nativos — 22 de agosto de 2026
 
 La Cuota Justa y el RDS se administran en Retool desde `/cuota-justa`; el Excel
@@ -212,11 +299,25 @@ global de otra versión instala un árbol de dependencias distinto al del servid
 - 8 GB de swap; el disco de 30 GB va al **76 %** desde que se bajaron las
   imágenes de los contenedores.
 
-**Vultr (`216.238.88.93`) sigue encendido pero CONGELADO** — PM2 parado y
-crontab vacío — como camino de vuelta. No desplegar ahí.
+**Vultr (`216.238.88.93`) está APAGADO desde el 27 de agosto de 2026.** Estuvo
+tres días congelado como camino de vuelta y ya no hacía falta.
 
-⚠️ **La RAM es escasa en los dos servidores** — 3.3 GB en Vultr y 3.7 GB en
-AWS. Los 8 GB que se ven son de **swap** (`/swapfile`), no de memoria.
+Antes de apagarlo se comprobaron las dos cosas que lo habrían hecho irreversible:
+que **ningún registro DNS apuntara allí** —los tres que importan,
+`team.clarvex.tech`, `app.adrianluna.mx` y `n8n.adrianluna.mx`, van a
+`44.200.176.214`— y que **no hubiera datos que solo existieran en Vultr**: 19
+usuarios y 483 KPIs en ambos, con su última escritura el 24 de agosto contra la
+de AWS de ese mismo día.
+
+⚠️ **Apagado NO es lo mismo que destruido: Vultr sigue cobrando.** La máquina
+se detuvo con `poweroff`, así que se puede volver a encender desde el panel,
+pero para dejar de pagarla hay que destruir la instancia. Cuando se haga:
+borrar la alarma `clarvex-caido-vultr` (hoy silenciada, no eliminada), subir la
+alerta de presupuesto de $20 a algo realista y repetir el barrido de recursos
+de costo fijo.
+
+⚠️ **La RAM es escasa** — 3.7 GB en AWS. Los 8 GB que se ven son de **swap**
+(`/swapfile`), no de memoria.
 Desde que se suben source maps a Sentry, `next build` no cabe en el heap por
 omisión y muere con `Reached heap limit`. Por eso el script `build` de
 `package.json` fija `--max-old-space-size=6144`: se apoya en el swap, así que
@@ -312,8 +413,9 @@ desbloqueada y con Tailscale activo entraría al servidor sin segundo factor.
 
 ## Acceso al servidor
 
-⚠️ **Desde el 24 de agosto de 2026 producción es AWS.** El servidor de abajo es
-Vultr, que quedó **congelado** como camino de vuelta.
+⚠️ **Producción es AWS desde el 24 de agosto de 2026.** Vultr quedó como camino
+de vuelta y **se apagó el 27 de agosto**; el bloque de abajo se conserva por si
+alguna vez hay que encenderlo desde el panel.
 
 ```bash
 ssh clarvex-aws
@@ -358,7 +460,10 @@ de AWS. Es lo que se usó cuando la llave del par de EC2 resultó perdida.
 ⚠️ La llave original del par de EC2 **se perdió** y no se recupera: AWS solo
 guarda la pública. Ver la memoria `acceso-ssh-instancia-aws`.
 
-### El servidor viejo (Vultr, congelado)
+### El servidor viejo (Vultr, APAGADO el 27 de agosto de 2026)
+
+> El `ssh` de abajo no responde con la máquina apagada. Para usarlo hay que
+> encenderla antes desde el panel de Vultr.
 
 > ⚠️ **Este archivo se commitea al repositorio.** Aquí van solo rutas y nombres de host —
 > **nunca** llaves privadas, tokens ni contenido de `.env`.
@@ -963,11 +1068,10 @@ El % de comisión difiere por puesto pero el mínimo de referencia es el mismo p
   captura real ocurre **en AWS**. Lo contrario —que es lo que decía este
   documento hasta el corte— desharía la mudanza.
 
-  Vultr sigue **encendido pero congelado** (PM2 parado, crontab vacío), con sus
-  datos intactos: es el camino de vuelta. No apagarlo hasta pasados unos días.
-  Al apagarlo: borrar la alarma `clarvex-caido-vultr` (hoy silenciada, no
-  eliminada), subir la alerta de presupuesto de $20 a algo realista y repetir
-  el barrido de recursos de costo fijo.
+  ✅ **Vultr se apagó el 27 de agosto de 2026**, tras tres días congelado como
+  camino de vuelta. Ver [Infraestructura](#infraestructura) para lo que se
+  comprobó antes y para lo que falta: **apagado no es destruido, y Vultr sigue
+  cobrando** hasta que se destruya la instancia.
 
   El guion completo del corte, con lo que falló y por qué, en `CORTE-AWS.md`.
   Pendiente ligado: **borrar el usuario IAM `clarvex-bedrock`** y pasar la app
