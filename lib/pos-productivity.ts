@@ -30,7 +30,12 @@ export type PosRow = {
   units: number;
   unitsReturned: number;
   gross: number;
-  /** Positivo. En el reporte viene con signo menos. */
+  /**
+   * Solo la MAGNITUD; la dirección la decide `discountAsReduction`.
+   *
+   * El reporte casi siempre lo muestra en negativo, y el prompt pide copiarlo
+   * en positivo, pero ninguna de las dos cosas es de fiar por sí sola.
+   */
   discount: number;
   afterDiscount: number;
   returns: number;
@@ -56,13 +61,45 @@ export type PosCapture = {
   dailySales: number;
   transactions: number;
   pieces: number;
-  /** Bruto y descuento CON IVA, como los da el reporte. */
-  grossSales: number;
-  discountAmount: number;
+  /**
+   * Bruto y descuento CON IVA, como los da el reporte.
+   *
+   * **Nulos cuando el descuento del día es una reversión** (ver
+   * `discountAsReduction`): ahí el descuento no es de este día, sino de la
+   * venta que se devolvió, y dividirlo por el bruto de hoy no da un margen.
+   * Van los dos o no va ninguno — con uno solo no hay margen que calcular.
+   */
+  grossSales: number | null;
+  discountAmount: number | null;
 };
 
 const round2 = (value: number) => Math.round(value * 100) / 100;
 const close = (left: number, right: number, tolerance = CENT) => Math.abs(left - right) <= tolerance;
+
+/**
+ * La rebaja del día, **con signo**.
+ *
+ * ⚠️ La columna «Ventas Descuento» casi siempre es una rebaja y el reporte la
+ * muestra en negativo. Pero un día de pura devolución la muestra al REVÉS: al
+ * devolverse una prenda rebajada, su descuento se revierte y entonces SUMA.
+ * Pasó el 27 de agosto de 2026 —una asesora con un solo ticket, de devolución—
+ * y tumbó la captura del día entero, incluidas las dos filas que sí cuadraban.
+ *
+ * El signo NO se toma de lo que devuelve el lector. El prompt le pide magnitud,
+ * así que copiarlo tal cual dejaría cada día normal a merced de que el modelo
+ * respete una instrucción. Se deduce de la cuenta del propio reporte: el bruto
+ * menos la rebaja tiene que dar el importe posterior al descuento.
+ *
+ * La MAGNITUD sigue verificada igual que antes —es la que se lee mal cuando se
+ * lee mal un dígito—; lo único que se deduce aquí es la dirección. Y no hay
+ * empate posible: las dos opciones solo coinciden cuando la rebaja es cero.
+ */
+export function discountAsReduction(row: PosRow): number | null {
+  const magnitude = Math.abs(row.discount);
+  if (close(row.gross - magnitude, row.afterDiscount)) return magnitude;
+  if (close(row.gross + magnitude, row.afterDiscount)) return -magnitude;
+  return null;
+}
 
 /**
  * Las cuatro cuentas internas del reporte. Es la red que sostiene todo: sin
@@ -72,8 +109,8 @@ export function rowProblems(row: PosRow): string[] {
   const problems: string[] = [];
   const who = row.name || "(sin nombre)";
 
-  if (!close(row.gross - row.discount, row.afterDiscount)) {
-    problems.push(`${who}: bruto ${row.gross} menos descuento ${row.discount} no da ${row.afterDiscount}.`);
+  if (discountAsReduction(row) === null) {
+    problems.push(`${who}: bruto ${row.gross} y descuento ${row.discount} no dan ${row.afterDiscount}.`);
   }
   if (!close(row.afterDiscount - row.returns, row.net)) {
     problems.push(`${who}: al restar devoluciones ${row.returns} no da el neto ${row.net}.`);
@@ -104,7 +141,12 @@ export function rowProblems(row: PosRow): string[] {
   } else if (row.net !== 0) {
     problems.push(`${who}: hay venta con 0 tickets.`);
   }
-  if (row.tickets < 0 || row.units < 0 || row.gross < 0 || row.discount < 0) {
+  /*
+   * El descuento NO entra aquí: su signo es informativo y lo resuelve
+   * `discountAsReduction`. Los de abajo sí son imposibles — una devolución vive
+   * en su propia columna, no en el bruto.
+   */
+  if (row.tickets < 0 || row.units < 0 || row.gross < 0) {
     problems.push(`${who}: hay cantidades negativas.`);
   }
   return problems;
@@ -141,14 +183,19 @@ export function posCaptureRows(report: PosReport): PosOutcome<PosCapture[]> {
 
   return {
     ok: true,
-    value: report.rows.map((row) => ({
-      name: row.name,
-      dailySales: round2(row.net / VAT),
-      transactions: row.tickets,
-      pieces: row.units,
-      grossSales: row.gross,
-      discountAmount: row.discount
-    }))
+    value: report.rows.map((row) => {
+      // `rowProblems` ya paso, asi que aqui nunca es null.
+      const reduction = discountAsReduction(row) ?? 0;
+      const reversion = reduction < 0;
+      return {
+        name: row.name,
+        dailySales: round2(row.net / VAT),
+        transactions: row.tickets,
+        pieces: row.units,
+        grossSales: reversion ? null : row.gross,
+        discountAmount: reversion ? null : reduction
+      };
+    })
   };
 }
 

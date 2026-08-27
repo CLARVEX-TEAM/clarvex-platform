@@ -93,6 +93,8 @@ Reglas:
 - "discount", "unitsReturned" y "returns" en POSITIVO aunque en el reporte
   aparezcan con el signo menos. Son las tres columnas que el reporte muestra en
   negativo.
+- "net", "avgUnits" y "avgAmount" van CON su signo. Si el reporte los muestra en
+  negativo, cópialos en negativo: es un día de devoluciones y así tiene que ser.
 - Copia los números exactamente como se ven. No calcules, no corrijas, no
   redondees. Si un dato no se alcanza a leer, pon null.`;
 
@@ -125,7 +127,10 @@ Correspondencia con las columnas del reporte:
 - gross = Bruto Ventas, discount = Ventas Descuento (en positivo)
 - afterDiscount = Ventas posteriores Descuentos
 - returns = Bruto Devoluciones, net = Neto Ventas
-- avgUnits = Prom. Unidades, avgAmount = Prom. Monto`;
+- avgUnits = Prom. Unidades, avgAmount = Prom. Monto
+
+⚠️ "net", "avgUnits" y "avgAmount" LLEVAN SU SIGNO. En un día de devoluciones
+salen en negativo y así hay que copiarlos.`;
 
 const rowSchema = z.object({
   name: z.string().min(1).max(120),
@@ -141,14 +146,26 @@ const rowSchema = z.object({
    * sentido ya lo da el nombre de la columna.
    */
   unitsReturned: z.number().int().min(-1_000_000).max(1_000_000).nullable().optional(),
+  /** El bruto SÍ tiene suelo: una devolución vive en su propia columna. */
   gross: z.number().min(0).max(100_000_000),
-  discount: z.number().min(0).max(100_000_000),
+  /** Con signo o sin él: la dirección la decide `discountAsReduction`. */
+  discount: z.number().min(-100_000_000).max(100_000_000),
   afterDiscount: z.number().min(0).max(100_000_000),
   /** Igual que `unitsReturned`: llega en negativo y se normaliza con `Math.abs`. */
   returns: z.number().min(-100_000_000).max(100_000_000).nullable().optional(),
-  net: z.number().min(0).max(100_000_000),
-  avgUnits: z.number().min(0).max(100_000),
-  avgAmount: z.number().min(0).max(100_000_000)
+  /*
+   * ⚠️ Estos TRES pueden ser negativos de verdad, y ponerles suelo tumbaba el
+   * reporte entero.
+   *
+   * Un día en que alguien solo atiende una devolución deja su neto en rojo, y
+   * con él el promedio de unidades y el de monto, que salen de dividirlo. El
+   * 27 de agosto de 2026 la lectura se rechazaba con «la tabla viene
+   * incompleta» —culpando a la nitidez de la captura— cuando la captura estaba
+   * perfecta y el reporte era correcto.
+   */
+  net: z.number().min(-100_000_000).max(100_000_000),
+  avgUnits: z.number().min(-100_000).max(100_000),
+  avgAmount: z.number().min(-100_000_000).max(100_000_000)
 });
 
 const responseSchema = z.object({
@@ -194,7 +211,7 @@ export async function readPosReport(imageBase64: string, mimeType: string): Prom
     const outcome = await readWithBedrock(`${PROMPT}\n\n${SHAPE}`, imageBase64, mimeType);
     if (outcome.ok) {
       const validated = validateVisionText(outcome.text);
-      if (validated) return validated;
+      if (validated.ok) return validated;
       /*
        * Si llegó respuesta pero no valida, hay que ENTERARSE.
        *
@@ -204,7 +221,7 @@ export async function readPosReport(imageBase64: string, mimeType: string): Prom
        * agosto de 2026 —el modelo devolvía `vendorName` en vez de `name`— y sin
        * este aviso no había forma de verlo en los logs.
        */
-      console.warn("[pos-vision] Bedrock respondió pero la tabla no validó; se cae a Gemini.");
+      console.warn(`[pos-vision] Bedrock respondió pero la tabla no validó (${validated.reason}); se cae a Gemini.`);
     } else {
       console.warn(`[pos-vision] Bedrock no respondió (${outcome.problem}); se cae a Gemini.`);
     }
@@ -274,8 +291,12 @@ export async function readPosReport(imageBase64: string, mimeType: string): Prom
   if (!text) return { ok: false, error: "El lector no devolvió nada legible." };
 
   const validated = validateVisionText(text);
-  if (!validated) {
-    return { ok: false, error: "La tabla leída viene incompleta. Prueba con una captura más nítida, o sube el PDF." };
+  if (!validated.ok) {
+    console.warn(`[pos-vision] la tabla no validó: ${validated.reason}`);
+    return {
+      ok: false,
+      error: `La tabla leída no encaja con el reporte (${validated.reason}). Prueba con una captura más nítida, o sube el PDF.`
+    };
   }
   return validated;
 }
@@ -288,16 +309,30 @@ export async function readPosReport(imageBase64: string, mimeType: string): Prom
  * sitio es lo que evita que un proveedor nuevo se cuele por una puerta más
  * floja que el otro.
  */
-function validateVisionText(text: string): VisionOutcome | null {
+export type Validation = { ok: true; value: PosReport } | { ok: false; reason: string };
+
+export function validateVisionText(text: string): Validation {
   let json: unknown;
   try {
     json = JSON.parse(text);
   } catch {
-    return null;
+    return { ok: false, reason: "la respuesta no era JSON" };
   }
 
   const parsed = responseSchema.safeParse(json);
-  if (!parsed.success) return null;
+  if (!parsed.success) {
+    /*
+     * ⚠️ Decir QUÉ falló, no suponerlo.
+     *
+     * Este mensaje decía siempre «prueba con una captura más nítida», y el 27
+     * de agosto de 2026 mandó a buscar una captura mejor por un reporte que
+     * estaba perfecto: lo que fallaba era un límite del esquema, no la imagen.
+     * Nombrar el campo convierte una tarde de reintentos en un vistazo al log.
+     */
+    const issue = parsed.error.issues[0];
+    const campo = issue && issue.path.length > 0 ? issue.path.join(".") : "la respuesta";
+    return { ok: false, reason: `${campo}: ${issue?.message ?? "no encaja"}` };
+  }
 
   const rows: PosRow[] = parsed.data.rows.map((row) => ({
     name: row.name.trim(),
