@@ -1484,6 +1484,45 @@ hasta el conteo físico sin rastro de dónde salió. Meta y tickets tampoco.
 El tope de captura mide el **valor absoluto**: un cero de más en rojo es tan
 error como en verde.
 
+### El lector del POS y los días de devolución — 27 de agosto de 2026
+
+El reporte de ese día se rechazaba con «la tabla leída viene incompleta. Prueba
+con una captura más nítida», y la captura estaba perfecta. Dos muros, uno detrás
+del otro, y ninguno tenía que ver con la imagen.
+
+⚠️ **`net`, `avgUnits` y `avgAmount` pueden ser negativos de verdad.** Quien
+atiende un solo ticket y es una devolución deja el neto en rojo, y con él los
+dos promedios, que salen de dividirlo. El esquema de `lib/pos-vision.ts` les
+ponía suelo en cero. Y como **una fila detiene el reporte entero**, las otras
+dos personas se perdían con ella.
+
+⚠️ **La columna «Ventas Descuento» cambia de signo.** Casi siempre es una rebaja
+y viene en negativo, pero al devolverse una prenda rebajada su descuento se
+**revierte** y entonces suma. `discountAsReduction()` en `lib/pos-productivity.ts`
+deduce la dirección de la cuenta del propio reporte —bruto menos rebaja da el
+importe posterior al descuento—, **no** de lo que devuelva el lector: el prompt
+le pide magnitud, y un día normal no puede depender de que respete una
+instrucción. La magnitud se sigue verificando igual, que es la que se lee mal
+cuando se lee mal un dígito; lo único que se deduce es el signo, y no hay empate
+posible salvo con rebaja cero.
+
+En esa fila el margen se prellena **vacío**, no en cero: el descuento devuelto es
+de la venta de otro día y dividirlo por el bruto de hoy no da un margen. Retool
+lo aguanta desde `2a2545a` —`money(null)` tumbaba la tabla al pintarse y
+`String(null)` metía la cadena `"null"` en el borrador—, así que **aquí Retool va
+antes que Clarvex**, al revés de lo habitual: su cambio acepta las dos formas y
+el de Clarvex no.
+
+El mensaje de error ya nombra el campo que falló en vez de culpar a la foto.
+Desplegado en Clarvex `3201f2b` y Retool `ca797ac` (publicación posterior al
+commit `2a2545a`). 960 pruebas, ESLint y build limpios; `retool check` con sus
+cuatro fases en verde, dos PM2 online y health `ok`.
+
+⚠️ De paso: `frontend/tailwind.css` de la copia local de Retool **no está en
+git** y se había quedado atrás. No lo había tocado nadie —Retool le añadió el
+estilo del `select`— pero bloqueaba `retool push` con `platformRequiredFiles`.
+Se recupera clonando la app en otra carpeta y copiando el archivo.
+
 ## Manifiesto del CEDIS: las cajas `S` son empaque, no inventario
 
 Los manifiestos traen bolsas de la marca junto con la mercancía. **`K` es
