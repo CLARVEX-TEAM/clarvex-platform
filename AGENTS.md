@@ -1116,6 +1116,29 @@ había perdido.
 El detalle operativo completo está en `CLAUDE.md`, sección «Acceso al servidor»:
 esa es la fuente, y esto el resumen para no tener que saltar de archivo.
 
+## Las demás plataformas
+
+`CLAUDE.md`, sección **«Accesos — el mapa de todas las plataformas»**, tiene la
+tabla completa: qué se entra dónde y en qué sitio vive cada credencial. Lo que
+conviene saber de memoria:
+
+- **Cuatro servicios no existen fuera de Tailscale** —Vaultwarden, Portainer,
+  Uptime Kuma y Syncthing—. Sin la red privada conectada no responden ni con la
+  pantalla de acceso, así que «no carga» casi siempre es Tailscale, no el
+  servicio.
+- **Retool tiene DOS cuentas y no son intercambiables.** La administrativa
+  (`contacto@clarvex.adrianluna.mx`) publica e invita; la operativa
+  (`jhernandezl2c@gmail.com`) es la que se usa para probar de verdad, porque es
+  la única forma de comprobar que el aislamiento por tienda funciona.
+- **Ningún secreto se escribe en estos dos archivos.** Se commitean. Va el
+  sitio, el usuario y el método; el valor vive en el `.env` del servidor, en el
+  de n8n, en Vaultwarden o en las variables de usuario de Windows.
+
+⚠️ Y una que engaña al mirar el servidor: **`docker ps` enseña n8n publicando
+`0.0.0.0:5678`**, pero el grupo de seguridad no abre ese puerto. Comprobado
+desde fuera: 5678 y 8384 cerrados, solo responde el 443. Lo que lista `docker
+ps` es el puerto del contenedor, no lo que llega de internet.
+
 ## Alerta de presupuesto — la parte que no es opcional
 
 Presupuesto `clarvex-mensual`: **$20 USD al mes**, avisa al 50 %, al 100 % y

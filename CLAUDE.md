@@ -428,11 +428,16 @@ documento nombra en algun sitio es del servidor VIEJO, que esta apagado.
 | `uptime-kuma` | louislam/uptime-kuma:2 | Monitoreo de `/api/health` | **solo Tailscale** |
 | `vaultwarden` | vaultwarden/server | Gestor de contraseñas | **solo Tailscale** |
 | `portainer` | portainer/portainer-ce | Administración de Docker | **solo Tailscale** |
+| `syncthing` | syncthing/syncthing | Sincroniza la nube personal | **solo Tailscale** |
 
-Los cuatro últimos viven en `/home/ubuntu/stack/` con su propio
-`docker-compose.yml` (copia versionada en `scripts/aws-servicios-compose.yml`).
-`clarvex_postgres` y `npm` **NO** están en ese compose: se crearon con
-`docker run` sueltos y meterlos ahí los recrearía.
+⚠️ **Seis de los ocho viven en el compose** de `/home/ubuntu/stack/` —todos menos
+`clarvex_postgres` y `npm`, que se crearon con `docker run` sueltos y meterlos
+ahí los recrearía—. Copia versionada en `scripts/aws-servicios-compose.yml`.
+
+⚠️ **`docker ps` asusta con n8n y no debe.** Publica `0.0.0.0:5678`, pero el
+grupo de seguridad no abre ese puerto: comprobado desde fuera, 5678 y 8384 están
+cerrados y solo responde el 443. Lo que se ve en `docker ps` es el puerto del
+contenedor, no lo que llega de internet.
 
 ⚠️ **`npm` hay que conectarlo a mano a la red compartida** con
 `docker network connect clarvex_net npm`. El bridge por omisión de Docker no
@@ -482,6 +487,66 @@ dos veces al día.
 y además su máximo es 168h. La elección es binaria: `check` cada 12 horas o
 `accept`. Se eligió `accept` sabiendo qué se pierde: quien tuviera la PC
 desbloqueada y con Tailscale activo entraría al servidor sin segundo factor.
+
+---
+
+## Accesos — el mapa de todas las plataformas
+
+Verificado el 28 de agosto de 2026 contra los sistemas reales, no contra lo que
+decía este documento.
+
+> ⚠️ **Aquí NO va ningún secreto.** Este archivo se commitea. Va el sitio, el
+> usuario y el método; la contraseña o el token vive donde diga la última
+> columna. Si algo pide una credencial que no está en Vaultwarden ni en el
+> `.env`, es que falta guardarla, no que se pueda escribir aquí.
+
+| Plataforma | Cómo se entra | Credencial |
+|---|---|---|
+| **Servidor de producción** | `ssh clarvex-aws` — Tailscale SSH, usuario `ubuntu` | ninguna: la identidad de Tailscale |
+| **Cuenta de AWS** | `https://d-90667a3e8a.awsapps.com/start` · CLI: `aws sso login --profile clarvex` | SSO, sesión de 8 h |
+| **Clarvex (la app)** | `https://team.clarvex.tech` | PIN, o huella si está registrada en ESE dominio |
+| **Retool** | `https://clarvex.retool.com` · app: `/rr/app/captura-clarvex` | dos cuentas, ver abajo |
+| **Retool CLI** | `retool auth` desde `D:\Documents\captura-clarvex` | flujo de dispositivo en el navegador |
+| **Base de datos** | `docker exec -i clarvex_postgres psql -U clarvex -d clarvex_team` | ninguna desde dentro del servidor |
+| **n8n** | `https://n8n.adrianluna.mx` — público | usuario propio de n8n |
+| **Vaultwarden** | `https://clarvex-aws.taile59f37.ts.net` | la contraseña maestra |
+| **Portainer** | `https://clarvex-aws.taile59f37.ts.net:8443` | usuario propio |
+| **Uptime Kuma** | `https://clarvex-aws.taile59f37.ts.net:9443` | usuario propio |
+| **Syncthing** | `http://100.64.207.65:8384` — solo por Tailscale | usuario propio |
+| **GitHub** | `git@github.com:jhernandezl2c-hash/app.git` | llave SSH del equipo |
+| **Cloudflare** | panel web — R2 y DNS | cuenta de Cloudflare |
+| **Vultr** | panel web. ⚠️ **La máquina está APAGADA**; encenderla es manual | cuenta de Vultr |
+| **Telegram** | `@AdrianAssitBot` (Clarvex) y `@adrianl_bot` (personal) | tokens en el `.env` de n8n |
+
+**Los cuatro de Tailscale no tienen DNS público.** Salieron de internet el 25 de
+agosto de 2026: sin Tailscale conectado no existen, ni siquiera su pantalla de
+acceso. ⚠️ **Los clientes de Bitwarden guardan la URL del servidor**, así que al
+mover Vaultwarden hubo que reconfigurar la extensión y el teléfono; hasta
+entonces daban «Failed to fetch» sin explicar nada.
+
+**Las dos cuentas de Retool no son intercambiables:**
+
+| Cuenta | Para qué |
+|---|---|
+| `contacto@clarvex.adrianluna.mx` | administración: publicar, invitar, permisos |
+| `jhernandezl2c@gmail.com` | operación de tienda, grupo `captura tiendas`, sin permisos elevados |
+
+Se acordó **no usar la administrativa para operar**: es la única forma de
+comprobar que el aislamiento por tienda funciona de verdad.
+
+**Dónde vive cada secreto:**
+
+| Tipo | Dónde |
+|---|---|
+| Variables de la app (37) | `/home/ubuntu/clarvex-app/.env` en el servidor |
+| Secretos de n8n | su propio `.env`, en `/home/ubuntu/stack/` |
+| `CLOUDFLARE_API_TOKEN` | variable de entorno de **usuario** en Windows — no aparece en una terminal ya abierta |
+| Contraseñas personales | Vaultwarden |
+| Perfil de AWS | `~/.aws/` tras `aws sso login` |
+
+⚠️ **El `CRON_SECRET` está en DOS sitios**: el `.env` y repetido en cada línea
+del crontab de `ubuntu`. Cambiar uno solo deja todos los crons en 401, y fallan
+callados porque nadie mira la salida de un cron que «ya funcionaba».
 
 ---
 
