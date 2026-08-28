@@ -2,7 +2,7 @@ import { existsSync, readFileSync, readdirSync, unlinkSync } from "node:fs";
 import { extname, join } from "node:path";
 import { NextResponse } from "next/server";
 import { requireAdminCapture } from "@/lib/admin-capture-auth";
-import { armarVisual, leerHuecos, type FotoParaColocar } from "@/lib/visual-pptx";
+import { armarVisual, leerHuecos, plano, type FotoParaColocar } from "@/lib/visual-pptx";
 import { semanaYTienda } from "@/lib/visual-semana";
 import JSZip from "jszip";
 
@@ -39,7 +39,7 @@ export async function GET(request: Request) {
     fotosListas: listas.map((f) => f.replace(extname(f), "")),
     faltan: huecos
       .map((h) => h.etiqueta)
-      .filter((e) => !listas.some((f) => f.replace(extname(f), "").toLowerCase() === e.toLowerCase()))
+      .filter((e) => !listas.some((f) => plano(f.replace(extname(f), "")) === plano(e)))
   });
 }
 
@@ -77,7 +77,7 @@ export async function POST(request: Request) {
   // hueco se quedan: son las que hay que revisar, y borrarlas obligaria a
   // volver a mandarlas sin saber cual fallo.
   for (const puesta of resultado.colocadas) {
-    const archivo = archivos.find((f) => f.replace(extname(f), "").toLowerCase() === puesta.etiqueta.toLowerCase());
+    const archivo = archivos.find((f) => plano(f.replace(extname(f), "")) === plano(puesta.etiqueta));
     if (archivo) unlinkSync(join(PENDIENTES, archivo));
   }
 

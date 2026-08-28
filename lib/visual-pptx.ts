@@ -43,7 +43,17 @@ export type ResultadoVisual = {
   archivo: Buffer;
 };
 
-const plano = (s: string) =>
+/**
+ * La clave con la que se compara una etiqueta: sin acentos, sin dobles
+ * espacios y en minusculas.
+ *
+ * ⚠️ Se exporta porque **hay que comparar SIEMPRE con esta**. Las etiquetas de
+ * la plantilla traen espacios dobles («Ventana  Caballero», «Licencias  2») y
+ * el nombre del archivo que deja el bot los colapsa, asi que una comparacion
+ * literal no las reconoce. La foto se colocaba bien y luego ni se borraba de
+ * pendientes ni dejaba de aparecer como que faltaba.
+ */
+export const plano = (s: string) =>
   s
     .normalize("NFD")
     .replace(/[̀-ͯ]/g, "")
@@ -82,9 +92,27 @@ export function medirImagen(buf: Buffer): { ancho: number; alto: number } | null
   return null;
 }
 
+/** Margen lateral: el aire que se le deja a la foto contra el borde. */
+const MARGEN_X = 1.1;
+/** Aire entre dos fotos de la misma diapositiva. */
+const SEPARACION = 0.6;
+
 /**
- * Encuentra los huecos: para cada diapositiva, su etiqueta y el espacio libre
- * entre el bloque de titulo y esa etiqueta.
+ * Encuentra los huecos: para cada diapositiva, sus etiquetas y el espacio libre
+ * entre el bloque de titulo y ellas.
+ *
+ * ⚠️ **Una diapositiva puede llevar VARIAS fotos.** La de Licencias trae dos,
+ * «Licencias 1» y «Licencias 2», una a cada lado. Antes se guardaba una sola
+ * etiqueta por diapositiva —la ultima que apareciera en el XML— y la otra
+ * quedaba sin hueco, asi que su foto se reportaba como que no casaba con nada.
+ *
+ * El ancho se reparte a partes IGUALES entre las etiquetas, en su orden de
+ * izquierda a derecha, no segun donde caiga cada rotulo. Dos fotos lado a lado
+ * tienen que salir del mismo tamano: repartir por la posicion del texto las
+ * dejaria con medio centimetro de diferencia, que es justo lo que se nota.
+ *
+ * Con una sola etiqueta el reparto devuelve el ancho entero, asi que las doce
+ * diapositivas de siempre salen exactamente igual que antes.
  */
 export async function leerHuecos(zip: JSZip): Promise<Hueco[]> {
   const huecos: Hueco[] = [];
@@ -92,15 +120,15 @@ export async function leerHuecos(zip: JSZip): Promise<Hueco[]> {
     .filter((f) => /^ppt\/slides\/slide\d+\.xml$/.test(f))
     .sort((a, b) => Number(a.match(/\d+/)![0]) - Number(b.match(/\d+/)![0]));
 
-  const alturaLamina = await altoDeLamina(zip);
+  const lamina = await medidaLamina(zip);
 
   for (const ruta of nombres) {
     const slide = Number(ruta.match(/\d+/)![0]);
     const xml = await zip.file(ruta)!.async("string");
 
     let finTitulo = 0;
-    let inicioEtiqueta = alturaLamina;
-    let etiqueta: string | null = null;
+    let inicioEtiqueta = lamina.alto;
+    const etiquetas: Array<{ texto: string; centro: number }> = [];
 
     for (const sp of xml.match(/<p:sp>[\s\S]*?<\/p:sp>/g) ?? []) {
       const off = sp.match(/<a:off x="(-?\d+)" y="(-?\d+)"/);
@@ -118,10 +146,10 @@ export async function leerHuecos(zip: JSZip): Promise<Hueco[]> {
         finTitulo = Math.max(finTitulo, y + alto);
         continue;
       }
-      // Lo que queda abajo es la etiqueta de la foto.
-      if (y > alturaLamina / 2) {
+      // Lo que queda abajo es una etiqueta de foto.
+      if (y > lamina.alto / 2) {
         inicioEtiqueta = Math.min(inicioEtiqueta, y);
-        etiqueta = texto;
+        etiquetas.push({ texto, centro: (Number(off[1]) + Number(ext[1]) / 2) / EMU_POR_CM });
       }
     }
 
@@ -129,24 +157,34 @@ export async function leerHuecos(zip: JSZip): Promise<Hueco[]> {
     // sola la etiqueta no la distingue. Lo que NO tiene es cabecera arriba: en
     // las de foto siempre van el nombre de la tienda y la temporada. Sin eso,
     // no es una diapositiva de foto.
-    if (!etiqueta || finTitulo === 0) continue;
-    huecos.push({
-      slide,
-      etiqueta,
-      // Un margen para que la foto no toque el titulo ni la etiqueta.
-      x: 1.1,
-      y: finTitulo + 0.2,
-      ancho: 31.7,
-      alto: inicioEtiqueta - finTitulo - 0.4
+    if (etiquetas.length === 0 || finTitulo === 0) continue;
+
+    // De izquierda a derecha, que es el orden en que se leen.
+    etiquetas.sort((a, b) => a.centro - b.centro);
+
+    const util = lamina.ancho - MARGEN_X * 2;
+    const ancho = (util - SEPARACION * (etiquetas.length - 1)) / etiquetas.length;
+    etiquetas.forEach((et, i) => {
+      huecos.push({
+        slide,
+        etiqueta: et.texto,
+        x: MARGEN_X + i * (ancho + SEPARACION),
+        // Un margen para que la foto no toque el titulo ni la etiqueta.
+        y: finTitulo + 0.2,
+        ancho,
+        alto: inicioEtiqueta - finTitulo - 0.4
+      });
     });
   }
   return huecos;
 }
 
-async function altoDeLamina(zip: JSZip): Promise<number> {
+async function medidaLamina(zip: JSZip): Promise<{ ancho: number; alto: number }> {
   const pres = await zip.file("ppt/presentation.xml")!.async("string");
   const sz = pres.match(/sldSz cx="(\d+)" cy="(\d+)"/);
-  return sz ? Number(sz[2]) / EMU_POR_CM : 19.1;
+  return sz
+    ? { ancho: Number(sz[1]) / EMU_POR_CM, alto: Number(sz[2]) / EMU_POR_CM }
+    : { ancho: 33.9, alto: 19.1 };
 }
 
 /** El XML de una imagen colocada, ya escalada y centrada dentro del hueco. */
