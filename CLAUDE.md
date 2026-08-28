@@ -523,6 +523,8 @@ a propósito para cuando vuelva a hacer falta.
 
 No hay bloqueo permanente: el cortafuegos sigue siendo nuestro. Dos salidas:
 
+**a) Reabrir el puerto 22 a tu IP** y entrar por el alias directo:
+
 ```bash
 aws ec2 authorize-security-group-ingress --group-id sg-0c695d897d47788f7 --protocol tcp --port 22 --cidr TU_IP/32 --profile clarvex --region us-east-1
 ```
@@ -533,8 +535,9 @@ Y después entrar con `ssh clarvex-aws-directo`.
 escribió mal— así que copiado y pegado **fallaba**. En una salida de emergencia
 es donde menos margen hay para averiguarlo.
 
-b) **EC2 Instance Connect**, que no necesita llave ni Tailscale, solo la sesión
-de AWS. Es lo que se usó cuando la llave del par de EC2 resultó perdida.
+**b) EC2 Instance Connect**, desde el panel de AWS. No necesita llave ni
+Tailscale, solo la sesión de AWS. Es lo que se usó cuando la llave del par de
+EC2 resultó perdida.
 
 ⚠️ La llave original del par de EC2 **se perdió** y no se recupera: AWS solo
 guarda la pública. Ver la memoria `acceso-ssh-instancia-aws`.
