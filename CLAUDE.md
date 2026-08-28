@@ -56,13 +56,25 @@ cambia: un nombre que encaja con dos personas se reporta ambiguo y no se asigna.
 archivo bautizado `RF_W34_SAN_AGUSTIN.pptx`.
 
 ```
-visual                muestra los 12 huecos y cuáles faltan
+visual                muestra los huecos y cuáles faltan
 visual <etiqueta>     con una foto: la guarda con ese nombre
 visual armar          devuelve el .pptx
 ```
 
 - Los **huecos y su nombre se deducen de la plantilla**: la etiqueta es el texto
   que cae justo debajo del hueco y centrado en su ancho. No hay que marcar nada.
+- ⚠️ **Una diapositiva puede llevar VARIAS fotos.** La de Licencias trae dos
+  desde el 27 de agosto de 2026. El ancho se reparte a partes **iguales** entre
+  las etiquetas de esa lámina, ordenadas de izquierda a derecha — no según dónde
+  caiga cada rótulo: dos fotos lado a lado tienen que salir del mismo tamaño, y
+  repartir por la posición del texto las dejaba con medio centímetro de
+  diferencia, que es justo lo que se nota. Con una sola etiqueta el reparto
+  devuelve el ancho entero, así que las demás láminas no cambian.
+- ⚠️ **Las etiquetas de la plantilla traen espacios DOBLES** («Ventana&nbsp;&nbsp;Caballero»,
+  «Licencias&nbsp;&nbsp;2») y el bot los colapsa al nombrar el archivo. Comparar literal
+  hacía que la foto se colocara bien pero siguiera figurando como que faltaba y
+  no se borrara de pendientes. Comparar **siempre** con `plano()` de
+  `lib/visual-pptx.ts`.
 - ⚠️ Las fotos **no se recortan**: llegan ya editadas, así que se escalan para
   caber enteras y se centran. El hueco es muy apaisado (31.7 × 12.4 cm), así que
   una foto vertical sale como una tira estrecha — es correcto, pero conviene
