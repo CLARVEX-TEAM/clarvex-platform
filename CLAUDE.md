@@ -56,9 +56,13 @@ cambia: un nombre que encaja con dos personas se reporta ambiguo y no se asigna.
 archivo bautizado `RF_W34_SAN_AGUSTIN.pptx`.
 
 ```
-visual                muestra los huecos y cuáles faltan
-visual <etiqueta>     con una foto: la guarda con ese nombre
-visual armar          devuelve el .pptx
+visual                    muestra los huecos y cuáles faltan
+visual <etiqueta>         con una foto: la guarda con ese nombre
+visual                    con una foto SIN pie: la guarda sin zona
+visual reconocer          propone a qué zona va cada foto sin pie
+visual cambiar 3 = MSW ZONA 1   corrige una del reparto
+visual confirmar          aplica el reparto
+visual armar              devuelve el .pptx
 ```
 
 - Los **huecos y su nombre se deducen de la plantilla**: la etiqueta es el texto
@@ -87,6 +91,51 @@ visual armar          devuelve el .pptx
   de la real.
 - Solo se borran las fotos que se colocaron. Las que no casaron con ningún hueco
   se quedan: son las que hay que revisar.
+
+### Reconocer la zona sin pie de foto — 28 de agosto de 2026
+
+`GET|POST /api/admin/capture/visual/reconocer`. Las trece tomas son siempre las
+mismas zonas de la misma tienda, así que **la foto de la semana pasada es la
+mejor referencia** de cómo se ve cada sitio. Se mandan sin escribir nada y el
+bot propone el reparto.
+
+Medido contra reportes reales, con referencias de **tres semanas antes y cambio
+de temporada** de por medio —el peor caso, porque en uso normal tienen siete
+días—: **13 de 13**.
+
+- ⚠️ **Se reparten TODAS a la vez, una por hueco.** Preguntando foto por foto
+  acierta 10 de 13, y los tres fallos son el mismo: manda una foto de caballero
+  a un hueco de dama que ya estaba ocupado por la suya. **WSW y MSW son
+  secciones espejo, con los mismos muebles.** La restricción de uno a uno es
+  información, y sale gratis.
+- ⚠️ **Aquí sí hace falta el modelo grande.** Con Haiku, 11 de 13 (confunde MSW 1
+  con MSW 2); con Sonnet, 13. Es una llamada por semana, ~24 mil tokens: bajar de
+  modelo ahorra centavos y cuesta un cruce de zonas. Variable
+  `VISUAL_RECONOCER_MODEL`; usa las mismas credenciales `BEDROCK_*`.
+- ⚠️ **Nada de huella visual.** La mercancía cambia cada semana y es lo que más
+  ocupa la foto; lo que identifica la zona está en las orillas —señales de
+  evacuación y hacia dónde apuntan, las tiendas vecinas que se ven por el
+  cristal (GARMIN, CALZEDONIA), una columna roja, un arco de madera, un espejo—.
+  Una huella pesaría sobre todo la ropa. Además el **encuadre varía**: la misma
+  zona sale más cerca o más lejos según la semana.
+- ⚠️ **Proponer y aplicar van SEPARADOS.** Un cruce entre dos zonas sale impreso
+  y no lo nota nadie: son doce fotos parecidas de la misma tienda. Reconocer
+  solo **renombra** archivos; todo lo de después es el camino de siempre.
+- ⚠️ **Corregir INTERCAMBIA** con quien tuviera esa zona. Reasignar a secas
+  dejaría dos fotos en una zona y otra sin ninguna, rompiendo justo lo que hace
+  que esto funcione.
+- Nada de lo que devuelve el modelo se da por bueno (`lib/visual-reconocer.ts`):
+  el reparto tiene que ser completo y uno a uno, las zonas tienen que existir en
+  la plantilla y ninguna puede repetirse. Un reparto a medias se rechaza
+  diciendo qué fotos quedaron sueltas.
+- Las referencias **se siembran solas**: al armar, cada foto colocada se guarda
+  en `/home/ubuntu/visual/referencias/<clave>.jpg` antes de borrarla, encogida a
+  900 px. Se encogen porque **no caben**: veintiséis fotos a tamaño real pesan
+  ~18 MB y en base64 se pasan del límite de la petición.
+- Con fotos sin reconocer, **`visual armar` se detiene**. Sin ese freno el
+  reporte saldría con láminas vacías en silencio.
+- El primer arranque necesita referencias: se sembraron a mano con las fotos del
+  reporte de la semana 34, extraídas del propio `.pptx`.
 
 ### Y el copiloto flotante se retiró
 
