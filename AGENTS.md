@@ -6,7 +6,58 @@
 
 ---
 
-# 🔴 EN QUÉ ESTAMOS AHORA — 25 de agosto de 2026
+# 🔴 EN QUÉ ESTAMOS AHORA — 28 de agosto de 2026
+
+## La mudanza terminó; ahora se está quitando trabajo manual
+
+Producción es **`team.clarvex.tech`** sobre AWS desde el 24 de agosto, y
+**Vultr se apagó el 27** tras tres días congelado como camino de vuelta. Lo que
+se hace desde entonces es otra cosa: recortar lo que la tienda teclea a mano.
+
+⚠️ **Apagado no es destruido: Vultr sigue cobrando** hasta que se destruya la
+instancia. Al hacerlo, borrar la alarma `clarvex-caido-vultr` —silenciada, no
+eliminada— y subir la alerta de presupuesto de $20, que se quedó corta en cuanto
+EC2 corre a tiempo completo.
+
+## Lo que se construyó del 26 al 28 de agosto
+
+Todo por el bot de Telegram en **chat privado**, y todo con el mismo patrón: el
+bot propone o resume, la persona confirma, y el servidor no se cree nada de lo
+que llega. Detalle completo en `CLAUDE.md`, sección «Captura por Telegram».
+
+- **Pase de lista.** `asistencia` → «sin novedad» marca a cada quien según su
+  horario y solo se nombra la excepción. ⚠️ No decide estados ni pisa lo ya
+  capturado.
+- **El lector del POS empareja por cualquier parte del nombre**, con tolerancia
+  a una errata. Antes solo miraba el apellido por prefijo y una venta real se
+  quedó sin cargar.
+- **Reporte fotográfico semanal.** Las fotos van al bot y devuelve el `.pptx`
+  armado. Desde el 28, además, **reconoce a qué zona va cada foto** sin pie:
+  13 de 13 en la prueba más dura que se le pudo montar.
+- **Días de devolución en el POS.** El reporte del 27 se rechazaba culpando a la
+  nitidez de la captura; el fallo era un suelo de cero en el esquema y el signo
+  de la columna de descuento, que se invierte al devolverse una prenda rebajada.
+- **Centavos en Retool.** Cuota Justa y el escritorio redondeaban a pesos, así
+  que una columna de metas no sumaba su total. El dato siempre los tuvo.
+
+## Lo que queda
+
+- **Destruir la instancia de Vultr** (ver arriba: sigue cobrando).
+- **Borrar el usuario IAM `clarvex-bedrock`** y pasar la app al rol de
+  instancia. ⚠️ Ahora esa llave sirve a **dos** funciones, no una: el lector del
+  POS y el reconocimiento de zonas del visual. Al cambiar al rol hay que probar
+  las dos.
+- **El remitente de correo** sigue sin definir.
+- **Kopia no está vigilado**: respalda `D:\Nube` cada hora a R2 y nadie se
+  entera si deja de hacerlo.
+- **Política de asistencia por tienda**: `TOLERANCE_MINUTES`, `CUTOFF_MINUTES` y
+  los horarios por omisión viven en constantes y deberían estar en `Store`.
+- **Canal por tienda** para las fotos de evidencia, antes de que GUESS Galerías
+  empiece a capturar.
+
+---
+
+# 📕 Cómo se llegó aquí — el corte a AWS, 24 y 25 de agosto de 2026
 
 ## Producción vive en AWS
 
@@ -50,14 +101,14 @@ llevándose por delante la pantalla de mudanza y el webhook de fotos.
 - **`CRON_SECRET` rotado** durante el corte, escribiendo `.env` y crontab en la
   misma operación.
 
-## Lo que queda
+## Lo que quedaba entonces, y en qué acabó
 
-- **Apagar Vultr.** Conviene dejar pasar unos días. Al hacerlo: borrar la alarma
-  `clarvex-caido-vultr` (está silenciada, no eliminada), subir la alerta de
-  presupuesto de $20 a algo realista y repetir el barrido de recursos de costo
-  fijo.
-- **Borrar el usuario IAM `clarvex-bedrock`** y pasar la app al rol de instancia.
-- **El remitente de correo** sigue sin definir.
+- ~~**Apagar Vultr.**~~ Hecho el 27 de agosto, tras comprobar las dos cosas que
+  lo habrían hecho irreversible: que ningún DNS apuntara allí y que no hubiera
+  datos que solo existieran en esa máquina. **Sigue cobrando hasta destruirla.**
+- **Borrar el usuario IAM `clarvex-bedrock`** — abierto, y ahora con dos
+  funciones colgando de él.
+- **El remitente de correo** — abierto.
 
 ---
 
@@ -295,8 +346,12 @@ diaria), `/login` + `/api/auth/*` y las rutas de captura.
 emergencia por SSH:
 
 ```bash
-ssh clarvex "cd /root/clarvex-app && sed -i 's/^MAINTENANCE_MODE=.*/MAINTENANCE_MODE=0/' .env && pm2 restart clarvex-team --update-env"
+ssh clarvex-aws "cd /home/ubuntu/clarvex-app && sed -i 's/^MAINTENANCE_MODE=.*/MAINTENANCE_MODE=0/' .env && pm2 restart clarvex-team --update-env"
 ```
+
+⚠️ Esta línea decía `ssh clarvex` y `/root/clarvex-app`: el servidor **viejo**,
+que está apagado desde el 27 de agosto de 2026. Es una salida de emergencia, así
+que descubrir la ruta equivocada justo cuando hace falta es el peor momento.
 
 ### Reapertura ejecutada — 13 de agosto de 2026
 
@@ -943,13 +998,33 @@ retool auth login --device --host https://clarvex.retool.com
 - ⚠️ **`retool publish` no acepta `--message` ni `--note`.** Va sin argumentos.
 - ⚠️ **La vista previa corre dentro de un iframe aislado.** Ni `read_page` ni
   `document.querySelector` desde la pestaña padre alcanzan el DOM: para
-  verificar hay que usar capturas de pantalla e interacción real.
+  verificar hay que usar capturas de pantalla e interacción real. Y **pide
+  sesión**: desde una sesión de agente no se puede abrir, así que esa
+  comprobación la hace Adrian.
+- ⚠️ **Los archivos de plataforma NO están en git y se quedan atrás.**
+  `frontend/tailwind.css` bloqueó un `push` entero el 28 de agosto de 2026 con
+  `platformRequiredFiles`: nadie lo había tocado — Retool le añadió el estilo
+  del `select` y esta copia local seguía con la versión vieja. El `check`
+  restaura algunos solo, pero **este no**, y su contenido tampoco está en
+  `.retool/platform-files.json`, que solo guarda huellas. Se recupera clonando
+  la app en otra carpeta (`retool clone <uuid> --branch <rama>`, que no crea
+  hilo nuevo) y copiando el archivo.
+- ⚠️ **`exactOptionalPropertyTypes` está activo.** Un `detail?: string[]`
+  significa que la clave puede FALTAR, no que pueda valer `undefined`:
+  asignárselo es error de tipos. Hay que omitir la clave.
 
 ## El orden al desplegar
 
 Cuando el contrato entre las dos partes cambia —un campo nuevo que Clarvex
 manda y Retool lee— **primero Clarvex, después Retool**. Al revés, la pantalla
 lee un campo que el servidor todavía no envía y muestra `NaN` o avisos falsos.
+
+⚠️ **Al revés cuando el cambio es de Clarvex y Retool tiene que aguantarlo.** El
+27 de agosto Clarvex empezó a mandar el margen en `null` para un día de
+devolución; el Retool de entonces reventaba al pintarlo (`money(null)`) y metía
+la cadena `"null"` en el borrador. Ahí **Retool va primero**, porque su cambio
+acepta las dos formas y el de Clarvex no. La regla real no es «Clarvex primero»
+sino **el que aguanta las dos versiones va primero**.
 
 ## Cómo hablan entre sí
 
@@ -1036,6 +1111,23 @@ donde venga la lectura, pasa por el mismo esquema y por la comprobación de las
 cuentas del reporte. Un proveedor nuevo no puede colarse por una puerta más
 floja que el otro.
 
+### Segundo uso: reconocer las zonas del visual — 28 de agosto de 2026
+
+`lib/visual-reconocer-bedrock.ts` reparte las fotos del reporte fotográfico
+entre sus zonas comparándolas con las de la semana pasada. Mismas credenciales,
+distinto modelo.
+
+⚠️ **Aquí NO sirve Haiku.** Medido contra reportes reales de la tienda, con
+referencias de tres semanas antes y cambio de temporada de por medio: Haiku
+acierta 11 de 13 y confunde MSW 1 con MSW 2; **Sonnet acierta 13 de 13**. El
+lector del POS transcribe números de una tabla; esto es reconocer un sitio por
+sus detalles fijos, y no es la misma tarea. Se elige con
+`VISUAL_RECONOCER_MODEL`.
+
+Corre **una vez por semana**, ~24 mil tokens de entrada: unos siete centavos de
+dólar al mes. Bajar de modelo aquí ahorra nada y cuesta un cruce de zonas que
+sale impreso y no nota nadie.
+
 **Cuenta nueva, dos trámites de una sola vez** —ya hechos—: la verificación
 automática de AWS (bloquea Bedrock hasta ~2 h) y el formulario de caso de uso de
 Anthropic.
@@ -1046,9 +1138,16 @@ Hay un usuario IAM **`clarvex-bedrock`** con una llave permanente en el `.env`
 del VPS, acotado a `bedrock:InvokeModel` y `bedrock:Converse` sobre modelos de
 Anthropic y nada más.
 
-Existe SOLO porque Clarvex vive fuera de AWS. **El día que la app corra en EC2 esa
-llave sobra**: se le asigna un rol a la instancia y AWS entrega credenciales
-temporales solas. Borrarla es parte de la migración, no un extra:
+Existe SOLO porque Clarvex vivía fuera de AWS. **Ahora la app YA corre en EC2,
+así que esa llave sobra**: se le asigna un rol a la instancia y AWS entrega
+credenciales temporales solas.
+
+⚠️ **De esa llave cuelgan DOS funciones, no una** (desde el 28 de agosto de
+2026): el lector del reporte del POS y el reconocimiento de zonas del visual.
+Al pasar al rol de instancia hay que probar las dos — y el segundo usa **otro
+modelo**, así que la política del rol tiene que cubrir Sonnet además de Haiku.
+
+Borrarla es parte de la migración, no un extra:
 
 ```bash
 aws iam delete-access-key --user-name clarvex-bedrock --access-key-id <id> --profile clarvex
@@ -1058,12 +1157,17 @@ aws iam delete-user --user-name clarvex-bedrock --profile clarvex
 
 Las credenciales que sobran y nadie borra son las que se filtran dos años después.
 
-## La migración — EN CURSO desde el 21 de agosto de 2026
+## ✅ La migración — CERRADA el 24 de agosto de 2026
 
-**Los dos entornos conviven a propósito.** Vultr sigue siendo producción con
-`app.adrianluna.mx`; AWS corre en paralelo con un dominio NUEVO,
-`team.clarvex.tech`. Así no hay un momento de corte: el dominio viejo vive hasta
-que se decida apagarlo.
+> ⚠️ **Lo que sigue es el registro de cómo estaba durante la mudanza, no el
+> estado de hoy.** Producción es AWS desde la noche del 24 de agosto y Vultr se
+> apagó el 27. La tabla de abajo describe la máquina nueva mientras se preparaba;
+> la parte de «los dos conviven» ya no vale.
+
+**Los dos entornos convivieron a propósito.** Vultr fue producción con
+`app.adrianluna.mx` mientras AWS corría en paralelo con un dominio NUEVO,
+`team.clarvex.tech`. Así no hubo un momento de corte: el dominio viejo vivió
+hasta que se decidió apagarlo.
 
 | Pieza | Estado en AWS |
 |---|---|
@@ -1096,17 +1200,28 @@ falló, y PM2 reinició igual — dejando las dos instancias sin nada que servir
 Con `| tail` en la tubería, el código de salida es el de `tail`, así que un
 `&&` NO detiene la cadena. Hay que mirar la salida.
 
-### ⚠️ Reglas mientras convivan los dos
+### ⚠️ Reglas de la convivencia — CADUCADAS, y estaban al revés
+
+> 🛑 **Nada de este bloque se aplica hoy, y seguirlo desharía la mudanza.** Se
+> conserva porque explica por qué el corte se hizo como se hizo, no como
+> instrucción. Vultr está apagado desde el 27 de agosto de 2026.
+>
+> Lo cierto hoy: **los 16 crons corren en AWS** y el crontab de Vultr quedó
+> vacío. **La captura real ocurre en AWS.** **Retool apunta a AWS.** Leer lo de
+> abajo como si siguiera vigente apagaría los crons de producción y mandaría la
+> captura de la tienda a una máquina apagada.
+
+Mientras duró la convivencia (21–24 de agosto de 2026):
 
 **Ningún cron en AWS.** Si los dos servidores corren los mismos crons, el equipo
 recibe cada notificación push **por duplicado** y los respaldos se pisan. Se
-encienden el día que se apague Vultr, no antes.
+encendían el día que se apagara Vultr, no antes.
 
-**En AWS solo pruebas, nunca captura real.** Todo lo que se capture ahí se
-pierde: el día del cambio se trae un volcado fresco de Vultr y se restaura
+**En AWS solo pruebas, nunca captura real.** Todo lo que se capturara ahí se
+perdía: el día del cambio se trajo un volcado fresco de Vultr y se restauró
 encima. Dos sistemas vivos son dos bases de datos, y bifurcadas no se reúnen.
 
-**Retool sigue apuntando a Vultr.** Es lo que usa la gerencia a diario.
+**Retool seguía apuntando a Vultr.** Era lo que usaba la gerencia a diario.
 
 ### Lo que costó tiempo, para no repetirlo
 

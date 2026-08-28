@@ -1,8 +1,8 @@
 # Clarvex Team — CLAUDE.md
 
-## Captura por Telegram — 26 y 27 de agosto de 2026
+## Captura por Telegram — 26 al 28 de agosto de 2026
 
-Tres cosas nuevas, todas por el bot de Clarvex (`@AdrianAssitBot`) en **chat
+Cuatro cosas nuevas, todas por el bot de Clarvex (`@AdrianAssitBot`) en **chat
 privado**. El mismo bot manda las evidencias al grupo, así que cada flujo filtra
 por el chat: los mensajes del grupo no disparan nada.
 
@@ -192,6 +192,16 @@ actual, que es el flujo real de los domingos. El API usa `reportWeekStart` y
   mismo dato, y pegar un bloque viejo sobrescribía metas ya aplicadas sin que
   nada avisara. El endpoint `POST /api/admin/capture/goals` sigue en Clarvex,
   ya sin nadie que lo llame.
+- ⚠️ **Los importes se muestran CON CENTAVOS** desde el 28 de agosto de 2026
+  (Retool `eaaa231`, publish `4256e45`). Cuota Justa y el escritorio redondeaban
+  a pesos, y el dato siempre los tuvo: las metas guardadas son `9,154.76` y
+  `3,269.56`, no cifras redondas. Recortarlos hacía que **una columna no sumara
+  su total** —lo que se veía daba $31,356 y el real era $31,355—, lo que parece
+  un error de cálculo y no lo es; y tampoco cuadraba con el Excel exportado ni
+  con el reporte del POS, que sí los enseñan. Los **conteos** (tickets, piezas,
+  tráfico, personas) siguen en entero: medio ticket no existe. La regla vive en
+  `fmtMoney` de `frontend/utils/dashboard.ts` y en `MONEY` de
+  `frontend/pages/WeeklyPerformance.tsx`.
 - Retool: `backend/weeklyPerformance/*`, `frontend/pages/WeeklyPerformance.tsx`
   y ruta `/cuota-justa`. Desplegar siempre Clarvex antes que Retool.
 
@@ -343,6 +353,8 @@ global de otra versión instala un árbol de dependencias distinto al del servid
 | @smithy/node-http-handler | 4.9.5 (transporte IPv4 de R2) |
 | @sentry/nextjs | ^10.65.0 |
 | exceljs | ^4.4.0 (parser del RDV) |
+| sharp | ^0.35.4 (encoge las fotos del visual antes de reconocerlas) |
+| @aws-sdk/client-bedrock-runtime | ^3.1116.0 (lector del POS y reconocimiento de zonas) |
 
 ---
 
@@ -402,7 +414,8 @@ docker exec -i clarvex_postgres psql -U clarvex -d clarvex_team
 - Cloudflare R2 (fotos de perfil y evidencias)
 - Cloudflare DNS
 
-**Ruta de la app en el VPS:** `/root/clarvex-app`
+**Ruta de la app:** `/home/ubuntu/clarvex-app`. El `/root/clarvex-app` que este
+documento nombra en algun sitio es del servidor VIEJO, que esta apagado.
 
 ### Contenedores Docker en el mismo servidor
 
@@ -575,7 +588,7 @@ pnpm install
 pnpm exec prisma generate
 pnpm run build
 pnpm exec eslint . --max-warnings 0
-pnpm test                      # 687 tests; deben pasar todos
+pnpm test                      # 984 tests; deben pasar todos
 
 # Preferir SIEMPRE archivos explicitos sobre `git add .`:
 git status --short              # revisar que no haya .env, respaldos ni volcados
@@ -609,17 +622,21 @@ reactivar los crons heredados de Excel.
 pm2 logs clarvex-team --lines 100   # logs de la app
 pm2 restart clarvex-team --update-env
 docker ps                            # estado de contenedores
-ls /root/logs/                       # logs de los crons
+ls /home/ubuntu/logs/                # logs de los crons
 df -h /                              # espacio en disco
 ```
 
 ### Crons
 
-Están en el **crontab de `root`** (`crontab -l`), no en el repositorio. Casi todos son `curl` a
-`/api/cron/*` con `Authorization: Bearer $CRON_SECRET`. Los dos que no son curl:
+⚠️ **Están en el crontab de `ubuntu`, NO en el de `root`** (`crontab -l` entrando
+como `ubuntu`). El de root quedo VACIO en la mudanza: buscarlos ahi da cero
+lineas y parece que no hay crons. No estan en el repositorio.
+
+Casi todos son `curl` a `/api/cron/*` con `Authorization: Bearer $CRON_SECRET`,
+escribiendo a `/home/ubuntu/logs/`. Los dos que no son curl:
 
 - `30 9 * * *` — `pnpm exec tsx scripts/backup-db.ts` (respaldo diario a R2)
-- `/root/clarvex-app/cron-plan-reminder.sh` y `cron-pending-overdue-managers.sh`
+- `/home/ubuntu/clarvex-app/cron-plan-reminder.sh` y `cron-pending-overdue-managers.sh`
 
 ⚠️ Los horarios del crontab están en **UTC**; los comentarios se refieren a hora de Monterrey.
 
@@ -777,7 +794,14 @@ BEDROCK_ACCESS_KEY_ID=
 BEDROCK_SECRET_ACCESS_KEY=
 BEDROCK_POS_MODEL=      # opcional; por omisión us.anthropic.claude-haiku-4-5-20251001-v1:0
 BEDROCK_REGION=         # opcional; por omisión us-east-1
+VISUAL_RECONOCER_MODEL= # opcional; por omisión us.anthropic.claude-sonnet-4-5-20250929-v1:0
 ```
+
+⚠️ **Las mismas credenciales sirven a DOS funciones con modelos distintos.** El
+lector del POS usa Haiku, que transcribe una tabla; el reconocimiento de zonas
+del visual usa Sonnet, porque con Haiku acierta 11 de 13 y confunde dos zonas.
+Ver la seccion «Reconocer la zona sin pie de foto» dentro de «Captura por
+Telegram», al principio de este documento.
 
 Desde el 21 de agosto de 2026 `lib/pos-vision.ts` intenta **Bedrock primero** y
 deja **Gemini de red**. Medido con una captura real: 12 de 12 campos correctos
@@ -1064,7 +1088,7 @@ El % de comisión difiere por puesto pero el mínimo de referencia es el mismo p
 
 ---
 
-## Estado actual del proyecto — 14 de agosto de 2026
+## Estado actual del proyecto — 28 de agosto de 2026
 
 > 📌 **Lee primero el bloque «EN QUÉ ESTAMOS AHORA» al inicio de `AGENTS.md`.**
 > Ahí está el contexto completo de la migración en curso: qué se rompió, qué se
@@ -1078,7 +1102,7 @@ El % de comisión difiere por puesto pero el mínimo de referencia es el mismo p
   El valor viejo murió con el crontab de Vultr.
 
   ⚠️ **El `.env` y el crontab tienen que moverse a la vez.** El secreto vive en
-  los dos sitios: `CRON_SECRET` en `/root/clarvex-app/.env` y repetido en cada
+  los dos sitios: `CRON_SECRET` en `/home/ubuntu/clarvex-app/.env` y repetido en cada
   línea `curl` de `crontab -l`. Cambiar solo uno deja **todos** los crons
   respondiendo 401 — y fallan calladamente, porque nadie mira la salida de un
   cron que «ya funcionaba». También lo usa el chequeo profundo
@@ -1269,7 +1293,8 @@ El % de comisión difiere por puesto pero el mínimo de referencia es el mismo p
   Commit Clarvex `a531f46`, desplegado; lint, TypeScript, build y 687 pruebas
   correctos. La pantalla pública y ambos temas fueron verificados.
   Falta definir el remitente de correo. Detalle completo en `AGENTS.md`.
-- **Respaldo de `.env` suelto en el servidor:** `/root/clarvex-app/.env.bak-1784486367`.
+- **Respaldo de `.env` suelto en el servidor VIEJO:** `/root/clarvex-app/.env.bak-1784486367`.
+  Vivia en Vultr, que esta apagado; se ira con la instancia al destruirla.
   Ya está cubierto por `.gitignore`, pero conviene sacarlo del directorio del repo.
 
 ### ✅ Resuelto y funcionando
@@ -1297,6 +1322,12 @@ El % de comisión difiere por puesto pero el mínimo de referencia es el mismo p
   respondía 401 a todo y las suscripciones no se acreditaban solas. Clarvex
   `532d0dd` deja además el fallo a la vista si el secreto volviera a faltar
   (log explícito y aviso a Telegram) — ver [Variables de entorno](#variables-de-entorno)
+- Captura por Telegram en servicio desde el 26 de agosto de 2026: pase de lista,
+  reporte fotográfico semanal y —desde el 28— el reconocimiento de la zona de
+  cada foto sin pie. Ver «Captura por Telegram», al principio de este documento
+- Vultr apagado el 27 de agosto de 2026, después de comprobar que ningún DNS
+  apuntaba allí y que no había datos que solo existieran en esa máquina.
+  ⚠️ **Apagado no es destruido: sigue cobrando.**
 
 ### ⚠️ Áreas a no tocar sin revisión previa
 
