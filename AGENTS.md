@@ -1046,7 +1046,10 @@ emisión el 24 de agosto se facturó a la tarjeta.
 **Clarvex ya corre en AWS** desde el corte del 24 de agosto. Lo que sigue en
 esta sección es cómo se entra a la cuenta y las trampas que costaron tiempo.
 
-## Cómo se entra
+## Cómo se entra a la CUENTA de AWS
+
+> Esto es el panel y el CLI. Para entrar **a la máquina** por SSH, ver la
+> sección siguiente: son dos cosas distintas y ninguna sirve para la otra.
 
 | Dato | Valor |
 |---|---|
@@ -1066,6 +1069,52 @@ abierta. Llamarlo por su ruta funciona siempre:
 opción multi-región replica a Oregón y para eso usa una clave KMS propia, **que
 se cobra aparte** (~$1/mes fijo). Con una sola persona, esa resiliencia no
 compra nada.
+
+## Cómo se entra al SERVIDOR
+
+```bash
+ssh clarvex-aws
+```
+
+Sin llave y sin contraseña. Entra por **Tailscale SSH**, que autentica con la
+identidad de Tailscale; el único requisito es tener Tailscale conectado en la
+máquina desde la que se entra.
+
+| Dato | Valor |
+|---|---|
+| Destino | `clarvex-aws.taile59f37.ts.net` — IP privada `100.64.207.65` |
+| Usuario | `ubuntu`. ⚠️ La app corre como `ubuntu`, **no como root** |
+| Ruta de la app | `/home/ubuntu/clarvex-app` |
+| Contenedores | `/home/ubuntu/stack/` |
+| Logs de los crons | `/home/ubuntu/logs/` |
+| Grupo de seguridad | `sg-0c695d897d47788f7` |
+
+⚠️ **El puerto 22 NO admite la IP de casa** desde el 25 de agosto de 2026. Solo
+quedan los tres rangos de Retool, por donde entra el túnel que alimenta la
+captura de la tienda — cerrarlos dejaría a la tienda sin capturar. Por eso
+Tailscale es hoy la única puerta normal, y cualquier receta con
+`ssh -i <llave> ubuntu@44.200.176.214` está caducada.
+
+⚠️ **La llave original del par de EC2 se perdió** y no se recupera: AWS solo
+guarda la pública. Por eso no hay un «plan B con llave» — el plan B es EC2
+Instance Connect. Ver la memoria `acceso-ssh-instancia-aws`.
+
+Si Tailscale no respondiera, hay dos salidas y el cortafuegos sigue siendo
+nuestro:
+
+**a) Reabrir el 22 a tu IP** y usar el alias `clarvex-aws-directo`, que sigue en
+el `~/.ssh/config` a propósito:
+
+```bash
+aws ec2 authorize-security-group-ingress --group-id sg-0c695d897d47788f7 --protocol tcp --port 22 --cidr TU_IP/32 --profile clarvex --region us-east-1
+```
+
+**b) EC2 Instance Connect** desde el panel. No necesita llave ni Tailscale, solo
+la sesión de AWS. Es lo que se usó cuando se descubrió que la llave del par se
+había perdido.
+
+El detalle operativo completo está en `CLAUDE.md`, sección «Acceso al servidor»:
+esa es la fuente, y esto el resumen para no tener que saltar de archivo.
 
 ## Alerta de presupuesto — la parte que no es opcional
 
@@ -1184,8 +1233,13 @@ y los textos legales.
 
 ### Cómo se despliega en la máquina nueva
 
+⚠️ Esto decía `ssh -i ~/.ssh/clarvex_vultr_2026 ubuntu@44.200.176.214`, que hoy
+**falla dos veces**: era la llave de *Vultr* apuntando a la IP de *AWS*, y desde
+el 25 de agosto de 2026 el puerto 22 ya no admite la IP de casa. Se entra por
+Tailscale — ver «Cómo se entra al servidor» más arriba.
+
 ```bash
-ssh -i ~/.ssh/clarvex_vultr_2026 ubuntu@44.200.176.214
+ssh clarvex-aws
 cd ~/clarvex-app && git pull
 pnpm install && pnpm exec prisma generate
 pnpm exec prisma migrate deploy     # solo si hay migración nueva
@@ -1348,15 +1402,20 @@ caducidad de un mes. Vive en la variable de usuario de Windows
 token deja de funcionar justo el día de la migración, sin avisar y sin razón
 aparente. La protección es la caducidad corta.
 
-Cinco registros A apuntan a `216.238.88.93`, **todos con proxy activo**:
+Cinco registros A apuntaban a `216.238.88.93`, **todos con proxy activo**:
 
-| Registro | Qué es |
-|---|---|
-| `app` | Clarvex |
-| `n8n` | webhook de fotos a Telegram |
-| `vault` | Vaultwarden |
-| `status` | Uptime Kuma |
-| `docker` | Portainer |
+| Registro | Qué es | Hoy |
+|---|---|---|
+| `app` | Clarvex | pantalla de mudanza, ya en AWS |
+| `n8n` | webhook de fotos a Telegram | en AWS |
+| `vault` | Vaultwarden | **sin DNS público** — solo Tailscale |
+| `status` | Uptime Kuma | **sin DNS público** — solo Tailscale |
+| `docker` | Portainer | **sin DNS público** — solo Tailscale |
+
+⚠️ **Esa tabla es de ANTES del corte.** Los tres últimos salieron de internet el
+25 de agosto de 2026 y hoy se sirven con `tailscale serve`; los dos primeros
+apuntan a `44.200.176.214`. Sacar tres dominios del certificado obligó a
+reemitirlo: si no, la renovación habría fallado **para los cinco**.
 
 ### n8n: fotos, PDF y alertas de operación — 22 de agosto de 2026
 
