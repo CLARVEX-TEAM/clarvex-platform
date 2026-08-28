@@ -72,6 +72,9 @@ const captureRoutes = new Set([
   // Reporte fotografico semanal: lee las fotos que dejo el bot y devuelve el
   // .pptx armado. Mismo secreto que el resto de la captura.
   "/api/admin/capture/visual",
+  // Reparte entre sus zonas las fotos que llegaron sin pie, comparandolas con
+  // las de la semana pasada. Propone y renombra; no arma nada.
+  "/api/admin/capture/visual/reconocer",
   // Inicio gerencial de Retool: solo lectura, autorizado con el mismo secreto.
   "/api/admin/retool/dashboard"
 ]);

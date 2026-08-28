@@ -30,8 +30,8 @@
       {
         "parameters": {
           "mode": "expression",
-          "numberOutputs": 4,
-          "output": "={{ $json.message.chat.id !== 8328057325 ? 3 : ($json.message.photo ? 0 : ((($json.message.text || '').trim().toLowerCase() === 'visual armar') ? 1 : ((($json.message.text || '').trim().toLowerCase() === 'visual') ? 2 : 3))) }}",
+          "numberOutputs": 7,
+          "output": "={{ (() => { const m = $json.message; if (m.chat.id !== 8328057325) return 3; if (m.photo) return 0; const t = (m.text || '').trim().toLowerCase(); if (t === 'visual armar') return 1; if (t === 'visual reconocer') return 4; if (t === 'visual confirmar') return 5; if (t.startsWith('visual cambiar')) return 6; if (t === 'visual') return 2; return 3;})() }}",
           "options": {}
         },
         "id": "v0000000-0002-4000-8000-000000000002",
@@ -111,7 +111,7 @@
       },
       {
         "parameters": {
-          "jsCode": "// Se confirma con lo que el SERVIDOR ve en la carpeta, no con lo que\n// acabamos de escribir. Si el archivo no llego, aqui se nota.\nconst d = $json;\nconst faltan = d.faltan || [];\nconst etiqueta = $('Validar el pie').first().json.etiqueta;\n\nconst lineas = ['Guardada: ' + etiqueta, ''];\nif (faltan.length === 0) {\n  lineas.push('Ya estan las ' + (d.huecos || []).length + '. Manda \"visual armar\".');\n} else {\n  lineas.push('Faltan ' + faltan.length + ':');\n  for (const f of faltan) lineas.push('  ' + f);\n}\nreturn [{ json: { respuesta: lineas.join('\\n') } }];"
+          "jsCode": "// Se confirma con lo que el SERVIDOR ve en la carpeta, no con lo que\n// acabamos de escribir. Si el archivo no llego, aqui se nota.\nconst d = $json;\nconst faltan = d.faltan || [];\nconst v = $('Validar el pie').first().json;\nconst sinNombre = d.sinNombre || 0;\n\nconst lineas = [v.sinNombre ? 'Guardada, sin zona todavia.' : 'Guardada: ' + v.etiqueta, ''];\nif (sinNombre > 0) {\n  lineas.push('Van ' + sinNombre + ' sin zona. Cuando las tengas todas: \"visual reconocer\".');\n  if (faltan.length > sinNombre) {\n    lineas.push('');\n    lineas.push('Zonas sin foto: ' + faltan.length);\n  }\n} else if (faltan.length === 0) {\n  lineas.push('Ya estan las ' + (d.huecos || []).length + '. Manda \"visual armar\".');\n} else {\n  lineas.push('Faltan ' + faltan.length + ':');\n  for (const f of faltan) lineas.push('  ' + f);\n}\nreturn [{ json: { respuesta: lineas.join('\\n') } }];"
         },
         "id": "v0000000-0007-4000-8000-000000000007",
         "name": "Decir que falta",
@@ -152,7 +152,7 @@
       },
       {
         "parameters": {
-          "jsCode": "const d = $json;\nconst huecos = d.huecos || [];\nconst listas = d.fotosListas || [];\nconst faltan = d.faltan || [];\n\nconst lineas = ['Reporte fotografico — ' + huecos.length + ' fotos', ''];\nfor (const h of huecos) {\n  const puesta = listas.some((l) => l.toLowerCase() === h.etiqueta.toLowerCase());\n  lineas.push((puesta ? '  [si] ' : '  [  ] ') + h.etiqueta);\n}\nlineas.push('');\nif (faltan.length === 0) {\n  lineas.push('Estan todas. Manda \"visual armar\".');\n} else {\n  lineas.push('Manda cada foto con su pie, por ejemplo:');\n  lineas.push('  visual ' + faltan[0].toLowerCase());\n}\nreturn [{ json: { respuesta: lineas.join('\\n') } }];"
+          "jsCode": "const d = $json;\nconst huecos = d.huecos || [];\nconst listas = d.fotosListas || [];\nconst faltan = d.faltan || [];\nconst sinNombre = d.sinNombre || 0;\n\nconst lineas = ['Reporte fotografico — ' + huecos.length + ' fotos', ''];\nfor (const h of huecos) {\n  const puesta = listas.some((l) => l.toLowerCase() === h.etiqueta.toLowerCase());\n  lineas.push((puesta ? '  [si] ' : '  [  ] ') + h.etiqueta);\n}\nlineas.push('');\nif (sinNombre > 0) {\n  lineas.push('Y ' + sinNombre + ' foto(s) esperando zona.');\n  lineas.push('Manda \"visual reconocer\" para repartirlas.');\n} else if (faltan.length === 0) {\n  lineas.push('Estan todas. Manda \"visual armar\".');\n} else {\n  lineas.push('Mandalas sin pie y luego \"visual reconocer\",');\n  lineas.push('o cada una con su nombre, por ejemplo:');\n  lineas.push('  ' + faltan[0].toLowerCase());\n}\nreturn [{ json: { respuesta: lineas.join('\\n') } }];"
         },
         "id": "v0000000-0009-4000-8000-000000000009",
         "name": "Formatear estado",
@@ -303,7 +303,7 @@
       },
       {
         "parameters": {
-          "jsCode": "// El pie de foto ES el nombre del hueco. No hace falta escribir \"visual\"\n// delante --se acepta por costumbre, pero sobra--: lo natural es poner\n// \"WSW ZONA 2\" y eso es lo que hay que entender.\nconst pie = ($('Mensaje').first().json.message.caption || '').trim();\nconst huecos = ($json.huecos || []).map((h) => h.etiqueta);\n\nconst plano = (s) => String(s).normalize('NFD').replace(/[\\u0300-\\u036f]/g, '')\n  .replace(/[_-]+/g, ' ').replace(/\\s+/g, ' ').trim().toLowerCase();\n\nconst buscado = plano(pie.replace(/^visual\\s+/i, ''));\n\nif (!buscado) {\n  return [{ json: { valido: false, respuesta: 'Ponle un pie a la foto con el nombre del espacio.\\n\\n' + huecos.map((h) => '  ' + h).join('\\n') } }];\n}\n\nconst casa = huecos.find((h) => plano(h) === buscado);\nif (!casa) {\n  // ⚠️ Antes esto se ignoraba en silencio y parecia que el bot no\n  // respondia. Un nombre que no existe tiene que decirlo.\n  return [{ json: { valido: false, respuesta: 'No reconozco \"' + pie + '\".\\n\\nLos espacios son:\\n' + huecos.map((h) => '  ' + h).join('\\n') } }];\n}\n\n// El archivo se llama como el hueco, no como lo escribio: asi el servidor\n// lo empareja sin volver a normalizar nada.\nconst PERMITIDOS = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 ';\nlet limpio = '';\nfor (const c of casa) limpio += PERMITIDOS.indexOf(c) >= 0 ? c : ' ';\nlimpio = limpio.replace(/\\s+/g, ' ').trim();\n\nreturn [{ json: { valido: true, etiqueta: casa, archivo: limpio + '.jpg' } }];"
+          "jsCode": "// El pie de foto ES el nombre del hueco. No hace falta escribir \"visual\"\n// delante --se acepta por costumbre, pero sobra--: lo natural es poner\n// \"WSW ZONA 2\" y eso es lo que hay que entender.\n//\n// ⚠️ Y SIN pie tambien vale: se guarda con un nombre provisional y luego\n// «visual reconocer» averigua su zona comparandola con la semana pasada.\n// Rechazarla obligaba a teclear trece pies cada jueves.\nconst mensaje = $('Mensaje').first().json.message;\nconst pie = (mensaje.caption || '').trim();\nconst huecos = ($json.huecos || []).map((h) => h.etiqueta);\n\nconst plano = (s) => String(s).normalize('NFD').replace(/[\\u0300-\\u036f]/g, '')\n  .replace(/[_-]+/g, ' ').replace(/\\s+/g, ' ').trim().toLowerCase();\n\nconst limpiar = (s) => {\n  const PERMITIDOS = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 ';\n  let out = '';\n  for (const c of s) out += PERMITIDOS.indexOf(c) >= 0 ? c : ' ';\n  return out.replace(/\\s+/g, ' ').trim();\n};\n\nconst buscado = plano(pie.replace(/^visual\\s+/i, ''));\n\nif (!buscado) {\n  // El id del mensaje evita que dos fotos del mismo album se pisen: en un\n  // album Telegram las manda casi a la vez y el nombre seria el mismo.\n  return [{ json: { valido: true, sinNombre: true, etiqueta: null, archivo: 'sin-nombre-' + mensaje.message_id + '.jpg' } }];\n}\n\nconst casa = huecos.find((h) => plano(h) === buscado);\nif (!casa) {\n  // ⚠️ Un pie que NO casa con ningun hueco si se rechaza. Guardarlo como\n  // «sin nombre» seria tragarse una errata y acabar colocandola en otro\n  // sitio: lo escribio a proposito, asi que hay que decir que no cuadra.\n  return [{ json: { valido: false, respuesta: 'No reconozco \"' + pie + '\".\\n\\nLos espacios son:\\n' + huecos.map((h) => '  ' + h).join('\\n') + '\\n\\nO mandala sin pie y luego \"visual reconocer\".' } }];\n}\n\n// El archivo se llama como el hueco, no como lo escribio: asi el servidor\n// lo empareja sin volver a normalizar nada.\nreturn [{ json: { valido: true, sinNombre: false, etiqueta: casa, archivo: limpiar(casa) + '.jpg' } }];"
         },
         "id": "v0000000-0021-4000-8000-000000000021",
         "name": "Validar el pie",
@@ -329,6 +329,115 @@
         "position": [
           -60,
           -320
+        ]
+      },
+      {
+        "parameters": {
+          "method": "GET",
+          "url": "https://team.clarvex.tech/api/admin/capture/visual/reconocer",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "=Bearer {{ $env.ADMIN_CAPTURE_SECRET }}"
+              }
+            ]
+          },
+          "options": {
+            "timeout": 180000
+          }
+        },
+        "id": "v0000000-0030-4000-8000-000000000030",
+        "name": "Reconocer",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "onError": "continueErrorOutput",
+        "position": [
+          -460,
+          460
+        ]
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "https://team.clarvex.tech/api/admin/capture/visual/reconocer?accion=aplicar",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "=Bearer {{ $env.ADMIN_CAPTURE_SECRET }}"
+              }
+            ]
+          },
+          "options": {
+            "timeout": 60000
+          }
+        },
+        "id": "v0000000-0031-4000-8000-000000000031",
+        "name": "Confirmar",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "onError": "continueErrorOutput",
+        "position": [
+          -460,
+          640
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "// «visual cambiar 3 = MSW ZONA 1». El igual es opcional.\nconst t = ($json.message.text || '').trim();\nconst m = t.match(/^visual\\s+cambiar\\s+(\\d+)\\s*=?\\s*(.+)$/i);\nif (!m) {\n  // ⚠️ Se para aqui en vez de mandar una peticion a medias: con el numero\n  // o la zona vacios el servidor cambiaria lo que no es.\n  throw new Error('Escribelo asi: visual cambiar 3 = MSW ZONA 1');\n}\nreturn [{ json: { foto: Number(m[1]), etiqueta: m[2].trim() } }];"
+        },
+        "id": "v0000000-0032-4000-8000-000000000032",
+        "name": "Leer el cambio",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "onError": "continueErrorOutput",
+        "position": [
+          -660,
+          820
+        ]
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "=https://team.clarvex.tech/api/admin/capture/visual/reconocer?accion=cambiar&foto={{ $json.foto }}&etiqueta={{ encodeURIComponent($json.etiqueta) }}",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "=Bearer {{ $env.ADMIN_CAPTURE_SECRET }}"
+              }
+            ]
+          },
+          "options": {
+            "timeout": 60000
+          }
+        },
+        "id": "v0000000-0033-4000-8000-000000000033",
+        "name": "Cambiar",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "onError": "continueErrorOutput",
+        "position": [
+          -460,
+          820
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "return [{ json: { respuesta: $json.mensaje || 'Listo.' } }];"
+        },
+        "id": "v0000000-0034-4000-8000-000000000034",
+        "name": "Decir el mensaje",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "onError": "continueErrorOutput",
+        "position": [
+          -260,
+          640
         ]
       }
     ],
@@ -367,7 +476,28 @@
               "index": 0
             }
           ],
-          []
+          [],
+          [
+            {
+              "node": "Reconocer",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Confirmar",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Leer el cambio",
+              "type": "main",
+              "index": 0
+            }
+          ]
         ]
       },
       "Bajar la foto": {
@@ -556,6 +686,96 @@
           [
             {
               "node": "Responder",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Reconocer": {
+        "main": [
+          [
+            {
+              "node": "Decir el mensaje",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Avisar del fallo",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Confirmar": {
+        "main": [
+          [
+            {
+              "node": "Decir el mensaje",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Avisar del fallo",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Cambiar": {
+        "main": [
+          [
+            {
+              "node": "Decir el mensaje",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Avisar del fallo",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Leer el cambio": {
+        "main": [
+          [
+            {
+              "node": "Cambiar",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Avisar del fallo",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Decir el mensaje": {
+        "main": [
+          [
+            {
+              "node": "Responder",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Avisar del fallo",
               "type": "main",
               "index": 0
             }
