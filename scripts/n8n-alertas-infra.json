@@ -14,29 +14,32 @@
         "name": "Webhook",
         "type": "n8n-nodes-base.webhook",
         "typeVersion": 2,
-        "position": [-400, 0],
+        "position": [
+          -400,
+          0
+        ],
         "webhookId": "alerta-infra"
       },
       {
         "parameters": {
-          "chatId": "8328057325",
-          "text": "={{ '<b>' + ($json.body.title || 'Aviso') + '</b>\\n\\n' + ($json.body.text || '') }}",
-          "additionalFields": {
-            "parse_mode": "HTML"
+          "method": "POST",
+          "url": "={{ $env.SLACK_ALERT_WEBHOOK }}",
+          "sendBody": true,
+          "contentType": "raw",
+          "rawContentType": "application/json",
+          "body": "={{ JSON.stringify({ text: ('*' + ($json.body.title || 'Aviso') + '*') + '\\n' + (($json.body.text || '')) }) }}",
+          "options": {
+            "timeout": 15000
           }
         },
-        "id": "a1b2c3d4-0002-4000-8000-000000000002",
-        "name": "Telegram - Privado",
-        "type": "n8n-nodes-base.telegram",
-        "typeVersion": 1.2,
-        "position": [-80, 0],
-        "webhookId": "b2c3d4e5-0003-4000-8000-000000000003",
-        "credentials": {
-          "telegramApi": {
-            "id": "c7bIjyLeljGWy3yc",
-            "name": "Telegram account 2"
-          }
-        }
+        "id": "slack-slack-alerta",
+        "name": "Slack - Alerta",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          -80,
+          0
+        ]
       }
     ],
     "connections": {
@@ -44,7 +47,7 @@
         "main": [
           [
             {
-              "node": "Telegram - Privado",
+              "node": "Slack - Alerta",
               "type": "main",
               "index": 0
             }

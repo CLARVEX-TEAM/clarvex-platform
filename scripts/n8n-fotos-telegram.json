@@ -1,0 +1,258 @@
+[
+  {
+    "updatedAt": "2026-08-22T15:56:09.000Z",
+    "createdAt": "2026-07-17T16:47:44.507Z",
+    "id": "l8q88gnWzcwYDpvp",
+    "name": "Clarvex — Fotos y PDF a Telegram",
+    "description": null,
+    "active": true,
+    "isArchived": false,
+    "nodes": [
+      {
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "clarvex-fotos",
+          "options": {}
+        },
+        "id": "8b988377-26d3-4941-972e-3a4fbe2b9ff3",
+        "name": "Webhook",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2,
+        "position": [
+          -496,
+          64
+        ],
+        "webhookId": "clarvex-fotos"
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "strict",
+              "version": 2
+            },
+            "conditions": [
+              {
+                "id": "cond-format-document",
+                "leftValue": "={{ $json.body.format }}",
+                "rightValue": "document",
+                "operator": {
+                  "type": "string",
+                  "operation": "equals",
+                  "name": "filter.operator.equals"
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "id": "565f2335-ad28-4bb6-97e3-3ddd669ac8c5",
+        "name": "Es PDF?",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "position": [
+          -144,
+          48
+        ]
+      },
+      {
+        "parameters": {
+          "operation": "sendDocument",
+          "chatId": "-1004499713194",
+          "file": "={{ $json.body.imageUrl }}",
+          "additionalFields": {
+            "caption": "={{ $json.body.caption }}"
+          }
+        },
+        "id": "5c7e7df4-2c30-4889-bf0c-8d5705b27861",
+        "name": "Telegram - Documento (PDF)",
+        "type": "n8n-nodes-base.telegram",
+        "typeVersion": 1.2,
+        "position": [
+          112,
+          -80
+        ],
+        "webhookId": "8a12c3e9-60c7-4c20-a247-beb2efa485eb",
+        "credentials": {
+          "telegramApi": {
+            "id": "c7bIjyLeljGWy3yc",
+            "name": "Telegram account 2"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "operation": "sendPhoto",
+          "chatId": "-1004499713194",
+          "file": "={{ $json.body.imageUrl }}",
+          "additionalFields": {
+            "caption": "={{ $json.body.caption }}"
+          }
+        },
+        "id": "5d3d3964-9d34-4577-a22e-717192cc0a25",
+        "name": "Telegram - Foto",
+        "type": "n8n-nodes-base.telegram",
+        "typeVersion": 1.2,
+        "position": [
+          112,
+          160
+        ],
+        "webhookId": "3769eab5-7fa8-4384-8cb3-dabb5960238b",
+        "credentials": {
+          "telegramApi": {
+            "id": "c7bIjyLeljGWy3yc",
+            "name": "Telegram account 2"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "strict",
+              "version": 3
+            },
+            "conditions": [
+              {
+                "id": "cond-format-alert",
+                "leftValue": "={{ $json.body.format }}",
+                "rightValue": "alert",
+                "operator": {
+                  "type": "string",
+                  "operation": "equals",
+                  "name": "filter.operator.equals"
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "id": "bf0c3cf1-9914-4804-98c0-cbdb94b38014",
+        "name": "Es alerta?",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.3,
+        "position": [
+          -304,
+          64
+        ]
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "={{ $env.SLACK_ALERT_WEBHOOK }}",
+          "sendBody": true,
+          "contentType": "raw",
+          "rawContentType": "application/json",
+          "body": "={{ JSON.stringify({ text: ('*' + ($json.body.title || 'Aviso') + '*') + '\\n' + (($json.body.text || '')) }) }}",
+          "options": {
+            "timeout": 15000
+          }
+        },
+        "id": "slack-alerta-fotos",
+        "name": "Slack - Alerta",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          112,
+          -304
+        ]
+      }
+    ],
+    "connections": {
+      "Webhook": {
+        "main": [
+          [
+            {
+              "node": "Es alerta?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Es alerta?": {
+        "main": [
+          [
+            {
+              "node": "Slack - Alerta",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Es PDF?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Es PDF?": {
+        "main": [
+          [
+            {
+              "node": "Telegram - Documento (PDF)",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Telegram - Foto",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {
+      "executionOrder": "v1",
+      "binaryMode": "separate",
+      "availableInMCP": false
+    },
+    "staticData": null,
+    "meta": {
+      "templateCredsSetupCompleted": true
+    },
+    "nodeGroups": [],
+    "pinData": {},
+    "versionId": "e06417f4-2bd6-41a5-82fa-15394849e78d",
+    "activeVersionId": "e06417f4-2bd6-41a5-82fa-15394849e78d",
+    "versionCounter": 8,
+    "triggerCount": 1,
+    "sourceWorkflowId": null,
+    "tags": [],
+    "shared": [
+      {
+        "updatedAt": "2026-07-17T16:47:44.513Z",
+        "createdAt": "2026-07-17T16:47:44.513Z",
+        "role": "workflow:owner",
+        "workflowId": "l8q88gnWzcwYDpvp",
+        "projectId": "L89yL8s6oYShS2ta",
+        "project": {
+          "updatedAt": "2026-05-25T00:11:35.492Z",
+          "createdAt": "2026-05-25T00:00:08.368Z",
+          "id": "L89yL8s6oYShS2ta",
+          "name": "adrian luna <jhernandezl2c@gmail.com>",
+          "type": "personal",
+          "icon": null,
+          "description": null,
+          "customTelemetryTags": [],
+          "creatorId": "fec6df3d-2e72-4af0-b330-9f57cd12ebd3"
+        }
+      }
+    ],
+    "versionMetadata": {
+      "name": "Version 6409bd20",
+      "description": ""
+    }
+  }
+]

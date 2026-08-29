@@ -54,6 +54,9 @@ services:
       # Secreto de la API de captura de Clarvex, para el pase de lista desde
       # el bot. El VALOR vive en /home/ubuntu/stack/.env, no aqui.
       - ADMIN_CAPTURE_SECRET=${ADMIN_CAPTURE_SECRET}
+      # Alertas tecnicas a Slack. El valor vive en /home/ubuntu/stack/.env; aqui
+      # solo se pasa al contenedor, para que no quede escrito en el repositorio.
+      - SLACK_ALERT_WEBHOOK=${SLACK_ALERT_WEBHOOK}
     volumes:
       - ./n8n_data:/home/node/.n8n
       # La carpeta del buzon, compartida con syncthing. Los dos contenedores
