@@ -56,9 +56,12 @@ que llega. Detalle completo en `CLAUDE.md`, sección «Captura por Telegram».
   `#clarvex-alertas` = `C0BQFQM6CHX`; `SLACK_OPS_CHANNEL` ya quedó configurado,
   PM2 reiniciado y mensaje de prueba aceptado por Slack.
 - **Auditoría privada en Retool.** Nueva ruta `/auditoria`, visible solo con
-  metadata `platformAdmin=true` (o `role=PLATFORM_ADMIN`). La función backend de
+  metadata `platformAdmin=true` (o `role=PLATFORM_ADMIN`) y también para la
+  cuenta administrativa `contacto@clarvex.adrianluna.mx`. La función backend de
   Retool añade `X-Clarvex-Platform-Admin: true` y Clarvex rechaza cualquier
-  llamada sin ese encabezado aunque traiga `ADMIN_CAPTURE_SECRET`.
+  llamada sin ese encabezado aunque traiga `ADMIN_CAPTURE_SECRET`. La cuenta
+  operativa `jhernandezl2c@gmail.com` sigue siendo `SUBGERENTE` y no debe entrar
+  a Auditoría.
 - **Guardrails de costo AWS.** Se agregó `scripts/aws-cost-guardrails.ps1`: crea
   o actualiza un Budget mensual bruto antes de créditos (`IncludeCredit=false`)
   y Cost Anomaly Detection por servicio. Aplicado el 29 de agosto: Budget

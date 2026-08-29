@@ -36,14 +36,18 @@ Abrir Clarvex    -> /escritorio/admin
 Nueva ruta del App Builder: `/auditoria`.
 
 - Solo se muestra cuando la metadata del usuario Retool trae
-  `platformAdmin=true` o `role=PLATFORM_ADMIN`.
+  `platformAdmin=true` o `role=PLATFORM_ADMIN`, y también para la cuenta
+  administrativa `contacto@clarvex.adrianluna.mx`.
 - La función backend `backend/ops/getOpsCenter.ts` exige esa metadata y solo
   entonces llama a Clarvex con `X-Clarvex-Platform-Admin: true`.
 - Clarvex expone `GET /api/admin/retool/ops`, protegido por
   `ADMIN_CAPTURE_SECRET` y por ese encabezado. Devuelve resumen operativo,
   frescura por tienda, últimas entradas de auditoría y errores recientes de
   sincronización.
-- Las cuentas de gerencia de tienda no deben recibir `platformAdmin=true`.
+- Las cuentas de gerencia de tienda no deben recibir `platformAdmin=true`. La
+  cuenta operativa `jhernandezl2c@gmail.com` se mantiene como `SUBGERENTE`; si
+  entra manualmente a `/auditoria`, debe ver un aviso de que use la cuenta
+  administrativa.
 
 ### AWS: costos antes de que duelan
 
