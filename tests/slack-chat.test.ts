@@ -5,7 +5,8 @@ import {
   interpretarEntrante,
   parsearAutores,
   parsearCanales,
-  seRefleja,
+  canalPara,
+  parsearSalasDirectas,
   tiendaDelCanal,
   verificarFirmaSlack
 } from "../lib/slack-chat";
@@ -33,20 +34,32 @@ test("del canal se saca la tienda", () => {
 
 /* ─── qué se refleja ──────────────────────────────────────────────────────── */
 
-test("una sala de GRUPO se refleja en el canal de su tienda", () => {
-  const c = parsearCanales("uno=C1");
-  assert.equal(seRefleja({ tipo: "GROUP", storeId: "uno" }, c), "C1");
-});
+const SALA = { id: "sala1", storeId: "uno" };
 
-test("⚠️ un chat DIRECTO nunca se refleja", () => {
-  // Es privado entre dos personas: volcarlo a un canal lo publicaria sin que
-  // ninguna de las dos lo haya elegido.
-  const c = parsearCanales("uno=C1");
-  assert.equal(seRefleja({ tipo: "DIRECT", storeId: "uno" }, c), null);
+test("una sala de GRUPO se refleja en el canal de su tienda", () => {
+  assert.equal(canalPara({ ...SALA, tipo: "GROUP" }, parsearCanales("uno=C1")), "C1");
 });
 
 test("una tienda sin canal no se refleja", () => {
-  assert.equal(seRefleja({ tipo: "GROUP", storeId: "otra" }, parsearCanales("uno=C1")), null);
+  assert.equal(canalPara({ ...SALA, tipo: "GROUP", storeId: "otra" }, parsearCanales("uno=C1")), null);
+});
+
+test("⚠️ un chat DIRECTO no se refleja si no esta mapeado a un canal propio", () => {
+  // El canal de la TIENDA no le sirve: ahi lo leeria gente que no esta en la
+  // conversacion. Hace falta un canal suyo, dicho explicitamente.
+  assert.equal(canalPara({ ...SALA, tipo: "DIRECT" }, parsearCanales("uno=C1")), null);
+});
+
+test("un chat DIRECTO mapeado va a SU canal, no al de la tienda", () => {
+  const canal = canalPara({ ...SALA, tipo: "DIRECT" }, parsearCanales("uno=C1"), parsearSalasDirectas("sala1=C9"));
+  assert.equal(canal, "C9");
+});
+
+test("⚠️ otro directo de la misma tienda NO hereda ese canal", () => {
+  // Un canal por conversacion: si no, las respuestas no tendrian destinatario
+  // y una privada acabaria en la conversacion equivocada.
+  const canal = canalPara({ id: "sala2", storeId: "uno", tipo: "DIRECT" }, parsearCanales("uno=C1"), parsearSalasDirectas("sala1=C9"));
+  assert.equal(canal, null);
 });
 
 /* ─── el eco, que es el fallo clasico de un espejo ────────────────────────── */

@@ -5,6 +5,8 @@ import {
   interpretarEntrante,
   parsearAutores,
   parsearCanales,
+  parsearSalasDirectas,
+  salaDelCanal,
   tiendaDelCanal,
   verificarFirmaSlack,
   type EventoSlack
@@ -63,13 +65,42 @@ export async function POST(request: Request) {
   return NextResponse.json({ ok: true });
 }
 
+/**
+ * De qué sala es este canal.
+ *
+ * Un canal puede ser el de la sala de grupo de una tienda o el de UN chat
+ * directo. Se mira primero el directo porque es el más específico: un canal
+ * mapeado a una sala concreta no puede significar otra cosa.
+ */
+async function salaDelCanalDeSlack(canal: string): Promise<{ id: string; storeId: string; type: "DIRECT" | "GROUP" } | null> {
+  const directo = salaDelCanal(parsearSalasDirectas(process.env.SLACK_DM_CHANNELS), canal);
+  if (directo) {
+    const sala = await prisma.chatRoom.findFirst({
+      where: { id: directo, type: "DIRECT" },
+      select: { id: true, storeId: true, type: true }
+    });
+    if (!sala) console.warn(`[slack-webhook] la sala directa ${directo} no existe`);
+    return sala;
+  }
+
+  const storeId = tiendaDelCanal(parsearCanales(process.env.SLACK_CHAT_CHANNELS), canal);
+  if (!storeId) return null;
+
+  const sala = await prisma.chatRoom.findFirst({
+    where: { storeId, type: "GROUP" },
+    select: { id: true, storeId: true, type: true }
+  });
+  if (!sala) console.warn(`[slack-webhook] ${storeId} no tiene sala de grupo`);
+  return sala;
+}
+
 async function colocar(canal: string, usuarioSlack: string, texto: string): Promise<void> {
-  const canales = parsearCanales(process.env.SLACK_CHAT_CHANNELS);
-  const storeId = tiendaDelCanal(canales, canal);
-  if (!storeId) {
-    console.warn(`[slack-webhook] el canal ${canal} no es de ninguna tienda`);
+  const sala = await salaDelCanalDeSlack(canal);
+  if (!sala) {
+    console.warn(`[slack-webhook] el canal ${canal} no corresponde a ninguna sala`);
     return;
   }
+  const storeId = sala.storeId;
 
   /*
    * ⚠️ Un remitente sin mapear se IGNORA, no se atribuye a nadie por omisión.
@@ -89,16 +120,6 @@ async function colocar(canal: string, usuarioSlack: string, texto: string): Prom
   });
   if (!autor) {
     console.warn(`[slack-webhook] no hay usuario ${employeeNumber} en ${storeId}`);
-    return;
-  }
-
-  // La sala de grupo de esa tienda: es la única que se refleja.
-  const sala = await prisma.chatRoom.findFirst({
-    where: { storeId, type: "GROUP" },
-    select: { id: true }
-  });
-  if (!sala) {
-    console.warn(`[slack-webhook] ${storeId} no tiene sala de grupo`);
     return;
   }
 
@@ -138,7 +159,9 @@ async function colocar(canal: string, usuarioSlack: string, texto: string): Prom
     void dispatchPushToUsers(
       otros.map((m) => m.userId),
       {
-        title: "Chat Todos",
+        // En un directo el aviso lo encabeza QUIEN escribe, no el nombre
+        // de la sala: es lo mismo que hace el chat de la app.
+        title: sala.type === "GROUP" ? "Chat Todos" : (autor.name ?? "Nuevo mensaje"),
         body: `${autor.name}: ${texto.slice(0, 80)}`,
         tag: `chat-${sala.id}`,
         url: `/chat/${sala.id}`

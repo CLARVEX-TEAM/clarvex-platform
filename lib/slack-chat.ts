@@ -61,16 +61,42 @@ export function parsearAutores(raw: string | undefined): Map<string, string> {
 
 /* ─── qué se refleja y qué no ─────────────────────────────────────────────── */
 
-export type SalaParaEspejo = { tipo: "DIRECT" | "GROUP"; storeId: string };
+export type SalaParaEspejo = { id: string; tipo: "DIRECT" | "GROUP"; storeId: string };
 
 /**
- * ⚠️ **Solo las salas de GRUPO.** Un `DIRECT` es una conversación privada entre
- * dos personas; volcarla a un canal donde hay gente que no está en ella sería
- * publicar algo que nadie eligió publicar.
+ * `SLACK_DM_CHANNELS=<idDeSala>=C09ABC,<otra>=C09DEF`
+ *
+ * Un canal PRIVADO de Slack por cada chat directo, no uno compartido para
+ * todos. Con uno solo, todas las conversaciones caerían mezcladas y una
+ * respuesta no tendría destinatario: no se sabría a quién va. Un canal por
+ * conversación cuesta configurarlo una vez y hace imposible equivocarse.
  */
-export function seRefleja(sala: SalaParaEspejo, canales: Map<string, string>): string | null {
-  if (sala.tipo !== "GROUP") return null;
-  return canales.get(sala.storeId) ?? null;
+export function parsearSalasDirectas(raw: string | undefined): Map<string, string> {
+  return parsearCanales(raw);
+}
+
+/** El inverso, para lo que llega de Slack. */
+export function salaDelCanal(directos: Map<string, string>, canal: string): string | null {
+  return tiendaDelCanal(directos, canal);
+}
+
+/**
+ * A qué canal va una sala, si va a alguno.
+ *
+ * ⚠️ **Un `DIRECT` es privado entre dos personas.** Solo se refleja el que
+ * está mapeado explícitamente, y quien lo lea desde Slack tiene que ser
+ * **miembro de esa sala** — eso lo comprueba quien llama, contra la base, no
+ * contra la variable de entorno. En la tienda existe un chat entre dos asesoras
+ * en el que la gerencia no participa: reflejarlo sería publicar algo que nadie
+ * eligió publicar.
+ */
+export function canalPara(
+  sala: SalaParaEspejo,
+  canales: Map<string, string>,
+  directos: Map<string, string> = new Map()
+): string | null {
+  if (sala.tipo === "GROUP") return canales.get(sala.storeId) ?? null;
+  return directos.get(sala.id) ?? null;
 }
 
 /* ─── lo que llega de Slack ───────────────────────────────────────────────── */

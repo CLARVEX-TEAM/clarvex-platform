@@ -5,7 +5,29 @@ import { dispatchPushToUsers } from "@/lib/push";
 import { isOnline, resolveReplyTo, serializeChatMessage, touchPresence } from "@/lib/chat";
 import { chatMediaRejectionMessage, isAllowedChatMediaBody } from "@/lib/chat-message-guard";
 import { publicarEnSlackSinEsperar } from "@/lib/slack";
-import { parsearCanales, seRefleja } from "@/lib/slack-chat";
+import { canalPara, parsearAutores, parsearCanales, parsearSalasDirectas } from "@/lib/slack-chat";
+
+/**
+ * ¿Puede reflejarse esta sala en Slack?
+ *
+ * Las de grupo, sí. Un **chat directo solo si quien lo va a leer desde Slack es
+ * una de las dos personas** — y se comprueba contra `ChatMember`, no contra la
+ * variable de entorno. La configuración la escribe una persona y una persona se
+ * equivoca; en la tienda hay un directo entre dos asesoras en el que la
+ * gerencia no participa, y mapearlo por error lo publicaría.
+ */
+async function puedeReflejarse(tipo: "DIRECT" | "GROUP", roomId: string): Promise<boolean> {
+  if (tipo === "GROUP") return true;
+
+  const empleados = [...parsearAutores(process.env.SLACK_CHAT_AUTHORS).values()];
+  if (empleados.length === 0) return false;
+
+  const lector = await prisma.chatMember.findFirst({
+    where: { roomId, user: { employeeNumber: { in: empleados } } },
+    select: { id: true }
+  });
+  return Boolean(lector);
+}
 
 export const dynamic = "force-dynamic";
 
@@ -161,16 +183,18 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
    * ⚠️ Va DESPUÉS de guardar y sin esperar. El mensaje ya está en Clarvex y el
    * equipo lo ve; si Slack no responde, se pierde el reflejo, no el mensaje.
    *
-   * ⚠️ Y solo las salas de GRUPO (`seRefleja`): un chat directo es privado
-   * entre dos personas y volcarlo a un canal lo publicaría sin que nadie lo
-   * haya elegido.
-   *
    * Lo que entra POR Slack no pasa por aquí —se crea en el webhook— así que el
    * eco está cortado por construcción, no por una bandera que se pueda olvidar.
    */
   if (room) {
-    const canal = seRefleja({ tipo: room.type, storeId: room.storeId }, parsearCanales(process.env.SLACK_CHAT_CHANNELS));
-    if (canal) publicarEnSlackSinEsperar(canal, session.name ?? "Clarvex", text);
+    const canal = canalPara(
+      { id: room.id, tipo: room.type, storeId: room.storeId },
+      parsearCanales(process.env.SLACK_CHAT_CHANNELS),
+      parsearSalasDirectas(process.env.SLACK_DM_CHANNELS)
+    );
+    if (canal && (await puedeReflejarse(room.type, id))) {
+      publicarEnSlackSinEsperar(canal, session.name ?? "Clarvex", text);
+    }
   }
 
   return NextResponse.json({ message: serializeChatMessage(message) });
