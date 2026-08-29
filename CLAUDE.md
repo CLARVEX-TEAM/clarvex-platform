@@ -49,6 +49,20 @@ Nueva ruta del App Builder: `/auditoria`.
   entra manualmente a `/auditoria`, debe ver un aviso de que use la cuenta
   administrativa.
 
+### Retool: barra superior en laptop
+
+La captura real del 29 de agosto mostró que la navegación se volvió demasiado
+ancha para el breakpoint viejo de ~1100 px: en `/ticket-electronico` se alcanzaba
+a ver el botón activo, pero el extremo derecho quedaba recortado antes de
+Auditoría.
+
+`frontend/components/AppNav.tsx` ahora conserva el layout de dos filas hasta
+1500 px: arriba marca + tema, abajo el carrusel de rutas con ancho completo.
+Solo pantallas realmente anchas regresan a una fila. No toca rutas, permisos,
+funciones de captura ni backend de Clarvex. Retool pasó `retool check` y se
+publicó el mismo 29 de agosto: commit funcional `1421694`, commit posterior al
+publish `6c4e392`.
+
 ### AWS: costos antes de que duelan
 
 Se agregó `scripts/aws-cost-guardrails.ps1`.

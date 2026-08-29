@@ -62,6 +62,12 @@ que llega. Detalle completo en `CLAUDE.md`, sección «Captura por Telegram».
   llamada sin ese encabezado aunque traiga `ADMIN_CAPTURE_SECRET`. La cuenta
   operativa `jhernandezl2c@gmail.com` sigue siendo `SUBGERENTE` y no debe entrar
   a Auditoría.
+- **Barra superior de Retool en laptop.** Con Kardex, Ticket electrónico y
+  Auditoría, la navegación ya no cabe en una sola fila a ~1100 px: en tienda se
+  recortaba el extremo derecho. `frontend/components/AppNav.tsx` mantiene dos
+  filas hasta 1500 px y da ancho completo al carrusel de rutas; solo pantallas
+  realmente anchas vuelven a la barra de una fila. Publicado en Retool el 29 de
+  agosto: commit funcional `1421694`, post-publicación `6c4e392`.
 - **Guardrails de costo AWS.** Se agregó `scripts/aws-cost-guardrails.ps1`: crea
   o actualiza un Budget mensual bruto antes de créditos (`IncludeCredit=false`)
   y Cost Anomaly Detection por servicio. Aplicado el 29 de agosto: Budget
