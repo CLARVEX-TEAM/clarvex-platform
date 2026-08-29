@@ -1071,14 +1071,22 @@ inventado (`<número>@clarvex.local`) y no se les puede invitar.
 | `SLACK_SIGNING_SECRET` | 32 hex. ⚠️ **No es el `xapp-`**, que está al lado en la misma pantalla |
 | `SLACK_CHAT_CHANNELS` | `storeId=C0…`, separados por coma |
 | `SLACK_CHAT_AUTHORS` | `U0…=<númeroDeEmpleado>`, separados por coma |
+| `SLACK_DM_CHANNELS` | `<idDeSala>=C0…` — un canal PRIVADO por chat directo |
 
 - ⚠️ **Clarvex es el DUEÑO del mensaje; Slack es una ventana.** No se sincronizan
   ediciones, borrados, hilos ni reacciones: borrar en Clarvex deja el mensaje en
   Slack, y es a propósito. Con dos dueños del mismo dato, un fallo de red deja
   los lados distintos y ya no se sabe cuál vale.
-- ⚠️ **Solo las salas de GRUPO** (`seRefleja` en `lib/slack-chat.ts`). Un chat
-  directo es privado entre dos personas; volcarlo a un canal lo publicaría sin
-  que ninguna lo haya elegido.
+- ⚠️ **Los chats DIRECTOS van a un canal privado PROPIO cada uno**, nunca al de
+  la tienda y nunca todos juntos. Con uno compartido las conversaciones caerían
+  mezcladas y una respuesta no tendría destinatario: acabaría en la
+  conversación equivocada.
+- ⚠️ **Un directo solo se refleja si quien lo lee desde Slack es UNA DE LAS DOS
+  PERSONAS**, y se comprueba contra `ChatMember`, no contra la variable de
+  entorno (`puedeReflejarse` en la ruta del chat). No es teórico: en TH San
+  Agustín existe un chat entre **Jazmín y Waira**, con mensajes, en el que la
+  gerencia no participa. Mapearlo por error lo publicaría, y la configuración la
+  escribe una persona.
 - ⚠️ **El eco se corta dos veces**: se ignora todo evento con `bot_id` o
   `app_id`, y además por construcción — lo que entra por Slack se crea en el
   webhook, que no pasa por el enganche del espejo.
