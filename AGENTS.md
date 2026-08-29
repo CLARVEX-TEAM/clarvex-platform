@@ -6,7 +6,7 @@
 
 ---
 
-# 🔴 EN QUÉ ESTAMOS AHORA — 28 de agosto de 2026
+# 🔴 EN QUÉ ESTAMOS AHORA — 29 de agosto de 2026
 
 ## La mudanza terminó; ahora se está quitando trabajo manual
 
@@ -19,7 +19,7 @@ instancia. Al hacerlo, borrar la alarma `clarvex-caido-vultr` —silenciada, no
 eliminada— y subir la alerta de presupuesto de $20, que se quedó corta en cuanto
 EC2 corre a tiempo completo.
 
-## Lo que se construyó del 26 al 28 de agosto
+## Lo que se construyó del 26 al 29 de agosto
 
 Todo por el bot de Telegram en **chat privado**, y todo con el mismo patrón: el
 bot propone o resume, la persona confirma, y el servidor no se cree nada de lo
@@ -39,6 +39,14 @@ que llega. Detalle completo en `CLAUDE.md`, sección «Captura por Telegram».
   de la columna de descuento, que se invierte al devolverse una prenda rebajada.
 - **Centavos en Retool.** Cuota Justa y el escritorio redondeaban a pesos, así
   que una columna de metas no sumaba su total. El dato siempre los tuvo.
+- **Guardar Cuota Justa en Retool.** La UI podía enseñar 100 % porque completaba
+  desde `live.days`, pero el payload mandaba `percentages` incompleto y el
+  backend rechazaba días como `2026-09-04` con suma 60 %. Ahora Retool guarda
+  porcentajes completos desde `live.days` y `quotaDirty` compara de forma
+  semántica, no con `JSON.stringify`.
+- **Excel de Cuota Justa.** Los bloques diarios son celdas combinadas: mínimo,
+  fecha y WhatsApp se escriben solo en la columna izquierda (`D`, `F`, `H`, ...).
+  Escribir también `E/G/I/...` rompe las sumas del export.
 - **Las alertas técnicas se mudaron a Slack.** Infraestructura, Mercado Pago,
   auditoría del kardex y Uptime Kuma. ⚠️ **Las fotos del equipo NO**: siguen en
   el grupo de Telegram porque once de dieciocho usuarios tienen correo
@@ -1857,6 +1865,27 @@ documentos independientes.
   congelados; la interfaz nueva ya no crea cierres conjuntos.
 - Validacion local: 903 pruebas, ESLint, tipos y build Next limpios; `retool
   check` pasa hooks, validate, typecheck y build.
+
+**Correccion del payload de Cuota Justa (29 de agosto de 2026).** El boton
+`Guardar Cuota Justa` fallaba aunque la UI mostrara 100 %: la tabla completaba
+cada celda visible desde `live.days`, pero el `percentages` enviado al backend
+seguia siendo el estado parcial editado. Con `2026-09-04` llegaba una suma de
+60 %, y el backend hacia lo correcto al rechazarla. Retool `bf77d5f` ahora
+materializa el payload desde `live.days` antes de guardar, y al cargar/recibir
+respuesta normaliza el estado desde `quota.days.allocations`. `quotaDirty`
+tambien dejo de depender de `JSON.stringify`: compara semanticamente
+`minimums`, `whatsappBudget` y porcentajes por fecha/persona con tolerancia
+numerica, ignorando orden de claves. `retool check` paso completo; publicado en
+Retool, commit post-publicacion `4f79fdb`.
+
+**Correccion de sumas del XLSX de Cuota Justa (29 de agosto de 2026).** La
+plantilla `templates/cuota-justa-rds.xlsx` usa bloques combinados para cada dia:
+`D:E`, `F:G`, `H:I`, etc. El valor real vive solo en la celda izquierda; la
+derecha queda vacia para que los totales `SUM(D:Q)` no dupliquen nada. El
+exportador estaba escribiendo fecha, `MINIMO` y WhatsApp en ambos lados del par,
+y por eso la suma de mínimos no cuadraba al abrir el Excel. Ahora
+`lib/weekly-performance-xlsx.ts` solo escribe `D/F/H/J/L/N/P` en esas filas, y
+la regresion verifica que `E/G/I/K/M/O/Q` no reciban valor directo.
 
 **Desplegado el 22 de agosto de 2026.** Clarvex `3c5a3f0`; migracion aplicada;
 Retool publico el commit funcional `4781945` y avanzo la rama al commit

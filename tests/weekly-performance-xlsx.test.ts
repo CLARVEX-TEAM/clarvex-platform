@@ -102,6 +102,19 @@ test("rellena CJ y RDS conservando el libro original y sin resultados viejos", a
   assert.doesNotMatch(await zip.file("xl\/_rels\/workbook.xml.rels")!.async("string"), /(?:calcChain|metadata)\.xml/);
 });
 
+test("CJ escribe minimo y WhatsApp solo en la celda izquierda de cada bloque combinado", async () => {
+  const buffer = await buildWeeklyPerformanceWorkbook(state, "quota");
+  const zip = await JSZip.loadAsync(buffer);
+  const cjXml = await zip.file("xl/worksheets/sheet2.xml")!.async("string");
+
+  for (const cell of ["E6", "G6", "I6", "K6", "M6", "O6", "Q6", "E8", "G8", "I8", "K8", "M8", "O8", "Q8", "E27", "G27", "I27", "K27", "M27", "O27", "Q27"]) {
+    assert.doesNotMatch(cjXml, new RegExp(`<c r="${cell}"[^>]*><v>`), `${cell} no debe recibir valor directo`);
+  }
+  for (const cell of ["D8", "F8", "H8", "J8", "L8", "N8", "P8", "D27", "F27", "H27", "J27", "L27", "N27", "P27"]) {
+    assert.match(cjXml, new RegExp(`<c r="${cell}"[^>]*><v>`), `${cell} debe conservar el valor directo`);
+  }
+});
+
 function formulaResult(value: unknown) {
   return value && typeof value === "object" && "result" in value ? value.result : value;
 }

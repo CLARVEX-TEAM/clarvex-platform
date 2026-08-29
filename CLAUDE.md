@@ -202,6 +202,23 @@ actual, que es el flujo real de los domingos. El API usa `reportWeekStart` y
   tráfico, personas) siguen en entero: medio ticket no existe. La regla vive en
   `fmtMoney` de `frontend/utils/dashboard.ts` y en `MONEY` de
   `frontend/pages/WeeklyPerformance.tsx`.
+- ⚠️ **Guardar Cuota Justa debe mandar porcentajes COMPLETOS** desde el 29 de
+  agosto de 2026 (Retool `bf77d5f`, publish/post-publish `4f79fdb`). La UI
+  completaba visualmente con `live.days`: por eso podia enseñar 100 %, pero el
+  payload seguia mandando `percentages` parcial desde el estado editado. En un
+  dia como `2026-09-04`, el backend recibia 60 % y rechazaba correctamente el
+  guardado. `WeeklyPerformance.tsx` ahora materializa `percentages` desde
+  `live.days` antes de guardar, tambien al recargar el estado tras un GET/POST.
+  `quotaDirty` dejo de usar `JSON.stringify` y compara semanticamente
+  `minimums`, `whatsappBudget` y porcentajes por fecha/persona con tolerancia
+  numerica.
+- ⚠️ **En el XLSX de Cuota Justa, los bloques diarios son celdas combinadas.**
+  Desde el 29 de agosto de 2026, `lib/weekly-performance-xlsx.ts` escribe
+  `MINIMO`, fecha y WhatsApp solo en la celda izquierda de cada par (`D`, `F`,
+  `H`, ...). La plantilla deja la derecha (`E`, `G`, `I`, ...) vacia y sus
+  totales hacen `SUM(D:Q)` esperando esos huecos vacios. Escribir el mismo
+  minimo en ambos lados hacia que la suma no cuadrara en el Excel exportado.
+  La regresion vive en `tests/weekly-performance-xlsx.test.ts`.
 - Retool: `backend/weeklyPerformance/*`, `frontend/pages/WeeklyPerformance.tsx`
   y ruta `/cuota-justa`. Desplegar siempre Clarvex antes que Retool.
 

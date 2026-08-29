@@ -26,15 +26,11 @@ export async function buildWeeklyPerformanceWorkbook(
   cj = writeCell(cj, "T2", state.quotaWeek.weekNumber);
   state.quota.days.forEach((day, index) => {
     const left = DAY_COLUMNS[index];
-    const right = columnLetter(columnIndex(left) + 1);
     const date = new Date(`${day.date}T00:00:00.000Z`);
     cj = writeCell(cj, `${left}6`, date);
-    cj = writeCell(cj, `${right}6`, date);
     cj = writeCell(cj, `${left}8`, day.minimum);
-    cj = writeCell(cj, `${right}8`, day.minimum);
     const dailyWhatsapp = round2(state.plan.whatsappBudget / 7);
     cj = writeCell(cj, `${left}27`, dailyWhatsapp);
-    cj = writeCell(cj, `${right}27`, dailyWhatsapp);
   });
 
   for (let index = 0; index < 10; index += 1) {
