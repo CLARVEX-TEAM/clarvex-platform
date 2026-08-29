@@ -80,10 +80,27 @@ test("⚠️ lo que publicamos nosotros se ignora: si no, rebota para siempre", 
 });
 
 test("ediciones, borrados y entradas al canal se ignoran", () => {
-  for (const subtype of ["message_changed", "message_deleted", "channel_join", "file_share"]) {
+  for (const subtype of ["message_changed", "message_deleted", "channel_join"]) {
     const r = interpretarEntrante(evento({ subtype, user: "U1", text: "x", channel: "C1", ts: "1.2" }));
     assert.equal(r.accion, "ignorar", `${subtype} no se ignoro`);
   }
+});
+
+test("⚠️ un mensaje CON archivo adjunto si entra, con su texto", () => {
+  // Slack lo marca subtype=file_share. Meterlo con las ediciones tiraba el
+  // mensaje entero: paso con el primero real, un comunicado largo con un
+  // flyer, y se perdio sin dejar rastro.
+  const r = interpretarEntrante(
+    evento({ subtype: "file_share", user: "U1", text: "Hola a todos, tenemos 200 flyers", channel: "C1", ts: "1.2" })
+  );
+  assert.equal(r.accion, "mensaje");
+  assert.ok(r.accion === "mensaje" && r.texto === "Hola a todos, tenemos 200 flyers");
+});
+
+test("una foto SIN pie se ignora, pero diciendo que era un archivo", () => {
+  const r = interpretarEntrante(evento({ subtype: "file_share", user: "U1", text: "", channel: "C1", ts: "1.2" }));
+  assert.equal(r.accion, "ignorar");
+  assert.ok(r.accion === "ignorar" && r.porque.includes("archivo"));
 });
 
 test("una respuesta dentro de un hilo se ignora", () => {

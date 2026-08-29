@@ -143,13 +143,30 @@ export function interpretarEntrante(cuerpo: EventoSlack): Entrante {
   const e = cuerpo.event;
   if (!e || e.type !== "message") return { accion: "ignorar", porque: `evento ${e?.type ?? "(vacio)"}` };
   if (e.bot_id || e.app_id) return { accion: "ignorar", porque: "es nuestro propio eco" };
-  // Ediciones, borrados, entradas al canal, ficheros... nada de eso es un
-  // mensaje nuevo, y tratarlos como tal duplicaría o inventaría contenido.
-  if (e.subtype) return { accion: "ignorar", porque: `subtipo ${e.subtype}` };
+
+  /*
+   * Ediciones, borrados y entradas al canal NO son mensajes nuevos: tratarlos
+   * como tal duplicaría o inventaría contenido.
+   *
+   * ⚠️ Pero `file_share` SÍ lo es. Un mensaje con una foto adjunta llega con
+   * ese subtipo, y meterlo en el mismo saco lo tiraba entero **incluido su
+   * texto**. Pasó con el primero real que se mandó: un comunicado largo con un
+   * flyer, que se perdió sin dejar rastro.
+   *
+   * El archivo no cruza —vive en Slack y traerlo pide otros permisos y subirlo
+   * a R2—, pero el texto sí, que es lo que la tienda tiene que leer.
+   */
+  if (e.subtype && e.subtype !== "file_share") {
+    return { accion: "ignorar", porque: `subtipo ${e.subtype}` };
+  }
   if (e.thread_ts && e.thread_ts !== e.ts) return { accion: "ignorar", porque: "respuesta en hilo" };
 
   const texto = (e.text ?? "").trim();
-  if (!texto) return { accion: "ignorar", porque: "sin texto" };
+  if (!texto) {
+    // Una foto SIN pie no se puede reflejar: el archivo no cruza y no queda
+    // nada que escribir. Se dice en el log para que no parezca que se perdió.
+    return { accion: "ignorar", porque: e.subtype === "file_share" ? "archivo sin texto" : "sin texto" };
+  }
   if (!e.user || !e.channel || !e.ts) return { accion: "ignorar", porque: "sin remitente, canal o marca de tiempo" };
 
   return {
