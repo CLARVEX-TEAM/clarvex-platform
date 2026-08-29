@@ -52,7 +52,10 @@ que llega. Detalle completo en `CLAUDE.md`, sección «Captura por Telegram».
   marcar revisado, abrir Auditoría en Retool y abrir Clarvex. Las acciones
   entran por `/api/webhooks/slack/actions`, verificadas con
   `SLACK_SIGNING_SECRET`, y se guardan en `AuditLog` como
-  `slack.ops.ack/approve/reject`.
+  `slack.ops.ack/approve/reject`. Canal correcto encontrado:
+  `#clarvex-alertas` = `C0BQFQM6CHX`; el bot aún no es miembro y
+  `conversations.join` devolvió `missing_scope`, así que NO se dejó
+  `SLACK_OPS_CHANNEL` activo en producción.
 - **Auditoría privada en Retool.** Nueva ruta `/auditoria`, visible solo con
   metadata `platformAdmin=true` (o `role=PLATFORM_ADMIN`). La función backend de
   Retool añade `X-Clarvex-Platform-Admin: true` y Clarvex rechaza cualquier
@@ -92,6 +95,9 @@ que llega. Detalle completo en `CLAUDE.md`, sección «Captura por Telegram».
   `https://team.clarvex.tech/api/webhooks/slack/actions` si aún no está en la
   app de Slack. Sin eso los mensajes llegan, pero los botones no vuelven a
   Clarvex.
+- **Invitar el bot de Slack a `#clarvex-alertas`** y luego agregar en producción
+  `SLACK_OPS_CHANNEL=C0BQFQM6CHX` con `pm2 restart clarvex-team --update-env`.
+  El bot no pudo auto-unirse por falta de scope (`missing_scope`).
 - **Kopia no está vigilado**: respalda `D:\Nube` cada hora a R2 y nadie se
   entera si deja de hacerlo.
 - **Política de asistencia por tienda**: `TOLERANCE_MINUTES`, `CUTOFF_MINUTES` y

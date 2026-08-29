@@ -27,6 +27,10 @@ Abrir Clarvex    -> /escritorio/admin
   `https://team.clarvex.tech/api/webhooks/slack/actions`.
 - `SLACK_OPS_CHANNEL` es distinto de `SLACK_CHAT_CHANNELS`: no mezclar alertas
   administrativas con el espejo del chat de tienda.
+- Canal operativo encontrado: `#clarvex-alertas` = `C0BQFQM6CHX`. El bot no es
+  miembro y `conversations.join` devolvió `missing_scope`; por eso no se dejó
+  `SLACK_OPS_CHANNEL` activo todavía. Secuencia pendiente: invitar el bot a ese
+  canal, poner `SLACK_OPS_CHANNEL=C0BQFQM6CHX` en `.env` y reiniciar PM2.
 
 ### Retool: Auditoría privada
 
