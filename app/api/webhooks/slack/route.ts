@@ -55,7 +55,17 @@ export async function POST(request: Request) {
   if (entrante.accion === "reto") {
     return new NextResponse(entrante.challenge, { status: 200, headers: { "Content-Type": "text/plain" } });
   }
-  if (entrante.accion === "ignorar") return NextResponse.json({ ok: true });
+  if (entrante.accion === "ignorar") {
+    /*
+     * ⚠️ Se dice POR QUÉ se ignora, aunque la mayoría sean ecos nuestros.
+     *
+     * Sin esta línea, un evento descartado y un evento que nunca llegó se ven
+     * exactamente igual desde fuera: 200 y silencio. Costó una vuelta entera
+     * averiguar cuál de los dos era, y el proxy fue el único que supo decirlo.
+     */
+    console.info(`[slack-webhook] ignorado: ${entrante.porque}`);
+    return NextResponse.json({ ok: true });
+  }
 
   try {
     await colocar(entrante.canal, entrante.usuarioSlack, entrante.texto);
