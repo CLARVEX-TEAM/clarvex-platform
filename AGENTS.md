@@ -39,6 +39,11 @@ que llega. Detalle completo en `CLAUDE.md`, sección «Captura por Telegram».
   de la columna de descuento, que se invierte al devolverse una prenda rebajada.
 - **Centavos en Retool.** Cuota Justa y el escritorio redondeaban a pesos, así
   que una columna de metas no sumaba su total. El dato siempre los tuvo.
+- **Las alertas técnicas se mudaron a Slack.** Infraestructura, Mercado Pago,
+  auditoría del kardex y Uptime Kuma. ⚠️ **Las fotos del equipo NO**: siguen en
+  el grupo de Telegram porque once de dieciocho usuarios tienen correo
+  inventado y no se les puede invitar a Slack. Ver `CLAUDE.md`, sección «Fotos a
+  Telegram y alertas a Slack».
 
 ## Lo que queda
 

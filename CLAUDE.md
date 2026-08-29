@@ -517,6 +517,7 @@ decía este documento.
 | **Cloudflare** | panel web — R2 y DNS | cuenta de Cloudflare |
 | **Vultr** | panel web. ⚠️ **La máquina está APAGADA**; encenderla es manual | cuenta de Vultr |
 | **Telegram** | `@AdrianAssitBot` (Clarvex) y `@adrianl_bot` (personal) | tokens en el `.env` de n8n |
+| **Slack** | app `Clarvex` en `https://api.slack.com/apps` · canal de alertas | webhook y tokens en el `.env` de n8n |
 
 **Los cuatro de Tailscale no tienen DNS público.** Salieron de internet el 25 de
 agosto de 2026: sin Tailscale conectado no existen, ni siquiera su pantalla de
@@ -540,6 +541,7 @@ comprobar que el aislamiento por tienda funciona de verdad.
 |---|---|
 | Variables de la app (37) | `/home/ubuntu/clarvex-app/.env` en el servidor |
 | Secretos de n8n | su propio `.env`, en `/home/ubuntu/stack/` |
+| `SLACK_ALERT_WEBHOOK` | el mismo `.env` de n8n; el compose lo pasa al contenedor |
 | `CLOUDFLARE_API_TOKEN` | variable de entorno de **usuario** en Windows — no aparece en una terminal ya abierta |
 | Contraseñas personales | Vaultwarden |
 | Perfil de AWS | `~/.aws/` tras `aws sso login` |
@@ -981,7 +983,7 @@ FOOTBALL_API_KEY=
 `.env.bak*`, pero antes no lo hacía: un `git add .` habría subido todos estos
 secretos a GitHub.
 
-## Fotos a Telegram (n8n)
+## Fotos a Telegram y alertas a Slack (n8n)
 
 Cuando un asesor sube una **evidencia** o un **faltante con foto**, la app avisa a un webhook de n8n, que reenvía la imagen a un canal de Telegram con un pie de foto identificable (quién, de qué, cuándo).
 
@@ -998,7 +1000,7 @@ El workflow activo `Clarvex — Fotos y PDF a Telegram`
 
 ```text
 Webhook → Es alerta?
-              true  → Telegram - Alerta (sendMessage)
+              true  → Slack - Alerta      (desde el 28 de agosto de 2026)
               false → Es PDF?
                            true  → Telegram - Documento (PDF)
                            false → Telegram - Foto
@@ -1006,8 +1008,47 @@ Webhook → Es alerta?
 
 - El contrato es `body.format`: `alert`, `document` o `photo`.
 - Una alerta usa `body.title` y `body.text`; no intenta leer `imageUrl`.
-- El cambio se conserva de forma reproducible en
-  `scripts/n8n-add-alert-routing.jq`.
+- La copia versionada del flujo es `scripts/n8n-fotos-telegram.json`. Antes solo
+  existía `scripts/n8n-add-alert-routing.jq`, que **no era el flujo** sino un
+  parche a aplicar sobre lo que hubiera en el servidor.
+
+### Las alertas técnicas van a Slack — 28 de agosto de 2026
+
+La rama `alert` sale por Slack; **las fotos y los PDF siguen en el grupo de
+Telegram**. Ahí es donde está el equipo, y **once de dieciocho usuarios tienen
+correo inventado** (`<número>@clarvex.local`), con el que no se puede invitar a
+nadie a Slack. Mover las evidencias los dejaría sin verlas.
+
+| Alerta | Dónde |
+|---|---|
+| Infraestructura (`/webhook/alerta-infra`) | Slack |
+| Mercado Pago: secreto faltante | Slack |
+| Auditoría del kardex | Slack |
+| Uptime Kuma | Slack **y** Telegram, en paralelo a propósito |
+| Fotos, faltantes y PDF del equipo | Telegram, grupo |
+
+- Se usa un **nodo HTTP contra el Incoming Webhook**, no el nodo de Slack de
+  n8n: ese pide credenciales OAuth que hay que crear, guardar y renovar; el
+  webhook es una URL. La URL vive en `$env.SLACK_ALERT_WEBHOOK` —definida en
+  `/home/ubuntu/stack/.env` y pasada por el compose—, **nunca dentro del flujo**,
+  que se versiona en este repositorio.
+- ⚠️ **El texto va PLANO, sin Block Kit ni marcado.** Es la lección de Telegram:
+  allí n8n forzaba `parse_mode=Markdown` y un mensaje de error con corchetes
+  rompía el envío del propio aviso, así que un fallo salía mudo.
+- ⚠️ **n8n devuelve `200` al RECIBIR el webhook, no al terminar el flujo.** Una
+  alerta puede fallar entera con la petición en verde. Para saber si de verdad
+  salió hay que mirar el estado de la ejecución en la base de n8n:
+
+```bash
+docker cp n8n:/home/node/.n8n/database.sqlite /tmp/n.sqlite
+docker cp n8n:/home/node/.n8n/database.sqlite-wal /tmp/n.sqlite-wal
+```
+
+  ⚠️ **El `-wal` no es opcional.** Sin él las ejecuciones de los últimos minutos
+  no aparecen y parece que el webhook ni llegó. Misma trampa que con Vaultwarden.
+
+- La app **no sabe nada de Slack ni de Telegram**: manda todo a `WEBHOOK_URL` y
+  n8n decide. Cambiar de destino no toca Clarvex.
 - Respaldo anterior en el VPS:
   `/root/n8n-workflow-backups/20260822-before-alert-routing-v6.json`.
 - Prueba completa de las tres ramas sobre la versión publicada
