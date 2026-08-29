@@ -1102,6 +1102,64 @@ inventado (`<número>@clarvex.local`) y no se les puede invitar.
 - El endpoint `POST /api/webhooks/slack` responde **200 pase lo que pase**, salvo
   firma inválida. Slack reintenta y acaba desactivando la suscripción si el
   fallo insiste; un mensaje que no se supo colocar no puede costar los demás.
+- ⚠️ **Un evento ignorado se escribe en el log con su motivo.** Sin esa línea,
+  un evento descartado y uno que nunca llegó se ven idénticos desde fuera —
+  `200` y silencio— y averiguar cuál era costó una vuelta entera.
+
+### Los dos eventos, según el tipo de canal
+
+⚠️ **Slack usa eventos DISTINTOS y hay que suscribirse a los dos:**
+
+| Evento | Canales | Permiso |
+|---|---|---|
+| `message.channels` | públicos (`#tienda-san-agustin`) | `channels:history` |
+| `message.groups` | **privados** (`#dm-*`) | `groups:history` |
+
+Con solo el primero, los canales privados no mandan **nada** —ni un error— y
+parece que el espejo está roto. Pasó al crear los `dm-*`.
+
+### `file_share` es un mensaje, no un subtipo a tirar
+
+⚠️ Un mensaje **con foto adjunta** llega con `subtype: "file_share"`. El código
+ignoraba todos los subtipos —edición, borrado, entrada al canal— y con ellos se
+tragaba el mensaje entero, **texto incluido**. Se descubrió con el primero real:
+un comunicado largo con un flyer, perdido sin dejar rastro.
+
+### Las fotos cruzan en los dos sentidos — 29 de agosto de 2026
+
+`lib/slack-archivos.ts`. Necesita `files:read` y `files:write`.
+
+- **Slack → Clarvex**: se baja con el token, se sube a R2 y se guarda con el
+  mismo formato `[img:…]` que usa el chat de la app.
+- **Clarvex → Slack**: antes se publicaba el texto crudo
+  `[img:/api/chat/file?k=…]` en el canal — ilegible, y enseñando cómo se guardan
+  las cosas por dentro.
+- ⚠️ **Slack retiró `files.upload`.** Son TRES pasos: pedir una URL
+  (`files.getUploadURLExternal`), subir los bytes **a esa URL, que no es la de la
+  API**, y `files.completeUploadExternal` diciendo a qué canal va. Saltarse el
+  tercero deja el archivo subido y sin publicar, **sin dar error**.
+- ⚠️ **La URL de descarga es privada.** Sin la cabecera de autorización, Slack
+  devuelve su pantalla de acceso **en HTML y con código 200**: se guardaría eso
+  como si fuera la foto.
+- La foto va en su **propio mensaje y DESPUÉS del texto**: el chat exige que el
+  cuerpo de una imagen sea exactamente `[img:…]`, y así un fallo al traerla no se
+  lleva por delante el comunicado. Si no se pudo, se dice — el equipo puede
+  pedirla — en vez de callar.
+- Tope de **8 MB** y **solo imágenes**: un PDF o una hoja de cálculo no tienen
+  sitio en el chat de la app.
+
+### Montarlo desde cero
+
+Permisos del bot: `chat:write`, `chat:write.customize`, `channels:read`,
+`channels:history`, `groups:read`, `groups:history`, `groups:write`,
+`files:read`, `files:write`, `incoming-webhook`.
+
+⚠️ **Después de añadir un permiso o un evento hay que REINSTALAR la app**, o
+queda pedido y no concedido sin que nada avise.
+
+⚠️ **Un canal privado que crea el bot solo lo ve el bot.** Hay que invitar a la
+persona con `conversations.invite`; si no, los mensajes se publican
+correctamente en un canal que nadie mira — y eso no se nota.
 
 ⚠️ **El Slack CLI está instalado pero NO sirve para esto.** Gestiona manifiestos
 de apps creadas por él; la nuestra se creó en el navegador y su manifiesto lo

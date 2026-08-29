@@ -44,6 +44,14 @@ que llega. Detalle completo en `CLAUDE.md`, sección «Captura por Telegram».
   el grupo de Telegram porque once de dieciocho usuarios tienen correo
   inventado y no se les puede invitar a Slack. Ver `CLAUDE.md`, sección «Fotos a
   Telegram y alertas a Slack».
+- **El chat de Clarvex tiene espejo en Slack**, en los dos sentidos y con las
+  fotos incluidas: el grupo de la tienda en `#tienda-san-agustin` y cada chat
+  directo en su propio canal privado. El equipo **no necesita cuenta de Slack**
+  — lo permite `chat:write.customize`, que deja publicar con el nombre de cada
+  quien. Detalle en `CLAUDE.md`, «Espejo del chat con Slack».
+  ⚠️ Los directos solo se reflejan si quien los lee **es una de las dos
+  personas**, comprobado contra `ChatMember`: en la tienda hay un chat entre dos
+  asesoras en el que la gerencia no participa.
 
 ## Lo que queda
 
@@ -1120,6 +1128,22 @@ había perdido.
 
 El detalle operativo completo está en `CLAUDE.md`, sección «Acceso al servidor»:
 esa es la fuente, y esto el resumen para no tener que saltar de archivo.
+
+## El Slack CLI está instalado y casi no sirve
+
+`C:\Users\Adrian L\AppData\Local\slack-cli\bin\slack.exe`, v4.6.0, en el PATH de
+usuario.
+
+⚠️ **No sirve para administrar la app `Clarvex`.** Gestiona manifiestos de apps
+**creadas por él**; la nuestra se creó en el navegador y su manifiesto lo
+administra Slack del lado remoto. Los permisos y las suscripciones a eventos se
+tocan en `api.slack.com/apps`, y punto.
+
+⚠️ Además **se queda colgado** en su pregunta de primer arranque —la de
+compartir datos de uso— incluso con `--skip-update`. Hay que contestarla una vez
+de forma interactiva; desde una sesión de agente no se puede.
+
+Se deja instalado por si algún día se construye una app de Slack propia.
 
 ## Las demás plataformas
 
