@@ -52,19 +52,20 @@ que llega. Detalle completo en `CLAUDE.md`, sección «Captura por Telegram».
   marcar revisado, abrir Auditoría en Retool y abrir Clarvex. Las acciones
   entran por `/api/webhooks/slack/actions`, verificadas con
   `SLACK_SIGNING_SECRET`, y se guardan en `AuditLog` como
-  `slack.ops.ack/approve/reject`. Canal correcto encontrado:
-  `#clarvex-alertas` = `C0BQFQM6CHX`; el bot aún no es miembro y
-  `conversations.join` devolvió `missing_scope`, así que NO se dejó
-  `SLACK_OPS_CHANNEL` activo en producción.
+  `slack.ops.ack/approve/reject`. Canal activo en producción:
+  `#clarvex-alertas` = `C0BQFQM6CHX`; `SLACK_OPS_CHANNEL` ya quedó configurado,
+  PM2 reiniciado y mensaje de prueba aceptado por Slack.
 - **Auditoría privada en Retool.** Nueva ruta `/auditoria`, visible solo con
   metadata `platformAdmin=true` (o `role=PLATFORM_ADMIN`). La función backend de
   Retool añade `X-Clarvex-Platform-Admin: true` y Clarvex rechaza cualquier
   llamada sin ese encabezado aunque traiga `ADMIN_CAPTURE_SECRET`.
 - **Guardrails de costo AWS.** Se agregó `scripts/aws-cost-guardrails.ps1`: crea
   o actualiza un Budget mensual bruto antes de créditos (`IncludeCredit=false`)
-  y Cost Anomaly Detection por servicio. No se ejecutó todavía porque el token
-  SSO local de `aws --profile clarvex` expiró; correr primero
-  `aws sso login --profile clarvex` y luego el script.
+  y Cost Anomaly Detection por servicio. Aplicado el 29 de agosto: Budget
+  `clarvex-aws-activate-guardrail` en 120 USD/mes, notificaciones 50 % actual,
+  80 % forecast y 100 % actual, más suscripción diaria de anomalías a 5 USD.
+  Costo agosto al corte: 7.8213174535 USD de uso bruto, créditos -7.821317433
+  USD, neto prácticamente 0.
 - **Las alertas técnicas se mudaron a Slack.** Infraestructura, Mercado Pago,
   auditoría del kardex y Uptime Kuma. ⚠️ **Las fotos del equipo NO**: siguen en
   el grupo de Telegram porque once de dieciocho usuarios tienen correo
@@ -87,17 +88,10 @@ que llega. Detalle completo en `CLAUDE.md`, sección «Captura por Telegram».
   POS y el reconocimiento de zonas del visual. Al cambiar al rol hay que probar
   las dos.
 - **El remitente de correo** sigue sin definir.
-- **Aplicar guardrails AWS** después de renovar SSO:
-  `powershell -ExecutionPolicy Bypass -File scripts\aws-cost-guardrails.ps1`.
-  Presupuesto por omisión: 120 USD/mes bruto; anomalía: 5 USD diarios por
-  servicio; correo: `contacto@clarvex.adrianluna.mx`.
 - **Registrar Slack Interactivity** apuntando a
   `https://team.clarvex.tech/api/webhooks/slack/actions` si aún no está en la
   app de Slack. Sin eso los mensajes llegan, pero los botones no vuelven a
   Clarvex.
-- **Invitar el bot de Slack a `#clarvex-alertas`** y luego agregar en producción
-  `SLACK_OPS_CHANNEL=C0BQFQM6CHX` con `pm2 restart clarvex-team --update-env`.
-  El bot no pudo auto-unirse por falta de scope (`missing_scope`).
 - **Kopia no está vigilado**: respalda `D:\Nube` cada hora a R2 y nadie se
   entera si deja de hacerlo.
 - **Política de asistencia por tienda**: `TOLERANCE_MINUTES`, `CUTOFF_MINUTES` y

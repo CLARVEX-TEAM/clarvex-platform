@@ -7,11 +7,13 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+$PSNativeCommandUseErrorActionPreference = $false
 $env:AWS_PAGER = ""
 
 function Write-JsonFile {
   param([string]$Path, [object]$Value)
-  $Value | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $Path -Encoding UTF8
+  $json = $Value | ConvertTo-Json -Depth 20
+  [System.IO.File]::WriteAllText($Path, $json, [System.Text.UTF8Encoding]::new($false))
 }
 
 function Invoke-Aws {
@@ -19,6 +21,18 @@ function Invoke-Aws {
   & aws @ArgsList
   if ($LASTEXITCODE -ne 0) {
     throw "aws $($ArgsList -join ' ') failed with exit code $LASTEXITCODE"
+  }
+}
+
+function Test-AwsSuccess {
+  param([string[]]$ArgsList)
+  $previousErrorAction = $ErrorActionPreference
+  try {
+    $ErrorActionPreference = "Continue"
+    & aws @ArgsList *> $null
+    return $LASTEXITCODE -eq 0
+  } finally {
+    $ErrorActionPreference = $previousErrorAction
   }
 }
 
@@ -52,8 +66,7 @@ $budget = @{
 Write-JsonFile $budgetPath $budget
 
 $budgetExists = $true
-& aws budgets describe-budget --profile $Profile --account-id $accountId --budget-name $budgetName --output json *> $null
-if ($LASTEXITCODE -ne 0) { $budgetExists = $false }
+$budgetExists = Test-AwsSuccess -ArgsList @("budgets", "describe-budget", "--profile", $Profile, "--account-id", $accountId, "--budget-name", $budgetName, "--output", "json")
 
 if ($budgetExists) {
   Invoke-Aws -ArgsList @("budgets", "update-budget", "--profile", $Profile, "--account-id", $accountId, "--new-budget", "file://$budgetPath")
@@ -78,13 +91,15 @@ foreach ($notification in $notifications) {
   Write-JsonFile $notificationPath $notification
   Write-JsonFile $subscribersPath $subscribers
 
-  & aws budgets create-notification `
-    --profile $Profile `
-    --account-id $accountId `
-    --budget-name $budgetName `
-    --notification "file://$notificationPath" `
-    --subscribers "file://$subscribersPath" *> $null
-  if ($LASTEXITCODE -eq 0) {
+  $createdNotification = Test-AwsSuccess -ArgsList @(
+    "budgets", "create-notification",
+    "--profile", $Profile,
+    "--account-id", $accountId,
+    "--budget-name", $budgetName,
+    "--notification", "file://$notificationPath",
+    "--subscribers", "file://$subscribersPath"
+  )
+  if ($createdNotification) {
     Write-Host "Notificacion creada: $($notification.NotificationType) $($notification.Threshold)%."
   } else {
     Write-Host "Notificacion ya existia o no se pudo duplicar: $($notification.NotificationType) $($notification.Threshold)%."
@@ -92,13 +107,17 @@ foreach ($notification in $notifications) {
 }
 
 $monitorName = "clarvex-cost-service-monitor"
-$monitorArn = (& aws ce get-anomaly-monitors `
-  --profile $Profile `
-  --region $Region `
-  --query "AnomalyMonitors[?MonitorName=='$monitorName'].MonitorArn | [0]" `
-  --output text)
+$monitorsRaw = Invoke-Aws -ArgsList @("ce", "get-anomaly-monitors", "--profile", $Profile, "--region", $Region, "--output", "json")
+$monitors = ($monitorsRaw | ConvertFrom-Json).AnomalyMonitors
+$selectedMonitor = @($monitors | Where-Object { $_.MonitorName -eq $monitorName } | Select-Object -First 1)
+if (-not $selectedMonitor) {
+  $selectedMonitor = @($monitors | Where-Object { $_.MonitorType -eq "DIMENSIONAL" -and $_.MonitorDimension -eq "SERVICE" } | Select-Object -First 1)
+}
 
-if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($monitorArn) -or $monitorArn -eq "None") {
+if ($selectedMonitor) {
+  $monitorArn = [string]$selectedMonitor.MonitorArn
+  Write-Host "Monitor de anomalias reutilizado: $($selectedMonitor.MonitorName)."
+} else {
   $monitorPath = Join-Path $tmp "anomaly-monitor.json"
   Write-JsonFile $monitorPath @{
     MonitorName = $monitorName
@@ -108,8 +127,6 @@ if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($monitorArn) -or $monit
   $createdMonitor = Invoke-Aws -ArgsList @("ce", "create-anomaly-monitor", "--profile", $Profile, "--region", $Region, "--anomaly-monitor", "file://$monitorPath", "--output", "json") | ConvertFrom-Json
   $monitorArn = [string]$createdMonitor.MonitorArn
   Write-Host "Monitor de anomalias creado: $monitorName."
-} else {
-  Write-Host "Monitor de anomalias ya existe: $monitorName."
 }
 
 $subscriptionName = "clarvex-cost-anomaly-daily"
@@ -124,11 +141,13 @@ Write-JsonFile $subscriptionPath @{
   Frequency = "DAILY"
 }
 
-& aws ce create-anomaly-subscription `
-  --profile $Profile `
-  --region $Region `
-  --anomaly-subscription "file://$subscriptionPath" *> $null
-if ($LASTEXITCODE -eq 0) {
+$createdSubscription = Test-AwsSuccess -ArgsList @(
+  "ce", "create-anomaly-subscription",
+  "--profile", $Profile,
+  "--region", $Region,
+  "--anomaly-subscription", "file://$subscriptionPath"
+)
+if ($createdSubscription) {
   Write-Host "Suscripcion de anomalias creada: $subscriptionName ($AnomalyThresholdUsd USD)."
 } else {
   Write-Host "Suscripcion de anomalias ya existia o no se pudo duplicar: $subscriptionName."

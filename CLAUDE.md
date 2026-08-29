@@ -27,10 +27,9 @@ Abrir Clarvex    -> /escritorio/admin
   `https://team.clarvex.tech/api/webhooks/slack/actions`.
 - `SLACK_OPS_CHANNEL` es distinto de `SLACK_CHAT_CHANNELS`: no mezclar alertas
   administrativas con el espejo del chat de tienda.
-- Canal operativo encontrado: `#clarvex-alertas` = `C0BQFQM6CHX`. El bot no es
-  miembro y `conversations.join` devolvió `missing_scope`; por eso no se dejó
-  `SLACK_OPS_CHANNEL` activo todavía. Secuencia pendiente: invitar el bot a ese
-  canal, poner `SLACK_OPS_CHANNEL=C0BQFQM6CHX` en `.env` y reiniciar PM2.
+- Canal operativo activo: `#clarvex-alertas` = `C0BQFQM6CHX`.
+  `SLACK_OPS_CHANNEL` ya está en `.env` de producción, PM2 se reinició y Slack
+  aceptó el mensaje de prueba.
 
 ### Retool: Auditoría privada
 
@@ -57,15 +56,18 @@ Hace dos cosas:
   créditos Activate no escondan consumo real.
 - Cost Anomaly Detection por servicio con umbral diario de 5 USD.
 
-No se pudo aplicar en esta corrida porque el token SSO del perfil `clarvex`
-expiró. Secuencia:
+Aplicado el 29 de agosto de 2026 tras renovar SSO:
 
-```powershell
-aws sso login --profile clarvex
-powershell -ExecutionPolicy Bypass -File scripts\aws-cost-guardrails.ps1
-```
+- Budget `clarvex-aws-activate-guardrail`: 120 USD/mes, saludable.
+- Notificaciones del Budget: 50 % actual, 80 % forecast y 100 % actual.
+- Monitor de anomalías reutilizado: `Default-Services-Monitor`.
+- Suscripción nueva: `clarvex-cost-anomaly-daily`, umbral 5 USD diarios.
+- Correo: `contacto@clarvex.adrianluna.mx`.
+- Costo agosto al corte: 7.8213174535 USD de uso bruto, -7.821317433 USD de
+  créditos, neto prácticamente 0. Cost Forecast no pudo proyectar cierre por
+  historial insuficiente.
 
-El correo por omisión es `contacto@clarvex.adrianluna.mx`; si se quiere otro:
+Para re-aplicar o cambiar correo:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts\aws-cost-guardrails.ps1 -AlertEmails admin@dominio.com
