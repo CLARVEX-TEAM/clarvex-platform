@@ -58,9 +58,9 @@ const captureRoutes = new Set([
   "/api/admin/capture/kpis",
   // Lectura del reporte diario del POS desde una captura. Solo lee y devuelve.
   "/api/admin/capture/kpis/pos-report",
-    "/api/admin/capture/goals",
-    "/api/admin/capture/weekly-performance",
-    "/api/admin/capture/weekly-performance/export",
+  "/api/admin/capture/goals",
+  "/api/admin/capture/weekly-performance",
+  "/api/admin/capture/weekly-performance/export",
   "/api/admin/capture/discounts",
   "/api/admin/capture/electronic-tickets",
   // Kardex de inventario: movimientos (GET/POST) y rondas (abrir/cerrar).
@@ -76,7 +76,9 @@ const captureRoutes = new Set([
   // las de la semana pasada. Propone y renombra; no arma nada.
   "/api/admin/capture/visual/reconocer",
   // Inicio gerencial de Retool: solo lectura, autorizado con el mismo secreto.
-  "/api/admin/retool/dashboard"
+  "/api/admin/retool/dashboard",
+  // Auditoria privada de Retool: solo plataforma, con encabezado server-side.
+  "/api/admin/retool/ops"
 ]);
 
 function isPublicApi(pathname: string): boolean {
