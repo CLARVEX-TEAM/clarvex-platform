@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import crypto from "node:crypto";
 import test from "node:test";
+import { cuerpoDeImagen, llaveDeImagen } from "../lib/slack-archivos";
 import {
   interpretarEntrante,
   parsearAutores,
@@ -196,4 +197,83 @@ test("una firma de otro largo no revienta", () => {
     ok: false,
     motivo: "no-coincide"
   });
+});
+
+/* ─── las fotos ───────────────────────────────────────────────────────────── */
+
+test("una foto adjunta se recoge junto con su texto", () => {
+  const r = interpretarEntrante(
+    evento({
+      subtype: "file_share",
+      user: "U1",
+      text: "el flyer",
+      channel: "C1",
+      ts: "1.2",
+      files: [{ mimetype: "image/png", url_private_download: "https://files.slack.com/x", size: 1000 }]
+    })
+  );
+  assert.ok(r.accion === "mensaje");
+  assert.equal(r.texto, "el flyer");
+  assert.equal(r.archivo?.mimetype, "image/png");
+});
+
+test("una foto SIN pie ya vale por si sola", () => {
+  const r = interpretarEntrante(
+    evento({
+      subtype: "file_share",
+      user: "U1",
+      text: "",
+      channel: "C1",
+      ts: "1.2",
+      files: [{ mimetype: "image/jpeg", url_private_download: "https://files.slack.com/x", size: 1000 }]
+    })
+  );
+  assert.ok(r.accion === "mensaje", r.accion === "ignorar" ? r.porque : "");
+  assert.equal(r.texto, "");
+  assert.ok(r.archivo);
+});
+
+test("un adjunto que NO es imagen se ignora", () => {
+  // Un PDF o una hoja de calculo no tienen sitio en el chat de la app.
+  const r = interpretarEntrante(
+    evento({
+      subtype: "file_share",
+      user: "U1",
+      text: "",
+      channel: "C1",
+      ts: "1.2",
+      files: [{ mimetype: "application/pdf", url_private_download: "https://files.slack.com/x" }]
+    })
+  );
+  assert.equal(r.accion, "ignorar");
+});
+
+test("de varios adjuntos se toma la primera IMAGEN", () => {
+  const r = interpretarEntrante(
+    evento({
+      subtype: "file_share",
+      user: "U1",
+      text: "x",
+      channel: "C1",
+      ts: "1.2",
+      files: [
+        { mimetype: "application/pdf", url_private_download: "a" },
+        { mimetype: "image/webp", url_private_download: "b" }
+      ]
+    })
+  );
+  assert.ok(r.accion === "mensaje" && r.archivo?.url_private_download === "b");
+});
+
+test("reconoce el cuerpo de una imagen del chat y saca su llave", () => {
+  const key = "stores/clarvex-demo-store/chat/sala1/foto.jpg";
+  const cuerpo = cuerpoDeImagen(key);
+  assert.equal(llaveDeImagen(cuerpo), key);
+});
+
+test("⚠️ un texto normal NO se confunde con una imagen", () => {
+  // Si se confundiera, el espejo intentaria subir un archivo inexistente y el
+  // mensaje del asesor no llegaria a Slack.
+  assert.equal(llaveDeImagen("hola equipo"), null);
+  assert.equal(llaveDeImagen("[img:https://otro-sitio/foto.jpg]"), null);
 });

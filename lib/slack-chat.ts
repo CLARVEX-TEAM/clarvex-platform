@@ -114,13 +114,29 @@ export type EventoSlack = {
     channel?: string;
     ts?: string;
     thread_ts?: string;
+    files?: ArchivoEntrante[];
   };
+};
+
+export type ArchivoEntrante = {
+  url_private_download?: string;
+  mimetype?: string;
+  size?: number;
+  name?: string;
 };
 
 export type Entrante =
   | { accion: "reto"; challenge: string }
   | { accion: "ignorar"; porque: string }
-  | { accion: "mensaje"; canal: string; usuarioSlack: string; texto: string; ts: string };
+  | {
+      accion: "mensaje";
+      canal: string;
+      usuarioSlack: string;
+      texto: string;
+      ts: string;
+      /** La primera foto adjunta, si la hay. Solo una: el chat guarda una por mensaje. */
+      archivo: ArchivoEntrante | null;
+    };
 
 /** Tope del cuerpo, igual que el del chat de la app. */
 const MAX = 1000;
@@ -152,9 +168,6 @@ export function interpretarEntrante(cuerpo: EventoSlack): Entrante {
    * ese subtipo, y meterlo en el mismo saco lo tiraba entero **incluido su
    * texto**. Pasó con el primero real que se mandó: un comunicado largo con un
    * flyer, que se perdió sin dejar rastro.
-   *
-   * El archivo no cruza —vive en Slack y traerlo pide otros permisos y subirlo
-   * a R2—, pero el texto sí, que es lo que la tienda tiene que leer.
    */
   if (e.subtype && e.subtype !== "file_share") {
     return { accion: "ignorar", porque: `subtipo ${e.subtype}` };
@@ -162,10 +175,12 @@ export function interpretarEntrante(cuerpo: EventoSlack): Entrante {
   if (e.thread_ts && e.thread_ts !== e.ts) return { accion: "ignorar", porque: "respuesta en hilo" };
 
   const texto = (e.text ?? "").trim();
-  if (!texto) {
-    // Una foto SIN pie no se puede reflejar: el archivo no cruza y no queda
-    // nada que escribir. Se dice en el log para que no parezca que se perdió.
-    return { accion: "ignorar", porque: e.subtype === "file_share" ? "archivo sin texto" : "sin texto" };
+  const archivo = (e.files ?? []).find((f) => (f.mimetype ?? "").startsWith("image/")) ?? null;
+
+  // Una foto SIN pie sigue valiendo: se cruza la imagen y ya. Lo que no vale es
+  // un mensaje sin texto Y sin foto, porque no queda nada que llevar.
+  if (!texto && !archivo) {
+    return { accion: "ignorar", porque: e.subtype === "file_share" ? "archivo que no es imagen" : "sin texto" };
   }
   if (!e.user || !e.channel || !e.ts) return { accion: "ignorar", porque: "sin remitente, canal o marca de tiempo" };
 
@@ -174,7 +189,8 @@ export function interpretarEntrante(cuerpo: EventoSlack): Entrante {
     canal: e.channel,
     usuarioSlack: e.user,
     texto: texto.slice(0, MAX),
-    ts: e.ts
+    ts: e.ts,
+    archivo
   };
 }
 

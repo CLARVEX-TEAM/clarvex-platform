@@ -8,6 +8,8 @@
  * Slack** — que era el muro de toda la idea.
  */
 
+import { llaveDeImagen, subirASlack } from "@/lib/slack-archivos";
+
 const API = "https://slack.com/api/chat.postMessage";
 const TIMEOUT_MS = 8_000;
 
@@ -60,8 +62,25 @@ export async function publicarEnSlack(canal: string, autor: string, texto: strin
   }
 }
 
-/** Lo mismo, pero sin esperar y sin poder tumbar a quien lo llama. */
+/**
+ * Lo mismo, pero sin esperar y sin poder tumbar a quien lo llama.
+ *
+ * ⚠️ Si el cuerpo es una IMAGEN del chat, sube el archivo en vez de publicar su
+ * texto. Sin esto, en el canal aparecía `[img:/api/chat/file?k=…]` tal cual:
+ * ilegible, y enseñando de paso cómo se guardan las cosas por dentro.
+ *
+ * Y si la foto no se puede subir, se avisa en texto de que la hubo. Un mensaje
+ * que dice «mandó una foto» es peor que ver la foto, pero mucho mejor que el
+ * silencio: el equipo sabe que hay algo que mirar en Clarvex.
+ */
 export function publicarEnSlackSinEsperar(canal: string, autor: string, texto: string): void {
+  const llave = llaveDeImagen(texto);
+  if (llave) {
+    void subirASlack(llave, canal, autor).then((ok) => {
+      if (!ok) void publicarEnSlack(canal, autor, "📷 mandó una foto (no se pudo traer; está en Clarvex)");
+    });
+    return;
+  }
   void publicarEnSlack(canal, autor, texto).then((r) => {
     if (!r.ok) console.warn(`[slack-chat] no se pudo reflejar en ${canal}: ${r.problema}`);
   });

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { dispatchPushToUsers } from "@/lib/push";
+import { traerDeSlack } from "@/lib/slack-archivos";
 import {
   interpretarEntrante,
   parsearAutores,
@@ -8,6 +9,7 @@ import {
   parsearSalasDirectas,
   salaDelCanal,
   tiendaDelCanal,
+  type ArchivoEntrante,
   verificarFirmaSlack,
   type EventoSlack
 } from "@/lib/slack-chat";
@@ -68,7 +70,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    await colocar(entrante.canal, entrante.usuarioSlack, entrante.texto);
+    await colocar(entrante.canal, entrante.usuarioSlack, entrante.texto, entrante.archivo);
   } catch (error) {
     console.warn(`[slack-webhook] no se pudo colocar el mensaje: ${error instanceof Error ? error.message : ""}`);
   }
@@ -104,7 +106,12 @@ async function salaDelCanalDeSlack(canal: string): Promise<{ id: string; storeId
   return sala;
 }
 
-async function colocar(canal: string, usuarioSlack: string, texto: string): Promise<void> {
+async function colocar(
+  canal: string,
+  usuarioSlack: string,
+  texto: string,
+  archivo: ArchivoEntrante | null
+): Promise<void> {
   const sala = await salaDelCanalDeSlack(canal);
   if (!sala) {
     console.warn(`[slack-webhook] el canal ${canal} no corresponde a ninguna sala`);
@@ -149,17 +156,43 @@ async function colocar(canal: string, usuarioSlack: string, texto: string): Prom
     return;
   }
 
-  const mensaje = await prisma.chatMessage.create({
-    data: {
-      roomId: sala.id,
-      senderId: autor.id,
-      body: texto,
-      // Quien lo escribió ya lo tiene leído, igual que en el chat de la app.
-      readBy: { create: { userId: autor.id } },
-      deliveredTo: { create: { userId: autor.id } }
-    },
-    select: { id: true }
-  });
+  /*
+   * ⚠️ La foto va en su PROPIO mensaje, no dentro del texto.
+   *
+   * El chat valida que el cuerpo de una imagen sea exactamente `[img:…]`
+   * (`chat-message-guard`), así que un mensaje con texto y foto son dos: no es
+   * un capricho del espejo, es el formato que la app ya usa.
+   *
+   * Y la foto va DESPUÉS: si falla al traerla, el texto ya está guardado. Al
+   * revés, un fallo de imagen se llevaría por delante el comunicado.
+   */
+  const crear = (body: string) =>
+    prisma.chatMessage.create({
+      data: {
+        roomId: sala.id,
+        senderId: autor.id,
+        body,
+        // Quien lo escribió ya lo tiene leído, igual que en el chat de la app.
+        readBy: { create: { userId: autor.id } },
+        deliveredTo: { create: { userId: autor.id } }
+      },
+      select: { id: true }
+    });
+
+  let mensaje: { id: string } | null = texto ? await crear(texto) : null;
+
+  if (archivo) {
+    const cuerpo = await traerDeSlack(archivo, storeId, sala.id);
+    if (cuerpo) {
+      mensaje = await crear(cuerpo);
+    } else {
+      console.warn(`[slack-webhook] no se pudo traer la foto de ${autor.name}`);
+      // Que el equipo sepa que hubo una foto vale más que el silencio: pueden
+      // pedirla. Solo si no habia texto, para no repetirlo dos veces.
+      if (!mensaje) mensaje = await crear("(mandó una foto que no se pudo traer desde Slack)");
+    }
+  }
+  if (!mensaje) return;
 
   const otros = await prisma.chatMember.findMany({
     where: { roomId: sala.id, userId: { not: autor.id } },
@@ -172,7 +205,7 @@ async function colocar(canal: string, usuarioSlack: string, texto: string): Prom
         // En un directo el aviso lo encabeza QUIEN escribe, no el nombre
         // de la sala: es lo mismo que hace el chat de la app.
         title: sala.type === "GROUP" ? "Chat Todos" : (autor.name ?? "Nuevo mensaje"),
-        body: `${autor.name}: ${texto.slice(0, 80)}`,
+        body: `${autor.name}: ${texto ? texto.slice(0, 80) : "envió una foto"}`,
         tag: `chat-${sala.id}`,
         url: `/chat/${sala.id}`
       }
