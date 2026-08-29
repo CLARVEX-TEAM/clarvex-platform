@@ -517,7 +517,7 @@ decía este documento.
 | **Cloudflare** | panel web — R2 y DNS | cuenta de Cloudflare |
 | **Vultr** | panel web. ⚠️ **La máquina está APAGADA**; encenderla es manual | cuenta de Vultr |
 | **Telegram** | `@AdrianAssitBot` (Clarvex) y `@adrianl_bot` (personal) | tokens en el `.env` de n8n |
-| **Slack** | app `Clarvex` en `https://api.slack.com/apps` · canal de alertas | webhook y tokens en el `.env` de n8n |
+| **Slack** | espacio `clarvexespacio.slack.com` · app `Clarvex` en `https://api.slack.com/apps` | webhook en el `.env` de n8n; token y firma en el de Clarvex |
 
 **Los cuatro de Tailscale no tienen DNS público.** Salieron de internet el 25 de
 agosto de 2026: sin Tailscale conectado no existen, ni siquiera su pantalla de
@@ -1049,6 +1049,57 @@ docker cp n8n:/home/node/.n8n/database.sqlite-wal /tmp/n.sqlite-wal
 
 - La app **no sabe nada de Slack ni de Telegram**: manda todo a `WEBHOOK_URL` y
   n8n decide. Cambiar de destino no toca Clarvex.
+
+## Espejo del chat con Slack — 29 de agosto de 2026
+
+El chat de Clarvex y un canal de Slack son la misma conversación. El equipo
+sigue en Clarvex con su PIN; la gerencia lee y contesta desde Slack.
+
+```
+Asesor escribe en Clarvex  →  sale en el canal con SU nombre
+Contestas en Slack         →  entra en Clarvex como tú, con push al equipo
+```
+
+⚠️ **Lo que lo hace posible es `chat:write.customize`.** Deja que el bot
+publique con el `username` de cada quien, así que **nadie del equipo necesita
+cuenta de Slack** — que era el muro: once de dieciocho usuarios tienen correo
+inventado (`<número>@clarvex.local`) y no se les puede invitar.
+
+| Variable | Qué es |
+|---|---|
+| `SLACK_BOT_TOKEN` | el `xoxb-` de la app |
+| `SLACK_SIGNING_SECRET` | 32 hex. ⚠️ **No es el `xapp-`**, que está al lado en la misma pantalla |
+| `SLACK_CHAT_CHANNELS` | `storeId=C0…`, separados por coma |
+| `SLACK_CHAT_AUTHORS` | `U0…=<númeroDeEmpleado>`, separados por coma |
+
+- ⚠️ **Clarvex es el DUEÑO del mensaje; Slack es una ventana.** No se sincronizan
+  ediciones, borrados, hilos ni reacciones: borrar en Clarvex deja el mensaje en
+  Slack, y es a propósito. Con dos dueños del mismo dato, un fallo de red deja
+  los lados distintos y ya no se sabe cuál vale.
+- ⚠️ **Solo las salas de GRUPO** (`seRefleja` en `lib/slack-chat.ts`). Un chat
+  directo es privado entre dos personas; volcarlo a un canal lo publicaría sin
+  que ninguna lo haya elegido.
+- ⚠️ **El eco se corta dos veces**: se ignora todo evento con `bot_id` o
+  `app_id`, y además por construcción — lo que entra por Slack se crea en el
+  webhook, que no pasa por el enganche del espejo.
+- ⚠️ **Un remitente de Slack sin mapear se IGNORA**, no se atribuye a nadie por
+  omisión. Un mensaje firmado por quien no lo escribió es peor que uno perdido.
+- ⚠️ **Sin `icon_url`.** La foto vive en R2, que es privado, y su única URL
+  caduca a las 6 h; Slack la resuelve al pintar, así que el avatar se rompería
+  en todo el historial.
+- ⚠️ **Slack contesta `200` aunque falle**: el error va dentro del cuerpo, en
+  `ok:false`. Mirar solo el código HTTP daría por bueno un `channel_not_found`.
+- ⚠️ **El bot tiene que estar EN el canal** (`/invite @Clarvex`) o responde
+  `not_in_channel`.
+- El endpoint `POST /api/webhooks/slack` responde **200 pase lo que pase**, salvo
+  firma inválida. Slack reintenta y acaba desactivando la suscripción si el
+  fallo insiste; un mensaje que no se supo colocar no puede costar los demás.
+
+⚠️ **El Slack CLI está instalado pero NO sirve para esto.** Gestiona manifiestos
+de apps creadas por él; la nuestra se creó en el navegador y su manifiesto lo
+administra Slack. Las suscripciones a eventos se activan ahí, y hay que
+**reinstalar la app** después de añadir el evento o el permiso queda pedido y no
+concedido, sin que nada avise.
 - Respaldo anterior en el VPS:
   `/root/n8n-workflow-backups/20260822-before-alert-routing-v6.json`.
 - Prueba completa de las tres ramas sobre la versión publicada
