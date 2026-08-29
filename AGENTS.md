@@ -47,6 +47,21 @@ que llega. Detalle completo en `CLAUDE.md`, sección «Captura por Telegram».
 - **Excel de Cuota Justa.** Los bloques diarios son celdas combinadas: mínimo,
   fecha y WhatsApp se escriben solo en la columna izquierda (`D`, `F`, `H`, ...).
   Escribir también `E/G/I/...` rompe las sumas del export.
+- **Centro operativo en Slack.** `sendOpsAlert` sigue avisando por n8n, pero si
+  existe `SLACK_OPS_CHANNEL` también publica con el bot de Slack y botones:
+  marcar revisado, abrir Auditoría en Retool y abrir Clarvex. Las acciones
+  entran por `/api/webhooks/slack/actions`, verificadas con
+  `SLACK_SIGNING_SECRET`, y se guardan en `AuditLog` como
+  `slack.ops.ack/approve/reject`.
+- **Auditoría privada en Retool.** Nueva ruta `/auditoria`, visible solo con
+  metadata `platformAdmin=true` (o `role=PLATFORM_ADMIN`). La función backend de
+  Retool añade `X-Clarvex-Platform-Admin: true` y Clarvex rechaza cualquier
+  llamada sin ese encabezado aunque traiga `ADMIN_CAPTURE_SECRET`.
+- **Guardrails de costo AWS.** Se agregó `scripts/aws-cost-guardrails.ps1`: crea
+  o actualiza un Budget mensual bruto antes de créditos (`IncludeCredit=false`)
+  y Cost Anomaly Detection por servicio. No se ejecutó todavía porque el token
+  SSO local de `aws --profile clarvex` expiró; correr primero
+  `aws sso login --profile clarvex` y luego el script.
 - **Las alertas técnicas se mudaron a Slack.** Infraestructura, Mercado Pago,
   auditoría del kardex y Uptime Kuma. ⚠️ **Las fotos del equipo NO**: siguen en
   el grupo de Telegram porque once de dieciocho usuarios tienen correo
@@ -69,6 +84,14 @@ que llega. Detalle completo en `CLAUDE.md`, sección «Captura por Telegram».
   POS y el reconocimiento de zonas del visual. Al cambiar al rol hay que probar
   las dos.
 - **El remitente de correo** sigue sin definir.
+- **Aplicar guardrails AWS** después de renovar SSO:
+  `powershell -ExecutionPolicy Bypass -File scripts\aws-cost-guardrails.ps1`.
+  Presupuesto por omisión: 120 USD/mes bruto; anomalía: 5 USD diarios por
+  servicio; correo: `contacto@clarvex.adrianluna.mx`.
+- **Registrar Slack Interactivity** apuntando a
+  `https://team.clarvex.tech/api/webhooks/slack/actions` si aún no está en la
+  app de Slack. Sin eso los mensajes llegan, pero los botones no vuelven a
+  Clarvex.
 - **Kopia no está vigilado**: respalda `D:\Nube` cada hora a R2 y nadie se
   entera si deja de hacerlo.
 - **Política de asistencia por tienda**: `TOLERANCE_MINUTES`, `CUTOFF_MINUTES` y

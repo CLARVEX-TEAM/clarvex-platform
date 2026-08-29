@@ -1,5 +1,72 @@
 # Clarvex Team — CLAUDE.md
 
+## Centro operativo Slack / Retool / AWS — 29 de agosto de 2026
+
+Se empezó la fase de control administrativo encima de lo que ya estaba en
+producción, sin tocar la lógica de KPIs, comisiones ni captura de tienda.
+
+### Slack como centro de mando
+
+`sendOpsAlert` conserva el camino viejo por n8n (`WEBHOOK_URL`) y ahora agrega
+un camino directo por bot si existe `SLACK_OPS_CHANNEL`. El mensaje lleva tres
+acciones:
+
+```
+Marcar revisado  -> /api/webhooks/slack/actions -> AuditLog slack.ops.ack
+Abrir auditoria  -> Retool /auditoria
+Abrir Clarvex    -> /escritorio/admin
+```
+
+- El endpoint de acciones verifica la firma con `SLACK_SIGNING_SECRET`, igual
+  que el espejo del chat. Si Slack no firma, se rechaza con 401.
+- Las acciones se registran en `AuditLog`, no ejecutan una mutación de negocio
+  todavía. `slack.ops.approve` y `slack.ops.reject` ya quedan reservadas para
+  conectar aprobaciones reales después.
+- Para que los botones funcionen, la app de Slack debe tener Interactivity
+  apuntando a
+  `https://team.clarvex.tech/api/webhooks/slack/actions`.
+- `SLACK_OPS_CHANNEL` es distinto de `SLACK_CHAT_CHANNELS`: no mezclar alertas
+  administrativas con el espejo del chat de tienda.
+
+### Retool: Auditoría privada
+
+Nueva ruta del App Builder: `/auditoria`.
+
+- Solo se muestra cuando la metadata del usuario Retool trae
+  `platformAdmin=true` o `role=PLATFORM_ADMIN`.
+- La función backend `backend/ops/getOpsCenter.ts` exige esa metadata y solo
+  entonces llama a Clarvex con `X-Clarvex-Platform-Admin: true`.
+- Clarvex expone `GET /api/admin/retool/ops`, protegido por
+  `ADMIN_CAPTURE_SECRET` y por ese encabezado. Devuelve resumen operativo,
+  frescura por tienda, últimas entradas de auditoría y errores recientes de
+  sincronización.
+- Las cuentas de gerencia de tienda no deben recibir `platformAdmin=true`.
+
+### AWS: costos antes de que duelan
+
+Se agregó `scripts/aws-cost-guardrails.ps1`.
+
+Hace dos cosas:
+
+- Budget mensual `clarvex-aws-activate-guardrail`, por omisión 120 USD/mes,
+  midiendo gasto bruto antes de créditos (`IncludeCredit=false`) para que los
+  créditos Activate no escondan consumo real.
+- Cost Anomaly Detection por servicio con umbral diario de 5 USD.
+
+No se pudo aplicar en esta corrida porque el token SSO del perfil `clarvex`
+expiró. Secuencia:
+
+```powershell
+aws sso login --profile clarvex
+powershell -ExecutionPolicy Bypass -File scripts\aws-cost-guardrails.ps1
+```
+
+El correo por omisión es `contacto@clarvex.adrianluna.mx`; si se quiere otro:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\aws-cost-guardrails.ps1 -AlertEmails admin@dominio.com
+```
+
 ## Captura por Telegram — 26 al 28 de agosto de 2026
 
 Cuatro cosas nuevas, todas por el bot de Clarvex (`@AdrianAssitBot`) en **chat

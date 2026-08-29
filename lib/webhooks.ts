@@ -116,6 +116,18 @@ export type OpsAlertPayload = {
 };
 
 export async function sendOpsAlert(payload: Omit<OpsAlertPayload, "format" | "createdAt">): Promise<void> {
+  const createdAt = new Date().toISOString();
+
+  try {
+    const { sendSlackOpsAlert } = await import("@/lib/slack-ops");
+    const result = await sendSlackOpsAlert({ ...payload, createdAt });
+    if (!result.ok && result.problema !== "sin token" && result.problema !== "sin canal") {
+      console.warn(`[slack-ops] no se pudo mandar alerta: ${result.problema}`);
+    }
+  } catch {
+    // Slack es canal adicional. Nunca debe cambiar el resultado del cron.
+  }
+
   const url = process.env.WEBHOOK_URL;
   if (!url) return;
 
@@ -131,7 +143,7 @@ export async function sendOpsAlert(payload: Omit<OpsAlertPayload, "format" | "cr
       body: JSON.stringify({
         ...payload,
         format: "alert" as const,
-        createdAt: new Date().toISOString()
+        createdAt
       }),
       signal: controller.signal
     });
