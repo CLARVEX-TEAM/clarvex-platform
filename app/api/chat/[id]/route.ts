@@ -4,6 +4,8 @@ import { prisma } from "@/lib/prisma";
 import { dispatchPushToUsers } from "@/lib/push";
 import { isOnline, resolveReplyTo, serializeChatMessage, touchPresence } from "@/lib/chat";
 import { chatMediaRejectionMessage, isAllowedChatMediaBody } from "@/lib/chat-message-guard";
+import { publicarEnSlackSinEsperar } from "@/lib/slack";
+import { parsearCanales, seRefleja } from "@/lib/slack-chat";
 
 export const dynamic = "force-dynamic";
 
@@ -151,6 +153,24 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       tag: `chat-${id}`,
       url: `/chat/${id}`
     });
+  }
+
+  /*
+   * Espejo a Slack, para que la gerencia lea y conteste desde donde ya vive.
+   *
+   * ⚠️ Va DESPUÉS de guardar y sin esperar. El mensaje ya está en Clarvex y el
+   * equipo lo ve; si Slack no responde, se pierde el reflejo, no el mensaje.
+   *
+   * ⚠️ Y solo las salas de GRUPO (`seRefleja`): un chat directo es privado
+   * entre dos personas y volcarlo a un canal lo publicaría sin que nadie lo
+   * haya elegido.
+   *
+   * Lo que entra POR Slack no pasa por aquí —se crea en el webhook— así que el
+   * eco está cortado por construcción, no por una bandera que se pueda olvidar.
+   */
+  if (room) {
+    const canal = seRefleja({ tipo: room.type, storeId: room.storeId }, parsearCanales(process.env.SLACK_CHAT_CHANNELS));
+    if (canal) publicarEnSlackSinEsperar(canal, session.name ?? "Clarvex", text);
   }
 
   return NextResponse.json({ message: serializeChatMessage(message) });
