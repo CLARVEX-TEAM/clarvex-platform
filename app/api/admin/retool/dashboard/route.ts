@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireAdminCapture } from "@/lib/admin-capture-auth";
 import { dashboardDateKey, dashboardDateRange } from "@/lib/dashboard-kpi";
+import { decodeSyncLogMessage, type KpiSyncMetrics } from "@/lib/data-source";
+import { buildRetailMonths, periodDateKey, selectRdvWeek, selectRetailMonth } from "@/lib/kpi-period";
 import { prisma } from "@/lib/prisma";
 import { signR2Url } from "@/lib/r2";
 import { buildManagerDashboardMetric } from "@/lib/retool-manager-dashboard";
@@ -13,7 +15,7 @@ import {
   buildWeeklyPerformanceActions
 } from "@/lib/retool-store-agent";
 import { retailMonthBoundsFor } from "@/lib/report-deadlines";
-import { reconstructRdvWeek } from "@/lib/rdv-week";
+import { mergeRdvWeeks, reconstructRdvWeek } from "@/lib/rdv-week";
 import { ADVISOR_WHERE, PERSON_WHERE } from "@/lib/store-people";
 
 export const dynamic = "force-dynamic";
@@ -43,8 +45,16 @@ function minDate(left: Date, right: Date): Date {
   return left.getTime() < right.getTime() ? left : right;
 }
 
+function maxDate(left: Date, right: Date): Date {
+  return left.getTime() > right.getTime() ? left : right;
+}
+
 function stableActionId(source: string, title: string, index: number): string {
   return `${source}-${title}-${index}`.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+}
+
+function isKpiSyncMetrics(details: unknown): details is KpiSyncMetrics {
+  return typeof details === "object" && details !== null && "sheetUsed" in details && "weeksDetected" in details && Array.isArray((details as KpiSyncMetrics).weeksDetected);
 }
 
 /**
@@ -70,13 +80,55 @@ export async function GET(request: Request) {
   const storeId = parsed.data.storeId;
   const today = dashboardDateKey();
   const todayRange = dashboardDateRange(today);
-  const retailMonth = retailMonthBoundsFor(todayRange.start);
-  const retailWeek = reconstructRdvWeek(todayRange.start);
-  const previousWeekStart = addDays(retailWeek.weekStart, -7);
-  const previousWeekEnd = addDays(retailWeek.weekStart, -1);
-  const previousMonth = retailMonthBoundsFor(addDays(retailMonth.start, -1));
-  const beforePreviousMonth = retailMonthBoundsFor(addDays(previousMonth.start, -1));
+  const [availableWeekRows, legacyWeekRows, latestKpiSource] = await Promise.all([
+    prisma.kpi.findMany({
+      where: { storeId, weekNumber: { not: null }, weekStart: { not: null }, weekEnd: { not: null }, user: PERSON_WHERE },
+      distinct: ["weekStart", "weekNumber"],
+      select: { weekNumber: true, weekStart: true, weekEnd: true },
+      orderBy: { weekStart: "desc" }
+    }),
+    prisma.kpi.findMany({
+      where: { storeId, OR: [{ weekNumber: null }, { weekStart: null }, { weekEnd: null }], user: PERSON_WHERE },
+      distinct: ["date"],
+      select: { date: true },
+      orderBy: { date: "desc" }
+    }),
+    prisma.dataSource.findFirst({
+      where: { storeId, type: "KPIS" },
+      include: { syncLogs: { where: { status: "SUCCESS" }, orderBy: { createdAt: "desc" }, take: 8 } }
+    })
+  ]);
+  const latestDetails = latestKpiSource?.syncLogs[0] ? decodeSyncLogMessage(latestKpiSource.syncLogs[0].message).details : null;
+  const syncedWeeks = isKpiSyncMetrics(latestDetails) ? latestDetails.weeksDetected.map((week) => ({
+    weekNumber: week.weekNumber,
+    weekStart: new Date(`${week.weekStart}T00:00:00.000Z`),
+    weekEnd: new Date(`${week.weekEnd}T00:00:00.000Z`)
+  })) : [];
+  const persistedWeeks = availableWeekRows.flatMap((week) =>
+    week.weekNumber !== null && week.weekStart && week.weekEnd
+      ? [{ weekNumber: week.weekNumber, weekStart: week.weekStart, weekEnd: week.weekEnd }]
+      : []
+  );
+  const availableWeeks = mergeRdvWeeks([...persistedWeeks, ...syncedWeeks], legacyWeekRows.map((row) => row.date))
+    .sort((left, right) => left.weekStart.getTime() - right.weekStart.getTime());
+  const retailMonths = buildRetailMonths(availableWeeks);
+  const detectedRetailMonth = selectRetailMonth(retailMonths, todayRange.start);
+  const currentRetailMonth = retailMonthBoundsFor(todayRange.start);
+  const selectedRetailMonth = detectedRetailMonth && todayRange.start >= detectedRetailMonth.start && todayRange.start <= detectedRetailMonth.end
+    ? { ...detectedRetailMonth, start: currentRetailMonth.start, end: currentRetailMonth.end }
+    : detectedRetailMonth ?? currentRetailMonth;
+  const selectedWeek = selectRdvWeek(availableWeeks, todayRange.start) ?? availableWeeks.at(-1) ?? reconstructRdvWeek(todayRange.start);
+  const selectedWeekIndex = availableWeeks.findIndex((week) => week.weekStart.getTime() === selectedWeek.weekStart.getTime());
+  const previousWeek = selectedWeekIndex > 0 ? availableWeeks[selectedWeekIndex - 1] : null;
+  const previousWeekStart = previousWeek?.weekStart ?? addDays(selectedWeek.weekStart, -7);
+  const previousWeekEnd = previousWeek?.weekEnd ?? addDays(selectedWeek.weekStart, -1);
+  const selectedMonthIndex = retailMonths.findIndex((month) => month.start.getTime() === selectedRetailMonth.start.getTime());
+  const previousMonthFromList = selectedMonthIndex > 0 ? retailMonths[selectedMonthIndex - 1] : null;
+  const previousMonth = previousMonthFromList ?? retailMonthBoundsFor(addDays(selectedRetailMonth.start, -1));
+  const beforePreviousMonthFromList = selectedMonthIndex > 1 ? retailMonths[selectedMonthIndex - 2] : null;
+  const beforePreviousMonth = beforePreviousMonthFromList ?? retailMonthBoundsFor(addDays(previousMonth.start, -1));
   const contextStart = minDate(beforePreviousMonth.start, previousWeekStart);
+  const contextEnd = maxDate(selectedRetailMonth.end, selectedWeek.weekEnd);
 
   const [
     store,
@@ -100,11 +152,11 @@ export async function GET(request: Request) {
       orderBy: [{ dailySales: "desc" }, { user: { name: "asc" } }]
     }),
     prisma.kpi.aggregate({
-      where: { storeId, date: { gte: retailMonth.start, lt: todayRange.end }, user: PERSON_WHERE },
+      where: { storeId, date: { gte: selectedRetailMonth.start, lte: selectedRetailMonth.end }, user: PERSON_WHERE },
       _sum: { dailySales: true, dailyGoal: true, transactions: true, pieces: true }
     }),
     prisma.kpi.findMany({
-      where: { storeId, date: { gte: contextStart, lt: todayRange.end }, user: PERSON_WHERE },
+      where: { storeId, date: { gte: contextStart, lte: contextEnd }, user: PERSON_WHERE },
       select: { date: true, dailySales: true, dailyGoal: true, transactions: true, pieces: true, traffic: true }
     }),
     prisma.user.findMany({
@@ -227,10 +279,10 @@ export async function GET(request: Request) {
   const periods = buildAgentPeriods({
     rows: periodRows,
     today: todayRange.start,
-    todayEnd: addDays(todayRange.end, -1),
-    weekStart: retailWeek.weekStart,
-    retailMonthStart: retailMonth.start,
-    retailMonthEnd: retailMonth.end,
+    weekStart: selectedWeek.weekStart,
+    weekEnd: selectedWeek.weekEnd,
+    retailMonthStart: selectedRetailMonth.start,
+    retailMonthEnd: selectedRetailMonth.end,
     previousWeekStart,
     previousWeekEnd,
     previousMonthStart: previousMonth.start,
@@ -282,7 +334,7 @@ export async function GET(request: Request) {
     generatedAt: new Date().toISOString(),
     store,
     date: today,
-    retailMonth: { start: dateKey(retailMonth.start), end: dateKey(retailMonth.end) },
+    retailMonth: { start: periodDateKey(selectedRetailMonth.start), end: periodDateKey(selectedRetailMonth.end) },
     today: todayMetric,
     month: monthMetric,
     team: {

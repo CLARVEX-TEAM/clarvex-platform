@@ -169,11 +169,19 @@ function periodHasSignal(period: StoreAgentPeriod): boolean {
   );
 }
 
+function periodHasActivity(period: StoreAgentPeriod): boolean {
+  return period.rowCount > 0 && (
+    period.metric.sales > 0 ||
+    period.metric.transactions > 0 ||
+    period.metric.pieces > 0
+  );
+}
+
 export function buildAgentPeriods(input: {
   rows: KpiPeriodRow[];
   today: Date;
-  todayEnd: Date;
   weekStart: Date;
+  weekEnd: Date;
   retailMonthStart: Date;
   retailMonthEnd: Date;
   previousWeekStart: Date;
@@ -190,15 +198,17 @@ export function buildAgentPeriods(input: {
   primary: StoreAgentPeriod;
   monthContext: StoreAgentPeriod;
 } {
-  const elapsedWeekDays = Math.max(0, Math.round((input.today.getTime() - input.weekStart.getTime()) / DAY_MS));
-  const elapsedMonthDays = Math.max(0, Math.round((input.today.getTime() - input.retailMonthStart.getTime()) / DAY_MS));
+  const elapsedWeekDays = Math.max(0, Math.round((input.weekEnd.getTime() - input.weekStart.getTime()) / DAY_MS));
+  const elapsedMonthDays = Math.max(0, Math.round((input.retailMonthEnd.getTime() - input.retailMonthStart.getTime()) / DAY_MS));
   const previousWeekComparableEnd = clampEnd(addDays(input.previousWeekStart, elapsedWeekDays), input.previousWeekEnd);
   const previousMonthComparableEnd = clampEnd(addDays(input.previousMonthStart, elapsedMonthDays), input.previousMonthEnd);
 
   const todayAgg = aggregateRows(input.rows, input.today, input.today);
-  const weekAgg = aggregateRows(input.rows, input.weekStart, input.today);
-  const monthAgg = aggregateRows(input.rows, input.retailMonthStart, input.today);
+  const weekAgg = aggregateRows(input.rows, input.weekStart, input.weekEnd);
+  const monthAgg = aggregateRows(input.rows, input.retailMonthStart, input.retailMonthEnd);
   const closedAgg = aggregateRows(input.rows, input.previousMonthStart, input.previousMonthEnd);
+  const weekClosed = input.weekEnd.getTime() < input.today.getTime();
+  const monthClosed = input.retailMonthEnd.getTime() < input.today.getTime();
 
   const today: StoreAgentPeriod = {
     key: "today",
@@ -211,20 +221,20 @@ export function buildAgentPeriods(input: {
   };
   const week: StoreAgentPeriod = {
     key: "wtd",
-    title: "Semana actual",
-    label: "WTD",
+    title: weekClosed ? "Última semana capturada" : "Semana actual",
+    label: "Semana",
     start: dateKey(input.weekStart),
-    end: dateKey(input.today),
+    end: dateKey(input.weekEnd),
     metric: weekAgg.metric,
     rowCount: weekAgg.rowCount,
     comparison: buildComparison("Semana anterior comparable", input.rows, input.previousWeekStart, previousWeekComparableEnd, weekAgg.metric)
   };
   const month: StoreAgentPeriod = {
     key: "mtd",
-    title: "Mes en curso",
-    label: "MTD",
+    title: monthClosed ? "Cierre del mes" : "Mes en curso",
+    label: monthClosed ? "Mes cerrado" : "Mes retail",
     start: dateKey(input.retailMonthStart),
-    end: dateKey(input.today),
+    end: dateKey(input.retailMonthEnd),
     metric: monthAgg.metric,
     rowCount: monthAgg.rowCount,
     comparison: buildComparison("Mismo periodo del mes anterior", input.rows, input.previousMonthStart, previousMonthComparableEnd, monthAgg.metric)
@@ -240,7 +250,7 @@ export function buildAgentPeriods(input: {
     comparison: buildComparison("Mes anterior al cierre", input.rows, input.beforePreviousMonthStart, input.beforePreviousMonthEnd, closedAgg.metric)
   };
 
-  const primary = periodHasSignal(today)
+  const primary = periodHasActivity(today)
     ? today
     : periodHasSignal(month)
       ? month
@@ -353,7 +363,7 @@ export function buildStoreAgent(input: {
       {
         label: "KPIs",
         source: "Kpi",
-        range: "Hoy, WTD, MTD, mismo periodo anterior y último mes cerrado",
+        range: "Hoy, semana RDV, mes retail, periodo anterior comparable y último mes cerrado",
         formula: "Suma venta/meta/tickets/piezas; UPT, AUR, EPT y cumplimiento salen de esos totales."
       },
       {

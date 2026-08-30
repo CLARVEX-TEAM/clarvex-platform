@@ -60,15 +60,16 @@ test("elige MTD como KPI principal cuando hoy no tiene venta pero el mes sí", (
     rows: [
       row("2026-08-02", 10_000, 8_000, 100),
       row("2026-08-16", 12_000, 9_000, 120),
+      row("2026-08-29", 5_000, 4_000, 90),
       row("2026-08-30", 0, 0, null),
       row("2026-07-06", 7_000, 7_000, 90),
       row("2026-07-20", 8_000, 7_000, 95)
     ],
     today: day("2026-08-30"),
-    todayEnd: day("2026-08-30"),
-    weekStart: day("2026-08-30"),
+    weekStart: day("2026-08-23"),
+    weekEnd: day("2026-08-29"),
     retailMonthStart: day("2026-08-02"),
-    retailMonthEnd: day("2026-09-05"),
+    retailMonthEnd: day("2026-08-29"),
     previousWeekStart: day("2026-08-23"),
     previousWeekEnd: day("2026-08-29"),
     previousMonthStart: day("2026-06-29"),
@@ -85,6 +86,43 @@ test("elige MTD como KPI principal cuando hoy no tiene venta pero el mes sí", (
   });
 
   assert.equal(agent.primaryKpi.key, "mtd");
-  assert.equal(agent.primaryKpi.metric.sales, 22_000);
-  assert.equal(agent.primaryKpi.metric.traffic, 220);
+  assert.equal(agent.primaryKpi.metric.sales, 27_000);
+  assert.equal(agent.primaryKpi.metric.goal, 21_000);
+  assert.equal(agent.primaryKpi.metric.traffic, 310);
+  assert.equal(agent.monthContext.start, "2026-08-02");
+  assert.equal(agent.monthContext.end, "2026-08-29");
+  assert.equal(agent.weekContext.start, "2026-08-23");
+  assert.equal(agent.weekContext.end, "2026-08-29");
+});
+
+test("usa el rango completo de semana y mes retail aunque hoy sea el primer día", () => {
+  const periods = buildAgentPeriods({
+    rows: [
+      row("2026-08-30", 0, 10_000, 0),
+      row("2026-09-05", 0, 20_000, 0),
+      row("2026-09-26", 0, 30_000, 0),
+      row("2026-08-23", 30_000, 15_000, 80),
+      row("2026-08-29", 20_000, 15_000, 75)
+    ],
+    today: day("2026-08-30"),
+    weekStart: day("2026-08-30"),
+    weekEnd: day("2026-09-05"),
+    retailMonthStart: day("2026-08-30"),
+    retailMonthEnd: day("2026-10-03"),
+    previousWeekStart: day("2026-08-23"),
+    previousWeekEnd: day("2026-08-29"),
+    previousMonthStart: day("2026-08-02"),
+    previousMonthEnd: day("2026-08-29"),
+    beforePreviousMonthStart: day("2026-07-05"),
+    beforePreviousMonthEnd: day("2026-08-01")
+  });
+
+  assert.equal(periods.week.start, "2026-08-30");
+  assert.equal(periods.week.end, "2026-09-05");
+  assert.equal(periods.week.metric.goal, 30_000);
+  assert.equal(periods.month.start, "2026-08-30");
+  assert.equal(periods.month.end, "2026-10-03");
+  assert.equal(periods.month.metric.goal, 60_000);
+  assert.equal(periods.month.label, "Mes retail");
+  assert.equal(periods.primary.key, "mtd");
 });
