@@ -5,6 +5,7 @@ import { dashboardDateKey, dashboardDateRange } from "@/lib/dashboard-kpi";
 import { prisma } from "@/lib/prisma";
 import { signR2Url } from "@/lib/r2";
 import { buildManagerDashboardMetric } from "@/lib/retool-manager-dashboard";
+import { buildStoreAudit } from "@/lib/retool-store-audit";
 import { retailMonthBoundsFor } from "@/lib/report-deadlines";
 import { ADVISOR_WHERE, PERSON_WHERE } from "@/lib/store-people";
 
@@ -19,6 +20,16 @@ function number(value: { toString(): string } | number | null | undefined): numb
 
 function dateKey(value: Date): string {
   return value.toISOString().slice(0, 10);
+}
+
+function maybeDateKey(value: Date | null | undefined): string | null {
+  return value ? dateKey(value) : null;
+}
+
+function daysBetween(leftKey: string, rightKey: string): number {
+  const left = Date.parse(`${leftKey}T00:00:00.000Z`);
+  const right = Date.parse(`${rightKey}T00:00:00.000Z`);
+  return Math.round((right - left) / 86_400_000);
 }
 
 /**
@@ -46,8 +57,21 @@ export async function GET(request: Request) {
   const todayRange = dashboardDateRange(today);
   const retailMonth = retailMonthBoundsFor(todayRange.start);
 
-  const [store, todayRows, monthTotals, advisors, schedules, attendance, pendings, pendingRequests] = await Promise.all([
-    prisma.store.findUnique({ where: { id: storeId }, select: { id: true, name: true } }),
+  const [
+    store,
+    todayRows,
+    monthTotals,
+    advisors,
+    schedules,
+    attendance,
+    pendings,
+    highPriorityPendings,
+    pendingRequests,
+    openInventoryRounds,
+    draftWeeklyCloses,
+    latestKpi
+  ] = await Promise.all([
+    prisma.store.findUnique({ where: { id: storeId }, select: { id: true, name: true, kpisEnabled: true } }),
     prisma.kpi.findMany({
       where: { storeId, date: { gte: todayRange.start, lt: todayRange.end }, user: PERSON_WHERE },
       include: { user: { select: { id: true, name: true, employeeNumber: true, role: true } } },
@@ -86,7 +110,20 @@ export async function GET(request: Request) {
       orderBy: [{ dueDate: "asc" }, { priority: "desc" }],
       take: 6
     }),
-    prisma.shiftRequest.count({ where: { storeId, status: "PENDIENTE" } })
+    prisma.pending.count({
+      where: {
+        storeId,
+        status: { not: "COMPLETADO" },
+        priority: { in: ["ALTA", "CRITICA"] }
+      }
+    }),
+    prisma.shiftRequest.count({ where: { storeId, status: "PENDIENTE" } }),
+    prisma.inventoryRound.count({ where: { storeId, closedAt: null } }),
+    prisma.weeklyPerformanceClose.count({ where: { storeId, status: "DRAFT", weekEnd: { lt: todayRange.start } } }),
+    prisma.kpi.aggregate({
+      where: { storeId, user: PERSON_WHERE },
+      _max: { date: true }
+    })
   ]);
 
   if (!store) return NextResponse.json({ error: "Tienda no encontrada." }, { status: 404 });
@@ -142,6 +179,27 @@ export async function GET(request: Request) {
     .sort((left, right) => (right.achievement ?? -1) - (left.achievement ?? -1) || right.sales - left.sales);
 
   const workingToday = schedules.filter((row) => row.status === "WORKING" || row.status === "INVENTORY").length;
+  const latestKpiDate = maybeDateKey(latestKpi._max.date);
+  const advisorsWorkingWithoutGoal = ranking.filter((row) =>
+    (row.scheduleStatus === "WORKING" || row.scheduleStatus === "INVENTORY") && row.goal <= 0
+  ).length;
+  const storeAudit = buildStoreAudit({
+    generatedAt: new Date(),
+    store,
+    today: todayMetric,
+    month: monthMetric,
+    latestKpiDate,
+    daysSinceKpi: latestKpiDate ? daysBetween(latestKpiDate, today) : null,
+    todayKpiRows: todayRows.length,
+    activeAdvisors: advisors.length,
+    workingToday,
+    attendanceIssues: attendance.length,
+    highPriorityPendings,
+    pendingShiftRequests: pendingRequests,
+    openInventoryRounds,
+    draftWeeklyCloses,
+    advisorsWorkingWithoutGoal
+  });
 
   return NextResponse.json({
     ok: true,
@@ -157,6 +215,7 @@ export async function GET(request: Request) {
       attendanceIssues: attendance.length,
       pendingRequests
     },
+    storeAudit,
     ranking,
     attention: {
       attendance: attendance.map((row) => ({
