@@ -22,6 +22,10 @@ Abrir Clarvex    -> /escritorio/admin
 - Las acciones se registran en `AuditLog`, no ejecutan una mutación de negocio
   todavía. `slack.ops.approve` y `slack.ops.reject` ya quedan reservadas para
   conectar aprobaciones reales después.
+- Desde `13c5221`, una acción aceptada ya no responde solo con un mensaje
+  efímero: devuelve `replace_original: true`, conserva el texto de la alerta,
+  marca el estado (`revisado`/`aprobado`/`rechazado`) y retira el botón de
+  revisión. Quedan los botones de abrir Auditoría y Clarvex.
 - Para que los botones funcionen, la app de Slack debe tener Interactivity
   apuntando a
   `https://team.clarvex.tech/api/webhooks/slack/actions`.
