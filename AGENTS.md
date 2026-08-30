@@ -6,7 +6,7 @@
 
 ---
 
-# 🔴 EN QUÉ ESTAMOS AHORA — 29 de agosto de 2026
+# 🔴 EN QUÉ ESTAMOS AHORA — 30 de agosto de 2026
 
 ## La mudanza terminó; ahora se está quitando trabajo manual
 
@@ -19,7 +19,7 @@ instancia. Al hacerlo, borrar la alarma `clarvex-caido-vultr` —silenciada, no
 eliminada— y subir la alerta de presupuesto de $20, que se quedó corta en cuanto
 EC2 corre a tiempo completo.
 
-## Lo que se construyó del 26 al 29 de agosto
+## Lo que se construyó del 26 al 30 de agosto
 
 Todo por el bot de Telegram en **chat privado**, y todo con el mismo patrón: el
 bot propone o resume, la persona confirma, y el servidor no se cree nada de lo
@@ -67,6 +67,14 @@ que llega. Detalle completo en `CLAUDE.md`, sección «Captura por Telegram».
   llamada sin ese encabezado aunque traiga `ADMIN_CAPTURE_SECRET`. La cuenta
   operativa `jhernandezl2c@gmail.com` sigue siendo `SUBGERENTE` y no debe entrar
   a Auditoría.
+- **Auditoría asistida y permisos.** `/auditoria` ahora recibe de Clarvex una
+  revisión semántica de accesos (`accessReview`) y un brief determinístico
+  (`assistantBrief`) listo para Retool Agents o Slack. Marca admins de
+  plataforma, usuarios activos con correo inventado, bajas con correo real y
+  gerencia sin login reciente. No ejecuta bajas ni cambios de rol: solo propone
+  hallazgos con guardrails. Desplegado en Clarvex `7ed0959`; Retool funcional
+  `95eed8b`, post-publicación `93c5a5e`. Smoke real del endpoint: 18 usuarios,
+  4 tiendas y 7 hallazgos.
 - **Barra superior de Retool compacta.** Con Kardex, Ticket electrónico y
   Auditoría, meter todas las rutas visibles hacía una barra ancha y torpe en
   laptop. `frontend/components/AppNav.tsx` deja visibles las rutas frecuentes

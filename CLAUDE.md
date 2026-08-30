@@ -1,6 +1,6 @@
 # Clarvex Team — CLAUDE.md
 
-## Centro operativo Slack / Retool / AWS — 29 de agosto de 2026
+## Centro operativo Slack / Retool / AWS — 30 de agosto de 2026
 
 Se empezó la fase de control administrativo encima de lo que ya estaba en
 producción, sin tocar la lógica de KPIs, comisiones ni captura de tienda.
@@ -57,6 +57,20 @@ Nueva ruta del App Builder: `/auditoria`.
   `ADMIN_CAPTURE_SECRET` y por ese encabezado. Devuelve resumen operativo,
   frescura por tienda, últimas entradas de auditoría y errores recientes de
   sincronización.
+- Desde Clarvex `7ed0959`, el mismo endpoint devuelve también:
+  - `accessReview`: revisión semántica de usuarios, no comparación por JSON.
+    Cuenta activos/inactivos, gerencia, admins de plataforma, kioskos, demos,
+    usuarios activos con correo inventado, bajas con correo real y gerencia sin
+    login reciente.
+  - `assistantBrief`: hallazgos ordenados por severidad para alimentar Retool
+    Agents o Slack con contexto ya curado. Es deliberadamente determinístico:
+    no ejecuta mutaciones, no da de baja usuarios, no cambia roles y no ajusta
+    kardex sin confirmación humana.
+- Retool `95eed8b` pinta dos paneles nuevos dentro de `/auditoria`: «Auditoría
+  asistida» y «Permisos y bajas». Pasó `retool check`, se publicó y Retool dejó
+  la rama en el commit post-publicación `93c5a5e`. Smoke de producción después
+  del deploy: `ok=true`, 18 usuarios revisados, 4 tiendas y 7 hallazgos en el
+  brief.
 - Las cuentas de gerencia de tienda no deben recibir `platformAdmin=true`. La
   cuenta operativa `jhernandezl2c@gmail.com` se mantiene como `SUBGERENTE`; si
   entra manualmente a `/auditoria`, debe ver un aviso de que use la cuenta
