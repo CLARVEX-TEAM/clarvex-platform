@@ -21,7 +21,16 @@ test("decodifica el boton de revisar una alerta operativa", () => {
     type: "block_actions",
     user: { id: "U123", name: "adrian" },
     channel: { id: "COPS" },
-    message: { ts: "1724947200.000000" },
+    message: {
+      ts: "1724947200.000000",
+      blocks: [
+        {
+          type: "section",
+          text: { type: "mrkdwn", text: "*Fuente:* kardex-audit\nDiferencia detectada." }
+        }
+      ]
+    },
+    response_url: "https://hooks.slack.com/actions/T/B/R",
     actions: [{ action_id: SLACK_OPS_ACTIONS.ackAlert, value: encodeSlackOpsValue(value) }]
   }));
 
@@ -29,6 +38,8 @@ test("decodifica el boton de revisar una alerta operativa", () => {
   if (decision.accion === "ack") {
     assert.equal(decision.userId, "U123");
     assert.equal(decision.userName, "adrian");
+    assert.equal(decision.responseUrl, "https://hooks.slack.com/actions/T/B/R");
+    assert.equal(decision.originalText, "*Fuente:* kardex-audit\nDiferencia detectada.");
     assert.deepEqual(decision.value, value);
   }
 });

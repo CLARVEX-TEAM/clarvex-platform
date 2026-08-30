@@ -12,6 +12,79 @@ const ACTION_LABEL: Record<"ack" | "approve" | "reject", string> = {
   reject: "rechazado"
 };
 
+const ACTION_ICON: Record<"ack" | "approve" | "reject", string> = {
+  ack: "[OK]",
+  approve: "[OK]",
+  reject: "[NO]"
+};
+
+function appUrl(path = "/escritorio/admin"): string {
+  const base = (process.env.APP_URL ?? process.env.WEBAUTHN_ORIGIN ?? "https://team.clarvex.tech").replace(/\/+$/, "");
+  return `${base}${path.startsWith("/") ? path : `/${path}`}`;
+}
+
+function retoolAuditUrl(): string {
+  const explicit = process.env.RETOOL_AUDIT_URL?.trim();
+  if (explicit) return explicit;
+  const org = (process.env.RETOOL_ORG_URL ?? "https://captura.adrianluna.mx").replace(/\/+$/, "");
+  return `${org}/rr/app/captura-clarvex/auditoria`;
+}
+
+function reviewedSlackResponse(decision: Exclude<ReturnType<typeof parseSlackActionBody>, { accion: "ignorar" }>) {
+  const actor = decision.userName ? `@${decision.userName}` : decision.userId;
+  const status = ACTION_LABEL[decision.accion];
+  const reviewedAt = new Date().toISOString();
+  const originalText = decision.originalText ?? `*Fuente:* ${decision.value.source}`;
+
+  return {
+    replace_original: true,
+    text: `${decision.value.title} queda ${status} por ${actor}`,
+    blocks: [
+      {
+        type: "header",
+        text: {
+          type: "plain_text",
+          text: `${ACTION_ICON[decision.accion]} ${decision.value.title}`.slice(0, 150),
+          emoji: false
+        }
+      },
+      {
+        type: "section",
+        text: {
+          type: "mrkdwn",
+          text: originalText.slice(0, 2800)
+        }
+      },
+      {
+        type: "context",
+        elements: [
+          {
+            type: "mrkdwn",
+            text: `Quedo *${status}* por ${actor} - ${reviewedAt}`
+          }
+        ]
+      },
+      {
+        type: "actions",
+        elements: [
+          {
+            type: "button",
+            text: { type: "plain_text", text: "Abrir auditoria", emoji: false },
+            action_id: "clarvex_ops_open_audit",
+            url: retoolAuditUrl()
+          },
+          {
+            type: "button",
+            text: { type: "plain_text", text: "Abrir Clarvex", emoji: false },
+            action_id: "clarvex_ops_open_admin",
+            url: appUrl()
+          }
+        ]
+      }
+    ]
+  };
+}
+
 /**
  * Botones interactivos de Slack para el centro de mando.
  *
@@ -59,8 +132,5 @@ export async function POST(request: Request) {
     }
   });
 
-  return NextResponse.json({
-    response_type: "ephemeral",
-    text: `Listo: ${decision.value.title} queda ${ACTION_LABEL[decision.accion]} en la auditoria.`
-  });
+  return NextResponse.json(reviewedSlackResponse(decision));
 }

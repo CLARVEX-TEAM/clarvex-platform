@@ -11,16 +11,27 @@ export type SlackActionDecision =
       channelId: string | null;
       messageTs: string | null;
       responseUrl: string | null;
+      originalText: string | null;
     };
 
 type SlackInteraction = {
   type?: string;
   user?: { id?: string; username?: string; name?: string };
   channel?: { id?: string };
-  message?: { ts?: string };
+  message?: {
+    ts?: string;
+    text?: string;
+    blocks?: Array<{ type?: string; text?: { type?: string; text?: string } }>;
+  };
   response_url?: string;
   actions?: Array<{ action_id?: string; value?: string }>;
 };
+
+function originalMessageText(message: SlackInteraction["message"]): string | null {
+  const sectionText = message?.blocks?.find((block) => block.type === "section" && block.text?.text)?.text?.text;
+  if (sectionText) return sectionText;
+  return message?.text ?? null;
+}
 
 export function parseSlackActionBody(rawBody: string): SlackActionDecision {
   const payload = new URLSearchParams(rawBody).get("payload");
@@ -59,6 +70,7 @@ export function parseSlackActionBody(rawBody: string): SlackActionDecision {
     userName: parsed.user.name ?? parsed.user.username ?? null,
     channelId: parsed.channel?.id ?? null,
     messageTs: parsed.message?.ts ?? null,
-    responseUrl: parsed.response_url ?? null
+    responseUrl: parsed.response_url ?? null,
+    originalText: originalMessageText(parsed.message)
   };
 }
