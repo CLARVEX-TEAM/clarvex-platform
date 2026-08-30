@@ -1,4 +1,5 @@
 import type { ManagerDashboardMetric } from "@/lib/retool-manager-dashboard";
+import type { StoreAgentAction, StoreAgentRoute } from "@/lib/retool-store-agent";
 
 export type StoreAuditSeverity = "critical" | "warning" | "info";
 
@@ -9,6 +10,12 @@ export type StoreAuditAnomaly = {
   recommendation: string;
   source: "KPIS" | "ASISTENCIA" | "PENDIENTES" | "KARDEX" | "CUOTA_JUSTA" | "HORARIOS";
   count?: number;
+  action?: {
+    label: string;
+    route: StoreAgentRoute;
+    status?: string;
+    period?: { start: string; end: string; label: string };
+  };
 };
 
 export type StoreAuditBrief = {
@@ -50,7 +57,8 @@ export function buildStoreAudit(input: {
   highPriorityPendings: number;
   pendingShiftRequests: number;
   openInventoryRounds: number;
-  draftWeeklyCloses: number;
+  draftWeeklyCloses?: number;
+  weeklyPerformanceActions?: StoreAgentAction[];
   advisorsWorkingWithoutGoal: number;
 }): StoreAuditBrief {
   const anomalies: StoreAuditAnomaly[] = [];
@@ -62,28 +70,32 @@ export function buildStoreAudit(input: {
     title: "Sin KPIs capturados hoy",
     detail: "Inicio no encontró filas de KPI para la fecha operativa actual.",
     recommendation: "Capturar KPIs antes del cierre para que ranking, metas y kardex no queden ciegos.",
-    source: "KPIS"
+    source: "KPIS",
+    action: { label: "Abrir KPIs", route: { type: "retool", path: "/kpis" } }
   });
   pushIf(input.store.kpisEnabled && input.daysSinceKpi !== null && input.daysSinceKpi > 2, anomalies, {
     severity: "critical",
     title: "Captura atrasada",
     detail: `La última captura de KPI fue ${input.latestKpiDate ?? "sin fecha"} (${input.daysSinceKpi} días).`,
     recommendation: "Revisar qué días faltan y capturarlos antes de tomar decisiones con ventas acumuladas.",
-    source: "KPIS"
+    source: "KPIS",
+    action: { label: "Abrir KPIs", route: { type: "retool", path: "/kpis" } }
   });
   pushIf(input.todayKpiRows > 0 && input.today.traffic === null, anomalies, {
     severity: "warning",
     title: "Tráfico sin capturar",
     detail: "Hay venta o metas del día, pero no hay tráfico de tienda.",
     recommendation: "Capturar tráfico para que conversión y EPT representen la operación real.",
-    source: "KPIS"
+    source: "KPIS",
+    action: { label: "Capturar tráfico", route: { type: "retool", path: "/kpis" } }
   });
   pushIf(todayAchievement !== null && input.today.goal > 0 && todayAchievement < 70, anomalies, {
     severity: "critical",
     title: "Venta diaria muy por debajo",
     detail: `La tienda va en ${todayAchievement?.toFixed(1)} % de la meta diaria.`,
     recommendation: "Abrir seguimiento con acciones de piso y revisar tickets, piezas y conversión.",
-    source: "KPIS"
+    source: "KPIS",
+    action: { label: "Abrir KPIs", route: { type: "retool", path: "/kpis" } }
   });
   pushIf(
     todayAchievement !== null && input.today.goal > 0 && todayAchievement >= 70 && todayAchievement < 90,
@@ -93,7 +105,8 @@ export function buildStoreAudit(input: {
       title: "Venta diaria por debajo",
       detail: `La tienda va en ${todayAchievement?.toFixed(1)} % de la meta diaria.`,
       recommendation: "Revisar el plan del día y reforzar a quien tenga brecha contra meta.",
-      source: "KPIS"
+      source: "KPIS",
+      action: { label: "Abrir KPIs", route: { type: "retool", path: "/kpis" } }
     }
   );
   pushIf(monthAchievement !== null && input.month.goal > 0 && monthAchievement < 85, anomalies, {
@@ -101,14 +114,16 @@ export function buildStoreAudit(input: {
     title: "Mes por debajo del ritmo",
     detail: `El avance mensual está en ${monthAchievement?.toFixed(1)} %.`,
     recommendation: "Usarlo como contexto para ajustar foco semanal, sin cambiar comisiones ni metas desde este panel.",
-    source: "KPIS"
+    source: "KPIS",
+    action: { label: "Ver acumulado", route: { type: "retool", path: "/kpis" } }
   });
   pushIf(input.workingToday === 0 && input.activeAdvisors > 0, anomalies, {
     severity: "warning",
     title: "Horario de hoy vacío",
     detail: "Hay asesores activos, pero Inicio no detectó personal laborando hoy.",
     recommendation: "Confirmar si el horario fue capturado o si la tienda no opera hoy.",
-    source: "HORARIOS"
+    source: "HORARIOS",
+    action: { label: "Abrir horarios", route: { type: "retool", path: "/horarios" } }
   });
   pushIf(input.advisorsWorkingWithoutGoal > 0, anomalies, {
     severity: "info",
@@ -116,7 +131,8 @@ export function buildStoreAudit(input: {
     detail: `${input.advisorsWorkingWithoutGoal} persona(s) laboran hoy sin meta capturada.`,
     recommendation: "Completar metas para que el ranking no castigue ni oculte desempeño.",
     source: "KPIS",
-    count: input.advisorsWorkingWithoutGoal
+    count: input.advisorsWorkingWithoutGoal,
+    action: { label: "Completar metas", route: { type: "retool", path: "/kpis" } }
   });
   pushIf(input.attendanceIssues > 0, anomalies, {
     severity: "warning",
@@ -124,7 +140,8 @@ export function buildStoreAudit(input: {
     detail: `${input.attendanceIssues} incidencia(s) de asistencia aparecen en la cola de atención.`,
     recommendation: "Revisar retardos, faltas o justificantes antes de cerrar el día.",
     source: "ASISTENCIA",
-    count: input.attendanceIssues
+    count: input.attendanceIssues,
+    action: { label: "Abrir asistencia", route: { type: "retool", path: "/asistencia" } }
   });
   pushIf(input.highPriorityPendings > 0, anomalies, {
     severity: "warning",
@@ -132,7 +149,8 @@ export function buildStoreAudit(input: {
     detail: `${input.highPriorityPendings} pendiente(s) de prioridad alta o crítica siguen abiertos.`,
     recommendation: "Asignar responsable y fecha límite desde Clarvex.",
     source: "PENDIENTES",
-    count: input.highPriorityPendings
+    count: input.highPriorityPendings,
+    action: { label: "Abrir pendientes", route: { type: "clarvex", path: "/pendientes" } }
   });
   pushIf(input.pendingShiftRequests > 0, anomalies, {
     severity: "info",
@@ -140,7 +158,8 @@ export function buildStoreAudit(input: {
     detail: `${input.pendingShiftRequests} solicitud(es) de horario siguen pendientes.`,
     recommendation: "Resolverlas antes de que afecten asistencia o cobertura.",
     source: "HORARIOS",
-    count: input.pendingShiftRequests
+    count: input.pendingShiftRequests,
+    action: { label: "Abrir horarios", route: { type: "retool", path: "/horarios" } }
   });
   pushIf(input.openInventoryRounds > 0, anomalies, {
     severity: "info",
@@ -148,16 +167,37 @@ export function buildStoreAudit(input: {
     detail: `${input.openInventoryRounds} ronda(s) de inventario siguen abiertas.`,
     recommendation: "Mantener movimientos al día; cerrar solo cuando el conteo esté confirmado.",
     source: "KARDEX",
-    count: input.openInventoryRounds
+    count: input.openInventoryRounds,
+    action: { label: "Abrir kardex", route: { type: "retool", path: "/kardex" } }
   });
-  pushIf(input.draftWeeklyCloses > 0, anomalies, {
-    severity: "warning",
-    title: "Cuota Justa en borrador",
-    detail: `${input.draftWeeklyCloses} cierre(s) semanal(es) vencidos siguen como borrador.`,
-    recommendation: "Revisar Cuota Justa/RDS y guardar el cierre correcto.",
-    source: "CUOTA_JUSTA",
-    count: input.draftWeeklyCloses
-  });
+  if (input.weeklyPerformanceActions) {
+    for (const action of input.weeklyPerformanceActions) {
+      anomalies.push({
+        severity: action.severity,
+        title: action.title,
+        detail: action.detail,
+        recommendation: "Abrir la pantalla correspondiente y guardar únicamente lo que falta.",
+        source: "CUOTA_JUSTA",
+        count: action.count,
+        action: {
+          label: action.label,
+          route: action.route,
+          status: action.status,
+          period: action.period
+        }
+      });
+    }
+  } else {
+    pushIf((input.draftWeeklyCloses ?? 0) > 0, anomalies, {
+      severity: "warning",
+      title: "Cuota Justa en borrador",
+      detail: `${input.draftWeeklyCloses ?? 0} cierre(s) semanal(es) vencidos siguen como borrador.`,
+      recommendation: "Revisar Cuota Justa/RDS y guardar el cierre correcto.",
+      source: "CUOTA_JUSTA",
+      count: input.draftWeeklyCloses,
+      action: { label: "Abrir Cuota Justa", route: { type: "retool", path: "/cuota-justa" } }
+    });
+  }
 
   const sorted = anomalies.sort(sortAnomalies);
   const critical = sorted.filter((item) => item.severity === "critical").length;

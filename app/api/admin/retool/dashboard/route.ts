@@ -6,7 +6,14 @@ import { prisma } from "@/lib/prisma";
 import { signR2Url } from "@/lib/r2";
 import { buildManagerDashboardMetric } from "@/lib/retool-manager-dashboard";
 import { buildStoreAudit } from "@/lib/retool-store-audit";
+import {
+  addDays,
+  buildAgentPeriods,
+  buildStoreAgent,
+  buildWeeklyPerformanceActions
+} from "@/lib/retool-store-agent";
 import { retailMonthBoundsFor } from "@/lib/report-deadlines";
+import { reconstructRdvWeek } from "@/lib/rdv-week";
 import { ADVISOR_WHERE, PERSON_WHERE } from "@/lib/store-people";
 
 export const dynamic = "force-dynamic";
@@ -30,6 +37,14 @@ function daysBetween(leftKey: string, rightKey: string): number {
   const left = Date.parse(`${leftKey}T00:00:00.000Z`);
   const right = Date.parse(`${rightKey}T00:00:00.000Z`);
   return Math.round((right - left) / 86_400_000);
+}
+
+function minDate(left: Date, right: Date): Date {
+  return left.getTime() < right.getTime() ? left : right;
+}
+
+function stableActionId(source: string, title: string, index: number): string {
+  return `${source}-${title}-${index}`.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 }
 
 /**
@@ -56,11 +71,18 @@ export async function GET(request: Request) {
   const today = dashboardDateKey();
   const todayRange = dashboardDateRange(today);
   const retailMonth = retailMonthBoundsFor(todayRange.start);
+  const retailWeek = reconstructRdvWeek(todayRange.start);
+  const previousWeekStart = addDays(retailWeek.weekStart, -7);
+  const previousWeekEnd = addDays(retailWeek.weekStart, -1);
+  const previousMonth = retailMonthBoundsFor(addDays(retailMonth.start, -1));
+  const beforePreviousMonth = retailMonthBoundsFor(addDays(previousMonth.start, -1));
+  const contextStart = minDate(beforePreviousMonth.start, previousWeekStart);
 
   const [
     store,
     todayRows,
     monthTotals,
+    periodRows,
     advisors,
     schedules,
     attendance,
@@ -68,7 +90,7 @@ export async function GET(request: Request) {
     highPriorityPendings,
     pendingRequests,
     openInventoryRounds,
-    draftWeeklyCloses,
+    weeklyPerformanceCloses,
     latestKpi
   ] = await Promise.all([
     prisma.store.findUnique({ where: { id: storeId }, select: { id: true, name: true, kpisEnabled: true } }),
@@ -78,8 +100,12 @@ export async function GET(request: Request) {
       orderBy: [{ dailySales: "desc" }, { user: { name: "asc" } }]
     }),
     prisma.kpi.aggregate({
-      where: { storeId, date: { gte: retailMonth.start, lte: retailMonth.end }, user: PERSON_WHERE },
+      where: { storeId, date: { gte: retailMonth.start, lt: todayRange.end }, user: PERSON_WHERE },
       _sum: { dailySales: true, dailyGoal: true, transactions: true, pieces: true }
+    }),
+    prisma.kpi.findMany({
+      where: { storeId, date: { gte: contextStart, lt: todayRange.end }, user: PERSON_WHERE },
+      select: { date: true, dailySales: true, dailyGoal: true, transactions: true, pieces: true, traffic: true }
     }),
     prisma.user.findMany({
       where: { storeId, ...ADVISOR_WHERE },
@@ -119,7 +145,21 @@ export async function GET(request: Request) {
     }),
     prisma.shiftRequest.count({ where: { storeId, status: "PENDIENTE" } }),
     prisma.inventoryRound.count({ where: { storeId, closedAt: null } }),
-    prisma.weeklyPerformanceClose.count({ where: { storeId, status: "DRAFT", weekEnd: { lt: todayRange.start } } }),
+    prisma.weeklyPerformanceClose.findMany({
+      where: { storeId, weekEnd: { lt: todayRange.start } },
+      select: {
+        id: true,
+        weekStart: true,
+        weekEnd: true,
+        weekNumber: true,
+        status: true,
+        quotaSavedAt: true,
+        reportSavedAt: true,
+        finalizedAt: true
+      },
+      orderBy: { weekEnd: "desc" },
+      take: 8
+    }),
     prisma.kpi.aggregate({
       where: { storeId, user: PERSON_WHERE },
       _max: { date: true }
@@ -183,6 +223,21 @@ export async function GET(request: Request) {
   const advisorsWorkingWithoutGoal = ranking.filter((row) =>
     (row.scheduleStatus === "WORKING" || row.scheduleStatus === "INVENTORY") && row.goal <= 0
   ).length;
+  const weeklyPerformanceActions = buildWeeklyPerformanceActions(weeklyPerformanceCloses);
+  const periods = buildAgentPeriods({
+    rows: periodRows,
+    today: todayRange.start,
+    todayEnd: addDays(todayRange.end, -1),
+    weekStart: retailWeek.weekStart,
+    retailMonthStart: retailMonth.start,
+    retailMonthEnd: retailMonth.end,
+    previousWeekStart,
+    previousWeekEnd,
+    previousMonthStart: previousMonth.start,
+    previousMonthEnd: previousMonth.end,
+    beforePreviousMonthStart: beforePreviousMonth.start,
+    beforePreviousMonthEnd: beforePreviousMonth.end
+  });
   const storeAudit = buildStoreAudit({
     generatedAt: new Date(),
     store,
@@ -197,8 +252,29 @@ export async function GET(request: Request) {
     highPriorityPendings,
     pendingShiftRequests: pendingRequests,
     openInventoryRounds,
-    draftWeeklyCloses,
+    weeklyPerformanceActions,
     advisorsWorkingWithoutGoal
+  });
+  const agent = buildStoreAgent({
+    generatedAt: new Date(),
+    primary: periods.primary,
+    week: periods.week,
+    monthContext: periods.monthContext,
+    attention: storeAudit.anomalies.flatMap((item, index) => {
+      if (!item.action) return [];
+      return [{
+        id: stableActionId(item.source, item.title, index),
+        severity: item.severity,
+        title: item.title,
+        detail: item.detail,
+        source: item.source,
+        route: item.action.route,
+        label: item.action.label,
+        count: item.count,
+        status: item.action.status,
+        period: item.action.period
+      }];
+    })
   });
 
   return NextResponse.json({
@@ -215,6 +291,7 @@ export async function GET(request: Request) {
       attendanceIssues: attendance.length,
       pendingRequests
     },
+    agent,
     storeAudit,
     ranking,
     attention: {
