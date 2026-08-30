@@ -76,6 +76,36 @@ Nueva ruta del App Builder: `/auditoria`.
   entra manualmente a `/auditoria`, debe ver un aviso de que use la cuenta
   administrativa.
 
+### Retool: agente de tienda en Inicio
+
+El 30 de agosto se agregó una versión cerrada por tienda del brief operativo,
+visible en **Inicio** para gerentes y subgerentes.
+
+- Clarvex `b2cbebf` añade `lib/retool-store-audit.ts` y devuelve `storeAudit`
+  desde `GET /api/admin/retool/dashboard`.
+- El `storeId` sigue viniendo de `requireManagerIdentity` en el backend de
+  Retool; el frontend no manda ni elige tienda. Esto es lo que cierra el agente
+  a la tienda del usuario.
+- `storeAudit` revisa, sin mutar datos: captura KPI atrasada o ausente, tráfico
+  faltante, avance diario/mensual bajo, horarios vacíos, personal laborando sin
+  meta, incidencias de asistencia, pendientes altos, solicitudes de horario,
+  rondas de kardex abiertas y cierres de Cuota Justa vencidos en `DRAFT`.
+- Retool `36fd1d2` agrega `frontend/components/inicio/StoreAuditPanel.tsx` y lo
+  pinta antes del resto del dashboard. Si no hay KPIs del día, el agente sigue
+  apareciendo y luego se muestra el vacío de KPIs.
+- Pasó `retool check`; publicación post-publish `7888efa`.
+- Smoke real en AWS: TH SAN AGUSTIN devolvió `storeAudit.storeName=TH SAN
+  AGUSTIN`, estado `review` y 3 anomalías. Eso confirma que el payload del
+  agente corresponde a una sola tienda.
+
+### Hilos operativos
+
+Hoy no existe todavía una entidad persistente llamada «hilo operativo». Lo que
+sí existe es la alerta de Slack con botones: abre Auditoría/Clarvex y marca el
+mensaje como revisado por `slack.ops.ack`. Para volverlo un flujo real falta
+crear una tabla/endpoint de casos con responsable, estado, comentarios y cierre,
+y conectar ahí las anomalías de Inicio y Auditoría.
+
 ### Retool: barra superior compacta
 
 La captura real del 29 de agosto mostró que la navegación se volvió demasiado

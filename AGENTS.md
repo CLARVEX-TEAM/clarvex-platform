@@ -75,6 +75,17 @@ que llega. Detalle completo en `CLAUDE.md`, sección «Captura por Telegram».
   hallazgos con guardrails. Desplegado en Clarvex `7ed0959`; Retool funcional
   `95eed8b`, post-publicación `93c5a5e`. Smoke real del endpoint: 18 usuarios,
   4 tiendas y 7 hallazgos.
+- **Agente de tienda en Inicio.** Inicio ahora muestra un panel «Agente de
+  tienda» para gerencia/subgerencia, cerrado a su propia tienda porque Retool
+  sigue resolviendo `storeId` desde la metadata segura con
+  `requireManagerIdentity`. Clarvex devuelve `storeAudit` dentro de
+  `/api/admin/retool/dashboard`: revisa captura atrasada, tráfico faltante,
+  venta diaria baja, horario vacío, metas faltantes, incidencias de asistencia,
+  pendientes altos, solicitudes, kardex abierto y Cuota Justa en borrador. No
+  cambia nada; recomienda dónde corregir. Desplegado en Clarvex `b2cbebf`;
+  Retool funcional `36fd1d2`, post-publicación `7888efa`. Smoke real: TH SAN
+  AGUSTIN devolvió `storeAudit.storeName=TH SAN AGUSTIN`, estado `review` y 3
+  anomalías.
 - **Barra superior de Retool compacta.** Con Kardex, Ticket electrónico y
   Auditoría, meter todas las rutas visibles hacía una barra ancha y torpe en
   laptop. `frontend/components/AppNav.tsx` deja visibles las rutas frecuentes
@@ -115,6 +126,11 @@ que llega. Detalle completo en `CLAUDE.md`, sección «Captura por Telegram».
   `https://team.clarvex.tech/api/webhooks/slack/actions` si aún no está en la
   app de Slack. Sin eso los mensajes llegan, pero los botones no vuelven a
   Clarvex.
+- **Hilos operativos reales.** Hoy «hilo operativo» significa una alerta de
+  Slack con botones para abrir Auditoría/Clarvex y marcar revisado. Falta crear
+  una entidad propia de caso/hilo con responsable, estado, comentarios y cierre,
+  para que las anomalías de Inicio o Auditoría puedan abrir seguimiento sin
+  perderse en Slack.
 - **Kopia no está vigilado**: respalda `D:\Nube` cada hora a R2 y nadie se
   entera si deja de hacerlo.
 - **Política de asistencia por tienda**: `TOLERANCE_MINUTES`, `CUTOFF_MINUTES` y
