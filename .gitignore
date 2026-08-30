@@ -21,6 +21,11 @@ tests/visual/__screenshots__/**/darwin/
 .env.bak*
 .env.backup*
 *.env.bak
+# Dumps y respaldos de base de datos: pueden contener datos reales.
+*.dump
+*.pgdump
+*.backup
+/backups/
 dist/
 build/
 dev.log
