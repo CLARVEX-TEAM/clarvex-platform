@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireAdminCapture } from "@/lib/admin-capture-auth";
 import { dashboardDateKey, dashboardDateRange } from "@/lib/dashboard-kpi";
 import { prisma } from "@/lib/prisma";
+import { buildAccessReview, buildAssistantBrief } from "@/lib/retool-ops-review";
 import { slackOpsConfigurado } from "@/lib/slack-ops";
 import { PERSON_WHERE } from "@/lib/store-people";
 
@@ -49,7 +50,8 @@ export async function GET(request: Request) {
     openInventoryRounds,
     draftWeeklyCloses,
     recentAudit,
-    syncErrors
+    syncErrors,
+    accessUsers
   ] = await Promise.all([
     prisma.store.findMany({
       select: {
@@ -79,6 +81,23 @@ export async function GET(request: Request) {
       orderBy: { createdAt: "desc" },
       take: 10,
       include: { dataSource: { include: { store: { select: { id: true, name: true } } } } }
+    }),
+    prisma.user.findMany({
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        employeeNumber: true,
+        role: true,
+        active: true,
+        platformAdmin: true,
+        checklistOnly: true,
+        isDemo: true,
+        biometricEnabled: true,
+        lastLoginAt: true,
+        lastSeenAt: true,
+        store: { select: { id: true, name: true } }
+      }
     })
   ]);
 
@@ -105,6 +124,24 @@ export async function GET(request: Request) {
       captureStatus
     };
   });
+  const syncErrorRows = syncErrors.map((entry) => ({
+    id: entry.id,
+    createdAt: entry.createdAt.toISOString(),
+    storeId: entry.dataSource.storeId,
+    storeName: entry.dataSource.store.name,
+    sourceType: entry.dataSource.type,
+    message: entry.message,
+    recordsProcessed: entry.recordsProcessed
+  }));
+  const accessReview = buildAccessReview(accessUsers);
+  const assistantBrief = buildAssistantBrief({
+    generatedAt: new Date(),
+    staleStores: storeRows.filter((store) => store.captureStatus === "stale" || store.captureStatus === "never"),
+    draftWeeklyCloses,
+    highPriorityPendings: pendingHigh,
+    syncErrors: syncErrorRows,
+    accessFindings: accessReview.findings
+  });
 
   return NextResponse.json({
     ok: true,
@@ -124,6 +161,8 @@ export async function GET(request: Request) {
       n8nOpsConfigured: Boolean(process.env.WEBHOOK_URL)
     },
     stores: storeRows,
+    accessReview,
+    assistantBrief,
     audit: recentAudit.map((entry) => ({
       id: entry.id,
       createdAt: entry.createdAt.toISOString(),
@@ -135,14 +174,6 @@ export async function GET(request: Request) {
       entityId: entry.entityId,
       detail: entry.detail
     })),
-    syncErrors: syncErrors.map((entry) => ({
-      id: entry.id,
-      createdAt: entry.createdAt.toISOString(),
-      storeId: entry.dataSource.storeId,
-      storeName: entry.dataSource.store.name,
-      sourceType: entry.dataSource.type,
-      message: entry.message,
-      recordsProcessed: entry.recordsProcessed
-    }))
+    syncErrors: syncErrorRows
   }, { headers: { "Cache-Control": "private, no-store" } });
 }
