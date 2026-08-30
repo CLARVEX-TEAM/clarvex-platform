@@ -52,12 +52,14 @@ que llega. Detalle completo en `CLAUDE.md`, sección «Captura por Telegram».
   marcar revisado, abrir Auditoría en Retool y abrir Clarvex. Las acciones
   entran por `/api/webhooks/slack/actions`, verificadas con
   `SLACK_SIGNING_SECRET`, y se guardan en `AuditLog` como
-  `slack.ops.ack/approve/reject`. Desde `13c5221`, al marcar revisado el
-  endpoint responde con `replace_original: true`: el mensaje queda marcado y se
-  retira el botón de revisión, dejando solo los accesos a Auditoría y Clarvex.
-  Canal activo en producción: `#clarvex-alertas` = `C0BQFQM6CHX`;
-  `SLACK_OPS_CHANNEL` ya quedó configurado, PM2 reiniciado y mensaje de prueba
-  aceptado por Slack.
+  `slack.ops.ack/approve/reject`. El click interactivo no llegó desde Slack en
+  la prueba real, así que desde `1100480` el botón de revisión también lleva una
+  URL firmada a `/api/webhooks/slack/ack`: registra `AuditLog`, ejecuta
+  `chat.update` y quita el botón de revisión aunque Interactivity no esté bien
+  configurado. Prueba verificada: mensaje `1788055213.563919` quedó `[OK]` y
+  solo con «Abrir auditoría» / «Abrir Clarvex». Canal activo en producción:
+  `#clarvex-alertas` = `C0BQFQM6CHX`; `SLACK_OPS_CHANNEL` ya quedó configurado,
+  PM2 reiniciado y mensaje de prueba aceptado por Slack.
 - **Auditoría privada en Retool.** Nueva ruta `/auditoria`, visible solo con
   metadata `platformAdmin=true` (o `role=PLATFORM_ADMIN`) y también para la
   cuenta administrativa `contacto@clarvex.adrianluna.mx`. La función backend de

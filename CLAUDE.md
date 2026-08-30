@@ -22,10 +22,19 @@ Abrir Clarvex    -> /escritorio/admin
 - Las acciones se registran en `AuditLog`, no ejecutan una mutación de negocio
   todavía. `slack.ops.approve` y `slack.ops.reject` ya quedan reservadas para
   conectar aprobaciones reales después.
-- Desde `13c5221`, una acción aceptada ya no responde solo con un mensaje
-  efímero: devuelve `replace_original: true`, conserva el texto de la alerta,
-  marca el estado (`revisado`/`aprobado`/`rechazado`) y retira el botón de
-  revisión. Quedan los botones de abrir Auditoría y Clarvex.
+- Desde `13c5221`, una acción interactiva aceptada ya no responde solo con un
+  mensaje efímero: devuelve `replace_original: true`, conserva el texto de la
+  alerta, marca el estado (`revisado`/`aprobado`/`rechazado`) y retira el botón
+  de revisión. Quedan los botones de abrir Auditoría y Clarvex.
+- La prueba real mostró que Slack no estaba llamando el endpoint interactivo: no
+  apareció `slack.ops.ack` ni logs firmados de `/api/webhooks/slack/actions`.
+  Desde `1100480`, `sendSlackOpsAlert` publica y luego hace `chat.update` para
+  convertir «Marcar revisado» en una URL firmada a `/api/webhooks/slack/ack`.
+  Esa ruta no depende de Interactivity: valida HMAC con `SLACK_SIGNING_SECRET`,
+  registra `AuditLog` de forma idempotente y actualiza el mensaje por
+  `chat.update`. Prueba verificada en producción: mensaje `1788055213.563919`
+  cambió a `[OK] Prueba de alerta Slack por enlace firmado` y quedó solo con
+  «Abrir auditoría» / «Abrir Clarvex».
 - Para que los botones funcionen, la app de Slack debe tener Interactivity
   apuntando a
   `https://team.clarvex.tech/api/webhooks/slack/actions`.
