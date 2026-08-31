@@ -100,6 +100,14 @@ que llega. Detalle completo en `CLAUDE.md`, sección «Captura por Telegram».
   80 % forecast y 100 % actual, más suscripción diaria de anomalías a 5 USD.
   Costo agosto al corte: 7.8213174535 USD de uso bruto, créditos -7.821317433
   USD, neto prácticamente 0.
+- **Perfil profesional de GitHub.** Se creó el repo público
+  `CLARVEX-TEAM/.github` sin tocar `jhernandezl2c-hash/app`: commit
+  `98a9a9f`, perfil público en `https://github.com/CLARVEX-TEAM`, README de
+  organización, logo horizontal, icono, `SECURITY.md`, `CONTRIBUTING.md`,
+  plantilla de PR y templates de issues. La organización quedó con descripción
+  pública y website `https://clarvex.tech`; email y ubicación siguen vacíos. La
+  transferencia del repo principal sigue detenida hasta que GitHub Support
+  termine la purga de datos sensibles.
 - **Las alertas técnicas se mudaron a Slack.** Infraestructura, Mercado Pago,
   auditoría del kardex y Uptime Kuma. ⚠️ **Las fotos del equipo NO**: siguen en
   el grupo de Telegram porque once de dieciocho usuarios tienen correo
@@ -137,6 +145,9 @@ que llega. Detalle completo en `CLAUDE.md`, sección «Captura por Telegram».
   los horarios por omisión viven en constantes y deberían estar en `Store`.
 - **Canal por tienda** para las fotos de evidencia, antes de que GUESS Galerías
   empiece a capturar.
+- **Transferir `jhernandezl2c-hash/app` a `CLARVEX-TEAM`** solo después de que
+  GitHub Support confirme la purga del dump sensible. No renombrar ni transferir
+  antes de ese cierre.
 
 ---
 

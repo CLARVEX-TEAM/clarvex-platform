@@ -152,6 +152,53 @@ Para re-aplicar o cambiar correo:
 powershell -ExecutionPolicy Bypass -File scripts\aws-cost-guardrails.ps1 -AlertEmails admin@dominio.com
 ```
 
+### GitHub: perfil público de CLARVEX-TEAM
+
+Se preparó la presencia pública mínima de la organización sin transferir todavía
+el repositorio principal. El alcance fue solo `CLARVEX-TEAM` y recursos nuevos;
+`jhernandezl2c-hash/app` quedó limpio, sin cambios y con su remote original.
+
+- `gh.exe` no estaba en el PATH de la sesión de Codex, pero sí instalado y
+  autenticado como `jhernandezl2c-hash` en:
+  `C:\Users\Adrian L\AppData\Local\Microsoft\WinGet\Packages\GitHub.cli_Microsoft.Winget.Source_8wekyb3d8bbwe\bin\gh.exe`.
+- Auditoría autenticada de la org al momento de crear el perfil: plan
+  `enterprise`, 1 miembro (`jhernandezl2c-hash`), 0 equipos, 0 repos previos,
+  0 rulesets, 0 secrets/variables de Actions o Dependabot. Actions estaba
+  permitido para todos los repos y acciones; no se cambió porque las políticas
+  globales quedaron fuera de esta fase.
+- Se creó el repo público `CLARVEX-TEAM/.github`:
+  `https://github.com/CLARVEX-TEAM/.github`.
+- Commit publicado: `98a9a9f` (`Create Clarvex organization profile`).
+- Archivos creados:
+  - `profile/README.md`
+  - `profile/assets/clarvex-logo-horizontal.svg`
+  - `profile/assets/clarvex-icon.png`
+  - `SECURITY.md`
+  - `CONTRIBUTING.md`
+  - `.github/pull_request_template.md`
+  - `.github/ISSUE_TEMPLATE/bug_report.yml`
+  - `.github/ISSUE_TEMPLATE/feature_request.yml`
+  - `.github/ISSUE_TEMPLATE/config.yml`
+- Branding reutilizado desde este repo: el logo horizontal se basó en
+  `public/branding/retool-logo-horizontal.svg`, limpiando la descripción para
+  no mencionar Retool; el icono cuadrado salió de `docs/assets/logo.png`.
+- La organización quedó con:
+  - descripción pública:
+    `Secure retail operations software for store teams, workflows, performance, and operational intelligence.`
+  - website: `https://clarvex.tech` (verificado con 200 y título de Clarvex).
+  - email público vacío.
+  - ubicación vacía.
+- Verificación posterior: GitHub renderizó `profile/README.md` en
+  `https://github.com/CLARVEX-TEAM`; el SVG y PNG respondieron 200; `SECURITY.md`
+  respondió 200; la búsqueda de patrones sensibles no encontró AWS, Retool,
+  Slack, tokens, variables internas, endpoints privados ni referencias al repo
+  principal.
+
+⚠️ **No transferir `jhernandezl2c-hash/app` todavía.** La transferencia a
+`CLARVEX-TEAM` sigue bloqueada hasta que GitHub Support confirme la purga del
+dump sensible del historial. Tampoco se crearon equipos ni se tocaron rulesets,
+Actions globales, environments, deploy keys, AWS, Retool, Slack ni permisos.
+
 ## Captura por Telegram — 26 al 28 de agosto de 2026
 
 Cuatro cosas nuevas, todas por el bot de Clarvex (`@AdrianAssitBot`) en **chat
