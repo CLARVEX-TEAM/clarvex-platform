@@ -372,7 +372,7 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
   };
 
   return (
-    <div className="fixed inset-0 z-30 flex flex-col bg-white dark:bg-[#0f1729]">
+    <div className="fixed inset-x-0 bottom-0 top-[var(--aviso-alto,0px)] z-30 flex flex-col bg-white dark:bg-[#0f1729]">
       <AppHeader
         title={title}
         subtitle={subtitle}

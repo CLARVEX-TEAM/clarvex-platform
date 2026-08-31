@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
 import { Wrench } from "lucide-react";
@@ -27,6 +27,7 @@ const EXCLUDED = ["/login", "/recuperar", "/reset", "/suspendida", "/manual"];
 export function GuessSchemeNotice() {
   const pathname = usePathname();
   const [show, setShow] = useState(false);
+  const caja = useRef<HTMLDivElement>(null);
 
   const excluded = !pathname || EXCLUDED.some((route) => pathname === route || pathname.startsWith(`${route}/`));
 
@@ -51,6 +52,37 @@ export function GuessSchemeNotice() {
     return () => { cancelled = true; };
   }, [pathname, excluded]);
 
+  /*
+   * Se publica la altura real en `--aviso-alto`.
+   *
+   * El aviso va `fixed` por encima de todo, así que una pantalla a pantalla
+   * completa (`fixed inset-0`, como el chat) le queda debajo y pierde su
+   * cabecera y sus primeros mensajes. Esas pantallas leen esta variable para
+   * empezar más abajo.
+   *
+   * Se MIDE en vez de fijar un número: el texto ocupa dos líneas o tres según
+   * el ancho, y en móvil se le suma el área segura. Un valor a ojo funciona en
+   * el teléfono de quien lo escribió y tapa contenido en los demás.
+   */
+  useEffect(() => {
+    const raiz = document.documentElement;
+    if (!show || excluded || !caja.current) {
+      raiz.style.removeProperty("--aviso-alto");
+      return;
+    }
+    const el = caja.current;
+    const medir = () => raiz.style.setProperty("--aviso-alto", `${el.offsetHeight}px`);
+    medir();
+    const observador = new ResizeObserver(medir);
+    observador.observe(el);
+    return () => {
+      observador.disconnect();
+      // Se limpia al desmontar: si no, una pantalla sin aviso seguiría
+      // reservando el hueco de un aviso que ya no está.
+      raiz.style.removeProperty("--aviso-alto");
+    };
+  }, [show, excluded]);
+
   if (!show || excluded) return null;
 
   return (
@@ -58,6 +90,7 @@ export function GuessSchemeNotice() {
       initial={{ y: -40, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ type: "spring", stiffness: 260, damping: 28 }}
+      ref={caja}
       role="status"
       aria-live="polite"
       // `desk-adopt` es obligatoria: esto se monta en el layout raíz, fuera del
