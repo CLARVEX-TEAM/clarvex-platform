@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { aQuienAvisar, encontrarMenciones, nombresMencionables, TODOS } from "../lib/chat-mentions";
+import { filtrarSugerencias, mencionEnCurso } from "../components/ChatMentions";
 
 const EQUIPO = [
   { userId: "itzel", name: "ITZEL SAIDY REYES BAUTISTA" },
@@ -91,4 +92,37 @@ test("el mapa de nombres deja fuera los ambiguos", () => {
 
 test("TODOS es una palabra reservada, no una persona", () => {
   assert.equal(encontrarMenciones("@todos", EQUIPO)[0]?.userId, TODOS);
+});
+
+/* ─── el autocompletado ───────────────────────────────────────────────────── */
+
+test("detecta que se esta escribiendo una mencion", () => {
+  assert.deepEqual(mencionEnCurso("hola @wa", 8), { desde: 5, termino: "wa" });
+  assert.deepEqual(mencionEnCurso("@", 1), { desde: 0, termino: "" });
+});
+
+test("⚠️ un correo no abre el autocompletado", () => {
+  // «correo@dominio.com» no es una mencion, y sugerir ahi seria molesto.
+  assert.equal(mencionEnCurso("escribe a correo@dominio", 24), null);
+});
+
+test("fuera de una mencion no sugiere nada", () => {
+  assert.equal(mencionEnCurso("hola equipo", 11), null);
+  assert.equal(mencionEnCurso("@waira ya cerre la tienda", 25), null);
+});
+
+test("sugiere por cualquier parte del nombre, y nunca a uno mismo", () => {
+  const gente = EQUIPO.map((p) => ({ ...p, photoUrl: null }));
+  assert.deepEqual(filtrarSugerencias(gente, "wa", "itzel").map((p) => p.userId), ["waira"]);
+  // Por apellido tambien: se escribe lo que uno recuerda.
+  assert.deepEqual(filtrarSugerencias(gente, "trevi", "itzel").map((p) => p.userId), ["alonso"]);
+  assert.ok(!filtrarSugerencias(gente, "", "itzel").some((p) => p.userId === "itzel"));
+});
+
+test("con nombre y espacio sigue sugiriendo; con la frase empezada, no", () => {
+  // Tras «@Ana » puede venir el apellido, asi que la lista sigue.
+  assert.deepEqual(mencionEnCurso("hola @Ana ", 10), { desde: 5, termino: "Ana " });
+  assert.deepEqual(mencionEnCurso("hola @Ana Sofia", 15), { desde: 5, termino: "Ana Sofia" });
+  // Pero tras el segundo nombre la mencion termino.
+  assert.equal(mencionEnCurso("hola @Ana Sofia ", 16), null);
 });

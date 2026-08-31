@@ -2,7 +2,7 @@
 
 import { use, useEffect, useRef, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { Send, Smile, Users, ImagePlus, Trash2, X, Reply } from "lucide-react";
+import { Send, Smile, Users, ImagePlus, Trash2, X, Reply, Pencil, Pin, PinOff, Search, Check } from "lucide-react";
 import { getSession } from "@/lib/auth";
 import type { User } from "@/lib/types";
 import { AppHeader, ProfileAvatar } from "@/components/ui";
@@ -26,15 +26,32 @@ import {
 } from "@/components/ChatPicker";
 import {
   deleteChatMessage,
+  editChatMessage,
   fetchChatRoom,
+  pinChatMessage,
   postChatImage,
   postChatMessage,
   postChatReaction,
+  searchChat,
   type ChatMessageView as Message,
-  type ChatRoomInfoView as RoomInfo
+  type ChatRoomInfoView as RoomInfo,
+  type ChatSearchHit
 } from "@/lib/chat-client";
+import { MentionText, filtrarSugerencias, mencionEnCurso } from "@/components/ChatMentions";
 
-function MessageBody({ msg, isMe, onImageClick }: { msg: Message; isMe: boolean; onImageClick?: (url: string) => void }) {
+function MessageBody({
+  msg,
+  isMe,
+  onImageClick,
+  gente = [],
+  yo = ""
+}: {
+  msg: Message;
+  isMe: boolean;
+  onImageClick?: (url: string) => void;
+  gente?: { userId: string; name: string }[];
+  yo?: string;
+}) {
   if (msg.deleted) {
     return (
       <div className={cn(
@@ -91,7 +108,12 @@ function MessageBody({ msg, isMe, onImageClick }: { msg: Message; isMe: boolean;
           : "rounded-bl-sm bg-white/90 text-ink dark:bg-white/10"
       )}
     >
-      {msg.body}
+      <MentionText body={msg.body} gente={gente} yo={yo} claro={isMe} />
+      {msg.editedAt && (
+        <span className={cn("ml-1.5 text-[10px] font-semibold", isMe ? "text-white/60" : "text-muted")}>
+          editado
+        </span>
+      )}
     </div>
   );
 }
@@ -110,6 +132,11 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
   const [menuMsg, setMenuMsg] = useState<Message | null>(null);
   const [replyTo, setReplyTo] = useState<Message | null>(null);
   const [lightbox, setLightbox] = useState<string | null>(null);
+  // Corregir: se guarda el mensaje y el texto en curso, para poder cancelar.
+  const [editing, setEditing] = useState<{ id: string; body: string } | null>(null);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const [hits, setHits] = useState<ChatSearchHit[]>([]);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -119,6 +146,20 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
   useEffect(() => {
     getSession().then((s) => { if (!s) router.replace("/login"); else setSession(s); });
   }, [router]);
+
+  /*
+   * Buscar con freno de 300 ms. Sin él se consulta en cada tecla: cinco
+   * peticiones para escribir «venta», y las respuestas pueden llegar
+   * desordenadas y pintar el resultado de una búsqueda vieja.
+   */
+  useEffect(() => {
+    if (!searchOpen || query.trim().length < 2) { setHits([]); return; }
+    let vigente = true;
+    const t = setTimeout(() => {
+      void searchChat(query, id).then((r) => { if (vigente) setHits(r); });
+    }, 300);
+    return () => { vigente = false; clearTimeout(t); };
+  }, [searchOpen, query, id]);
 
   const fetchMessages = useCallback(async () => {
     try {
@@ -299,6 +340,33 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
     return d.toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long" });
   }
 
+  const gente = (room?.members ?? []).map((m) => ({ userId: m.id, name: m.name }));
+  const fijado = messages.find((m) => m.pinnedAt && !m.deleted) ?? null;
+
+  const guardarCorreccion = async () => {
+    if (!editing?.body.trim()) return;
+    try {
+      const actualizado = await editChatMessage(id, editing.id, editing.body.trim());
+      setMessages((prev) => prev.map((m) => (m.id === actualizado.id ? actualizado : m)));
+      setEditing(null);
+    } catch (error) {
+      toast(error instanceof Error ? error.message : "No se pudo corregir.", "error");
+    }
+  };
+
+  const alternarFijado = async (msg: Message) => {
+    setMenuMsg(null);
+    try {
+      const actualizado = await pinChatMessage(id, msg.id, !msg.pinnedAt);
+      // Solo puede haber uno fijado: se sueltan los demás en pantalla también.
+      setMessages((prev) => prev.map((m) =>
+        m.id === actualizado.id ? actualizado : m.pinnedAt ? { ...m, pinnedAt: null } : m
+      ));
+    } catch (error) {
+      toast(error instanceof Error ? error.message : "No se pudo fijar.", "error");
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-30 flex flex-col bg-white dark:bg-[#0f1729]">
       <AppHeader
@@ -306,20 +374,94 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
         subtitle={subtitle}
         backHref="/chat"
         action={
-          room?.type === "GROUP" ? (
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => { setSearchOpen((v) => !v); setQuery(""); }}
+              aria-label="Buscar en la conversación"
+              className={cn(
+                "grid size-9 place-items-center rounded-2xl transition active:scale-95",
+                searchOpen ? "bg-volt/15 text-volt" : "bg-panel text-muted"
+              )}
+            >
+              <Search size={17} />
+            </button>
+            {room?.type === "GROUP" ? (
             <span className="grid size-9 place-items-center rounded-2xl bg-volt/12 text-volt">
               <Users size={17} />
             </span>
-          ) : otherMember ? (
-            <div className="relative">
-              <ProfileAvatar name={otherMember.name} photoUrl={otherMember.photoUrl} size="sm" />
-              {otherMember.online && (
-                <span className="absolute -bottom-0.5 -right-0.5 size-3 rounded-full border-2 border-white bg-green-500 dark:border-[#0f1729]" />
-              )}
-            </div>
-          ) : null
+            ) : otherMember ? (
+              <div className="relative">
+                <ProfileAvatar name={otherMember.name} photoUrl={otherMember.photoUrl} size="sm" />
+                {otherMember.online && (
+                  <span className="absolute -bottom-0.5 -right-0.5 size-3 rounded-full border-2 border-white bg-green-500 dark:border-[#0f1729]" />
+                )}
+              </div>
+            ) : null}
+          </div>
         }
       />
+
+      {/* Buscar dentro de la conversación */}
+      {searchOpen && (
+        <div className="border-b border-line bg-panel/60 px-4 py-2.5">
+          <div className="mx-auto flex max-w-md items-center gap-2 rounded-2xl border border-line bg-white px-3 py-2 dark:bg-[#0f1729]">
+            <Search size={15} className="shrink-0 text-muted" />
+            <input
+              autoFocus
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Buscar en esta conversación…"
+              className="min-w-0 flex-1 bg-transparent text-sm font-semibold text-ink outline-none"
+            />
+            {query && (
+              <button type="button" onClick={() => setQuery("")} className="shrink-0 text-muted">
+                <X size={15} />
+              </button>
+            )}
+          </div>
+          {query.trim().length >= 2 && (
+            <div className="mx-auto mt-2 max-w-md space-y-1">
+              {hits.length === 0 ? (
+                <p className="py-2 text-center text-xs font-semibold text-muted">Nada con «{query}»</p>
+              ) : (
+                hits.map((h) => (
+                  <button
+                    key={h.id}
+                    type="button"
+                    onClick={() => {
+                      // Llevar al mensaje y resaltarlo un momento.
+                      setSearchOpen(false);
+                      const el = document.getElementById(`msg-${h.id}`);
+                      el?.scrollIntoView({ behavior: "smooth", block: "center" });
+                      el?.animate([{ opacity: 0.35 }, { opacity: 1 }], { duration: 900 });
+                    }}
+                    className="flex w-full flex-col gap-0.5 rounded-2xl bg-white px-3 py-2 text-left transition active:bg-volt/8 dark:bg-[#0f1729]"
+                  >
+                    <span className="text-[11px] font-bold text-volt">{h.senderName}</span>
+                    <span className="line-clamp-2 text-xs text-ink">{h.body}</span>
+                  </button>
+                ))
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* El mensaje fijado, siempre a la vista */}
+      {fijado && !searchOpen && (
+        <button
+          type="button"
+          onClick={() => document.getElementById(`msg-${fijado.id}`)?.scrollIntoView({ behavior: "smooth", block: "center" })}
+          className="flex w-full items-center gap-2 border-b border-line bg-amber-50 px-4 py-2 text-left dark:bg-amber-400/10"
+        >
+          <Pin size={14} className="shrink-0 text-amber-600 dark:text-amber-400" />
+          <div className="min-w-0 flex-1">
+            <p className="text-[10px] font-bold uppercase tracking-wide text-amber-700 dark:text-amber-400">Fijado</p>
+            <p className="truncate text-xs font-semibold text-ink">{chatPreview(fijado.body, fijado.deleted)}</p>
+          </div>
+        </button>
+      )}
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto px-4 pb-2 pt-3">
@@ -335,7 +477,7 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
             const status = computeMessageStatus(msg, otherIds);
 
             return (
-              <div key={msg.id}>
+              <div key={msg.id} id={`msg-${msg.id}`}>
                 {showDay && (
                   <div className="my-3 flex items-center gap-2">
                     <div className="h-px flex-1 bg-line/50" />
@@ -372,7 +514,7 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
                       {msg.replyTo && (
                         <ReplyQuote reply={msg.replyTo} isMe={isMe} onClick={() => scrollToMessage(msg.replyTo!.id)} />
                       )}
-                      <MessageBody msg={msg} isMe={isMe} onImageClick={setLightbox} />
+                      <MessageBody msg={msg} isMe={isMe} onImageClick={setLightbox} gente={gente} yo={session?.id ?? ""} />
                     </div>
                     <span className={cn("mt-0.5 flex items-center gap-1 text-[10px] text-muted", isMe ? "flex-row-reverse pr-1" : "pl-1")}>
                       {formatTime(msg.createdAt)}
@@ -422,6 +564,37 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
             </button>
           </div>
         )}
+        {(() => {
+          const enCurso = mencionEnCurso(input, inputRef.current?.selectionStart ?? input.length);
+          if (!enCurso) return null;
+          const sugeridos = filtrarSugerencias(
+            (room?.members ?? []).map((m) => ({ userId: m.id, name: m.name, photoUrl: m.photoUrl })),
+            enCurso.termino,
+            session?.id ?? ""
+          );
+          if (sugeridos.length === 0) return null;
+          return (
+            <div className="mx-auto mb-2 max-w-md overflow-hidden rounded-2xl border border-line bg-white shadow-lg dark:bg-[#0f1729]">
+              {sugeridos.map((p) => (
+                <button
+                  key={p.userId}
+                  type="button"
+                  onClick={() => {
+                    // Se sustituye lo escrito por el nombre completo del primer
+                    // nombre, para que el servidor lo reconozca sin dudar.
+                    const corto = p.name.split(/\s+/)[0];
+                    setInput(input.slice(0, enCurso.desde) + "@" + corto + " " + input.slice(enCurso.desde + 1 + enCurso.termino.length));
+                    inputRef.current?.focus();
+                  }}
+                  className="flex w-full items-center gap-2.5 px-3 py-2 text-left transition active:bg-volt/8"
+                >
+                  <ProfileAvatar name={p.name} photoUrl={p.photoUrl} size="sm" />
+                  <span className="truncate text-sm font-bold text-ink">{p.name}</span>
+                </button>
+              ))}
+            </div>
+          );
+        })()}
         <div className="mx-auto flex max-w-md items-end gap-2">
           <button
             type="button"
@@ -485,6 +658,26 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
                 <Reply size={18} className="text-volt" /> Responder
               </button>
             )}
+            {!menuMsg.deleted && menuMsg.senderId === session?.id && !/^\[(img|gif|sticker):/.test(menuMsg.body) && (
+              <button
+                type="button"
+                onClick={() => { setEditing({ id: menuMsg.id, body: menuMsg.body }); setMenuMsg(null); }}
+                className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-bold text-ink transition active:bg-volt/8"
+              >
+                <Pencil size={18} className="text-volt" /> Corregir
+              </button>
+            )}
+            {!menuMsg.deleted && (
+              <button
+                type="button"
+                onClick={() => void alternarFijado(menuMsg)}
+                className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-bold text-ink transition active:bg-volt/8"
+              >
+                {menuMsg.pinnedAt
+                  ? <><PinOff size={18} className="text-amber-600" /> Soltar</>
+                  : <><Pin size={18} className="text-amber-600" /> Fijar arriba</>}
+              </button>
+            )}
             {!menuMsg.deleted && (menuMsg.senderId === session?.id || isManager) && (
               <button
                 type="button"
@@ -525,6 +718,43 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
           </button>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={lightbox} alt="Imagen" className="max-h-full max-w-full rounded-lg object-contain" onClick={(e) => e.stopPropagation()} />
+        </div>
+      )}
+
+      {/* Corregir un mensaje propio */}
+      {editing && (
+        <div className="fixed inset-0 z-[65] flex items-end bg-black/40" onClick={() => setEditing(null)}>
+          <div className="w-full rounded-t-3xl bg-white p-4 pb-6 shadow-2xl dark:bg-[#0f1729]" onClick={(e) => e.stopPropagation()}>
+            <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-line" />
+            <p className="mb-2 text-sm font-bold text-ink">Corregir mensaje</p>
+            <textarea
+              autoFocus
+              value={editing.body}
+              onChange={(e) => setEditing({ ...editing, body: e.target.value })}
+              rows={3}
+              maxLength={1000}
+              className="w-full resize-none rounded-2xl border border-line bg-panel px-3.5 py-2.5 text-sm font-semibold text-ink outline-none focus:border-volt"
+            />
+            {/* Se avisa aqui de que va a quedar marcado: enterarse despues es peor. */}
+            <p className="mt-1.5 text-[11px] text-muted">Quedará marcado como editado.</p>
+            <div className="mt-3 flex gap-2">
+              <button
+                type="button"
+                onClick={() => setEditing(null)}
+                className="flex-1 rounded-2xl bg-panel px-4 py-3 text-sm font-bold text-muted transition active:scale-95"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={() => void guardarCorreccion()}
+                disabled={!editing.body.trim()}
+                className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-volt px-4 py-3 text-sm font-bold text-white transition active:scale-95 disabled:opacity-40"
+              >
+                <Check size={16} /> Guardar
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

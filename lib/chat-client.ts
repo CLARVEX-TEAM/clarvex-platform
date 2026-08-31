@@ -17,6 +17,12 @@ export type ChatMessageView = {
   deliveredTo: string[];
   reactions: MessageReaction[];
   replyTo: ReplyInfo | null;
+  /** Cuándo se corrigió. La pantalla lo marca: cambiar lo dicho sin que se
+   *  note es peor que no poder corregir. */
+  editedAt: string | null;
+  pinnedAt: string | null;
+  /** A quién se mencionó, resuelto al escribir y no al leer. */
+  mentions: string[];
 };
 
 export type ChatMemberView = { id: string; name: string; photoUrl: string | null; role: string; online: boolean; lastSeenAt: string | null };
@@ -88,4 +94,55 @@ export async function postChatReaction(roomId: string, messageId: string, emoji:
 
 export async function deleteChatMessage(roomId: string, messageId: string, scope: "me" | "all"): Promise<void> {
   await fetch(`/api/chat/${roomId}/${messageId}?scope=${scope}`, { method: "DELETE" });
+}
+
+/**
+ * Corrige el texto de un mensaje propio.
+ *
+ * ⚠️ El servidor solo lo permite al AUTOR y dentro de 15 minutos, y marca el
+ * mensaje como editado. Aquí no se replica esa regla: duplicarla haría que la
+ * pantalla y el servidor pudieran acabar diciendo cosas distintas.
+ */
+export async function editChatMessage(roomId: string, messageId: string, body: string): Promise<ChatMessageView> {
+  const res = await fetch(`/api/chat/${roomId}/${messageId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ body })
+  });
+  const data = (await res.json()) as { message?: ChatMessageView; error?: string };
+  if (!res.ok || !data.message) throw new Error(data.error ?? "No se pudo corregir el mensaje.");
+  return data.message;
+}
+
+/** Fija un mensaje arriba de la sala, o lo suelta. Solo uno a la vez. */
+export async function pinChatMessage(roomId: string, messageId: string, pinned: boolean): Promise<ChatMessageView> {
+  const res = await fetch(`/api/chat/${roomId}/${messageId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ pinned })
+  });
+  const data = (await res.json()) as { message?: ChatMessageView; error?: string };
+  if (!res.ok || !data.message) throw new Error(data.error ?? "No se pudo fijar el mensaje.");
+  return data.message;
+}
+
+export type ChatSearchHit = {
+  id: string;
+  roomId: string;
+  body: string;
+  createdAt: string;
+  senderId: string;
+  senderName: string;
+  senderPhoto: string | null;
+  roomLabel: string;
+};
+
+/** Busca en las conversaciones de las que eres miembro. */
+export async function searchChat(q: string, roomId?: string): Promise<ChatSearchHit[]> {
+  const params = new URLSearchParams({ q });
+  if (roomId) params.set("roomId", roomId);
+  const res = await fetch(`/api/chat/search?${params}`, { cache: "no-store" });
+  if (!res.ok) return [];
+  const data = (await res.json()) as { results?: ChatSearchHit[] };
+  return data.results ?? [];
 }
