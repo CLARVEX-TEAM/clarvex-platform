@@ -60,6 +60,33 @@ Validación local cerrada:
 `pnpm build` solo mostró el warning conocido de Sentry/OpenTelemetry
 (`require-in-the-middle`); terminó correctamente.
 
+### ⚠️ Cada quien va en el bloque de su PUESTO, no en el siguiente libre
+
+**Esto es dinero.** La plantilla corporativa tiene los puestos cableados por
+posición y las hojas `KPIs x Colaborador` y `COMISIONES` leen columnas fijas,
+aplicando el porcentaje de la **fila**, no el de la persona:
+
+| Bloque | Columna | Puesto | Tope de comisión |
+|---|---|---|---|
+| 1 | `D` | GERENTE | 1.87 % |
+| 2 | `O` | SUBGERENTE 1 | 1.39 % |
+| 3 | `Z` | SUBGERENTE 2 | 1.39 % |
+| 4+ | `AK`… | VENDEDOR 1, 2, 3… | 2.29 % |
+
+El exportador los empaquetaba seguidos, así que en una tienda **sin segundo
+subgerente** la primera asesora caía en el bloque 3 y el Excel le calculaba
+**1.39 % sobre la venta de TIENDA** en vez de 2.29 % sobre la suya — y corría a
+los demás asesores una posición. Pasó con Waira en agosto de 2026.
+
+`asignarBloques()` reparte por puesto y deja vacíos los que la tienda no tiene.
+⚠️ **Si sobra alguien de un puesto se DETIENE**, no se le busca hueco: colocarlo
+en el bloque libre más cercano es exactamente el fallo que esto arregla.
+
+⚠️ **La plantilla trae bloques OCULTOS y escribir dentro no los muestra.** Las
+columnas 26-36 (el bloque 3) vienen escondidas justo porque esta tienda no tiene
+SUBGERENTE 2, y las 70-168 porque sobran. Los datos quedaban bien puestos y **no
+se veían**. `mostrarColumnas()` enseña solo los bloques que reciben a alguien.
+
 ### La mitad de Retool — publicada el 31 de agosto de 2026
 
 ⚠️ **La primera pasada dejó el endpoint vivo y sin nadie que lo llamara.** El
