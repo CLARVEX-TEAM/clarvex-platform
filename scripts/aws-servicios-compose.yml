@@ -165,6 +165,28 @@ services:
       - /home/ubuntu/gastos:/var/syncthing/Gastos
     networks: [clarvex_net]
 
+  # Adminer: mirar la base de datos desde el navegador, SOLO por Tailscale.
+  #
+  # Se elige Adminer y no pgAdmin porque la RAM aqui es escasa (3.7 GB con la
+  # app en cluster, Postgres y ocho contenedores): esto son ~15 MB, pgAdmin
+  # ronda los 300.
+  #
+  # El puerto se publica en 127.0.0.1 A PROPOSITO. Quien entra lo hace por
+  # `tailscale serve`, que ya pone TLS y solo responde dentro del tailnet.
+  # Publicarlo en 0.0.0.0 lo dejaria escuchando tambien en la IP publica, y el
+  # grupo de seguridad seria lo unico que separa la base de internet.
+  adminer:
+    image: adminer:4-standalone
+    container_name: adminer
+    restart: unless-stopped
+    environment:
+      # Rellena el host al abrir; el usuario y la contrasena se teclean.
+      - ADMINER_DEFAULT_SERVER=clarvex_postgres
+      - ADMINER_DESIGN=dracula
+    ports:
+      - "127.0.0.1:8082:8080"
+    networks: [clarvex_net]
+
 networks:
   clarvex_net:
     name: clarvex_net

@@ -769,10 +769,23 @@ documento nombra en algun sitio es del servidor VIEJO, que esta apagado.
 | `vaultwarden` | vaultwarden/server | Gestor de contraseñas | **solo Tailscale** |
 | `portainer` | portainer/portainer-ce | Administración de Docker | **solo Tailscale** |
 | `syncthing` | syncthing/syncthing | Sincroniza la nube personal | **solo Tailscale** |
+| `adminer` | adminer:4-standalone | Mirar la base desde el navegador | **solo Tailscale** |
 
-⚠️ **Seis de los ocho viven en el compose** de `/home/ubuntu/stack/` —todos menos
-`clarvex_postgres` y `npm`, que se crearon con `docker run` sueltos y meterlos
-ahí los recrearía—. Copia versionada en `scripts/aws-servicios-compose.yml`.
+⚠️ **Siete de los nueve viven en el compose** de `/home/ubuntu/stack/` —todos
+menos `clarvex_postgres` y `npm`, que se crearon con `docker run` sueltos y
+meterlos ahí los recrearía—. Copia versionada en `scripts/aws-servicios-compose.yml`.
+
+⚠️ **Adminer es una pantalla que puede BORRAR TABLAS.** Está solo en el tailnet
+y su puerto se publica en `127.0.0.1` a propósito —quien entra pasa por
+`tailscale serve`, nunca por `funnel`—, pero el candado que importa es con qué
+usuario se entra: para mirar, `retool`, que tiene SELECT en 72 tablas y **cero**
+escritura. `clarvex` es superusuario y ahí un `DELETE` con el `WHERE` mal puesto
+se lleva datos de verdad.
+
+⚠️ Para que Adminer viera a Postgres hubo que conectarlo a `clarvex_net`
+(`docker network connect clarvex_net clarvex_postgres`): estaba solo en el
+bridge por omisión, que **no resuelve nombres de contenedor**. Es la misma
+trampa de los 502 de `npm`. No requiere reiniciar Postgres.
 
 ⚠️ **`docker ps` asusta con n8n y no debe.** Publica `0.0.0.0:5678`, pero el
 grupo de seguridad no abre ese puerto: comprobado desde fuera, 5678 y 8384 están
@@ -806,6 +819,7 @@ cualquiera en el mundo llegaba a sus pantallas de acceso. Ahora se sirven con
 | Vaultwarden | `https://clarvex-aws.taile59f37.ts.net` | `127.0.0.1:8080` |
 | Portainer | `https://clarvex-aws.taile59f37.ts.net:8443` | `127.0.0.1:9000` |
 | Uptime Kuma | `https://clarvex-aws.taile59f37.ts.net:9443` | `127.0.0.1:3001` |
+| Adminer (base de datos) | `https://clarvex-aws.taile59f37.ts.net:10443` | `127.0.0.1:8082` |
 
 ⚠️ **Los clientes de Bitwarden guardan la URL del servidor.** Al mover
 Vaultwarden hubo que reconfigurar la extensión del navegador y la app del
