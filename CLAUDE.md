@@ -58,8 +58,34 @@ Validación local cerrada:
 - `pnpm build`
 
 `pnpm build` solo mostró el warning conocido de Sentry/OpenTelemetry
-(`require-in-the-middle`); terminó correctamente. No se publicó a producción ni
-se modificó Retool en esta fase.
+(`require-in-the-middle`); terminó correctamente.
+
+### La mitad de Retool — publicada el 31 de agosto de 2026
+
+⚠️ **La primera pasada dejó el endpoint vivo y sin nadie que lo llamara.** El
+backend de Retool (`backend/kpis/exportRdv.ts`) ni siquiera estaba en git y el
+botón de `frontend/pages/Kpis.tsx` estaba sin commitear: el export funcionaba y
+no se podía usar desde la pantalla.
+
+Publicado en Retool `8ffc4db` (commit posterior al publish `f43637a`), con
+`retool check` en sus cuatro fases. El botón vive en la pantalla de KPIs y baja
+el archivo del día seleccionado.
+
+- El `storeId` sale de `requireManagerIdentity(req.user)`, **no del parámetro**:
+  una tienda no puede pedir el RDV de otra aunque manipule la petición.
+- Retool llama con `format=base64` para no exponer `ADMIN_CAPTURE_SECRET` al
+  navegador; el archivo se arma en el backend y baja con `downloadBase64File`.
+
+⚠️ **La ruta hay que añadirla a `captureRoutes` en `middleware.ts`.** Sin eso
+responde **«Sesión requerida»** antes de llegar a validar
+`ADMIN_CAPTURE_SECRET`, y el mensaje hace pensar en un problema de permisos de
+Retool y no en una lista blanca. Es el precio de enumerar las rutas una a una en
+vez de abrir el prefijo — que es deliberado, ver el comentario de esa lista.
+
+Comprobado contra producción: sin secreto devuelve **401 «No autorizado»**, y con
+él un XLSX real de 94 KB (`RDV-TH-SAN-AGUSTIN-2026-08-02-2026-08-29.xlsx`, agosto
+2026, semanas 31 a 34, 5 personas). Se verificó que el archivo empieza por `PK`:
+un JSON de error disfrazado también habría dado 200.
 
 ## Centro operativo Slack / Retool / AWS — 30 de agosto de 2026
 
