@@ -2,7 +2,7 @@
 
 import { use, useEffect, useRef, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { Send, Smile, Users, ImagePlus, Trash2, X, Reply, Pencil, Pin, PinOff, Search, Check } from "lucide-react";
+import { Send, Smile, Users, ImagePlus, Trash2, X, Reply, Pencil, Pin, PinOff, Search, Check, ChevronDown } from "lucide-react";
 import { getSession } from "@/lib/auth";
 import type { User } from "@/lib/types";
 import { AppHeader, ProfileAvatar } from "@/components/ui";
@@ -137,6 +137,10 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
   const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [hits, setHits] = useState<ChatSearchHit[]>([]);
+  // Solo se ofrece bajar cuando de verdad estas arriba: un boton que siempre
+  // esta tapa el ultimo mensaje sin hacer falta.
+  const [lejosDelFinal, setLejosDelFinal] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -431,10 +435,10 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
                     type="button"
                     onClick={() => {
                       // Llevar al mensaje y resaltarlo un momento.
+                      // Mismo salto y mismo resaltado que al tocar una cita:
+                      // dos comportamientos distintos para lo mismo confunden.
                       setSearchOpen(false);
-                      const el = document.getElementById(`msg-${h.id}`);
-                      el?.scrollIntoView({ behavior: "smooth", block: "center" });
-                      el?.animate([{ opacity: 0.35 }, { opacity: 1 }], { duration: 900 });
+                      setTimeout(() => scrollToMessage(h.id), 60);
                     }}
                     className="flex w-full flex-col gap-0.5 rounded-2xl bg-white px-3 py-2 text-left transition active:bg-volt/8 dark:bg-[#0f1729]"
                   >
@@ -464,20 +468,44 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
       )}
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-4 pb-2 pt-3">
+      <div
+        ref={scrollRef}
+        onScroll={(e) => {
+          const el = e.currentTarget;
+          setLejosDelFinal(el.scrollHeight - el.scrollTop - el.clientHeight > 320);
+        }}
+        className="flex-1 overflow-y-auto px-4 pb-2 pt-3"
+      >
         {loading ? (
           <p className="py-8 text-center text-sm font-semibold text-muted">Cargando mensajes…</p>
         ) : messages.length === 0 ? (
-          <p className="py-8 text-center text-sm text-muted">Sé el primero en escribir 👋</p>
+          <div className="flex flex-col items-center gap-2 py-12 text-center">
+            <span className="grid size-14 place-items-center rounded-3xl bg-volt/10 text-2xl">👋</span>
+            <p className="text-sm font-bold text-ink">Todavía no hay mensajes</p>
+            <p className="max-w-[15rem] text-xs text-muted">
+              Escribe abajo. Con <span className="font-bold text-volt">@</span> avisas a alguien en concreto.
+            </p>
+          </div>
         ) : (
           messages.map((msg, i) => {
             const isMe = msg.senderId === session?.id;
             const showDay = i === 0 || !sameDay(messages[i - 1].createdAt, msg.createdAt);
             const showAvatar = !isMe && (i === 0 || messages[i - 1].senderId !== msg.senderId || showDay);
             const status = computeMessageStatus(msg, otherIds);
+            /*
+             * El ultimo mensaje seguido de la misma persona cierra el grupo.
+             * Solo ahi se pinta la hora y el visto: repetirlos en cada linea
+             * llena la pantalla de ruido y esconde lo que se dijo.
+             */
+            const siguiente = messages[i + 1];
+            const finDeGrupo =
+              !siguiente ||
+              siguiente.senderId !== msg.senderId ||
+              !sameDay(msg.createdAt, siguiente.createdAt) ||
+              new Date(siguiente.createdAt).getTime() - new Date(msg.createdAt).getTime() > 5 * 60 * 1000;
 
             return (
-              <div key={msg.id} id={`msg-${msg.id}`}>
+              <div key={msg.id}>
                 {showDay && (
                   <div className="my-3 flex items-center gap-2">
                     <div className="h-px flex-1 bg-line/50" />
@@ -487,7 +515,7 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
                     <div className="h-px flex-1 bg-line/50" />
                   </div>
                 )}
-                <div className={cn("mb-1 flex items-end gap-2", isMe ? "flex-row-reverse" : "flex-row")}>
+                <div className={cn("flex items-end gap-2", finDeGrupo ? "mb-2.5" : "mb-0.5", isMe ? "flex-row-reverse" : "flex-row")}>
                   {!isMe && (
                     <div className="w-7 shrink-0">
                       {showAvatar && (
@@ -516,10 +544,12 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
                       )}
                       <MessageBody msg={msg} isMe={isMe} onImageClick={setLightbox} gente={gente} yo={session?.id ?? ""} />
                     </div>
-                    <span className={cn("mt-0.5 flex items-center gap-1 text-[10px] text-muted", isMe ? "flex-row-reverse pr-1" : "pl-1")}>
-                      {formatTime(msg.createdAt)}
-                      {isMe && !msg.deleted && otherIds.length > 0 && <MessageTicks status={status} />}
-                    </span>
+                    {finDeGrupo && (
+                      <span className={cn("mt-0.5 flex items-center gap-1 text-[10px] text-muted", isMe ? "flex-row-reverse pr-1" : "pl-1")}>
+                        {formatTime(msg.createdAt)}
+                        {isMe && !msg.deleted && otherIds.length > 0 && <MessageTicks status={status} />}
+                      </span>
+                    )}
                     {!msg.deleted && (
                       <ReactionChips reactions={msg.reactions} myId={session?.id} onToggle={(e) => void reactToMessage(msg, e)} />
                     )}
@@ -719,6 +749,18 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={lightbox} alt="Imagen" className="max-h-full max-w-full rounded-lg object-contain" onClick={(e) => e.stopPropagation()} />
         </div>
+      )}
+
+      {/* Volver al final */}
+      {lejosDelFinal && (
+        <button
+          type="button"
+          onClick={() => bottomRef.current?.scrollIntoView({ behavior: "smooth" })}
+          aria-label="Ir al último mensaje"
+          className="absolute bottom-24 right-4 z-20 grid size-11 place-items-center rounded-full border border-line bg-white text-volt shadow-lg transition active:scale-95 dark:bg-[#0f1729]"
+        >
+          <ChevronDown size={20} />
+        </button>
       )}
 
       {/* Corregir un mensaje propio */}
