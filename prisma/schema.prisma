@@ -1057,6 +1057,13 @@ model ChatMember {
   roomId   String
   userId   String
   joinedAt DateTime @default(now())
+  /// Ultima vez que esta persona estaba escribiendo en esta sala.
+  ///
+  /// Vive aqui y no en una tabla propia porque la fila ya existe: una tabla
+  /// nueva para un dato que caduca en seis segundos es mantenimiento sin
+  /// contrapartida. Se escribe como mucho una vez cada 3 s por persona, no en
+  /// cada tecla.
+  typingAt DateTime?
   room     ChatRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
   user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
