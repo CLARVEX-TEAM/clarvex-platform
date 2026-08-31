@@ -10,6 +10,7 @@ import { useToast } from "@/components/Toast";
 import { cn } from "@/lib/utils";
 import { esperaTrasFallo, interpretar } from "@/lib/chat-espera";
 import { FichaCompanero } from "@/components/FichaCompanero";
+import { CabeceraChat } from "@/components/CabeceraChat";
 import {
   ChatPicker,
   MessageTicks,
@@ -47,13 +48,16 @@ function MessageBody({
   isMe,
   onImageClick,
   gente = [],
-  yo = ""
+  yo = "",
+  cola = true
 }: {
   msg: Message;
   isMe: boolean;
   onImageClick?: (url: string) => void;
   gente?: { userId: string; name: string }[];
   yo?: string;
+  /** Ultimo mensaje seguido de la misma persona: solo ese lleva pico. */
+  cola?: boolean;
 }) {
   if (msg.deleted) {
     return (
@@ -104,11 +108,19 @@ function MessageBody({
 
   return (
     <div
+      /*
+       * Sin sombra y sin borde: la burbuja se separa del fondo por su COLOR,
+       * no por un contorno. El gris del recibido es opaco y no una
+       * transparencia sobre el lienzo — con `bg-white/10` el texto perdia
+       * contraste sobre las fotos y sobre el degradado del fondo.
+       *
+       * El pico solo lo lleva el ultimo del grupo. Ponerselo a todos rompe la
+       * columna y hace que tres mensajes seguidos parezcan tres conversaciones.
+       */
       className={cn(
-        "rounded-2xl px-3.5 py-2 text-sm leading-relaxed shadow-sm",
-        isMe
-          ? "rounded-br-sm bg-volt text-white"
-          : "rounded-bl-sm bg-white/90 text-ink dark:bg-white/10"
+        "px-3.5 py-[7px] text-[15px] leading-[1.35]",
+        cola ? (isMe ? "rounded-[20px] rounded-br-[6px]" : "rounded-[20px] rounded-bl-[6px]") : "rounded-[20px]",
+        isMe ? "bg-volt text-white" : "bg-[#E9E9EB] text-ink dark:bg-[#2C2C2E]"
       )}
     >
       <MentionText body={msg.body} gente={gente} yo={yo} claro={isMe} />
@@ -452,37 +464,14 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
 
   return (
     <div className="fixed inset-x-0 bottom-0 top-[var(--aviso-alto,0px)] z-30 flex flex-col bg-white dark:bg-[#0f1729]">
-      <AppHeader
-        title={title}
-        subtitle={subtitle}
-        backHref="/chat"
-        action={
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => { setSearchOpen((v) => !v); setQuery(""); }}
-              aria-label="Buscar en la conversación"
-              className={cn(
-                "grid size-9 place-items-center rounded-2xl transition active:scale-95",
-                searchOpen ? "bg-volt/15 text-volt" : "bg-panel text-muted"
-              )}
-            >
-              <Search size={17} />
-            </button>
-            {room?.type === "GROUP" ? (
-            <span className="grid size-9 place-items-center rounded-2xl bg-volt/12 text-volt">
-              <Users size={17} />
-            </span>
-            ) : otherMember ? (
-              <button type="button" onClick={() => setFicha(otherMember)} aria-label={`Ver ficha de ${otherMember.name}`} className="relative transition active:scale-90">
-                <ProfileAvatar name={otherMember.name} photoUrl={otherMember.photoUrl} size="sm" />
-                {otherMember.online && (
-                  <span className="absolute -bottom-0.5 -right-0.5 size-3 rounded-full border-2 border-white bg-green-500 dark:border-[#0f1729]" />
-                )}
-              </button>
-            ) : null}
-          </div>
-        }
+      <CabeceraChat
+        titulo={title}
+        estado={subtitle}
+        photoUrl={otherMember?.photoUrl ?? null}
+        esGrupo={room?.type === "GROUP"}
+        onFoto={otherMember ? () => setFicha(otherMember) : undefined}
+        buscando={searchOpen}
+        onBuscar={() => { setSearchOpen((v) => !v); setQuery(""); }}
       />
 
       {/* Buscar dentro de la conversación */}
@@ -594,10 +583,15 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
                     <div className="h-px flex-1 bg-line/50" />
                   </div>
                 )}
-                <div className={cn("flex items-end gap-2", finDeGrupo ? "mb-2.5" : "mb-0.5", isMe ? "flex-row-reverse" : "flex-row")}>
+                <div className={cn("flex items-end gap-2", finDeGrupo ? "mb-3.5" : "mb-[3px]", isMe ? "flex-row-reverse" : "flex-row")}>
                   {!isMe && (
                     <div className="w-7 shrink-0">
-                      {showAvatar && (
+                      {/*
+                        * El avatar va con el ULTIMO mensaje del grupo, no con el
+                        * primero: asi queda a la altura de la linea de base de la
+                        * columna y el grupo se lee como un bloque.
+                        */}
+                      {finDeGrupo && (
                         // La ficha sale de `room.members`, no del mensaje: el
                         // mensaje solo trae nombre y foto, y hace falta el
                         // cumpleanos y el alta.
@@ -610,14 +604,16 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
                           aria-label={`Ver ficha de ${msg.senderName}`}
                           className="transition active:scale-90"
                         >
-                          <ProfileAvatar name={msg.senderName} photoUrl={msg.senderPhoto} size="sm" className="size-7 rounded-xl text-xs" />
+                          <ProfileAvatar name={msg.senderName} photoUrl={msg.senderPhoto} size="sm" className="size-7 rounded-full text-[10px]" />
                         </button>
                       )}
                     </div>
                   )}
                   <div className={cn("flex max-w-[72%] flex-col", isMe ? "items-end" : "items-start")}>
                     {showAvatar && !isMe && room?.type === "GROUP" && (
-                      <span className="mb-0.5 pl-1 text-[11px] font-bold text-muted">{msg.senderName}</span>
+                      // Solo el primer nombre: el completo en mayusculas gritaba
+                      // mas que el mensaje.
+                      <span className="mb-1 pl-3 text-[11px] font-medium text-muted">{msg.senderName.split(" ")[0]}</span>
                     )}
                     <div
                       id={`msg-${msg.id}`}
@@ -634,10 +630,10 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
                       {msg.replyTo && (
                         <ReplyQuote reply={msg.replyTo} isMe={isMe} onClick={() => scrollToMessage(msg.replyTo!.id)} />
                       )}
-                      <MessageBody msg={msg} isMe={isMe} onImageClick={setLightbox} gente={gente} yo={session?.id ?? ""} />
+                      <MessageBody msg={msg} isMe={isMe} onImageClick={setLightbox} gente={gente} yo={session?.id ?? ""} cola={finDeGrupo} />
                     </div>
                     {finDeGrupo && (
-                      <span className={cn("mt-0.5 flex items-center gap-1 text-[10px] text-muted", isMe ? "flex-row-reverse pr-1" : "pl-1")}>
+                      <span className={cn("mt-1 flex items-center gap-1 text-[10px] text-muted/70", isMe ? "flex-row-reverse pr-2" : "pl-3")}>
                         {formatTime(msg.createdAt)}
                         {isMe && !msg.deleted && otherIds.length > 0 && <MessageTicks status={status} />}
                       </span>

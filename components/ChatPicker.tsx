@@ -242,13 +242,19 @@ export function ReplyQuote({ reply, isMe, onClick }: { reply: ReplyInfo; isMe: b
     <button
       type="button"
       onClick={onClick}
+      /*
+       * Una cita es CONTEXTO, no contenido: se lee de reojo para saber a que
+       * viene el mensaje. Antes ocupaba tanto como el propio mensaje —fondo,
+       * borde grueso y el nombre en azul— y la conversacion parecia un tablon
+       * de anuncios. Ahora es una linea fina y texto apagado.
+       */
       className={cn(
-        "mb-0.5 flex w-full flex-col overflow-hidden rounded-xl border-l-[3px] px-2.5 py-1 text-left",
-        isMe ? "border-white/60 bg-white/15" : "border-volt bg-volt/10"
+        "mb-1 flex w-full max-w-full flex-col border-l-2 pl-2 text-left opacity-70 transition active:opacity-100",
+        isMe ? "border-white/50" : "border-line"
       )}
     >
-      <span className={cn("text-[11px] font-bold leading-tight", isMe ? "text-white" : "text-volt")}>{reply.senderName}</span>
-      <span className={cn("truncate text-[11px] leading-tight", isMe ? "text-white/85" : "text-muted")}>{reply.preview}</span>
+      <span className={cn("truncate text-[11px] font-semibold leading-tight", isMe ? "text-white/90" : "text-ink/70")}>{reply.senderName}</span>
+      <span className={cn("truncate text-[11px] leading-tight", isMe ? "text-white/70" : "text-muted")}>{reply.preview}</span>
     </button>
   );
 }
