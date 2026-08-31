@@ -54,6 +54,9 @@ type RawChatMessage = {
   deliveredTo: { userId: string }[];
   reactions?: { userId: string; emoji: string }[];
   replyTo?: RawReply;
+  editedAt?: Date | null;
+  pinnedAt?: Date | null;
+  mentions?: { userId: string }[];
 };
 
 export type SerializedReply = {
@@ -77,6 +80,9 @@ export type SerializedChatMessage = {
   deliveredTo: string[];
   reactions: MessageReaction[];
   replyTo: SerializedReply | null;
+  editedAt: string | null;
+  pinnedAt: string | null;
+  mentions: string[];
 };
 
 export function serializeChatMessage(m: RawChatMessage): SerializedChatMessage {
@@ -93,6 +99,11 @@ export function serializeChatMessage(m: RawChatMessage): SerializedChatMessage {
     readBy: m.readBy.map((r) => r.userId),
     deliveredTo: m.deliveredTo.map((d) => d.userId),
     reactions: (m.reactions ?? []).map((r) => ({ userId: r.userId, emoji: r.emoji })),
+    // Se marca «editado» a proposito: cambiar lo dicho sin que se note es peor
+    // que no poder corregir.
+    editedAt: m.editedAt ? m.editedAt.toISOString() : null,
+    pinnedAt: m.pinnedAt ? m.pinnedAt.toISOString() : null,
+    mentions: (m.mentions ?? []).map((x) => x.userId),
     replyTo: reply
       ? {
           id: reply.id,

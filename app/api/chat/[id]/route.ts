@@ -5,6 +5,7 @@ import { dispatchPushToUsers } from "@/lib/push";
 import { isOnline, resolveReplyTo, serializeChatMessage, touchPresence } from "@/lib/chat";
 import { chatMediaRejectionMessage, isAllowedChatMediaBody } from "@/lib/chat-message-guard";
 import { publicarEnSlackSinEsperar } from "@/lib/slack";
+import { aQuienAvisar } from "@/lib/chat-mentions";
 import { canalPara, parsearAutores, parsearCanales, parsearSalasDirectas } from "@/lib/slack-chat";
 
 /**
@@ -36,6 +37,7 @@ const MESSAGE_INCLUDE = {
   readBy: { select: { userId: true } },
   deliveredTo: { select: { userId: true } },
   reactions: { select: { userId: true, emoji: true } },
+  mentions: { select: { userId: true } },
   replyTo: { select: { id: true, body: true, deletedAt: true, sender: { select: { name: true } } } }
 } as const;
 
@@ -145,6 +147,21 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   // Validar que el mensaje citado exista y pertenezca a este room.
   const replyToId = await resolveReplyTo(id, body.replyToId);
 
+  /*
+   * Las menciones se resuelven ANTES de guardar y se almacenan.
+   *
+   * ⚠️ No se deducen del texto al leer: el nombre de una persona puede
+   * cambiar, y entonces una mención vieja dejaría de existir —o peor,
+   * empezaría a apuntar a otra—. A quién se mencionó es un hecho del momento
+   * en que se escribió.
+   */
+  const miembros = await prisma.chatMember.findMany({
+    where: { roomId: id },
+    select: { userId: true, user: { select: { name: true } } }
+  });
+  const mencionables = miembros.map((m) => ({ userId: m.userId, name: m.user.name }));
+  const aviso = aQuienAvisar(text, mencionables, session.userId, miembros.map((m) => m.userId));
+
   const message = await prisma.chatMessage.create({
     data: {
       roomId: id,
@@ -153,28 +170,44 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       replyToId,
       // El emisor ya tiene su propio mensaje entregado y leído.
       readBy: { create: { userId: session.userId } },
-      deliveredTo: { create: { userId: session.userId } }
+      deliveredTo: { create: { userId: session.userId } },
+      mentions: { create: aviso.userIds.map((userId) => ({ userId })) }
     },
     include: MESSAGE_INCLUDE
   });
 
-  // Push a los otros miembros
-  const otherMembers = await prisma.chatMember.findMany({
-    where: { roomId: id, userId: { not: session.userId } },
-    select: { userId: true }
-  });
-  const otherIds = otherMembers.map((m) => m.userId);
-
+  const otherIds = miembros.map((m) => m.userId).filter((userId) => userId !== session.userId);
   const room = await prisma.chatRoom.findUnique({ where: { id } });
   const roomLabel = room?.type === "GROUP" ? "Chat Todos" : session.name;
 
   if (otherIds.length > 0) {
-    void dispatchPushToUsers(otherIds, {
-      title: roomLabel ?? "Nuevo mensaje",
-      body: `${session.name}: ${text.slice(0, 80)}`,
-      tag: `chat-${id}`,
-      url: `/chat/${id}`
-    });
+    /*
+     * ⚠️ A quien se menciona se le avisa DISTINTO, y una sola vez.
+     *
+     * Sin esto, en un grupo avisas a todos o a nadie: el aviso deja de
+     * significar nada y se acaba silenciando el chat entero.
+     */
+    const mencionados = new Set(aviso.userIds);
+    const resto = otherIds.filter((userId) => !mencionados.has(userId));
+
+    if (mencionados.size > 0) {
+      void dispatchPushToUsers([...mencionados], {
+        title: aviso.aTodos
+          ? session.name + ' avisó a todos'
+          : session.name + ' te mencionó',
+        body: text.slice(0, 80),
+        tag: `chat-${id}`,
+        url: `/chat/${id}`
+      });
+    }
+    if (resto.length > 0) {
+      void dispatchPushToUsers(resto, {
+        title: roomLabel ?? "Nuevo mensaje",
+        body: `${session.name}: ${text.slice(0, 80)}`,
+        tag: `chat-${id}`,
+        url: `/chat/${id}`
+      });
+    }
   }
 
   /*

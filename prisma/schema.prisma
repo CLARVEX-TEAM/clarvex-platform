@@ -192,6 +192,7 @@ model User {
   chatMessageHides      ChatMessageHide[]
   chatMessageReactions  ChatMessageReaction[]
   chatMessageReads      ChatMessageRead[]
+  chatMentions          ChatMention[]
   choreAssignments      ChoreAssignment[]
   comments              Comment[]                 @relation("CommentAuthor")
   plans                 DayPlan[]
@@ -1070,6 +1071,12 @@ model ChatMessage {
   body        String
   createdAt   DateTime              @default(now())
   deletedAt   DateTime?
+  /// Cuando se corrigio. La pantalla marca «editado»: cambiar lo dicho sin
+  /// que se note es peor que no poder corregir.
+  editedAt    DateTime?
+  /// Fijado arriba de la sala. Se guarda QUIEN lo fijo para poder preguntarle.
+  pinnedAt    DateTime?
+  pinnedById  String?
   replyToId   String?
   replyTo     ChatMessage?          @relation("ChatReply", fields: [replyToId], references: [id])
   replies     ChatMessage[]         @relation("ChatReply")
@@ -1080,8 +1087,30 @@ model ChatMessage {
   reactions   ChatMessageReaction[]
   readBy      ChatMessageRead[]
 
+  /// A quien se menciono con @. Vacio si no se menciono a nadie.
+  mentions ChatMention[]
+
   @@index([roomId, createdAt])
   @@index([replyToId])
+  @@index([roomId, pinnedAt])
+}
+
+/// Una mencion `@` dentro de un mensaje.
+///
+/// Se guarda en su propia tabla y no se deduce del texto al leer: el nombre de
+/// una persona puede cambiar, y entonces una mencion vieja dejaria de existir
+/// —o peor, empezaria a apuntar a otra—. Lo que se menciono es un hecho del
+/// momento en que se escribio.
+model ChatMention {
+  id        String      @id @default(cuid())
+  messageId String
+  userId    String
+  createdAt DateTime    @default(now())
+  message   ChatMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId])
+  @@index([userId, createdAt])
 }
 
 model ChatMessageRead {
