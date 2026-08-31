@@ -344,7 +344,14 @@ function writePersonDay(xml: string, row: number, startColumn: number, kpi: RdvK
 }
 
 export type RdvMonthOption = {
-  /** `AAAA-MM` del inicio del mes retail. Solo para identificarlo en la lista. */
+  /**
+   * La FECHA DE INICIO del mes retail, no su `AAAA-MM`.
+   *
+   * ⚠️ Un mes retail puede empezar en el mes natural anterior --junio de 2026
+   * arranca el 31 de mayo-- asi que agrupar por `AAAA-MM` juntaba mayo con
+   * junio y agosto con septiembre, y el segundo de cada par desaparecia de la
+   * lista sin avisar.
+   */
   key: string;
   label: string;
   start: string;
@@ -390,7 +397,7 @@ export async function listRdvMonths(storeId: string): Promise<RdvMonthOption[]> 
     // ⚠️ Un mes de más de cinco semanas no cabe en la plantilla. Se deja fuera
     // aquí en vez de ofrecerlo y fallar al descargarlo.
     if (mes && mes.weeks.length <= MAX_WEEKS) {
-      const key = periodDateKey(mes.start).slice(0, 7);
+      const key = periodDateKey(mes.start);
       if (!meses.has(key)) {
         meses.set(key, {
           key,
