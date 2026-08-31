@@ -343,6 +343,84 @@ function writePersonDay(xml: string, row: number, startColumn: number, kpi: RdvK
   return next;
 }
 
+export type RdvMonthOption = {
+  /** `AAAA-MM` del inicio del mes retail. Solo para identificarlo en la lista. */
+  key: string;
+  label: string;
+  start: string;
+  end: string;
+  /** La fecha que hay que mandarle al export para pedir ESTE mes. */
+  date: string;
+  /** Cuántos días de ese mes tienen KPI capturado. */
+  dias: number;
+};
+
+/**
+ * Los meses RDV que se pueden exportar de una tienda.
+ *
+ * ⚠️ **La lista la arma el SERVIDOR y no la pantalla.** El mes retail no es el
+ * natural —una semana que cruza de mes pertenece a uno o a otro según dónde
+ * empiece— y calcularlo aparte crearía una segunda numeración que acabaría
+ * separándose de la real. Es la misma razón por la que el número de semana se
+ * lee de `Kpi.weekNumber` en vez de calcularse.
+ *
+ * Solo salen los meses que **tienen datos**: ofrecer un mes vacío es prometer
+ * un archivo en blanco.
+ */
+export async function listRdvMonths(storeId: string): Promise<RdvMonthOption[]> {
+  // ⚠️ Importado aqui dentro, como el resto del modulo: `lib/prisma` lanza al
+  // cargarse fuera de la configuracion de integracion y eso dejaria este
+  // archivo sin poder probarse.
+  const { prisma } = await import("@/lib/prisma");
+
+  const rango = await prisma.kpi.aggregate({
+    where: { storeId },
+    _min: { date: true },
+    _max: { date: true }
+  });
+  if (!rango._min.date || !rango._max.date) return [];
+
+  const meses = new Map<string, RdvMonthOption>();
+  // Se recorre mes natural a mes natural y se le pregunta al calendario real a
+  // qué mes RETAIL pertenece; así los límites salen de una sola fuente.
+  let cursor = new Date(Date.UTC(rango._min.date.getUTCFullYear(), rango._min.date.getUTCMonth(), 15));
+  const tope = new Date(Date.UTC(rango._max.date.getUTCFullYear(), rango._max.date.getUTCMonth(), 15));
+  while (cursor <= tope) {
+    const mes = retailMonthFor(cursor);
+    // ⚠️ Un mes de más de cinco semanas no cabe en la plantilla. Se deja fuera
+    // aquí en vez de ofrecerlo y fallar al descargarlo.
+    if (mes && mes.weeks.length <= MAX_WEEKS) {
+      const key = periodDateKey(mes.start).slice(0, 7);
+      if (!meses.has(key)) {
+        meses.set(key, {
+          key,
+          label: mes.label,
+          start: periodDateKey(mes.start),
+          end: periodDateKey(mes.end),
+          date: periodDateKey(mes.start),
+          dias: 0
+        });
+      }
+    }
+    cursor = new Date(Date.UTC(cursor.getUTCFullYear(), cursor.getUTCMonth() + 1, 15));
+  }
+
+  // Cuántos días de cada mes tienen algo capturado, para no ofrecer vacíos.
+  const dias = await prisma.kpi.findMany({
+    where: { storeId },
+    select: { date: true },
+    distinct: ["date"]
+  });
+  for (const mes of meses.values()) {
+    mes.dias = dias.filter((d) => {
+      const k = periodDateKey(d.date);
+      return k >= mes.start && k <= mes.end;
+    }).length;
+  }
+
+  return [...meses.values()].filter((mes) => mes.dias > 0).sort((a, b) => (a.start < b.start ? 1 : -1));
+}
+
 function retailMonthFor(selectedDate: Date) {
   const firstOfMonth = new Date(Date.UTC(selectedDate.getUTCFullYear(), selectedDate.getUTCMonth(), 1));
   const lastOfMonth = new Date(Date.UTC(selectedDate.getUTCFullYear(), selectedDate.getUTCMonth() + 1, 0));

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireAdminCapture } from "@/lib/admin-capture-auth";
-import { exportRdvWorkbook } from "@/lib/rdv-export-xlsx";
+import { exportRdvWorkbook, listRdvMonths } from "@/lib/rdv-export-xlsx";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -12,6 +12,19 @@ export async function GET(request: Request) {
 
   const params = new URL(request.url).searchParams;
   const storeId = params.get("storeId")?.trim();
+
+  /*
+   * `?months=1` devuelve qué meses se pueden exportar, sin generar ninguno.
+   *
+   * Vive aquí y no en una ruta aparte porque es la misma pregunta: quien sabe
+   * armar el RDV es quien sabe de qué periodos puede armarlo. Separarlo daría
+   * dos sitios donde decidir qué es un mes válido.
+   */
+  if (params.get("months") === "1") {
+    if (!storeId) return NextResponse.json({ error: "Falta la tienda." }, { status: 400 });
+    return NextResponse.json({ ok: true, months: await listRdvMonths(storeId) });
+  }
+
   const selectedDate = parseDay(params.get("date") ?? params.get("selectedDate"));
   if (!storeId || !selectedDate) {
     return NextResponse.json({ error: "Falta tienda o fecha valida para exportar el RDV." }, { status: 400 });
