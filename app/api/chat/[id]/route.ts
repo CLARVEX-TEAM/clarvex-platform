@@ -46,7 +46,7 @@ async function loadRoom(id: string, selfId: string) {
     where: { id },
     include: {
       members: {
-        include: { user: { select: { id: true, name: true, photoUrl: true, role: true, lastSeenAt: true } } }
+        include: { user: { select: { id: true, name: true, photoUrl: true, role: true, lastSeenAt: true, birthDate: true, hireDate: true } } }
       }
     }
   });
@@ -60,6 +60,10 @@ async function loadRoom(id: string, selfId: string) {
       name: m.user.name,
       photoUrl: m.user.photoUrl,
       role: m.user.role,
+      // Cumpleanos y antiguedad los ve todo el equipo (celebraciones); los saldos
+      // de RH no salen de aqui. Misma regla que /api/app-data.
+      birthDate: m.user.birthDate ? m.user.birthDate.toISOString().slice(0, 10) : null,
+      hireDate: m.user.hireDate ? m.user.hireDate.toISOString().slice(0, 10) : null,
       online: m.user.id === selfId ? true : isOnline(m.user.lastSeenAt),
       lastSeenAt: m.user.lastSeenAt ? m.user.lastSeenAt.toISOString() : null
     }))

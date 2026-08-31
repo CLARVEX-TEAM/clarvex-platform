@@ -25,7 +25,18 @@ export type ChatMessageView = {
   mentions: string[];
 };
 
-export type ChatMemberView = { id: string; name: string; photoUrl: string | null; role: string; online: boolean; lastSeenAt: string | null };
+export type ChatMemberView = {
+  id: string;
+  name: string;
+  photoUrl: string | null;
+  role: string;
+  online: boolean;
+  lastSeenAt: string | null;
+  // Cumpleaños y antigüedad los ve todo el equipo (celebraciones). Los saldos
+  // de RH NO viajan por aquí: son de gerencia o de uno mismo.
+  birthDate: string | null;
+  hireDate: string | null;
+};
 
 export type ChatRoomInfoView = {
   id: string;

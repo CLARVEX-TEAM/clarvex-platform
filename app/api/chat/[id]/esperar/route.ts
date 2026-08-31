@@ -56,7 +56,35 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     return NextResponse.json({ error: "Falta «desde»." }, { status: 400 });
   }
 
+  /*
+   * Quién está escribiendo, según lo que el navegador ya tiene en pantalla.
+   *
+   * Se manda para poder contestar **en cuanto cambie**. Sin esa comparación,
+   * el aviso tardaría hasta 25 s en aparecer o en irse, que para algo que dura
+   * tres segundos es lo mismo que no tenerlo.
+   */
+  const conocidos = (new URL(req.url).searchParams.get("escribiendo") ?? "")
+    .split(",")
+    .filter(Boolean)
+    .sort()
+    .join(",");
+
   const limite = Date.now() + ESPERA_MS;
+
+  /** Se considera que sigue escribiendo si tecleó hace menos de esto. */
+  const VIGENCIA_MS = 6_000;
+
+  const quienEscribe = async () => {
+    const filas = await prisma.chatMember.findMany({
+      where: {
+        roomId: id,
+        userId: { not: session.userId },
+        typingAt: { gt: new Date(Date.now() - VIGENCIA_MS) }
+      },
+      select: { userId: true, user: { select: { name: true } } }
+    });
+    return filas.map((f) => ({ id: f.userId, name: f.user.name }));
+  };
 
   for (;;) {
     /*
@@ -86,13 +114,25 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
        * ambos lados, y el caso exige dos personas escribiendo en el mismo
        * milisegundo en una tienda de cinco.
        */
-      return NextResponse.json({ hay: true, hasta: nuevo.createdAt.toISOString() });
+      return NextResponse.json({
+        hay: true,
+        hasta: nuevo.createdAt.toISOString(),
+        escribiendo: await quienEscribe()
+      });
     }
 
     // Se corta si el navegador se fue: sin esto, cerrar la pestaña dejaría el
     // bucle consultando la base durante los 25 s completos, por cada pestaña.
     if (req.signal.aborted) return new NextResponse(null, { status: 499 });
-    if (Date.now() >= limite) return NextResponse.json({ hay: false });
+
+    // Cambió quién escribe: se contesta ya, sin mensaje nuevo. Es lo que hace
+    // que el aviso aparezca y desaparezca a tiempo.
+    const ahora = await quienEscribe();
+    if (ahora.map((p) => p.id).sort().join(",") !== conocidos) {
+      return NextResponse.json({ hay: false, escribiendo: ahora });
+    }
+
+    if (Date.now() >= limite) return NextResponse.json({ hay: false, escribiendo: ahora });
 
     await new Promise((r) => setTimeout(r, LATIDO_MS));
   }

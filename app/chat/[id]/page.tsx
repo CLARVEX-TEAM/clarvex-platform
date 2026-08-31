@@ -9,6 +9,7 @@ import { AppHeader, ProfileAvatar } from "@/components/ui";
 import { useToast } from "@/components/Toast";
 import { cn } from "@/lib/utils";
 import { esperaTrasFallo, interpretar } from "@/lib/chat-espera";
+import { FichaCompanero } from "@/components/FichaCompanero";
 import {
   ChatPicker,
   MessageTicks,
@@ -36,7 +37,8 @@ import {
   searchChat,
   type ChatMessageView as Message,
   type ChatRoomInfoView as RoomInfo,
-  type ChatSearchHit
+  type ChatSearchHit,
+  type ChatMemberView
 } from "@/lib/chat-client";
 import { MentionText, filtrarSugerencias, mencionEnCurso } from "@/components/ChatMentions";
 
@@ -141,6 +143,12 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
   // Solo se ofrece bajar cuando de verdad estas arriba: un boton que siempre
   // esta tapa el ultimo mensaje sin hacer falta.
   const [lejosDelFinal, setLejosDelFinal] = useState(false);
+  // Quien esta escribiendo ahora mismo, sin contarte a ti.
+  const [escribiendo, setEscribiendo] = useState<{ id: string; name: string }[]>([]);
+  // La ficha que se abre al tocar una foto.
+  const [ficha, setFicha] = useState<ChatMemberView | null>(null);
+  // Ultimo aviso de "estoy escribiendo": se manda como mucho cada 3 s.
+  const ultimoAviso = useRef(0);
   const scrollRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -202,6 +210,14 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
    * Los recibos, reacciones y correcciones siguen por refresco lento: no son
    * urgentes y no merecen su propia conexión abierta.
    */
+  /*
+   * El bucle lee a quien escribe por referencia, no por dependencia: ponerlo
+   * en el array de `useEffect` reiniciaria la espera cada vez que alguien
+   * empieza o deja de teclear, y con ella se perderia la peticion en curso.
+   */
+  const escribiendoRef = useRef(escribiendo);
+  useEffect(() => { escribiendoRef.current = escribiendo; }, [escribiendo]);
+
   useEffect(() => {
     if (!session) return;
     const control = new AbortController();
@@ -213,11 +229,19 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
     (async () => {
       while (vivo) {
         try {
-          const res = await fetch(`/api/chat/${id}/esperar?desde=${encodeURIComponent(desde)}`, {
-            signal: control.signal
-          });
+          // Se manda lo que ya se enseña para que el servidor conteste en
+          // cuanto cambie, y no dentro de 25 s.
+          const yaSe = escribiendoRef.current.map((p) => p.id).sort().join(",");
+          const res = await fetch(
+            `/api/chat/${id}/esperar?desde=${encodeURIComponent(desde)}&escribiendo=${encodeURIComponent(yaSe)}`,
+            { signal: control.signal }
+          );
           const cuerpo = await res.json().catch(() => null);
           if (!vivo) return;
+
+          // El aviso de escritura llega en las dos respuestas, con novedad o sin ella.
+          const quien = (cuerpo as { escribiendo?: { id: string; name: string }[] } | null)?.escribiendo;
+          if (Array.isArray(quien)) setEscribiendo(quien);
 
           const siguiente = interpretar(res, cuerpo);
           if (siguiente.accion === "parar") return;
@@ -450,12 +474,12 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
               <Users size={17} />
             </span>
             ) : otherMember ? (
-              <div className="relative">
+              <button type="button" onClick={() => setFicha(otherMember)} aria-label={`Ver ficha de ${otherMember.name}`} className="relative transition active:scale-90">
                 <ProfileAvatar name={otherMember.name} photoUrl={otherMember.photoUrl} size="sm" />
                 {otherMember.online && (
                   <span className="absolute -bottom-0.5 -right-0.5 size-3 rounded-full border-2 border-white bg-green-500 dark:border-[#0f1729]" />
                 )}
-              </div>
+              </button>
             ) : null}
           </div>
         }
@@ -574,7 +598,20 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
                   {!isMe && (
                     <div className="w-7 shrink-0">
                       {showAvatar && (
-                        <ProfileAvatar name={msg.senderName} photoUrl={msg.senderPhoto} size="sm" className="size-7 rounded-xl text-xs" />
+                        // La ficha sale de `room.members`, no del mensaje: el
+                        // mensaje solo trae nombre y foto, y hace falta el
+                        // cumpleanos y el alta.
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const p = room?.members.find((m) => m.id === msg.senderId);
+                            if (p) setFicha(p);
+                          }}
+                          aria-label={`Ver ficha de ${msg.senderName}`}
+                          className="transition active:scale-90"
+                        >
+                          <ProfileAvatar name={msg.senderName} photoUrl={msg.senderPhoto} size="sm" className="size-7 rounded-xl text-xs" />
+                        </button>
                       )}
                     </div>
                   )}
@@ -702,7 +739,20 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
           <textarea
             ref={inputRef}
             value={input}
-            onChange={(e) => setInput(e.target.value)}
+            onChange={(e) => {
+              setInput(e.target.value);
+              /*
+               * Se avisa como mucho una vez cada 3 s, no en cada tecla: sin el
+               * freno, escribir veinte letras serian veinte escrituras en la
+               * base por cada persona que teclea. El servidor lo da por vigente
+               * 6 s, asi que con avisar cada 3 nunca parpadea.
+               */
+              const ahora = Date.now();
+              if (e.target.value.trim() && ahora - ultimoAviso.current > 3000) {
+                ultimoAviso.current = ahora;
+                void fetch(`/api/chat/${id}/escribiendo`, { method: "POST" }).catch(() => undefined);
+              }
+            }}
             onKeyDown={handleKeyDown}
             onPaste={handlePaste}
             onFocus={() => setPickerOpen(false)}
@@ -854,6 +904,18 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
           </div>
         </div>
       )}
+
+      {/* Quien esta escribiendo */}
+      {escribiendo.length > 0 && (
+        <p className="px-5 pb-1 text-[11px] italic text-muted">
+          {escribiendo.length === 1
+            ? `${escribiendo[0].name.split(" ")[0]} está escribiendo…`
+            : `${escribiendo.length} personas están escribiendo…`}
+        </p>
+      )}
+
+      {/* Ficha del companero */}
+      {ficha && <FichaCompanero persona={ficha} onClose={() => setFicha(null)} />}
     </div>
   );
 }
