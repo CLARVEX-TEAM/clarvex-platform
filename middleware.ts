@@ -58,6 +58,8 @@ const captureRoutes = new Set([
   "/api/admin/capture/kpis",
   // Lectura del reporte diario del POS desde una captura. Solo lee y devuelve.
   "/api/admin/capture/kpis/pos-report",
+  // Export mensual RDV lleno. Solo lee KPIs y devuelve XLSX en binario/base64.
+  "/api/admin/capture/kpis/export",
   "/api/admin/capture/goals",
   "/api/admin/capture/weekly-performance",
   "/api/admin/capture/weekly-performance/export",
