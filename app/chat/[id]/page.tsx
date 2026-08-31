@@ -8,6 +8,7 @@ import type { User } from "@/lib/types";
 import { AppHeader, ProfileAvatar } from "@/components/ui";
 import { useToast } from "@/components/Toast";
 import { cn } from "@/lib/utils";
+import { esperaTrasFallo, interpretar } from "@/lib/chat-espera";
 import {
   ChatPicker,
   MessageTicks,
@@ -189,9 +190,63 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  /*
+   * Espera larga en vez de sondeo.
+   *
+   * Antes se preguntaba cada 3 s, así que un mensaje tardaba hasta tres
+   * segundos en aparecer y el teléfono hacía veinte peticiones por minuto
+   * aunque no pasara nada. Ahora se pregunta UNA vez y el servidor retiene la
+   * respuesta hasta que alguien escribe: ~400 ms, y ninguna petición mientras
+   * el chat está tranquilo.
+   *
+   * Los recibos, reacciones y correcciones siguen por refresco lento: no son
+   * urgentes y no merecen su propia conexión abierta.
+   */
   useEffect(() => {
     if (!session) return;
-    const interval = setInterval(() => { void fetchMessages(); }, 3000);
+    const control = new AbortController();
+    let vivo = true;
+    let fallos = 0;
+    // Se arranca desde ahora: lo anterior ya lo trajo la carga inicial.
+    let desde = new Date().toISOString();
+
+    (async () => {
+      while (vivo) {
+        try {
+          const res = await fetch(`/api/chat/${id}/esperar?desde=${encodeURIComponent(desde)}`, {
+            signal: control.signal
+          });
+          const cuerpo = await res.json().catch(() => null);
+          if (!vivo) return;
+
+          const siguiente = interpretar(res, cuerpo);
+          if (siguiente.accion === "parar") return;
+          if (siguiente.accion === "refrescar") {
+            desde = siguiente.hasta;
+            fallos = 0;
+            await fetchMessages();
+            continue;
+          }
+          fallos = 0;
+        } catch {
+          // Abortar al desmontar entra por aquí y no es un fallo.
+          if (!vivo) return;
+          fallos += 1;
+          await new Promise((r) => setTimeout(r, esperaTrasFallo(fallos)));
+        }
+      }
+    })();
+
+    return () => {
+      vivo = false;
+      control.abort();
+    };
+  }, [session, fetchMessages, id]);
+
+  // Lo que no corre prisa: correcciones, reacciones y recibos de lectura.
+  useEffect(() => {
+    if (!session) return;
+    const interval = setInterval(() => { void fetchMessages(); }, 15000);
     return () => clearInterval(interval);
   }, [session, fetchMessages]);
 
