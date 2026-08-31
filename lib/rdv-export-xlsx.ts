@@ -88,7 +88,7 @@ export type RdvExportOptions = {
 export async function exportRdvWorkbook(storeId: string, selectedDate: Date, options: RdvExportOptions = {}) {
   const state = await getRdvExportState(storeId, selectedDate, options);
   const buffer = await buildRdvWorkbook(state, options.templatePath);
-  return { buffer, filename: rdvFilename(state), state };
+  return { buffer, filename: buildRdvFilename(state), state };
 }
 
 export async function getRdvExportState(
@@ -524,9 +524,33 @@ function monthName(label: string) {
   return label.replace(/\s+\d{4}$/, "").toLocaleUpperCase("es-MX");
 }
 
-function rdvFilename(state: RdvExportState) {
-  const store = state.store.name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "");
-  return `RDV-${store}-${state.retailMonth.start}-${state.retailMonth.end}.xlsx`;
+/**
+ * `RDV TH SAN AGUSTIN AGOSTO 2026.xlsx`
+ *
+ * Con el mes por su nombre y no con las dos fechas del periodo: quien recibe el
+ * archivo busca \u00abagosto\u00bb, no \u00ab2026-08-02 al 2026-08-29\u00bb. Los l\u00edmites exactos del
+ * mes retail est\u00e1n dentro del documento.
+ *
+ * \u26a0\ufe0f El mes es el **RETAIL**, que no siempre coincide con el natural: agosto de
+ * 2026 va del 2 de agosto al 29. Se toma de `retailMonth.label`, la misma
+ * fuente que llena la portada, para que el nombre no pueda decir un mes y el
+ * contenido otro.
+ *
+ * Se quitan acentos y se dejan solo letras, n\u00fameros y espacios: `\u00d1`, `/` o `:`
+ * rompen la descarga en Windows o llegan mal por la cabecera.
+ */
+export function buildRdvFilename(state: Pick<RdvExportState, "store" | "retailMonth">) {
+  const limpio = (texto: string) =>
+    texto
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^A-Za-z0-9 ]+/g, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+      .toLocaleUpperCase("es-MX");
+
+  const a\u00f1o = state.retailMonth.label.match(/\d{4}$/)?.[0] ?? state.retailMonth.start.slice(0, 4);
+  return `RDV ${limpio(state.store.name)} ${monthName(state.retailMonth.label)} ${a\u00f1o}.xlsx`;
 }
 
 function cleanOption(value: string | null | undefined) {

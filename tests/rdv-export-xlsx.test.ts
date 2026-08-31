@@ -3,7 +3,8 @@ import fs from "node:fs/promises";
 import test from "node:test";
 import ExcelJS from "exceljs";
 import JSZip from "jszip";
-import { buildRdvWorkbook, type RdvExportState } from "../lib/rdv-export-xlsx";
+import {
+  buildRdvFilename, buildRdvWorkbook, type RdvExportState } from "../lib/rdv-export-xlsx";
 
 const state: RdvExportState = {
   store: { id: "store-1", name: "TH SAN AGUSTIN" },
@@ -160,3 +161,24 @@ test("rechaza periodos que no caben en la plantilla RDV", async () => {
 function formula(value: unknown) {
   return value && typeof value === "object" && "formula" in value ? value.formula : value;
 }
+
+test("el archivo se llama RDV <tienda> <MES RETAIL> <año>", () => {
+  // ⚠️ El mes es el RETAIL, no el natural: agosto de 2026 va del 2 al 29. Sale
+  // de la misma etiqueta que llena la portada, para que el nombre no pueda
+  // decir un mes y el contenido otro.
+  const nombre = buildRdvFilename({
+    store: { id: "s1", name: "TH San Agustín" },
+    retailMonth: { label: "Agosto 2026", start: "2026-08-02", end: "2026-08-29", weeks: [] }
+  });
+  assert.equal(nombre, "RDV TH SAN AGUSTIN AGOSTO 2026.xlsx");
+});
+
+test("un nombre de tienda con signos raros no rompe la descarga", () => {
+  // `/`, `:` y compañia rompen la descarga en Windows o llegan mal por la
+  // cabecera Content-Disposition.
+  const nombre = buildRdvFilename({
+    store: { id: "s1", name: "GUESS Galerías / Monterrey" },
+    retailMonth: { label: "Mayo 2026", start: "2026-05-03", end: "2026-05-30", weeks: [] }
+  });
+  assert.equal(nombre, "RDV GUESS GALERIAS MONTERREY MAYO 2026.xlsx");
+});
