@@ -1,5 +1,66 @@
 # Clarvex Team — CLAUDE.md
 
+## Export RDV lleno — 31 de agosto de 2026
+
+El RDV mensual ya tiene exportador desde la plantilla corporativa compartida por
+Google Sheets, pero **la copia versionada NO es el archivo recibido lleno**. Se
+guardó como `templates/rdv.xlsx` después de sanearla: se vaciaron nombres,
+números, ventas históricas, caches de fórmulas, `sharedStrings` no usados,
+`calcChain` y caches de gráficas. Verificado buscando cadenas del archivo
+original dentro del zip resultante.
+
+Backend nuevo:
+
+```
+GET /api/admin/capture/kpis/export
+```
+
+Parámetros:
+
+- `storeId` obligatorio.
+- `date` o `selectedDate` obligatorio (`YYYY-MM-DD`); el periodo se resuelve con
+  el calendario RDV real de Clarvex: `reconstructRdvWeek` +
+  `buildRetailMonths`.
+- `format=base64` para que Retool lo baje desde backend sin exponer
+  `ADMIN_CAPTURE_SECRET`.
+- `brand`, `center`, `classification` y `crmObjective` son opcionales. Brand y
+  centro se derivan de `Store.name` cuando no vienen; clasificación todavía no
+  vive en `Store`, así que no se inventa.
+
+El llenado vive en `lib/rdv-export-xlsx.ts` y sigue el mismo criterio de Kardex:
+JSZip quirúrgico, no ExcelJS para escribir el archivo final. Se conserva el
+formato, merges, hojas y fórmulas; Excel recalcula al abrir por
+`forceFullCalc=1`. La hoja activa queda en «Diario de ventas». «Informe» se deja
+sin datos estáticos para no mostrar gráficas viejas; las hojas `KPIs Generales
+PDV`, `KPIs x Colaborador` y `COMISIONES` quedan por fórmula.
+
+Campos que sí se escriben porque existen en `Kpi`:
+
+- meta diaria;
+- venta sin IVA;
+- tickets;
+- unidades;
+- tráfico por día, sin duplicarlo por persona;
+- tickets electrónicos semanales (`crmTransactions`, solo fila ancla si así está
+  capturado);
+- Orkestra: venta, tickets y unidades.
+
+Campos que quedan vacíos a propósito: `Dev SIN IVA`, Open Pay, PayPal, bonos e
+incidencias. Clarvex todavía no tiene fuente real para esos datos en el RDV, y
+el exportador no debe inventarlos ni reciclar descuentos como devoluciones.
+
+Validación local cerrada:
+
+- `pnpm exec tsc --noEmit --incremental false --pretty false`
+- `pnpm exec eslint . --max-warnings 0`
+- `pnpm exec tsx --test tests/rdv-export-xlsx.test.ts`
+- `pnpm test`
+- `pnpm build`
+
+`pnpm build` solo mostró el warning conocido de Sentry/OpenTelemetry
+(`require-in-the-middle`); terminó correctamente. No se publicó a producción ni
+se modificó Retool en esta fase.
+
 ## Centro operativo Slack / Retool / AWS — 30 de agosto de 2026
 
 Se empezó la fase de control administrativo encima de lo que ya estaba en

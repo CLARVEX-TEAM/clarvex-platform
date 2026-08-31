@@ -6,7 +6,7 @@
 
 ---
 
-# 🔴 EN QUÉ ESTAMOS AHORA — 30 de agosto de 2026
+# 🔴 EN QUÉ ESTAMOS AHORA — 31 de agosto de 2026
 
 ## La mudanza terminó; ahora se está quitando trabajo manual
 
@@ -19,7 +19,7 @@ instancia. Al hacerlo, borrar la alarma `clarvex-caido-vultr` —silenciada, no
 eliminada— y subir la alerta de presupuesto de $20, que se quedó corta en cuanto
 EC2 corre a tiempo completo.
 
-## Lo que se construyó del 26 al 30 de agosto
+## Lo que se construyó del 26 al 31 de agosto
 
 Todo por el bot de Telegram en **chat privado**, y todo con el mismo patrón: el
 bot propone o resume, la persona confirma, y el servidor no se cree nada de lo
@@ -47,6 +47,17 @@ que llega. Detalle completo en `CLAUDE.md`, sección «Captura por Telegram».
 - **Excel de Cuota Justa.** Los bloques diarios son celdas combinadas: mínimo,
   fecha y WhatsApp se escriben solo en la columna izquierda (`D`, `F`, `H`, ...).
   Escribir también `E/G/I/...` rompe las sumas del export.
+- **Export RDV lleno desde plantilla corporativa.** Se agregó
+  `templates/rdv.xlsx` como plantilla saneada —sin nombres, ventas ni caches del
+  archivo recibido— y el backend `GET /api/admin/capture/kpis/export`. Retool
+  puede pedirlo con `format=base64` igual que Kardex/Cuota Justa. El llenado usa
+  el calendario RDV real de Clarvex (`reconstructRdvWeek` + `buildRetailMonths`),
+  conserva fórmulas/estilos por escritura quirúrgica con JSZip y abre en
+  «Diario de ventas». Solo escribe datos que existen en `Kpi`: meta, venta sin
+  IVA, tickets, unidades, tráfico, ticket electrónico semanal y Orkestra. Open
+  Pay, PayPal, devoluciones y bonos/incidencias quedan vacíos porque Clarvex no
+  tiene todavía una fuente real para esos campos. Validado con TypeScript,
+  ESLint, `pnpm test` y `pnpm build`; no se publicó a producción ni Retool.
 - **Centro operativo en Slack.** `sendOpsAlert` sigue avisando por n8n, pero si
   existe `SLACK_OPS_CHANNEL` también publica con el bot de Slack y botones:
   marcar revisado, abrir Auditoría en Retool y abrir Clarvex. Las acciones
