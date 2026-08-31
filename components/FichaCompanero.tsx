@@ -12,7 +12,7 @@
 import { Cake, Briefcase, X } from "lucide-react";
 import { ProfileAvatar } from "@/components/ui";
 import { cn } from "@/lib/utils";
-import { antiguedad, cumpleHoy, cumpleaños, puestoLegible } from "@/lib/perfil-compañero";
+import { antiguedad, cumpleHoy, cumpleaños, puestoLegible } from "@/lib/perfil-companero";
 import type { ChatMemberView } from "@/lib/chat-client";
 
 export function FichaCompanero({
