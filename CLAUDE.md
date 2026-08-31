@@ -474,6 +474,16 @@ actual, que es el flujo real de los domingos. El API usa `reportWeekStart` y
 - `lib/fair-quota.ts`: minimo diario + 15 %, gerente 10 %, subgerente 15 % y
   remanente entre asesores presentes. `INVENTORY` cuenta como laborado. Cada dia
   suma 100 % y el dinero cierra al centavo.
+- ⚠️ **Al LEER se poda; al GUARDAR se rechaza.** Si el horario cambió después
+  de guardar y hay porcentaje para quien ya no labora, el día se recalcula solo
+  y se avisa en pantalla; al guardar se sigue rechazando. La asimetría es
+  deliberada: un borrador que se quedó viejo no es lo mismo que alguien
+  afirmando algo imposible. Antes lanzaba también al leer y **dejaba fuera de la
+  única pantalla donde se podía arreglar** — el 29 de agosto de 2026 bloqueó
+  seis días y hubo que editar el JSON en la base a mano. Se poda el **día
+  entero** (`podarPorcentajesCaducados` en `lib/fair-quota.ts`): quitar solo a
+  quien sobra dejaría el día sin sumar 100 %, y repartir su hueco sería inventar
+  un reparto que nadie eligió.
 - `WeeklyPerformanceClose`: un registro por tienda/semana. Borrador editable y
   cierre final congelado con snapshot; una semana finalizada no se reabre.
 - API: `GET|POST /api/admin/capture/weekly-performance` y
