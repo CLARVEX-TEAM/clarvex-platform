@@ -1,5 +1,5 @@
 import { Prisma } from "@prisma/client";
-import { calculateFairQuota, type FairQuotaPerson, type FairQuotaResult } from "@/lib/fair-quota";
+import { calculateFairQuota, podarPorcentajesCaducados, type FairQuotaPerson, type FairQuotaResult } from "@/lib/fair-quota";
 import { aggregateKpis, aggregateStore, aggregateStoreTraffic, type KpiReportItem } from "@/lib/kpi-report";
 import { recalculateMonths } from "@/lib/kpi-capture";
 import { prisma } from "@/lib/prisma";
@@ -205,7 +205,23 @@ export async function getWeeklyPerformance(
     reportWhatsappBudget: defaultReportWhatsappBudget,
     quotaWeekStart: dayKey(quotaPeriod.weekStart)
   };
-  const quota = calculateFairQuota({ dates: quotaDates, people: team, presence: quotaPresence, ...plan });
+  /*
+   * ⚠️ Al LEER se podan los porcentajes que el horario actual ya no admite.
+   *
+   * Guardas la Cuota Justa, el equipo pide dias, mueves los horarios: de pronto
+   * hay porcentaje para quien ya no labora. Antes eso LANZABA al abrir la
+   * pantalla y te dejaba fuera de la unica pantalla donde podias arreglarlo.
+   * Al guardar se sigue rechazando, que ahi si es una afirmacion imposible.
+   */
+  const poda = podarPorcentajesCaducados(plan.percentages, team, quotaPresence);
+  const quota = calculateFairQuota({
+    dates: quotaDates,
+    people: team,
+    presence: quotaPresence,
+    ...plan,
+    percentages: poda.percentages
+  });
+  quota.warnings.push(...poda.avisos);
 
   // El presupuesto del RDS pertenece a la Cuota Justa preparada en el cierre
   // anterior. Mientras no exista ese cierre, se conserva el target vigente.

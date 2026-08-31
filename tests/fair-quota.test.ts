@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { calculateFairQuota, suggestedPercentages } from "../lib/fair-quota";
+import { calculateFairQuota, suggestedPercentages , podarPorcentajesCaducados } from "../lib/fair-quota";
 
 const people = [
   { userId: "g", name: "Gerente", role: "GERENTE" as const },
@@ -58,4 +58,78 @@ test("rechaza asignar porcentaje a quien no labora", () => {
     minimums: { "2026-08-23": 100 }, presence: { "2026-08-23": ["a1"] },
     percentages: { "2026-08-23": { g: 0, s: 0, a1: 90, a2: 10 } }
   }), /no labora/);
+});
+
+/* ─── el borrador que se quedó viejo ──────────────────────────────────────── */
+
+const GENTE = [
+  { userId: "adrian", name: "Adrian", role: "SUBGERENTE" as const },
+  { userId: "jazmin", name: "Jazmin", role: "ASESOR" as const },
+  { userId: "waira", name: "Waira", role: "ASESOR" as const }
+];
+
+test("⚠️ un dia con porcentaje para quien ya no labora se PODA, no revienta", () => {
+  // Es el bloqueo del 29 de agosto de 2026: se guardo la cuota, el equipo pidio
+  // dias, se movieron los horarios, y la pantalla dejo de abrir.
+  const poda = podarPorcentajesCaducados(
+    { "2026-08-31": { adrian: 10, jazmin: 90 } },
+    GENTE,
+    { "2026-08-31": ["adrian", "waira"] }
+  );
+  assert.deepEqual(poda.percentages, {}, "el dia tenia que quedar fuera");
+  assert.equal(poda.avisos.length, 1);
+  assert.ok(poda.avisos[0].includes("Jazmin"), poda.avisos[0]);
+  assert.ok(poda.avisos[0].includes("2026-08-31"));
+});
+
+test("se poda el DIA ENTERO, no solo a quien sobra", () => {
+  // Quitarle solo su parte dejaria el dia sin sumar 100, y repartir su hueco
+  // seria inventar un reparto que nadie eligio.
+  const poda = podarPorcentajesCaducados(
+    { "2026-08-31": { adrian: 10, jazmin: 90 } },
+    GENTE,
+    { "2026-08-31": ["adrian"] }
+  );
+  assert.equal(poda.percentages["2026-08-31"], undefined);
+});
+
+test("los dias que siguen cuadrando se conservan intactos", () => {
+  const dia = { adrian: 10, jazmin: 50, waira: 40 };
+  const poda = podarPorcentajesCaducados(
+    { "2026-08-30": dia, "2026-08-31": { adrian: 10, jazmin: 90 } },
+    GENTE,
+    { "2026-08-30": ["adrian", "jazmin", "waira"], "2026-08-31": ["adrian"] }
+  );
+  assert.deepEqual(poda.percentages, { "2026-08-30": dia });
+  assert.equal(poda.avisos.length, 1);
+});
+
+test("un cero para quien no labora no estorba", () => {
+  // Solo molesta si de verdad le toca algo.
+  const poda = podarPorcentajesCaducados(
+    { "2026-08-31": { adrian: 100, jazmin: 0 } },
+    GENTE,
+    { "2026-08-31": ["adrian"] }
+  );
+  assert.deepEqual(poda.percentages, { "2026-08-31": { adrian: 100, jazmin: 0 } });
+  assert.deepEqual(poda.avisos, []);
+});
+
+test("sin porcentajes guardados no hay nada que podar", () => {
+  assert.deepEqual(podarPorcentajesCaducados(undefined, GENTE, {}), { percentages: {}, avisos: [] });
+});
+
+test("⚠️ al GUARDAR se sigue rechazando", () => {
+  // La asimetria es deliberada: leer un borrador viejo se cura, escribir algo
+  // imposible se rechaza.
+  assert.throws(
+    () => calculateFairQuota({
+      dates: ["2026-08-31"],
+      people: GENTE,
+      minimums: { "2026-08-31": 1000 },
+      presence: { "2026-08-31": ["adrian"] },
+      percentages: { "2026-08-31": { adrian: 10, jazmin: 90 } }
+    }),
+    /no labora/
+  );
 });

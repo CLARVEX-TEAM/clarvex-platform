@@ -111,6 +111,59 @@ export function suggestedPercentages(people: FairQuotaPerson[], present: Set<str
   return result;
 }
 
+export type PodaDePorcentajes = {
+  percentages: Record<string, Record<string, number>>;
+  /** Un aviso por día podado, listo para enseñar. */
+  avisos: string[];
+};
+
+/**
+ * Quita los porcentajes guardados que el horario ACTUAL ya no admite.
+ *
+ * ⚠️ **Al LEER se poda; al GUARDAR se rechaza.** No es incoherencia, es la
+ * diferencia entre un borrador que se quedó viejo y alguien afirmando algo
+ * imposible. Guardas la Cuota Justa, el equipo pide días, mueves los horarios,
+ * y de pronto hay porcentajes para quien ya no labora: eso no es un error del
+ * usuario, es el mundo cambiando debajo.
+ *
+ * Antes esto lanzaba también al leer, y **te dejaba fuera de la única pantalla
+ * donde podías arreglarlo**. Pasó el 29 de agosto de 2026: seis días de la
+ * semana quedaron bloqueados y hubo que editar el JSON en la base a mano.
+ *
+ * Se poda el DÍA ENTERO, no solo a la persona que sobra: al quitarle su parte,
+ * los porcentajes del día ya no suman 100 y repartir su hueco entre los demás
+ * sería inventar un reparto que nadie eligió. Sin porcentajes guardados, el día
+ * vuelve al reparto automático, que es un punto de partida honesto.
+ */
+export function podarPorcentajesCaducados(
+  percentages: Record<string, Record<string, number>> | undefined,
+  people: FairQuotaPerson[],
+  presence: Record<string, string[]>
+): PodaDePorcentajes {
+  if (!percentages) return { percentages: {}, avisos: [] };
+
+  const nombres = new Map(people.map((person) => [person.userId, person.name]));
+  const limpios: Record<string, Record<string, number>> = {};
+  const avisos: string[] = [];
+
+  for (const [date, manual] of Object.entries(percentages)) {
+    const present = new Set(presence[date] ?? []);
+    const sobran = Object.entries(manual)
+      .filter(([userId, value]) => value > 0 && !present.has(userId))
+      .map(([userId]) => nombres.get(userId) ?? userId);
+
+    if (sobran.length === 0) {
+      limpios[date] = manual;
+      continue;
+    }
+    avisos.push(
+      `El ${date} se recalculó solo: ${sobran.join(" y ")} ya no labora${sobran.length > 1 ? "n" : ""} ese día. Revísalo antes de guardar.`
+    );
+  }
+
+  return { percentages: limpios, avisos };
+}
+
 function validateManualPercentages(
   date: string,
   people: FairQuotaPerson[],
