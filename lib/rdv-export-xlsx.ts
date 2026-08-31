@@ -244,7 +244,10 @@ export async function buildRdvWorkbook(state: RdvExportState, templatePath = TEM
   sheet = writeCell(sheet, "D4", state.document.crmObjective);
   sheet = writeCell(sheet, "D5", state.document.monthName);
 
-  const orderedPeople = state.people.slice(0, PERSON_BLOCKS);
+  // Cada quien en el bloque que su PUESTO tiene reservado, no en el siguiente
+  // libre: las hojas de comisiones leen columnas fijas por puesto.
+  const bloques = asignarBloques(state.people);
+  const orderedPeople = bloques.filter((p): p is RdvPerson => p !== null);
   const kpisByPersonDay = new Map<string, RdvKpiCell>();
   for (const day of state.days) {
     for (const kpi of day.kpis) kpisByPersonDay.set(`${kpi.userId}:${day.date}`, kpi);
@@ -252,12 +255,35 @@ export async function buildRdvWorkbook(state: RdvExportState, templatePath = TEM
   const daysByDate = new Map(state.days.map((day) => [day.date, day]));
 
   for (let index = 0; index < PERSON_BLOCKS; index += 1) {
-    const person = orderedPeople[index];
+    const person = bloques[index];
     const column = FIRST_PERSON_COLUMN + index * PERSON_BLOCK_WIDTH;
-    sheet = writeCell(sheet, `${columnLetter(column)}6`, person ? roleLabel(person.role, orderedPeople.slice(0, index + 1)) : null);
+    sheet = writeCell(
+      sheet,
+      `${columnLetter(column)}6`,
+      person ? roleLabel(person.role, bloques.slice(0, index + 1).filter((p): p is RdvPerson => p !== null)) : null
+    );
     sheet = writeCell(sheet, `${columnLetter(column)}7`, person?.employeeNumber ?? null);
     sheet = writeCell(sheet, `${columnLetter(column)}8`, person?.name ?? null);
   }
+
+  /*
+   * ⚠️ La plantilla trae bloques de persona OCULTOS y hay que mostrarlos.
+   *
+   * El archivo corporativo llegó con las columnas 26-36 escondidas —el tercer
+   * bloque— además de las 70-168, que son los bloques que sobran. Escribir
+   * dentro de una columna oculta no la muestra: los datos quedan bien puestos y
+   * **no se ven**. Pasó con Waira, que cae justo en el bloque 3: estaba en el
+   * archivo, con su número y sus ventas, y parecía que el export la había
+   * perdido.
+   *
+   * Solo se muestran los bloques que reciben a alguien. Los de más siguen
+   * ocultos a propósito: son columnas vacías y enseñarlas ensucia el reporte.
+   */
+  bloques.forEach((person, index) => {
+    if (!person) return;
+    const desde = FIRST_PERSON_COLUMN + index * PERSON_BLOCK_WIDTH;
+    sheet = mostrarColumnas(sheet, desde, desde + PERSON_BLOCK_WIDTH - 1);
+  });
 
   const slots = daySlots(state.retailMonth.weeks.map((week) => ({
     weekNumber: week.weekNumber,
@@ -275,7 +301,7 @@ export async function buildRdvWorkbook(state: RdvExportState, templatePath = TEM
       const day = daysByDate.get(dateKey);
       sheet = writeCell(sheet, `FM${row}`, day?.traffic ?? null);
       for (let personIndex = 0; personIndex < PERSON_BLOCKS; personIndex += 1) {
-        const person = orderedPeople[personIndex];
+        const person = bloques[personIndex];
         const column = FIRST_PERSON_COLUMN + personIndex * PERSON_BLOCK_WIDTH;
         const kpi = person ? kpisByPersonDay.get(`${person.userId}:${dateKey}`) : undefined;
         sheet = writePersonDay(sheet, row, column, kpi);
@@ -503,6 +529,62 @@ function latestEmployeeOrder(message: string | undefined) {
   return Array.isArray(order) && order.every((value) => typeof value === "string") ? order : null;
 }
 
+/** Cuántos bloques reserva la plantilla para cada puesto, y en qué orden. */
+const BLOQUES_POR_PUESTO: ReadonlyArray<TeamRole> = [
+  "GERENTE",
+  "SUBGERENTE",
+  "SUBGERENTE",
+  ...Array<TeamRole>(PERSON_BLOCKS - 3).fill("ASESOR")
+];
+
+/**
+ * Coloca a cada persona en el bloque que su PUESTO tiene reservado.
+ *
+ * ⚠️ **No se reparten en orden de llegada, y esto es dinero.** La plantilla
+ * corporativa tiene los puestos cableados por posición: el bloque 1 es GERENTE,
+ * el 2 y el 3 son SUBGERENTE 1 y 2, y del 4 en adelante son VENDEDOR. Las hojas
+ * `KPIs x Colaborador` y `COMISIONES` leen esas columnas fijas y aplican el
+ * porcentaje del puesto que corresponde a la fila, no al de la persona.
+ *
+ * Empaquetando a la gente seguida, una tienda sin segundo subgerente metía a su
+ * primera asesora en el bloque 3 —el de SUBGERENTE 2— y el Excel le calculaba
+ * **0.93/1.16/1.39 sobre la venta de TIENDA** en vez de 1.53/1.91/2.29 sobre la
+ * suya. Pasó con Waira en agosto de 2026, y de paso corría a los otros dos
+ * asesores una posición.
+ *
+ * Los huecos quedan vacíos a propósito: son los puestos que la tienda no tiene.
+ */
+export function asignarBloques(people: RdvPerson[]): Array<RdvPerson | null> {
+  const bloques: Array<RdvPerson | null> = Array(PERSON_BLOCKS).fill(null);
+  const pendientes = new Map<TeamRole, RdvPerson[]>([
+    ["GERENTE", people.filter((p) => p.role === "GERENTE")],
+    ["SUBGERENTE", people.filter((p) => p.role === "SUBGERENTE")],
+    ["ASESOR", people.filter((p) => p.role === "ASESOR")]
+  ]);
+
+  BLOQUES_POR_PUESTO.forEach((puesto, indice) => {
+    const cola = pendientes.get(puesto);
+    if (cola && cola.length > 0) bloques[indice] = cola.shift() ?? null;
+  });
+
+  /*
+   * ⚠️ Si sobra alguien se DETIENE, no se le busca hueco.
+   *
+   * Meterlo en el bloque libre más cercano es exactamente el fallo que esto
+   * viene a arreglar: acabaría cobrando con el porcentaje de otro puesto. Vale
+   * más un export que no sale y dice por qué.
+   */
+  for (const [puesto, cola] of pendientes) {
+    if (cola.length > 0) {
+      const reservados = BLOQUES_POR_PUESTO.filter((p) => p === puesto).length;
+      throw new Error(
+        `El formato RDV reserva ${reservados} lugar(es) para ${puesto} y esta tienda tiene ${reservados + cola.length}.`
+      );
+    }
+  }
+  return bloques;
+}
+
 function roleLabel(role: TeamRole, previous: RdvPerson[]) {
   if (role === "GERENTE") return "GERENTE";
   const count = previous.filter((person) => person.role === role).length;
@@ -546,6 +628,37 @@ function monthName(label: string) {
  * Se quitan acentos y se dejan solo letras, n\u00fameros y espacios: `\u00d1`, `/` o `:`
  * rompen la descarga en Windows o llegan mal por la cabecera.
  */
+/**
+ * Quita `hidden` de las columnas entre `desde` y `hasta`, ambas incluidas.
+ *
+ * Un `<col>` de OOXML cubre un rango (`min`..`max`), así que un rango oculto
+ * puede solaparse solo en parte con el que hay que mostrar. Cuando pasa, se
+ * parte en tres: lo de antes sigue oculto, lo de en medio se muestra y lo de
+ * después sigue oculto. Mostrar el rango entero escondería de menos —enseñaría
+ * columnas vacías— y no tocarlo escondería de más.
+ */
+export function mostrarColumnas(sheet: string, desde: number, hasta: number): string {
+  return sheet.replace(/<col\b[^>]*\/>/g, (etiqueta) => {
+    if (!/\bhidden="1"/.test(etiqueta)) return etiqueta;
+    const min = Number(etiqueta.match(/\bmin="(\d+)"/)?.[1]);
+    const max = Number(etiqueta.match(/\bmax="(\d+)"/)?.[1]);
+    if (!Number.isFinite(min) || !Number.isFinite(max)) return etiqueta;
+    if (max < desde || min > hasta) return etiqueta;
+
+    const conRango = (a: number, b: number, oculto: boolean) =>
+      etiqueta
+        .replace(/\bmin="\d+"/, `min="${a}"`)
+        .replace(/\bmax="\d+"/, `max="${b}"`)
+        .replace(/\s*hidden="1"/, oculto ? ' hidden="1"' : "");
+
+    const partes: string[] = [];
+    if (min < desde) partes.push(conRango(min, desde - 1, true));
+    partes.push(conRango(Math.max(min, desde), Math.min(max, hasta), false));
+    if (max > hasta) partes.push(conRango(hasta + 1, max, true));
+    return partes.join("");
+  });
+}
+
 export function buildRdvFilename(state: Pick<RdvExportState, "store" | "retailMonth">) {
   const limpio = (texto: string) =>
     texto
