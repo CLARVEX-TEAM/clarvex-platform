@@ -734,25 +734,25 @@ global de otra versión instala un árbol de dependencias distinto al del servid
 
 | Paquete | Versión en `package.json` |
 |---|---|
-| next | 15.5.21 |
+| next | 15.5.24 |
 | react | ^18.3.1 |
 | typescript | ^5.7.2 |
 | prisma / @prisma/client | 5.22.0 (ambos fijos, sin `^`) |
 | tailwindcss | ^3.4.16 |
 | web-push | ^3.6.7 |
-| @simplewebauthn/server | ^13.3.1 |
+| @simplewebauthn/server | ^13.3.3 |
 | @simplewebauthn/browser | ^13.3.0 |
-| recharts | ^3.8.1 |
-| zod | ^4.4.3 |
+| recharts | ^3.10.1 |
+| zod | ^4.5.4 |
 | framer-motion | ^12.40.0 |
 | bcryptjs | ^2.4.3 |
-| jose | ^6.2.3 |
-| @aws-sdk/client-s3 | ^3.1086.0 (para R2) |
+| jose | ^6.2.10 |
+| @aws-sdk/client-s3 | ^3.1121.0 (para R2) |
 | @smithy/node-http-handler | 4.9.5 (transporte IPv4 de R2) |
-| @sentry/nextjs | ^10.65.0 |
+| @sentry/nextjs | ^10.72.0 |
 | exceljs | ^4.4.0 (parser del RDV) |
 | sharp | ^0.35.4 (encoge las fotos del visual antes de reconocerlas) |
-| @aws-sdk/client-bedrock-runtime | ^3.1116.0 (lector del POS y reconocimiento de zonas) |
+| @aws-sdk/client-bedrock-runtime | ^3.1121.0 (lector del POS y reconocimiento de zonas) |
 
 ---
 
