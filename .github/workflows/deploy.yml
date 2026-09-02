@@ -38,7 +38,10 @@ jobs:
     # El entorno permite exigir aprobacion manual desde GitHub antes de que el
     # trabajo arranque. Se configura en Settings > Environments > produccion.
     environment:
-      name: produccion
+      # El nombre tiene que coincidir EXACTAMENTE con el entorno creado en
+      # Settings > Environments. Si no coincide, GitHub crea uno nuevo con este
+      # nombre y las aprobaciones se quedan en el que nadie mira.
+      name: Production
       url: https://team.clarvex.tech
 
     steps:
