@@ -350,7 +350,8 @@ esa fase.
   autenticado como `jhernandezl2c-hash` en:
   `C:\Users\Adrian L\AppData\Local\Microsoft\WinGet\Packages\GitHub.cli_Microsoft.Winget.Source_8wekyb3d8bbwe\bin\gh.exe`.
 - Auditoría autenticada de la org al momento de crear el perfil: plan
-  `enterprise`, 1 miembro (`jhernandezl2c-hash`), 0 equipos, 0 repos previos,
+  `free` --este documento decia `enterprise`, y no lo es: comprobado el 2 de
+  septiembre de 2026 con `gh api orgs/CLARVEX-TEAM`--, 1 miembro (`jhernandezl2c-hash`), 0 equipos, 0 repos previos,
   0 rulesets, 0 secrets/variables de Actions o Dependabot. Actions estaba
   permitido para todos los repos y acciones; no se cambió porque las políticas
   globales quedaron fuera de esta fase.
@@ -425,7 +426,7 @@ Configuración conservada:
 - sin secrets ni variables de Actions;
 - environments `Preview` y `Production`, sin reglas todavía;
 - sin webhooks;
-- deploy key `Vps`, verificada, read/write;
+- deploy key `Vps`, retirada (ya no figura el 2 de septiembre de 2026);
 - deploy key `Clarvex aws`, verificada, read-only;
 - colaboradores directos: `jhernandezl2c-hash` admin y `edsomo94` write.
 
@@ -437,9 +438,16 @@ Cambios observados por el movimiento a organización:
   desactivado, allowlist vacía, workflow token en `read`.
 - `edsomo94` aparece como outside collaborator de la organización.
 
-⚠️ **Pendiente después de transferir:** proteger `main`, añadir CI, decidir
+⚠️ **`main` NO se puede proteger con este plan.** La organizacion esta en
+`free` y el repositorio es privado: tanto la proteccion clasica de ramas como
+los rulesets responden **403 «Upgrade to GitHub Pro»**. No es que falte
+configurarlo; hoy no se puede sin pagar o sin hacer publico el repositorio.
+Lo que si esta puesto es que el entorno `Production` solo despliega desde
+`main`, que cubre la via por la que se toca produccion.
+
+⚠️ **Pendiente después de transferir:** añadir CI, decidir
 required checks cuando estén verdes, revisar si `edsomo94` conserva acceso,
-revisar si la llave `Vps` debe seguir con escritura, y completar
+y completar
 Dependabot/CodeQL/CODEOWNERS/equipos por repo. No se activó CD, no se creó AWS
 OIDC, no se tocaron secrets, AWS, Retool, Slack, producción, ramas, tags ni
 historial.
