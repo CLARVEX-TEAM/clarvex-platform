@@ -167,6 +167,50 @@ export function desescaparSlack(texto: string): string {
     .replace(/&amp;/g, "&");
 }
 
+/**
+ * Traduce la sintaxis de enlaces de Slack a texto legible.
+ *
+ * Slack no manda la URL a secas: la envuelve en angulares y le cuelga la
+ * etiqueta detrás de una barra —`<https://…|CURSO CREHANA>`—. Sin traducirlo,
+ * eso llega al chat tal cual y la persona ve los angulares y la barra.
+ *
+ * ⚠️ **VA ANTES DE `desescaparSlack`, y el orden no es un detalle.** Slack manda
+ * los enlaces reales con angulares DE VERDAD, y lo que la persona escribió como
+ * `<` se lo manda escapado (`&lt;`). Desescapando primero, un mensaje que diga
+ * literalmente `<hola|mundo>` se vuelve indistinguible de un enlace y se
+ * destroza. En este orden no hay ambigüedad: lo que llega con angulares reales
+ * lo puso Slack.
+ *
+ * ⚠️ **El destino NO se descarta.** El chat de Clarvex guarda texto, no HTML, así
+ * que aquí nada es pulsable: quedarse solo con la etiqueta —«CURSO CREHANA»—
+ * deja a quien lo lee sin forma de llegar al sitio. Se conservan las dos.
+ *
+ * Las menciones a personas (`<@U123>`) se dejan intactas a propósito: traducir
+ * el identificador sin saber a quién corresponde daría un `@U08…` que no dice
+ * nada, y el equipo no está en Slack —once de dieciocho tienen correo
+ * inventado—, así que casi no pueden aparecer.
+ */
+export function traducirEnlacesSlack(texto: string): string {
+  return texto.replace(/<([^<>|]+)(?:\|([^<>]*))?>/g, (todo, destino: string, etiqueta?: string) => {
+    const rotulo = (etiqueta ?? "").trim();
+
+    if (/^https?:\/\//i.test(destino)) {
+      return rotulo && rotulo !== destino ? `${rotulo} (${destino})` : destino;
+    }
+    if (/^(mailto|tel):/i.test(destino)) {
+      return rotulo || destino.replace(/^(mailto|tel):/i, "");
+    }
+    // Canal: <#C123|general>. Sin nombre no se puede resolver, así que se deja.
+    if (destino.startsWith("#")) return rotulo ? `#${rotulo}` : todo;
+    // Avisos del canal: <!here>, <!channel>, <!everyone>.
+    if (/^!(here|channel|everyone)$/.test(destino)) return `@${destino.slice(1)}`;
+
+    // Cualquier otra cosa entre angulares se deja como estaba: si no es
+    // sintaxis de Slack, tocarla se comería algo que alguien quiso escribir.
+    return todo;
+  });
+}
+
 export function interpretarEntrante(cuerpo: EventoSlack): Entrante {
   if (cuerpo.type === "url_verification") {
     return typeof cuerpo.challenge === "string"
@@ -193,7 +237,8 @@ export function interpretarEntrante(cuerpo: EventoSlack): Entrante {
   }
   if (e.thread_ts && e.thread_ts !== e.ts) return { accion: "ignorar", porque: "respuesta en hilo" };
 
-  const texto = desescaparSlack((e.text ?? "").trim());
+  // ⚠️ Traducir ANTES de desescapar: ver la nota de `traducirEnlacesSlack`.
+  const texto = desescaparSlack(traducirEnlacesSlack((e.text ?? "").trim()));
   const archivo = (e.files ?? []).find((f) => (f.mimetype ?? "").startsWith("image/")) ?? null;
 
   // Una foto SIN pie sigue valiendo: se cruza la imagen y ya. Lo que no vale es
