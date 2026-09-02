@@ -151,7 +151,7 @@ jobs:
 
       - name: Subir informe
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: informe-playwright
           path: playwright-report/
