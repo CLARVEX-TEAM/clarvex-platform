@@ -76,10 +76,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # ⚠️ SIN `version:` a proposito. La version de pnpm se lee del campo
+      # `packageManager` de package.json, que es la que respeta corepack y
+      # la que corre el servidor. Declararla tambien aqui la pone en dos
+      # sitios: el dia que una suba y la otra no, CI instalaria un arbol de
+      # dependencias distinto al de produccion sin que nada avisara.
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 10.12.1
+        uses: pnpm/action-setup@v6
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -114,10 +117,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # ⚠️ SIN `version:` a proposito. La version de pnpm se lee del campo
+      # `packageManager` de package.json, que es la que respeta corepack y
+      # la que corre el servidor. Declararla tambien aqui la pone en dos
+      # sitios: el dia que una suba y la otra no, CI instalaria un arbol de
+      # dependencias distinto al de produccion sin que nada avisara.
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 10.12.1
+        uses: pnpm/action-setup@v6
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -151,7 +157,7 @@ jobs:
 
       - name: Subir informe
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: informe-playwright
           path: playwright-report/
@@ -171,7 +177,7 @@ jobs:
       # Falla el CI si encuentra una vulnerabilidad conocida. Para ignorar una
       # puntual y justificada (con fecha de revisión), usar un osv-scanner.toml.
       - name: OSV-Scanner (vulnerabilidades en dependencias)
-        uses: google/osv-scanner-action/osv-scanner-action@v2.3.8
+        uses: google/osv-scanner-action/osv-scanner-action@v2.5.1
         with:
           scan-args: |-
             --config=osv-scanner.toml
