@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import { esperaTrasFallo, interpretar } from "@/lib/chat-espera";
 import { FichaCompanero } from "@/components/FichaCompanero";
 import { CabeceraChat } from "@/components/CabeceraChat";
+import { VisorImagen } from "@/components/VisorImagen";
 import {
   ChatPicker,
   MessageTicks,
@@ -87,7 +88,15 @@ function MessageBody({
       <img
         src={imgUrl}
         alt="Imagen"
-        className="max-h-64 max-w-[220px] cursor-pointer rounded-2xl object-cover"
+        /*
+         * Sin `object-cover`: recortaba. Una tabla de metas o un flyer pierden
+         * justo los bordes, que es donde esta el dato.
+         *
+         * Y mas ancha: a 220 px un texto compartido no se lee, y la gente ni
+         * sabe que puede abrirlo. El ancho se ata a la burbuja para que no
+         * desborde en pantallas estrechas.
+         */
+        className="max-h-80 w-full max-w-[min(78vw,320px)] cursor-zoom-in rounded-2xl object-contain"
         loading="lazy"
         onClick={() => onImageClick?.(imgUrl)}
       />
@@ -837,20 +846,7 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
       )}
 
       {/* Visor de imagen a pantalla completa */}
-      {lightbox && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/95 p-4" onClick={() => setLightbox(null)}>
-          <button
-            type="button"
-            onClick={() => setLightbox(null)}
-            className="absolute right-4 top-4 grid size-10 place-items-center rounded-full bg-white/15 text-white"
-            style={{ top: "max(1rem, env(safe-area-inset-top))" }}
-          >
-            <X size={22} />
-          </button>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={lightbox} alt="Imagen" className="max-h-full max-w-full rounded-lg object-contain" onClick={(e) => e.stopPropagation()} />
-        </div>
-      )}
+      {lightbox && <VisorImagen url={lightbox} onClose={() => setLightbox(null)} />}
 
       {/* Volver al final */}
       {lejosDelFinal && (
