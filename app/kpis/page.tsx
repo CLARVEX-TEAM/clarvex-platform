@@ -312,18 +312,15 @@ function ResumenView({ activeKpi, team, progress, periodLabel, hasDiscountSource
               </p>
             ) : null}
           </div>
-          <div className="flex shrink-0 items-center gap-2">
-            {isManager ? (
-              <motion.button
-                onClick={onOpenTargets}
-                whileTap={{ scale: 0.9 }}
-                className="grid size-10 place-items-center rounded-2xl bg-volt/10 text-volt"
-                aria-label="Configurar metas KPI"
-              >
-                <Settings2 size={18} />
-              </motion.button>
-            ) : null}
-          </div>
+          {/*
+            * Las metas se capturan en Retool, dentro de Cuota Justa.
+            *
+            * Aqui se LEEN —son las que pintan el semaforo— pero ya no se
+            * editan: dos puertas al mismo dato acaban discrepando y nadie sabe
+            * cual mando, que es lo que paso con el importador pegado de la
+            * Cuota Justa.
+            */}
+          <div className="flex shrink-0 items-center gap-2" />
         </div>
         <ProgressBar value={progress} pace={pace} />
         {pace !== null ? (

@@ -89,3 +89,14 @@ test("la plantilla trae las nueve por los dos periodos", () => {
   assert.equal(p.length, Object.keys(METRICAS).length * 2);
   assert.equal(p.filter((o) => o.period === "SEMANA").length, Object.keys(METRICAS).length);
 });
+
+test("solo Pasillo Infinito es de semana", () => {
+  /*
+   * Es un presupuesto de siete dias. Un objetivo mensual comparado contra el
+   * gasto del mes daria siempre pasado, porque el numero es de una semana.
+   */
+  assert.equal(METRICAS.whatsapp.soloSemana, true);
+  for (const [nombre, config] of Object.entries(METRICAS)) {
+    if (nombre !== "whatsapp") assert.ok(!config.soloSemana, nombre + " no deberia ser solo de semana");
+  }
+});

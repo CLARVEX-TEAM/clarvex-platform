@@ -70,6 +70,7 @@ async function cargar(storeId: string) {
         unidad: config.unidad,
         // Se manda para que la pantalla NO llame «meta» a un techo.
         techo: config.techo === true,
+        soloSemana: config.soloSemana === true,
         // `null` y no 0: un 0 diría que el objetivo es cero, y lo que pasa es
         // que todavía no se ha puesto.
         value: fila ? Number(fila.value) : null,

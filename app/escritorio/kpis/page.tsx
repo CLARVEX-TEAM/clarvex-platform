@@ -328,14 +328,13 @@ function ResumenView({ activeKpi, team, progress, periodLabel, hasDiscountSource
         <div>
           <div className="flex items-baseline justify-between gap-4">
             <h2 className="text-ui font-medium text-muted">Cumplimiento {periodLabel}</h2>
+            {/*
+              * Las metas se capturan en Retool, dentro de Cuota Justa. Aqui se
+              * LEEN —pintan el semaforo— pero ya no se editan: dos puertas al
+              * mismo dato acaban discrepando y nadie sabe cual mando.
+              */}
             {isManager ? (
-              <button
-                type="button"
-                onClick={onOpenTargets}
-                className="flex items-center gap-1.5 text-caption font-medium text-accent hover:underline"
-              >
-                <Settings2 size={13} /> Configurar metas
-              </button>
+              <span className="text-caption text-muted">Se configuran en Retool → Cuota Justa</span>
             ) : null}
           </div>
 
