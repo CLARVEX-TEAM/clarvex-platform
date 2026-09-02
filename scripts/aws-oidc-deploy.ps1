@@ -3,48 +3,72 @@
 # Crea tres cosas:
 #   1. El proveedor de identidad de GitHub en IAM (uno por cuenta).
 #   2. Un rol que SOLO puede asumir este repositorio.
-#   3. Una politica que SOLO permite lanzar el script de despliegue en UNA
-#      instancia concreta.
+#   3. Una politica que SOLO permite lanzar el despliegue en UNA instancia.
 #
 # ⚠️ La confianza se ata al REPOSITORIO Y A LA RAMA. Sin esa condicion,
 # cualquier repositorio de GitHub —de cualquier persona— podria asumir el rol.
 # Es el fallo clasico de las guias de OIDC, y no avisa: funciona igual de bien
 # mientras nadie lo intente.
 #
-#   powershell -ExecutionPolicy Bypass -File scripts\aws-oidc-deploy.ps1
+#   powershell -ExecutionPolicy Bypass -File "D:\Documents\New project\scripts\aws-oidc-deploy.ps1"
 #
 # Requiere sesion viva:  aws sso login --profile clarvex
 
 $ErrorActionPreference = "Stop"
 
-$Perfil     = "clarvex"
-$Region     = "us-east-1"
-$Repo       = "CLARVEX-TEAM/clarvex-platform"
-$Instancia  = "i-06fd0869766482dc1"
-$RolNombre  = "clarvex-github-deploy"
+$Perfil    = "clarvex"
+$Region    = "us-east-1"
+$Repo      = "CLARVEX-TEAM/clarvex-platform"
+$Instancia = "i-06fd0869766482dc1"
+$RolNombre = "clarvex-github-deploy"
+$RolInstancia = "clarvex-instancia"
 
-$Cuenta = (aws sts get-caller-identity --profile $Perfil --query Account --output text)
-if (-not $Cuenta) { throw "Sin sesion de AWS. Corre: aws sso login --profile $Perfil" }
+# ── Preguntarle a AWS sin que el script se muera ──────────────────────────
+#
+# ⚠️ Con `$ErrorActionPreference = "Stop"`, CUALQUIER cosa que un ejecutable
+# escriba en stderr se convierte en error mortal. Y aqui se pregunta a
+# proposito por cosas que puede que no existan: la respuesta «no existe» llega
+# por stderr y mataba el script en la primera comprobacion.
+#
+# Por eso las consultas pasan por aqui: se relaja la preferencia mientras dura
+# la llamada y se decide por el CODIGO DE SALIDA, que es lo fiable.
+function Preguntar-Aws {
+  param([Parameter(ValueFromRemainingArguments = $true)][string[]]$Argumentos)
+
+  $previo = $ErrorActionPreference
+  $ErrorActionPreference = "Continue"
+  $salida = & aws @Argumentos 2>$null
+  $codigo = $LASTEXITCODE
+  $ErrorActionPreference = $previo
+
+  return [pscustomobject]@{ Ok = ($codigo -eq 0); Salida = $salida }
+}
+
+# ── Cuenta ────────────────────────────────────────────────────────────────
+$r = Preguntar-Aws sts get-caller-identity --profile $Perfil --query Account --output text
+if (-not $r.Ok) { throw "Sin sesion de AWS. Corre primero:  aws sso login --profile $Perfil" }
+$Cuenta = ($r.Salida | Select-Object -First 1).Trim()
 Write-Output "Cuenta: $Cuenta"
 
 # ── 1. Proveedor de identidad de GitHub ───────────────────────────────────
 $ArnProveedor = "arn:aws:iam::${Cuenta}:oidc-provider/token.actions.githubusercontent.com"
-$existe = aws iam get-open-id-connect-provider --open-id-connect-provider-arn $ArnProveedor --profile $Perfil 2>$null
 
-if ($LASTEXITCODE -ne 0) {
-  Write-Output "Creando el proveedor OIDC de GitHub..."
+$r = Preguntar-Aws iam get-open-id-connect-provider --open-id-connect-provider-arn $ArnProveedor --profile $Perfil
+if ($r.Ok) {
+  Write-Output "1/4  El proveedor OIDC ya existia."
+} else {
+  Write-Output "1/4  Creando el proveedor OIDC de GitHub..."
   # La huella ya no se valida desde 2023, pero el API sigue exigiendo el campo.
   aws iam create-open-id-connect-provider `
     --url "https://token.actions.githubusercontent.com" `
     --client-id-list "sts.amazonaws.com" `
     --thumbprint-list "6938fd4d98bab03faadb97b34396831e3780aea1" `
     --profile $Perfil | Out-Null
-} else {
-  Write-Output "El proveedor OIDC ya existia."
 }
 
-# ── 2. Politica de confianza: SOLO este repo y SOLA esta rama ─────────────
-$confianza = @"
+# ── 2. El rol, con confianza atada al repositorio ─────────────────────────
+$archivoConfianza = Join-Path $env:TEMP "clarvex-trust.json"
+@"
 {
   "Version": "2012-10-17",
   "Statement": [{
@@ -61,33 +85,32 @@ $confianza = @"
     }
   }]
 }
-"@
+"@ | Out-File -FilePath $archivoConfianza -Encoding ascii
 
-$confianza | Out-File -FilePath "$env:TEMP\clarvex-trust.json" -Encoding utf8 -NoNewline
-
-$rol = aws iam get-role --role-name $RolNombre --profile $Perfil 2>$null
-if ($LASTEXITCODE -ne 0) {
-  Write-Output "Creando el rol $RolNombre..."
-  aws iam create-role `
-    --role-name $RolNombre `
-    --assume-role-policy-document "file://$env:TEMP\clarvex-trust.json" `
-    --description "Despliegue de Clarvex desde GitHub Actions por OIDC" `
-    --max-session-duration 3600 `
-    --profile $Perfil | Out-Null
-} else {
-  Write-Output "El rol ya existia; actualizando su politica de confianza."
+$r = Preguntar-Aws iam get-role --role-name $RolNombre --profile $Perfil
+if ($r.Ok) {
+  Write-Output "2/4  El rol ya existia; actualizando su politica de confianza."
   aws iam update-assume-role-policy `
     --role-name $RolNombre `
-    --policy-document "file://$env:TEMP\clarvex-trust.json" `
+    --policy-document "file://$archivoConfianza" `
+    --profile $Perfil | Out-Null
+} else {
+  Write-Output "2/4  Creando el rol $RolNombre..."
+  aws iam create-role `
+    --role-name $RolNombre `
+    --assume-role-policy-document "file://$archivoConfianza" `
+    --description "Despliegue de Clarvex desde GitHub Actions por OIDC" `
+    --max-session-duration 3600 `
     --profile $Perfil | Out-Null
 }
 
 # ── 3. Permisos: lo minimo para lanzar el despliegue ──────────────────────
 #
-# ⚠️ Acotado a UNA instancia y a UN documento de SSM. Con `Resource: "*"` este
+# ⚠️ Acotado a UNA instancia y UN documento de SSM. Con `Resource: "*"` este
 # rol podria ejecutar cualquier comando en cualquier maquina de la cuenta, que
 # es mucho mas de lo que hace falta para un `git pull` y un `pm2 restart`.
-$permisos = @"
+$archivoPermisos = Join-Path $env:TEMP "clarvex-perms.json"
+@"
 {
   "Version": "2012-10-17",
   "Statement": [
@@ -112,41 +135,47 @@ $permisos = @"
     }
   ]
 }
-"@
+"@ | Out-File -FilePath $archivoPermisos -Encoding ascii
 
-$permisos | Out-File -FilePath "$env:TEMP\clarvex-perms.json" -Encoding utf8 -NoNewline
-
+Write-Output "3/4  Escribiendo los permisos del rol..."
 aws iam put-role-policy `
   --role-name $RolNombre `
   --policy-name "clarvex-deploy-ssm" `
-  --policy-document "file://$env:TEMP\clarvex-perms.json" `
+  --policy-document "file://$archivoPermisos" `
   --profile $Perfil | Out-Null
 
-Remove-Item "$env:TEMP\clarvex-trust.json", "$env:TEMP\clarvex-perms.json" -ErrorAction SilentlyContinue
+Remove-Item $archivoConfianza, $archivoPermisos -ErrorAction SilentlyContinue
 
-# ── 4. Comprobar que SSM ve la instancia ──────────────────────────────────
-Write-Output ""
-Write-Output "=== Comprobacion: ¿SSM administra la instancia? ==="
-$ssm = aws ssm describe-instance-information `
+# ── 4. ¿SSM ve la instancia? ──────────────────────────────────────────────
+Write-Output "4/4  Comprobando que SSM administre la instancia..."
+$r = Preguntar-Aws ssm describe-instance-information `
   --filters "Key=InstanceIds,Values=$Instancia" `
-  --query "InstanceInformationList[0].[PingStatus,PlatformName,AgentVersion]" `
-  --output text --profile $Perfil 2>$null
+  --query "InstanceInformationList[0].PingStatus" `
+  --output text --profile $Perfil
 
-if ($ssm -and $ssm -ne "None") {
-  Write-Output "  $ssm"
+$ping = if ($r.Ok) { ($r.Salida | Select-Object -First 1) } else { $null }
+
+if ($ping -eq "Online") {
+  Write-Output "     SSM ve la instancia: Online."
 } else {
-  Write-Output "  ⚠️ SSM NO ve la instancia."
-  Write-Output "  Falta que su rol '$($env:ROL)clarvex-instancia' tenga la politica"
-  Write-Output "  AmazonSSMManagedInstanceCore. Sin eso el despliegue no llega."
+  Write-Output ""
+  Write-Output "     ⚠️ SSM NO administra la instancia (respuesta: '$ping')."
+  Write-Output "     El agente esta corriendo, asi que lo que falta es el permiso."
+  Write-Output "     Corre esto y espera un par de minutos:"
+  Write-Output ""
+  Write-Output "       aws iam attach-role-policy --role-name $RolInstancia ``"
+  Write-Output "         --policy-arn arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore ``"
+  Write-Output "         --profile $Perfil"
 }
 
+# ── Resumen ───────────────────────────────────────────────────────────────
 $ArnRol = "arn:aws:iam::${Cuenta}:role/$RolNombre"
 Write-Output ""
 Write-Output "=== LISTO. Ahora en GitHub ==="
-Write-Output "Settings > Secrets and variables > Actions > Variables > New:"
+Write-Output "clarvex-platform > Settings > Secrets and variables > Actions > Variables:"
 Write-Output ""
 Write-Output "  AWS_DEPLOY_ROLE_ARN = $ArnRol"
 Write-Output "  AWS_INSTANCE_ID     = $Instancia"
 Write-Output ""
-Write-Output "Son VARIABLES, no secretos: un ARN no es una credencial y verlo"
-Write-Output "en el registro de la ejecucion ayuda a depurar."
+Write-Output "Son VARIABLES, no secretos: un ARN no es una credencial, y verlo en"
+Write-Output "el registro de la ejecucion ayuda a depurar."
