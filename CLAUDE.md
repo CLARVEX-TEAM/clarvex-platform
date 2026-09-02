@@ -268,9 +268,10 @@ powershell -ExecutionPolicy Bypass -File scripts\aws-cost-guardrails.ps1 -AlertE
 
 ### GitHub: perfil público de CLARVEX-TEAM
 
-Se preparó la presencia pública mínima de la organización sin transferir todavía
-el repositorio principal. El alcance fue solo `CLARVEX-TEAM` y recursos nuevos;
-`jhernandezl2c-hash/app` quedó limpio, sin cambios y con su remote original.
+Se preparó la presencia pública mínima de la organización antes de transferir el
+repositorio principal. El alcance fue solo `CLARVEX-TEAM` y recursos nuevos;
+`jhernandezl2c-hash/app` quedó limpio, sin cambios y con su remote original en
+esa fase.
 
 - `gh.exe` no estaba en el PATH de la sesión de Codex, pero sí instalado y
   autenticado como `jhernandezl2c-hash` en:
@@ -308,10 +309,67 @@ el repositorio principal. El alcance fue solo `CLARVEX-TEAM` y recursos nuevos;
   Slack, tokens, variables internas, endpoints privados ni referencias al repo
   principal.
 
-⚠️ **No transferir `jhernandezl2c-hash/app` todavía.** La transferencia a
-`CLARVEX-TEAM` sigue bloqueada hasta que GitHub Support confirme la purga del
-dump sensible del historial. Tampoco se crearon equipos ni se tocaron rulesets,
-Actions globales, environments, deploy keys, AWS, Retool, Slack ni permisos.
+### GitHub: transferencia del repo principal — 2 de septiembre de 2026
+
+GitHub Support confirmó que las refs antiguas de Pull Requests contaminadas
+fueron eliminadas, y la verificación final local/remota dio `SAFE TO TRANSFER`.
+No se abrió ni se mostró contenido del dump.
+
+- Archivo sensible retirado: `POST_RESTORE_BEFORE_RECOVERY.dump`.
+- Blob antiguo conocido:
+  `fade9777bc408d9b6f4c4f177f7c632c8e30c686`.
+- Verificación previa: working tree limpio, rama `main`, remote todavía en
+  `git@github.com:jhernandezl2c-hash/app.git`, commit
+  `92344942a5091db8c89d6431d157ffaace86fab3`.
+- El archivo no existía en working tree, no estaba tracked, no aparecía como
+  blob alcanzable en refs normales y el blob antiguo devolvió 404 por API de
+  GitHub. `git ls-remote origin 'refs/pull/*'` devolvió 0 refs. El repo no tenía
+  forks.
+
+Transferencia ejecutada con la API oficial:
+
+```
+POST /repos/jhernandezl2c-hash/app/transfer
+new_owner = CLARVEX-TEAM
+new_name  = clarvex-platform
+```
+
+GitHub respondió `202 Accepted`. Después se verificó directamente, sin confiar
+solo en redirecciones:
+
+- Repo nuevo: `CLARVEX-TEAM/clarvex-platform`.
+- Visibilidad: privado.
+- Rama default: `main`.
+- Último commit: `92344942a5091db8c89d6431d157ffaace86fab3`.
+- `origin` local actualizado a:
+  `git@github.com:CLARVEX-TEAM/clarvex-platform.git`.
+- `git fetch origin`, `git status` y `git branch -vv` dejaron `main` limpio y
+  al día con `origin/main`.
+
+Configuración conservada:
+
+- issues ON, projects ON, wiki OFF;
+- sin secrets ni variables de Actions;
+- environments `Preview` y `Production`, sin reglas todavía;
+- sin webhooks;
+- deploy key `Vps`, verificada, read/write;
+- deploy key `Clarvex aws`, verificada, read-only;
+- colaboradores directos: `jhernandezl2c-hash` admin y `edsomo94` write.
+
+Cambios observados por el movimiento a organización:
+
+- `allow_forking` pasó de `true` a `false`.
+- Actions heredó la política restringida de `CLARVEX-TEAM`: `allowed_actions`
+  quedó en `selected`, GitHub-owned actions permitidas, verified creators
+  desactivado, allowlist vacía, workflow token en `read`.
+- `edsomo94` aparece como outside collaborator de la organización.
+
+⚠️ **Pendiente después de transferir:** proteger `main`, añadir CI, decidir
+required checks cuando estén verdes, revisar si `edsomo94` conserva acceso,
+revisar si la llave `Vps` debe seguir con escritura, y completar
+Dependabot/CodeQL/CODEOWNERS/equipos por repo. No se activó CD, no se creó AWS
+OIDC, no se tocaron secrets, AWS, Retool, Slack, producción, ramas, tags ni
+historial.
 
 ## Captura por Telegram — 26 al 28 de agosto de 2026
 
@@ -867,7 +925,7 @@ decía este documento.
 | **Portainer** | `https://clarvex-aws.taile59f37.ts.net:8443` | usuario propio |
 | **Uptime Kuma** | `https://clarvex-aws.taile59f37.ts.net:9443` | usuario propio |
 | **Syncthing** | `http://100.64.207.65:8384` — solo por Tailscale | usuario propio |
-| **GitHub** | `git@github.com:jhernandezl2c-hash/app.git` | llave SSH del equipo |
+| **GitHub** | `git@github.com:CLARVEX-TEAM/clarvex-platform.git` | llave SSH del equipo |
 | **Cloudflare** | panel web — R2 y DNS | cuenta de Cloudflare |
 | **Vultr** | panel web. ⚠️ **La máquina está APAGADA**; encenderla es manual | cuenta de Vultr |
 | **Telegram** | `@AdrianAssitBot` (Clarvex) y `@adrianl_bot` (personal) | tokens en el `.env` de n8n |

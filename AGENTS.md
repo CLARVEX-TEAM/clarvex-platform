@@ -6,7 +6,7 @@
 
 ---
 
-# 🔴 EN QUÉ ESTAMOS AHORA — 31 de agosto de 2026
+# 🔴 EN QUÉ ESTAMOS AHORA — 2 de septiembre de 2026
 
 ## La mudanza terminó; ahora se está quitando trabajo manual
 
@@ -19,7 +19,7 @@ instancia. Al hacerlo, borrar la alarma `clarvex-caido-vultr` —silenciada, no
 eliminada— y subir la alerta de presupuesto de $20, que se quedó corta en cuanto
 EC2 corre a tiempo completo.
 
-## Lo que se construyó del 26 al 31 de agosto
+## Lo que se construyó del 26 de agosto al 2 de septiembre
 
 Todo por el bot de Telegram en **chat privado**, y todo con el mismo patrón: el
 bot propone o resume, la persona confirma, y el servidor no se cree nada de lo
@@ -112,13 +112,25 @@ que llega. Detalle completo en `CLAUDE.md`, sección «Captura por Telegram».
   Costo agosto al corte: 7.8213174535 USD de uso bruto, créditos -7.821317433
   USD, neto prácticamente 0.
 - **Perfil profesional de GitHub.** Se creó el repo público
-  `CLARVEX-TEAM/.github` sin tocar `jhernandezl2c-hash/app`: commit
+  `CLARVEX-TEAM/.github` antes de mover el repo principal: commit
   `98a9a9f`, perfil público en `https://github.com/CLARVEX-TEAM`, README de
   organización, logo horizontal, icono, `SECURITY.md`, `CONTRIBUTING.md`,
   plantilla de PR y templates de issues. La organización quedó con descripción
-  pública y website `https://clarvex.tech`; email y ubicación siguen vacíos. La
-  transferencia del repo principal sigue detenida hasta que GitHub Support
-  termine la purga de datos sensibles.
+  pública y website `https://clarvex.tech`; email y ubicación siguen vacíos.
+- **Repo principal transferido a la organización.** El 2 de septiembre GitHub
+  Support ya había confirmado la purga de refs sensibles y la verificación final
+  dio `SAFE TO TRANSFER`: `POST_RESTORE_BEFORE_RECOVERY.dump` no existe en el
+  working tree, no está tracked, no aparece como blob alcanzable y el blob viejo
+  `fade9777bc408d9b6f4c4f177f7c632c8e30c686` devuelve 404 en GitHub. Se movió
+  con la API oficial (`202 Accepted`) de `jhernandezl2c-hash/app` a
+  `CLARVEX-TEAM/clarvex-platform`, privado, `main`, commit
+  `92344942a5091db8c89d6431d157ffaace86fab3`. El `origin` local ahora es
+  `git@github.com:CLARVEX-TEAM/clarvex-platform.git`. No se tocó código,
+  historial, AWS ni producción. Se conservaron los deploy keys `Vps`
+  (read/write) y `Clarvex aws` (read-only), los environments `Preview` y
+  `Production`, issues/projects/wiki y los colaboradores directos; `edsomo94`
+  quedó como outside collaborator. Actions heredó la política restringida de la
+  organización.
 - **Las alertas técnicas se mudaron a Slack.** Infraestructura, Mercado Pago,
   auditoría del kardex y Uptime Kuma. ⚠️ **Las fotos del equipo NO**: siguen en
   el grupo de Telegram porque once de dieciocho usuarios tienen correo
@@ -156,9 +168,11 @@ que llega. Detalle completo en `CLAUDE.md`, sección «Captura por Telegram».
   los horarios por omisión viven en constantes y deberían estar en `Store`.
 - **Canal por tienda** para las fotos de evidencia, antes de que GUESS Galerías
   empiece a capturar.
-- **Transferir `jhernandezl2c-hash/app` a `CLARVEX-TEAM`** solo después de que
-  GitHub Support confirme la purga del dump sensible. No renombrar ni transferir
-  antes de ese cierre.
+- **Endurecer GitHub después de la transferencia**: configurar protección de
+  `main`/rulesets disponibles, CI estable, Dependabot/CodeQL según el plan,
+  equipos/permisos por repo, descripción/topics del repo nuevo y revisar si
+  `edsomo94` debe conservar acceso como outside collaborator. No activar CD ni
+  AWS OIDC hasta diseñarlo aparte.
 
 ---
 
