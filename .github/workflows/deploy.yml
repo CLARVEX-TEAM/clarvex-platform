@@ -53,14 +53,69 @@ jobs:
           exit 1
 
       # ⚠️ Credenciales TEMPORALES por OIDC. No hay AWS_ACCESS_KEY_ID ni
-      # AWS_SECRET_ACCESS_KEY guardados en GitHub: el token dura lo que dura
-      # esta ejecucion y no sirve fuera de ella.
+      # AWS_SECRET_ACCESS_KEY guardados en GitHub: duran lo que dura esta
+      # ejecucion y no sirven fuera de ella.
+      #
+      # ⚠️ Se hace A MANO y NO con `aws-actions/configure-aws-credentials`.
+      # La organizacion solo permite acciones propiedad de GitHub, y esa es de
+      # AWS: el flujo fallaba con «no esta permitida en CLARVEX-TEAM».
+      #
+      # Se podria haber permitido la accion. Se prefiere esto porque asi el
+      # despliegue —lo unico que puede tocar produccion— NO ejecuta codigo de
+      # terceros. El CLI de AWS ya viene en el runner y el intercambio son dos
+      # llamadas.
       - name: Credenciales de AWS por OIDC
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
-          aws-region: us-east-1
-          role-session-name: clarvex-deploy-${{ github.run_id }}
+        env:
+          ROL: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${ROL:-}" ]; then
+            echo "::error::Falta la variable AWS_DEPLOY_ROLE_ARN del repositorio."
+            exit 1
+          fi
+
+          # 1. GitHub emite un token que dice quien soy: repositorio, rama y
+          #    ejecucion. Las dos variables ACTIONS_ID_TOKEN_* solo existen si
+          #    el flujo declara `permissions: id-token: write`.
+          TOKEN=$(curl -sS -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=sts.amazonaws.com" | jq -r '.value')
+
+          if [ -z "$TOKEN" ] || [ "$TOKEN" = "null" ]; then
+            echo "::error::No se pudo obtener el token de OIDC."
+            exit 1
+          fi
+
+          # 2. AWS lo canjea por credenciales temporales, comprobando contra la
+          #    politica de confianza del rol que el repo y la rama son los que
+          #    dice. Una hora como maximo.
+          CRED=$(aws sts assume-role-with-web-identity \
+            --role-arn "$ROL" \
+            --role-session-name "clarvex-deploy-${{ github.run_id }}" \
+            --web-identity-token "$TOKEN" \
+            --duration-seconds 3600 \
+            --query 'Credentials.[AccessKeyId,SecretAccessKey,SessionToken]' \
+            --output text)
+
+          ID=$(echo "$CRED" | cut -f1)
+          SECRETO=$(echo "$CRED" | cut -f2)
+          SESION=$(echo "$CRED" | cut -f3)
+
+          # ⚠️ Enmascarar ANTES de que puedan aparecer en ningun registro. Sin
+          # esto, cualquier comando que las imprima —o un error del CLI que las
+          # incluya— las deja escritas en un log que puede ver quien tenga
+          # acceso al repositorio.
+          echo "::add-mask::$SECRETO"
+          echo "::add-mask::$SESION"
+
+          {
+            echo "AWS_ACCESS_KEY_ID=$ID"
+            echo "AWS_SECRET_ACCESS_KEY=$SECRETO"
+            echo "AWS_SESSION_TOKEN=$SESION"
+            echo "AWS_DEFAULT_REGION=us-east-1"
+          } >> "$GITHUB_ENV"
+
+          echo "Credenciales temporales obtenidas."
 
       - name: Lanzar el despliegue por SSM
         id: enviar
