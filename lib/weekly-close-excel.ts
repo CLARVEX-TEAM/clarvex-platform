@@ -156,7 +156,7 @@ export function buildWeeklyCloseSheet(workbook: ExcelJS.Workbook, options: Sheet
   label(27, "ALCANCE");    dataRow(27, (column) => waAchievement(column), { numFmt: PCT, size: 12 }); totalCell(27, waAchievement(store) ?? "—", PCT, 12);
   label(28, "TICKETS");    dataRow(28, (column) => column.waTransactions ?? null);                 totalCell(28, store.waTransactions ?? "—");
   label(29, "ARTICULOS");  dataRow(29, (column) => column.waPieces ?? null);                       totalCell(29, store.waPieces ?? "—");
-  sectionLabel(sheet, 25, 29, "WHATSAPP");
+  sectionLabel(sheet, 25, 29, "PASILLO INFINITO");
 
   // Pie discreto con el periodo
   const footer = sheet.getCell(31, 3);

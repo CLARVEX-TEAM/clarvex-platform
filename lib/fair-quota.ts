@@ -38,7 +38,7 @@ const ASSISTANT_SHARE = 15;
 /** Motor único de Cuota Justa, independiente de Prisma y de la interfaz. */
 export function calculateFairQuota(input: FairQuotaInput): FairQuotaResult {
   const upliftPercent = finiteBetween(input.upliftPercent ?? 15, 0, 100, "incremento");
-  const whatsappBudget = nonNegative(input.whatsappBudget ?? 0, "presupuesto de WhatsApp");
+  const whatsappBudget = nonNegative(input.whatsappBudget ?? 0, "presupuesto de Pasillo Infinito");
   const warnings: string[] = [];
   const personTotals: FairQuotaResult["personTotals"] = Object.fromEntries(
     input.people.map((person) => [person.userId, { goal: 0, whatsappGoal: 0 }])

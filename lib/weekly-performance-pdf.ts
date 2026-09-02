@@ -155,7 +155,7 @@ function drawQuotaWhatsapp(page: PDFPage, state: WeeklyPerformanceState, fonts: 
   cell(page, money(state.plan.whatsappBudget), totalX, top, totalWidth, 13, {
     fill: GREEN, font: fonts.bold, size: 7.2, align: "right"
   });
-  cell(page, "WHATSAPP", x, top - 13, nameWidth + dayWidth * 7, 13, blueCell(fonts, 8));
+  cell(page, "PASILLO INFINITO", x, top - 13, nameWidth + dayWidth * 7, 13, blueCell(fonts, 8));
   cell(page, "META", totalX, top - 13, totalWidth, 13, blueCell(fonts, 7));
 
   for (let slot = 0; slot < 10; slot += 1) {

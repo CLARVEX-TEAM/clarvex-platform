@@ -42,7 +42,7 @@ export const METRICAS: Record<string, MetricaConfig> = {
   conversion:              { etiqueta: "Conversión",                   unidad: "porcentaje", max: 100 },
   margen:                  { etiqueta: "Margen DTO (límite)",          unidad: "porcentaje", max: 100, techo: true },
   achievement:             { etiqueta: "Cumplimiento",                 unidad: "porcentaje", max: 1000 },
-  whatsapp:                { etiqueta: "Presupuesto WhatsApp",         unidad: "pesos",      max: 1_000_000 },
+  whatsapp:                { etiqueta: "Presupuesto Pasillo Infinito",         unidad: "pesos",      max: 1_000_000 },
   ticketElectronicoTienda: { etiqueta: "Ticket electrónico — tienda",  unidad: "porcentaje", max: 100 },
   ticketElectronicoAsesor: { etiqueta: "Ticket electrónico — asesor",  unidad: "porcentaje", max: 100 }
 };

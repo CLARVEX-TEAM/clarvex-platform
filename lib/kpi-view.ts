@@ -52,7 +52,7 @@ export const METRIC_CONFIG: Record<string, MetricConfig> = {
   conversion:  { label: "Conversión",   gradient: "from-orange-400 to-amber-600",  glow: "rgba(251,146,60,0.32)",  Icon: Target,      targetLabel: "Meta Conversión (%)" },
   margen:      { label: "Margen DTO",   gradient: "from-rose-500 to-pink-700",     glow: "rgba(244,63,94,0.32)",   Icon: Percent,     targetLabel: "Límite DTO (%)"     },
   achievement: { label: "Cumplimiento", gradient: "from-emerald-500 to-teal-700",  glow: "rgba(16,185,129,0.32)",  Icon: TrendingUp,  targetLabel: "Meta cumplimiento (%)" },
-  whatsapp:    { label: "WhatsApp",     gradient: "from-green-500 to-emerald-700", glow: "rgba(34,197,94,0.32)",   Icon: MessageCircle, targetLabel: "PPTO WhatsApp semanal ($)" },
+  whatsapp:    { label: "Pasillo Infinito", gradient: "from-green-500 to-emerald-700", glow: "rgba(34,197,94,0.32)",   Icon: MessageCircle, targetLabel: "PPTO Pasillo Infinito semanal ($)" },
   // Ticket electrónico: DOS metas, no una. Gerencia se mide contra la de tienda
   // y el asesor contra la suya, igual que ya ocurre con el mínimo de comisión.
   // La de asesor es la misma para todos, no una por persona.
