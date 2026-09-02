@@ -56,6 +56,10 @@ const captureRoutes = new Set([
   // excepcion. Escribe asistencia, con el mismo secreto y las mismas reglas.
   "/api/admin/capture/attendance/roll-call",
   "/api/admin/capture/kpis",
+  // Objetivos internos (UPT, AUR, EPT, conversion…): los numeros contra los
+  // que se pinta el semaforo. NO son las metas de venta, que las siembra la
+  // Cuota Justa en `Kpi.dailyGoal`.
+  "/api/admin/capture/kpi-targets",
   // Lectura del reporte diario del POS desde una captura. Solo lee y devuelve.
   "/api/admin/capture/kpis/pos-report",
   // Export mensual RDV lleno. Solo lee KPIs y devuelve XLSX en binario/base64.
