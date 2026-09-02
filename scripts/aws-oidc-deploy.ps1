@@ -10,24 +10,30 @@
 # Es el fallo clasico de las guias de OIDC, y no avisa: funciona igual de bien
 # mientras nadie lo intente.
 #
-# ⚠️ Se aceptan DOS sujetos, y no es descuido. Cuando un job declara
-# `environment`, GitHub cambia el sujeto del token de `ref:refs/heads/main` a
-# `environment:Production` —pero eso depende de la configuracion del
-# repositorio, y pinear el equivocado hace que AWS rechace el canje con un
-# exit 254 del CLI que no explica nada. Los dos siguen atados a ESTE
-# repositorio, que es la condicion que importa.
+# ⚠️ EL SUJETO LLEVA IDENTIFICADORES, no solo los nombres. Esta
+# organizacion emite el sujeto del token asi:
 #
-# Cuando el registro del flujo confirme cual manda de verdad —lo imprime en
-# «sub del token»— hay que quitar el otro. Aceptar de mas no es gratis: con el
-# de la rama, un flujo nuevo podria asumir el rol SIN pasar por el entorno, que
-# es el unico sitio donde se puede exigir aprobacion manual.
+#   repo:CLARVEX-TEAM@321237585/clarvex-platform@1260997933:environment:Production
 #
-# Lo de siempre: cuando un job declara `environment`,
-# GitHub cambia el sujeto del token de `ref:refs/heads/main` a
-# `environment:Production`. Pinear la rama hace que AWS rechace el canje con
-# un exit 254 del CLI que no explica por que. Ademas asi es MAS estricto: solo
-# los jobs que corren en ese entorno —el que puede exigir aprobacion— pueden
-# asumir el rol.
+# y no como sale en todas las guias:
+#
+#   repo:CLARVEX-TEAM/clarvex-platform:environment:Production
+#
+# Es una proteccion de GitHub: con los identificadores dentro, el permiso
+# sobrevive a un cambio de nombre, y nadie se lo queda creando despues un
+# repositorio con el nombre que quedo libre.
+#
+# Costo tres intentos porque STS no lo dice: responde «no autorizado» y jamas
+# revela que sujeto presentaste --si lo hiciera seria un oraculo para adivinar
+# condiciones--. Donde SI aparece es en CloudTrail, en userIdentity.userName
+# del evento AssumeRoleWithWebIdentity:
+#
+#   aws cloudtrail lookup-events --profile clarvex --region us-east-1 \
+#     --lookup-attributes AttributeKey=EventName,AttributeValue=AssumeRoleWithWebIdentity
+#
+# Y va al ENTORNO, no a la rama: cuando un job declara `environment`, GitHub
+# cambia esa parte del sujeto. Ademas es mas estricto, porque el entorno es el
+# unico sitio donde se puede exigir aprobacion manual.
 #
 #   powershell -ExecutionPolicy Bypass -File "D:\Documents\New project\scripts\aws-oidc-deploy.ps1"
 #
@@ -37,11 +43,15 @@ $ErrorActionPreference = "Stop"
 
 $Perfil    = "clarvex"
 $Region    = "us-east-1"
-$Repo      = "CLARVEX-TEAM/clarvex-platform"
 $Instancia = "i-06fd0869766482dc1"
 $RolNombre = "clarvex-github-deploy"
 $RolInstancia = "clarvex-instancia"
 $Entorno   = "Production"
+
+# ⚠️ El sujeto lleva IDENTIFICADORES NUMERICOS, no solo los nombres. Se saca
+# de CloudTrail (campo userName) o del API de GitHub: /orgs/<org> y
+# /repos/<org>/<repo>, campo "id".
+$Sujeto    = "CLARVEX-TEAM@321237585/clarvex-platform@1260997933"
 
 # ── Preguntarle a AWS sin que el script se muera ──────────────────────────
 #
@@ -97,13 +107,8 @@ $archivoConfianza = Join-Path $env:TEMP "clarvex-trust.json"
     "Action": "sts:AssumeRoleWithWebIdentity",
     "Condition": {
       "StringEquals": {
-        "token.actions.githubusercontent.com:aud": "sts.amazonaws.com"
-      },
-      "StringLike": {
-        "token.actions.githubusercontent.com:sub": [
-          "repo:${Repo}:environment:${Entorno}",
-          "repo:${Repo}:ref:refs/heads/main"
-        ]
+        "token.actions.githubusercontent.com:aud": "sts.amazonaws.com",
+        "token.actions.githubusercontent.com:sub": "repo:${Sujeto}:environment:${Entorno}"
       }
     }
   }]
