@@ -10,7 +10,19 @@
 # Es el fallo clasico de las guias de OIDC, y no avisa: funciona igual de bien
 # mientras nadie lo intente.
 #
-# ⚠️ Y va al ENTORNO, no a la rama: cuando un job declara `environment`,
+# ⚠️ Se aceptan DOS sujetos, y no es descuido. Cuando un job declara
+# `environment`, GitHub cambia el sujeto del token de `ref:refs/heads/main` a
+# `environment:Production` —pero eso depende de la configuracion del
+# repositorio, y pinear el equivocado hace que AWS rechace el canje con un
+# exit 254 del CLI que no explica nada. Los dos siguen atados a ESTE
+# repositorio, que es la condicion que importa.
+#
+# Cuando el registro del flujo confirme cual manda de verdad —lo imprime en
+# «sub del token»— hay que quitar el otro. Aceptar de mas no es gratis: con el
+# de la rama, un flujo nuevo podria asumir el rol SIN pasar por el entorno, que
+# es el unico sitio donde se puede exigir aprobacion manual.
+#
+# Lo de siempre: cuando un job declara `environment`,
 # GitHub cambia el sujeto del token de `ref:refs/heads/main` a
 # `environment:Production`. Pinear la rama hace que AWS rechace el canje con
 # un exit 254 del CLI que no explica por que. Ademas asi es MAS estricto: solo
@@ -88,7 +100,10 @@ $archivoConfianza = Join-Path $env:TEMP "clarvex-trust.json"
         "token.actions.githubusercontent.com:aud": "sts.amazonaws.com"
       },
       "StringLike": {
-        "token.actions.githubusercontent.com:sub": "repo:${Repo}:environment:${Entorno}"
+        "token.actions.githubusercontent.com:sub": [
+          "repo:${Repo}:environment:${Entorno}",
+          "repo:${Repo}:ref:refs/heads/main"
+        ]
       }
     }
   }]

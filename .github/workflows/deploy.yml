@@ -86,6 +86,25 @@ jobs:
             exit 1
           fi
 
+          # El SUJETO del token, que es contra lo que AWS compara la politica
+          # de confianza del rol. Se imprime porque es la unica forma de saber
+          # que esta mandando GitHub: un rechazo de STS dice «no autorizado»
+          # y no dice contra que comparo.
+          #
+          # ⚠️ Se imprimen SOLO sub y aud, nunca el token. Esos dos campos
+          # no son credenciales —describen quien pide, no autorizan nada— pero
+          # el token entero si lo es, y quedaria escrito en un registro que
+          # puede ver cualquiera con acceso al repositorio.
+          CUERPO=$(echo "$TOKEN" | cut -d. -f2 | tr '_-' '/+')
+          case $(( ${#CUERPO} % 4 )) in
+            2) CUERPO="${CUERPO}==" ;;
+            3) CUERPO="${CUERPO}=" ;;
+          esac
+          DATOS=$(echo "$CUERPO" | base64 -d 2>/dev/null || echo '{}')
+
+          echo "sub del token: $(echo "$DATOS" | jq -r .sub)"
+          echo "aud del token: $(echo "$DATOS" | jq -r .aud)"
+
           # 2. AWS lo canjea por credenciales temporales, comprobando contra la
           #    politica de confianza del rol que el repo y la rama son los que
           #    dice. Una hora como maximo.
