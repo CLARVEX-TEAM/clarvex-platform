@@ -1,0 +1,75 @@
+# Dependabot: propone actualizaciones de dependencias como Pull Request.
+#
+# Por que hace falta, con un caso real: el 1 de septiembre de 2026 el trabajo
+# `audit` de la CI se puso en rojo por tres vulnerabilidades conocidas en
+# `browserslist` y `postcss-selector-parser`. Se arreglaron a mano.
+#
+# ⚠️ **`audit` y Dependabot NO son lo mismo.** El primero avisa cuando la
+# vulnerabilidad YA esta dentro y bloquea la CI; el segundo abre el PR con el
+# arreglo antes de que llegue a molestar. Hacen falta los dos.
+#
+# ⚠️ **Sin auto-merge, a proposito.** Cada subida se revisa y se aprueba a
+# mano. Una dependencia que se fusiona sola es una via por la que entra codigo
+# a produccion sin que nadie lo haya mirado, y esta app calcula nomina.
+
+version: 2
+updates:
+  # ── El proyecto ────────────────────────────────────────────────────────
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      # Lunes por la manana: se revisa con la semana empezando, no con un
+      # despliegue a medias el viernes por la tarde.
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: America/Monterrey
+
+    # Cinco a la vez como mucho. Sin tope, la primera ejecucion abre treinta
+    # PRs, nadie los mira, y Dependabot pasa a ser ruido que se ignora — que
+    # es peor que no tenerlo.
+    open-pull-requests-limit: 5
+
+    commit-message:
+      prefix: deps
+      include: scope
+
+    groups:
+      # Los parches y menores van juntos en un solo PR. Revisar veinte PRs de
+      # una linea cada uno no es revisar: es dar a aprobar veinte veces.
+      menores:
+        update-types:
+          - minor
+          - patch
+
+    ignore:
+      # ⚠️ Estos NO los sube Dependabot. Son cambios de version mayor que
+      # rompen cosas y se planean aparte, con su prueba de humo en produccion:
+      #
+      #  - Next y React: tocan todas las pantallas.
+      #  - Prisma: arrastra migraciones y el cliente generado.
+      #  - Tailwind: la 4 cambia la forma de configurarse entera.
+      - dependency-name: next
+        update-types: ["version-update:semver-major"]
+      - dependency-name: react
+        update-types: ["version-update:semver-major"]
+      - dependency-name: react-dom
+        update-types: ["version-update:semver-major"]
+      - dependency-name: prisma
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@prisma/client"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: tailwindcss
+        update-types: ["version-update:semver-major"]
+
+  # ── Las propias GitHub Actions ─────────────────────────────────────────
+  #
+  # Se vigilan porque una accion de terceros corre con el token de la
+  # ejecucion. Van mensuales: cambian poco y no hay prisa.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: ci

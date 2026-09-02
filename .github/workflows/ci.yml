@@ -47,6 +47,20 @@ on:
       - "scripts/**.ps1"
       - "scripts/mudanza/**"
 
+# Permisos del token de la ejecucion, declarados AQUI y no solo en la
+# organizacion.
+#
+# La organizacion ya los fija en READ, pero eso es un ajuste que alguien puede
+# cambiar sin tocar este archivo, y que no viaja si el repositorio se copia a
+# otra cuenta. Declarado aqui, el workflow se acota a si mismo pase lo que pase
+# fuera.
+#
+# Leer el contenido es lo unico que necesita: clonar y comprobar. Ninguno de
+# los tres trabajos escribe en el repositorio, publica paquetes ni comenta en
+# un PR, asi que todo lo demas se queda en none.
+permissions:
+  contents: read
+
 # Varios pushes seguidos ya no acumulan ejecuciones: la anterior se cancela y
 # solo se comprueba el último commit, que es el que va a producción.
 concurrency:
