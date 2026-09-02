@@ -428,7 +428,11 @@ Configuración conservada:
 - sin webhooks;
 - deploy key `Vps`, retirada (ya no figura el 2 de septiembre de 2026);
 - deploy key `Clarvex aws`, verificada, read-only;
-- colaboradores directos: `jhernandezl2c-hash` admin y `edsomo94` write.
+- colaboradores directos: `jhernandezl2c-hash` admin y `edsomo94` **read**
+  (bajado de `write` el 2 de septiembre de 2026). ⚠️ Con `main` sin poder
+  protegerse por el plan, un permiso de escritura era empujar directo a la
+  rama que despliega. Para devolverselo:
+  `gh api -X PUT repos/CLARVEX-TEAM/clarvex-platform/collaborators/edsomo94 -f permission=push`
 
 Cambios observados por el movimiento a organización:
 
@@ -446,7 +450,7 @@ Lo que si esta puesto es que el entorno `Production` solo despliega desde
 `main`, que cubre la via por la que se toca produccion.
 
 ⚠️ **Pendiente después de transferir:** añadir CI, decidir
-required checks cuando estén verdes, revisar si `edsomo94` conserva acceso,
+required checks cuando estén verdes, 
 y completar
 Dependabot/CodeQL/CODEOWNERS/equipos por repo. No se activó CD, no se creó AWS
 OIDC, no se tocaron secrets, AWS, Retool, Slack, producción, ramas, tags ni
