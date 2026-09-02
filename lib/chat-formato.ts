@@ -20,7 +20,9 @@ export type Trozo =
   | { tipo: "negrita"; texto: string }
   | { tipo: "cursiva"; texto: string }
   | { tipo: "tachado"; texto: string }
-  | { tipo: "codigo"; texto: string };
+  | { tipo: "codigo"; texto: string }
+  /** `texto` es lo que se ve; `url` a dónde va. Pueden ser distintos. */
+  | { tipo: "enlace"; texto: string; url: string };
 
 export type Bloque =
   | { tipo: "parrafo"; trozos: Trozo[] }
@@ -29,8 +31,16 @@ export type Bloque =
   | { tipo: "numero"; indice: number; trozos: Trozo[] }
   | { tipo: "codigo"; texto: string };
 
-/** Marcas de una línea, en orden de prioridad. */
-const MARCAS: Array<{ tipo: Trozo["tipo"]; signo: string }> = [
+/**
+ * Marcas de una línea, en orden de prioridad.
+ *
+ * El tipo se acota a los cuatro que se abren y cierran con un signo. Los otros
+ * dos trozos no caben aquí: `texto` no tiene marca, y `enlace` lleva además un
+ * destino, así que construirlo desde esta lista dejaría un enlace sin `url`.
+ */
+type TipoMarca = "negrita" | "cursiva" | "tachado" | "codigo";
+
+const MARCAS: Array<{ tipo: TipoMarca; signo: string }> = [
   // El código va PRIMERO: dentro de `así` no se interpreta nada más, que es
   // justo para lo que sirve.
   { tipo: "codigo", signo: "`" },
@@ -38,6 +48,62 @@ const MARCAS: Array<{ tipo: Trozo["tipo"]; signo: string }> = [
   { tipo: "tachado", signo: "~" },
   { tipo: "cursiva", signo: "_" }
 ];
+
+/**
+ * Enlace con etiqueta: `<https://…|el texto que se ve>`.
+ *
+ * Es la sintaxis de Slack, como el resto de marcas, y por eso el mismo cuerpo
+ * se ve bien en los dos lados sin traducir nada: el espejo manda el texto tal
+ * cual y Slack lo pinta igual.
+ */
+const ENLACE_CON_ETIQUETA = /^<(https?:\/\/[^<>|\s]+)(?:\|([^<>]*))?>/;
+
+/** Enlace pegado a secas, sin envolver en nada. */
+const ENLACE_DESNUDO = /^https?:\/\/[^\s<>]+/;
+
+/**
+ * Lee un enlace que empiece justo en `desde`, o devuelve null.
+ *
+ * ⚠️ **Solo `http` y `https`, y no por si acaso.** Un `javascript:` o un
+ * `data:` metidos en un `href` ejecutan código en la pantalla de quien lo
+ * pulse, y aquí el cuerpo lo escriben doce personas. La única puerta es esta
+ * función: si el esquema no está en la expresión regular, no hay enlace y el
+ * texto se queda como texto.
+ */
+function leerEnlace(linea: string, desde: number): { trozo: Trozo; hasta: number } | null {
+  const resto = linea.slice(desde);
+
+  const conEtiqueta = ENLACE_CON_ETIQUETA.exec(resto);
+  if (conEtiqueta) {
+    const url = conEtiqueta[1] ?? "";
+    const rotulo = (conEtiqueta[2] ?? "").trim();
+    return {
+      trozo: { tipo: "enlace", texto: rotulo || url, url },
+      hasta: desde + conEtiqueta[0].length
+    };
+  }
+
+  const desnudo = ENLACE_DESNUDO.exec(resto);
+  if (desnudo) {
+    /*
+     * La puntuación final NO es del enlace. «Míralo en https://clarvex.tech.»
+     * acaba en punto, y meterlo dentro da una dirección que no existe. El
+     * paréntesis solo se quita si no se abrió dentro —hay URLs que los llevan—.
+     */
+    let url = desnudo[0];
+    while (url.length > 0) {
+      const ultimo = url[url.length - 1] ?? "";
+      const sobra =
+        ".,;:!?".includes(ultimo) || (ultimo === ")" && !url.slice(0, -1).includes("("));
+      if (!sobra) break;
+      url = url.slice(0, -1);
+    }
+    if (!url) return null;
+    return { trozo: { tipo: "enlace", texto: url, url }, hasta: desde + url.length };
+  }
+
+  return null;
+}
 
 /**
  * Parte una línea en trozos con formato.
@@ -61,7 +127,34 @@ export function trozos(linea: string): Trozo[] {
   while (i < linea.length) {
     const marca = MARCAS.find((m) => linea.startsWith(m.signo, i));
 
-    if (marca) {
+    /*
+     * El código va primero y se come su tramo entero: dentro de `así` no se
+     * interpreta nada, ni siquiera un enlace. Es justo para lo que sirve —
+     * poder enseñar una dirección sin que se vuelva pulsable.
+     */
+    if (marca?.tipo === "codigo") {
+      const cierre = linea.indexOf(marca.signo, i + marca.signo.length);
+      const contenido = cierre === -1 ? "" : linea.slice(i + marca.signo.length, cierre);
+      if (cierre !== -1 && contenido.length > 0) {
+        soltarPlano();
+        salida.push({ tipo: "codigo", texto: contenido });
+        i = cierre + marca.signo.length;
+        continue;
+      }
+    }
+
+    // Los enlaces, antes que negrita/cursiva/tachado: una URL trae guiones
+    // bajos y asteriscos con toda normalidad, y si se miran primero como
+    // marcas se parte por la mitad y deja de funcionar.
+    const enlace = leerEnlace(linea, i);
+    if (enlace) {
+      soltarPlano();
+      salida.push(enlace.trozo);
+      i = enlace.hasta;
+      continue;
+    }
+
+    if (marca && marca.tipo !== "codigo") {
       const cierre = linea.indexOf(marca.signo, i + marca.signo.length);
       const contenido = cierre === -1 ? "" : linea.slice(i + marca.signo.length, cierre);
 

@@ -300,28 +300,16 @@ test("un texto sin entidades no se toca", () => {
   assert.equal(desescaparSlack("hola, todo normal"), "hola, todo normal");
 });
 
-test("traduce el enlace con etiqueta de Slack conservando el destino", () => {
+test("⚠️ un enlace http se deja EXACTO, para que quede pulsable", () => {
   /*
-   * Caso real del 2 de septiembre de 2026: se mando desde Slack un enlace con
-   * texto personalizado y en Clarvex se leyo el `<url|texto>` entero.
+   * Primer intento: traducirlo a «etiqueta (url)». Quedaba legible y MUERTO —
+   * pulsarlo no llevaba a ninguna parte--. El chat entiende `<url|etiqueta>`,
+   * que es la misma sintaxis de Slack, asi que se deja tal cual y se pinta
+   * pulsable con el destino detras de la palabra.
    */
-  assert.equal(
-    traducirEnlacesSlack("<https://www.crehana.com/clases/v2/90538/detalle/?source_page=Learn%20Dashboard|CURSO CREHANA>"),
-    "CURSO CREHANA (https://www.crehana.com/clases/v2/90538/detalle/?source_page=Learn%20Dashboard)"
-  );
-});
-
-test("el destino NO se descarta: en el chat nada es pulsable", () => {
-  // Quedarse solo con la etiqueta deja a quien lo lee sin forma de llegar.
-  const salida = traducirEnlacesSlack("mira <https://team.clarvex.tech/kpis|los KPIs>");
-  assert.ok(salida.includes("https://team.clarvex.tech/kpis"), salida);
-  assert.ok(salida.includes("los KPIs"), salida);
-});
-
-test("un enlace desnudo se queda solo con la URL, sin duplicarla", () => {
-  assert.equal(traducirEnlacesSlack("<https://clarvex.tech>"), "https://clarvex.tech");
-  // Slack repite la URL como etiqueta cuando no hay texto propio.
-  assert.equal(traducirEnlacesSlack("<https://clarvex.tech|https://clarvex.tech>"), "https://clarvex.tech");
+  const tal = "<https://www.crehana.com/clases/v2/90538/detalle/?source_page=Learn%20Dashboard|CURSO CREHANA>";
+  assert.equal(traducirEnlacesSlack(tal), tal);
+  assert.equal(traducirEnlacesSlack("<https://clarvex.tech>"), "<https://clarvex.tech>");
 });
 
 test("correos, canales y avisos del canal", () => {
@@ -346,16 +334,20 @@ test("⚠️ traducir va ANTES de desescapar, o se inventan enlaces", () => {
    *
    * Este es el orden bueno: el texto escapado atraviesa la traduccion intacto.
    */
-  // Alguien explicando la sintaxis, o pegando un texto que ya la traia. Slack
-  // lo manda escapado porque lo escribio una persona, no porque sea un enlace.
-  const loQueMandaSlack = "se escribe &lt;https://ejemplo.com|texto&gt;";
+  /*
+   * Se prueba con un correo y no con un enlace http, porque los http ya no se
+   * traducen: se dejan exactos para que el chat los pinte pulsables. Donde
+   * sigue habiendo traduccion --correos, canales, avisos-- el orden sigue
+   * siendo lo unico que separa «lo puso Slack» de «lo escribio una persona».
+   */
+  const loQueMandaSlack = "se escribe &lt;mailto:hola@clarvex.tech|Hola&gt;";
 
   const bien = desescaparSlack(traducirEnlacesSlack(loQueMandaSlack));
-  assert.equal(bien, "se escribe <https://ejemplo.com|texto>");
+  assert.equal(bien, "se escribe <mailto:hola@clarvex.tech|Hola>");
 
   // Y la prueba de que el orden inverso SI rompe, para que nadie lo cambie:
-  // se traga los angulares y la barra que la persona escribio a proposito.
+  // se traga los angulares y la direccion que la persona escribio a proposito.
   const mal = traducirEnlacesSlack(desescaparSlack(loQueMandaSlack));
-  assert.equal(mal, "se escribe texto (https://ejemplo.com)");
+  assert.equal(mal, "se escribe Hola");
   assert.notEqual(mal, bien);
 });

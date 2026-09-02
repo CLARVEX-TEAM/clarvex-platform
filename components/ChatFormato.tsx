@@ -33,6 +33,33 @@ function Trozos({
         // `*@Waira*` siga avisando a Waira.
         const contenido = <MentionText body={t.texto} gente={gente} yo={yo} claro={claro} />;
 
+        /*
+         * ⚠️ `rel="noopener noreferrer"` no es adorno. Sin `noopener`, la
+         * página que se abre puede reescribir la nuestra desde `window.opener`
+         * —y aquí quien pone el enlace es cualquiera del equipo—.
+         *
+         * El destino ya viene filtrado a http/https desde `leerEnlace`; esto
+         * cubre lo otro. La etiqueta va como TEXTO, nunca como HTML: el `href`
+         * es lo único que el mensaje decide.
+         */
+        if (t.tipo === "enlace") {
+          return (
+            <a
+              key={i}
+              href={t.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              title={t.url}
+              className={cn(
+                "underline underline-offset-2 break-all",
+                claro ? "text-blue-700 hover:text-blue-900" : "text-blue-300 hover:text-blue-200"
+              )}
+            >
+              {t.texto}
+            </a>
+          );
+        }
+
         if (t.tipo === "negrita") return <strong key={i} className="font-bold">{contenido}</strong>;
         if (t.tipo === "cursiva") return <em key={i} className="italic">{contenido}</em>;
         if (t.tipo === "tachado") return <s key={i} className="line-through opacity-80">{contenido}</s>;

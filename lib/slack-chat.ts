@@ -181,9 +181,14 @@ export function desescaparSlack(texto: string): string {
  * destroza. En este orden no hay ambigüedad: lo que llega con angulares reales
  * lo puso Slack.
  *
- * ⚠️ **El destino NO se descarta.** El chat de Clarvex guarda texto, no HTML, así
- * que aquí nada es pulsable: quedarse solo con la etiqueta —«CURSO CREHANA»—
- * deja a quien lo lee sin forma de llegar al sitio. Se conservan las dos.
+ * ⚠️ **Los enlaces `http`/`https` se dejan EXACTOS.** El chat de Clarvex entiende
+ * `<url|etiqueta>` —es la misma sintaxis de Slack que ya usa para negrita y
+ * cursiva— y lo pinta pulsable, con el destino detrás de la palabra. Traducirlo
+ * a «etiqueta (url)» fue el primer intento y estaba mal: quedaba legible pero
+ * muerto, y pulsarlo no llevaba a ninguna parte.
+ *
+ * Aquí solo se traduce lo que el chat NO sabe pintar: correos, canales y los
+ * avisos `<!here>`.
  *
  * Las menciones a personas (`<@U123>`) se dejan intactas a propósito: traducir
  * el identificador sin saber a quién corresponde daría un `@U08…` que no dice
@@ -194,9 +199,8 @@ export function traducirEnlacesSlack(texto: string): string {
   return texto.replace(/<([^<>|]+)(?:\|([^<>]*))?>/g, (todo, destino: string, etiqueta?: string) => {
     const rotulo = (etiqueta ?? "").trim();
 
-    if (/^https?:\/\//i.test(destino)) {
-      return rotulo && rotulo !== destino ? `${rotulo} (${destino})` : destino;
-    }
+    // Lo entiende el chat tal cual: se deja intacto para que quede pulsable.
+    if (/^https?:\/\//i.test(destino)) return todo;
     if (/^(mailto|tel):/i.test(destino)) {
       return rotulo || destino.replace(/^(mailto|tel):/i, "");
     }

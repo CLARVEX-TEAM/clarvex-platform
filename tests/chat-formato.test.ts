@@ -123,3 +123,82 @@ test("la vista previa va sin marcas", () => {
 test("la vista previa aplana los saltos de linea", () => {
   assert.equal(textoLlano("hola\n\nadios"), "hola adios");
 });
+
+/* ─── enlaces ─────────────────────────────────────────────────────────────── */
+
+test("un enlace con etiqueta pinta el texto y guarda el destino", () => {
+  const t = trozos("<https://www.crehana.com/clases/v2/90538|CURSO CREHANA>");
+  assert.deepEqual(t, [
+    { tipo: "enlace", texto: "CURSO CREHANA", url: "https://www.crehana.com/clases/v2/90538" }
+  ]);
+});
+
+test("una direccion pegada a secas tambien queda pulsable", () => {
+  const t = trozos("mira https://clarvex.tech ahora");
+  assert.deepEqual(t, [
+    { tipo: "texto", texto: "mira " },
+    { tipo: "enlace", texto: "https://clarvex.tech", url: "https://clarvex.tech" },
+    { tipo: "texto", texto: " ahora" }
+  ]);
+});
+
+test("⚠️ SOLO http y https: nada de javascript: ni data:", () => {
+  /*
+   * Un `href` con javascript: ejecuta codigo en la pantalla de quien lo pulse,
+   * y aqui el cuerpo lo escriben doce personas. La unica puerta es `leerEnlace`:
+   * si el esquema no esta en la expresion regular, no hay enlace y se queda
+   * como texto.
+   */
+  for (const veneno of [
+    "<javascript:alert(1)|pulsa aqui>",
+    "<data:text/html,<script>alert(1)</script>|informe>",
+    "<vbscript:msgbox|hola>",
+    "<JaVaScRiPt:alert(1)|disfrazado>"
+  ]) {
+    const t = trozos(veneno);
+    assert.equal(t.some((x) => x.tipo === "enlace"), false, `se colo: ${veneno}`);
+  }
+});
+
+test("⚠️ la puntuacion final no es del enlace", () => {
+  // «Miralo en https://clarvex.tech.» acaba en punto, y meterlo dentro da una
+  // direccion que no existe.
+  const t = trozos("miralo en https://clarvex.tech.");
+  const enlace = t.find((x) => x.tipo === "enlace");
+  assert.ok(enlace && enlace.tipo === "enlace");
+  assert.equal(enlace.url, "https://clarvex.tech");
+  assert.deepEqual(t[t.length - 1], { tipo: "texto", texto: "." });
+});
+
+test("un parentesis que SI se abrio dentro se conserva", () => {
+  const t = trozos("https://es.wikipedia.org/wiki/Monterrey_(Nuevo_Leon)");
+  const enlace = t.find((x) => x.tipo === "enlace");
+  assert.ok(enlace && enlace.tipo === "enlace");
+  assert.equal(enlace.url, "https://es.wikipedia.org/wiki/Monterrey_(Nuevo_Leon)");
+});
+
+test("⚠️ una URL con guiones bajos no se parte en cursiva", () => {
+  // Las URLs traen `_` y `*` con toda normalidad. Mirandolos primero como
+  // marcas, el enlace se corta por la mitad y deja de funcionar.
+  const t = trozos("https://x.com/a_b_c/d");
+  assert.deepEqual(t, [
+    { tipo: "enlace", texto: "https://x.com/a_b_c/d", url: "https://x.com/a_b_c/d" }
+  ]);
+});
+
+test("dentro de codigo una direccion NO se vuelve pulsable", () => {
+  // Es para lo que sirve el codigo: poder enseñar una direccion sin activarla.
+  const t = trozos("usa `https://clarvex.tech` como base");
+  assert.equal(t.some((x) => x.tipo === "enlace"), false);
+  assert.deepEqual(t[1], { tipo: "codigo", texto: "https://clarvex.tech" });
+});
+
+test("la vista previa enseña la etiqueta, no la direccion", () => {
+  // Es lo que se ve en la lista de chats y en la notificacion: una URL larga
+  // ahi no dice nada.
+  assert.equal(textoLlano("<https://www.crehana.com/clases/v2/90538|CURSO CREHANA>"), "CURSO CREHANA");
+});
+
+test("un enlace sin etiqueta enseña la direccion", () => {
+  assert.equal(textoLlano("<https://clarvex.tech>"), "https://clarvex.tech");
+});
