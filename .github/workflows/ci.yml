@@ -176,3 +176,60 @@ jobs:
           scan-args: |-
             --config=osv-scanner.toml
             --lockfile=pnpm-lock.yaml
+
+  # ⚠️ Lo que el .gitignore NO puede cazar.
+  #
+  # Una llave privada puede llamarse cualquier cosa —`clarvex_vultr_2026` no
+  # se parece a `id_rsa` ni acaba en `.key`— asi que ninguna lista de nombres
+  # la detiene. Lo que si es invariable es su CONTENIDO: toda llave PEM abre
+  # con «BEGIN ... PRIVATE KEY».
+  #
+  # Este trabajo existe porque el proyecto ya vivio el caso caro: un dump real
+  # de PostgreSQL se colo en el historial y hubo que abrir un ticket con GitHub
+  # Support para purgarlo, con la migracion de repositorio detenida mientras
+  # tanto. Un fichero fuera del historial se borra; uno dentro, no.
+  secretos:
+    name: Sin secretos en el codigo
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # Hacen falta los dos lados para poder comparar en un PR.
+          fetch-depth: 0
+
+      - name: Buscar llaves privadas y volcados
+        run: |
+          set -u
+
+          # En un PR se revisa SOLO lo que anade; en push a main, el ultimo
+          # commit. Revisar el arbol entero marcaria en rojo para siempre
+          # cualquier cosa que ya estuviera dentro, y el trabajo se acabaria
+          # ignorando.
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            RANGO="origin/${{ github.base_ref }}...HEAD"
+          else
+            RANGO="HEAD~1..HEAD"
+          fi
+
+          echo "Revisando $RANGO"
+
+          # `git diff` con -G busca en las lineas ANADIDAS o quitadas.
+          SOSPECHOSOS=$(git diff --name-only -G'BEGIN [A-Z ]*PRIVATE KEY' "$RANGO" || true)
+
+          # Y los volcados, por si entran con un nombre que el ignore no cubre.
+          VOLCADOS=$(git diff --name-only --diff-filter=A "$RANGO" \
+            | grep -iE '\.(dump|pgdump|sqlite|sqlite3|db)$' || true)
+
+          if [ -n "$SOSPECHOSOS" ] || [ -n "$VOLCADOS" ]; then
+            echo "::error::Se detecto material que no puede entrar al historial."
+            [ -n "$SOSPECHOSOS" ] && echo "Llaves privadas en: $SOSPECHOSOS"
+            [ -n "$VOLCADOS" ] && echo "Volcados de base en: $VOLCADOS"
+            echo ""
+            echo "Un fichero fuera del historial se borra. Uno dentro, no:"
+            echo "hay que reescribir el historial y pedir a GitHub que purgue"
+            echo "sus referencias internas. Sacalo del commit antes de subirlo."
+            exit 1
+          fi
+
+          echo "Limpio."

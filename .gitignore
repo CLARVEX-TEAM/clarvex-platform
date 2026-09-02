@@ -67,3 +67,67 @@ public/uploads/evidences/*
 # al historial, y de ahi no salen.
 .codex/
 .codex-remote-attachments/
+
+# ── Lo que nunca puede acabar en el historial ─────────────────────────────
+#
+# El proyecto ya vivió una vez lo caro que es: un dump real de PostgreSQL se
+# coló en el historial y hubo que abrir un ticket con GitHub Support para
+# purgarlo, con la migración de repositorio detenida mientras tanto. Lo de
+# abajo cierra las variantes que la lista original no cubría.
+
+# ⚠️ Una llave SSH privada NO TIENE EXTENSION. `*.pem` y `*.key` no la cazan:
+# `id_rsa` o `clarvex_vultr_2026` —que este repo nombra en su documentación—
+# se subirían tan tranquilos.
+id_rsa*
+id_ed25519*
+id_ecdsa*
+id_dsa*
+*_rsa
+*_ed25519
+known_hosts
+# Los nombres concretos que este proyecto ha usado. Se listan porque una
+# llave con nombre propio no casa con ningun patron —ver el aviso de abajo.
+clarvex_vultr*
+clarvex_aws*
+*.ppk
+*.jks
+*.keystore
+
+# Bases sueltas. La de n8n (`database.sqlite`) se copia al depurar, y lleva
+# dentro los secretos de sus flujos.
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+*.sqlite3
+*.db
+
+# Volcados con otra extensión. El incidente fue un `.dump`; un `.sql` es lo
+# mismo con otro nombre.
+#
+# ⚠️ Solo en la RAIZ (`/`). Las migraciones de Prisma son `.sql` y SI se
+# versionan: ignorarlas todas dejaría el historial de la base sin rastro y
+# `migrate deploy` sin nada que aplicar.
+/*.sql
+/dump*.sql
+/backup*.sql
+
+# Archivos comprimidos: la forma habitual de mover un respaldo.
+*.tar
+*.tar.gz
+*.tgz
+*.zip
+*.7z
+*.rar
+
+# Variables por otras vías.
+.envrc
+
+# ⚠️ EL PATRON NO BASTA, y conviene saberlo.
+#
+# Una llave privada puede llamarse cualquier cosa: clarvex_vultr_2026 no se
+# parece a id_rsa ni acaba en .key. Ninguna lista de nombres la caza, y las
+# de arriba solo cubren las que YA conocemos.
+#
+# Por eso la CI revisa el CONTENIDO de lo que llega: busca la cabecera
+# «BEGIN ... PRIVATE KEY», que si es invariable. Ver el trabajo «secretos»
+# en .github/workflows/ci.yml.
