@@ -76,19 +76,38 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # ⚠️ SIN `version:` a proposito. La version de pnpm se lee del campo
-      # `packageManager` de package.json, que es la que respeta corepack y
-      # la que corre el servidor. Declararla tambien aqui la pone en dos
-      # sitios: el dia que una suba y la otra no, CI instalaria un arbol de
-      # dependencias distinto al de produccion sin que nada avisara.
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v6
-
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: pnpm
+
+      # ⚠️ pnpm por COREPACK, no por `pnpm/action-setup`. La organizacion solo
+      # permite acciones propiedad de GitHub, y esa no lo es: con ella la CI ni
+      # arrancaba --doce ejecuciones seguidas en `startup_failure`, sin una sola
+      # linea de registro, que parece un fallo del codigo y no lo era--.
+      #
+      # Ademas es lo correcto: corepack lee `packageManager` de package.json,
+      # que es la version que corre el servidor. Una sola fuente para la version
+      # de pnpm, en vez de repetirla aqui y que un dia dejen de coincidir.
+      - name: Activar pnpm por corepack
+        env:
+          COREPACK_ENABLE_DOWNLOAD_PROMPT: "0"
+        run: |
+          corepack enable
+          corepack prepare --activate
+          pnpm --version
+
+      # La cache del almacen se lleva a mano porque `cache: pnpm` de setup-node
+      # exige que pnpm exista cuando esa accion corre, y aqui llega despues.
+      - name: Ruta del almacen de pnpm
+        run: echo "PNPM_STORE=$(pnpm store path --silent)" >> "$GITHUB_ENV"
+
+      - name: Cache de dependencias
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.PNPM_STORE }}
+          key: pnpm-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: pnpm-${{ runner.os }}-
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -117,19 +136,38 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # ⚠️ SIN `version:` a proposito. La version de pnpm se lee del campo
-      # `packageManager` de package.json, que es la que respeta corepack y
-      # la que corre el servidor. Declararla tambien aqui la pone en dos
-      # sitios: el dia que una suba y la otra no, CI instalaria un arbol de
-      # dependencias distinto al de produccion sin que nada avisara.
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v6
-
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: pnpm
+
+      # ⚠️ pnpm por COREPACK, no por `pnpm/action-setup`. La organizacion solo
+      # permite acciones propiedad de GitHub, y esa no lo es: con ella la CI ni
+      # arrancaba --doce ejecuciones seguidas en `startup_failure`, sin una sola
+      # linea de registro, que parece un fallo del codigo y no lo era--.
+      #
+      # Ademas es lo correcto: corepack lee `packageManager` de package.json,
+      # que es la version que corre el servidor. Una sola fuente para la version
+      # de pnpm, en vez de repetirla aqui y que un dia dejen de coincidir.
+      - name: Activar pnpm por corepack
+        env:
+          COREPACK_ENABLE_DOWNLOAD_PROMPT: "0"
+        run: |
+          corepack enable
+          corepack prepare --activate
+          pnpm --version
+
+      # La cache del almacen se lleva a mano porque `cache: pnpm` de setup-node
+      # exige que pnpm exista cuando esa accion corre, y aqui llega despues.
+      - name: Ruta del almacen de pnpm
+        run: echo "PNPM_STORE=$(pnpm store path --silent)" >> "$GITHUB_ENV"
+
+      - name: Cache de dependencias
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.PNPM_STORE }}
+          key: pnpm-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: pnpm-${{ runner.os }}-
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
