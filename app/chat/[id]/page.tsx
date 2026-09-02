@@ -12,6 +12,8 @@ import { esperaTrasFallo, interpretar } from "@/lib/chat-espera";
 import { FichaCompanero } from "@/components/FichaCompanero";
 import { CabeceraChat } from "@/components/CabeceraChat";
 import { VisorImagen } from "@/components/VisorImagen";
+import { CuerpoConFormato, QuienLoVio } from "@/components/ChatFormato";
+import { BarraFormato } from "@/components/BarraFormato";
 import {
   ChatPicker,
   MessageTicks,
@@ -132,7 +134,7 @@ function MessageBody({
         isMe ? "bg-volt text-white" : "bg-[#E9E9EB] text-ink dark:bg-[#2C2C2E]"
       )}
     >
-      <MentionText body={msg.body} gente={gente} yo={yo} claro={isMe} />
+      <CuerpoConFormato body={msg.body} gente={gente} yo={yo} claro={isMe} />
       {msg.editedAt && (
         <span className={cn("ml-1.5 text-[10px] font-semibold", isMe ? "text-white/60" : "text-muted")}>
           editado
@@ -641,6 +643,19 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
                       )}
                       <MessageBody msg={msg} isMe={isMe} onImageClick={setLightbox} gente={gente} yo={session?.id ?? ""} cola={finDeGrupo} />
                     </div>
+                    {/*
+                      * En un grupo, la doble palomita no dice lo que hace falta
+                      * saber: si lo vieron TODOS o solo uno. Debajo se nombra a
+                      * quien lo vio y se cuenta a quien falta, que es la
+                      * pregunta real al mandar un comunicado.
+                      */}
+                    {isMe && finDeGrupo && room?.type === "GROUP" && !msg.deleted && (
+                      <QuienLoVio
+                        leidoPor={msg.readBy ?? []}
+                        miembros={room?.members ?? []}
+                        autorId={msg.senderId}
+                      />
+                    )}
                     {finDeGrupo && (
                       <span className={cn("mt-1 flex items-center gap-1 text-[10px] text-muted/70", isMe ? "flex-row-reverse pr-2" : "pl-3")}>
                         {formatTime(msg.createdAt)}
@@ -722,6 +737,7 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
             </div>
           );
         })()}
+        <BarraFormato valor={input} onCambio={setInput} caja={inputRef} />
         <div className="mx-auto flex max-w-md items-end gap-2">
           <button
             type="button"
