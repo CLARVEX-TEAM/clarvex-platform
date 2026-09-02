@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { alternarMarca, alternarPrefijo, bloques, trozos } from "../lib/chat-formato";
+import { alternarMarca, alternarPrefijo, bloques, textoLlano, trozos } from "../lib/chat-formato";
 
 test("las marcas son las de Slack, no las de Markdown", () => {
   /*
@@ -109,4 +109,17 @@ test("el prefijo marca todas las lineas seleccionadas", () => {
 test("si todas estaban marcadas, se desmarcan", () => {
   const t = alternarPrefijo("> uno\n> dos", 0, 11, "> ");
   assert.equal(t, "uno\ndos");
+});
+
+test("la vista previa va sin marcas", () => {
+  // En una fila de una linea, «*Hola*» con asteriscos se lee peor que sin
+  // ellos, y una cita con viñetas se vuelve un amasijo de `>` y `-`.
+  assert.equal(textoLlano("*Hola* a todos"), "Hola a todos");
+  assert.equal(textoLlano("> Adicional como ya les dije"), "Adicional como ya les dije");
+  assert.equal(textoLlano("- uno\n- dos"), "uno dos");
+  assert.equal(textoLlano("`SELECT 1`"), "SELECT 1");
+});
+
+test("la vista previa aplana los saltos de linea", () => {
+  assert.equal(textoLlano("hola\n\nadios"), "hola adios");
 });

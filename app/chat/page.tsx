@@ -8,6 +8,10 @@ import { fetchAppData } from "@/lib/app-data";
 import type { User } from "@/lib/types";
 import { AppFrame, AppHeader, Card, ProfileAvatar } from "@/components/ui";
 import { chatPreview } from "@/components/ChatPicker";
+import { textoLlano } from "@/lib/chat-formato";
+// El nombre corto de operación ya existe y trae la excepción de «Jesus
+// Adrian». Se reutiliza en vez de inventar una segunda regla de nombres.
+import { firstName } from "@/lib/weekly-close";
 import { useToast } from "@/components/Toast";
 
 type RoomSummary = {
@@ -125,20 +129,35 @@ export default function ChatPage() {
                       )}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-center justify-between gap-2">
-                        <p className={`truncate text-sm font-bold ${room.unreadCount > 0 ? "text-ink" : "text-ink/80"}`}>
-                          {room.type === "GROUP" ? (room.name ?? "Todos") : room.other?.name}
+                      <div className="flex items-baseline justify-between gap-2">
+                        {/*
+                          * Nombre corto y en formato titulo. «WAIRA ZITLALI
+                          * POPOCA» en mayusculas grita mas que el mensaje, que
+                          * es lo que se viene a leer.
+                          */}
+                        <p className={`truncate text-[15px] ${room.unreadCount > 0 ? "font-semibold text-ink" : "font-medium text-ink/85"}`}>
+                          {room.type === "GROUP" ? (room.name ?? "Todos") : firstName(room.other?.name ?? "")}
                         </p>
                         {room.lastMessage && (
-                          <span className="shrink-0 text-[11px] text-muted">{formatTime(room.lastMessage.createdAt)}</span>
+                          <span className={`shrink-0 text-[11px] ${room.unreadCount > 0 ? "font-semibold text-volt" : "text-muted/70"}`}>
+                            {formatTime(room.lastMessage.createdAt)}
+                          </span>
                         )}
                       </div>
                       {room.lastMessage ? (
-                        <p className={`truncate text-xs ${room.unreadCount > 0 ? "font-semibold text-ink/70" : "text-muted"}`}>
-                          {room.type === "GROUP" ? `${room.lastMessage.senderName}: ` : ""}{chatPreview(room.lastMessage.body, room.lastMessage.deleted)}
+                        <p className={`mt-0.5 truncate text-[13px] ${room.unreadCount > 0 ? "text-ink/75" : "text-muted"}`}>
+                          {/*
+                            * Sin marcas de formato: «*Hola*» con asteriscos se
+                            * lee peor en una linea, y una cita se vuelve un
+                            * amasijo de «>».
+                            */}
+                          {room.type === "GROUP" && room.lastMessage.senderName
+                            ? `${firstName(room.lastMessage.senderName)}: `
+                            : ""}
+                          {textoLlano(chatPreview(room.lastMessage.body, room.lastMessage.deleted))}
                         </p>
                       ) : (
-                        <p className="text-xs text-muted">Sin mensajes</p>
+                        <p className="mt-0.5 text-[13px] text-muted/60">Toca para escribir</p>
                       )}
                     </div>
                   </button>
@@ -149,20 +168,27 @@ export default function ChatPage() {
             {/* Iniciar chat directo */}
             {team.length > 0 && (
               <Card className="p-3.5">
-                <div className="mb-3 flex items-center gap-2">
-                  <MessageSquare className="text-volt" size={17} />
-                  <h2 className="text-base font-semibold">Nuevo mensaje directo</h2>
+                <div className="mb-2.5 flex items-center gap-2">
+                  <MessageSquare className="text-volt" size={16} />
+                  <h2 className="text-sm font-semibold text-ink">Escribir a alguien</h2>
                 </div>
-                <div className="grid gap-1">
+                {/*
+                  * Una tira de fotos y no una lista con nombre completo: antes
+                  * repetia a las mismas cinco personas que ya salen arriba, y
+                  * ocupaba mas pantalla que las conversaciones de verdad.
+                  */}
+                <div className="flex gap-3 overflow-x-auto pb-1">
                   {team.map((member) => (
                     <button
                       key={member.id}
                       type="button"
                       onClick={() => void openDirect(member.id)}
-                      className="flex items-center gap-3 rounded-2xl px-3 py-2.5 transition-colors active:bg-volt/8"
+                      className="flex w-16 shrink-0 flex-col items-center gap-1.5 transition active:scale-95"
                     >
-                      <ProfileAvatar name={member.name} photoUrl={member.photoUrl} size="sm" />
-                      <span className="text-sm font-bold text-ink">{member.name}</span>
+                      <ProfileAvatar name={member.name} photoUrl={member.photoUrl} size="md" />
+                      <span className="w-full truncate text-center text-[11px] font-medium text-muted">
+                        {firstName(member.name)}
+                      </span>
                     </button>
                   ))}
                 </div>

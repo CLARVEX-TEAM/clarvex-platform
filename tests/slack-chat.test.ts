@@ -9,8 +9,7 @@ import {
   canalPara,
   parsearSalasDirectas,
   tiendaDelCanal,
-  verificarFirmaSlack
-} from "../lib/slack-chat";
+  verificarFirmaSlack, desescaparSlack } from "../lib/slack-chat";
 
 /* ─── el mapa de canales ──────────────────────────────────────────────────── */
 
@@ -276,4 +275,27 @@ test("⚠️ un texto normal NO se confunde con una imagen", () => {
   // mensaje del asesor no llegaria a Slack.
   assert.equal(llaveDeImagen("hola equipo"), null);
   assert.equal(llaveDeImagen("[img:https://otro-sitio/foto.jpg]"), null);
+});
+
+test("deshace el escapado de Slack", () => {
+  /*
+   * Slack manda `<`, `>` y `&` como entidades HTML. Guardarlo tal cual hacia
+   * que una cita apareciera como «&gt; Adicional…» en el mensaje, en la vista
+   * previa de la lista y en la notificacion. Paso con un comunicado real.
+   */
+  assert.equal(desescaparSlack("&gt; Adicional como ya les habia dicho"), "> Adicional como ya les habia dicho");
+  assert.equal(desescaparSlack("Ventas &amp; metas"), "Ventas & metas");
+  assert.equal(desescaparSlack("&lt;3"), "<3");
+});
+
+test("el orden importa: &amp; va al final", () => {
+  /*
+   * Con `&amp;` primero, «&amp;gt;» se convertiria en «&gt;» y de ahi en «>»,
+   * resucitando una entidad que la persona escribio a proposito.
+   */
+  assert.equal(desescaparSlack("&amp;gt;"), "&gt;");
+});
+
+test("un texto sin entidades no se toca", () => {
+  assert.equal(desescaparSlack("hola, todo normal"), "hola, todo normal");
 });

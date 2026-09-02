@@ -148,6 +148,25 @@ const MAX = 1000;
  * traiga `bot_id` o `app_id` lo publicamos nosotros, así que se ignora. Sin eso,
  * cada mensaje rebotaría entre los dos sistemas hasta llenar el canal solo.
  */
+/**
+ * Deshace el escapado de Slack.
+ *
+ * ⚠️ Slack manda el texto con `<`, `>` y `&` escapados como entidades HTML.
+ * Guardarlo tal cual hace que una cita —`> Adicional…`— aparezca literalmente
+ * como `&gt; Adicional…` en la app: en el mensaje, en la vista previa de la
+ * lista y en la notificacion. Paso de verdad con un comunicado.
+ *
+ * Son EXACTAMENTE estas tres y en este orden: `&amp;` va al final, o
+ * `&amp;gt;` se convertiria en `&gt;` y de ahi en `>`, resucitando una
+ * entidad que la persona habia escrito a proposito.
+ */
+export function desescaparSlack(texto: string): string {
+  return texto
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&amp;/g, "&");
+}
+
 export function interpretarEntrante(cuerpo: EventoSlack): Entrante {
   if (cuerpo.type === "url_verification") {
     return typeof cuerpo.challenge === "string"
@@ -174,7 +193,7 @@ export function interpretarEntrante(cuerpo: EventoSlack): Entrante {
   }
   if (e.thread_ts && e.thread_ts !== e.ts) return { accion: "ignorar", porque: "respuesta en hilo" };
 
-  const texto = (e.text ?? "").trim();
+  const texto = desescaparSlack((e.text ?? "").trim());
   const archivo = (e.files ?? []).find((f) => (f.mimetype ?? "").startsWith("image/")) ?? null;
 
   // Una foto SIN pie sigue valiendo: se cruza la imagen y ya. Lo que no vale es

@@ -209,3 +209,21 @@ export function alternarPrefijo(texto: string, desde: number, hasta: number, pre
   const nuevas = lineas.map((l) => (todasMarcadas ? l.slice(prefijo.length) : prefijo + l));
   return texto.slice(0, inicioLinea) + nuevas.join("\n") + texto.slice(finLinea);
 }
+
+/**
+ * El mensaje en texto llano, para la vista previa de la lista.
+ *
+ * Quita las marcas de formato y aplana los saltos de línea. En una fila de
+ * una sola línea, `*Hola*` con asteriscos se lee peor que sin ellos, y un
+ * mensaje con cita y viñetas se convierte en un amasijo de `>` y `-`.
+ */
+export function textoLlano(cuerpo: string): string {
+  return bloques(cuerpo)
+    .map((b) => {
+      if (b.tipo === "codigo") return b.texto;
+      return b.trozos.map((t) => t.texto).join("");
+    })
+    .join(" ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
