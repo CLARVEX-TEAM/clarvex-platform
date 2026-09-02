@@ -114,6 +114,79 @@ Comprobado contra producción: sin secreto devuelve **401 «No autorizado»**, y
 2026, semanas 31 a 34, 5 personas). Se verificó que el archivo empieza por `PK`:
 un JSON de error disfrazado también habría dado 200.
 
+## Despliegue desde GitHub — 2 de septiembre de 2026
+
+Ya no hace falta entrar por `ssh` para desplegar. **Actions → Deploy → Run
+workflow**, escribiendo `DESPLEGAR`.
+
+Sigue siendo **manual a proposito**. La app calcula nomina de doce personas y
+corre en una maquina de 3.7 GB donde `next build` tarda minutos apoyandose en
+swap; desplegar en cada commit encadenaria builds que no caben a la vez. Lo que
+se quita es el `ssh` a mano, no la decision.
+
+```
+GitHub Actions --(OIDC)--> AWS STS --(SSM SendCommand)--> EC2
+                                                            `-> scripts/deploy.sh
+```
+
+- **Sin credenciales guardadas.** No hay `AWS_ACCESS_KEY_ID` en los secretos del
+  repositorio: GitHub emite un token que dice quien es, AWS lo canjea por
+  credenciales de una hora y se acaban con la ejecucion.
+- **Por SSM y no por ssh**, para no abrir el puerto 22 a los rangos de GitHub
+  —que son enormes— ni guardar una llave privada en el repositorio.
+- `scripts/deploy.sh` guarda el commit anterior, y si el build falla no reinicia
+  nada; si la salud no responde tras 12 intentos, revierte. Sale con 1 si
+  revirtio y 2 si ni la version anterior levanta.
+
+### ⚠️ El sujeto del token lleva IDENTIFICADORES, no solo los nombres
+
+Esta organizacion emite el sujeto asi:
+
+```
+repo:CLARVEX-TEAM@321237585/clarvex-platform@1260997933:environment:Production
+```
+
+y **no** como sale en todas las guias:
+
+```
+repo:CLARVEX-TEAM/clarvex-platform:environment:Production
+```
+
+Es una proteccion de GitHub: con los identificadores dentro, el permiso
+sobrevive a un cambio de nombre y nadie se lo queda creando despues un
+repositorio con el nombre que quedo libre.
+
+⚠️ **Costo tres intentos porque STS no lo dice.** Responde «no autorizado» y
+jamas revela que sujeto presentaste —si lo hiciera seria un oraculo para
+adivinar condiciones—. El CLI sale con un **254** pelado. Donde SI aparece es en
+CloudTrail, en `userIdentity.userName`; ojo que `requestParameters` viene
+**vacio**, asi que hay que volcar el evento entero:
+
+```bash
+aws cloudtrail lookup-events --profile clarvex --region us-east-1 --lookup-attributes AttributeKey=EventName,AttributeValue=AssumeRoleWithWebIdentity
+```
+
+⚠️ **Y va al ENTORNO, no a la rama.** Cuando un job declara `environment`,
+GitHub cambia esa parte del sujeto de `ref:refs/heads/main` a
+`environment:Production`. Ademas es lo que conviene: el entorno es el unico
+sitio donde se puede exigir aprobacion manual, asi que atarlo ahi impide que un
+flujo nuevo asuma el rol saltandose la aprobacion.
+
+### ⚠️ Cero acciones de terceros
+
+La organizacion solo permite acciones propiedad de GitHub, asi que
+`aws-actions/configure-aws-credentials` **no se puede usar**. El canje se hace a
+mano con `curl` y el CLI de AWS, que ya viene en el runner.
+
+Se podria haber permitido la accion. Se prefiere esto: el despliegue es lo unico
+del repositorio que puede tocar produccion, y que no ejecute codigo de terceros
+vale mas que ahorrar diez lineas. Las credenciales se enmascaran con
+`::add-mask::` **antes** de existir en el entorno, o cualquier comando que las
+imprima las deja escritas en un registro que ve todo el que tenga acceso al repo.
+
+Primer despliegue real: `7a93149`, 7 min 21 s, con la salud comprobada desde
+internet y desde la propia maquina.
+
 ## Centro operativo Slack / Retool / AWS — 30 de agosto de 2026
 
 Se empezó la fase de control administrativo encima de lo que ya estaba en
