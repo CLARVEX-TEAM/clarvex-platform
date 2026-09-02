@@ -1,0 +1,117 @@
+name: Deploy
+
+# ⚠️ MANUAL A PROPOSITO. No se despliega solo al empujar a `main`.
+#
+# La app calcula nomina de doce personas y corre en una maquina de 3.7 GB donde
+# `next build` tarda minutos apoyandose en swap. Un despliegue automatico por
+# cada commit encadenaria builds sobre una maquina que no da para dos a la vez.
+#
+# Cuando el equipo crezca y haya entorno de pruebas, esto puede pasar a
+# automatico. Hoy la ganancia es quitar el `ssh` a mano, no quitar la decision.
+on:
+  workflow_dispatch:
+    inputs:
+      confirmar:
+        description: 'Escribe DESPLEGAR para confirmar'
+        required: true
+        default: ''
+
+# ⚠️ `id-token: write` es lo que permite pedir el token de OIDC. Sin el, no hay
+# forma de asumir el rol de AWS. `contents: read` para poder leer el repo.
+#
+# Nada mas: este flujo no escribe en el repositorio.
+permissions:
+  id-token: write
+  contents: read
+
+# Dos despliegues a la vez sobre la misma maquina se pisan: uno construye
+# mientras el otro reinicia. Se encolan.
+concurrency:
+  group: deploy-produccion
+  cancel-in-progress: false
+
+jobs:
+  desplegar:
+    name: Desplegar a produccion
+    runs-on: ubuntu-latest
+
+    # El entorno permite exigir aprobacion manual desde GitHub antes de que el
+    # trabajo arranque. Se configura en Settings > Environments > produccion.
+    environment:
+      name: produccion
+      url: https://team.clarvex.tech
+
+    steps:
+      - name: Comprobar la confirmacion
+        # Escribir la palabra evita el despliegue por dedazo desde el movil.
+        if: ${{ inputs.confirmar != 'DESPLEGAR' }}
+        run: |
+          echo "::error::Escribe DESPLEGAR en el campo de confirmacion."
+          exit 1
+
+      # ⚠️ Credenciales TEMPORALES por OIDC. No hay AWS_ACCESS_KEY_ID ni
+      # AWS_SECRET_ACCESS_KEY guardados en GitHub: el token dura lo que dura
+      # esta ejecucion y no sirve fuera de ella.
+      - name: Credenciales de AWS por OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: us-east-1
+          role-session-name: clarvex-deploy-${{ github.run_id }}
+
+      - name: Lanzar el despliegue por SSM
+        id: enviar
+        # ⚠️ Se llega por SSM y NO por ssh a proposito: no hace falta abrir el
+        # puerto 22 a los rangos de GitHub —que son enormes— ni guardar una
+        # llave privada en los secretos del repositorio.
+        run: |
+          set -euo pipefail
+
+          ID=$(aws ssm send-command \
+            --instance-ids "${{ vars.AWS_INSTANCE_ID }}" \
+            --document-name "AWS-RunShellScript" \
+            --comment "Deploy ${{ github.sha }} por ${{ github.actor }}" \
+            --parameters 'commands=["sudo -u ubuntu bash /home/ubuntu/clarvex-app/scripts/deploy.sh"]' \
+            --timeout-seconds 900 \
+            --query 'Command.CommandId' --output text)
+
+          echo "comando=$ID" >> "$GITHUB_OUTPUT"
+          echo "Comando SSM: $ID"
+
+      - name: Esperar y traer la salida
+        run: |
+          set -uo pipefail
+          ID="${{ steps.enviar.outputs.comando }}"
+
+          # El build tarda varios minutos en esa maquina; se espera hasta 15.
+          for i in $(seq 1 90); do
+            ESTADO=$(aws ssm list-command-invocations \
+              --command-id "$ID" --details \
+              --query 'CommandInvocations[0].Status' --output text 2>/dev/null || echo "Pending")
+
+            case "$ESTADO" in
+              Success|Failed|Cancelled|TimedOut)
+                break ;;
+            esac
+            sleep 10
+          done
+
+          echo "=== salida del servidor ==="
+          aws ssm list-command-invocations --command-id "$ID" --details \
+            --query 'CommandInvocations[0].CommandPlugins[0].Output' --output text
+
+          echo "=== estado: $ESTADO ==="
+          # El script de despliegue devuelve 1 si revirtio y 2 si ni la version
+          # anterior levanta. Cualquiera de los dos tiene que poner el flujo en
+          # rojo: un despliegue revertido NO es un despliegue correcto.
+          [ "$ESTADO" = "Success" ] || exit 1
+
+      - name: Comprobar la salud desde fuera
+        # El script ya comprueba salud desde dentro de la maquina. Esto lo
+        # comprueba desde INTERNET, que es por donde entra la tienda: valida
+        # tambien el proxy y el certificado, no solo que Node responda.
+        run: |
+          set -euo pipefail
+          RESPUESTA=$(curl -sf --max-time 20 https://team.clarvex.tech/api/health)
+          echo "$RESPUESTA"
+          echo "$RESPUESTA" | grep -q '"status":"ok"'

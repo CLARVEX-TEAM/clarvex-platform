@@ -1,0 +1,29 @@
+# Finales de línea.
+#
+# ⚠️ Un script de shell con finales de Windows NO ARRANCA en Linux: bash lee el
+# `\r` como parte del comando y falla con «\r: command not found», un mensaje
+# que no menciona finales de línea por ningún lado.
+#
+# Se descubrió antes de que doliera: `scripts/deploy.sh` entró al índice con
+# CRLF desde una máquina Windows, y habría roto el primer despliegue
+# automático — el peor momento posible para averiguarlo.
+*.sh   text eol=lf
+*.bash text eol=lf
+
+# Los .ps1 al revés: PowerShell 5.1 es de Windows y espera CRLF.
+*.ps1  text eol=crlf
+
+# YAML: lo leen runners de Linux.
+*.yml  text eol=lf
+*.yaml text eol=lf
+
+# Binarios: que git no toque nada dentro.
+*.xlsx binary
+*.pptx binary
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.ico  binary
+*.pdf  binary
+*.woff binary
+*.woff2 binary
