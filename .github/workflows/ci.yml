@@ -171,7 +171,7 @@ jobs:
       # Falla el CI si encuentra una vulnerabilidad conocida. Para ignorar una
       # puntual y justificada (con fecha de revisión), usar un osv-scanner.toml.
       - name: OSV-Scanner (vulnerabilidades en dependencias)
-        uses: google/osv-scanner-action/osv-scanner-action@v2.3.8
+        uses: google/osv-scanner-action/osv-scanner-action@v2.5.1
         with:
           scan-args: |-
             --config=osv-scanner.toml
