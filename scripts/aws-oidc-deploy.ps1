@@ -5,10 +5,17 @@
 #   2. Un rol que SOLO puede asumir este repositorio.
 #   3. Una politica que SOLO permite lanzar el despliegue en UNA instancia.
 #
-# ⚠️ La confianza se ata al REPOSITORIO Y A LA RAMA. Sin esa condicion,
+# ⚠️ La confianza se ata al REPOSITORIO Y AL ENTORNO. Sin esa condicion,
 # cualquier repositorio de GitHub —de cualquier persona— podria asumir el rol.
 # Es el fallo clasico de las guias de OIDC, y no avisa: funciona igual de bien
 # mientras nadie lo intente.
+#
+# ⚠️ Y va al ENTORNO, no a la rama: cuando un job declara `environment`,
+# GitHub cambia el sujeto del token de `ref:refs/heads/main` a
+# `environment:Production`. Pinear la rama hace que AWS rechace el canje con
+# un exit 254 del CLI que no explica por que. Ademas asi es MAS estricto: solo
+# los jobs que corren en ese entorno —el que puede exigir aprobacion— pueden
+# asumir el rol.
 #
 #   powershell -ExecutionPolicy Bypass -File "D:\Documents\New project\scripts\aws-oidc-deploy.ps1"
 #
@@ -22,6 +29,7 @@ $Repo      = "CLARVEX-TEAM/clarvex-platform"
 $Instancia = "i-06fd0869766482dc1"
 $RolNombre = "clarvex-github-deploy"
 $RolInstancia = "clarvex-instancia"
+$Entorno   = "Production"
 
 # ── Preguntarle a AWS sin que el script se muera ──────────────────────────
 #
@@ -80,7 +88,7 @@ $archivoConfianza = Join-Path $env:TEMP "clarvex-trust.json"
         "token.actions.githubusercontent.com:aud": "sts.amazonaws.com"
       },
       "StringLike": {
-        "token.actions.githubusercontent.com:sub": "repo:${Repo}:ref:refs/heads/main"
+        "token.actions.githubusercontent.com:sub": "repo:${Repo}:environment:${Entorno}"
       }
     }
   }]
