@@ -453,3 +453,43 @@ button.solid-card:hover {
 @media (prefers-reduced-motion: reduce) {
   .copilot-ring { animation: none; stroke-opacity: 0.28; }
 }
+
+/* ── Fondo vivo del chat (Aurora) ─────────────────────────────────────────
+ * Tres manchas de color que se desplazan muy despacio detras de los mensajes.
+ * Es lo que da a las burbujas de vidrio algo que dejar ver: sobre un fondo
+ * plano el desenfoque no se nota y el vidrio parece gris sucio.
+ *
+ * 18 s por ciclo a proposito. Un fondo rapido en una pantalla que se abre
+ * veinte veces al dia cansa. Con «reducir movimiento» se DETIENE, no se
+ * esconde: a algunas personas el movimiento las marea de verdad.
+ */
+.aurora-mancha {
+  background:
+    radial-gradient(38% 34% at 22% 18%, rgba(59, 130, 246, 0.28), transparent 62%),
+    radial-gradient(34% 30% at 78% 32%, rgba(139, 92, 246, 0.22), transparent 64%),
+    radial-gradient(40% 36% at 52% 84%, rgba(14, 165, 233, 0.20), transparent 66%);
+  filter: blur(28px);
+  animation: aurora-flotar 18s ease-in-out infinite alternate;
+}
+
+/* En claro se baja la intensidad: sobre blanco, la misma opacidad que
+   funciona en oscuro se ve como una mancha de humedad. */
+html:not(.dark) .aurora-mancha { opacity: 0.5; }
+
+@keyframes aurora-flotar {
+  0%   { transform: translate3d(0, 0, 0) scale(1); }
+  100% { transform: translate3d(4%, -3%, 0) scale(1.12); }
+}
+
+/* El mensaje propio entra desenfocado y se enfoca al asentarse. */
+@keyframes aurora-materializa {
+  0%   { opacity: 0; transform: translateY(16px) scale(0.9); filter: blur(6px); }
+  70%  { opacity: 1; transform: translateY(-2px) scale(1.015); filter: blur(0); }
+  100% { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+}
+.aurora-entra { animation: aurora-materializa 0.42s cubic-bezier(0.19, 1, 0.22, 1); }
+
+@media (prefers-reduced-motion: reduce) {
+  .aurora-mancha,
+  .aurora-entra { animation: none; }
+}

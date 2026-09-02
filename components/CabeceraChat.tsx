@@ -42,7 +42,7 @@ export function CabeceraChat({
        * scroll en vez de cortarse contra una barra opaca. Es lo que hace que
        * se sienta una capa y no un recuadro pegado arriba.
        */
-      className="pt-safe sticky top-0 z-20 border-b border-line/60 bg-white/80 px-2 pb-2 backdrop-blur-xl dark:bg-[#0f1729]/80"
+      className="pt-safe sticky top-0 z-20 border-b border-line/50 bg-white/55 px-2 pb-2 backdrop-blur-2xl dark:border-white/10 dark:bg-white/[0.05]"
       style={{ ["--pt-safe-base" as string]: "0.5rem" }}
     >
       <div className="mx-auto flex max-w-md items-center gap-1">

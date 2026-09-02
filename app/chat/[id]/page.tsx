@@ -12,6 +12,7 @@ import { esperaTrasFallo, interpretar } from "@/lib/chat-espera";
 import { FichaCompanero } from "@/components/FichaCompanero";
 import { CabeceraChat } from "@/components/CabeceraChat";
 import { VisorImagen } from "@/components/VisorImagen";
+import { FondoAurora } from "@/components/FondoAurora";
 import { CuerpoConFormato, QuienLoVio } from "@/components/ChatFormato";
 import { BarraFormato } from "@/components/BarraFormato";
 import {
@@ -131,7 +132,15 @@ function MessageBody({
       className={cn(
         "px-3.5 py-[7px] text-[15px] leading-[1.35]",
         cola ? (isMe ? "rounded-[20px] rounded-br-[6px]" : "rounded-[20px] rounded-bl-[6px]") : "rounded-[20px]",
-        isMe ? "bg-volt text-white" : "bg-[#E9E9EB] text-ink dark:bg-[#2C2C2E]"
+        /*
+         * Vidrio: translucido con desenfoque, y un borde de un pixel que es lo
+         * que le da canto. Sin el borde, sobre el fondo vivo la burbuja se
+         * deshace por las orillas y no se sabe donde acaba.
+         */
+        "border backdrop-blur-xl",
+        isMe
+          ? "border-white/25 bg-volt/85 text-white dark:border-sky-200/25 dark:bg-volt/45"
+          : "border-black/[0.06] bg-white/70 text-ink dark:border-white/10 dark:bg-white/[0.08]"
       )}
     >
       <CuerpoConFormato body={msg.body} gente={gente} yo={yo} claro={isMe} />
@@ -474,7 +483,13 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
   };
 
   return (
-    <div className="fixed inset-x-0 bottom-0 top-[var(--aviso-alto,0px)] z-30 flex flex-col bg-white dark:bg-[#0f1729]">
+    /*
+     * Fondo propio y mas oscuro que el resto de la app: el vidrio esmerilado
+     * necesita algo detras que dejar ver. Sobre blanco plano el desenfoque no
+     * se nota y la burbuja parece gris sucio.
+     */
+    <div className="fixed inset-x-0 bottom-0 top-[var(--aviso-alto,0px)] z-30 flex flex-col overflow-hidden bg-[#f6f7fb] dark:bg-[#080a10]">
+      <FondoAurora />
       <CabeceraChat
         titulo={title}
         estado={subtitle}
@@ -594,7 +609,17 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
                     <div className="h-px flex-1 bg-line/50" />
                   </div>
                 )}
-                <div className={cn("flex items-end gap-2", finDeGrupo ? "mb-3.5" : "mb-[3px]", isMe ? "flex-row-reverse" : "flex-row")}>
+                <div
+                  className={cn(
+                    "flex items-end gap-2",
+                    finDeGrupo ? "mb-3.5" : "mb-[3px]",
+                    isMe ? "flex-row-reverse" : "flex-row",
+                    // Solo el ultimo mensaje entra animado: animar toda la
+                    // lista al recargar seria un parpadeo cada vez que llega
+                    // algo, no una entrada.
+                    i === messages.length - 1 && "aurora-entra"
+                  )}
+                >
                   {!isMe && (
                     <div className="w-7 shrink-0">
                       {/*
@@ -676,7 +701,7 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
 
       {/* Input */}
       <div
-        className="relative shrink-0 border-t border-line/60 bg-white/90 px-3 pt-3 backdrop-blur-xl dark:bg-[#0f1729]/90"
+        className="relative z-[1] shrink-0 border-t border-line/50 bg-white/55 px-3 pt-3 backdrop-blur-2xl dark:bg-white/[0.05]"
         style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
       >
         {/* Picker */}
