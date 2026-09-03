@@ -852,8 +852,31 @@ global de otra versión instala un árbol de dependencias distinto al del servid
 - Docker — PostgreSQL: `clarvex_postgres` (`postgres:16`), datos en
   `/home/ubuntu/stack/postgres`.
 - PostgreSQL — base: `clarvex_team`, host: `localhost`, puerto: `5432`.
-- 8 GB de swap; el disco de 30 GB va al **76 %** desde que se bajaron las
-  imágenes de los contenedores.
+- 8 GB de swap; el disco de 30 GB va al **83 %** (3 de septiembre de 2026).
+  De los 22 GB usados, **8.3 GB son imágenes de Docker** de los nueve
+  contenedores en marcha: eso no se puede recortar sin apagar servicios.
+
+⚠️ **Lo que llena el disco es `.next/cache/webpack`.** Cada `next build` le
+añade ~1.6 GB y nada le quitaba: llegó a **2.7 GB** y dejó el disco al 87 %, con
+la alerta de Slack avisando de lo que de verdad importa — con el disco lleno
+**Postgres deja de escribir**, y entonces la tienda no puede capturar.
+
+⚠️ Borrarla **no es** borrar `.next`, que es lo prohibido de más abajo. Se sirve
+`.next/static` (5 MB) y `.next/server` (82 MB); la caché solo se usa **al
+construir**. Quitarla únicamente hace el siguiente build más lento.
+
+Desde `scripts/deploy.sh`, el despliegue la limpia solo cuando pasa de 4 GB o
+quedan menos de 5 GB libres, y **se detiene** si hay menos de 2 GB. El tope va
+en 4 y no en 1 porque un solo build genera 1.6 GB: con 1 GB se borraría antes de
+cada build y la caché no llegaría a servir nunca.
+
+Para recuperar espacio a mano, por orden de lo que devuelve:
+
+```bash
+rm -rf /home/ubuntu/clarvex-app/.next/cache/webpack   # ~2 GB
+sudo apt-get clean                                     # ~270 MB
+sudo docker image prune -af                            # solo lo que nadie usa
+```
 
 **Vultr (`216.238.88.93`) está APAGADO desde el 27 de agosto de 2026.** Estuvo
 tres días congelado como camino de vuelta y ya no hacía falta.
