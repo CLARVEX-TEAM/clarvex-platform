@@ -81,14 +81,40 @@ git merge --ff-only origin/main
 pnpm install --frozen-lockfile
 pnpm exec prisma generate
 
-# ── Migraciones, solo si hay alguna nueva ─────────────────────────────────
-if pnpm exec prisma migrate status 2>&1 | grep -q "have not yet been applied"; then
-  echo "[deploy] hay migraciones pendientes; aplicando"
-  pnpm exec prisma migrate deploy
-  MIGRO=1
-else
-  echo "[deploy] sin migraciones pendientes"
+# ── Migraciones ───────────────────────────────────────────────────────────
+#
+# ⚠️ **SIEMPRE, sin preguntar antes si hacen falta.** La versión anterior lo
+# condicionaba a `prisma migrate status | grep -q "have not yet been applied"`,
+# y eso NO funcionaba: `migrate status` **sale con código 1 cuando hay
+# migraciones pendientes** —es su forma de avisar— y con `set -o pipefail` ese
+# 1 se impone al resultado del `grep`. El `if` daba falso justo en el único
+# caso en que tenía que dar verdadero.
+#
+# Se comió la migración `count_presence` el 3 de septiembre de 2026 y el
+# despliegue reportó **éxito**: el código quedó arriba consultando una tabla
+# que no existía. Un fallo que se anuncia como acierto es el peor de todos.
+#
+# `migrate deploy` ya es idempotente: sin nada pendiente dice «No pending
+# migrations to apply» y sale en 0. La optimización no ahorraba nada y costaba
+# esto.
+echo "[deploy] aplicando migraciones pendientes, si las hay…"
+
+if ! SALIDA_MIGRACION=$(pnpm exec prisma migrate deploy 2>&1); then
+  echo "$SALIDA_MIGRACION"
+  # No se reinicia nada: sigue corriendo la versión anterior, que es coherente
+  # con el esquema que hay. Se devuelve el árbol a donde estaba para que no
+  # quede en un commit que nunca llegó a ejecutarse.
+  echo "[deploy] la migración falló. NO se construye ni se reinicia."
+  git reset --hard "$ANTES"
+  exit 1
+fi
+
+echo "$SALIDA_MIGRACION"
+
+if echo "$SALIDA_MIGRACION" | grep -q "No pending migrations"; then
   MIGRO=0
+else
+  MIGRO=1
 fi
 
 # ── Construir ─────────────────────────────────────────────────────────────
