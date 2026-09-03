@@ -117,6 +117,42 @@ else
   MIGRO=1
 fi
 
+# ── La caché de webpack, que crece sin freno ──────────────────────────────
+#
+# ⚠️ Cada build le AÑADE y nada le quita. El 3 de septiembre de 2026 llegó a
+# **2.7 GB** y dejó el disco al 87 %, con la alerta avisando de lo que de verdad
+# importa: con el disco lleno Postgres deja de escribir, y entonces la tienda no
+# puede capturar.
+#
+# ⚠️ **Esto NO es borrar `.next`** —eso tumba el sitio, ver el aviso de arriba—.
+# Es solo `.next/cache/webpack`, que se usa **al construir** y no se sirve a
+# nadie: lo que ve la tienda está en `.next/static` y `.next/server`. Borrarla
+# solo hace el siguiente build más lento.
+#
+# Con tope y no siempre: la caché es lo que hace que un build incremental tarde
+# minutos en vez de muchos más, y esta máquina va justa. Un giga de margen deja
+# que cumpla su función y le pone techo.
+CACHE_WEBPACK=.next/cache/webpack
+if [ -d "$CACHE_WEBPACK" ]; then
+  CACHE_MB=$(du -sm "$CACHE_WEBPACK" 2>/dev/null | cut -f1)
+  if [ "${CACHE_MB:-0}" -gt 1024 ]; then
+    echo "[deploy] la caché de webpack va por ${CACHE_MB} MB; se limpia antes de construir"
+    rm -rf "$CACHE_WEBPACK"
+  else
+    echo "[deploy] caché de webpack: ${CACHE_MB:-0} MB, dentro de lo razonable"
+  fi
+fi
+
+# Y un vistazo al disco, que es lo que de verdad puede parar la tienda.
+LIBRE_MB=$(df -Pm . | tail -1 | awk '{print $4}')
+echo "[deploy] disco libre: ${LIBRE_MB} MB"
+if [ "${LIBRE_MB:-0}" -lt 2048 ]; then
+  echo "[deploy] ⚠️ MENOS DE 2 GB LIBRES. El build necesita espacio y Postgres"
+  echo "[deploy]    deja de escribir con el disco lleno. Se para antes de tocar nada."
+  git reset --hard "$ANTES"
+  exit 1
+fi
+
 # ── Construir ─────────────────────────────────────────────────────────────
 #
 # Si el build falla no se reinicia nada: la versión que está corriendo sigue
