@@ -130,22 +130,30 @@ fi
 # solo hace el siguiente build más lento.
 #
 # Con tope y no siempre: la caché es lo que hace que un build incremental tarde
-# minutos en vez de muchos más, y esta máquina va justa. Un giga de margen deja
-# que cumpla su función y le pone techo.
+# minutos en vez de muchos más, y esta máquina va justa de RAM.
+#
+# ⚠️ **Los números salen de medir, no de suponer.** Un solo build genera ~1.6 GB
+# de caché. Un tope de 1 GB —que fue lo primero que puse— la borraría antes de
+# CADA build: la caché no llegaría a servir nunca y todos los despliegues serían
+# lentos. Por eso el techo va en 4 GB, que da para varios despliegues seguidos.
+#
+# Y hay una segunda condición, porque el techo por tamaño no conoce el disco: si
+# queda poco espacio se limpia igual, aunque la caché no haya llegado al tope.
 CACHE_WEBPACK=.next/cache/webpack
-if [ -d "$CACHE_WEBPACK" ]; then
-  CACHE_MB=$(du -sm "$CACHE_WEBPACK" 2>/dev/null | cut -f1)
-  if [ "${CACHE_MB:-0}" -gt 1024 ]; then
-    echo "[deploy] la caché de webpack va por ${CACHE_MB} MB; se limpia antes de construir"
-    rm -rf "$CACHE_WEBPACK"
-  else
-    echo "[deploy] caché de webpack: ${CACHE_MB:-0} MB, dentro de lo razonable"
-  fi
-fi
-
-# Y un vistazo al disco, que es lo que de verdad puede parar la tienda.
 LIBRE_MB=$(df -Pm . | tail -1 | awk '{print $4}')
 echo "[deploy] disco libre: ${LIBRE_MB} MB"
+
+if [ -d "$CACHE_WEBPACK" ]; then
+  CACHE_MB=$(du -sm "$CACHE_WEBPACK" 2>/dev/null | cut -f1)
+  if [ "${CACHE_MB:-0}" -gt 4096 ] || [ "${LIBRE_MB:-0}" -lt 5120 ]; then
+    echo "[deploy] caché de webpack: ${CACHE_MB:-0} MB con ${LIBRE_MB} MB libres; se limpia"
+    rm -rf "$CACHE_WEBPACK"
+    LIBRE_MB=$(df -Pm . | tail -1 | awk '{print $4}')
+    echo "[deploy] disco libre tras limpiar: ${LIBRE_MB} MB"
+  else
+    echo "[deploy] caché de webpack: ${CACHE_MB:-0} MB, se conserva"
+  fi
+fi
 if [ "${LIBRE_MB:-0}" -lt 2048 ]; then
   echo "[deploy] ⚠️ MENOS DE 2 GB LIBRES. El build necesita espacio y Postgres"
   echo "[deploy]    deja de escribir con el disco lleno. Se para antes de tocar nada."
