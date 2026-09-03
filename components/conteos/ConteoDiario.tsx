@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { AlertTriangle, CheckCircle2, Copy, HelpCircle, ScanLine, X } from "lucide-react";
@@ -41,6 +41,9 @@ type State = {
   summary: DailySummary;
 };
 
+/** Quién está contando ahora mismo, y en qué marbete. Sin cantidades: ciego. */
+type Presente = { userId: string; userName: string; tagNumber: number | null };
+
 /** Hoy en la hora de la tienda: en UTC, después de las 18:00 ya sería mañana. */
 const today = () => dashboardDateKey();
 
@@ -51,6 +54,18 @@ export function ConteoDiarioView({ section = "DAMA", desktop = false }: { sectio
   const [busy, setBusy] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [editing, setEditing] = useState<DailyRow | null>(null);
+  const [present, setPresent] = useState<Presente[]>([]);
+  /** La última huella conocida del día; si cambia, es que alguien contó. */
+  const huellaVista = useRef<string | null>(null);
+  /** Cambió algo mientras había un marbete abierto: se recarga al cerrarlo. */
+  const pendienteDeRecargar = useRef(false);
+
+  /** Quién está en cada marbete, para pintarlo en su tarjeta. */
+  const contandoPorMarbete = useMemo(() => {
+    const mapa = new Map<number, string>();
+    for (const p of present) if (p.tagNumber !== null) mapa.set(p.tagNumber, p.userName);
+    return mapa;
+  }, [present]);
 
   const manager = user?.role === "GERENTE" || user?.role === "SUBGERENTE";
 
@@ -65,6 +80,86 @@ export function ConteoDiarioView({ section = "DAMA", desktop = false }: { sectio
     getSession().then(setUser);
     load();
   }, [load]);
+
+  /**
+   * Cierra el marbete y recarga si algo cambió mientras estaba abierto.
+   *
+   * Va aquí y no en cada sitio que cierra el editor: si un camino se olvida de
+   * llamarlo, la pantalla se queda con datos viejos y parece que el conteo en
+   * vivo no funciona.
+   */
+  const cerrarEditor = useCallback(() => {
+    setEditing(null);
+    if (pendienteDeRecargar.current) {
+      pendienteDeRecargar.current = false;
+      void load();
+    }
+  }, [load]);
+
+  /*
+   * El pulso: quién está contando y si algo cambió.
+   *
+   * ⚠️ **Mientras hay un marbete abierto NO se recarga la lista.** El latido
+   * sigue —para que los demás vean en cuál está— pero el estado se queda
+   * quieto: volver a pintar bajo los dedos de alguien que está tecleando una
+   * cantidad es la forma de perder una captura sin que nadie se entere. Si algo
+   * cambió mientras tanto queda anotado y se recarga al cerrar.
+   */
+  useEffect(() => {
+    if (!user) return;
+    let vivo = true;
+    const cuerpo = () =>
+      JSON.stringify({ section, date: today(), tagNumber: editing?.number ?? null });
+
+    const pulso = async () => {
+      try {
+        const response = await fetch("/api/conteos/diario/vivo", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: cuerpo(),
+          cache: "no-store"
+        });
+        if (!response.ok || !vivo) return;
+        const datos = (await response.json()) as { present: Presente[]; huella: string };
+        if (!vivo) return;
+
+        setPresent(datos.present ?? []);
+
+        if (huellaVista.current === null) {
+          huellaVista.current = datos.huella;
+          return;
+        }
+        if (datos.huella === huellaVista.current) return;
+
+        huellaVista.current = datos.huella;
+        if (editing) pendienteDeRecargar.current = true;
+        else void load();
+      } catch {
+        // Un corte de red no tiene que romper la pantalla: al siguiente pulso
+        // se recupera solo. Es lo mismo que hace el chat.
+      }
+    };
+
+    void pulso();
+    const reloj = setInterval(pulso, 3_000);
+    return () => {
+      vivo = false;
+      clearInterval(reloj);
+    };
+  }, [user, section, editing, load]);
+
+  // Al salir de la pantalla se avisa, para no dejar un fantasma doce segundos.
+  useEffect(() => {
+    if (!user) return;
+    return () => {
+      void fetch("/api/conteos/diario/vivo", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ section, date: today() }),
+        keepalive: true
+      }).catch(() => {});
+    };
+  }, [user, section]);
 
   async function openToday() {
     setBusy(true);
@@ -173,6 +268,18 @@ export function ConteoDiarioView({ section = "DAMA", desktop = false }: { sectio
           {open ? <Badge tone="success">Abierto</Badge> : null}
         </div>
 
+        {/* Quién más está en el conteo. Incluye a quien todavía no ha entrado a
+            ningún marbete: saber que alguien acaba de abrir la pantalla ya
+            cambia si sales tú a contar o no. */}
+        {present.length > 0 ? (
+          <p className="mt-3 flex items-center gap-1.5 text-xs font-semibold text-sky-700">
+            <span className="inline-block size-1.5 shrink-0 animate-pulse rounded-full bg-sky-500" />
+            {present.length === 1
+              ? `${present[0]?.userName} está contando`
+              : `${present.map((p) => p.userName).join(", ")} están contando`}
+          </p>
+        ) : null}
+
         {!open ? (
           manager ? (
             <button
@@ -214,7 +321,13 @@ export function ConteoDiarioView({ section = "DAMA", desktop = false }: { sectio
 
           <div className="space-y-2">
             {state.rows.map((row) => (
-              <RowCard key={row.number} row={row} rows={state.rows} onEdit={() => setEditing(row)} />
+              <RowCard
+                key={row.number}
+                row={row}
+                rows={state.rows}
+                onEdit={() => setEditing(row)}
+                contando={contandoPorMarbete.get(row.number)}
+              />
             ))}
           </div>
 
@@ -233,18 +346,18 @@ export function ConteoDiarioView({ section = "DAMA", desktop = false }: { sectio
             rows={state.rows}
             busy={busy}
             canRemove={manager && editing.position > 0}
-            onClose={() => setEditing(null)}
+            onClose={cerrarEditor}
             onSave={async (patch) => {
               await save(editing.number, patch);
-              setEditing(null);
+              cerrarEditor();
             }}
             onRemove={async () => {
               await remove(editing.number);
-              setEditing(null);
+              cerrarEditor();
             }}
             onRenumber={async (newNumber) => {
               await renumber(editing.number, newNumber);
-              setEditing(null);
+              cerrarEditor();
             }}
           />
         ) : null}
@@ -336,7 +449,18 @@ function SummaryBar({ summary }: { summary: DailySummary }) {
   );
 }
 
-function RowCard({ row, rows, onEdit }: { row: DailyRow; rows: DailyRow[]; onEdit: () => void }) {
+function RowCard({
+  row,
+  rows,
+  onEdit,
+  contando
+}: {
+  row: DailyRow;
+  rows: DailyRow[];
+  onEdit: () => void;
+  /** Nombre de quien tiene este marbete abierto ahora mismo, si hay alguien. */
+  contando?: string;
+}) {
   const movement = rowMovement(row);
   const check = checkRow(row, rows);
   const pendingSlot = nextSlot(row);
@@ -357,6 +481,16 @@ function RowCard({ row, rows, onEdit }: { row: DailyRow; rows: DailyRow[]; onEdi
         <p className="text-xs text-muted">
           Etiqueta {row.number} · antes {row.previous ?? "—"} · hoy {row.current ?? "—"}
         </p>
+        {/* Quién lo tiene abierto ahora mismo. Va ANTES del estado del conteo
+            porque es lo que evita el trabajo repetido: si Angie está en el 7,
+            no hay que entrar a contarlo también. Nunca dice cuánto lleva
+            tecleado — el conteo es ciego. */}
+        {contando ? (
+          <p className="mt-0.5 flex items-center gap-1.5 text-xs font-semibold text-sky-700">
+            <span className="inline-block size-1.5 shrink-0 animate-pulse rounded-full bg-sky-500" />
+            {contando} está contando este marbete
+          </p>
+        ) : null}
         {/* Qué conteo falta. Es lo que la persona necesita saber de un vistazo
             cuando va pasando marbete por marbete con la lista en la mano. */}
         {row.needsRecount ? (

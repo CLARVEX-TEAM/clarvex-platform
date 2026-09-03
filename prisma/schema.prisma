@@ -1053,10 +1053,10 @@ model ChatRoom {
 }
 
 model ChatMember {
-  id       String   @id @default(cuid())
+  id       String    @id @default(cuid())
   roomId   String
   userId   String
-  joinedAt DateTime @default(now())
+  joinedAt DateTime  @default(now())
   /// Ultima vez que esta persona estaba escribiendo en esta sala.
   ///
   /// Vive aqui y no en una tabla propia porque la fila ya existe: una tabla
@@ -1064,8 +1064,8 @@ model ChatMember {
   /// contrapartida. Se escribe como mucho una vez cada 3 s por persona, no en
   /// cada tecla.
   typingAt DateTime?
-  room     ChatRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
-  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  room     ChatRoom  @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([roomId, userId])
   @@index([userId])
@@ -1638,4 +1638,32 @@ model LegalAcceptance {
   @@unique([userId, document, version])
   @@index([userId, document])
   @@index([storeId, document])
+}
+
+/// Presencia efímera en un conteo: quién está mirando qué marbete ahora mismo.
+///
+/// ⚠️ **Vive en la base y no en memoria, y no es un lujo.** La versión anterior
+/// usaba un `Map` de proceso con el comentario «válido porque la app corre en un
+/// solo proceso PM2» — y PM2 corre en **cluster con dos instancias**. El latido
+/// caía en un proceso y la lectura en el otro, así que la presencia aparecía y
+/// desaparecía sola, que es justo el síntoma de «no se ve en vivo».
+///
+/// Es desechable: se limpia por tiempo, nadie la consulta después y perderla
+/// entera no rompe nada.
+model CountPresence {
+  id String @id @default(cuid())
+
+  /// Qué conteo. En el físico es el `CycleCount.id`; en el diario,
+  /// `storeId:sección:fecha`, porque la fila del día puede no existir todavía
+  /// —nadie ha guardado aún— y aun así hay gente contando.
+  countKey String
+
+  userId    String
+  userName  String
+  /// Marbete que tiene abierto. Nulo si está en la lista, sin entrar a ninguno.
+  tagNumber Int?
+  at        DateTime @default(now())
+
+  @@unique([countKey, userId])
+  @@index([countKey, at])
 }

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { isApiError, requireSession } from "@/lib/api";
-import { clearPresence, heartbeat, listPresence } from "@/lib/conteo-presence";
+import { claveFisico, latir, presentes, retirar } from "@/lib/conteo-presence";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -21,7 +21,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   const session = await requireSession();
   if (isApiError(session)) return session;
   if (!(await countInStore(id, session.storeId))) return NextResponse.json({ error: "Conteo no encontrado." }, { status: 404 });
-  return NextResponse.json({ present: listPresence(id, session.userId) }, { headers: { "Cache-Control": "no-store" } });
+  const present = await presentes(claveFisico(id), session.userId);
+  return NextResponse.json({ present }, { headers: { "Cache-Control": "no-store" } });
 }
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -32,7 +33,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const body = (await request.json().catch(() => ({}))) as { tagNumber?: number };
   const tagNumber = Number(body?.tagNumber);
   if (!Number.isFinite(tagNumber)) return NextResponse.json({ error: "tagNumber inválido." }, { status: 400 });
-  heartbeat(id, session.userId, session.name, tagNumber);
+  await latir(claveFisico(id), session.userId, session.name, tagNumber);
   return NextResponse.json({ ok: true });
 }
 
@@ -41,6 +42,6 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
   const session = await requireSession();
   if (isApiError(session)) return session;
   if (!(await countInStore(id, session.storeId))) return NextResponse.json({ error: "Conteo no encontrado." }, { status: 404 });
-  clearPresence(id, session.userId);
+  await retirar(claveFisico(id), session.userId);
   return NextResponse.json({ ok: true });
 }
