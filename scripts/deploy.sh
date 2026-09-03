@@ -32,6 +32,35 @@ cd "$APP"
 ANTES=$(git rev-parse HEAD)
 echo "[deploy] commit actual: $ANTES"
 
+# ── El ruido va a un archivo, no al registro del despliegue ───────────────
+#
+# ⚠️ **SSM corta la salida a ~24 000 caracteres.** `pnpm install` y
+# `next build` la llenan solos, así que los mensajes de este script —qué hizo
+# con la caché, cuánto disco quedaba, si aplicó una migración— se perdían por el
+# camino y el registro de GitHub llegaba cortado a la mitad.
+#
+# Poner guardarraíles cuyo comportamiento no se puede ver es no ponerlos. Lo
+# ruidoso se guarda entero en el servidor y aquí solo sale lo que se lee.
+REGISTRO=/home/ubuntu/logs/deploy-$(date +%Y%m%d-%H%M%S).log
+mkdir -p /home/ubuntu/logs
+
+# Se conservan dos semanas. Sin esto, arreglar el disco creando archivos para
+# siempre sería cambiar un problema por el mismo problema más tarde.
+find /home/ubuntu/logs -name 'deploy-*.log' -mtime +14 -delete 2>/dev/null || true
+
+# Ejecuta algo mandando su salida al archivo. Si falla, enseña la cola —que es
+# donde está el error— y devuelve el fallo.
+callado() {
+  local que="$1"; shift
+  echo "[deploy] $que…"
+  if "$@" >>"$REGISTRO" 2>&1; then
+    return 0
+  fi
+  echo "[deploy] ⚠️ falló: $que. Últimas líneas:"
+  tail -n 25 "$REGISTRO" | sed 's/^/    /'
+  return 1
+}
+
 comprobar_salud() {
   for i in $(seq 1 "$INTENTOS"); do
     if curl -sf --max-time 10 "$SALUD" | grep -q '"status":"ok"'; then
@@ -46,9 +75,9 @@ comprobar_salud() {
 volver_atras() {
   echo "[deploy] ⚠️ REVIRTIENDO a $ANTES"
   git reset --hard "$ANTES"
-  pnpm install --frozen-lockfile
-  pnpm exec prisma generate
-  pnpm run build
+  callado "reinstalando la versión anterior" pnpm install --frozen-lockfile || true
+  callado "regenerando Prisma" pnpm exec prisma generate || true
+  callado "reconstruyendo la versión anterior" pnpm run build || true
   pm2 restart clarvex-team --update-env
 
   if comprobar_salud; then
@@ -78,8 +107,13 @@ git merge --ff-only origin/main
 #
 # `--frozen-lockfile` a propósito: si el lockfile no cuadra con package.json,
 # se para en vez de resolver por su cuenta un árbol distinto al que se probó.
-pnpm install --frozen-lockfile
-pnpm exec prisma generate
+if ! callado "instalando dependencias" pnpm install --frozen-lockfile    || ! callado "generando el cliente de Prisma" pnpm exec prisma generate; then
+  # Nada se ha construido ni reiniciado: producción sigue con la versión
+  # anterior. Se devuelve el árbol ahí para que no quede en un commit que
+  # nunca llegó a ejecutarse.
+  git reset --hard "$ANTES"
+  exit 1
+fi
 
 # ── Migraciones ───────────────────────────────────────────────────────────
 #
@@ -165,7 +199,7 @@ fi
 #
 # Si el build falla no se reinicia nada: la versión que está corriendo sigue
 # viva y sirviendo. Es el mejor momento posible para fallar.
-if ! pnpm run build; then
+if ! callado "construyendo" pnpm run build; then
   echo "[deploy] el build falló. NO se reinicia; sigue corriendo la versión anterior."
   git reset --hard "$ANTES"
   exit 1
@@ -180,6 +214,7 @@ if ! comprobar_salud; then
 fi
 
 echo "[deploy] ✅ desplegado $DESPUES"
+echo "[deploy] detalle completo en $REGISTRO"
 [ "$MIGRO" = "1" ] && echo "[deploy] ⚠️ se aplicó una migración: una vuelta atrás del código NO la deshace."
 pm2 list | grep clarvex || true
 exit 0
