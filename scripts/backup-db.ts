@@ -25,7 +25,10 @@
  */
 import { spawn } from "node:child_process";
 import { readFileSync, existsSync } from "node:fs";
+import { writeFileSync, mkdirSync } from "node:fs";
+import { dirname } from "node:path";
 import { DeleteObjectCommand, ListObjectsV2Command, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import type { EstadoRespaldo, ResultadoDestino } from "../lib/backup-estado";
 
 const CONTAINER = process.env.BACKUP_PG_CONTAINER ?? "clarvex_postgres";
 const PREFIX = "backups/";
@@ -127,7 +130,13 @@ async function main() {
   }
   console.log(`[backup] retención ${RETENTION_DAYS} días: ${deleted} backup(s) viejos borrados. Total OK.`);
 
-  await copyToS3(key, dump);
+  const resultadoS3 = await copyToS3(key, dump);
+
+  escribirEstado({
+    terminadoEn: new Date().toISOString(),
+    r2: { estado: "ok", objeto: `r2://${bucket}/${key}`, bytes: dump.length },
+    s3: resultadoS3
+  });
 }
 
 /**
@@ -149,13 +158,13 @@ async function main() {
  * corre a diario. Tumbar el cron por la copia secundaria sería cambiar una
  * protección por otra.
  */
-async function copyToS3(key: string, dump: Buffer): Promise<void> {
+async function copyToS3(key: string, dump: Buffer): Promise<ResultadoDestino> {
   const bucket = process.env.BACKUP_S3_BUCKET ?? "";
   const accessKeyId = process.env.BACKUP_S3_ACCESS_KEY_ID ?? "";
   const secretAccessKey = process.env.BACKUP_S3_SECRET_ACCESS_KEY ?? "";
   if (!bucket || !accessKeyId || !secretAccessKey) {
     console.log("[backup] sin copia en S3 (BACKUP_S3_* no configurado).");
-    return;
+    return { estado: "sin-configurar" };
   }
 
   try {
@@ -172,10 +181,36 @@ async function copyToS3(key: string, dump: Buffer): Promise<void> {
       })
     );
     console.log(`[backup] copia cruzada en s3://${bucket}/${key}`);
+    return { estado: "ok", objeto: `s3://${bucket}/${key}`, bytes: dump.length };
   } catch (error) {
     const detail = error instanceof Error ? error.message : String(error);
     console.warn(`[backup] ⚠️  La copia en S3 falló: ${detail}`);
     console.warn("[backup] ⚠️  El respaldo de R2 SÍ se hizo. Revisa las credenciales BACKUP_S3_*.");
+    return { estado: "fallo", error: detail };
+  }
+}
+
+/**
+ * Escribe el resultado de ESTA ejecucion, por destino.
+ *
+ * ⚠️ Se sobrescribe entero a proposito. El monitor antes buscaba una linea en
+ * las ultimas veinte del registro, asi que un fallo de hoy quedaba tapado por un
+ * exito de ayer mientras siguiera visible. Aqui lo que se lee es siempre la
+ * ultima corrida.
+ *
+ * Que no se pueda escribir NO tumba el respaldo --ya esta hecho-- pero se avisa:
+ * un monitor ciego es peor que uno ruidoso.
+ */
+function escribirEstado(estado: EstadoRespaldo): void {
+  const ruta = process.env.BACKUP_ESTADO_PATH ?? "/home/ubuntu/logs/backup-estado.json";
+  try {
+    mkdirSync(dirname(ruta), { recursive: true });
+    writeFileSync(ruta, `${JSON.stringify(estado, null, 2)}\n`, "utf8");
+    console.log(`[backup] estado escrito en ${ruta}`);
+  } catch (error) {
+    const detalle = error instanceof Error ? error.message : String(error);
+    console.warn(`[backup] ⚠️  No se pudo escribir el estado en ${ruta}: ${detalle}`);
+    console.warn("[backup] ⚠️  El respaldo SI se hizo, pero el monitor no va a poder verlo.");
   }
 }
 

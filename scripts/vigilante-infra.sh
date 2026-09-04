@@ -35,21 +35,70 @@ RESUMEN=0
 
 problemas=()
 parte=()
+# ⚠️ Las DEGRADACIONES van aparte de los problemas. Perder la copia cruzada en
+# otra nube es serio, pero no es quedarse sin respaldo: si se mezclan, se leen
+# igual y el dia que de verdad no haya copia deja de destacar.
+degradaciones=()
 
 # --- 1) el respaldo de la base ------------------------------------------------
-log_respaldo="$LOGS/backup.log"
-if [ ! -f "$log_respaldo" ]; then
-  problemas+=("No existe $log_respaldo: el respaldo diario nunca ha corrido aqui.")
+#
+# ⚠️ **Se lee el ESTADO, no el registro.**
+#
+# Antes se buscaba «subido a r2://» en las ultimas veinte lineas de backup.log y
+# de ahi se anunciaba «en R2 y S3». Dos fallos en uno:
+#
+#   - S3 podia haber fallado --falla sin tumbar el respaldo, y eso es
+#     deliberado-- y el aviso decia que la copia estaba hecha.
+#   - Un fallo de HOY quedaba tapado por un exito de AYER mientras su linea
+#     siguiera dentro de las ultimas veinte.
+#
+# `scripts/backup-db.ts` escribe ahora un resultado por destino y lo sobrescribe
+# entero en cada corrida, asi que lo que se lee es siempre la ultima.
+estado_respaldo="${BACKUP_ESTADO_PATH:-$LOGS/backup-estado.json}"
+if [ ! -f "$estado_respaldo" ]; then
+  problemas+=("No existe $estado_respaldo: el respaldo diario nunca ha corrido aqui, o no pudo escribir su estado.")
 else
-  edad_min=$(( ( $(date +%s) - $(stat -c %Y "$log_respaldo") ) / 60 ))
-  edad_h=$(( edad_min / 60 ))
-  if [ "$edad_h" -ge "$RESPALDO_MAX_HORAS" ]; then
-    problemas+=("El respaldo de la base no corre desde hace ${edad_h} h. Deberia ser diario.")
-  elif ! tail -20 "$log_respaldo" | grep -q "subido a r2://"; then
-    problemas+=("El respaldo corrio hace ${edad_h} h pero NO subio a R2. Revisa $log_respaldo.")
+  leer_estado() { python3 -c "
+import json,sys,datetime
+with open('$estado_respaldo', encoding='utf-8') as f:
+    e = json.load(f)
+t = datetime.datetime.fromisoformat(e['terminadoEn'].replace('Z','+00:00'))
+horas = int((datetime.datetime.now(datetime.timezone.utc) - t).total_seconds() // 3600)
+r2, s3 = e.get('r2', {}), e.get('s3', {})
+mb = round(r2.get('bytes', 0) / 1048576, 1)
+print(f\"{horas}|{r2.get('estado','?')}|{s3.get('estado','?')}|{mb}|{r2.get('objeto','')}|{r2.get('error', s3.get('error',''))}\")
+" 2>/dev/null; }
+
+  if ! datos=$(leer_estado); then
+    problemas+=("No se pudo leer $estado_respaldo. El respaldo puede estar bien, pero el monitor esta ciego.")
   else
-    tam=$(tail -20 "$log_respaldo" | grep -oE "dump listo: [0-9.]+ MB" | tail -1)
-    parte+=("Respaldo: hace ${edad_h} h, ${tam:-tamano desconocido}, en R2 y S3.")
+    IFS='|' read -r edad_h estado_r2 estado_s3 tam_mb objeto detalle <<< "$datos"
+
+    if [ "${edad_h:-999}" -ge "$RESPALDO_MAX_HORAS" ]; then
+      problemas+=("El respaldo de la base no corre desde hace ${edad_h} h. Deberia ser diario.")
+    fi
+
+    # R2 es el respaldo de verdad: si falla, es un problema.
+    case "$estado_r2" in
+      ok) ;;
+      fallo)  problemas+=("El respaldo a R2 FALLO hace ${edad_h} h: ${detalle:-sin detalle}.") ;;
+      *)      problemas+=("R2 no esta configurado: no hay respaldo principal.") ;;
+    esac
+
+    # ⚠️ S3 va aparte y NO como problema: perder la segunda nube es serio, pero
+    # no es quedarse sin respaldo. Mezclarlos hace que se lean igual, y el dia
+    # que de verdad no haya copia tiene que destacar.
+    case "$estado_s3" in
+      ok) ;;
+      fallo) degradaciones+=("La copia cruzada en S3 fallo. El respaldo de R2 SI se hizo: ${detalle:-sin detalle}.") ;;
+      *)     degradaciones+=("Sin copia cruzada en S3: todo depende de un solo proveedor.") ;;
+    esac
+
+    if [ "$estado_r2" = "ok" ]; then
+      destinos="solo en R2"
+      [ "$estado_s3" = "ok" ] && destinos="en R2 y S3"
+      parte+=("Respaldo: hace ${edad_h} h, ${tam_mb} MB, ${destinos} (${objeto}).")
+    fi
   fi
 fi
 
@@ -158,8 +207,26 @@ avisar() {
 
 if [ "${#problemas[@]}" -gt 0 ]; then
   cuerpo=$(printf '%s\n\n' "${problemas[@]}")
+  # Las degradaciones viajan CON los problemas, debajo y separadas: quien lee el
+  # aviso tiene que ver las dos cosas sin que se confundan.
+  if [ "${#degradaciones[@]}" -gt 0 ]; then
+    cuerpo="$cuerpo"$'\n'"Ademas, funcionando a medias:"$'\n'"$(printf '%s\n' "${degradaciones[@]}")"
+  fi
   avisar "Algo necesita tu atencion" "$cuerpo"
-  echo "$(date '+%F %T') avisado: ${#problemas[@]} problema(s)"
+  echo "$(date '+%F %T') avisado: ${#problemas[@]} problema(s), ${#degradaciones[@]} degradacion(es)"
+  exit 1
+fi
+
+# ⚠️ **Una degradacion avisa igual, aunque no haya ningun problema.**
+#
+# Sin esto, quedarse sin la copia cruzada en S3 se callaba hasta el parte
+# semanal, y el parte decia «todo en orden». Un respaldo que depende de un solo
+# proveedor no es «todo en orden»: es lo que se descubre el dia que hace falta.
+if [ "${#degradaciones[@]}" -gt 0 ]; then
+  cuerpo=$(printf '%s\n\n' "${degradaciones[@]}")
+  cuerpo="$cuerpo"$'\n'"Lo demas esta bien:"$'\n'"$(printf '%s\n' "${parte[@]}")"
+  avisar "Funcionando a medias" "$cuerpo"
+  echo "$(date '+%F %T') avisado: ${#degradaciones[@]} degradacion(es)"
   exit 1
 fi
 
