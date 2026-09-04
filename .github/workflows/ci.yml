@@ -74,10 +74,10 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 20
 
@@ -103,7 +103,7 @@ jobs:
         run: echo "PNPM_STORE=$(pnpm store path --silent)" >> "$GITHUB_ENV"
 
       - name: Cache de dependencias
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: ${{ env.PNPM_STORE }}
           key: pnpm-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
@@ -134,10 +134,10 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 20
 
@@ -163,7 +163,7 @@ jobs:
         run: echo "PNPM_STORE=$(pnpm store path --silent)" >> "$GITHUB_ENV"
 
       - name: Cache de dependencias
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: ${{ env.PNPM_STORE }}
           key: pnpm-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
@@ -195,7 +195,7 @@ jobs:
 
       - name: Subir informe
         if: failure()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: informe-playwright
           path: playwright-report/
@@ -207,7 +207,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       # OSV-Scanner lee pnpm-lock.yaml y lo compara contra la base OSV (Google).
       # No depende del endpoint de auditoría de npm, que fue RETIRADO (respondía
@@ -215,7 +215,7 @@ jobs:
       # Falla el CI si encuentra una vulnerabilidad conocida. Para ignorar una
       # puntual y justificada (con fecha de revisión), usar un osv-scanner.toml.
       - name: OSV-Scanner (vulnerabilidades en dependencias)
-        uses: google/osv-scanner-action/osv-scanner-action@v2.5.1
+        uses: google/osv-scanner-action/osv-scanner-action@6e4298ebc4db23e847df9b2e2de2939d6f066c67 # v2.5.1
         with:
           scan-args: |-
             --config=osv-scanner.toml
@@ -237,10 +237,50 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           # Hacen falta los dos lados para poder comparar en un PR.
           fetch-depth: 0
+
+      # GitHub Secret Protection no esta disponible en repos privados del plan
+      # Free. TruffleHog cubre ese hueco sin otra Action de terceros: se baja
+      # una version fija, se comprueba su SHA-256 y se ejecuta localmente.
+      # `--no-verification` impide mandar candidatos a AWS, Slack u otros
+      # proveedores para comprobar si siguen activos.
+      - name: Escanear secretos con TruffleHog
+        env:
+          TRUFFLEHOG_VERSION: "3.97.4"
+          TRUFFLEHOG_SHA256: dc24007c2f233bd61c05beabeb44aa27ea9b43288166279209abe0458c5ce76b
+        run: |
+          set -euo pipefail
+
+          ARCHIVO="$RUNNER_TEMP/trufflehog.tar.gz"
+          BINARIO="$RUNNER_TEMP/trufflehog"
+          URL="https://github.com/trufflesecurity/trufflehog/releases/download/v${TRUFFLEHOG_VERSION}/trufflehog_${TRUFFLEHOG_VERSION}_linux_amd64.tar.gz"
+
+          curl -fsSL "$URL" -o "$ARCHIVO"
+          echo "$TRUFFLEHOG_SHA256  $ARCHIVO" | sha256sum --check --strict
+          tar -xzf "$ARCHIVO" -C "$RUNNER_TEMP" trufflehog
+
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE="${{ github.event.pull_request.base.sha }}"
+            HEAD="${{ github.event.pull_request.head.sha }}"
+          else
+            BASE="${{ github.event.before }}"
+            HEAD="${{ github.event.after }}"
+          fi
+
+          if [ "$BASE" = "0000000000000000000000000000000000000000" ]; then
+            BASE=""
+          fi
+
+          "$BINARIO" git "file://$GITHUB_WORKSPACE" \
+            --since-commit "$BASE" \
+            --branch "$HEAD" \
+            --fail \
+            --no-update \
+            --no-verification \
+            --github-actions
 
       - name: Buscar llaves privadas y volcados
         run: |

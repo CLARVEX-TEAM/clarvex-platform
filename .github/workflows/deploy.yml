@@ -16,13 +16,9 @@ on:
         required: true
         default: ''
 
-# ⚠️ `id-token: write` es lo que permite pedir el token de OIDC. Sin el, no hay
-# forma de asumir el rol de AWS. `contents: read` para poder leer el repo.
-#
-# Nada mas: este flujo no escribe en el repositorio.
-permissions:
-  id-token: write
-  contents: read
+# Ningun permiso por omision. El preflight solo puede leer Actions; el token
+# OIDC existe exclusivamente dentro del trabajo que ya paso esa validacion.
+permissions: {}
 
 # Dos despliegues a la vez sobre la misma maquina se pisan: uno construye
 # mientras el otro reinicia. Se encolan.
@@ -31,12 +27,77 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  validar:
+    name: Validar commit y CI
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      actions: read
+      contents: read
+
+    steps:
+      - name: Comprobar confirmacion, rama y CI
+        env:
+          CONFIRMAR: ${{ inputs.confirmar }}
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          REF: ${{ github.ref }}
+          SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+
+          if [ "$CONFIRMAR" != "DESPLEGAR" ]; then
+            echo "::error::Escribe DESPLEGAR en el campo de confirmacion."
+            exit 1
+          fi
+
+          if [ "$REF" != "refs/heads/main" ]; then
+            echo "::error::Production solo admite la rama main; recibida: $REF"
+            exit 1
+          fi
+
+          echo "Esperando CI verde para $SHA..."
+          for intento in $(seq 1 80); do
+            CORRIDA=$(gh api -X GET \
+              "repos/$REPO/actions/workflows/ci.yml/runs" \
+              -f head_sha="$SHA" \
+              -f event=push \
+              -f per_page=10 \
+              --jq '.workflow_runs[0] // {}')
+
+            ESTADO=$(echo "$CORRIDA" | jq -r '.status // "missing"')
+            CONCLUSION=$(echo "$CORRIDA" | jq -r '.conclusion // ""')
+            URL=$(echo "$CORRIDA" | jq -r '.html_url // ""')
+
+            if [ "$ESTADO" = "completed" ] && [ "$CONCLUSION" = "success" ]; then
+              echo "CI aprobada: $URL"
+              exit 0
+            fi
+
+            if [ "$ESTADO" = "completed" ]; then
+              echo "::error::CI termino con conclusion '$CONCLUSION': $URL"
+              exit 1
+            fi
+
+            if [ "$intento" -eq 80 ]; then
+              echo "::error::CI no termino correctamente en 20 minutos. Ultimo estado: $ESTADO"
+              exit 1
+            fi
+
+            sleep 15
+          done
+
   desplegar:
     name: Desplegar a produccion
     runs-on: ubuntu-latest
+    timeout-minutes: 25
+    needs: validar
+    permissions:
+      id-token: write
+      contents: read
 
-    # El entorno permite exigir aprobacion manual desde GitHub antes de que el
-    # trabajo arranque. Se configura en Settings > Environments > produccion.
+    # El entorno registra cada despliegue y restringe la rama a main. La
+    # aprobacion por revisor no esta disponible para este repo privado en Free.
     environment:
       # El nombre tiene que coincidir EXACTAMENTE con el entorno creado en
       # Settings > Environments. Si no coincide, GitHub crea uno nuevo con este
@@ -45,13 +106,6 @@ jobs:
       url: https://team.clarvex.tech
 
     steps:
-      - name: Comprobar la confirmacion
-        # Escribir la palabra evita el despliegue por dedazo desde el movil.
-        if: ${{ inputs.confirmar != 'DESPLEGAR' }}
-        run: |
-          echo "::error::Escribe DESPLEGAR en el campo de confirmacion."
-          exit 1
-
       # ⚠️ Credenciales TEMPORALES por OIDC. No hay AWS_ACCESS_KEY_ID ni
       # AWS_SECRET_ACCESS_KEY guardados en GitHub: duran lo que dura esta
       # ejecucion y no sirven fuera de ella.
@@ -141,14 +195,27 @@ jobs:
         # ⚠️ Se llega por SSM y NO por ssh a proposito: no hace falta abrir el
         # puerto 22 a los rangos de GitHub —que son enormes— ni guardar una
         # llave privada en los secretos del repositorio.
+        env:
+          TARGET_SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
+
+          if ! [[ "$TARGET_SHA" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::SHA de despliegue invalido: $TARGET_SHA"
+            exit 1
+          fi
+
+          # Se ejecuta el deploy.sh guardado en el commit aprobado, incluso la
+          # primera vez que esta mejora llegue al servidor. El propio script
+          # vuelve a comprobar que main no haya avanzado durante la operacion.
+          COMANDO="sudo -u ubuntu bash -lc 'cd /home/ubuntu/clarvex-app && git fetch origin main && test \"\$(git rev-parse origin/main)\" = \"$TARGET_SHA\" && git show \"$TARGET_SHA:scripts/deploy.sh\" | bash -s -- \"$TARGET_SHA\"'"
+          PARAMETROS=$(jq -cn --arg command "$COMANDO" '{commands:[$command]}')
 
           ID=$(aws ssm send-command \
             --instance-ids "${{ vars.AWS_INSTANCE_ID }}" \
             --document-name "AWS-RunShellScript" \
             --comment "Deploy ${{ github.sha }} por ${{ github.actor }}" \
-            --parameters 'commands=["sudo -u ubuntu bash /home/ubuntu/clarvex-app/scripts/deploy.sh"]' \
+            --parameters "$PARAMETROS" \
             --timeout-seconds 900 \
             --query 'Command.CommandId' --output text)
 

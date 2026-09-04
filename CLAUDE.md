@@ -124,6 +124,11 @@ corre en una maquina de 3.7 GB donde `next build` tarda minutos apoyandose en
 swap; desplegar en cada commit encadenaria builds que no caben a la vez. Lo que
 se quita es el `ssh` a mano, no la decision.
 
+Desde el hardening del 3 de septiembre, manual ya no significa «confiar en que
+se esperó suficiente»: el job `Validar commit y CI` exige `main`, comprueba la
+palabra `DESPLEGAR` y espera hasta 20 minutos a que **la CI del mismo SHA**
+termine verde. Solo entonces arranca el job que puede pedir OIDC.
+
 ```
 GitHub Actions --(OIDC)--> AWS STS --(SSM SendCommand)--> EC2
                                                             `-> scripts/deploy.sh
@@ -134,9 +139,14 @@ GitHub Actions --(OIDC)--> AWS STS --(SSM SendCommand)--> EC2
   credenciales de una hora y se acaban con la ejecucion.
 - **Por SSM y no por ssh**, para no abrir el puerto 22 a los rangos de GitHub
   —que son enormes— ni guardar una llave privada en el repositorio.
-- `scripts/deploy.sh` guarda el commit anterior, y si el build falla no reinicia
-  nada; si la salud no responde tras 12 intentos, revierte. Sale con 1 si
-  revirtio y 2 si ni la version anterior levanta.
+- `scripts/deploy.sh` recibe el SHA aprobado, exige que siga siendo exactamente
+  `origin/main`, guarda el commit anterior y despliega ese objetivo. Si `main`
+  avanzó mientras la corrida esperaba, aborta y obliga a lanzar otra. Si el
+  build falla no reinicia nada; si la salud no responde tras 12 intentos,
+  revierte. Sale con 1 si revirtio y 2 si ni la version anterior levanta.
+- SSM ejecuta la copia de `scripts/deploy.sh` guardada en el commit aprobado con
+  `git show`, no la copia vieja que casualmente esté en disco. Así la validación
+  del SHA funciona desde el primer despliegue que use esta versión del workflow.
 
 ### ⚠️ El sujeto del token lleva IDENTIFICADORES, no solo los nombres
 
@@ -172,11 +182,12 @@ GitHub cambia esa parte del sujeto de `ref:refs/heads/main` a
 sitio donde se puede exigir aprobacion manual, asi que atarlo ahi impide que un
 flujo nuevo asuma el rol saltandose la aprobacion.
 
-### ⚠️ Cero acciones de terceros
+### ⚠️ Cero acciones de terceros en el deploy
 
-La organizacion solo permite acciones propiedad de GitHub, asi que
-`aws-actions/configure-aws-credentials` **no se puede usar**. El canje se hace a
-mano con `curl` y el CLI de AWS, que ya viene en el runner.
+La organizacion permite acciones propiedad de GitHub y una excepción acotada
+para OSV en CI. El deploy no usa ninguna acción de terceros:
+`aws-actions/configure-aws-credentials` **no está permitida** y el canje se hace
+a mano con `curl` y el CLI de AWS, que ya viene en el runner.
 
 Se podria haber permitido la accion. Se prefiere esto: el despliegue es lo unico
 del repositorio que puede tocar produccion, y que no ejecute codigo de terceros
@@ -424,7 +435,8 @@ Configuración conservada:
 
 - issues ON, projects ON, wiki OFF;
 - sin secrets ni variables de Actions;
-- environments `Preview` y `Production`, sin reglas todavía;
+- environments `Preview` y `Production`; Production restringido a `main`, sin
+  revisor obligatorio porque esa protección no existe en private + Free;
 - sin webhooks;
 - deploy key `Vps`, retirada (ya no figura el 2 de septiembre de 2026);
 - deploy key `Clarvex aws`, verificada, read-only;
@@ -439,7 +451,7 @@ Cambios observados por el movimiento a organización:
 - `allow_forking` pasó de `true` a `false`.
 - Actions heredó la política restringida de `CLARVEX-TEAM`: `allowed_actions`
   quedó en `selected`, GitHub-owned actions permitidas, verified creators
-  desactivado, allowlist vacía, workflow token en `read`.
+  desactivado, allowlist limitada a OSV Scanner y workflow token en `read`.
 - `edsomo94` aparece como outside collaborator de la organización.
 
 ⚠️ **`main` NO se puede proteger con este plan.** La organizacion esta en
@@ -449,12 +461,32 @@ configurarlo; hoy no se puede sin pagar o sin hacer publico el repositorio.
 Lo que si esta puesto es que el entorno `Production` solo despliega desde
 `main`, que cubre la via por la que se toca produccion.
 
-⚠️ **Pendiente después de transferir:** añadir CI, decidir
-required checks cuando estén verdes, 
-y completar
-Dependabot/CodeQL/CODEOWNERS/equipos por repo. No se activó CD, no se creó AWS
-OIDC, no se tocaron secrets, AWS, Retool, Slack, producción, ramas, tags ni
-historial.
+### GitHub: hardening gratuito cerrado — 3 de septiembre de 2026
+
+Se completó lo que GitHub Free sí permite sin volver público el código:
+
+- CI en push/PR con TypeScript, ESLint, tests, build + Playwright, OSV Scanner y
+  control de secretos. Las Actions están fijadas a commits completos; el tag de
+  versión queda solo como comentario legible.
+- TruffleHog OSS 3.97.4 se descarga como binario, se valida con SHA-256 y escanea
+  únicamente el rango nuevo. Corre con `--no-verification` y `--no-update`: no
+  consulta AWS, Slack ni otros proveedores con los candidatos detectados y no
+  abre otra Action de terceros en la política de la organización.
+- Dependency graph, Dependabot alerts, security updates y version updates
+  activos. Dependabot abre PRs, pero no tiene auto-merge.
+- Deploy manual por OIDC + SSM con preflight de CI y commit exacto. `id-token`
+  no existe en el preflight; solo se concede al job de Production después de la
+  validación. Este hardening no ejecutó ningún despliegue.
+- Repo con descripción, homepage `https://clarvex.tech` y topics técnicos.
+- Invitación pendiente de `esoriamontes@gmail.com` cancelada. El único owner y
+  miembro sigue siendo `jhernandezl2c-hash`; `edsomo94` conserva acceso directo
+  read como outside collaborator; `developers` y `maintainers` siguen vacíos.
+- Deploy key `Vps` retirada; `Clarvex aws` permanece verificada y read-only.
+
+Lo que queda fuera exige pago: branch protection/rulesets y required checks en
+el repo privado, CODEOWNERS efectivo, aprobación obligatoria del environment,
+CodeQL y Secret Protection (secret scanning + push protection) nativos. No se
+intentaron activar y no se contrató ningún servicio.
 
 ## Captura por Telegram — 26 al 28 de agosto de 2026
 
