@@ -1,12 +1,24 @@
 import { PrismaClient } from "@prisma/client";
-import { assertSafeTestEnvironment } from "./helpers";
+import { assertSafeDatabaseRecords, assertSafeTestEnvironment } from "./helpers";
 import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
 
 export async function seedTestDatabase() {
-  // 1. Double check we are in a safe test environment
+  /*
+   * ⚠️ **DOS comprobaciones, y la segunda es la que faltaba.**
+   *
+   * `assertSafeTestEnvironment` mira la URL: que exista `TEST_DATABASE_URL`, que
+   * el nombre lleve «test» y que no sea la base principal. Eso NO basta: una
+   * base llamada `clarvex_team_test` con datos reales dentro pasa esa
+   * comprobación y el `TRUNCATE ... CASCADE` de abajo se los lleva todos.
+   *
+   * `assertSafeDatabaseRecords` mira el CONTENIDO: si hay un usuario sin
+   * prefijo `TEST-` o una tienda que no sea sintética, se aborta antes de
+   * borrar nada. La comprobación ya existía y el seed no la llamaba.
+   */
   assertSafeTestEnvironment();
+  await assertSafeDatabaseRecords(prisma);
 
   console.log("Cleaning test database...");
   
@@ -90,7 +102,51 @@ export async function seedTestDatabase() {
     }
   });
 
-  console.log("✔ Test database seeded successfully.");
+  /*
+   * ⚠️ **Una SEGUNDA tienda, y con datos propios.**
+   *
+   * Con una sola no se puede probar lo que de verdad importa: que una tienda no
+   * vea la de al lado. Una prueba de aislamiento contra una base con un solo
+   * inquilino pasa siempre, y no demuestra nada.
+   *
+   * Los identificadores llevan el prefijo `TEST-` como todo lo demas: es lo que
+   * `assertSafeDatabaseRecords` usa para saber que la base se puede borrar.
+   */
+  const tiendaVecina = await prisma.store.create({
+    data: {
+      id: "TEST-STORE-002",
+      name: "Tienda Test Sur",
+      billingExempt: true
+    }
+  });
+
+  await prisma.user.create({
+    data: {
+      id: "test-manager-2",
+      employeeNumber: "TEST-GER-002",
+      email: "test-ger-002@clarvex.local",
+      name: "Gerente Test Sur",
+      pinHash,
+      role: "GERENTE",
+      storeId: tiendaVecina.id,
+      active: true
+    }
+  });
+
+  await prisma.user.create({
+    data: {
+      id: "test-advisor-3",
+      employeeNumber: "TEST-ADV-003",
+      email: "test-adv-003@clarvex.local",
+      name: "Asesor Test Sur",
+      pinHash,
+      role: "ASESOR",
+      storeId: tiendaVecina.id,
+      active: true
+    }
+  });
+
+  console.log("✔ Test database seeded successfully (2 tiendas sintéticas).");
 }
 
 if (require.main === module) {

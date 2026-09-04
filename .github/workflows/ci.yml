@@ -203,7 +203,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
-          node-version: 20
+          node-version-file: .nvmrc
 
       # ⚠️ pnpm por COREPACK, no por `pnpm/action-setup`. La organizacion solo
       # permite acciones propiedad de GitHub, y esa no lo es: con ella la CI ni
@@ -268,7 +268,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
-          node-version: 20
+          node-version-file: .nvmrc
 
       # ⚠️ pnpm por COREPACK, no por `pnpm/action-setup`. La organizacion solo
       # permite acciones propiedad de GitHub, y esa no lo es: con ella la CI ni
@@ -472,7 +472,7 @@ jobs:
     permissions:
       contents: read
     if: always()
-    needs: [cambios, operativos, secretos, quality, visual, audit]
+    needs: [cambios, operativos, secretos, quality, visual, audit, integracion]
     steps:
       - name: Resumir el resultado
         env:
@@ -483,6 +483,7 @@ jobs:
             quality=${{ needs.quality.result }}
             visual=${{ needs.visual.result }}
             audit=${{ needs.audit.result }}
+            integracion=${{ needs.integracion.result }}
         run: |
           set -euo pipefail
           echo "$RESULTADOS" | tr ' ' '\n' | sed '/^$/d' | sed 's/^/  /'
@@ -508,3 +509,89 @@ jobs:
           done
 
           exit "$FALLO"
+
+  # ── Integracion con base efimera ──────────────────────────────────────────
+  #
+  # ⚠️ Corre en CI y NO en local, y eso es deliberado: aqui hay un Postgres que
+  # nace y muere con el trabajo, con credenciales de mentira y sin un solo dato
+  # real. En una maquina de desarrollo no hay garantia de eso, y el seed hace
+  # `TRUNCATE ... CASCADE` sobre todas las tablas.
+  #
+  # ⚠️ Las llamadas a servicios externos se bloquean por variables de entorno
+  # vacias o falsas. Ninguna prueba debe alcanzar R2, Slack, Bedrock ni Mercado
+  # Pago: una prueba que manda un mensaje de verdad es un incidente.
+  integracion:
+    name: Integracion con base efimera
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    needs: cambios
+    if: needs.cambios.outputs.codigo == 'true'
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: clarvex
+          POSTGRES_PASSWORD: contrasena-de-ci-sin-valor
+          POSTGRES_DB: clarvex_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U clarvex -d clarvex_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      # ⚠️ El nombre lleva «test» y el host es local: las dos condiciones que
+      # `assertSafeTestEnvironment` exige antes de dejar borrar nada.
+      TEST_DATABASE_URL: postgresql://clarvex:contrasena-de-ci-sin-valor@127.0.0.1:5432/clarvex_test
+      DATABASE_URL: postgresql://clarvex:contrasena-de-ci-sin-valor@127.0.0.1:5432/clarvex_test
+      NODE_ENV: test
+      AUTH_SECRET: clave-de-ci-con-al-menos-32-caracteres
+      WEBAUTHN_RP_ID: localhost
+      WEBAUTHN_RP_NAME: Clarvex Team
+      WEBAUTHN_ORIGIN: http://127.0.0.1:3100
+      # Servicios externos: vacios A PROPOSITO. Con la variable vacia el codigo
+      # toma el camino de «no configurado» en vez de intentar salir a la red.
+      R2_ACCOUNT_ID: ""
+      SLACK_BOT_TOKEN: ""
+      SLACK_SIGNING_SECRET: ""
+      BEDROCK_ACCESS_KEY_ID: ""
+      MP_ACCESS_TOKEN: ""
+      WEBHOOK_URL: ""
+      RESEND_API_KEY: ""
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version-file: .nvmrc
+
+      - name: Activar pnpm por corepack
+        env:
+          COREPACK_ENABLE_DOWNLOAD_PROMPT: "0"
+        run: |
+          corepack enable
+          corepack prepare --activate
+          pnpm --version
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma client
+        run: pnpm exec prisma generate
+
+      - name: Aplicar migraciones en la base efimera
+        run: pnpm exec prisma migrate deploy
+
+      - name: Sembrar dos tiendas sinteticas
+        run: pnpm exec tsx tests/seed-test-db.ts
+
+      - name: Pruebas de integracion y aislamiento entre tiendas
+        run: pnpm exec tsx --test tests/integracion/*.test.ts
