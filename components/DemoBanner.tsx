@@ -24,7 +24,15 @@ export function DemoBanner() {
 
   async function exit() {
     await logout().catch(() => undefined);
-    window.location.href = "https://clarvex.tech";
+    /*
+     * ⚠️ **A la página del producto, NO a `clarvex.tech`.**
+     *
+     * Ese es el sitio de la agencia y su llamada principal es «Cotizar
+     * proyecto». Quien acababa de ver el producto aterrizaba en una oferta de
+     * desarrollo a medida, que es exactamente la contradicción por la que
+     * Cloudflare rechazó la solicitud en septiembre de 2026.
+     */
+    window.location.href = "/producto";
   }
 
   return (
