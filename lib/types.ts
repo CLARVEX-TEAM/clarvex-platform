@@ -40,7 +40,31 @@ export type User = {
   vacationTaken?: number;
   /** Ya capturadas en Horarios pero aún por venir: no descuentan todavía. */
   vacationPlanned?: number;
+  /**
+   * ⚠️ **Es el saldo BASE, no el disponible** — al revés que `vacationDays`.
+   * Esa asimetría es histórica y no se toca: los formularios de Equipo precargan
+   * este campo para editar la base, y convertirlo en «disponible» haría que al
+   * guardar se escribiera el saldo calculado como base, contando dos veces lo
+   * ganado y lo tomado. Para el saldo real está `paidAvailable`.
+   */
   paidDays?: number;
+  /** Días pagados REALES que le quedan (base + ganado − tomado). */
+  paidAvailable?: number;
+  paidBaseline?: number;
+  paidEarned?: number;
+  paidTaken?: number;
+  /** Ya capturados en Horarios pero aún por venir: no descuentan todavía. */
+  paidPlanned?: number;
+  /**
+   * Banco de horas, en MINUTOS.
+   *
+   * ⚠️ El nombre lleva la unidad porque `hoursOwed` está en HORAS y este en
+   * minutos: mezclarlos da un saldo sesenta veces mayor sin que nada avise.
+   */
+  hoursBalanceMinutes?: number;
+  hoursAdjustmentMinutes?: number;
+  hoursEarnedMinutes?: number;
+  hoursSpentMinutes?: number;
   active?: boolean;
   platformAdmin?: boolean;
   /** Usuario "kiosko" de la tienda: solo ve el checklist (escaneos del cierre). */

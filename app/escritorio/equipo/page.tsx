@@ -9,6 +9,7 @@ import { Badge, ProfileAvatar } from "@/components/ui";
 import { useToast } from "@/components/Toast";
 import { useDesktopData } from "@/components/desktop/useDesktopData";
 import { DesktopError } from "@/components/desktop/DesktopError";
+import { SaldosEquipo } from "@/components/desktop/SaldosEquipo";
 import {
   DeskButton, DeskEmpty, DeskMeter, DeskReveal, DeskRule, DeskSection, DeskSkeleton,
   deskInput, deskTd, deskTdMuted, deskTh, deskThead, deskTr
@@ -83,7 +84,15 @@ export default function EscritorioEquipo() {
     setEditRows(data.users.map((u) => ({
       id: u.id, name: u.name, photoUrl: u.photoUrl,
       birthDate: u.birthDate ?? "", hireDate: u.hireDate ?? "",
-      hoursOwed: String(u.hoursOwed ?? 0), vacationDays: String(u.vacationDays ?? 0), paidDays: String(u.paidDays ?? 0)
+      // ⚠️ `vacationBaseline`, NO `vacationDays`. El segundo es el saldo YA
+      // CALCULADO (base + ganado − tomado); precargarlo aquí hacía que al
+      // guardar la fila se escribiera ese número como si fuera la base, y a
+      // partir de ahí lo ganado y lo tomado se contaban dos veces. El saldo se
+      // desviaba cada vez que alguien guardaba, en silencio.
+      //
+      // En la pantalla del móvil ya estaba bien; esto es la misma corrección
+      // que no se portó a escritorio.
+      hoursOwed: String(u.hoursOwed ?? 0), vacationDays: String(u.vacationBaseline ?? u.vacationDays ?? 0), paidDays: String(u.paidDays ?? 0)
     })));
   }, [data]);
 
@@ -202,7 +211,19 @@ export default function EscritorioEquipo() {
           de la tabla de equipo. En escritorio un horario semanal ES una
           cuadrícula, y así además se comparan turnos entre personas de un
           vistazo, que es justo lo que el gerente necesita. */}
+      {/* Los saldos van ANTES de horarios y de la tabla editable: es la
+          pregunta que se hace primero --«¿cuánto le debo a cada quien?»-- y la
+          que hoy no se podía responder sin abrir persona por persona. */}
       <DeskReveal index={1}>
+        <DeskSection
+          title="Saldos del equipo"
+          hint="Horas, días pagados y vacaciones que le quedan HOY a cada persona. Debajo de cada número, de dónde sale."
+        >
+          <SaldosEquipo gente={members} />
+        </DeskSection>
+      </DeskReveal>
+
+      <DeskReveal index={2}>
         <DeskSection
           title="Horarios de la semana"
           hint="Una fila por persona, una columna por día. El día de hoy va resaltado."
@@ -278,7 +299,7 @@ export default function EscritorioEquipo() {
 
       <DeskRule />
 
-      <DeskReveal index={2}>
+      <DeskReveal index={3}>
         <DeskSection
           title="Fechas y saldos del equipo"
           hint="Cumpleaños, ingreso y saldos. Se guarda persona por persona."

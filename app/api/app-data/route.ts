@@ -4,6 +4,7 @@ import { buildUserDashboardKpi, dashboardDateKey, dashboardDateRange } from "@/l
 import { toKpiPayload } from "@/lib/kpi-payload";
 import { prisma } from "@/lib/prisma";
 import { signR2Url } from "@/lib/r2";
+import { hoursBalances } from "@/lib/hours-account";
 import { paidDaysBalances } from "@/lib/paid-days-account";
 import { vacationBalances } from "@/lib/vacation-account";
 import { RP_ID } from "@/lib/webauthn";
@@ -79,6 +80,9 @@ export async function GET(request: Request) {
   // Mismo motivo para el pago de días: se gana solo cada semana que se descansa
   // de menos, y el campo crudo se desfasa en silencio.
   const paid = await paidDaysBalances(users.map((user) => user.id));
+  // Y el banco de horas, que hasta ahora solo salia por /api/attendance: sin el
+  // no habia forma de ver los tres saldos de una persona en el mismo sitio.
+  const hours = await hoursBalances(users.map((user) => user.id));
 
   /*
    * Quién tiene biometría USABLE EN ESTE DOMINIO.
@@ -105,6 +109,7 @@ export async function GET(request: Request) {
       const canSeeBalances = manager || user.id === session.userId;
       const days = vacation.get(user.id);
       const paidBalance = paid.get(user.id);
+      const hoursBalance = hours.get(user.id);
       return {
         id: user.id, name: user.name, employeeNumber: user.employeeNumber, role: user.role, avatar: user.name.slice(0, 2).toUpperCase(), photoUrl: user.photoUrl, biometricEnabled: withCredential.has(user.id), lastLoginAt: user.lastLoginAt?.toISOString() ?? null,
         birthDate: user.birthDate ? user.birthDate.toISOString().slice(0, 10) : null,
@@ -116,7 +121,37 @@ export async function GET(request: Request) {
           vacationEarned: days?.earned ?? 0,
           vacationTaken: days?.taken ?? 0,
           vacationPlanned: days?.planned ?? 0,
-          paidDays: user.paidDays
+          paidDays: user.paidDays,
+
+          /*
+           * ⚠️ **Campos NUEVOS, no renombrados.** `paidDays` sigue siendo el
+           * saldo BASE tal cual está en la base de datos, porque es lo que
+           * precargan los formularios de Equipo. Cambiarle el significado a
+           * «disponible» haría que al guardar esa fila se escribiera el saldo
+           * ya calculado como si fuera la base, y lo ganado y lo tomado se
+           * contarían dos veces. Es exactamente el fallo que arrastra
+           * `vacationDays`, y no se replica aquí.
+           *
+           * `paidDaysBalances` ya se calculaba arriba y se tiraba: el resultado
+           * no llegaba a ninguna pantalla.
+           */
+          paidAvailable: paidBalance?.available ?? user.paidDays,
+          paidBaseline: paidBalance?.baseline ?? user.paidDays,
+          paidEarned: paidBalance?.earned ?? 0,
+          paidTaken: paidBalance?.taken ?? 0,
+          paidPlanned: paidBalance?.planned ?? 0,
+
+          /*
+           * ⚠️ El banco de horas va en MINUTOS, no en horas. `User.hoursOwed`
+           * es un Float en horas y `hoursBalances` lo multiplica por 60 para
+           * poder sumarle los minutos de cada día de asistencia. Mandar las dos
+           * unidades con el mismo nombre es la receta para un saldo 60 veces
+           * mayor, así que el nombre lo dice.
+           */
+          hoursBalanceMinutes: hoursBalance?.balance ?? Math.round(user.hoursOwed * 60),
+          hoursAdjustmentMinutes: hoursBalance?.adjustment ?? Math.round(user.hoursOwed * 60),
+          hoursEarnedMinutes: hoursBalance?.earned ?? 0,
+          hoursSpentMinutes: hoursBalance?.spent ?? 0
         } : {}),
         active: user.active,
         checklistOnly: user.checklistOnly
