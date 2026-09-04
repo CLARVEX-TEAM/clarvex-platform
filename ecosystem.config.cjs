@@ -13,13 +13,34 @@
 // migrar: si va justo (Postgres + n8n + Uptime Kuma + etc. ya cargan el server),
 // baja a `instances: 1` — con 1 sola, `reload` deja de ser sin-caída, pero al
 // menos el resto queda parametrizado.
+const path = require("node:path");
+
 module.exports = {
   apps: [
     {
       name: "clarvex-team",
+      /*
+       * ⚠️ **Rutas ABSOLUTAS derivadas de este archivo, no relativas.**
+       *
+       * Sin esto, PM2 resuelve las rutas contra el directorio desde el que se
+       * arrancó, que hoy es `/home/ubuntu/clarvex-app` por costumbre y nada
+       * más. Con despliegues por versiones cada una vive en su propio
+       * directorio, y `pm2 reload <version>/ecosystem.config.cjs` tiene que
+       * levantar ESA versión, no la que estuviera activa cuando alguien corrió
+       * `pm2 start` hace meses.
+       *
+       * `__dirname` es el directorio de este archivo, así que cada copia apunta
+       * a la suya. En la instalación actual da exactamente la misma ruta que
+       * antes: el cambio no altera el comportamiento vigente.
+       *
+       * Se evita a propósito el enlace `actual`: PM2 guarda la ruta que
+       * resolvió, así que apuntar al enlace deja la duda de si al recargar
+       * sigue la vieja. Una ruta concreta no tiene esa duda.
+       */
+      cwd: __dirname,
       // Se apunta al binario de Next (un script de Node) para que PM2 lo pueda
       // clonar en modo cluster. `pnpm start`/`npm start` NO sirve en cluster.
-      script: "node_modules/next/dist/bin/next",
+      script: path.join(__dirname, "node_modules/next/dist/bin/next"),
       args: "start",
       interpreter: "node",
       exec_mode: "cluster",
