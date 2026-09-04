@@ -126,3 +126,42 @@ export function vacationEarnedBetween(hireDate: Date, after: Date, until: Date):
   }
   return earned;
 }
+
+/** Lo que Horarios dice de un día concreto de una persona. */
+export type DiaDeHorario = { userId: string; date: Date; status: string };
+
+/**
+ * Quita los días que Asistencia llama vacaciones pero Horarios contradice.
+ *
+ * ⚠️ **HORARIOS MANDA.** Un DESCANSO que cae dentro de un periodo de vacaciones
+ * NO gasta un día de vacaciones: la persona iba a descansar ese día de todas
+ * formas. Asistencia, en cambio, marca `VACATION` el tramo entero —incluidos
+ * los descansos de en medio— y sumar las dos tablas contaba esos días como
+ * consumidos.
+ *
+ * Pasó de verdad con Waira en julio de 2026: tomó **12** días de vacaciones y
+ * el saldo le restó **16**, dejándola en 0 cuando le quedaban 4. Los cuatro de
+ * más eran el domingo 19, el lunes 20, el miércoles 29 y el jueves 30, los
+ * cuatro marcados DESCANSO en Horarios.
+ *
+ * Que Horarios sea la fuente de verdad de qué es cada día no es una decisión
+ * nueva: es la misma por la que las pantallas dejaron de adivinar quién trabaja
+ * a partir de la meta del RDV.
+ *
+ * Un día SIN fila en Horarios se conserva: ahí Asistencia es lo único que hay,
+ * y descartarlo perdería vacaciones que sí se tomaron.
+ */
+export function soloLasQueHorariosConfirma(
+  candidatos: VacationDayRow[],
+  horarios: DiaDeHorario[]
+): VacationDayRow[] {
+  const clave = (userId: string, date: Date) => `${userId}|${date.toISOString().slice(0, 10)}`;
+
+  const dice = new Map<string, string>();
+  for (const dia of horarios) dice.set(clave(dia.userId, dia.date), dia.status);
+
+  return candidatos.filter((fila) => {
+    const loQueDice = dice.get(clave(fila.userId, fila.date));
+    return loQueDice === undefined || loQueDice === "VACATION";
+  });
+}

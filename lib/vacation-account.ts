@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { resolveMonterreyDate } from "@/lib/cron-time";
-import { splitVacationDays, vacationEarnedBetween } from "@/lib/vacations";
+import { soloLasQueHorariosConfirma, splitVacationDays, vacationEarnedBetween } from "@/lib/vacations";
 
 /**
  * Saldo REAL de vacaciones de una persona.
@@ -58,7 +58,7 @@ export async function vacationBalances(userIds: string[], now = new Date()): Pro
   // siguiente. Sin esto, un día de vacaciones se descontaría antes de terminar.
   const today = resolveMonterreyDate(now).utcDate;
 
-  const [attendance, schedules] = await Promise.all([
+  const [attendance, schedules, loQueDiceHorarios] = await Promise.all([
     prisma.attendance.findMany({
       where: { userId: { in: userIds }, status: "VACATION", date: { gt: earliest } },
       select: { userId: true, date: true }
@@ -66,9 +66,21 @@ export async function vacationBalances(userIds: string[], now = new Date()): Pro
     prisma.schedule.findMany({
       where: { userId: { in: userIds }, status: "VACATION", date: { gt: earliest } },
       select: { userId: true, date: true }
+    }),
+    /*
+     * Horarios ENTERO de la ventana, no solo lo marcado como vacaciones: es lo
+     * único que permite saber cuándo Horarios CONTRADICE a Asistencia. Sin
+     * esto, un descanso dentro del periodo se contaba como día de vacaciones
+     * gastado, porque Asistencia marca el tramo completo.
+     */
+    prisma.schedule.findMany({
+      where: { userId: { in: userIds }, date: { gt: earliest } },
+      select: { userId: true, date: true, status: true }
     })
   ]);
-  const days = splitVacationDays([...attendance, ...schedules], earliest, today);
+
+  const confirmados = soloLasQueHorariosConfirma([...attendance, ...schedules], loQueDiceHorarios);
+  const days = splitVacationDays(confirmados, earliest, today);
 
   return new Map(users.map((user) => {
     const baselineAt = user.vacationBaselineAt;
