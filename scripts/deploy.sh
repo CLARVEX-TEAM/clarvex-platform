@@ -22,6 +22,12 @@ APP=/home/ubuntu/clarvex-app
 SALUD=https://team.clarvex.tech/api/health
 INTENTOS=12
 ESPERA=5
+OBJETIVO=${1:-}
+
+if [ -n "$OBJETIVO" ] && ! [[ "$OBJETIVO" =~ ^[0-9a-f]{40}$ ]]; then
+  echo "[deploy] SHA objetivo invalido: $OBJETIVO"
+  exit 1
+fi
 
 cd "$APP"
 
@@ -94,7 +100,30 @@ volver_atras() {
 # ── Traer el código ───────────────────────────────────────────────────────
 echo "[deploy] trayendo cambios…"
 git fetch origin main
-DESPUES=$(git rev-parse origin/main)
+MAIN_REMOTO=$(git rev-parse origin/main)
+
+if [ -n "$OBJETIVO" ]; then
+  # El workflow autoriza un commit concreto despues de que SU CI queda verde.
+  # Si main avanzo mientras esperaba, se aborta: nunca se despliega a escondidas
+  # un commit distinto ni se vuelve atras por una corrida vieja encolada.
+  if [ "$OBJETIVO" != "$MAIN_REMOTO" ]; then
+    echo "[deploy] main cambio durante la autorizacion."
+    echo "[deploy] aprobado: $OBJETIVO"
+    echo "[deploy] remoto:   $MAIN_REMOTO"
+    echo "[deploy] se aborta; lanza otra corrida para el commit actual."
+    exit 1
+  fi
+
+  if ! git cat-file -e "${OBJETIVO}^{commit}" 2>/dev/null; then
+    echo "[deploy] el commit aprobado no existe despues del fetch: $OBJETIVO"
+    exit 1
+  fi
+
+  DESPUES=$OBJETIVO
+else
+  # Conserva el uso manual historico: sin argumento despliega origin/main.
+  DESPUES=$MAIN_REMOTO
+fi
 
 if [ "$ANTES" = "$DESPUES" ]; then
   echo "[deploy] ya estaba en $DESPUES. Nada que hacer."

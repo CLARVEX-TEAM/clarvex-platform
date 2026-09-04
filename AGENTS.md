@@ -6,7 +6,7 @@
 
 ---
 
-# 🔴 EN QUÉ ESTAMOS AHORA — 2 de septiembre de 2026
+# 🔴 EN QUÉ ESTAMOS AHORA — 3 de septiembre de 2026
 
 ## La mudanza terminó; ahora se está quitando trabajo manual
 
@@ -19,7 +19,7 @@ instancia. Al hacerlo, borrar la alarma `clarvex-caido-vultr` —silenciada, no
 eliminada— y subir la alerta de presupuesto de $20, que se quedó corta en cuanto
 EC2 corre a tiempo completo.
 
-## Lo que se construyó del 26 de agosto al 2 de septiembre
+## Lo que se construyó del 26 de agosto al 3 de septiembre
 
 Todo por el bot de Telegram en **chat privado**, y todo con el mismo patrón: el
 bot propone o resume, la persona confirma, y el servidor no se cree nada de lo
@@ -126,11 +126,23 @@ que llega. Detalle completo en `CLAUDE.md`, sección «Captura por Telegram».
   `CLARVEX-TEAM/clarvex-platform`, privado, `main`, commit
   `92344942a5091db8c89d6431d157ffaace86fab3`. El `origin` local ahora es
   `git@github.com:CLARVEX-TEAM/clarvex-platform.git`. No se tocó código,
-  historial, AWS ni producción. Se conservaron los deploy keys `Vps`
-  (read/write) y `Clarvex aws` (read-only), los environments `Preview` y
-  `Production`, issues/projects/wiki y los colaboradores directos; `edsomo94`
-  quedó como outside collaborator. Actions heredó la política restringida de la
-  organización.
+  historial, AWS ni producción. Después se retiró el deploy key `Vps`; solo
+  queda `Clarvex aws`, verificado y read-only. Se conservaron los environments
+  `Preview` y `Production`, issues/projects/wiki y los colaboradores directos;
+  `edsomo94` quedó como outside collaborator con permiso read. Actions heredó
+  la política restringida de la organización.
+- **GitHub endurecido hasta el techo de Free.** CI fija todas las Actions a SHA,
+  revisa dependencias con OSV y busca secretos nuevos con TruffleHog 3.97.4 en
+  modo offline, además del control específico de llaves y dumps. Dependabot
+  tiene graph, alerts, actualizaciones de seguridad y versiones; no hace
+  auto-merge. El deploy sigue siendo manual, pero ahora espera la CI verde del
+  mismo SHA, entrega a SSM ese commit exacto y aborta si `main` cambia mientras
+  espera. OIDC solo existe en el job posterior al preflight. No se desplegó al
+  aplicar este hardening. La invitación pendiente de `esoriamontes@gmail.com`
+  se canceló; `jhernandezl2c-hash` sigue como único owner y `edsomo94` conserva
+  read directo. Branch protection, required checks, aprobación de Production,
+  CodeQL y Secret Protection nativos siguen fuera por el plan, no por una
+  configuración olvidada.
 - **Las alertas técnicas se mudaron a Slack.** Infraestructura, Mercado Pago,
   auditoría del kardex y Uptime Kuma. ⚠️ **Las fotos del equipo NO**: siguen en
   el grupo de Telegram porque once de dieciocho usuarios tienen correo
@@ -168,11 +180,11 @@ que llega. Detalle completo en `CLAUDE.md`, sección «Captura por Telegram».
   los horarios por omisión viven en constantes y deberían estar en `Store`.
 - **Canal por tienda** para las fotos de evidencia, antes de que GUESS Galerías
   empiece a capturar.
-- **Endurecer GitHub después de la transferencia**: configurar protección de
-  `main`/rulesets disponibles, CI estable, Dependabot/CodeQL según el plan,
-  equipos/permisos por repo, descripción/topics del repo nuevo y revisar si
-  `edsomo94` debe conservar acceso como outside collaborator. No activar CD ni
-  AWS OIDC hasta diseñarlo aparte.
+- **Revisar GitHub Team solo cuando haga falta otro escritor.** Con el repo
+  privado en Free no existen branch protection, required checks, CODEOWNERS
+  efectivo ni aprobación obligatoria de Production. Hoy el único escritor es
+  el owner; antes de dar write a otra persona hay que contratar Team o aceptar
+  explícitamente que `main` no puede protegerse.
 
 ---
 
