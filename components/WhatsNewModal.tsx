@@ -56,6 +56,20 @@ export function WhatsNewModal() {
     getSession()
       .then((user) => {
         if (!user || cancelled) return;
+
+        /*
+         * ⚠️ **La sesión de DEMO nunca ve este aviso.**
+         *
+         * Es un comunicado interno —habla de Grupo Axo, de Retool y de una
+         * transición temporal— y era **lo primero** que aparecía al abrir la
+         * demo, tapando el panel entero. Quien entra desde fuera a ver el
+         * producto se encontraba con la política interna de una tienda.
+         *
+         * No es hipotético: Cloudflare revisó la demo en septiembre de 2026 y
+         * concluyó que los enlaces «llevan a un login», sin ver la aplicación.
+         */
+        if (user.demo) return;
+
         setCaptureAccess(canOpenCapture(user));
         setOpen(true);
       })

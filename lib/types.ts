@@ -70,6 +70,14 @@ export type User = {
   /** Usuario "kiosko" de la tienda: solo ve el checklist (escaneos del cierre). */
   checklistOnly?: boolean;
   /**
+   * Sesión de demostración pública: cuenta COMPARTIDA y de solo lectura.
+   *
+   * `/api/auth/session` ya lo devolvía; el tipo no lo declaraba, así que tres
+   * componentes lo leían con un cast a `{ demo?: boolean }`. Declararlo evita
+   * el cuarto y hace que el compilador avise si algún día deja de mandarse.
+   */
+  demo?: boolean;
+  /**
    * ¿La tienda tiene visible la sección de KPIs? Se apaga cuando no hay RDV
    * sincronizado: una pantalla de ceros se lee como «vendimos cero», no como
    * «todavía no hay datos». Ausente se trata como `true`.
