@@ -23,7 +23,10 @@ import type { User } from "@/lib/types";
  */
 const RELEASE_KEY = "clarvex-whatsnew-2026-08-captura-propia";
 const CAPTURE_URL = "https://captura.adrianluna.mx/rr/app/captura-clarvex";
-const EXCLUDED_PATHS = ["/login", "/mantenimiento", "/checklist", "/suspendida"];
+// ⚠️ `/producto` es la página PÚBLICA del producto. Un comunicado interno
+// encima de ella es la misma falla que dejó a la demo abriendo con un aviso
+// sobre Grupo Axo: la ve quien viene de fuera, y no le dice nada.
+const EXCLUDED_PATHS = ["/login", "/mantenimiento", "/checklist", "/suspendida", "/producto"];
 
 function canOpenCapture(user: User): boolean {
   return !user.checklistOnly && (user.role === "GERENTE" || user.role === "SUBGERENTE");

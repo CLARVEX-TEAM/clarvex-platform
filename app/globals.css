@@ -493,3 +493,30 @@ html:not(.dark) .aurora-mancha { opacity: 0.5; }
   .aurora-mancha,
   .aurora-entra { animation: none; }
 }
+
+/* ── Entrada de la página de producto ──────────────────────────────────────
+ *
+ * ⚠️ Animación de CSS, NO un reveal disparado por clase desde JavaScript. Un
+ * reveal por clase se queda a medias en una pestaña oculta o en un render sin
+ * cabeza, y la sección se publica en blanco; una animación de CSS con
+ * `both` siempre termina en su estado final aunque nadie la vea correr.
+ */
+@keyframes clarvex-entrada {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: none; }
+}
+
+.animar-entrada {
+  animation: clarvex-entrada 620ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* La captura entra después del texto: primero se lee qué es, luego se ve. */
+.animar-tarde {
+  animation-delay: 160ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animar-entrada {
+    animation: none;
+  }
+}

@@ -42,7 +42,17 @@ const PUBLICAS = new Set([
   "reembolsos",
   "seguridad",
   "terminos",
-  "uso-aceptable"
+  "uso-aceptable",
+  /*
+   * La pagina de producto. Es publica A PROPOSITO y esa es toda su razon de
+   * ser: quien llega de fuera tiene que ver que hace Clarvex Team sin pedir
+   * cuenta a nadie.
+   *
+   * No ensena ni un dato de tienda. Las capturas que lleva son de la demo
+   * publica --tienda `demo-showcase`, datos ficticios-- y estan servidas como
+   * imagenes estaticas desde `public/`, no consultando nada.
+   */
+  "producto"
 ]);
 
 /** Las que el middleware resuelve por su cuenta, antes de mirar las listas. */

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import { RefreshCw } from "lucide-react";
 
 /**
@@ -17,10 +18,21 @@ import { RefreshCw } from "lucide-react";
  */
 const CHECK_INTERVAL_MS = 5 * 60 * 1000;
 
+/**
+ * Paginas donde este aviso no tiene sentido.
+ *
+ * ⚠️ Es para el equipo que tiene la app INSTALADA. En la pagina publica de
+ * producto le dice «actualiza» a alguien que nunca la ha abierto, y aparece
+ * flotando encima de la portada.
+ */
+const SIN_AVISO = ["/producto", "/login", "/terminos", "/uso-aceptable", "/privacidad"];
+
 export function UpdatePrompt() {
+  const pathname = usePathname();
   const [stale, setStale] = useState(false);
 
   useEffect(() => {
+    if (SIN_AVISO.some((ruta) => pathname.startsWith(ruta))) return;
     const current = process.env.NEXT_PUBLIC_BUILD_ID;
     if (!current) return; // en desarrollo no aplica
 
@@ -50,7 +62,7 @@ export function UpdatePrompt() {
       clearInterval(interval);
       document.removeEventListener("visibilitychange", onVisible);
     };
-  }, []);
+  }, [pathname]);
 
   if (!stale) return null;
 
