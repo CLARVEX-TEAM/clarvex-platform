@@ -295,6 +295,19 @@ export async function GET(request: Request) {
     store,
     today: todayMetric,
     month: monthMetric,
+    /*
+     * ⚠️ El ritmo va con el ACUMULADO y su meta acumulada, no con la meta del
+     * mes entero. `periods.month.toDate` ya trae las dos cosas y los días
+     * transcurridos, que es lo que evita afirmar atraso el día 2 de un mes
+     * retail de treinta y cinco.
+     */
+    monthPace: {
+      salesToDate: periods.month.toDate.metric.sales,
+      goalToDate: periods.month.toDate.metric.goal,
+      elapsedDays: periods.month.toDate.elapsedDays,
+      totalDays: periods.month.toDate.totalDays,
+      capturedDays: periods.month.toDate.capturedDays
+    },
     latestKpiDate,
     daysSinceKpi: latestKpiDate ? daysBetween(latestKpiDate, today) : null,
     todayKpiRows: todayRows.length,

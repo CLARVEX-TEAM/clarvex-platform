@@ -47,7 +47,30 @@ export function buildStoreAudit(input: {
   generatedAt?: Date;
   store: { id: string; name: string; kpisEnabled: boolean };
   today: ManagerDashboardMetric;
+  /**
+   * El mes retail COMPLETO, con su meta total.
+   *
+   * ⚠️ Su `achievement` es contra la meta del mes entero. Sirve para mostrar
+   * cuánto falta del objetivo, NO para juzgar si la tienda va atrasada: al
+   * principio del mes va a ser bajo por construcción. Para eso está
+   * `monthPace`.
+   */
   month: ManagerDashboardMetric;
+  /**
+   * El acumulado hasta la fecha y la meta que le corresponde.
+   *
+   * Opcional para no romper a quien todavía no lo pase: sin él, la anomalía de
+   * ritmo simplemente no se emite. Preferible a emitirla con el número
+   * equivocado.
+   */
+  monthPace?: {
+    salesToDate: number;
+    /** Meta acumulada de los días transcurridos, no la del mes entero. */
+    goalToDate: number;
+    elapsedDays: number;
+    totalDays: number;
+    capturedDays: number;
+  };
   latestKpiDate: string | null;
   daysSinceKpi: number | null;
   todayKpiRows: number;
@@ -63,7 +86,6 @@ export function buildStoreAudit(input: {
 }): StoreAuditBrief {
   const anomalies: StoreAuditAnomaly[] = [];
   const todayAchievement = input.today.achievement;
-  const monthAchievement = input.month.achievement;
 
   pushIf(input.store.kpisEnabled && input.todayKpiRows === 0, anomalies, {
     severity: "warning",
@@ -109,13 +131,50 @@ export function buildStoreAudit(input: {
       action: { label: "Abrir KPIs", route: { type: "retool", path: "/kpis" } }
     }
   );
-  pushIf(monthAchievement !== null && input.month.goal > 0 && monthAchievement < 85, anomalies, {
+  /*
+   * ⚠️ **El ritmo se mide contra la meta de los días TRANSCURRIDOS, no contra
+   * la del mes entero.**
+   *
+   * La versión anterior comparaba lo vendido contra la meta completa del mes,
+   * así que el día 2 de un mes retail de treinta y cinco el avance era ~6 % y
+   * la anomalía saltaba siempre. Estar por debajo del 85 % de la meta TOTAL al
+   * principio del mes no demuestra atraso: demuestra que el mes acaba de
+   * empezar.
+   *
+   * `monthPace` viene del acumulado hasta la fecha, con su propia meta
+   * acumulada. Si falta, no se inventa: la anomalía no se emite.
+   */
+  const ritmo = input.monthPace;
+  const ritmoPct = ritmo && ritmo.goalToDate > 0 ? (ritmo.salesToDate / ritmo.goalToDate) * 100 : null;
+
+  /*
+   * ⚠️ Y con captura incompleta NO se afirma atraso. Un día sin capturar baja
+   * la venta acumulada y deja la meta igual, así que un hueco de captura se
+   * lee exactamente igual que una caída de venta. Se dice lo que se sabe: que
+   * falta capturar.
+   */
+  const capturaCompleta = ritmo ? ritmo.capturedDays >= ritmo.elapsedDays : false;
+
+  pushIf(ritmoPct !== null && capturaCompleta && ritmoPct < 85, anomalies, {
     severity: "info",
     title: "Mes por debajo del ritmo",
-    detail: `El avance mensual está en ${monthAchievement?.toFixed(1)} %.`,
+    detail:
+      `Van ${ritmoPct?.toFixed(1)} % de la meta de los ${ritmo?.elapsedDays} días transcurridos ` +
+      `(de ${ritmo?.totalDays} del mes retail).`,
     recommendation: "Usarlo como contexto para ajustar foco semanal, sin cambiar comisiones ni metas desde este panel.",
     source: "KPIS",
     action: { label: "Ver acumulado", route: { type: "retool", path: "/kpis" } }
+  });
+
+  pushIf(ritmo !== undefined && ritmo.elapsedDays > 0 && !capturaCompleta, anomalies, {
+    severity: "warning",
+    title: "Faltan días por capturar en el mes",
+    detail:
+      `Hay captura en ${ritmo?.capturedDays} de los ${ritmo?.elapsedDays} días transcurridos. ` +
+      "El acumulado del mes está incompleto y el ritmo no se puede afirmar.",
+    recommendation: "Capturar los días faltantes antes de leer el avance mensual como resultado de la tienda.",
+    source: "KPIS",
+    action: { label: "Abrir KPIs", route: { type: "retool", path: "/kpis" } }
   });
   pushIf(input.workingToday === 0 && input.activeAdvisors > 0, anomalies, {
     severity: "warning",
