@@ -350,14 +350,31 @@ export function AppDatePicker({
     ? new Date(`${value}T00:00:00`).toLocaleDateString("es-MX", { weekday: "short", day: "numeric", month: "short" })
     : "";
 
+  /**
+   * Abre el calendario del navegador.
+   *
+   * ⚠️ **En escritorio, pulsar un `input type="date"` NO abre el calendario.**
+   * Solo lo abre el iconito de la derecha, y aquí el campo está invisible, así
+   * que ese icono no existe para quien mira. Por eso hace falta `showPicker()`.
+   *
+   * El orden importa: `focus()` antes, porque en iOS —donde `showPicker()` no
+   * existe— enfocar el campo es lo que abre la rueda de fechas. El `click()` del
+   * final es la última red para navegadores viejos.
+   */
   function openPicker() {
     const el = inputRef.current;
     if (!el) return;
-    try {
-      (el as HTMLInputElement & { showPicker(): void }).showPicker();
-    } catch {
-      el.click();
+    el.focus();
+    const conPicker = el as HTMLInputElement & { showPicker?: () => void };
+    if (typeof conPicker.showPicker === "function") {
+      try {
+        conPicker.showPicker();
+        return;
+      } catch {
+        // Algunos navegadores lanzan si no lo consideran un gesto del usuario.
+      }
     }
+    el.click();
   }
 
   return (
@@ -377,13 +394,27 @@ export function AppDatePicker({
           </p>
         </div>
       </button>
+      {/*
+        ⚠️ `pointer-events-none` NO es cosmético: sin él **la fecha no se puede
+        cambiar en escritorio**.
+
+        El campo va superpuesto al botón con `inset-0` y, al ir después en el
+        DOM, se lleva TODOS los clics. En el teléfono daba igual —tocar un campo
+        de fecha abre el calendario solo— pero en escritorio pulsar el campo no
+        abre nada: solo lo abre su icono, que aquí es invisible. Resultado: se
+        pulsaba y no pasaba nada, sin ningún error.
+
+        Sigue estando aquí, y no oculto del todo, porque es el que guarda el
+        valor y el que valida el formulario. Lo único que cambia es que ahora
+        los clics llegan al botón, que sí sabe abrir el calendario.
+      */}
       <input
         ref={inputRef}
         type="date"
         value={value}
         onChange={(e) => onChange(e.target.value)}
         required={required}
-        className="absolute inset-0 cursor-pointer opacity-0"
+        className="pointer-events-none absolute inset-0 opacity-0"
         tabIndex={-1}
         aria-hidden
       />
