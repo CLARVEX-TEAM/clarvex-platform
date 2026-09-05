@@ -114,6 +114,107 @@ Comprobado contra producción: sin secreto devuelve **401 «No autorizado»**, y
 2026, semanas 31 a 34, 5 personas). Se verificó que el archivo empieza por `PK`:
 un JSON de error disfrazado también habría dado 200.
 
+## Auditoría corregida — 4 de septiembre de 2026
+
+Siete hallazgos, en la rama `fix/auditoria-2026-09`. **Nada se publicó ni se
+desplegó**: todo está probado en local y esperando revisión.
+
+### 1. El agente comparaba el calendario, no la tienda
+
+⚠️ Los días transcurridos se calculaban con el FIN del periodo en vez de con la
+fecha de hoy, así que la ventana del mes anterior salía del tamaño del mes
+completo. Con venta constante de $100 diarios comparaba **$600 contra $2,800** y
+mostraba **−78.57 %**; la respuesta correcta es **0 %**.
+
+`StoreAgentPeriod` separa ahora cuatro cosas que estaban en una:
+
+| | |
+|---|---|
+| `start`/`end` + `metric` | el rango COMPLETO y su META TOTAL, que no se mueven con el día |
+| `toDate` | lo acumulado hasta hoy, con días transcurridos, totales y capturados |
+| `comparison` | los MISMOS días transcurridos del periodo anterior |
+
+⚠️ Meses retail de distinta duración: la ventana equivalente se recorta si no
+cabe y `equivalent` queda en `false`. Sirve de contexto, no es una diferencia
+limpia.
+
+⚠️ **Periodo terminado ≠ captura completa.** Son dos preguntas y mezclarlas hace
+pasar un hueco de captura por una caída de venta. `capturedDays` cuenta fechas
+DISTINTAS, no filas: hay una fila por persona y por día.
+
+En `retool-store-audit.ts`, el ritmo mensual se mide contra la meta de los días
+transcurridos. Antes usaba la del mes entero, así que el día 2 de un mes de 35 el
+avance era ~6 % y la anomalía saltaba siempre. Con captura incompleta no se
+afirma atraso: se avisa del hueco.
+
+### 2. CI que no existía, y un deploy esperándola
+
+⚠️ `paths-ignore` incluía `scripts/**.sh`, así que **un cambio en el propio
+`scripts/deploy.sh` se saltaba la CI entera, incluido el escaneo de secretos**. Y
+un commit de solo documentación no producía ninguna ejecución: el deploy exige CI
+verde del mismo SHA y esperaba veinte minutos una corrida inexistente.
+
+Ahora la CI se dispara siempre y el ahorro va por trabajo. `secretos` y el nuevo
+`operativos` --que valida workflows, `.sh` y `.ps1`-- corren SIEMPRE. El
+preflight del deploy comprueba además los trabajos uno a uno, con coincidencia
+exacta del nombre.
+
+### 3. El build desmontaba lo que estaba sirviendo
+
+⚠️ `next build` reescribe `.next` en el sitio. Si fallaba, `git reset` devolvía
+el código pero los artefactos ya no existían: no había a qué volver sin
+recompilar.
+
+`scripts/deploy-release.sh` prepara cada versión aparte y activa al final; la
+anterior se conserva usable y volver atrás no recompila. **PENDIENTE DE CORTE**:
+`deploy.sh` sigue siendo el vigente. `scripts/preparar-releases.sh` hace la
+preparación sin tocar lo que sirve.
+
+⚠️ El paso que hay que mirar en el corte: que PM2 quede apuntando a la versión y
+no a la ruta vieja. Si no, los despliegues parecerán funcionar sin cambiar nada.
+
+### 4. El monitor afirmaba lo que no sabía
+
+⚠️ Anunciaba «en R2 y S3» habiendo mirado solo R2, y miraba las últimas veinte
+líneas del registro, así que **un fallo de hoy quedaba tapado por un éxito de
+ayer**. Ahora el respaldo escribe un resultado por destino, con objeto
+confirmado, y se sobrescribe entero.
+
+Las degradaciones van separadas de los problemas y avisan aunque no haya ningún
+problema: antes eso se callaba hasta el parte semanal, que además decía «todo en
+orden».
+
+`scripts/restaurar-aislado.sh` restaura en un Postgres efímero y lo destruye.
+
+### 5. El seed truncaba mirando solo el nombre
+
+⚠️ Llamaba a la comprobación de entorno pero **no a la de registros reales**, que
+ya existía. Una base llamada `clarvex_team_test` con datos dentro pasaba y
+perdía todo. Ahora se comprueba el contenido --usuarios y tiendas-- y que el host
+sea local.
+
+CI gana un Postgres efímero con dos tiendas sintéticas y pruebas de aislamiento.
+⚠️ No corren en local y se saltan solas sin `TEST_DATABASE_URL`.
+
+### 6. Abrir un enlace marcaba la alerta como revisada
+
+⚠️ El `GET` de `/api/webhooks/slack/ack` creaba el registro y actualizaba
+Slack. La previsualización de enlaces de Slack, un antivirus de correo o la
+precarga del navegador lo disparaban solos. Ahora el `GET` solo pinta una
+pantalla con un botón y el `POST` es quien cambia estado, con idempotencia
+transaccional.
+
+⚠️ **La identidad no se inventa**: el token demuestra que la alerta es nuestra,
+no quién pulsó. Se registra como no verificada.
+
+### 7. `noImplicitAny` destapó un fallo de datos
+
+Estaba en `false` como excepción a `strict`. Al activarlo salieron **dos**
+errores, y los dos eran el mismo: el mapa de etiquetas de rol no incluía
+`REGIONAL`, así que a esa persona se le pintaba la insignia vacía.
+
+Node unificado en la línea 22 (`.nvmrc` + `engines`).
+
 ## Despliegue desde GitHub — 2 de septiembre de 2026
 
 Ya no hace falta entrar por `ssh` para desplegar. **Actions → Deploy → Run

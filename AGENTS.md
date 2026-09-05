@@ -19,6 +19,41 @@ instancia. Al hacerlo, borrar la alarma `clarvex-caido-vultr` —silenciada, no
 eliminada— y subir la alerta de presupuesto de $20, que se quedó corta en cuanto
 EC2 corre a tiempo completo.
 
+## Auditoría de septiembre: corregida en local, sin publicar
+
+Rama `fix/auditoria-2026-09`, siete fases. **No se hizo push, ni merge, ni
+deploy, y no se tocó GitHub, AWS, Retool, Slack ni producción.** Detalle completo
+en `CLAUDE.md`, sección «Auditoría corregida».
+
+Lo que hay que decidir antes de publicarlo:
+
+1. ⚠️ **El corte al despliegue por versiones.** `scripts/deploy-release.sh` está
+   escrito y simulado, pero `scripts/deploy.sh` sigue siendo el vigente y
+   `deploy.yml` sigue llamándolo. Cambiarlo sin correr antes
+   `scripts/preparar-releases.sh` en el servidor dejaría los despliegues rotos.
+   Ese guion no toca lo que está sirviendo e imprime los pasos.
+
+2. ⚠️ **El trabajo `integracion` de CI no se ha ejecutado nunca.** Levanta un
+   Postgres efímero como servicio. La primera corrida real puede necesitar
+   ajustes de tiempos de arranque; está con `timeout-minutes: 20` y
+   health-checks.
+
+3. ⚠️ **La confirmación de Slack pasa a dos clics.** El enlace del botón sigue
+   funcionando, pero ahora abre una pantalla de confirmación en vez de marcar al
+   abrirse. Si se quiere un solo clic CON identidad real, hay que activar
+   Interactivity en la app de Slack apuntando a
+   `/api/webhooks/slack/actions` — decisión externa, no aplicada.
+
+4. El monitor y el respaldo se leen entre ellos por
+   `/home/ubuntu/logs/backup-estado.json`. Hasta que el respaldo corra una vez
+   con el código nuevo, el monitor dirá que no existe ese fichero. Es correcto:
+   está diciendo la verdad.
+
+Lo verificado en local: TypeScript, ESLint sin avisos, **1190 pruebas**, build de
+producción, los dos workflows parsean con `needs` consistentes, y la simulación
+del despliegue da 25/25 --y se comprobó que **se pone en rojo** al romper la
+vuelta atrás y las guardas del build--.
+
 ## Lo que se construyó del 26 de agosto al 3 de septiembre
 
 Todo por el bot de Telegram en **chat privado**, y todo con el mismo patrón: el
