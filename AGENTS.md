@@ -93,8 +93,17 @@ Actions fijadas (checkout/setup-node); no se actualizaron en este arreglo.
 
 ## Segunda ronda de la auditoría — 4 de septiembre de 2026
 
-Siete hallazgos más, ya corregidos y verificados en local. **Sin publicar**: no
-hubo commit, push ni despliegue, y no se tocaron AWS, Retool, Slack ni producción.
+Siete hallazgos más, corregidos y publicados con autorización expresa del
+usuario. Commits `fd4d569` (el lanzador del buzón), `8732f5b` (los hallazgos) y
+`31a90fb` (el apagado del servidor de pruebas), en `main` por push normal y sin
+tocar historial. **NO se desplegó**: el workflow de Deploy sigue siendo manual y
+no se ejecutó; no se tocaron AWS, Retool, Slack ni producción.
+
+CI verde en la corrida `33948101043`, con las **11 pruebas de integración
+ejecutadas y ninguna saltada** —las 5 de aislamiento por API entre ellas—,
+1203 unitarias, tipos, lint, build, pantallas públicas, dependencias, secretos y
+las dos simulaciones de shell (33 y 17).
+Evidencia: https://github.com/CLARVEX-TEAM/clarvex-platform/actions/runs/33948101043
 
 Lo que hay que saber para no deshacerlo:
 
@@ -135,6 +144,12 @@ Lo que hay que saber para no deshacerlo:
 
 7. **El README recomendaba el despliegue viejo**, construyendo sobre el
    directorio que se está sirviendo y en la ruta del servidor apagado.
+
+⚠️ **La primera corrida se colgó 19 minutos con las cinco pruebas ya en verde.**
+`next dev` bifurca: matar al hijo dejaba vivo al nieto `next-server` sosteniendo
+las tuberías, y el ejecutor no terminaba. Arreglado en `31a90fb` --salida a
+fichero y muerte del grupo en POSIX--; el paso lleva ahora su propio
+`timeout-minutes`. El trabajo pasó de agotar 20 minutos a tardar 1 min 22 s.
 
 ⚠️ **Las dos simulaciones ya corren en CI**, dentro del trabajo `operativos`:
 `tests/deploy-release.sim.sh` (33 comprobaciones) y la nueva

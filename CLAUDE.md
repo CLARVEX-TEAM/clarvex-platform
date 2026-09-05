@@ -210,11 +210,18 @@ la corrida; queda para una actualización separada de las Actions fijadas.
 
 ### Segunda ronda: siete hallazgos más — 4 de septiembre de 2026
 
-Corregidos y verificados en local. **Sin publicar**: no hubo commit, push ni
-despliegue; no se tocaron AWS, Retool, Slack ni producción. Validación:
-TypeScript sin emisión e incremental desactivado, ESLint completo sin avisos,
-**1203 pruebas unitarias**, build de producción (solo el aviso conocido de
-Sentry/OpenTelemetry) y las dos simulaciones de shell, 33 y 17.
+Corregidos y publicados con autorización expresa del usuario: `fd4d569`,
+`8732f5b` y `31a90fb`, en `main` por push normal y sin tocar historial.
+**NO se desplegó**: el workflow de Deploy sigue siendo manual y no se ejecutó; no
+se tocaron AWS, Retool, Slack, secretos ni producción, que continúa sirviendo
+`releases/20260905-012950-9059b68`.
+
+Validación local: TypeScript sin emisión e incremental desactivado, ESLint
+completo sin avisos, **1203 pruebas unitarias**, build de producción (solo el
+aviso conocido de Sentry/OpenTelemetry) y las dos simulaciones de shell, 33 y 17.
+La CI `33948101043` aprobó todos los trabajos del mismo SHA, con las **11 pruebas
+de integración ejecutadas y ninguna saltada**.
+Evidencia: https://github.com/CLARVEX-TEAM/clarvex-platform/actions/runs/33948101043
 
 ⚠️ **El despliegue tenía UNA puerta de vuelta atrás y hacían falta dos.** Un
 `pm2 reload` o un `pm2 start` fallidos mataban `deploy-release.sh` por `set -e`
