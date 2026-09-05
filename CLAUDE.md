@@ -296,6 +296,18 @@ igual en una máquina de desarrollo con `.env.test`, así que ese candado no suj
 nada: la suite llegó a levantar un servidor de verdad contra la base local. Si
 faltan las dos tiendas del seed, se salta sin arrancar nada.
 
+⚠️ **`next dev` no ES el servidor: lo BIFURCA.** Matar al hijo deja vivo al nieto
+(`next-server`), que heredó las tuberías de salida; mientras sigan abiertas, el
+bucle de eventos del proceso de pruebas no se vacía y el ejecutor no termina.
+En Windows no se nota --la suite sale en doce segundos-- pero en Linux la primera
+corrida de CI se quedó **19 minutos colgada con las cinco pruebas ya en verde**,
+agotando los 20 del trabajo entero. Por eso la salida del servidor va a un
+FICHERO y no a tuberías, y en POSIX se lanza como líder de grupo para matar el
+GRUPO. Es la misma trampa que `tests/integration/security-endpoints.test.ts`
+resolvió con un `process.exit`; aquí no se usa porque ese atajo puede salir en
+cero antes de que el ejecutor fije el código de fallo. El paso de CI lleva además
+su propio `timeout-minutes`: un cuelgue tiene que costar poco y señalar dónde fue.
+
 ⚠️ **No canalizar `prisma migrate deploy` a `head`.** Al cerrarse la tubería,
 Prisma muere a media migración y la deja marcada como fallida: después
 `migrate deploy` responde **P3009** y no aplica nada más. Pasó en la base de

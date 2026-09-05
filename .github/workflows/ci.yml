@@ -628,5 +628,11 @@ jobs:
       #
       # El servidor lo levanta la propia prueba (`next dev` en el 3102) y lo mata
       # al terminar. La primera peticion tarda: compila bajo demanda.
+      #
+      # ⚠️ Con tiempo PROPIO, y no el del trabajo. La primera corrida se colgo 19
+      # minutos con las cinco pruebas ya en verde --el nieto `next-server` seguia
+      # vivo sosteniendo las tuberias-- y agoto los 20 del trabajo entero. Un
+      # cuelgue aqui tiene que costar poco y senalar el paso que lo causa.
       - name: Pruebas de integracion y aislamiento entre tiendas
+        timeout-minutes: 10
         run: pnpm exec tsx --test tests/integracion/*.test.ts

@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { spawn, type ChildProcess } from "node:child_process";
+import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { PrismaClient } from "@prisma/client";
 import { assertSafeTestEnvironment } from "../helpers";
@@ -45,6 +47,55 @@ const HUELLAS_AJENAS = [SUR, "test-manager-2", "test-advisor-3", "TEST-GER-002",
 
 let prisma: PrismaClient;
 let servidor: ChildProcess | null = null;
+let registroServidor = "";
+let descriptorRegistro: number | null = null;
+
+/**
+ * Apaga el servidor de pruebas.
+ *
+ * ⚠️ **`next dev` NO es el servidor: lo BIFURCA.** Matar al hijo deja vivo al
+ * nieto (`next-server`), que heredó las tuberías de salida; mientras esas
+ * tuberías sigan abiertas, el bucle de eventos del proceso de pruebas no se
+ * vacía y el ejecutor no termina nunca. En Windows no se nota --la prueba salía
+ * en doce segundos-- pero en Linux costó **19 minutos colgada** hasta agotar el
+ * tiempo del trabajo, con las cinco pruebas ya en verde.
+ *
+ * Dos medidas, y cada una basta por su cuenta:
+ *
+ *   - La salida va a un FICHERO, no a tuberías. El proceso de pruebas no
+ *     sostiene ningún descriptor del servidor, sobreviva quien sobreviva.
+ *   - En POSIX el hijo se lanza como líder de su grupo (`detached`) y se mata
+ *     el GRUPO entero con el pid en negativo, así que el nieto se va con él.
+ */
+function apagarServidor(): void {
+  if (servidor) {
+    try {
+      if (process.platform !== "win32" && servidor.pid) process.kill(-servidor.pid, "SIGKILL");
+      else servidor.kill("SIGKILL");
+    } catch {
+      // Ya no estaba.
+    }
+    servidor.unref();
+    servidor = null;
+  }
+  if (descriptorRegistro !== null) {
+    try {
+      fs.closeSync(descriptorRegistro);
+    } catch {
+      // Ya cerrado.
+    }
+    descriptorRegistro = null;
+  }
+}
+
+/** Lo último del registro del servidor. Sin tuberías, esta es la única pista. */
+function colaDelRegistro(lineas = 25): string {
+  try {
+    return fs.readFileSync(registroServidor, "utf8").split(/\r?\n/).slice(-lineas).join("\n");
+  } catch {
+    return "(sin registro del servidor)";
+  }
+}
 
 async function esperarAlServidor(intentos = 120): Promise<boolean> {
   for (let intento = 0; intento < intentos; intento += 1) {
@@ -111,7 +162,12 @@ test.before(async () => {
    * deja huérfano ocupando el puerto.
    */
   const binarioNext = path.join(process.cwd(), "node_modules", "next", "dist", "bin", "next");
+  registroServidor = path.join(os.tmpdir(), `clarvex-aislamiento-${process.pid}.log`);
+  descriptorRegistro = fs.openSync(registroServidor, "w");
   servidor = spawn(process.execPath, [binarioNext, "dev", "-p", PUERTO], {
+    // Ver `apagarServidor`: sin tuberías y como líder de grupo en POSIX.
+    detached: process.platform !== "win32",
+    stdio: ["ignore", descriptorRegistro, descriptorRegistro],
     env: {
       ...process.env,
       NODE_ENV: "development",
@@ -120,15 +176,20 @@ test.before(async () => {
       DATABASE_URL: process.env.TEST_DATABASE_URL
     }
   });
-  servidor.stdout?.on("data", (dato) => process.stdout.write(`[next] ${dato}`));
-  servidor.stderr?.on("data", (dato) => process.stderr.write(`[next] ${dato}`));
 
-  assert.ok(await esperarAlServidor(), "el servidor de pruebas no levantó a tiempo");
+  if (!(await esperarAlServidor())) {
+    const cola = colaDelRegistro();
+    apagarServidor();
+    assert.fail(`el servidor de pruebas no levantó a tiempo. Últimas líneas:\n${cola}`);
+  }
 });
 
 test.after(async () => {
-  if (servidor) servidor.kill("SIGKILL");
+  apagarServidor();
   if (!saltar && prisma) await prisma.$disconnect();
+  // El registro se imprime siempre: es barato y es lo único que queda del
+  // servidor cuando una prueba falla en el runner.
+  if (registroServidor) console.log(`[servidor de pruebas] últimas líneas:\n${colaDelRegistro(15)}`);
 });
 
 test("⚠️ la tienda vecina EXISTE en la base (si no, lo de abajo no prueba nada)", async (t) => {
