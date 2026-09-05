@@ -3,13 +3,13 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/jhernandezl2c-hash/app/actions/workflows/ci.yml">
-    <img src="https://github.com/jhernandezl2c-hash/app/actions/workflows/ci.yml/badge.svg" alt="CI">
+  <a href="https://github.com/CLARVEX-TEAM/clarvex-platform/actions/workflows/ci.yml">
+    <img src="https://github.com/CLARVEX-TEAM/clarvex-platform/actions/workflows/ci.yml/badge.svg" alt="CI">
   </a>
   <img src="https://img.shields.io/badge/Next.js-15.5-000000?logo=nextdotjs&logoColor=white" alt="Next.js 15.5">
   <img src="https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white" alt="TypeScript strict">
   <img src="https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql&logoColor=white" alt="PostgreSQL 16">
-  <img src="https://img.shields.io/badge/tests-403-16A34A" alt="403 tests">
+  <img src="https://img.shields.io/badge/tests-1190-16A34A" alt="1190 tests">
 </p>
 
 <p align="center">
@@ -18,7 +18,7 @@
 </p>
 
 <p align="center">
-  <a href="https://app.adrianluna.mx">app.adrianluna.mx</a>
+  <a href="https://team.clarvex.tech">team.clarvex.tech</a>
 </p>
 
 ---
@@ -56,7 +56,14 @@ Es **móvil primero** — los asesores la usan desde el piso de venta, entre cli
 
 ## Cómo se alimenta de datos
 
-La app **no captura ventas a mano**: las lee de dos archivos de Excel en SharePoint, a través de un Cloudflare Worker.
+La captura operativa vive en **Retool** (`captura-clarvex`) y escribe por la API
+segura de Clarvex: horarios, asistencia, KPIs, tráfico, descuentos, ticket
+electrónico y Cuota Justa.
+
+⚠️ **Ya no se leen los Excel de SharePoint.** Axo deshabilitó los enlaces
+anónimos el 11 de agosto de 2026 y cinco de las seis fuentes cayeron. La
+estructura de columnas del RDV se conserva documentada en `CLAUDE.md` porque
+define qué significa cada dato, no porque siga siendo la fuente.
 
 | Archivo | Alimenta | Tabla |
 |---|---|---|
@@ -130,13 +137,40 @@ docker exec -i clarvex_postgres pg_restore -d "$DB" --clean --if-exists < archiv
 ```bash
 pnpm exec tsc --noEmit
 pnpm exec eslint . --max-warnings 0
-NODE_ENV=test pnpm exec tsx --test tests/*.test.ts   # 403 tests
+pnpm test                                            # 1190 pruebas
 pnpm run build
+```
+
+Y para lo que no es código de la app:
+
+```bash
+bash tests/deploy-release.sim.sh    # el despliegue por versiones, sin AWS
+bash -n scripts/*.sh                # los guiones de operación se pueden leer
 ```
 
 > ⚠️ **`NODE_ENV=test` solo para los tests, nunca antes del `build`.** Con esa
 > variable puesta, la guarda de `lib/prisma.ts` lanza al importarse y el build
 > falla al recolectar datos de página, con un error que no señala la causa.
+
+## Integración y aislamiento entre tiendas
+
+```bash
+pnpm exec tsx --test tests/integracion/*.test.ts
+```
+
+⚠️ **Solo corren en CI.** Necesitan `TEST_DATABASE_URL` apuntando a un Postgres
+local y desechable, ya sembrado. Sin esa variable **se saltan solas**, que es lo
+correcto: `tests/seed-test-db.ts` hace `TRUNCATE ... CASCADE` sobre todas las
+tablas, y en una máquina de desarrollo no hay garantía de que la base apuntada
+sea de mentira.
+
+El trabajo `integracion` de la CI levanta ese Postgres como servicio efímero,
+con credenciales de mentira, y deja las variables de R2, Slack, Bedrock y Mercado
+Pago **vacías a propósito** para que nada salga a la red.
+
+⚠️ Antes de truncar se comprueba el CONTENIDO, no solo el nombre de la base: un
+usuario sin prefijo `TEST-` o una tienda que no sea sintética abortan el
+borrado. Que la URL contenga «test» no basta.
 
 ## Pantallas públicas (Playwright)
 
@@ -146,7 +180,7 @@ pnpm test:visual
 
 Corre en navegador real, móvil, **claro y oscuro**, sobre `/login` y
 `/mantenimiento` — las únicas que renderizan sin base de datos. Comprueba cosas
-que ni el build, ni el lint, ni los 403 tests pueden ver:
+que ni el build, ni el lint, ni las pruebas de Node pueden ver:
 
 - Que los tokens de color produzcan **colores válidos** y no canales sueltos
 - Que los `@keyframes` de los efectos **lleguen al CSS servido**
