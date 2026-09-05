@@ -19,7 +19,7 @@ instancia. Al hacerlo, borrar la alarma `clarvex-caido-vultr` —silenciada, no
 eliminada— y subir la alerta de presupuesto de $20, que se quedó corta en cuanto
 EC2 corre a tiempo completo.
 
-## Auditoría de septiembre: publicada, CI pendiente de corregir
+## Auditoría de septiembre: publicada y CI desbloqueada
 
 La rama `fix/auditoria-2026-09` se fusionó en `9059b68`. Al retomar el trabajo
 interrumpido el 4 de septiembre, `main` y `origin/main` estaban limpios en
@@ -34,16 +34,17 @@ Estado y pendientes:
    esta continuación NO volvió a verificar ni modificar el servidor. No repetir
    la preparación ni usar el guion antiguo suponiendo que el corte sigue pendiente.
 
-2. **La integración sí se ejecutó, pero falló antes del seed.** La corrida
+2. **La integración quedó desbloqueada.** La corrida
    `33936300502` necesitaba consentimiento explícito. `232c6e3` añadió
    `ALLOW_INTEGRATION_TEST_DATABASE=true` únicamente al Postgres efímero de CI,
    pero `33936867892` falló de nuevo: `tests/helpers.ts` confundía la
    `DATABASE_URL` de pruebas con producción cuando no había `.env`.
-   La corrección LOCAL elimina ese fallback, no las guardas: mantiene la
+   La corrección `a29776f` elimina ese fallback, no las guardas: mantiene la
    comparación contra `.env`, consentimiento, nombre de base, host y comprobación
    de usuarios/tiendas sintéticos antes del borrado. Las pruebas unitarias ahora
-   simulan los archivos de entorno sin leer los reales. Falta publicar este
-   arreglo y obtener CI verde del nuevo SHA; no saltarse la puerta del deploy.
+   simulan los archivos de entorno sin leer los reales. Publicada con autorización
+   expresa del usuario, la CI `33940676897` aprobó todos los trabajos del mismo SHA,
+   incluidas migraciones, seed y seis pruebas de integración. No hubo deploy.
 
 3. ⚠️ **La confirmación de Slack pasa a dos clics.** El enlace del botón sigue
    funcionando, pero ahora abre una pantalla de confirmación en vez de marcar al
@@ -59,11 +60,17 @@ Estado y pendientes:
 La auditoría previa registró TypeScript, ESLint, 1190 pruebas, build y simulación
 de despliegue 25/25. Esta continuación verificó **1195 pruebas unitarias**, incluidas
 13 de seguridad con regresión rojo/verde, TypeScript sin emisión e incremental
-desactivado, ESLint completo sin avisos y `git diff --check`. La CI remota de `232c6e3` aprobó tipos,
-lint, pruebas unitarias, build, pantallas públicas, dependencias y secretos; NO
-aprobó integración ni la puerta `CI`. No se ejecutó un seed local: este Windows
-no tiene PostgreSQL/Docker/WSL disponibles. Sin push, commit, deploy ni cambios
-en AWS, Retool, Slack o producción durante esta continuación.
+desactivado, ESLint completo sin avisos y `git diff --check`. Tras autorizar el
+usuario el push SIN desplegar, la CI de `a29776f` aprobó **1195 pruebas unitarias,
+6 de integración y 10 de pantallas públicas**, además de tipos, lint, build,
+dependencias, secretos, scripts y puerta final `CI`. Las migraciones y el seed
+solo corrieron en el Postgres efímero del runner, no en una base local o existente.
+Evidencia: https://github.com/CLARVEX-TEAM/clarvex-platform/actions/runs/33940676897
+
+La publicación incluyó el arreglo, sus pruebas y ambos documentos; no cambió
+código de aplicación, workflows, AWS, Retool, Slack ni producción. Queda como
+mantenimiento futuro el aviso no bloqueante de GitHub sobre el runtime de las
+Actions fijadas (checkout/setup-node); no se actualizaron en este arreglo.
 
 ## Lo que se construyó del 26 de agosto al 3 de septiembre
 

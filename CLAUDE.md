@@ -122,7 +122,7 @@ El estado «solo local» de la primera pasada ya no aplica: `232c6e3` está en
 
 ### Continuación tras el límite de sesión
 
-Revisión del 4 de septiembre de 2026, sin modificar GitHub ni producción:
+Revisión inicial del 4 de septiembre de 2026, antes de autorizar el push:
 
 - La CI `33936300502` falló por falta de `ALLOW_INTEGRATION_TEST_DATABASE`.
   El commit `232c6e3` añadió el consentimiento al trabajo con Postgres efímero.
@@ -133,7 +133,7 @@ Revisión del 4 de septiembre de 2026, sin modificar GitHub ni producción:
 - Causa: al importar `tests/helpers.ts`, `DATABASE_URL` ya toma
   `TEST_DATABASE_URL`. Sin `.env`, el fallback a `process.env.DATABASE_URL`
   comparaba la base de pruebas consigo misma. No era una conexión a producción.
-- Arreglo LOCAL: identificar la URL ajena a pruebas desde `.env`, no desde esa
+- Arreglo preparado en local: identificar la URL ajena a pruebas desde `.env`, no desde esa
   variable ya reasignada. Se conservan consentimiento, validación de nombre y
   host, rechazo de la URL de `.env` y control de registros sintéticos.
 - `tests/security-protection.test.ts` reproduce el entorno sin `.env` de CI y
@@ -143,13 +143,32 @@ Revisión del 4 de septiembre de 2026, sin modificar GitHub ni producción:
   aprobaron `tsc --noEmit --incremental false`, ESLint completo sin avisos y
   `git diff --check`. No se repitió el build local: el código de aplicación y
   despliegue no cambió; el build remoto exitoso corresponde a `232c6e3`.
-- La integración real sigue pendiente de la siguiente CI: no se instaló un
+- La integración real quedó pendiente de la siguiente CI: no se instaló un
   servidor ni se ejecutó un seed contra bases existentes en este Windows.
-- No se hizo commit, push ni deploy de esta continuación. Para cerrarla hay que
-  publicar el arreglo autorizado, verificar CI verde del mismo SHA y decidir
-  cualquier despliegue por separado. No relanzar el deploy para saltarse el fallo.
+- Esa primera revisión terminó sin commit, push ni deploy. Se pidió autorización
+  para subir el arreglo y comprobar la CI sin desplegar; el cierre está debajo.
 
 Evidencia: https://github.com/CLARVEX-TEAM/clarvex-platform/actions/runs/33936867892
+
+### Cierre autorizado: arreglo publicado y CI verde
+
+El usuario autorizó expresamente publicar el arreglo y comprobar GitHub, SIN
+desplegar. Commit `a29776ff2071f7a44a13f900e544ce9701bf8db5`, enviado a `main`
+mediante push normal, sin modificar historial. La corrida `33940676897` aprobó:
+
+- 1195 pruebas unitarias, ninguna fallida ni omitida.
+- Migraciones en Postgres efímero, seed de dos tiendas sintéticas y 6 pruebas de
+  integración, ninguna fallida ni omitida. No se ejecutó el seed en este Windows.
+- TypeScript, ESLint, build y 10 pruebas de pantallas públicas.
+- Dependencias, escaneo de secretos, validación de scripts/workflows y puerta `CI`.
+
+Evidencia: https://github.com/CLARVEX-TEAM/clarvex-platform/actions/runs/33940676897
+
+Después se documenta este resultado en AGENTS.md y CLAUDE.md, sin cambiar código.
+El workflow de Deploy sigue siendo manual y NO se ejecutó. Sin cambios en AWS,
+producción, bases existentes, Retool, Slack, secretos o configuración administrativa.
+El aviso de GitHub sobre el runtime antiguo de checkout/setup-node no bloqueó
+la corrida; queda para una actualización separada de las Actions fijadas.
 
 ### 1. El agente comparaba el calendario, no la tienda
 
