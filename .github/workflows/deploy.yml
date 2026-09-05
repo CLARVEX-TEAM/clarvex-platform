@@ -252,10 +252,22 @@ jobs:
             exit 1
           fi
 
-          # Se ejecuta el deploy.sh guardado en el commit aprobado, incluso la
-          # primera vez que esta mejora llegue al servidor. El propio script
-          # vuelve a comprobar que main no haya avanzado durante la operacion.
-          COMANDO="sudo -u ubuntu bash -lc 'cd /home/ubuntu/clarvex-app && git fetch origin main && test \"\$(git rev-parse origin/main)\" = \"$TARGET_SHA\" && git show \"$TARGET_SHA:scripts/deploy.sh\" | bash -s -- \"$TARGET_SHA\"'"
+          # ⚠️ **Despliegue por VERSIONES desde el 5 de septiembre de 2026.**
+          #
+          # `deploy-release.sh` prepara cada version en su propio directorio y
+          # activa al final, asi que un build fallido ya no desmonta lo que se
+          # esta sirviendo. El corte se hizo a mano ese dia; la instalacion
+          # vieja de `/home/ubuntu/clarvex-app` se conserva unos dias como
+          # camino de vuelta.
+          #
+          # ⚠️ El guion se saca del COMMIT con `git show`, no del arbol del
+          # clon. El clon de `/home/ubuntu/clarvex/repo` solo se usa para
+          # `fetch` y `archive`: su arbol se queda en el commit del clonado, y
+          # buscar el fichero ahi falla con «No such file or directory».
+          # Comprobado en el corte.
+          #
+          # El propio guion vuelve a comprobar que main no haya avanzado.
+          COMANDO="sudo -u ubuntu bash -lc 'cd /home/ubuntu/clarvex/repo && git fetch origin main && test \"\$(git rev-parse origin/main)\" = \"$TARGET_SHA\" && git show \"$TARGET_SHA:scripts/deploy-release.sh\" | bash -s -- \"$TARGET_SHA\"'"
           PARAMETROS=$(jq -cn --arg command "$COMANDO" '{commands:[$command]}')
 
           ID=$(aws ssm send-command \

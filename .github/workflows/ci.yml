@@ -550,6 +550,17 @@ jobs:
       TEST_DATABASE_URL: postgresql://clarvex:contrasena-de-ci-sin-valor@127.0.0.1:5432/clarvex_test
       DATABASE_URL: postgresql://clarvex:contrasena-de-ci-sin-valor@127.0.0.1:5432/clarvex_test
       NODE_ENV: test
+      # ⚠️ El consentimiento EXPLICITO que exige `assertSafeTestEnvironment`.
+      #
+      # No es un tramite: el seed hace `TRUNCATE ... CASCADE` sobre todas las
+      # tablas, y esta variable obliga a que alguien lo haya escrito a mano en
+      # algun sitio. Aqui esta justificada porque la base nace y muere con el
+      # trabajo, el host es 127.0.0.1, el nombre lleva «test» y las credenciales
+      # son de mentira. En una maquina de desarrollo NO deberia estar puesta.
+      #
+      # La primera corrida de este trabajo fallo justo aqui, y estuvo bien: la
+      # guarda hizo lo que tenia que hacer.
+      ALLOW_INTEGRATION_TEST_DATABASE: "true"
       AUTH_SECRET: clave-de-ci-con-al-menos-32-caracteres
       WEBAUTHN_RP_ID: localhost
       WEBAUTHN_RP_NAME: Clarvex Team
