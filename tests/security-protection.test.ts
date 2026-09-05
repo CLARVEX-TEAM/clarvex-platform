@@ -1,113 +1,129 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { assertSafeTestEnvironment, assertSafeDatabaseRecords } from "./helpers";
-import { PrismaClient } from "@prisma/client";
+import fs from "node:fs";
+import path from "node:path";
+import type { PrismaClient } from "@prisma/client";
 
-// Define baseline environment variables for the safety tests in CI/environments where .env.test is not present
-process.env.ALLOW_INTEGRATION_TEST_DATABASE = "true";
-process.env.TEST_DATABASE_URL = "postgresql://localhost/clarvex_test";
+const TEST_URL = "postgresql://localhost/clarvex_test";
+const LOCAL_URL = "postgresql://localhost/clarvex_team";
+const envPath = path.resolve(process.cwd(), ".env");
+const envTestPath = path.resolve(process.cwd(), ".env.test");
+const fixtures = new Map<string, string>();
+const originalEnv = { ...process.env };
+let helpers: typeof import("./helpers");
 
-test("assertSafeTestEnvironment rechaza NODE_ENV != 'test'", () => {
-  const origNodeEnv = process.env.NODE_ENV;
-  (process.env as any).NODE_ENV = "production";
-  try {
-    assert.throws(() => assertSafeTestEnvironment(), /NODE_ENV=test/);
-  } finally {
-    (process.env as any).NODE_ENV = origNodeEnv;
-  }
-});
-
-test("assertSafeTestEnvironment rechaza ALLOW_INTEGRATION_TEST_DATABASE != 'true'", () => {
-  const origAllow = process.env.ALLOW_INTEGRATION_TEST_DATABASE;
-  process.env.ALLOW_INTEGRATION_TEST_DATABASE = "false";
-  try {
-    assert.throws(() => assertSafeTestEnvironment(), /ALLOW_INTEGRATION_TEST_DATABASE/);
-  } finally {
-    process.env.ALLOW_INTEGRATION_TEST_DATABASE = origAllow;
-  }
-});
-
-test("assertSafeTestEnvironment rechaza ausencia de TEST_DATABASE_URL", () => {
-  const origUrl = process.env.TEST_DATABASE_URL;
-  delete process.env.TEST_DATABASE_URL;
-  try {
-    assert.throws(() => assertSafeTestEnvironment(), /TEST_DATABASE_URL/);
-  } finally {
-    process.env.TEST_DATABASE_URL = origUrl;
-  }
-});
-
-test("assertSafeTestEnvironment rechaza base de datos sin la palabra 'test'", () => {
-  const origUrl = process.env.TEST_DATABASE_URL;
-  process.env.TEST_DATABASE_URL = "postgresql://clarvex:123@localhost:5432/clarvex_team?schema=public";
-  try {
-    assert.throws(() => assertSafeTestEnvironment(), /contener la palabra 'test'/);
-  } finally {
-    process.env.TEST_DATABASE_URL = origUrl;
-  }
-});
-
-test("assertSafeTestEnvironment rechaza base de datos que coincide con la de producción", () => {
-  const origUrl = process.env.TEST_DATABASE_URL;
-  const origDbUrl = process.env.DATABASE_URL;
-  
-  // Set both to a simulated production DB URL to trigger the match assertion
-  const prodUrl = "postgresql://clarvex:CambiaEstaPasswordSegura123@localhost:5432/clarvex_team?schema=public";
-  process.env.TEST_DATABASE_URL = prodUrl;
-  process.env.DATABASE_URL = prodUrl;
-  
-  try {
-    assert.throws(() => assertSafeTestEnvironment(), /coincide con la base de datos de producción/);
-  } finally {
-    process.env.TEST_DATABASE_URL = origUrl;
-    process.env.DATABASE_URL = origDbUrl;
-  }
-});
-
-test("assertSafeDatabaseRecords rechaza base de datos con usuarios reales (sin prefijo TEST-)", async () => {
-  // Mock PrismaClient where findFirst returns a real user
-  const mockPrisma = {
-    user: {
-      findFirst: async (args: any) => {
-        return {
-          id: "u1",
-          name: "Waira",
-          employeeNumber: "95739" // No empieza con TEST-
-        };
-      }
+// Mock before importing: these unit tests must never load the developer's env files.
+test.before(async () => {
+  const existsSync = fs.existsSync;
+  const readFileSync = fs.readFileSync;
+  test.mock.method(fs, "existsSync", (file: fs.PathLike) => {
+    const filename = String(file);
+    if (filename === envPath || filename === envTestPath) return fixtures.has(filename);
+    return existsSync(file);
+  });
+  test.mock.method(fs, "readFileSync", ((...args: Parameters<typeof fs.readFileSync>) => {
+    const filename = String(args[0]);
+    if (filename === envPath || filename === envTestPath) {
+      assert.ok(fixtures.has(filename), "only synthetic env fixtures may be read");
+      return fixtures.get(filename)!;
     }
-  } as unknown as PrismaClient;
-
-  await assert.rejects(
-    async () => assertSafeDatabaseRecords(mockPrisma),
-    /registros reales de producción/
-  );
+    return readFileSync(...args);
+  }) as typeof fs.readFileSync);
+  Object.assign(process.env, { NODE_ENV: "test" });
+  process.env.ALLOW_INTEGRATION_TEST_DATABASE = "true";
+  process.env.TEST_DATABASE_URL = TEST_URL;
+  process.env.DATABASE_URL = TEST_URL;
+  helpers = await import("./helpers");
 });
 
-test("assertSafeDatabaseRecords acepta base de datos con solo usuarios de pruebas (TEST-)", async () => {
-  // Ni usuarios reales ni tiendas reales: la base es sintetica y se puede
-  // truncar. Las DOS consultas tienen que devolver null.
-  const mockPrisma = {
+test.beforeEach(() => {
+  fixtures.clear();
+  Object.assign(process.env, { NODE_ENV: "test" });
+  process.env.ALLOW_INTEGRATION_TEST_DATABASE = "true";
+  process.env.TEST_DATABASE_URL = TEST_URL;
+  process.env.DATABASE_URL = TEST_URL;
+  delete process.env.TEST_DB_ALLOW_REMOTE;
+});
+
+test.after(() => {
+  test.mock.restoreAll();
+  for (const key of Object.keys(process.env)) {
+    if (!(key in originalEnv)) delete process.env[key];
+  }
+  Object.assign(process.env, originalEnv);
+});
+
+test("acepta la base efimera de CI sin .env y con ambas URLs iguales", () => {
+  assert.doesNotThrow(() => helpers.assertSafeTestEnvironment());
+  assert.doesNotThrow(() => helpers.assertSafeTestEnvironment());
+});
+
+test("acepta una base de pruebas distinta de la configuracion local", () => {
+  fixtures.set(envPath, `DATABASE_URL=${LOCAL_URL}\n`);
+  assert.doesNotThrow(() => helpers.assertSafeTestEnvironment());
+});
+
+test("rechaza NODE_ENV distinto de test", () => {
+  Object.assign(process.env, { NODE_ENV: "production" });
+  assert.throws(() => helpers.assertSafeTestEnvironment(), /NODE_ENV=test/);
+});
+
+test("rechaza la ausencia de consentimiento explicito", () => {
+  process.env.ALLOW_INTEGRATION_TEST_DATABASE = "false";
+  assert.throws(() => helpers.assertSafeTestEnvironment(), /ALLOW_INTEGRATION_TEST_DATABASE/);
+});
+
+test("rechaza la ausencia de TEST_DATABASE_URL", () => {
+  delete process.env.TEST_DATABASE_URL;
+  assert.throws(() => helpers.assertSafeTestEnvironment(), /TEST_DATABASE_URL/);
+});
+
+test("rechaza el nombre de la base principal aunque ambas URLs coincidan", () => {
+  process.env.TEST_DATABASE_URL = LOCAL_URL;
+  process.env.DATABASE_URL = LOCAL_URL;
+  assert.throws(() => helpers.assertSafeTestEnvironment(), /contener la palabra 'test'/);
+});
+
+test("rechaza un nombre sin test aunque el usuario de la URL lo contenga", () => {
+  process.env.TEST_DATABASE_URL = "postgresql://test-user@localhost/operacion";
+  assert.throws(() => helpers.assertSafeTestEnvironment(), /contener la palabra 'test'/);
+});
+
+test("rechaza la URL configurada en .env incluso si el nombre contiene test", () => {
+  fixtures.set(envPath, `DATABASE_URL="${TEST_URL}"\n`);
+  assert.throws(() => helpers.assertSafeTestEnvironment(), /coincide con la base de datos de producción/);
+});
+
+test("no usa DATABASE_URL del proceso para ocultar una coincidencia en .env", () => {
+  fixtures.set(envPath, `DATABASE_URL='${TEST_URL}'\n`);
+  process.env.DATABASE_URL = "postgresql://localhost/otra_test";
+  assert.throws(() => helpers.assertSafeTestEnvironment(), /coincide con la base de datos de producción/);
+});
+
+test("rechaza una base remota sin autorizacion adicional", () => {
+  process.env.TEST_DATABASE_URL = "postgresql://db.example.invalid/clarvex_test";
+  assert.throws(() => helpers.assertSafeTestEnvironment(), /host remoto/);
+});
+
+test("rechaza usuarios no sinteticos antes de permitir limpiar la base", async () => {
+  const prisma = {
+    user: { findFirst: async () => ({ id: "fixture-user", name: "Fixture", employeeNumber: "NON-SYNTHETIC" }) }
+  } as unknown as PrismaClient;
+  await assert.rejects(helpers.assertSafeDatabaseRecords(prisma), /registros reales de producción/);
+});
+
+test("acepta registros sinteticos en el mismo entorno efimero de CI", async () => {
+  const prisma = {
     user: { findFirst: async () => null },
     store: { findFirst: async () => null }
   } as unknown as PrismaClient;
-
-  await assertSafeDatabaseRecords(mockPrisma);
+  await helpers.assertSafeDatabaseRecords(prisma);
 });
 
-test("⚠️ una TIENDA que no es sintetica tambien aborta el borrado", async () => {
-  /*
-   * El usuario no es lo unico que importa. Una base con cero usuarios reales
-   * pero con tiendas de verdad --un volcado restaurado a medias, una base
-   * apuntada por error-- sigue siendo una base que no se puede truncar.
-   */
-  const mockPrisma = {
+test("rechaza una tienda no sintetica aunque no existan usuarios reales", async () => {
+  const prisma = {
     user: { findFirst: async () => null },
-    store: { findFirst: async () => ({ id: "clarvex-demo-store", name: "TH SAN AGUSTIN" }) }
+    store: { findFirst: async () => ({ id: "fixture-store", name: "Fixture" }) }
   } as unknown as PrismaClient;
-
-  await assert.rejects(
-    async () => assertSafeDatabaseRecords(mockPrisma),
-    /no es sintética/
-  );
+  await assert.rejects(helpers.assertSafeDatabaseRecords(prisma), /no es sintética/);
 });

@@ -55,7 +55,9 @@ export function assertSafeTestEnvironment() {
     throw new Error("ERROR DE SEGURIDAD: TEST_DATABASE_URL no está configurada.");
   }
 
-  const prodDbUrl = getProdDatabaseUrl() || process.env.DATABASE_URL;
+  // DATABASE_URL already points to TEST_DATABASE_URL in the test process.
+  // Only the separate local configuration identifies the non-test database.
+  const prodDbUrl = getProdDatabaseUrl();
   if (prodDbUrl && testDbUrl === prodDbUrl) {
     throw new Error("ERROR DE SEGURIDAD: TEST_DATABASE_URL coincide con la base de datos de producción.");
   }

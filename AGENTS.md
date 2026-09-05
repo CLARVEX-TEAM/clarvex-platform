@@ -19,24 +19,31 @@ instancia. Al hacerlo, borrar la alarma `clarvex-caido-vultr` —silenciada, no
 eliminada— y subir la alerta de presupuesto de $20, que se quedó corta en cuanto
 EC2 corre a tiempo completo.
 
-## Auditoría de septiembre: corregida en local, sin publicar
+## Auditoría de septiembre: publicada, CI pendiente de corregir
 
-Rama `fix/auditoria-2026-09`, siete fases. **No se hizo push, ni merge, ni
-deploy, y no se tocó GitHub, AWS, Retool, Slack ni producción.** Detalle completo
-en `CLAUDE.md`, sección «Auditoría corregida».
+La rama `fix/auditoria-2026-09` se fusionó en `9059b68`. Al retomar el trabajo
+interrumpido el 4 de septiembre, `main` y `origin/main` estaban limpios en
+`232c6e3`. La revisión inicial solo consultó GitHub y el repositorio local.
+Detalle completo en `CLAUDE.md`, sección «Auditoría corregida».
 
-Lo que hay que decidir antes de publicarlo:
+Estado y pendientes:
 
-1. ⚠️ **El corte al despliegue por versiones.** `scripts/deploy-release.sh` está
-   escrito y simulado, pero `scripts/deploy.sh` sigue siendo el vigente y
-   `deploy.yml` sigue llamándolo. Cambiarlo sin correr antes
-   `scripts/preparar-releases.sh` en el servidor dejaría los despliegues rotos.
-   Ese guion no toca lo que está sirviendo e imprime los pasos.
+1. **El workflow ya usa versiones.** `232c6e3` cambió `deploy.yml` para extraer
+   `scripts/deploy-release.sh` del SHA aprobado mediante `git show`. Ese commit
+   registra el corte manual previo, PM2 y una comprobación de un chunk nuevo;
+   esta continuación NO volvió a verificar ni modificar el servidor. No repetir
+   la preparación ni usar el guion antiguo suponiendo que el corte sigue pendiente.
 
-2. ⚠️ **El trabajo `integracion` de CI no se ha ejecutado nunca.** Levanta un
-   Postgres efímero como servicio. La primera corrida real puede necesitar
-   ajustes de tiempos de arranque; está con `timeout-minutes: 20` y
-   health-checks.
+2. **La integración sí se ejecutó, pero falló antes del seed.** La corrida
+   `33936300502` necesitaba consentimiento explícito. `232c6e3` añadió
+   `ALLOW_INTEGRATION_TEST_DATABASE=true` únicamente al Postgres efímero de CI,
+   pero `33936867892` falló de nuevo: `tests/helpers.ts` confundía la
+   `DATABASE_URL` de pruebas con producción cuando no había `.env`.
+   La corrección LOCAL elimina ese fallback, no las guardas: mantiene la
+   comparación contra `.env`, consentimiento, nombre de base, host y comprobación
+   de usuarios/tiendas sintéticos antes del borrado. Las pruebas unitarias ahora
+   simulan los archivos de entorno sin leer los reales. Falta publicar este
+   arreglo y obtener CI verde del nuevo SHA; no saltarse la puerta del deploy.
 
 3. ⚠️ **La confirmación de Slack pasa a dos clics.** El enlace del botón sigue
    funcionando, pero ahora abre una pantalla de confirmación en vez de marcar al
@@ -49,10 +56,14 @@ Lo que hay que decidir antes de publicarlo:
    con el código nuevo, el monitor dirá que no existe ese fichero. Es correcto:
    está diciendo la verdad.
 
-Lo verificado en local: TypeScript, ESLint sin avisos, **1190 pruebas**, build de
-producción, los dos workflows parsean con `needs` consistentes, y la simulación
-del despliegue da 25/25 --y se comprobó que **se pone en rojo** al romper la
-vuelta atrás y las guardas del build--.
+La auditoría previa registró TypeScript, ESLint, 1190 pruebas, build y simulación
+de despliegue 25/25. Esta continuación verificó **1195 pruebas unitarias**, incluidas
+13 de seguridad con regresión rojo/verde, TypeScript sin emisión e incremental
+desactivado, ESLint completo sin avisos y `git diff --check`. La CI remota de `232c6e3` aprobó tipos,
+lint, pruebas unitarias, build, pantallas públicas, dependencias y secretos; NO
+aprobó integración ni la puerta `CI`. No se ejecutó un seed local: este Windows
+no tiene PostgreSQL/Docker/WSL disponibles. Sin push, commit, deploy ni cambios
+en AWS, Retool, Slack o producción durante esta continuación.
 
 ## Lo que se construyó del 26 de agosto al 3 de septiembre
 

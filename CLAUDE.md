@@ -116,8 +116,40 @@ un JSON de error disfrazado también habría dado 200.
 
 ## Auditoría corregida — 4 de septiembre de 2026
 
-Siete hallazgos, en la rama `fix/auditoria-2026-09`. **Nada se publicó ni se
-desplegó**: todo está probado en local y esperando revisión.
+Siete hallazgos trabajados en `fix/auditoria-2026-09`, fusionados en `9059b68`.
+El estado «solo local» de la primera pasada ya no aplica: `232c6e3` está en
+`main` y `origin/main`, y registra el corte manual al despliegue por versiones.
+
+### Continuación tras el límite de sesión
+
+Revisión del 4 de septiembre de 2026, sin modificar GitHub ni producción:
+
+- La CI `33936300502` falló por falta de `ALLOW_INTEGRATION_TEST_DATABASE`.
+  El commit `232c6e3` añadió el consentimiento al trabajo con Postgres efímero.
+- La siguiente CI, `33936867892`, también falló en «Sembrar dos tiendas
+  sinteticas»: la guarda decía que las URLs de pruebas y producción coincidían.
+  Las migraciones del contenedor sí habían terminado; la prueba de aislamiento
+  no llegó a ejecutarse. El resto de los trabajos aprobó, incluido el build.
+- Causa: al importar `tests/helpers.ts`, `DATABASE_URL` ya toma
+  `TEST_DATABASE_URL`. Sin `.env`, el fallback a `process.env.DATABASE_URL`
+  comparaba la base de pruebas consigo misma. No era una conexión a producción.
+- Arreglo LOCAL: identificar la URL ajena a pruebas desde `.env`, no desde esa
+  variable ya reasignada. Se conservan consentimiento, validación de nombre y
+  host, rechazo de la URL de `.env` y control de registros sintéticos.
+- `tests/security-protection.test.ts` reproduce el entorno sin `.env` de CI y
+  simula las configuraciones locales. No lee `.env`/`.env.test` reales ni abre
+  conexiones. Se comprobó que la regresión falla antes del arreglo y pasa después;
+  las **1195 pruebas unitarias** pasan, incluidas 13 de seguridad. También
+  aprobaron `tsc --noEmit --incremental false`, ESLint completo sin avisos y
+  `git diff --check`. No se repitió el build local: el código de aplicación y
+  despliegue no cambió; el build remoto exitoso corresponde a `232c6e3`.
+- La integración real sigue pendiente de la siguiente CI: no se instaló un
+  servidor ni se ejecutó un seed contra bases existentes en este Windows.
+- No se hizo commit, push ni deploy de esta continuación. Para cerrarla hay que
+  publicar el arreglo autorizado, verificar CI verde del mismo SHA y decidir
+  cualquier despliegue por separado. No relanzar el deploy para saltarse el fallo.
+
+Evidencia: https://github.com/CLARVEX-TEAM/clarvex-platform/actions/runs/33936867892
 
 ### 1. El agente comparaba el calendario, no la tienda
 
@@ -166,9 +198,11 @@ el código pero los artefactos ya no existían: no había a qué volver sin
 recompilar.
 
 `scripts/deploy-release.sh` prepara cada versión aparte y activa al final; la
-anterior se conserva usable y volver atrás no recompila. **PENDIENTE DE CORTE**:
-`deploy.sh` sigue siendo el vigente. `scripts/preparar-releases.sh` hace la
-preparación sin tocar lo que sirve.
+anterior se conserva usable y volver atrás no recompila. `232c6e3` registra el
+corte y cambia el workflow para usar ese guion. La comprobación del servidor
+corresponde a la sesión anterior, no se repitió en esta continuación.
+`scripts/preparar-releases.sh` fue la preparación; no volver a ejecutarlo
+suponiendo que la instalación sigue en el diseño anterior.
 
 ⚠️ El paso que hay que mirar en el corte: que PM2 quede apuntando a la versión y
 no a la ruta vieja. Si no, los despliegues parecerán funcionar sin cambiar nada.
@@ -232,7 +266,7 @@ termine verde. Solo entonces arranca el job que puede pedir OIDC.
 
 ```
 GitHub Actions --(OIDC)--> AWS STS --(SSM SendCommand)--> EC2
-                                                            `-> scripts/deploy.sh
+                                                            `-> scripts/deploy-release.sh
 ```
 
 - **Sin credenciales guardadas.** No hay `AWS_ACCESS_KEY_ID` en los secretos del
@@ -240,14 +274,12 @@ GitHub Actions --(OIDC)--> AWS STS --(SSM SendCommand)--> EC2
   credenciales de una hora y se acaban con la ejecucion.
 - **Por SSM y no por ssh**, para no abrir el puerto 22 a los rangos de GitHub
   —que son enormes— ni guardar una llave privada en el repositorio.
-- `scripts/deploy.sh` recibe el SHA aprobado, exige que siga siendo exactamente
-  `origin/main`, guarda el commit anterior y despliega ese objetivo. Si `main`
-  avanzó mientras la corrida esperaba, aborta y obliga a lanzar otra. Si el
-  build falla no reinicia nada; si la salud no responde tras 12 intentos,
-  revierte. Sale con 1 si revirtio y 2 si ni la version anterior levanta.
-- SSM ejecuta la copia de `scripts/deploy.sh` guardada en el commit aprobado con
-  `git show`, no la copia vieja que casualmente esté en disco. Así la validación
-  del SHA funciona desde el primer despliegue que use esta versión del workflow.
+- Desde `232c6e3`, SSM extrae `scripts/deploy-release.sh` del SHA aprobado con
+  `git show` desde `/home/ubuntu/clarvex/repo`. No toma el guion del working tree:
+  `fetch` actualiza referencias, no sus archivos.
+- El guion exige el SHA de `origin/main`, prepara una versión separada y conserva
+  los artefactos anteriores para volver atrás sin recompilar. La instalación
+  antigua se conserva según el registro del corte; no eliminarla desde esta fase.
 
 ### ⚠️ El sujeto del token lleva IDENTIFICADORES, no solo los nombres
 
