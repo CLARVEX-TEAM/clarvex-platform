@@ -241,6 +241,13 @@ fi
 # El enlace se cambia con `ln -sfn` sobre un temporal y `mv`, que en el mismo
 # sistema de ficheros es atómico: no hay un instante en que `actual` no apunte
 # a ninguna parte.
+#
+# ⚠️ **DEVUELVE un código; no mata el guion.** Con `set -e`, un `pm2 reload` o un
+# `pm2 start` fallidos abortaban aquí mismo, y para entonces el puntero YA
+# apuntaba a la versión nueva: quedaba anunciada como activa una versión que PM2
+# nunca llegó a servir, y **la vuelta atrás no se ejecutaba**. El rollback solo
+# cubría el caso «arrancó pero no responde sana», que es el menos grave de los
+# dos. Ahora todo fallo de activación sale por la misma puerta que el de salud.
 activar() {
   local destino="$1"
 
@@ -253,7 +260,14 @@ activar() {
   # ya esta escrito.
   ln -sfn "$destino" "$BASE/.actual.enlace" 2>/dev/null && mv -Tf "$BASE/.actual.enlace" "$ACTUAL" 2>/dev/null || true
 
-  pm2 reload "$destino/ecosystem.config.cjs" --update-env
+  if ! pm2 reload "$destino/ecosystem.config.cjs" --update-env; then
+    log "⚠️ 'pm2 reload' falló para $destino. Se intenta recrear la app."
+    pm2 delete clarvex-team >/dev/null 2>&1 || true
+    if ! pm2 start "$destino/ecosystem.config.cjs" --update-env; then
+      log "⚠️ 'pm2 start' tampoco levantó $destino."
+      return 1
+    fi
+  fi
 
   # ⚠️ **COMPROBAR que PM2 se movió de verdad.**
   #
@@ -274,13 +288,17 @@ activar() {
   if [ "$actual_pm2" != "$destino" ]; then
     log "⚠️ PM2 seguía en '${actual_pm2:-desconocido}'. Recreando la app para que adopte $destino"
     pm2 delete clarvex-team >/dev/null 2>&1 || true
-    pm2 start "$destino/ecosystem.config.cjs" --update-env
+    if ! pm2 start "$destino/ecosystem.config.cjs" --update-env; then
+      log "⚠️ No se pudo recrear la app en $destino."
+      return 1
+    fi
   fi
 
   # ⚠️ Sin `pm2 save`, un reinicio del servidor restauraría la definición
   # guardada, que apunta a la instalación vieja. El despliegue se desharía solo
   # el día que la máquina se reinicie, y nadie relacionaría las dos cosas.
   pm2 save >/dev/null 2>&1 || log "⚠️ 'pm2 save' falló: un reinicio del servidor volvería a la versión anterior."
+  return 0
 }
 
 comprobar_salud() {
@@ -294,14 +312,16 @@ comprobar_salud() {
   return 1
 }
 
-log "activando la versión nueva"
-if [ -n "$VERSION_ACTIVA" ]; then
-  echo "$VERSION_ACTIVA" > "$PUNTERO_ANTERIOR"
-fi
-activar "$NUEVA"
-
-if ! comprobar_salud; then
-  log "la versión nueva no responde sana"
+# ── Una sola puerta de vuelta atrás ───────────────────────────────────────
+#
+# ⚠️ **Los dos fallos terminan aquí, y antes solo lo hacía uno.** «PM2 no pudo
+# arrancar la versión» y «la versión arrancó pero no responde sana» dejan a la
+# tienda igual de caída, así que se recuperan igual. Tener rollback solo para el
+# segundo era peor que no tenerlo: el primero salía del guion en silencio, con el
+# puntero ya movido, y quien mirara el estado leería que la versión nueva está
+# activa.
+volver_atras() {
+  log "$1"
 
   if [ -z "$VERSION_ACTIVA" ]; then
     fatal "Era el primer despliegue: no hay versión anterior a la que volver."
@@ -311,17 +331,30 @@ if ! comprobar_salud; then
   # conserva su `.next` y su `node_modules`, así que recuperarse es repuntar el
   # enlace y recargar.
   log "volviendo a $VERSION_ACTIVA (sin recompilar)"
-  activar "$VERSION_ACTIVA"
-
-  if comprobar_salud; then
+  if activar "$VERSION_ACTIVA" && comprobar_salud; then
     log "revertido y sano."
-    [ "$MIGRO" = "1" ] && log "⚠️ se aplicó una migración: volver el código NO la deshizo."
+    if [ "$MIGRO" = "1" ]; then
+      log "⚠️ se aplicó una migración: volver el código NO la deshizo."
+    fi
     exit 1
   fi
 
   log "⚠️ LA VERSIÓN ANTERIOR TAMPOCO RESPONDE."
   log "Mira 'pm2 logs clarvex-team' y el estado de Postgres."
   exit 2
+}
+
+log "activando la versión nueva"
+if [ -n "$VERSION_ACTIVA" ]; then
+  echo "$VERSION_ACTIVA" > "$PUNTERO_ANTERIOR"
+fi
+
+if ! activar "$NUEVA"; then
+  volver_atras "PM2 no pudo servir la versión nueva"
+fi
+
+if ! comprobar_salud; then
+  volver_atras "la versión nueva no responde sana"
 fi
 
 # ── Limpieza ──────────────────────────────────────────────────────────────
@@ -342,6 +375,8 @@ ls -1dt "$VERSIONES"/*/ 2>/dev/null | tail -n "+$((CONSERVAR + 1))" | while IFS=
 done
 
 log "✅ desplegado $CORTO en $NUEVA"
-[ "$MIGRO" = "1" ] && log "⚠️ se aplicó una migración: una vuelta atrás del código NO la deshace."
+if [ "$MIGRO" = "1" ]; then
+  log "⚠️ se aplicó una migración: una vuelta atrás del código NO la deshace."
+fi
 pm2 list | grep clarvex || true
 exit 0

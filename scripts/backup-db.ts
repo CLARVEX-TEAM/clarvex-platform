@@ -34,6 +34,23 @@ const CONTAINER = process.env.BACKUP_PG_CONTAINER ?? "clarvex_postgres";
 const PREFIX = "backups/";
 const RETENTION_DAYS = Number(process.env.BACKUP_RETENTION_DAYS ?? 30);
 
+/*
+ * ⚠️ **Lo que se sabe HASTA AHORA de cada destino, no lo que se espera.**
+ *
+ * El estado solo se escribía al terminar bien. Un `pg_dump` que falla, o R2 que
+ * no acepta la subida, dejaba en el disco el resultado del ÉXITO DE AYER: el
+ * monitor lo leía, veía «ok» y no avisaba hasta pasar las 26 horas. Un respaldo
+ * roto tardaba más de un día en notarse, y eso es tiempo prestado con la única
+ * copia de la nómina de doce personas.
+ *
+ * Estas dos variables se rellenan en cuanto un destino CONFIRMA su escritura, y
+ * el manejador de error de abajo escribe con ellas. Así un fallo posterior a la
+ * subida a R2 no borra el hecho de que R2 sí se hizo, y un fallo anterior no
+ * puede aparecer como éxito.
+ */
+let resultadoR2: ResultadoDestino | null = null;
+let resultadoS3: ResultadoDestino | null = null;
+
 // Cron no carga .env: si faltan variables, leerlas del .env del proyecto.
 function ensureEnv() {
   if (process.env.DATABASE_URL && process.env.R2_ACCOUNT_ID) return;
@@ -117,6 +134,10 @@ async function main() {
 
   await s3.send(new PutObjectCommand({ Bucket: bucket, Key: key, Body: dump, ContentType: "application/octet-stream" }));
   console.log(`[backup] subido a r2://${bucket}/${key}`);
+  // Confirmado por el propio destino. A partir de aquí, un fallo posterior no
+  // puede hacer creer que el respaldo principal no se hizo.
+  const confirmadoR2: ResultadoDestino = { estado: "ok", objeto: `r2://${bucket}/${key}`, bytes: dump.length };
+  resultadoR2 = confirmadoR2;
 
   // Retención: borrar backups viejos.
   const cutoff = Date.now() - RETENTION_DAYS * 86_400_000;
@@ -130,12 +151,13 @@ async function main() {
   }
   console.log(`[backup] retención ${RETENTION_DAYS} días: ${deleted} backup(s) viejos borrados. Total OK.`);
 
-  const resultadoS3 = await copyToS3(key, dump);
+  const copiaS3 = await copyToS3(key, dump);
+  resultadoS3 = copiaS3;
 
   escribirEstado({
     terminadoEn: new Date().toISOString(),
-    r2: { estado: "ok", objeto: `r2://${bucket}/${key}`, bytes: dump.length },
-    s3: resultadoS3
+    r2: confirmadoR2,
+    s3: copiaS3
   });
 }
 
@@ -215,6 +237,26 @@ function escribirEstado(estado: EstadoRespaldo): void {
 }
 
 main().catch((error) => {
-  console.error("[backup] FALLÓ:", error instanceof Error ? error.message : error);
+  const detalle = error instanceof Error ? error.message : String(error);
+  console.error("[backup] FALLÓ:", detalle);
+
+  /*
+   * ⚠️ **El estado se escribe TAMBIÉN cuando falla, y esa era la mitad que
+   * faltaba.** Sin esto, el fichero conservaba el resultado de la última
+   * ejecución buena y el monitor seguía diciendo que el respaldo estaba hecho
+   * hasta que pasaran las 26 horas de antigüedad. Un fallo hoy tiene que
+   * verse hoy.
+   *
+   * Se escribe lo que de verdad se sabe: si R2 ya había confirmado la subida,
+   * eso se conserva y el fallo pasa a la copia cruzada; si no llegó a subirse,
+   * el respaldo principal se marca como fallido, que es lo que el monitor
+   * cuenta como problema y no como degradación.
+   */
+  escribirEstado({
+    terminadoEn: new Date().toISOString(),
+    r2: resultadoR2 ?? { estado: "fallo", error: detalle },
+    s3: resultadoS3 ?? { estado: "fallo", error: `No se llegó a intentar: ${detalle}` }
+  });
+
   process.exit(1);
 });

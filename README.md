@@ -195,23 +195,64 @@ que ni el build, ni el lint, ni las pruebas de Node pueden ver:
 > Está documentado en `tests/visual/public-pages.spec.ts` con los ocho enfoques
 > que se probaron, por si alguien lo retoma.
 
-## Despliegue (VPS)
+## Despliegue
 
-```bash
-cd /root/clarvex-app && git pull && pnpm install && pnpm exec prisma generate && pnpm run build && pm2 reload clarvex-team --update-env
+**Actions → Deploy → Run workflow**, escribiendo `DESPLEGAR`. No hace falta
+entrar por `ssh`.
+
+Sigue siendo **manual a propósito**: la app calcula la nómina de doce personas y
+corre en una máquina de 3.7 GB donde `next build` tarda minutos apoyándose en
+swap. Desplegar en cada commit encadenaría builds que no caben a la vez.
+
+El workflow espera a que la **CI del mismo commit** termine verde, canjea un
+token OIDC por credenciales de una hora y ejecuta `scripts/deploy-release.sh` en
+el servidor mediante SSM. Sin llaves guardadas y sin abrir el puerto 22.
+
+### Cada versión se construye APARTE
+
+```
+/home/ubuntu/clarvex/
+├─ repo/                     el clon; solo se le hace fetch
+├─ compartido/.env           uno solo, lo comparten todas las versiones
+├─ releases/<fecha>-<sha>/   una carpeta por versión, con su .next
+└─ estado/actual             qué versión se está sirviendo
 ```
 
-`pm2 reload` en vez de `restart`: recarga rodante entre las dos instancias del
-cluster, sin caída. Si el pull toca `prisma/`, añade `pnpm exec prisma migrate
-deploy` antes del build.
+⚠️ **No construir sobre la instalación viva.** Aquí vivía un `git pull && pnpm
+run build` de una línea sobre el directorio que se estaba sirviendo, y es
+exactamente lo que este esquema vino a retirar: `next build` reescribe `.next`
+en el sitio, así que mientras compila la versión activa está desmontada y, si el
+build falla, no queda nada a lo que volver sin recompilar. (La ruta que citaba,
+`/root/clarvex-app`, era además la del servidor viejo, apagado desde el 27 de
+agosto de 2026.)
+
+⚠️ **Volver atrás no recompila.** La versión anterior conserva su `.next` y su
+`node_modules`, así que recuperarse es apuntar PM2 a esa carpeta. El guion ya lo
+hace solo si la nueva no arranca o no responde sana; a mano, desde el servidor
+—`estado/anterior` solo existe a partir del segundo despliegue—:
+
+```bash
+ANTERIOR=$(cat /home/ubuntu/clarvex/estado/anterior)
+pm2 delete clarvex-team && pm2 start "$ANTERIOR/ecosystem.config.cjs" --update-env && pm2 save
+echo "$ANTERIOR" > /home/ubuntu/clarvex/estado/actual
+```
+
+⚠️ **Las migraciones NO vuelven atrás**: revertir el código no deshace un
+`ALTER TABLE`. Por eso las migraciones de este proyecto son aditivas, y el guion
+avisa cuando aplicó una.
+
+Lo que decide el despliegue ante cada fallo está cubierto por
+`tests/deploy-release.sim.sh`, que corre en CI con un `pnpm`, `pm2` y `curl` de
+mentira y sin tocar nada real.
 
 ### Ventana de mantenimiento
 
-Para cerrar la app al equipo mientras se despliega algo delicado:
+Para cerrar la app al equipo mientras se hace algo delicado. El `.env` es **uno
+solo y compartido** por todas las versiones:
 
 ```bash
-echo "MAINTENANCE_MODE=1" >> .env && pm2 reload clarvex-team --update-env   # cerrar
-sed -i '/^MAINTENANCE_MODE=/d' .env && pm2 reload clarvex-team --update-env # abrir
+echo "MAINTENANCE_MODE=1" >> /home/ubuntu/clarvex/compartido/.env && pm2 reload clarvex-team --update-env   # cerrar
+sed -i '/^MAINTENANCE_MODE=/d' /home/ubuntu/clarvex/compartido/.env && pm2 reload clarvex-team --update-env # abrir
 ```
 
 `/api/health` sigue respondiendo 200 (para que Uptime Kuma no alerte) y los

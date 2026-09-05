@@ -106,12 +106,22 @@ export function buildStoreAudit(input: {
   pushIf(input.todayKpiRows > 0 && input.today.traffic === null, anomalies, {
     severity: "warning",
     title: "Tráfico sin capturar",
-    detail: "Hay venta o metas del día, pero no hay tráfico de tienda.",
+    detail: "Hay captura del día, pero no hay tráfico de tienda.",
     recommendation: "Capturar tráfico para que conversión y EPT representen la operación real.",
     source: "KPIS",
     action: { label: "Capturar tráfico", route: { type: "retool", path: "/kpis" } }
   });
-  pushIf(todayAchievement !== null && input.today.goal > 0 && todayAchievement < 70, anomalies, {
+  /*
+   * ⚠️ **Las dos de abajo exigen que el día esté CAPTURADO.**
+   *
+   * `today.goal` viene de las metas, que Cuota Justa escribe con días de
+   * antelación; `today.sales` viene de la captura, que llega al cierre. Sin esta
+   * condición, un día con la meta puesta y sin capturar daba 0 % de cumplimiento
+   * y el agente abría una anomalía CRÍTICA de venta hundida a las nueve de la
+   * mañana. Lo que falta ahí es la captura, y para eso está la anomalía de
+   * arriba, que ahora sí puede saltar.
+   */
+  pushIf(input.todayKpiRows > 0 && todayAchievement !== null && input.today.goal > 0 && todayAchievement < 70, anomalies, {
     severity: "critical",
     title: "Venta diaria muy por debajo",
     detail: `La tienda va en ${todayAchievement?.toFixed(1)} % de la meta diaria.`,
@@ -120,7 +130,7 @@ export function buildStoreAudit(input: {
     action: { label: "Abrir KPIs", route: { type: "retool", path: "/kpis" } }
   });
   pushIf(
-    todayAchievement !== null && input.today.goal > 0 && todayAchievement >= 70 && todayAchievement < 90,
+    input.todayKpiRows > 0 && todayAchievement !== null && input.today.goal > 0 && todayAchievement >= 70 && todayAchievement < 90,
     anomalies,
     {
       severity: "warning",

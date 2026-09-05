@@ -11,7 +11,12 @@
 set -uo pipefail
 
 RAIZ="$(cd "$(dirname "$0")/.." && pwd)"
-GUION="$RAIZ/scripts/deploy-release.sh"
+# ⚠️ Se puede apuntar a OTRA copia del guion con `SIM_GUION`. No es un adorno:
+# es como se comprueba que esta simulacion sabe ponerse en rojo — se corre
+# contra la version anterior del guion y tiene que fallar. Una prueba que nunca
+# se ha visto fallar no demuestra nada, que es la leccion de las tres pasadas
+# falsas que dio esta misma simulacion.
+GUION="${SIM_GUION:-$RAIZ/scripts/deploy-release.sh}"
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 
@@ -82,6 +87,11 @@ EOF
 case "$1" in
   reload)
     echo "pm2 reload $2" >> "$SIM_REGISTRO_PM2"
+    # ⚠️ Falla SOLO para la version que diga SIM_PM2_FALLA_EN. Un pm2 que falle
+    # siempre no permite ver la vuelta atras: la anterior tampoco arrancaria.
+    case "$2" in
+      *"${SIM_PM2_FALLA_EN:-__ninguna__}"*) echo "pm2: no pude recargar" >&2; exit 1 ;;
+    esac
     # Por omision el reload SI adopta la ruta nueva. Con SIM_PM2_NO_SE_MUEVE=1
     # se finge lo contrario, que es el fallo peligroso.
     if [ "${SIM_PM2_NO_SE_MUEVE:-0}" != "1" ]; then
@@ -90,6 +100,9 @@ case "$1" in
     ;;
   start)
     echo "pm2 start $2" >> "$SIM_REGISTRO_PM2"
+    case "$2" in
+      *"${SIM_PM2_FALLA_EN:-__ninguna__}"*) echo "pm2: no pude arrancar" >&2; exit 1 ;;
+    esac
     dirname "$2" > "$SIM_BASE/pm2-cwd"
     ;;
   delete) echo "pm2 delete" >> "$SIM_REGISTRO_PM2" ;;
@@ -280,6 +293,25 @@ BASE11="$TMP/pm2quieto"; montar_base "$BASE11" > /dev/null
 CODIGO=$(ejecutar "$BASE11" SIM_PM2_NO_SE_MUEVE=1)
 comprobar "PM2 quieto: se detecta y se recrea" "1" "$(contar_en "$BASE11/pm2.log" 'pm2 delete')"
 comprobar "PM2 quieto: el despliegue igual termina bien" "0" "$CODIGO"
+
+# 12. ⚠️ PM2 no consigue servir la version nueva: hay que VOLVER ATRAS.
+#
+# Este camino no existia. Con `set -e`, un `pm2 reload` fallido mataba el guion
+# ahi mismo, y para entonces el puntero YA apuntaba a la version nueva: el
+# estado decia que estaba activa una version que PM2 nunca sirvio, y nadie
+# revertia nada. El codigo de salida era 1 en los dos casos, asi que lo que
+# distingue el arreglo es el PUNTERO, no la salida.
+BASE12="$TMP/pm2caido"; montar_base "$BASE12" > /dev/null
+ejecutar "$BASE12" > /dev/null
+ANTERIOR12=$(cat "$BASE12/estado/actual")
+: > "$BASE12/pm2.log"
+(cd "$BASE12/repo" && printf 'otra\n' > otro.txt && git add -A && git commit --quiet -m "otra" && git update-ref refs/remotes/origin/main HEAD)
+CORTO12=$(git -C "$BASE12/repo" rev-parse --short=7 HEAD)
+CODIGO=$(ejecutar "$BASE12" SIM_PM2_FALLA_EN="$CORTO12")
+comprobar "PM2 caido: el puntero vuelve a la anterior" "$ANTERIOR12" "$(cat "$BASE12/estado/actual")"
+comprobar "PM2 caido: sale en 1 (revertido)" "1" "$CODIGO"
+comprobar "PM2 caido: intento recrear antes de rendirse" "1" "$(contar_en "$BASE12/pm2.log" 'pm2 delete')"
+comprobar "PM2 caido: no recompila al volver" "0" "$(grep -c 'build ok' "$BASE12/salida.txt" | awk '{print ($1>1)?1:0}')"
 
 echo
 echo "  pasadas: $PASADAS   fallidas: $FALLIDAS"

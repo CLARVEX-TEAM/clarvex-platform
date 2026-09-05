@@ -1,5 +1,43 @@
 # Clarvex Team — CLAUDE.md
 
+## Buzón de la PC sin destellos de consola - 4 de septiembre de 2026
+
+El usuario reportó una ventana de PowerShell que aparecía y se cerraba sola.
+La tarea local `Mover buzon a la nube` ejecutaba el `.ps1` directamente en la
+sesión interactiva cada cinco minutos. Los eventos 400 de Windows PowerShell
+confirmaron esa cadencia; el resultado de la tarea era 0. Ya usaba
+`-WindowStyle Hidden`, pero el arranque directo era el sospechoso del destello.
+
+Con autorización del usuario se cambió únicamente el lanzador:
+
+- Nuevo `scripts/mover-buzon-a-nube.vbs`: WScript (host gráfico, sin consola)
+  llama al PowerShell de Windows por su ruta absoluta con ventana 0/oculta y
+  espera a que termine. Propaga el código de salida real; no convierte fallos
+  en éxito ni deja de escribir el registro que ya produce el `.ps1`.
+- `scripts/mover-buzon-a-nube.ps1 -Instalar` usa ese lanzador. Si la tarea ya
+  existe, actualiza solo su acción mediante `Set-ScheduledTask`; no reinicia la
+  cadencia ni cambia usuario, privilegios, condiciones o límite de ejecución.
+- Acción local aplicada: `wscript.exe //B //Nologo` con la ruta absoluta al VBS.
+  La tarea sigue habilitada cada cinco minutos y conserva los diez minutos de
+  límite y la política existente de instancias. Principal, disparadores y
+  ajustes se compararon mediante XML y permanecieron idénticos.
+- Respaldo previo fuera de Git:
+  `%LOCALAPPDATA%\Clarvex\task-backups\Mover-buzon-20260904-215045.xml`.
+  La vuelta atrás consiste en restaurar solo la acción de ese XML, no borrar
+  la tarea ni crear otra. Conservar juntos el `.vbs` y el `.ps1`.
+- Validación: sintaxis PowerShell y `tests/mover-buzon-a-nube.test.ps1`, 11/11.
+  Se ejecutó el lanzador real con copias de los scripts y archivos sintéticos
+  en una carpeta temporal. Se probaron espacios y barra final en rutas,
+  simulación, movimiento íntegro por hash, duplicados, metadatos y salida 1
+  ante un error. El registro de esa prueba también fue temporal.
+
+La lógica de Buzón/Syncthing no cambió. No se ejecutó manualmente la tarea
+contra los archivos del usuario para probar. Sin AWS, despliegues, GitHub ni
+producción. El ajuste de Windows quedó aplicado; los archivos no se publicaron.
+
+Referencia del host y modo batch:
+https://learn.microsoft.com/es-es/windows-server/administration/windows-commands/wscript
+
 ## Export RDV lleno — 31 de agosto de 2026
 
 El RDV mensual ya tiene exportador desde la plantilla corporativa compartida por
@@ -169,6 +207,100 @@ El workflow de Deploy sigue siendo manual y NO se ejecutó. Sin cambios en AWS,
 producción, bases existentes, Retool, Slack, secretos o configuración administrativa.
 El aviso de GitHub sobre el runtime antiguo de checkout/setup-node no bloqueó
 la corrida; queda para una actualización separada de las Actions fijadas.
+
+### Segunda ronda: siete hallazgos más — 4 de septiembre de 2026
+
+Corregidos y verificados en local. **Sin publicar**: no hubo commit, push ni
+despliegue; no se tocaron AWS, Retool, Slack ni producción. Validación:
+TypeScript sin emisión e incremental desactivado, ESLint completo sin avisos,
+**1203 pruebas unitarias**, build de producción (solo el aviso conocido de
+Sentry/OpenTelemetry) y las dos simulaciones de shell, 33 y 17.
+
+⚠️ **El despliegue tenía UNA puerta de vuelta atrás y hacían falta dos.** Un
+`pm2 reload` o un `pm2 start` fallidos mataban `deploy-release.sh` por `set -e`
+**con el puntero de versión ya cambiado**: el estado anunciaba activa una versión
+que PM2 nunca sirvió, y el rollback --que sí existía-- no llegaba a ejecutarse.
+Cubría solo «arrancó pero no responde sana», que es el menos grave de los dos.
+`activar()` devuelve ahora un código y los dos caminos salen por `volver_atras`.
+El código de salida era 1 en los dos casos, así que **lo que distingue el arreglo
+es el puntero, no la salida**: es lo que comprueba el escenario nuevo.
+
+⚠️ **El `ack` de Slack confirmaba lo que no había guardado.** El `catch` de la
+transacción daba por hecho que cualquier error era una carrera perdida. Con la
+base caída respondía **200 «Revisado»**, marcaba el mensaje de Slack como atendido
+y no dejaba una línea en la auditoría: la alerta desaparecía de la vista de todos
+sin que nadie la hubiera revisado, que es justo el fallo que el `GET` sin efectos
+vino a cerrar. Ahora se **relee** el registro; si no está --o si ni siquiera se
+puede leer-- responde 503 y **no toca Slack**.
+
+⚠️ **Un respaldo fallido conservaba el estado del éxito de ayer.** El resultado
+solo se escribía al terminar bien, así que un `pg_dump` roto dejaba al monitor
+leyendo «ok» hasta cumplirse las 26 horas de antigüedad: más de un día con la
+única copia de la nómina sin hacer y sin que nadie lo supiera. Ahora se escribe
+también al fallar, y con **lo que de verdad se sabe de cada destino**: si R2 ya
+había confirmado la subida, eso se conserva y el fallo pasa a la copia cruzada.
+
+⚠️ **La restauración aislada borraba un contenedor por nombre.** Sin comprobar
+que fuera suyo, y **al salir**, aunque no hubiera llegado a crear nada. Ahora
+etiqueta los suyos (`clarvex-restauracion=1`), se detiene si el nombre lo ocupa
+uno ajeno --`RESTAURAR_FORZAR=1` para saltárselo, que es una decisión escrita-- y
+solo destruye lo que creó. Además **cuenta** los errores de `pg_restore` en vez
+de imprimir quince líneas y seguir: los inocuos de `--clean` van aparte, y sale
+en 1 si queda alguno real o si la base restaurada se queda sin tablas, usuarios
+o tiendas. ⚠️ La línea final «errors ignored on restore: N» es un RESUMEN de las
+anteriores: contarla convertía una restauración buena en un fallo inventado.
+
+⚠️ **Una fila con SOLO la meta no es captura, y se contaba como tal.** Guardar
+Cuota Justa escribe la meta diaria de toda la semana por adelantado
+(`lib/weekly-performance.ts`) con `dailySales`, `transactions` y `pieces` en cero.
+`dailySales` no es anulable, así que esa fila era indistinguible de un día ya
+capturado: el mes se daba por completo el lunes. `tieneCaptura()` en
+`lib/retool-store-agent.ts` exige que haya ALGO de operación. ⚠️ La venta puede
+ser **negativa** por una devolución, y eso sí es captura: se compara contra cero,
+no «mayor que cero».
+
+De ahí salían dos avisos falsos que ya no se emiten:
+
+- Los insights juzgaban contra `metric.achievement`, que es la meta del periodo
+  **entero**. Reproducido: con cinco días vendidos exactamente en meta y las
+  metas del mes ya escritas, el cumplimiento del rango completo daba **14.29 %**
+  y el agente recomendaba «revisar cobertura, tráfico y tickets antes del cierre».
+  Ahora se mide contra la meta de los días transcurridos, igual que la anomalía
+  de ritmo de `retool-store-audit.ts` --el mismo dato tenía dos lecturas
+  distintas en la misma pantalla-- y con captura incompleta no se juzga: se avisa
+  del hueco.
+- `todayKpiRows` contaba filas, no capturas, así que «Sin KPIs capturados hoy»
+  no saltaba nunca y en su lugar saltaba **«Venta diaria muy por debajo»,
+  crítica**, a las nueve de la mañana sobre un día que solo tenía la meta puesta.
+
+### Las pruebas que faltaban, y las que no corría nadie
+
+⚠️ **`tests/deploy-release.sim.sh` existía y NO lo ejecutaba nada.** Ahora las dos
+simulaciones corren en CI dentro del trabajo `operativos`, que hasta ahora solo
+hacía `bash -n`. `bash -n` dice que el guion se puede leer; esto comprueba lo que
+DECIDE ante cada fallo, que es donde estaban los problemas.
+
+Las dos aceptan `SIM_GUION` para apuntar a otra copia del guion. No es un adorno:
+es como se comprueba que saben ponerse en rojo. Contra la versión anterior,
+la del despliegue falla 2 de 33 y la de la restauración 7 de 17.
+
+⚠️ **Las pruebas de aislamiento comprobaban consultas de Prisma con el filtro
+escrito dentro de la propia prueba**: demostraban que Postgres sabe filtrar, que
+no estaba en duda. Una ruta que se olvidara del `storeId` pasaba la CI entera.
+`tests/integracion/aislamiento-api.test.ts` levanta la aplicación real, entra con
+el PIN de la gerencia y pide datos por HTTP. Comprobado retirando el `storeId` de
+`/api/app-data`: fallan dos de sus cinco pruebas, y vuelven a pasar al restaurarlo.
+
+⚠️ **Se salta MIRANDO la base, no por una variable.** `TEST_DATABASE_URL` existe
+igual en una máquina de desarrollo con `.env.test`, así que ese candado no sujeta
+nada: la suite llegó a levantar un servidor de verdad contra la base local. Si
+faltan las dos tiendas del seed, se salta sin arrancar nada.
+
+⚠️ **No canalizar `prisma migrate deploy` a `head`.** Al cerrarse la tubería,
+Prisma muere a media migración y la deja marcada como fallida: después
+`migrate deploy` responde **P3009** y no aplica nada más. Pasó en la base de
+pruebas local durante esta verificación; se recuperó recreando el esquema
+--sintético y local-- tras pasar las dos guardas del seed.
 
 ### 1. El agente comparaba el calendario, no la tienda
 

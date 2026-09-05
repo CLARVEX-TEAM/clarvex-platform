@@ -171,6 +171,19 @@ jobs:
           done < <(find scripts .github -name '*.sh' -type f 2>/dev/null)
           exit "$FALLO"
 
+      # ⚠️ `bash -n` solo dice que el guion se puede LEER. Estas dos
+      # simulaciones comprueban lo que DECIDE ante cada fallo, que es donde
+      # estaban los problemas: un despliegue que moria sin volver atras y una
+      # restauracion que se daba por buena a medias.
+      #
+      # No tocan produccion, ni la red, ni Docker: montan un arbol temporal y
+      # ponen en el PATH un `pnpm`, `pm2`, `curl` y `docker` de mentira.
+      - name: Simulacion del despliegue por versiones
+        run: bash tests/deploy-release.sim.sh
+
+      - name: Simulacion de la restauracion aislada
+        run: bash tests/restaurar-aislado.sim.sh
+
       - name: Los guiones de PowerShell se pueden leer
         shell: pwsh
         run: |
@@ -604,5 +617,16 @@ jobs:
       - name: Sembrar dos tiendas sinteticas
         run: pnpm exec tsx tests/seed-test-db.ts
 
+      # ⚠️ Son DOS cosas distintas y las dos hacen falta.
+      #
+      # `aislamiento.test.ts` comprueba consultas de Prisma con el filtro escrito
+      # en la propia prueba: demuestra que Postgres filtra, que no estaba en duda.
+      # `aislamiento-api.test.ts` levanta la aplicacion de verdad, inicia sesion
+      # con el PIN de la gerencia y pide datos por HTTP, asi que lo que se prueba
+      # es el filtro que escribe la RUTA. Sin esa segunda, una ruta que se
+      # olvidara del `storeId` pasaba la CI entera.
+      #
+      # El servidor lo levanta la propia prueba (`next dev` en el 3102) y lo mata
+      # al terminar. La primera peticion tarda: compila bajo demanda.
       - name: Pruebas de integracion y aislamiento entre tiendas
         run: pnpm exec tsx --test tests/integracion/*.test.ts

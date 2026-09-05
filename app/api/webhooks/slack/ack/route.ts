@@ -143,6 +143,7 @@ export async function POST(request: Request) {
   }
 
   let recienCreado = false;
+  let falloTransaccion: string | null = null;
   try {
     await prisma.$transaction(
       async (tx) => {
@@ -180,9 +181,52 @@ export async function POST(request: Request) {
     );
   } catch (error) {
     // Una colisión de serialización significa que otra petición hizo lo mismo a
-    // la vez. Es exactamente el resultado que se quería: ya está registrada.
-    const detalle = error instanceof Error ? error.message : String(error);
-    console.warn(`[slack-ack] transaccion no aplicada (probable carrera): ${detalle}`);
+    // la vez, y eso es el resultado que se quería. Pero una base caída lanza
+    // exactamente igual, así que aquí NO se decide nada: solo se anota.
+    falloTransaccion = error instanceof Error ? error.message : String(error);
+    console.warn(`[slack-ack] transaccion no aplicada: ${falloTransaccion}`);
+  }
+
+  /*
+   * ⚠️ **Confirmar es COMPROBAR que quedó escrito, no suponerlo.**
+   *
+   * El `catch` de arriba trataba cualquier error como una carrera perdida y
+   * seguía adelante: con la base caída, esta ruta respondía «Revisado», marcaba
+   * el mensaje de Slack como atendido y no quedaba ni una línea en la auditoría.
+   * La alerta desaparecía de la vista de todos sin que nadie la hubiera
+   * revisado — que es justo el fallo que el `GET` sin efectos vino a cerrar.
+   *
+   * Se relee el registro. Si la lectura tampoco puede hacerse, se responde que
+   * no se pudo: quedarse callado aquí es lo único que no vale.
+   */
+  const registrada = recienCreado
+    ? true
+    : Boolean(
+        await prisma.auditLog
+          .findFirst({
+            where: { action: "slack.ops.ack", entity: payload.entity, entityId: payload.entityId },
+            select: { id: true }
+          })
+          .catch((error: unknown) => {
+            console.error(
+              `[slack-ack] no se pudo comprobar el registro: ${error instanceof Error ? error.message : String(error)}`
+            );
+            return null;
+          })
+      );
+
+  if (!registrada) {
+    console.error(
+      `[slack-ack] NO se registró la confirmación de ${payload.entity}/${payload.entityId}.` +
+        (falloTransaccion ? ` Causa: ${falloTransaccion}` : "")
+    );
+    return pagina(
+      "No se pudo registrar",
+      "La confirmación no quedó guardada, así que el mensaje de Slack se deja como está. " +
+        "Vuelve a intentarlo; si sigue fallando, la base de datos no está respondiendo.",
+      "",
+      503
+    );
   }
 
   const actualizado = await updateSlackOpsMessageReviewed(payload);

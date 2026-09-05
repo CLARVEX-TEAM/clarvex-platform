@@ -103,3 +103,38 @@ test("un mes que aun no empieza no reporta nada de ritmo", () => {
   assert.ok(!titulos(brief).includes("Faltan días por capturar en el mes"));
   assert.ok(!titulos(brief).includes("Mes por debajo del ritmo"));
 });
+
+/* ─── metas escritas por adelantado ───────────────────────────────────────── */
+
+test("⚠️ REGRESION: con la meta puesta y sin capturar, la anomalia es la CAPTURA", () => {
+  /*
+   * Guardar Cuota Justa escribe la meta diaria de toda la semana por
+   * adelantado, con la venta en cero. A las nueve de la mañana el día tiene
+   * meta y no tiene captura, y el cumplimiento sale 0 %.
+   *
+   * El fallo: eso abría «Venta diaria muy por debajo», CRÍTICA, sobre un día
+   * que simplemente no se había capturado todavía; y «Sin KPIs capturados hoy»
+   * no saltaba, porque la fila existía. Se avisaba de lo que no era y se
+   * callaba lo que sí.
+   *
+   * `todayKpiRows` cuenta ahora filas con captura de verdad (ver `tieneCaptura`
+   * en `lib/retool-store-agent.ts`), así que llega en cero.
+   */
+  const brief = auditar({ today: metrica(0, 12000), todayKpiRows: 0 });
+  const lista = titulos(brief);
+  assert.ok(lista.includes("Sin KPIs capturados hoy"), JSON.stringify(lista));
+  assert.ok(!lista.includes("Venta diaria muy por debajo"), JSON.stringify(lista));
+});
+
+test("con el dia ya capturado, una venta hundida SI se reporta", () => {
+  // El freno de arriba no puede tapar el caso real: si hay captura y la venta
+  // va al 30 % de la meta, eso es exactamente lo que hay que decir.
+  const brief = auditar({ today: metrica(3600, 12000), todayKpiRows: 5 });
+  assert.ok(titulos(brief).includes("Venta diaria muy por debajo"), JSON.stringify(titulos(brief)));
+});
+
+test("el aviso de trafico tampoco salta con un dia sin capturar", () => {
+  const sinTrafico = buildManagerDashboardMetric({ sales: 0, goal: 12000, transactions: 0, pieces: 0, traffic: null });
+  const brief = auditar({ today: sinTrafico, todayKpiRows: 0 });
+  assert.ok(!titulos(brief).includes("Tráfico sin capturar"), JSON.stringify(titulos(brief)));
+});

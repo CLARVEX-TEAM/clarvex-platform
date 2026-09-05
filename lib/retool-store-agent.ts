@@ -224,6 +224,39 @@ export function ventanaEquivalente(inicio: Date, fin: Date, dias: number): Venta
   return { inicio, fin: recortado, dias: reales, equivalente: reales === dias };
 }
 
+/**
+ * ⚠️ **Una fila con SOLO la meta NO es captura, y se contaba como tal.**
+ *
+ * Guardar Cuota Justa escribe la meta diaria de toda la semana por adelantado
+ * (`lib/weekly-performance.ts`), y crea la fila con `dailySales`, `transactions`
+ * y `pieces` en cero. Vista desde aquí, esa fila es indistinguible de un día ya
+ * capturado, así que el agente daba el mes por completo el lunes y afirmaba
+ * atraso comparando ceros contra metas reales — exactamente lo que la separación
+ * entre «periodo terminado» y «captura completa» venía a impedir.
+ *
+ * La columna `dailySales` no es anulable, así que no hay un «sin capturar» que
+ * mirar: lo que se comprueba es que haya ALGO de operación. Un día de venta cero
+ * con cero tickets, cero piezas y sin tráfico se cuenta como no capturado, y eso
+ * es deliberado: con captura incompleta el agente avisa del hueco en vez de
+ * afirmar una caída, que es el error barato de los dos.
+ *
+ * ⚠️ La venta SÍ puede ser negativa (una devolución sin venta que la compense),
+ * y eso es captura: por eso se compara contra cero, no «mayor que cero».
+ */
+export function tieneCaptura(row: {
+  dailySales: { toString(): string } | number | null;
+  transactions: number;
+  pieces: number;
+  traffic?: number | null;
+}): boolean {
+  return (
+    number(row.dailySales) !== 0 ||
+    row.transactions > 0 ||
+    row.pieces > 0 ||
+    (row.traffic ?? 0) > 0
+  );
+}
+
 function aggregateRows(
   rows: KpiPeriodRow[],
   start: Date,
@@ -235,6 +268,8 @@ function aggregateRows(
    * hay una fila por persona y por día. Cinco filas pueden ser un solo día
    * capturado, y confundirlos haría creer que un mes está completo cuando solo
    * está capturado el primer día con todo el equipo.
+   *
+   * ⚠️ Y con captura de verdad, no solo con fila: ver `tieneCaptura`.
    */
   const fechasConCaptura = new Set<string>();
   let sales = 0;
@@ -247,7 +282,7 @@ function aggregateRows(
     const time = row.date.getTime();
     if (time < start.getTime() || time > end.getTime()) continue;
     rowCount += 1;
-    fechasConCaptura.add(dateKey(row.date));
+    if (tieneCaptura(row)) fechasConCaptura.add(dateKey(row.date));
     sales += number(row.dailySales);
     goal += number(row.dailyGoal);
     transactions += row.transactions;
@@ -510,6 +545,38 @@ function sortActions(left: StoreAgentAction, right: StoreAgentAction): number {
   return rank[left.severity] - rank[right.severity] || left.title.localeCompare(right.title, "es");
 }
 
+/**
+ * El ritmo de un periodo: lo acumulado contra la meta de los días que YA
+ * pasaron.
+ *
+ * ⚠️ **No es `period.metric.achievement`.** Ese va contra la meta del periodo
+ * ENTERO, así que el día 2 de un mes retail de treinta y cinco da ~6 % y el
+ * agente recomendaba «revisar cobertura antes del cierre» a una tienda que iba
+ * al 100 % de lo que le tocaba. La corrección ya se había hecho en la anomalía
+ * de `retool-store-audit.ts` y aquí se quedó sin hacer: mismo dato, dos lecturas
+ * distintas en la misma pantalla.
+ */
+function ritmoDelPeriodo(period: StoreAgentPeriod): { pct: number | null; fiable: boolean } {
+  const acumulado = period.toDate.metric;
+  return {
+    pct: acumulado.achievement,
+    // Con un hueco de captura, el acumulado baja y la meta no: un día sin
+    // capturar se lee igual que una caída de venta. No se juzga.
+    fiable: period.toDate.elapsedDays > 0 && period.toDate.captureComplete && acumulado.goal > 0
+  };
+}
+
+/**
+ * ⚠️ La comparación contra el periodo anterior solo es limpia si cubre los
+ * MISMOS días y los tiene capturados. Los meses retail duran cuatro o cinco
+ * semanas, así que la ventana equivalente a veces se recorta; y un hueco en la
+ * base infla la diferencia hacia arriba. Se dice, en vez de callarlo.
+ */
+function comparacionLimpia(comparison: StoreAgentPeriod["comparison"]): boolean {
+  if (!comparison) return false;
+  return comparison.equivalent && comparison.baselineCapturedDays >= comparison.comparableDays;
+}
+
 function buildInsights(input: {
   primary: StoreAgentPeriod;
   week: StoreAgentPeriod;
@@ -517,22 +584,38 @@ function buildInsights(input: {
   attention: StoreAgentAction[];
 }): string[] {
   const insights: string[] = [];
-  const achievement = input.primary.metric.achievement;
-  if (achievement !== null && achievement >= 100) {
-    insights.push(`${input.primary.label} está arriba de meta; mantener foco en tickets y piezas para no depender solo de ticket alto.`);
-  } else if (achievement !== null && achievement < 80) {
-    insights.push(`${input.primary.label} va por debajo de meta; revisar cobertura, tráfico y tickets antes del cierre.`);
+  const { toDate } = input.primary;
+  const paso = ritmoDelPeriodo(input.primary);
+
+  if (toDate.elapsedDays > 0 && toDate.capturedDays < toDate.elapsedDays) {
+    insights.push(
+      `${input.primary.label}: hay captura en ${toDate.capturedDays} de los ${toDate.elapsedDays} días transcurridos; ` +
+        "el avance todavía no se puede leer como resultado de la tienda."
+    );
+  } else if (paso.fiable && paso.pct !== null) {
+    if (paso.pct >= 100) {
+      insights.push(`${input.primary.label} está arriba de la meta de lo transcurrido; mantener foco en tickets y piezas para no depender solo de ticket alto.`);
+    } else if (paso.pct < 80) {
+      insights.push(`${input.primary.label} va en ${paso.pct.toFixed(1)} % de la meta de los días transcurridos; revisar cobertura, tráfico y tickets antes del cierre.`);
+    }
   }
-  const monthDelta = input.monthContext.comparison?.salesDeltaPct;
-  if (monthDelta !== null && monthDelta !== undefined) {
+
+  const mes = input.monthContext.comparison;
+  const monthDelta = mes?.salesDeltaPct;
+  if (mes && monthDelta !== null && monthDelta !== undefined) {
     const direction = monthDelta >= 0 ? "arriba" : "abajo";
-    insights.push(`${input.monthContext.title} está ${Math.abs(monthDelta).toFixed(1)} % ${direction} contra ${input.monthContext.comparison?.label.toLowerCase()}.`);
+    const matiz = comparacionLimpia(mes) ? "" : " (la ventana anterior no es equivalente: sirve de contexto, no de diferencia)";
+    insights.push(`${input.monthContext.title} está ${Math.abs(monthDelta).toFixed(1)} % ${direction} contra ${mes.label.toLowerCase()}${matiz}.`);
   }
-  const weekDelta = input.week.comparison?.salesDeltaPct;
-  if (weekDelta !== null && weekDelta !== undefined && Math.abs(weekDelta) >= 10) {
+
+  const semana = input.week.comparison;
+  const weekDelta = semana?.salesDeltaPct;
+  if (semana && weekDelta !== null && weekDelta !== undefined && Math.abs(weekDelta) >= 10) {
     const direction = weekDelta >= 0 ? "subió" : "bajó";
-    insights.push(`La semana ${direction} ${Math.abs(weekDelta).toFixed(1)} % contra la semana anterior comparable.`);
+    const matiz = comparacionLimpia(semana) ? "" : " (ventana no equivalente)";
+    insights.push(`La semana ${direction} ${Math.abs(weekDelta).toFixed(1)} % contra la semana anterior comparable${matiz}.`);
   }
+
   if (input.attention.length > 0) {
     insights.push(`Hay ${input.attention.length} situación(es) accionable(s); resolver primero las marcadas como críticas o de revisión.`);
   }

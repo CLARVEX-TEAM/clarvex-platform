@@ -19,6 +19,25 @@ instancia. Al hacerlo, borrar la alarma `clarvex-caido-vultr` —silenciada, no
 eliminada— y subir la alerta de presupuesto de $20, que se quedó corta en cuanto
 EC2 corre a tiempo completo.
 
+## Buzón local sin ventana de PowerShell - 4 de septiembre de 2026
+
+La tarea de Windows `Mover buzon a la nube` sigue activa cada cinco minutos.
+Sus ejecuciones coincidían con el destello de consola reportado por el usuario.
+Se cambió solo su acción: `wscript.exe //B //Nologo` abre
+`scripts/mover-buzon-a-nube.vbs`, que ejecuta el mismo `.ps1` oculto desde el
+arranque, espera a que termine y devuelve su código de salida. No se cambió la
+lógica de movimiento, ni se desactivó la tarea.
+
+La configuración anterior se respaldó fuera de Git en
+`%LOCALAPPDATA%\Clarvex\task-backups\Mover-buzon-20260904-215045.xml`.
+Se compararon principal, disparadores y ajustes antes/después: sin cambios.
+`-Instalar` actualiza ahora solo la acción si la tarea ya existe, conservando
+permisos y horario. `tests/mover-buzon-a-nube.test.ps1` aprobó 11 comprobaciones
+con carpetas temporales: simulación, transferencia por hash, no sobrescritura,
+metadatos de Syncthing y errores propagados al registro/resultado de la tarea.
+No se movieron archivos reales para probar, no hubo deploy ni cambios en AWS.
+El cambio local de Windows ya está aplicado; los archivos quedan sin commit/push.
+
 ## Auditoría de septiembre: publicada y CI desbloqueada
 
 La rama `fix/auditoria-2026-09` se fusionó en `9059b68`. Al retomar el trabajo
@@ -71,6 +90,57 @@ La publicación incluyó el arreglo, sus pruebas y ambos documentos; no cambió
 código de aplicación, workflows, AWS, Retool, Slack ni producción. Queda como
 mantenimiento futuro el aviso no bloqueante de GitHub sobre el runtime de las
 Actions fijadas (checkout/setup-node); no se actualizaron en este arreglo.
+
+## Segunda ronda de la auditoría — 4 de septiembre de 2026
+
+Siete hallazgos más, ya corregidos y verificados en local. **Sin publicar**: no
+hubo commit, push ni despliegue, y no se tocaron AWS, Retool, Slack ni producción.
+
+Lo que hay que saber para no deshacerlo:
+
+1. **El despliegue tenía UNA puerta de vuelta atrás y hacían falta dos.** Un
+   `pm2 reload` o un `pm2 start` fallidos mataban `deploy-release.sh` por `set -e`
+   con el puntero de versión YA cambiado: el estado decía que la versión nueva
+   estaba activa y nadie revertía. Ahora `activar()` devuelve un código y los dos
+   fallos —«PM2 no pudo servirla» y «no responde sana»— salen por `volver_atras`.
+
+2. **El `ack` de Slack confirmaba sin haber guardado.** El `catch` de la
+   transacción trataba cualquier error como una carrera perdida; con la base
+   caída respondía «Revisado», marcaba el mensaje en Slack y no dejaba rastro en
+   la auditoría. Ahora se RELEE el registro y, si no está, se responde 503 y
+   Slack no se toca.
+
+3. **Un respaldo fallido conservaba el estado del éxito anterior.** `escribirEstado`
+   solo corría al terminar bien, así que el monitor seguía viendo «ok» hasta
+   cumplirse las 26 horas. Ahora también se escribe al fallar, y con lo que de
+   verdad se sabe de cada destino.
+
+4. **La restauración aislada borraba por nombre y seguía tras los errores.**
+   Ahora etiqueta sus contenedores (`clarvex-restauracion=1`), se detiene si el
+   nombre lo ocupa uno ajeno —`RESTAURAR_FORZAR=1` para saltárselo— y cuenta los
+   errores reales de `pg_restore` separándolos de los inocuos de `--clean`. Sale
+   en 1 si hay errores o si la base restaurada queda sin tablas, usuarios o tiendas.
+
+5. ⚠️ **Una fila con SOLO la meta no es captura.** Guardar Cuota Justa escribe la
+   meta diaria de toda la semana con la venta en cero, y el agente las contaba
+   como días capturados: daba el mes por completo el lunes y avisaba de atraso
+   comparando ceros contra metas reales. `tieneCaptura()` en
+   `lib/retool-store-agent.ts` es la regla; los insights juzgan ahora contra la
+   meta de los días TRANSCURRIDOS, como ya hacía la anomalía de ritmo.
+
+6. **Las pruebas de aislamiento no tocaban las APIs.** `tests/integracion/aislamiento-api.test.ts`
+   levanta la aplicación real, entra con el PIN de la gerencia y pide datos por
+   HTTP. Comprobado que se pone en rojo: retirando el `storeId` de `/api/app-data`
+   fallan dos de sus cinco pruebas.
+
+7. **El README recomendaba el despliegue viejo**, construyendo sobre el
+   directorio que se está sirviendo y en la ruta del servidor apagado.
+
+⚠️ **Las dos simulaciones ya corren en CI**, dentro del trabajo `operativos`:
+`tests/deploy-release.sim.sh` (33 comprobaciones) y la nueva
+`tests/restaurar-aislado.sim.sh` (17). Antes existían y no las ejecutaba nadie.
+Las dos aceptan `SIM_GUION` para correrse contra otra copia del guion, que es
+como se comprueba que saben ponerse en rojo.
 
 ## Lo que se construyó del 26 de agosto al 3 de septiembre
 

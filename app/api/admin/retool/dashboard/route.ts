@@ -12,7 +12,8 @@ import {
   addDays,
   buildAgentPeriods,
   buildStoreAgent,
-  buildWeeklyPerformanceActions
+  buildWeeklyPerformanceActions,
+  tieneCaptura
 } from "@/lib/retool-store-agent";
 import { retailMonthBoundsFor } from "@/lib/report-deadlines";
 import { mergeRdvWeeks, reconstructRdvWeek } from "@/lib/rdv-week";
@@ -310,7 +311,14 @@ export async function GET(request: Request) {
     },
     latestKpiDate,
     daysSinceKpi: latestKpiDate ? daysBetween(latestKpiDate, today) : null,
-    todayKpiRows: todayRows.length,
+    /*
+     * ⚠️ **Filas CAPTURADAS, no filas.** Guardar Cuota Justa crea la fila de
+     * cada persona para toda la semana con la meta puesta y la venta en cero.
+     * Contarlas hacía dos cosas mal a la vez: «Sin KPIs capturados hoy» no
+     * saltaba nunca, y en su lugar saltaba «Venta diaria muy por debajo» —
+     * crítica— sobre un día que simplemente aún no se había capturado.
+     */
+    todayKpiRows: todayRows.filter(tieneCaptura).length,
     activeAdvisors: advisors.length,
     workingToday,
     attendanceIssues: attendance.length,
