@@ -246,8 +246,7 @@ activar() {
 
   # El puntero se escribe con `mv`, que en el mismo sistema de ficheros es
   # atomico: no hay un instante en que el estado quede a medias.
-  printf '%s
-' "$destino" > "$ESTADO/.actual.nuevo"
+  echo "$destino" > "$ESTADO/.actual.nuevo"
   mv -f "$ESTADO/.actual.nuevo" "$PUNTERO_ACTUAL"
 
   # Comodidad para quien entra al servidor. Que falle no cambia nada: el estado
