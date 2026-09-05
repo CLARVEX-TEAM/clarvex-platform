@@ -29,6 +29,12 @@ comprobar() {
   fi
 }
 
+contar_en() {
+  # `grep -c` imprime 0 y sale 1 cuando no hay coincidencias.
+  [ -f "$1" ] || { echo 0; return; }
+  grep -c "$2" "$1" 2>/dev/null || true
+}
+
 contar_reload() {
   # `grep -c` imprime 0 y sale 1 cuando no hay coincidencias: sin esto, el
   # `|| echo 0` de fuera anadia un segundo cero y la comparacion nunca cuadraba.
@@ -73,8 +79,27 @@ EOF
 
   cat > "$bin/pm2" <<'EOF'
 #!/bin/bash
-if [ "$1" = "reload" ]; then echo "pm2 reload $2" >> "$SIM_REGISTRO_PM2"; fi
-if [ "$1" = "list" ]; then echo "clarvex-team online"; fi
+case "$1" in
+  reload)
+    echo "pm2 reload $2" >> "$SIM_REGISTRO_PM2"
+    # Por omision el reload SI adopta la ruta nueva. Con SIM_PM2_NO_SE_MUEVE=1
+    # se finge lo contrario, que es el fallo peligroso.
+    if [ "${SIM_PM2_NO_SE_MUEVE:-0}" != "1" ]; then
+      dirname "$2" > "$SIM_BASE/pm2-cwd"
+    fi
+    ;;
+  start)
+    echo "pm2 start $2" >> "$SIM_REGISTRO_PM2"
+    dirname "$2" > "$SIM_BASE/pm2-cwd"
+    ;;
+  delete) echo "pm2 delete" >> "$SIM_REGISTRO_PM2" ;;
+  save)   echo "pm2 save" >> "$SIM_REGISTRO_PM2" ;;
+  jlist)
+    CWD=$(cat "$SIM_BASE/pm2-cwd" 2>/dev/null || echo "")
+    printf '[{"name":"clarvex-team","pm2_env":{"pm_cwd":"%s"}}]' "$CWD"
+    ;;
+  list) echo "clarvex-team online" ;;
+esac
 exit 0
 EOF
 
@@ -240,6 +265,21 @@ CODIGO=$(env PATH="$TMP/bin:$PATH" CLARVEX_BASE="$BASE9" SIM_BASE="$BASE9" \
   SIM_REGISTRO_PM2="$BASE9/pm2.log" CLARVEX_MB_NECESARIOS=1 \
   bash "$GUION" "0000000000000000000000000000000000000000" > "$BASE9/salida.txt" 2>&1; echo $?)
 comprobar "SHA que no es origin/main se rechaza" "1" "$([ "$CODIGO" != "0" ] && echo 1 || echo 0)"
+
+# 10. PM2 adopta la ruta nueva: no hace falta recrear la app.
+BASE10="$TMP/pm2ok"; montar_base "$BASE10" > /dev/null
+ejecutar "$BASE10" > /dev/null
+comprobar "PM2 se movio: no se recrea la app" "0" "$(contar_en "$BASE10/pm2.log" 'pm2 delete')"
+comprobar "y se guarda la definicion con pm2 save" "1" "$(contar_en "$BASE10/pm2.log" 'pm2 save')"
+
+# 11. ⚠️ PM2 NO adopta la ruta nueva: hay que recrear la app.
+#
+# Es el fallo peligroso: el despliegue sale verde, la salud responde, y sigue
+# sirviendo la version vieja. Se anuncia como acierto sin serlo.
+BASE11="$TMP/pm2quieto"; montar_base "$BASE11" > /dev/null
+CODIGO=$(ejecutar "$BASE11" SIM_PM2_NO_SE_MUEVE=1)
+comprobar "PM2 quieto: se detecta y se recrea" "1" "$(contar_en "$BASE11/pm2.log" 'pm2 delete')"
+comprobar "PM2 quieto: el despliegue igual termina bien" "0" "$CODIGO"
 
 echo
 echo "  pasadas: $PASADAS   fallidas: $FALLIDAS"

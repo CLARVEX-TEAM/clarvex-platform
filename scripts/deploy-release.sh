@@ -47,10 +47,20 @@ CERROJO="$BASE/.deploy.lock"
 SALUD="${CLARVEX_SALUD:-https://team.clarvex.tech/api/health}"
 INTENTOS="${CLARVEX_INTENTOS:-12}"
 ESPERA="${CLARVEX_ESPERA:-5}"
-# Cuántas versiones se conservan. La actual, la anterior y un margen.
+# Cuántas versiones se conservan. La actual, la anterior y un margen: si un
+# fallo se descubre dos despliegues después, todavía hay a dónde volver.
 CONSERVAR="${CLARVEX_CONSERVAR:-4}"
-# Una versión entera (node_modules + .next + fuente) ronda los 2 GB.
-MB_NECESARIOS="${CLARVEX_MB_NECESARIOS:-4096}"
+
+# ⚠️ **Lo que hace falta es el PICO, no lo que queda después.**
+#
+# Medido en el servidor: fuente 13 MB, `node_modules` casi gratis --pnpm los
+# monta con enlaces duros a un almacén que ya está en disco-- y `.next` 2.0 GB
+# **de los que 1.9 GB son caché de webpack**, que se retira antes de activar.
+#
+# O sea: durante el build hacen falta ~2 GB, y una vez retirada la caché la
+# versión se queda en ~150 MB. Por eso conservar cuatro sí cabe, y por eso el
+# umbral mira el pico y no el residuo.
+MB_NECESARIOS="${CLARVEX_MB_NECESARIOS:-3072}"
 
 OBJETIVO="${1:-}"
 
@@ -207,6 +217,25 @@ if [ ! -d "$NUEVA/.next/server" ] || [ ! -f "$NUEVA/.next/BUILD_ID" ]; then
 fi
 log "versión preparada: $(cat "$NUEVA/.next/BUILD_ID")"
 
+# ── La caché de compilación NO viaja con la versión ───────────────────────
+#
+# ⚠️ **Sin esto, guardar versiones es inviable en esta máquina.** Medido en el
+# servidor: de los 2.0 GB que ocupa un `.next`, **1.9 GB son
+# `.next/cache/webpack`**. Guardar cuatro versiones serían ~8 GB en un disco con
+# 4.9 GB libres.
+#
+# ⚠️ Y no hace falta: la caché acelera el SIGUIENTE build **en ese mismo
+# directorio**, y cada versión se construye en uno nuevo. Nunca se reutiliza.
+#
+# Se borra solo `webpack`, no `.next/cache` entero: `fetch-cache` e `images` sí
+# los usa `next start` en marcha. Es la misma distinción que ya vive en
+# `scripts/deploy.sh`.
+if [ -d "$NUEVA/.next/cache/webpack" ]; then
+  ANTES_MB=$(du -sm "$NUEVA/.next" | cut -f1)
+  rm -rf "$NUEVA/.next/cache/webpack"
+  log "caché de webpack retirada de la versión: ${ANTES_MB} MB → $(du -sm "$NUEVA/.next" | cut -f1) MB"
+fi
+
 # ── Activar ───────────────────────────────────────────────────────────────
 #
 # El enlace se cambia con `ln -sfn` sobre un temporal y `mv`, que en el mismo
@@ -226,6 +255,33 @@ activar() {
   ln -sfn "$destino" "$BASE/.actual.enlace" 2>/dev/null && mv -Tf "$BASE/.actual.enlace" "$ACTUAL" 2>/dev/null || true
 
   pm2 reload "$destino/ecosystem.config.cjs" --update-env
+
+  # ⚠️ **COMPROBAR que PM2 se movió de verdad.**
+  #
+  # `pm2 reload <fichero>` recarga la app por nombre, pero PM2 guarda la ruta
+  # que resolvió al arrancar. Si no adopta el `cwd` nuevo, el despliegue PARECE
+  # funcionar --sale verde, la salud responde-- y sigue sirviendo la versión
+  # vieja. Es el peor fallo posible: se anuncia como acierto.
+  #
+  # Si el reload no bastó, se recrea la app. Eso sí tiene un instante de corte,
+  # pero es preferible a creer que se desplegó algo que no se desplegó.
+  local actual_pm2
+  actual_pm2=$(pm2 jlist 2>/dev/null | node -e "
+    let d='';process.stdin.on('data',c=>d+=c).on('end',()=>{
+      try { const a=JSON.parse(d).find(p=>p.name==='clarvex-team');
+            console.log(a ? a.pm2_env.pm_cwd : ''); } catch { console.log(''); }
+    })" 2>/dev/null || echo "")
+
+  if [ "$actual_pm2" != "$destino" ]; then
+    log "⚠️ PM2 seguía en '${actual_pm2:-desconocido}'. Recreando la app para que adopte $destino"
+    pm2 delete clarvex-team >/dev/null 2>&1 || true
+    pm2 start "$destino/ecosystem.config.cjs" --update-env
+  fi
+
+  # ⚠️ Sin `pm2 save`, un reinicio del servidor restauraría la definición
+  # guardada, que apunta a la instalación vieja. El despliegue se desharía solo
+  # el día que la máquina se reinicie, y nadie relacionaría las dos cosas.
+  pm2 save >/dev/null 2>&1 || log "⚠️ 'pm2 save' falló: un reinicio del servidor volvería a la versión anterior."
 }
 
 comprobar_salud() {
