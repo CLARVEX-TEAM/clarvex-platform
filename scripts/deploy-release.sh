@@ -296,8 +296,7 @@ comprobar_salud() {
 
 log "activando la versión nueva"
 if [ -n "$VERSION_ACTIVA" ]; then
-  printf '%s
-' "$VERSION_ACTIVA" > "$PUNTERO_ANTERIOR"
+  echo "$VERSION_ACTIVA" > "$PUNTERO_ANTERIOR"
 fi
 activar "$NUEVA"
 
