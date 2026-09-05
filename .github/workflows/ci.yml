@@ -1,51 +1,33 @@
 name: CI
 
-# Lo que NO dispara la CI. Un commit que solo toca documentación o guiones de
-# operación no puede romper la app, y disparaba los tres trabajos —incluido el
-# que instala Chromium y compila el proyecto entero—. En repo privado eso son
-# minutos de cuota que se agotan.
+# ⚠️ **LA CI SE DISPARA SIEMPRE, y el ahorro va POR TRABAJO.**
 #
-# ⚠️ Se agotaron de verdad: el 19 de agosto de 2026 la cuota del mes se acabó y
-# GitHub empezó a cancelar TODAS las ejecuciones antes de arrancarlas. Los tres
-# trabajos aparecían en rojo sin una sola línea de registro, que es un síntoma
-# fácil de confundir con un fallo del código. No se facturó nada: el límite de
-# gasto estaba en cero, así que Actions se detuvo en vez de cobrar.
+# Antes se filtraba con `paths-ignore` sobre documentación y guiones de
+# operación, y eso tenía dos agujeros:
 #
-# ⚠️ Se listan EXTENSIONES concretas, no `scripts/**` entero, porque ahí viven
-# nueve archivos `.ts` --entre ellos `scripts/backup-db.ts`-- que sí son código
-# del proyecto y sí los revisa el typecheck.
+# 1. Un commit que solo tocara esos archivos NO producía ninguna ejecución. El
+#    despliegue exige CI verde del MISMO SHA, así que se quedaba veinte minutos
+#    esperando una corrida que nunca iba a existir y terminaba en
+#    «Ultimo estado: missing». Un despliegue imposible por un cambio inofensivo.
+# 2. `scripts/**.sh` estaba en la lista, o sea que **un cambio en el propio
+#    `scripts/deploy.sh` se saltaba la CI entera**, incluido el escaneo de
+#    secretos. Justo el archivo que corre en producción.
 #
-# Y se usa `paths-ignore` y no una lista positiva de `paths` a propósito: con
-# una lista positiva, el día que se añada una carpeta nueva y se olvide
-# apuntarla, sus cambios dejarían de pasar por CI sin que nada avise. Aquí el
-# olvido se paga con una ejecución de más, no con una comprobación de menos.
+# Ahora siempre hay ejecución. Lo que se decide por trabajo es cuál corre: el
+# trabajo `cambios` mira qué se tocó y los caros —typecheck, pruebas, build con
+# Chromium, auditoría de dependencias— se saltan si solo cambió documentación.
+# Seguridad y validación de operativos corren SIEMPRE.
 #
-# La lista va repetida en los dos disparadores a mano: GitHub Actions NO admite
-# anclajes de YAML (`&nombre` / `*nombre`), aunque sean YAML válido. Al tocar
-# una, tocar la otra.
+# ⚠️ La cuota se agotó de verdad: el 19 de agosto de 2026 GitHub empezó a
+# cancelar TODAS las ejecuciones antes de arrancarlas, y los trabajos aparecían
+# en rojo sin una sola línea de registro. No se facturó nada porque el límite de
+# gasto estaba en cero. Por eso el ahorro se conserva; lo que cambia es dónde se
+# aplica, para que nunca falte la ejecución.
 on:
   push:
     branches: [main]
-    paths-ignore:
-      - "**.md"
-      - "scripts/**.sh"
-      - "scripts/**.json"
-      - "scripts/**.yml"
-      - "scripts/**.yaml"
-      - "scripts/**.jq"
-      - "scripts/**.ps1"
-      - "scripts/mudanza/**"
   pull_request:
     branches: [main]
-    paths-ignore:
-      - "**.md"
-      - "scripts/**.sh"
-      - "scripts/**.json"
-      - "scripts/**.yml"
-      - "scripts/**.yaml"
-      - "scripts/**.jq"
-      - "scripts/**.ps1"
-      - "scripts/mudanza/**"
 
 # Permisos del token de la ejecucion, declarados AQUI y no solo en la
 # organizacion.
@@ -55,9 +37,10 @@ on:
 # otra cuenta. Declarado aqui, el workflow se acota a si mismo pase lo que pase
 # fuera.
 #
-# Leer el contenido es lo unico que necesita: clonar y comprobar. Ninguno de
-# los tres trabajos escribe en el repositorio, publica paquetes ni comenta en
-# un PR, asi que todo lo demas se queda en none.
+# Leer el contenido es lo unico que necesita: clonar y comprobar. Ningun trabajo
+# escribe en el repositorio, publica paquetes ni comenta en un PR, asi que todo
+# lo demas se queda en none. Cada trabajo lo repite, para que anadir uno nuevo
+# obligue a decidir sus permisos en vez de heredarlos sin mirar.
 permissions:
   contents: read
 
@@ -68,9 +51,150 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # ── Qué cambió ────────────────────────────────────────────────────────────
+  #
+  # Sustituye a `paths-ignore`. La diferencia es que la ejecución SÍ existe:
+  # aquí solo se decide si vale la pena pagar los trabajos caros.
+  #
+  # ⚠️ Se listan EXTENSIONES concretas, no `scripts/**` entero, porque ahí viven
+  # nueve archivos `.ts` --entre ellos `scripts/backup-db.ts`-- que sí son
+  # código del proyecto y sí los revisa el typecheck.
+  #
+  # ⚠️ Y ante la duda, corre. Si el rango no se puede calcular --el primer
+  # commit, un historial superficial-- se asume que hubo cambio de código. El
+  # olvido se paga con una ejecución de más, nunca con una comprobación de
+  # menos.
+  cambios:
+    name: Que cambio
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      codigo: ${{ steps.filtrar.outputs.codigo }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+
+      - name: Decidir si cambio codigo
+        id: filtrar
+        env:
+          EVENTO: ${{ github.event_name }}
+          BASE: ${{ github.event.pull_request.base.sha }}
+          ANTES: ${{ github.event.before }}
+        run: |
+          set -uo pipefail
+
+          if [ "$EVENTO" = "pull_request" ]; then
+            RANGO="$BASE...HEAD"
+          else
+            RANGO="$ANTES..HEAD"
+          fi
+
+          ARCHIVOS=$(git diff --name-only "$RANGO" 2>/dev/null || true)
+
+          if [ -z "$ARCHIVOS" ]; then
+            echo "No se pudo calcular el rango ($RANGO). Se corre todo."
+            echo "codigo=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # Lo que NO obliga a compilar ni a probar.
+          SOLO_DOCS=$(echo "$ARCHIVOS" | grep -vE '(\.md$|^scripts/.*\.(sh|json|yml|yaml|jq|ps1)$|^scripts/mudanza/)' || true)
+
+          if [ -z "$SOLO_DOCS" ]; then
+            echo "Solo documentacion y guiones de operacion; los trabajos caros se saltan."
+            echo "codigo=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "Hay codigo del proyecto en el cambio."
+            echo "codigo=true" >> "$GITHUB_OUTPUT"
+          fi
+
+          echo "--- archivos ---"
+          echo "$ARCHIVOS"
+
+  # ── Workflows y guiones operativos ────────────────────────────────────────
+  #
+  # ⚠️ Corre SIEMPRE, y es justo lo que faltaba. Con `paths-ignore`, un cambio
+  # en `scripts/deploy.sh` --el archivo que corre en produccion-- no pasaba por
+  # ninguna comprobacion. Un error de sintaxis se descubria a mitad de un
+  # despliegue.
+  #
+  # No sustituye a probarlos: comprueba que se PUEDEN leer, que es la clase de
+  # fallo que un despliegue no deberia descubrir por su cuenta.
+  operativos:
+    name: Workflows y scripts operativos
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Los workflows son YAML valido
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import glob, sys, yaml
+          fallos = []
+          for ruta in sorted(glob.glob(".github/workflows/*.yml")) + sorted(glob.glob(".github/workflows/*.yaml")):
+              try:
+                  with open(ruta, encoding="utf-8") as f:
+                      datos = yaml.safe_load(f)
+              except Exception as error:
+                  fallos.append(f"{ruta}: {error}")
+                  continue
+              if not isinstance(datos, dict) or "jobs" not in datos:
+                  fallos.append(f"{ruta}: no tiene bloque 'jobs'")
+                  continue
+              print(f"  ok {ruta} ({len(datos['jobs'])} trabajos)")
+          if fallos:
+              for f in fallos:
+                  print(f"::error::{f}")
+              sys.exit(1)
+          PY
+
+      - name: Los guiones de shell se pueden leer
+        run: |
+          set -euo pipefail
+          FALLO=0
+          while IFS= read -r guion; do
+            if bash -n "$guion"; then
+              echo "  ok $guion"
+            else
+              echo "::error::$guion no es sintacticamente valido."
+              FALLO=1
+            fi
+          done < <(find scripts .github -name '*.sh' -type f 2>/dev/null)
+          exit "$FALLO"
+
+      - name: Los guiones de PowerShell se pueden leer
+        shell: pwsh
+        run: |
+          $fallo = 0
+          Get-ChildItem -Path scripts -Filter *.ps1 -Recurse -ErrorAction SilentlyContinue | ForEach-Object {
+            $errores = $null
+            [System.Management.Automation.Language.Parser]::ParseFile($_.FullName, [ref]$null, [ref]$errores) | Out-Null
+            if ($errores -and $errores.Count -gt 0) {
+              Write-Output "::error::$($_.FullName) tiene $($errores.Count) error(es) de sintaxis."
+              $fallo = 1
+            } else {
+              Write-Output "  ok $($_.Name)"
+            }
+          }
+          exit $fallo
+
   quality:
     name: Lint, typecheck & tests
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    needs: cambios
+    if: needs.cambios.outputs.codigo == 'true'
 
     steps:
       - name: Checkout
@@ -79,7 +203,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
-          node-version: 20
+          node-version-file: .nvmrc
 
       # ⚠️ pnpm por COREPACK, no por `pnpm/action-setup`. La organizacion solo
       # permite acciones propiedad de GitHub, y esa no lo es: con ella la CI ni
@@ -127,6 +251,11 @@ jobs:
   visual:
     name: Pantallas públicas
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    needs: cambios
+    if: needs.cambios.outputs.codigo == 'true'
     # BLOQUEA, y es fiable: son comprobaciones deterministas, no comparación de
     # píxeles. Verifican que los tokens de color produzcan colores válidos, que
     # los keyframes de los efectos lleguen al CSS servido, que el fondo animado
@@ -139,7 +268,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
-          node-version: 20
+          node-version-file: .nvmrc
 
       # ⚠️ pnpm por COREPACK, no por `pnpm/action-setup`. La organizacion solo
       # permite acciones propiedad de GitHub, y esa no lo es: con ella la CI ni
@@ -204,6 +333,11 @@ jobs:
   audit:
     name: Dependency security audit
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    needs: cambios
+    if: needs.cambios.outputs.codigo == 'true'
 
     steps:
       - name: Checkout
@@ -235,6 +369,9 @@ jobs:
   secretos:
     name: Sin secretos en el codigo
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
     steps:
       - name: Checkout
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -317,3 +454,144 @@ jobs:
           fi
 
           echo "Limpio."
+
+  # ── La puerta ─────────────────────────────────────────────────────────────
+  #
+  # ⚠️ **Es lo que el despliegue exige de verdad.** Sin un trabajo que dependa
+  # de todos, la conclusion de la ejecucion depende de cuales corrieron, y un
+  # `if:` mal puesto podria dejar la corrida en verde sin haber comprobado
+  # nada. Aqui se declara explicitamente que resultado es aceptable.
+  #
+  # `skipped` SI vale: es el ahorro deliberado cuando solo cambio documentacion.
+  # `failure` y `cancelled` no. Se distinguen a proposito: una cancelacion no es
+  # una aprobacion, y con `cancel-in-progress` las hay a menudo.
+  ci:
+    name: CI
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    if: always()
+    needs: [cambios, operativos, secretos, quality, visual, audit, integracion]
+    steps:
+      - name: Resumir el resultado
+        env:
+          RESULTADOS: >-
+            cambios=${{ needs.cambios.result }}
+            operativos=${{ needs.operativos.result }}
+            secretos=${{ needs.secretos.result }}
+            quality=${{ needs.quality.result }}
+            visual=${{ needs.visual.result }}
+            audit=${{ needs.audit.result }}
+            integracion=${{ needs.integracion.result }}
+        run: |
+          set -euo pipefail
+          echo "$RESULTADOS" | tr ' ' '\n' | sed '/^$/d' | sed 's/^/  /'
+
+          FALLO=0
+          for par in $RESULTADOS; do
+            NOMBRE="${par%%=*}"
+            ESTADO="${par#*=}"
+            case "$ESTADO" in
+              success|skipped) ;;
+              *) echo "::error::$NOMBRE termino en '$ESTADO'."; FALLO=1 ;;
+            esac
+          done
+
+          # Los dos que NUNCA pueden saltarse: sin ellos no hay comprobacion de
+          # seguridad ni de los archivos que corren en produccion.
+          for obligatorio in operativos secretos; do
+            ESTADO=$(echo "$RESULTADOS" | tr ' ' '\n' | grep "^$obligatorio=" | cut -d= -f2)
+            if [ "$ESTADO" != "success" ]; then
+              echo "::error::$obligatorio es obligatorio y termino en '$ESTADO'."
+              FALLO=1
+            fi
+          done
+
+          exit "$FALLO"
+
+  # ── Integracion con base efimera ──────────────────────────────────────────
+  #
+  # ⚠️ Corre en CI y NO en local, y eso es deliberado: aqui hay un Postgres que
+  # nace y muere con el trabajo, con credenciales de mentira y sin un solo dato
+  # real. En una maquina de desarrollo no hay garantia de eso, y el seed hace
+  # `TRUNCATE ... CASCADE` sobre todas las tablas.
+  #
+  # ⚠️ Las llamadas a servicios externos se bloquean por variables de entorno
+  # vacias o falsas. Ninguna prueba debe alcanzar R2, Slack, Bedrock ni Mercado
+  # Pago: una prueba que manda un mensaje de verdad es un incidente.
+  integracion:
+    name: Integracion con base efimera
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    needs: cambios
+    if: needs.cambios.outputs.codigo == 'true'
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: clarvex
+          POSTGRES_PASSWORD: contrasena-de-ci-sin-valor
+          POSTGRES_DB: clarvex_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U clarvex -d clarvex_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      # ⚠️ El nombre lleva «test» y el host es local: las dos condiciones que
+      # `assertSafeTestEnvironment` exige antes de dejar borrar nada.
+      TEST_DATABASE_URL: postgresql://clarvex:contrasena-de-ci-sin-valor@127.0.0.1:5432/clarvex_test
+      DATABASE_URL: postgresql://clarvex:contrasena-de-ci-sin-valor@127.0.0.1:5432/clarvex_test
+      NODE_ENV: test
+      AUTH_SECRET: clave-de-ci-con-al-menos-32-caracteres
+      WEBAUTHN_RP_ID: localhost
+      WEBAUTHN_RP_NAME: Clarvex Team
+      WEBAUTHN_ORIGIN: http://127.0.0.1:3100
+      # Servicios externos: vacios A PROPOSITO. Con la variable vacia el codigo
+      # toma el camino de «no configurado» en vez de intentar salir a la red.
+      R2_ACCOUNT_ID: ""
+      SLACK_BOT_TOKEN: ""
+      SLACK_SIGNING_SECRET: ""
+      BEDROCK_ACCESS_KEY_ID: ""
+      MP_ACCESS_TOKEN: ""
+      WEBHOOK_URL: ""
+      RESEND_API_KEY: ""
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version-file: .nvmrc
+
+      - name: Activar pnpm por corepack
+        env:
+          COREPACK_ENABLE_DOWNLOAD_PROMPT: "0"
+        run: |
+          corepack enable
+          corepack prepare --activate
+          pnpm --version
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma client
+        run: pnpm exec prisma generate
+
+      - name: Aplicar migraciones en la base efimera
+        run: pnpm exec prisma migrate deploy
+
+      - name: Sembrar dos tiendas sinteticas
+        run: pnpm exec tsx tests/seed-test-db.ts
+
+      - name: Pruebas de integracion y aislamiento entre tiendas
+        run: pnpm exec tsx --test tests/integracion/*.test.ts

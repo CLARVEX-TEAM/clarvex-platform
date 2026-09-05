@@ -4,7 +4,7 @@ import { ChangeEvent, useEffect, useRef, useState } from "react";
 import { Cake, Camera, Fingerprint, ImageUp, Moon, Store, Sun, UserRound } from "lucide-react";
 import { startRegistration } from "@simplewebauthn/browser";
 import { getBiometricRegistrationOptions, getSession, registerBiometric } from "@/lib/auth";
-import type { User } from "@/lib/types";
+import type { User, Role } from "@/lib/types";
 import { Badge, ProfileAvatar } from "@/components/ui";
 import { useToast } from "@/components/Toast";
 import { useTheme, type Theme } from "@/components/ThemeProvider";
@@ -12,7 +12,20 @@ import {
   DeskButton, DeskPanel, DeskPrimaryButton, DeskReveal, DeskSection, DeskSkeleton, deskInput
 } from "@/components/desktop/DeskUI";
 
-const roleLabels = { GERENTE: "Gerente", SUBGERENTE: "Subgerente", ASESOR: "Asesor" } as const;
+/**
+ * ⚠️ **Tiene que cubrir TODOS los roles.** Faltaba `REGIONAL`, asi que a una
+ * persona con ese rol se le pintaba la insignia VACIA: `roleLabels[user.role]`
+ * devolvia `undefined` y nadie se enteraba.
+ *
+ * El tipo `Record<Role, string>` es lo que lo impide: si manana se anade un rol
+ * al tipo, esto deja de compilar hasta que alguien decida como se llama.
+ */
+const roleLabels: Record<Role, string> = {
+  GERENTE: "Gerente",
+  SUBGERENTE: "Subgerente",
+  ASESOR: "Asesor",
+  REGIONAL: "Regional"
+};
 const acceptedTypes = ["image/jpeg", "image/png", "image/webp"];
 const maxBytes = 5 * 1024 * 1024;
 

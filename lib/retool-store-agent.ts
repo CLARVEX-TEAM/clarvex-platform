@@ -28,19 +28,63 @@ export type StoreAgentAction = {
 
 export type StoreAgentPeriodKey = "today" | "wtd" | "mtd" | "lastClosedMonth";
 
+/**
+ * Lo acumulado dentro de un periodo HASTA la fecha operativa.
+ *
+ * Va separado de `metric` —que cubre el rango entero, con su meta total— para
+ * que nadie tenga que adivinar cuál de las dos está mirando. Mezclarlos es el
+ * fallo que esta separación existe para impedir.
+ */
+export type StoreAgentToDate = {
+  /** Último día incluido: hoy, o el fin del rango si ya terminó. */
+  end: string;
+  metric: ManagerDashboardMetric;
+  rowCount: number;
+  /** Días del rango ya vividos, contando hoy. */
+  elapsedDays: number;
+  /** Días del rango entero. La meta total de `metric` corresponde a estos. */
+  totalDays: number;
+  /** Fechas DISTINTAS con captura dentro de lo transcurrido. */
+  capturedDays: number;
+  /** El rango terminó. NO afirma que la captura esté completa. */
+  periodEnded: boolean;
+  /**
+   * Hay captura en todos los días transcurridos.
+   *
+   * ⚠️ Es una condición NECESARIA, no suficiente: dice que ningún día está
+   * vacío, no que lo capturado sea correcto ni que estén todas las personas.
+   */
+  captureComplete: boolean;
+};
+
 export type StoreAgentPeriod = {
   key: StoreAgentPeriodKey;
   title: string;
   label: string;
+  /** Inicio y fin del rango COMPLETO. No se mueven con el día. */
   start: string;
   end: string;
+  /**
+   * El rango completo, con su META TOTAL.
+   *
+   * ⚠️ `achievement` de este bloque es contra la meta del mes o la semana
+   * ENTERA. Al principio del periodo va a ser bajo por construcción, y eso no
+   * significa atraso. Para el ritmo real está `toDate`.
+   */
   metric: ManagerDashboardMetric;
   rowCount: number;
+  /** Lo acumulado hasta hoy dentro de ese rango. */
+  toDate: StoreAgentToDate;
+  /** Los mismos días transcurridos, en el periodo anterior. */
   comparison?: {
     label: string;
     start: string;
     end: string;
     baseline: ManagerDashboardMetric;
+    baselineDays: number;
+    comparableDays: number;
+    equivalent: boolean;
+    baselineCapturedDays: number;
     salesDeltaPct: number | null;
     achievementDelta: number | null;
     transactionsDeltaPct: number | null;
@@ -111,8 +155,88 @@ function clampEnd(end: Date, maxEnd: Date): Date {
   return end.getTime() > maxEnd.getTime() ? maxEnd : end;
 }
 
-function aggregateRows(rows: KpiPeriodRow[], start: Date, end: Date): { metric: ManagerDashboardMetric; rowCount: number } {
+/**
+ * Días de un rango que YA se vivieron, contando hoy.
+ *
+ * ⚠️ **No es la longitud del rango.** Confundir las dos cosas es lo que hacía
+ * que el agente comparara seis días capturados de un mes retail de treinta y
+ * cinco contra el mes anterior COMPLETO. Con venta constante de cien pesos
+ * diarios eso daba «−78.57 %» cuando la respuesta correcta es 0 %: no había
+ * caído nada, simplemente aún no había pasado el mes.
+ */
+export type Transcurrido = {
+  /** Último día que cuenta: hoy, o el fin del rango si ya terminó. */
+  hasta: Date;
+  /** Días ya vividos del rango, contando hoy. Cero si aún no empieza. */
+  dias: number;
+  /** Días que tiene el rango entero. Es a lo que corresponde la meta total. */
+  diasTotales: number;
+  /**
+   * El rango ya terminó.
+   *
+   * ⚠️ **No dice nada sobre la captura.** Un mes puede haber terminado y seguir
+   * con días sin capturar; son dos preguntas distintas y mezclarlas hace pasar
+   * un hueco de captura por una caída de venta.
+   */
+  terminado: boolean;
+};
+
+export function transcurrido(inicio: Date, fin: Date, hoy: Date): Transcurrido {
+  const dia = (a: Date, b: Date) => Math.round((a.getTime() - b.getTime()) / DAY_MS);
+  const diasTotales = Math.max(0, dia(fin, inicio) + 1);
+
+  // Antes de que empiece no hay nada transcurrido, y el corte es el propio
+  // inicio: devolver un `hasta` anterior daría rangos negativos aguas abajo.
+  if (hoy.getTime() < inicio.getTime()) {
+    return { hasta: inicio, dias: 0, diasTotales, terminado: false };
+  }
+
+  const terminado = hoy.getTime() > fin.getTime();
+  const hasta = terminado ? fin : hoy;
+  return { hasta, dias: Math.max(0, dia(hasta, inicio) + 1), diasTotales, terminado };
+}
+
+/**
+ * La ventana del periodo anterior que cubre los MISMOS días transcurridos.
+ *
+ * ⚠️ **Los meses retail no duran lo mismo** (cuatro o cinco semanas), así que
+ * la ventana equivalente puede no caber en el periodo anterior. Cuando eso
+ * pasa se recorta y `equivalente` queda en `false`: la comparación sigue
+ * sirviendo de contexto, pero no es una diferencia limpia y quien la lee tiene
+ * que saberlo.
+ */
+export type VentanaEquivalente = {
+  inicio: Date;
+  fin: Date;
+  /** Días que de verdad abarca, ya recortada. */
+  dias: number;
+  /** Cubre exactamente los días pedidos. */
+  equivalente: boolean;
+};
+
+export function ventanaEquivalente(inicio: Date, fin: Date, dias: number): VentanaEquivalente {
+  if (dias <= 0) {
+    return { inicio, fin: inicio, dias: 0, equivalente: false };
+  }
+  const deseado = addDays(inicio, dias - 1);
+  const recortado = clampEnd(deseado, fin);
+  const reales = Math.max(0, Math.round((recortado.getTime() - inicio.getTime()) / DAY_MS) + 1);
+  return { inicio, fin: recortado, dias: reales, equivalente: reales === dias };
+}
+
+function aggregateRows(
+  rows: KpiPeriodRow[],
+  start: Date,
+  end: Date
+): { metric: ManagerDashboardMetric; rowCount: number; capturedDays: number } {
   const trafficByDate = new Map<string, number>();
+  /*
+   * ⚠️ Fechas DISTINTAS con captura, que no es lo mismo que el número de filas:
+   * hay una fila por persona y por día. Cinco filas pueden ser un solo día
+   * capturado, y confundirlos haría creer que un mes está completo cuando solo
+   * está capturado el primer día con todo el equipo.
+   */
+  const fechasConCaptura = new Set<string>();
   let sales = 0;
   let goal = 0;
   let transactions = 0;
@@ -123,6 +247,7 @@ function aggregateRows(rows: KpiPeriodRow[], start: Date, end: Date): { metric: 
     const time = row.date.getTime();
     if (time < start.getTime() || time > end.getTime()) continue;
     rowCount += 1;
+    fechasConCaptura.add(dateKey(row.date));
     sales += number(row.dailySales);
     goal += number(row.dailyGoal);
     transactions += row.transactions;
@@ -139,24 +264,47 @@ function aggregateRows(rows: KpiPeriodRow[], start: Date, end: Date): { metric: 
 
   return {
     metric: buildManagerDashboardMetric({ sales, goal, transactions, pieces, traffic }),
-    rowCount
+    rowCount,
+    capturedDays: fechasConCaptura.size
   };
 }
 
-function buildComparison(label: string, rows: KpiPeriodRow[], start: Date, end: Date, current: ManagerDashboardMetric) {
-  const baseline = aggregateRows(rows, start, end).metric;
+/**
+ * Compara lo acumulado HASTA LA FECHA contra los mismos días del periodo
+ * anterior.
+ *
+ * ⚠️ **La línea base se recorta a los días transcurridos, no al periodo
+ * entero.** Es la corrección del fallo: comparar un mes a medias contra un mes
+ * completo mide el calendario, no la tienda.
+ */
+function buildComparison(
+  label: string,
+  rows: KpiPeriodRow[],
+  ventana: VentanaEquivalente,
+  diasPedidos: number,
+  current: ManagerDashboardMetric
+) {
+  const base = aggregateRows(rows, ventana.inicio, ventana.fin);
   return {
     label,
-    start: dateKey(start),
-    end: dateKey(end),
-    baseline,
-    salesDeltaPct: percentDelta(current.sales, baseline.sales),
+    start: dateKey(ventana.inicio),
+    end: dateKey(ventana.fin),
+    baseline: base.metric,
+    /** Días que abarca la base. Con meses retail de distinta duración puede no cuadrar. */
+    baselineDays: ventana.dias,
+    /** Días transcurridos que se querían comparar. */
+    comparableDays: diasPedidos,
+    /** La base cubre exactamente esos días: solo entonces la diferencia es limpia. */
+    equivalent: ventana.equivalente,
+    /** Días con captura dentro de la base. Un hueco aquí infla la diferencia. */
+    baselineCapturedDays: base.capturedDays,
+    salesDeltaPct: percentDelta(current.sales, base.metric.sales),
     achievementDelta:
-      current.achievement !== null && baseline.achievement !== null
-        ? Math.round((current.achievement - baseline.achievement) * 10) / 10
+      current.achievement !== null && base.metric.achievement !== null
+        ? Math.round((current.achievement - base.metric.achievement) * 10) / 10
         : null,
-    transactionsDeltaPct: percentDelta(current.transactions, baseline.transactions),
-    piecesDeltaPct: percentDelta(current.pieces, baseline.pieces)
+    transactionsDeltaPct: percentDelta(current.transactions, base.metric.transactions),
+    piecesDeltaPct: percentDelta(current.pieces, base.metric.pieces)
   };
 }
 
@@ -198,17 +346,50 @@ export function buildAgentPeriods(input: {
   primary: StoreAgentPeriod;
   monthContext: StoreAgentPeriod;
 } {
-  const elapsedWeekDays = Math.max(0, Math.round((input.weekEnd.getTime() - input.weekStart.getTime()) / DAY_MS));
-  const elapsedMonthDays = Math.max(0, Math.round((input.retailMonthEnd.getTime() - input.retailMonthStart.getTime()) / DAY_MS));
-  const previousWeekComparableEnd = clampEnd(addDays(input.previousWeekStart, elapsedWeekDays), input.previousWeekEnd);
-  const previousMonthComparableEnd = clampEnd(addDays(input.previousMonthStart, elapsedMonthDays), input.previousMonthEnd);
+  /*
+   * ⚠️ **Días TRANSCURRIDOS, no la longitud del rango.** La versión anterior
+   * usaba `fin − inicio` del periodo entero, así que la ventana del mes
+   * anterior salía del tamaño del mes completo y la comparación medía el
+   * calendario en vez de la tienda.
+   */
+  const semanaCurso = transcurrido(input.weekStart, input.weekEnd, input.today);
+  const mesCurso = transcurrido(input.retailMonthStart, input.retailMonthEnd, input.today);
+  const cierreCurso = transcurrido(input.previousMonthStart, input.previousMonthEnd, input.today);
+
+  const ventanaSemanaAnterior = ventanaEquivalente(input.previousWeekStart, input.previousWeekEnd, semanaCurso.dias);
+  const ventanaMesAnterior = ventanaEquivalente(input.previousMonthStart, input.previousMonthEnd, mesCurso.dias);
+  const ventanaAntesDelCierre = ventanaEquivalente(
+    input.beforePreviousMonthStart,
+    input.beforePreviousMonthEnd,
+    cierreCurso.dias
+  );
 
   const todayAgg = aggregateRows(input.rows, input.today, input.today);
+  // Rango COMPLETO: de aquí sale la meta total, que no depende del día.
   const weekAgg = aggregateRows(input.rows, input.weekStart, input.weekEnd);
   const monthAgg = aggregateRows(input.rows, input.retailMonthStart, input.retailMonthEnd);
   const closedAgg = aggregateRows(input.rows, input.previousMonthStart, input.previousMonthEnd);
+  // Acumulado HASTA HOY: es lo único que se puede comparar contra otro periodo.
+  const weekToDate = aggregateRows(input.rows, input.weekStart, semanaCurso.hasta);
+  const monthToDate = aggregateRows(input.rows, input.retailMonthStart, mesCurso.hasta);
+  const closedToDate = aggregateRows(input.rows, input.previousMonthStart, cierreCurso.hasta);
+
   const weekClosed = input.weekEnd.getTime() < input.today.getTime();
   const monthClosed = input.retailMonthEnd.getTime() < input.today.getTime();
+
+  const acumulado = (
+    agg: { metric: ManagerDashboardMetric; rowCount: number; capturedDays: number },
+    curso: Transcurrido
+  ): StoreAgentToDate => ({
+    end: dateKey(curso.hasta),
+    metric: agg.metric,
+    rowCount: agg.rowCount,
+    elapsedDays: curso.dias,
+    totalDays: curso.diasTotales,
+    capturedDays: agg.capturedDays,
+    periodEnded: curso.terminado,
+    captureComplete: curso.dias > 0 && agg.capturedDays >= curso.dias
+  });
 
   const today: StoreAgentPeriod = {
     key: "today",
@@ -217,7 +398,8 @@ export function buildAgentPeriods(input: {
     start: dateKey(input.today),
     end: dateKey(input.today),
     metric: todayAgg.metric,
-    rowCount: todayAgg.rowCount
+    rowCount: todayAgg.rowCount,
+    toDate: acumulado(todayAgg, transcurrido(input.today, input.today, input.today))
   };
   const week: StoreAgentPeriod = {
     key: "wtd",
@@ -227,7 +409,15 @@ export function buildAgentPeriods(input: {
     end: dateKey(input.weekEnd),
     metric: weekAgg.metric,
     rowCount: weekAgg.rowCount,
-    comparison: buildComparison("Semana anterior comparable", input.rows, input.previousWeekStart, previousWeekComparableEnd, weekAgg.metric)
+    toDate: acumulado(weekToDate, semanaCurso),
+    // Contra el acumulado, NO contra el rango completo.
+    comparison: buildComparison(
+      "Semana anterior, mismos días",
+      input.rows,
+      ventanaSemanaAnterior,
+      semanaCurso.dias,
+      weekToDate.metric
+    )
   };
   const month: StoreAgentPeriod = {
     key: "mtd",
@@ -237,7 +427,14 @@ export function buildAgentPeriods(input: {
     end: dateKey(input.retailMonthEnd),
     metric: monthAgg.metric,
     rowCount: monthAgg.rowCount,
-    comparison: buildComparison("Mismo periodo del mes anterior", input.rows, input.previousMonthStart, previousMonthComparableEnd, monthAgg.metric)
+    toDate: acumulado(monthToDate, mesCurso),
+    comparison: buildComparison(
+      "Mes anterior, mismos días",
+      input.rows,
+      ventanaMesAnterior,
+      mesCurso.dias,
+      monthToDate.metric
+    )
   };
   const lastClosedMonth: StoreAgentPeriod = {
     key: "lastClosedMonth",
@@ -247,7 +444,14 @@ export function buildAgentPeriods(input: {
     end: dateKey(input.previousMonthEnd),
     metric: closedAgg.metric,
     rowCount: closedAgg.rowCount,
-    comparison: buildComparison("Mes anterior al cierre", input.rows, input.beforePreviousMonthStart, input.beforePreviousMonthEnd, closedAgg.metric)
+    toDate: acumulado(closedToDate, cierreCurso),
+    comparison: buildComparison(
+      "Mes anterior al cierre, mismos días",
+      input.rows,
+      ventanaAntesDelCierre,
+      cierreCurso.dias,
+      closedToDate.metric
+    )
   };
 
   const primary = periodHasActivity(today)

@@ -7,7 +7,15 @@
     "strict": true,
     "noEmit": true,
     "esModuleInterop": true,
-    "noImplicitAny": false,
+    /*
+     * ⚠️ ACTIVADO el 4 de septiembre de 2026. Estaba en `false` como excepcion
+     * a `strict`, y al activarlo salieron SOLO DOS errores. Los dos eran el
+     * MISMO fallo real: el mapa de etiquetas de rol no incluia `REGIONAL`, asi
+     * que a esa persona se le pintaba la insignia vacia.
+     *
+     * Un `any` implicito escondia un hueco de datos, no un problema de tipos.
+     */
+    "noImplicitAny": true,
     "module": "esnext",
     "moduleResolution": "bundler",
     "resolveJsonModule": true,

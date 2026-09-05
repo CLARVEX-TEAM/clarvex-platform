@@ -56,7 +56,11 @@ jobs:
             exit 1
           fi
 
+          # ⚠️ **Del SHA EXACTO.** `head_sha` filtra por commit: una CI verde de
+          # otro commit no aprueba este. Es la unica garantia de que lo
+          # comprobado es lo que va a correr en produccion.
           echo "Esperando CI verde para $SHA..."
+          ID_CORRIDA=""
           for intento in $(seq 1 80); do
             CORRIDA=$(gh api -X GET \
               "repos/$REPO/actions/workflows/ci.yml/runs" \
@@ -68,10 +72,11 @@ jobs:
             ESTADO=$(echo "$CORRIDA" | jq -r '.status // "missing"')
             CONCLUSION=$(echo "$CORRIDA" | jq -r '.conclusion // ""')
             URL=$(echo "$CORRIDA" | jq -r '.html_url // ""')
+            ID_CORRIDA=$(echo "$CORRIDA" | jq -r '.id // ""')
 
             if [ "$ESTADO" = "completed" ] && [ "$CONCLUSION" = "success" ]; then
-              echo "CI aprobada: $URL"
-              exit 0
+              echo "CI completa: $URL"
+              break
             fi
 
             if [ "$ESTADO" = "completed" ]; then
@@ -80,12 +85,54 @@ jobs:
             fi
 
             if [ "$intento" -eq 80 ]; then
-              echo "::error::CI no termino correctamente en 20 minutos. Ultimo estado: $ESTADO"
+              if [ "$ESTADO" = "missing" ]; then
+                echo "::error::No existe ninguna ejecucion de CI para $SHA."
+                echo "::error::La CI se dispara en cada push a main; revisa que el commit este empujado."
+              else
+                echo "::error::CI no termino en 20 minutos. Ultimo estado: $ESTADO"
+              fi
               exit 1
             fi
 
             sleep 15
           done
+
+          # ⚠️ **Y ahora los trabajos, uno a uno.** Que la corrida este en verde
+          # no basta: si alguien anade un `if:` de mas, los trabajos caros se
+          # saltan y la conclusion sigue siendo `success`. Estos tres tienen que
+          # haber PASADO, no haberse saltado:
+          #
+          #   - «Sin secretos en el codigo» y «Workflows y scripts operativos»
+          #     corren siempre y son la comprobacion de seguridad y la de los
+          #     archivos que se ejecutan en produccion.
+          #   - «CI» es la puerta que resume el resto y decide que combinacion
+          #     de resultados es aceptable.
+          echo "Comprobando los trabajos obligatorios de la corrida $ID_CORRIDA..."
+          TRABAJOS=$(gh api -X GET "repos/$REPO/actions/runs/$ID_CORRIDA/jobs" -f per_page=100 \
+            --jq '.jobs[] | "\(.name)=\(.conclusion // .status)"')
+          echo "$TRABAJOS" | sed 's/^/  /'
+
+          FALTA=0
+          while IFS= read -r obligatorio; do
+            # Coincidencia EXACTA del nombre, no por subcadena: con `grep` un
+            # trabajo llamado «MI CI» aprobaria el requisito de «CI».
+            RESULTADO=$(echo "$TRABAJOS" | awk -F= -v nombre="$obligatorio" '$1 == nombre { print $2; exit }')
+            if [ "$RESULTADO" != "success" ]; then
+              echo "::error::El trabajo '$obligatorio' no aprobo (resultado: ${RESULTADO:-ausente})."
+              FALTA=1
+            fi
+          done <<'OBLIGATORIOS'
+          Sin secretos en el codigo
+          Workflows y scripts operativos
+          CI
+          OBLIGATORIOS
+
+          if [ "$FALTA" -ne 0 ]; then
+            echo "::error::No se despliega sin las validaciones obligatorias del commit exacto."
+            exit 1
+          fi
+
+          echo "CI aprobada para $SHA."
 
   desplegar:
     name: Desplegar a produccion

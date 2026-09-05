@@ -78,6 +78,31 @@ export function assertSafeTestEnvironment() {
   if (dbName === "clarvex_team" || dbName === "clarvex") {
     throw new Error("ERROR DE SEGURIDAD: No se permite usar la base de datos principal de Clarvex para pruebas.");
   }
+
+  /*
+   * ⚠️ **El nombre no basta, y el HOST tampoco es un detalle.**
+   *
+   * `clarvex_team_test` contiene «test» y pasa la comprobación de arriba. Si esa
+   * base viviera en el servidor de producción, el seed la truncaría igual. Las
+   * pruebas corren contra una base local y efímera; apuntar a una remota es un
+   * error de configuración, no una opción.
+   *
+   * Se puede levantar a propósito con `TEST_DB_ALLOW_REMOTE=1`, pero tiene que
+   * ser una decisión escrita, no el valor por omisión.
+   */
+  let host = "";
+  try {
+    host = new URL(testDbUrl).hostname.toLowerCase();
+  } catch {
+    host = "";
+  }
+  const esLocal = host === "localhost" || host === "127.0.0.1" || host === "::1" || host === "";
+  if (!esLocal && process.env.TEST_DB_ALLOW_REMOTE !== "1") {
+    throw new Error(
+      `ERROR DE SEGURIDAD: TEST_DATABASE_URL apunta a un host remoto ("${host}"). ` +
+        "Las pruebas borran tablas enteras. Usa una base local, o pon TEST_DB_ALLOW_REMOTE=1 si de verdad es lo que quieres."
+    );
+  }
 }
 
 // Asserts database records are safe (only contains test users)
@@ -102,5 +127,32 @@ export async function assertSafeDatabaseRecords(prisma: PrismaClient) {
 
   if (realUser) {
     throw new Error(`ERROR DE SEGURIDAD CRÍTICA: Se detectaron registros reales de producción en la base de datos de pruebas. Usuario: ${realUser.name} (#${realUser.employeeNumber}). Abortando.`);
+  }
+
+  /*
+   * ⚠️ **Y no solo usuarios.** Una base con cero usuarios reales pero con
+   * tiendas o KPIs de verdad sigue siendo una base que no se puede truncar. Un
+   * volcado restaurado a medias, o una base que alguien apuntó por error, se ve
+   * exactamente así.
+   *
+   * Las tiendas sintéticas llevan el prefijo `test-`; cualquier otra es motivo
+   * suficiente para no borrar nada.
+   */
+  /*
+   * ⚠️ El prefijo es `TEST-` en MAYUSCULAS, igual que el de los usuarios y que
+   * el que escribe `seed-test-db.ts`. Con `test-` en minusculas, la propia
+   * tienda sintetica del seed no casaba y la SEGUNDA ejecucion abortaba
+   * diciendo que habia datos reales.
+   */
+  const tiendaReal = await prisma.store.findFirst({
+    where: { NOT: { id: { startsWith: "TEST-" } } },
+    select: { id: true, name: true }
+  });
+
+  if (tiendaReal) {
+    throw new Error(
+      `ERROR DE SEGURIDAD CRÍTICA: Hay una tienda que no es sintética en la base de pruebas: ` +
+        `${tiendaReal.name} (${tiendaReal.id}). Abortando antes de borrar nada.`
+    );
   }
 }

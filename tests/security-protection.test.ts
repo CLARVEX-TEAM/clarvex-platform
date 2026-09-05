@@ -85,15 +85,29 @@ test("assertSafeDatabaseRecords rechaza base de datos con usuarios reales (sin p
 });
 
 test("assertSafeDatabaseRecords acepta base de datos con solo usuarios de pruebas (TEST-)", async () => {
-  // Mock PrismaClient where findFirst returns null (no users violate the TEST- rule)
+  // Ni usuarios reales ni tiendas reales: la base es sintetica y se puede
+  // truncar. Las DOS consultas tienen que devolver null.
   const mockPrisma = {
-    user: {
-      findFirst: async (args: any) => {
-        return null;
-      }
-    }
+    user: { findFirst: async () => null },
+    store: { findFirst: async () => null }
   } as unknown as PrismaClient;
 
-  // Should complete successfully without throwing
   await assertSafeDatabaseRecords(mockPrisma);
+});
+
+test("⚠️ una TIENDA que no es sintetica tambien aborta el borrado", async () => {
+  /*
+   * El usuario no es lo unico que importa. Una base con cero usuarios reales
+   * pero con tiendas de verdad --un volcado restaurado a medias, una base
+   * apuntada por error-- sigue siendo una base que no se puede truncar.
+   */
+  const mockPrisma = {
+    user: { findFirst: async () => null },
+    store: { findFirst: async () => ({ id: "clarvex-demo-store", name: "TH SAN AGUSTIN" }) }
+  } as unknown as PrismaClient;
+
+  await assert.rejects(
+    async () => assertSafeDatabaseRecords(mockPrisma),
+    /no es sintética/
+  );
 });
