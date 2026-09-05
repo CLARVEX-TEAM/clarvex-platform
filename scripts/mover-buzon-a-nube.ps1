@@ -130,8 +130,20 @@ function Mover-Todo {
 function Instalar-Tarea {
     if (-not $RutaDeEsteScript) { throw "No se de que archivo soy; ejecutame desde el .ps1, no pegado en la consola." }
 
-    $accion = New-ScheduledTaskAction -Execute "powershell.exe" `
-        -Argument "-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$RutaDeEsteScript`""
+    $lanzador = Join-Path (Split-Path -Parent $RutaDeEsteScript) "mover-buzon-a-nube.vbs"
+    if (-not (Test-Path -LiteralPath $lanzador)) { throw "Falta el lanzador sin consola: $lanzador" }
+
+    # WScript no crea consola; el lanzador espera y devuelve el resultado de PowerShell.
+    $accion = New-ScheduledTaskAction -Execute (Join-Path $env:WINDIR "System32\wscript.exe") `
+        -Argument "//B //Nologo `"$lanzador`""
+
+    $existente = Get-ScheduledTask -TaskName "Mover buzon a la nube" -TaskPath "\" -ErrorAction SilentlyContinue
+    if ($existente) {
+        # Actualizar solo el arranque conserva permisos, disparadores y ajustes existentes.
+        Set-ScheduledTask -TaskName $existente.TaskName -TaskPath $existente.TaskPath -Action $accion | Out-Null
+        Write-Output "Arranque sin consola actualizado; frecuencia y permisos conservados."
+        return
+    }
 
     # Cada 5 minutos, indefinidamente. No hace falta mas: el bot ya te confirma
     # por Telegram en cuanto guarda, asi que esto solo ordena, no informa.
