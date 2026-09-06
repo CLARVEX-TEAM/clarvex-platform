@@ -1,3 +1,13 @@
 {
-  "extends": ["next/core-web-vitals"]
+  "extends": ["next/core-web-vitals"],
+  // ⚠️ Hay una instalación de programa DENTRO del directorio del proyecto.
+  //
+  // `eslint .` la recorría entera --1.1 GB, 2470 archivos-- y moría con un
+  // volcado de V8 antes de revisar una sola línea nuestra. El fallo no se lee
+  // como «hay demasiados archivos»: se lee como si ESLint estuviera roto.
+  //
+  // No se puede mover: es la instalación viva de VS Code, con su desinstalador
+  // registrado en esa ruta. Se ignora aquí y en .gitignore, que es lo que
+  // devuelve la puerta de calidad sin tocar el editor de nadie.
+  "ignorePatterns": ["Microsoft VS Code/"]
 }

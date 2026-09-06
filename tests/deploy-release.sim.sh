@@ -106,7 +106,9 @@ case "$1" in
     dirname "$2" > "$SIM_BASE/pm2-cwd"
     ;;
   delete) echo "pm2 delete" >> "$SIM_REGISTRO_PM2" ;;
-  save)   echo "pm2 save" >> "$SIM_REGISTRO_PM2" ;;
+  # ⚠️ `save` puede fallar sin que la version deje de servir: es lo unico de
+  # `activar` que no decide si PM2 esta en la version nueva.
+  save)   echo "pm2 save" >> "$SIM_REGISTRO_PM2"; exit "${SIM_SAVE_CODIGO:-0}" ;;
   jlist)
     CWD=$(cat "$SIM_BASE/pm2-cwd" 2>/dev/null || echo "")
     OTRA="$CWD"
@@ -348,6 +350,27 @@ for defecto in mezclado caido faltante duplicado ejecutable; do
   comprobar "$defecto: restaura puntero" "$PREVIA" "$(cat "$CASO/estado/actual")"
   comprobar "$defecto: restaura workers" "$PREVIA" "$(cat "$CASO/pm2-cwd")"
 done
+# 14. ⚠️ `pm2 save` falla y TODO lo demas esta bien: se avisa, no se revierte.
+#
+# Este camino no estaba cubierto --el doble de `pm2` nunca fallaba en `save`--
+# y por eso paso desapercibido que se habia vuelto fatal. Con la version que lo
+# trataba asi, un fichero de volcado que no se pudo escribir DESHACIA un
+# despliegue sano: el primer despliegue salia en 1 en vez de 0, y con version
+# anterior salia en 2 anunciando que la anterior tampoco respondia, lo cual era
+# falso. Lo que se pierde si `save` falla llega el dia que la maquina se
+# reinicie; hoy la tienda esta sirviendo.
+BASE14="$TMP/save"; montar_base "$BASE14" > /dev/null
+ejecutar "$BASE14" > /dev/null
+PREVIA14=$(cat "$BASE14/estado/actual")
+: > "$BASE14/pm2.log"
+(cd "$BASE14/repo" && printf 'otra\n' > otro.txt && git add -A && git commit --quiet -m "otra" && git update-ref refs/remotes/origin/main HEAD)
+CODIGO=$(ejecutar "$BASE14" SIM_SAVE_CODIGO=1)
+comprobar "save fallido: el despliegue igual termina bien" "0" "$CODIGO"
+comprobar "save fallido: NO vuelve a la anterior" "1" "$([ "$(cat "$BASE14/estado/actual")" != "$PREVIA14" ] && echo 1 || echo 0)"
+comprobar "save fallido: los workers se quedan en la nueva" "1" "$([ "$(cat "$BASE14/pm2-cwd")" != "$PREVIA14" ] && echo 1 || echo 0)"
+comprobar "save fallido: se avisa del reinicio" "1" "$(contar_en "$BASE14/salida.txt" 'REINICIO del servidor')"
+comprobar "save fallido: no se inventa que la anterior no responde" "0" "$(contar_en "$BASE14/salida.txt" 'TAMPOCO RESPONDE')"
+
 echo "  pasadas: $PASADAS   fallidas: $FALLIDAS"
 if [ "$FALLIDAS" -ne 0 ] && [ "${SIM_VERBOSO:-0}" = "1" ]; then
   for salida in "$TMP"/*/salida.txt; do

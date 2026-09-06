@@ -28,5 +28,6 @@
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
-  "exclude": ["node_modules"]
+  "//": "'Microsoft VS Code' es una instalacion de programa dentro del proyecto: trae sus propios .ts y el patron **/*.ts los recogia, asi que el typecheck fallaba por codigo ajeno. Se excluye igual que en .eslintrc.json y .gitignore. No se puede mover: es la instalacion viva del editor.",
+  "exclude": ["node_modules", "Microsoft VS Code"]
 }
