@@ -635,4 +635,7 @@ jobs:
       # cuelgue aqui tiene que costar poco y senalar el paso que lo causa.
       - name: Pruebas de integracion y aislamiento entre tiendas
         timeout-minutes: 10
+        env:
+          NODE_OPTIONS: --require ./tests/local-network-only.cjs
+          AWS_EC2_METADATA_DISABLED: "true"
         run: pnpm exec tsx --test tests/integracion/*.test.ts

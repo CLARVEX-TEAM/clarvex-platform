@@ -319,6 +319,34 @@ function agenteDelCaso(rows: KpiPeriodRow[]) {
   });
 }
 
+test("captura actual incompleta no se presenta como caída semanal o mensual", () => {
+  const brief = agenteDelCaso([
+    ...ventaConstante("2026-08-02", "2026-08-29", 100),
+    ...ventaConstante("2026-08-30", "2026-09-01", 100),
+    soloMeta("2026-09-02", 100), soloMeta("2026-09-03", 100), soloMeta("2026-09-04", 100)
+  ]);
+  assert.equal(brief.monthContext.toDate.capturedDays, 3);
+  assert.ok(brief.insights.some(line => line.includes("3 de los 6")));
+  assert.ok(!brief.insights.some(line => /abajo|arriba contra|subió|bajó/.test(line)), brief.insights.join("\n"));
+});
+
+test("captura anterior incompleta tampoco justifica una mejora aparente", () => {
+  const brief = agenteDelCaso([
+    ...ventaConstante("2026-08-02", "2026-08-04", 100),
+    ...ventaConstante("2026-08-30", "2026-09-04", 100)
+  ]);
+  assert.ok(!brief.insights.some(line => /contra|comparable/.test(line)), brief.insights.join("\n"));
+});
+
+test("con ambos periodos capturados sí se informa una caída real", () => {
+  const brief = agenteDelCaso([
+    ...ventaConstante("2026-08-02", "2026-08-29", 100),
+    ...ventaConstante("2026-08-30", "2026-09-04", 50)
+  ]);
+  assert.ok(brief.insights.some(line => line.includes("50.0 % abajo")));
+  assert.ok(brief.insights.some(line => line.includes("bajó 50.0 %")));
+});
+
 test("⚠️ REGRESION: con el acumulado EN META, el agente no dice que va por debajo", () => {
   /*
    * El fallo: los insights juzgaban contra `metric.achievement`, que es la meta

@@ -248,56 +248,55 @@ fi
 # nunca llegó a servir, y **la vuelta atrás no se ejecutaba**. El rollback solo
 # cubría el caso «arrancó pero no responde sana», que es el menos grave de los
 # dos. Ahora todo fallo de activación sale por la misma puerta que el de salud.
-activar() {
-  local destino="$1"
-
-  # El puntero se escribe con `mv`, que en el mismo sistema de ficheros es
-  # atomico: no hay un instante en que el estado quede a medias.
-  echo "$destino" > "$ESTADO/.actual.nuevo"
-  mv -f "$ESTADO/.actual.nuevo" "$PUNTERO_ACTUAL"
-
-  # Comodidad para quien entra al servidor. Que falle no cambia nada: el estado
-  # ya esta escrito.
-  ln -sfn "$destino" "$BASE/.actual.enlace" 2>/dev/null && mv -Tf "$BASE/.actual.enlace" "$ACTUAL" 2>/dev/null || true
-
-  if ! pm2 reload "$destino/ecosystem.config.cjs" --update-env; then
-    log "⚠️ 'pm2 reload' falló para $destino. Se intenta recrear la app."
-    pm2 delete clarvex-team >/dev/null 2>&1 || true
-    if ! pm2 start "$destino/ecosystem.config.cjs" --update-env; then
-      log "⚠️ 'pm2 start' tampoco levantó $destino."
-      return 1
-    fi
-  fi
-
-  # ⚠️ **COMPROBAR que PM2 se movió de verdad.**
-  #
-  # `pm2 reload <fichero>` recarga la app por nombre, pero PM2 guarda la ruta
-  # que resolvió al arrancar. Si no adopta el `cwd` nuevo, el despliegue PARECE
-  # funcionar --sale verde, la salud responde-- y sigue sirviendo la versión
-  # vieja. Es el peor fallo posible: se anuncia como acierto.
-  #
-  # Si el reload no bastó, se recrea la app. Eso sí tiene un instante de corte,
-  # pero es preferible a creer que se desplegó algo que no se desplegó.
+# Comprueba TODOS los workers, su ejecutable, estado y número configurado.
+pm2_correcto() {
+  local destino="$1" instancias="$2"
   local actual_pm2
-  actual_pm2=$(pm2 jlist 2>/dev/null | node -e "
-    let d='';process.stdin.on('data',c=>d+=c).on('end',()=>{
-      try { const a=JSON.parse(d).find(p=>p.name==='clarvex-team');
-            console.log(a ? a.pm2_env.pm_cwd : ''); } catch { console.log(''); }
-    })" 2>/dev/null || echo "")
+  actual_pm2=$(pm2 jlist | CLARVEX_PM2_INSTANCES="$instancias" node -e '
+    let d="";
+    process.stdin.on("data", c => d += c).on("end", () => {
+      try {
 
-  if [ "$actual_pm2" != "$destino" ]; then
-    log "⚠️ PM2 seguía en '${actual_pm2:-desconocido}'. Recreando la app para que adopte $destino"
+        const expected = Number(process.env.CLARVEX_PM2_INSTANCES);
+        const workers = JSON.parse(d).filter(p => p.name === "clarvex-team");
+        const cwd = workers[0]?.pm2_env?.pm_cwd;
+        const ok = Number.isInteger(expected) && expected > 0 && workers.length === expected &&
+          workers.every(p => p.pm2_env.pm_cwd === cwd && p.pm2_env.status === "online" &&
+            p.pm2_env.pm_exec_path === cwd + "/node_modules/next/dist/bin/next");
+        if (ok) console.log(cwd);
+        process.exitCode = ok ? 0 : 1;
+      } catch { process.exitCode = 1; }
+    });') || return 1
+  [ "$actual_pm2" = "$destino" ]
+}
+
+esperar_pm2() {
+  local destino="$1" instancias="$2"
+  for intento in $(seq 1 "$INTENTOS"); do
+    if pm2_correcto "$destino" "$instancias"; then return 0; fi
+    sleep "$ESPERA"
+  done
+  return 1
+}
+
+activar() {
+  local destino="$1" instancias
+  instancias=$(node -e 'const c=require(process.argv[1]); const a=c.apps.find(a=>a.name==="clarvex-team");
+    if (!a || !Number.isInteger(a.instances) || a.instances < 1) process.exit(1);
+    console.log(a.instances);' "$destino/ecosystem.config.cjs") || return 1
+
+  if ! pm2 reload "$destino/ecosystem.config.cjs" --update-env || ! esperar_pm2 "$destino" "$instancias"; then
+    log "PM2 no tiene todos los workers en la versión esperada. Recreando la app."
     pm2 delete clarvex-team >/dev/null 2>&1 || true
-    if ! pm2 start "$destino/ecosystem.config.cjs" --update-env; then
-      log "⚠️ No se pudo recrear la app en $destino."
-      return 1
-    fi
+    pm2 start "$destino/ecosystem.config.cjs" --update-env || return 1
+    esperar_pm2 "$destino" "$instancias" || return 1
   fi
 
-  # ⚠️ Sin `pm2 save`, un reinicio del servidor restauraría la definición
-  # guardada, que apunta a la instalación vieja. El despliegue se desharía solo
-  # el día que la máquina se reinicie, y nadie relacionaría las dos cosas.
-  pm2 save >/dev/null 2>&1 || log "⚠️ 'pm2 save' falló: un reinicio del servidor volvería a la versión anterior."
+  # Las funciones invocadas desde if no heredan errexit: comprobar cada escritura.
+  echo "$destino" > "$ESTADO/.actual.nuevo" || return 1
+  mv -f "$ESTADO/.actual.nuevo" "$PUNTERO_ACTUAL" || return 1
+  ln -sfn "$destino" "$BASE/.actual.enlace" 2>/dev/null && mv -Tf "$BASE/.actual.enlace" "$ACTUAL" 2>/dev/null || true
+  pm2 save >/dev/null 2>&1 || return 1
   return 0
 }
 
