@@ -131,3 +131,10 @@ clarvex_aws*
 # Por eso la CI revisa el CONTENIDO de lo que llega: busca la cabecera
 # «BEGIN ... PRIVATE KEY», que si es invariable. Ver el trabajo «secretos»
 # en .github/workflows/ci.yml.
+
+# ⚠️ Un PROGRAMA instalado dentro del directorio del proyecto.
+#
+# VS Code quedó instalado en `Microsoft VS Code/`, aquí dentro: 1.1 GB y 2470
+# archivos que `git add .` intentaría subir. No se mueve porque es la
+# instalación viva, con su desinstalador registrado en esa ruta.
+Microsoft VS Code/

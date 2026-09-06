@@ -19,10 +19,21 @@ Correcciones implementadas:
    inválido, repetición y concurrencia simulada. No es una prueba de PostgreSQL.
 2. `scripts/deploy-release.sh`: valida todos los procesos `clarvex-team`, su
    número configurado, estado online, cwd y ejecutable. Recomprueba tras start;
-   un solo worker correcto ya no basta. Escritura del puntero y pm2 save tienen
-   errores explícitos para no depender de errexit dentro de un if. Las 48
-   comprobaciones incluyen rollback de versiones mezcladas, procesos caídos,
-   faltantes y duplicados. No se recompila al revertir y no se revierte el esquema.
+   un solo worker correcto ya no basta. La escritura del puntero comprueba error
+   explícito, para no depender de errexit dentro de un if. Las 53 comprobaciones
+   incluyen rollback de versiones mezcladas, procesos caídos, faltantes y
+   duplicados. No se recompila al revertir y no se revierte el esquema.
+
+   ⚠️ **`pm2 save` avisa; NO revierte.** En la primera versión de esta ronda
+   devolvía 1 como las demás escrituras, y eso mandaba por la puerta del rollback
+   un fallo que no dice nada sobre si la versión está sirviendo: para cuando se
+   ejecuta, PM2 ya tiene todos los workers en la nueva y el puntero ya lo dice.
+   Reproducido en la simulación con `SIM_SAVE_CODIGO=1` y todo lo demás sano: el
+   primer despliegue salía en **1** en vez de 0, y con versión anterior salía en
+   **2** anunciando «LA VERSIÓN ANTERIOR TAMPOCO RESPONDE» —falso, respondía—.
+   Lo que se pierde si `save` falla llega el día que la máquina se reinicie, así
+   que se registra el aviso y el despliegue continúa. El escenario 14 lo cubre;
+   antes el doble de `pm2` nunca fallaba en `save` y por eso pasó desapercibido.
 3. `scripts/restaurar-aislado.sh`: crea un contenedor con nombre único y usa el
    ID devuelto por Docker para start/exec/limpieza. Un conflicto de nombre nunca
    autoriza eliminar el recurso existente, ni siquiera si lleva la etiqueta de
@@ -31,6 +42,9 @@ Correcciones implementadas:
    salida no cero, incluso 137 sin stderr, falla antes de aceptar recuentos.
    Se omiten propietarios/ACL originales: no se certifica su restauración.
    La simulación nueva tiene 23 comprobaciones sin Docker ni datos reales.
+   Las dos simulaciones aceptan `SIM_GUION` y se comprobó que se ponen en rojo
+   contra los guiones anteriores: 15 fallos la del despliegue, 12 la de
+   restauración, 5 el escenario nuevo de `pm2 save`.
 4. `lib/retool-store-agent.ts`: las frases de aumento/caída exigen captura
    completa actual Y anterior y ventanas equivalentes. Se conserva el aviso
    por capturas faltantes y se prueba que las caídas reales aún se informan.
@@ -42,9 +56,25 @@ Correcciones implementadas:
    captura representa al backend multitienda; estas pruebas NO demuestran la
    vinculación de identidad/tienda configurada fuera del repo en Retool.
 
+### ⚠️ Hay un PROGRAMA instalado dentro del directorio del proyecto
+
+VS Code quedó instalado en `Microsoft VS Code/`, aquí dentro: 1.1 GB y 2470
+archivos. No es una copia suelta —es la instalación viva, la que está corriendo,
+con su desinstalador registrado en esa ruta— así que **no se mueve ni se borra**.
+
+Rompía dos puertas de calidad, y ninguna de las dos lo decía:
+
+- `eslint .` la recorría entera y moría con un volcado de V8 antes de mirar una
+  línea nuestra. Se lee como si ESLint estuviera roto.
+- `tsc` recogía sus `.ts` por el patrón `**/*.ts` del `tsconfig` y fallaba por
+  código ajeno, con errores de extensiones de VS Code.
+
+Excluida en `.eslintrc.json`, `tsconfig.json` y `.gitignore`. Lo último importa
+aparte: sin eso, un `git add .` intentaría subir un editor entero.
+
 Validación local terminada: Node 22.23.1; 1,213 pruebas unitarias sin fallos ni
 omisiones; TypeScript sin emisión/incremental; ESLint completo y archivos nuevos
-sin avisos; YAML de ci.yml/deploy.yml; sintaxis bash; simulaciones 48/48 y 23/23.
+sin avisos; YAML de ci.yml/deploy.yml; sintaxis bash; simulaciones 53/53 y 23/23.
 El build aislado aprobó con código 0 y generó 73 páginas. Se hizo en una copia
 temporal sin archivos `.env`, con URL de base ficticia, sin servicios reales y
 con el bloqueo de TCP externo de `tests/local-network-only.cjs`. Inicialmente

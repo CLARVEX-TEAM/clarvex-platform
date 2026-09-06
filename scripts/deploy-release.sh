@@ -296,7 +296,21 @@ activar() {
   echo "$destino" > "$ESTADO/.actual.nuevo" || return 1
   mv -f "$ESTADO/.actual.nuevo" "$PUNTERO_ACTUAL" || return 1
   ln -sfn "$destino" "$BASE/.actual.enlace" 2>/dev/null && mv -Tf "$BASE/.actual.enlace" "$ACTUAL" 2>/dev/null || true
-  pm2 save >/dev/null 2>&1 || return 1
+
+  # ⚠️ **`pm2 save` avisa, NO revierte.** Es la única línea de `activar` que no
+  # decide si la versión está sirviendo: para cuando se ejecuta, PM2 ya tiene
+  # todos los workers en la versión nueva y el puntero ya lo dice. Lo que falla
+  # aquí es la persistencia de la definición, y su consecuencia llega el día que
+  # la máquina se reinicie, no hoy.
+  #
+  # Devolver 1 mandaba ese fallo por la puerta de la vuelta atrás, y entonces un
+  # fichero de volcado que no se pudo escribir **deshacía un despliegue sano**:
+  # el primer despliegue salía en 1 en vez de 0, y con versión anterior salía en
+  # 2 con el mensaje «LA VERSIÓN ANTERIOR TAMPOCO RESPONDE», que es falso —
+  # responde perfectamente—. Se cambia una molestia por una caída.
+  if ! pm2 save >/dev/null 2>&1; then
+    log "⚠️ 'pm2 save' falló: la versión está sirviendo, pero un REINICIO del servidor volvería a la anterior. Ejecútalo a mano."
+  fi
   return 0
 }
 
