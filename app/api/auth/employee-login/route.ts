@@ -7,6 +7,7 @@ import { clientIp } from "@/lib/request-ip";
 import { hashPin, publicUser, publicUserPreAuth, verifyPin, canSetupPin } from "@/lib/security";
 import { RP_ID } from "@/lib/webauthn";
 import { createSessionToken, SESSION_COOKIE, sessionCookieOptions, getServerSession } from "@/lib/session";
+import { pideTokenEnCuerpo } from "@/lib/session-token";
 import { hasRealEmail } from "@/lib/email";
 
 export const dynamic = "force-dynamic";
@@ -115,7 +116,23 @@ export async function POST(request: Request) {
   // Se pide el correo al ENTRAR, no al recuperar. En la pantalla de recuperación
   // no hay sesión: aceptar ahí el correo que teclee quien sea permitiría que
   // cualquiera con un número de empleado se apoderara de esa cuenta.
-  const response = NextResponse.json({ user: publicUser(updated), needsEmail: !hasRealEmail(updated.email) });
+  /*
+   * ⚠️ **El token solo viaja en el cuerpo si el cliente lo PIDE.**
+   *
+   * La cookie es `httpOnly` precisamente para que el JavaScript de la página no
+   * pueda leerla. Devolver el mismo token en el JSON de todos los logins tiraría
+   * esa protección: cualquier script inyectado en la web se lo llevaría. La app
+   * nativa lo pide explícitamente porque no tiene cookies del navegador donde
+   * guardarlo, y ahí vive en el almacenamiento seguro del sistema.
+   *
+   * La cookie se manda igual en los dos casos: no cuesta nada y deja abierta la
+   * posibilidad de abrir vistas web dentro de la app sin volver a entrar.
+   */
+  const response = NextResponse.json({
+    user: publicUser(updated),
+    needsEmail: !hasRealEmail(updated.email),
+    ...(pideTokenEnCuerpo(request.headers) ? { token } : {})
+  });
   response.cookies.set(SESSION_COOKIE, token, sessionCookieOptions);
   return response;
 }

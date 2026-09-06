@@ -415,3 +415,60 @@ test("roles: una sesión de asesor o gerente no sustituye la autorización del b
     }
   }
 });
+
+/* ─── sesión de la app nativa ─────────────────────────────────────────────── */
+
+/*
+ * ⚠️ Vive aquí, y no en su propio archivo, porque necesita un servidor real y
+ * levantar un segundo `next dev` duplicaría el tiempo de la CI. Lo que prueba es
+ * de sesión, no de aislamiento: que el token por cabecera abra la puerta que
+ * `middleware.ts` cierra a todo `/api/*`.
+ */
+test("⚠️ la app entra con token por cabecera, sin una sola cookie", async (t) => {
+  if (saltar) return t.skip(motivoSalto);
+
+  // 1. El login solo entrega el token en el cuerpo si el cliente lo pide.
+  const conCliente = await fetch(`${RAIZ}/api/auth/employee-login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "x-clarvex-cliente": "movil" },
+    body: JSON.stringify({ action: "login", employeeNumber: "TEST-GER-001", pin: "1234" })
+  });
+  const cuerpo = (await conCliente.json()) as { token?: string };
+  assert.equal(conCliente.status, 200);
+  assert.ok(cuerpo.token, "la app pidió el token y no llegó");
+
+  // 2. Un login normal de navegador NO lo trae: la cookie sigue siendo httpOnly.
+  const comoWeb = await fetch(`${RAIZ}/api/auth/employee-login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action: "login", employeeNumber: "TEST-GER-001", pin: "1234" })
+  });
+  const cuerpoWeb = (await comoWeb.json()) as { token?: string };
+  assert.equal(comoWeb.status, 200);
+  assert.equal(cuerpoWeb.token, undefined, "el token no puede viajar en el cuerpo de un login web");
+
+  // 3. Con el token y SIN cookie, el middleware deja pasar y la ruta responde.
+  const respuesta = await fetch(`${RAIZ}/api/app-data`, {
+    headers: { Authorization: `Bearer ${cuerpo.token}` }
+  });
+  const crudo = await respuesta.text();
+  assert.equal(respuesta.status, 200, crudo.slice(0, 300));
+  assert.ok(crudo.includes("test-manager-1"), "debería ver a su propia tienda");
+
+  // 4. Y sigue acotada a su tienda: el token no relaja el aislamiento.
+  for (const huella of HUELLAS_AJENAS) {
+    assert.ok(!crudo.includes(huella), `la respuesta trae "${huella}", que es de la tienda vecina`);
+  }
+
+  // 5. Sin token y sin cookie, la puerta sigue cerrada.
+  const sinNada = await fetch(`${RAIZ}/api/app-data`);
+  assert.equal(sinNada.status, 401, "sin credenciales tiene que seguir siendo 401");
+  await sinNada.text();
+
+  // 6. Un Bearer que no es un JWT tampoco abre nada.
+  const basura = await fetch(`${RAIZ}/api/app-data`, {
+    headers: { Authorization: "Bearer no-es-un-token-de-sesion" }
+  });
+  assert.equal(basura.status, 401);
+  await basura.text();
+});

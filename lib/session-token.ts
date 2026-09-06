@@ -78,6 +78,49 @@ export async function verifySessionToken(token: string): Promise<Session | null>
   }
 }
 
+/**
+ * El mismo token de sesión, traído en la cabecera en vez de en la cookie.
+ *
+ * ⚠️ **Existe para la app nativa, que no tiene cookies del navegador.** Es el
+ * MISMO JWT firmado, con los mismos claims y la misma revocación por
+ * `sessionVersion`: no hay un segundo tipo de sesión que mantener, ni un
+ * segundo sitio donde equivocarse.
+ *
+ * ⚠️ **La cookie manda cuando existe.** Así el comportamiento de la web no
+ * cambia ni un ápice: quien tiene cookie sigue exactamente el camino de antes,
+ * y la cabecera solo se mira cuando no hay ninguna.
+ *
+ * ⚠️ No confundir con `Authorization: Bearer` de los cron y de la captura
+ * externa. Esas rutas están en la lista pública del middleware y validan su
+ * propio secreto dentro del handler: nunca llegan a esta comprobación. Si
+ * alguna dejara de ser pública, su secreto NO es un JWT y aquí daría `null`,
+ * que es el resultado seguro.
+ */
+export function bearerToken(header: string | null | undefined): string | null {
+  if (!header) return null;
+  const limpio = header.trim();
+  if (!limpio.toLowerCase().startsWith("bearer ")) return null;
+  const valor = limpio.slice(7).trim();
+  return valor.length > 0 ? valor : null;
+}
+
+/**
+ * Cabecera con la que un cliente PIDE el token en el cuerpo de la respuesta.
+ *
+ * ⚠️ **El token no se devuelve nunca sin pedirlo.** La cookie es `httpOnly`
+ * justamente para que el JavaScript de la página no pueda leerla; meter el
+ * mismo token en el JSON de todas las respuestas de login tiraría esa
+ * protección por la ventana en la web. La app lo pide explícitamente porque no
+ * tiene otra forma de guardarlo.
+ */
+export const CLIENT_HEADER = "x-clarvex-cliente";
+export const NATIVE_CLIENT = "movil";
+
+/** ¿Este cliente pidió el token en el cuerpo? Solo la app nativa debería. */
+export function pideTokenEnCuerpo(cabeceras: Headers): boolean {
+  return cabeceras.get(CLIENT_HEADER)?.trim().toLowerCase() === NATIVE_CLIENT;
+}
+
 export const sessionCookieOptions = {
   httpOnly: true,
   secure: process.env.NODE_ENV === "production",

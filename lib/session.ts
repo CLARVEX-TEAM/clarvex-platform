@@ -1,13 +1,16 @@
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import type { User } from "@/lib/types";
-import { SESSION_COOKIE, verifySessionToken, type Session } from "@/lib/session-token";
+import { bearerToken, SESSION_COOKIE, verifySessionToken, type Session } from "@/lib/session-token";
 
 export { clearedSessionCookieHeader, createSessionToken, SESSION_COOKIE, sessionCookieOptions, verifySessionToken } from "@/lib/session-token";
 export type { Session } from "@/lib/session-token";
 
 export async function getServerSession() {
-  const token = (await cookies()).get(SESSION_COOKIE)?.value;
+  // Cookie primero, cabecera después: la web no cambia de camino. Mismo JWT,
+  // misma revocación por `sessionVersion` — ver `bearerToken`.
+  const token = (await cookies()).get(SESSION_COOKIE)?.value
+    ?? bearerToken((await headers()).get("authorization"));
   const session = token ? await verifySessionToken(token) : null;
   if (!session) return null;
   // Revocación: si el usuario fue desactivado (o eliminado), su JWT deja de

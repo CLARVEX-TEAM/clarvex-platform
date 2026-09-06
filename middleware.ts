@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { canManageDataSources } from "@/lib/access-control";
-import { SESSION_COOKIE, verifySessionToken, type Session } from "@/lib/session-token";
+import { bearerToken, SESSION_COOKIE, verifySessionToken, type Session } from "@/lib/session-token";
 
 const managerRoutes = ["/manager", "/pendientes", "/bitacora", "/comunicados", "/datos", "/escritorio"];
 const advisorRoutes = ["/advisor", "/kpis", "/horarios", "/actividad"];
@@ -154,7 +154,19 @@ function maintenanceResponse(request: NextRequest, session: Session | null): Nex
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const token = request.cookies.get(SESSION_COOKIE)?.value;
+  /*
+   * ⚠️ **La cookie primero; la cabecera solo si no hay cookie.**
+   *
+   * Este es el candado real de `/api/*`: sin él, la app nativa recibiría
+   * «Sesión requerida» en cada petición aunque el handler supiera validarla.
+   *
+   * El orden importa: mirando la cookie primero, la web y Retool siguen el
+   * camino exacto de antes y este cambio no puede alterarlos. Ver `bearerToken`
+   * en `lib/session-token.ts` para por qué esto no choca con el `Bearer` de los
+   * cron ni con el de la captura externa.
+   */
+  const token = request.cookies.get(SESSION_COOKIE)?.value
+    ?? bearerToken(request.headers.get("authorization"));
   const session = token ? await verifySessionToken(token) : null;
 
   const maintenance = maintenanceResponse(request, session);
