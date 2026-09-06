@@ -12,7 +12,17 @@ export type WeeklyPerformanceDocument = "combined" | "quota" | "rds";
 
 export async function buildWeeklyPerformanceWorkbook(
   state: WeeklyPerformanceState,
-  document: WeeklyPerformanceDocument = "combined"
+  document: WeeklyPerformanceDocument = "combined",
+  /*
+   * ⚠️ `soloDocumento` es para el camino del PDF, NO para la descarga.
+   *
+   * LibreOffice convierte TODAS las hojas visibles, y la primera del libro es
+   * «INSTRUCCIONES»: sin esto, el PDF salía con una primera página A4 vertical
+   * de instrucciones antes del documento. Se oculta solo en la copia que se
+   * convierte; el XLSX que baja el gerente conserva la hoja, que es donde dice
+   * que solo se llena lo amarillo.
+   */
+  opciones: { soloDocumento?: boolean } = {}
 ) {
   const people = state.quota.days[0]?.allocations ?? [];
   const peopleById = new Map(people.map((person) => [person.userId, person]));
@@ -79,10 +89,11 @@ export async function buildWeeklyPerformanceWorkbook(
   // El tráfico total de tienda es el único total de esa sección que el formato
   // original trae como dato y no como SUMA de columnas.
   rds = writeCell(rds, "O13", state.report.store.traffic ?? 0);
+  rds = sinMezclaEnPerdidas(rds);
   rds = clearFormulaCaches(rds);
   const schedulesPath = sheets.get("HORARIOS");
   if (schedulesPath) zip.file(schedulesPath, clearAllFormulaCells(await readPart(zip, schedulesPath)));
-  const workbook = selectDocumentSheets(await readPart(zip, "xl/workbook.xml"), document);
+  const workbook = selectDocumentSheets(await readPart(zip, "xl/workbook.xml"), document, opciones.soloDocumento === true);
   zip.file("xl/workbook.xml", forceFullRecalculation(workbook));
   zip.file(cjPath, selectWorksheet(cj, document !== "rds"));
   zip.file(rdsPath, selectWorksheet(rds, document === "rds"));
@@ -205,7 +216,7 @@ async function removeStaleCalculationParts(zip: JSZip) {
  * Conserva todas las hojas para no romper formulas, nombres definidos ni
  * estilos. Los archivos individuales solo ocultan la seccion no solicitada.
  */
-function selectDocumentSheets(xml: string, document: WeeklyPerformanceDocument) {
+function selectDocumentSheets(xml: string, document: WeeklyPerformanceDocument, soloDocumento = false) {
   const states: Record<WeeklyPerformanceDocument, { activeTab: number; hidden: string | null }> = {
     combined: { activeTab: 1, hidden: null },
     quota: { activeTab: 1, hidden: "RDS" },
@@ -226,7 +237,55 @@ function selectDocumentSheets(xml: string, document: WeeklyPerformanceDocument) 
       `<sheet$1name="${selection.hidden}"$2 state="hidden"/>`
     );
   }
+  // Ver `soloDocumento` en `buildWeeklyPerformanceWorkbook`: la conversión a PDF
+  // exporta toda hoja visible, y esta no forma parte del documento.
+  if (soloDocumento) {
+    next = next.replace(
+      /<sheet\b([^>]*?)\bname="INSTRUCCIONES"([^>]*)\/>/,
+      '<sheet$1name="INSTRUCCIONES"$2 state="hidden"/>'
+    );
+  }
   return next;
+}
+
+/**
+ * Las tres filas de PERDIDA del RDS, en rojo o verde, nunca en café.
+ *
+ * ⚠️ **La plantilla no usa un semáforo: usa una ESCALA de color**, y una escala
+ * interpola. Las reglas venían así:
+ *
+ * ```
+ * D16:M16  colorScale  de -1 a 0   rojo FF0000 → verde 00B050
+ * D18:M18  colorScale  de -1 a 1   rojo FF0000 → verde 00B050
+ * D20:M20  colorScale  de -1 a 1   rojo FF0000 → verde 00B050
+ * ```
+ *
+ * Con esos rangos, una pérdida de **cero cae en el punto medio** de las dos
+ * últimas —mitad rojo, mitad verde— y se pinta **café**. En la fila 16 el cero
+ * era el tope y salía verde: el mismo valor, tres filas, dos colores distintos.
+ * Con datos reales no se nota, porque las pérdidas son de cientos o miles de
+ * pesos y la escala los recorta a rojo o verde puros; salta justo cuando una
+ * pérdida queda en cero.
+ *
+ * Se mueve el rango a **0 → 1** en las tres: cero o menos es rojo, positivo es
+ * verde, y las tres filas dicen lo mismo. No se tocan los colores —son los
+ * extremos que ya traía la plantilla— así que el documento sigue viéndose igual
+ * que el corporativo.
+ *
+ * ⚠️ Queda una franja de mezcla entre $0.00 y $1.00, que es donde la escala
+ * sigue interpolando. No se cierra del todo porque hacerlo exigiría cambiar la
+ * escala por reglas discretas, y eso pide formatos nuevos en `styles.xml` con
+ * rellenos que NO son los de la plantilla. Un peso de pérdida no existe en la
+ * operación; un color distinto al corporativo se vería en cada exportación.
+ *
+ * ⚠️ Esto cambia también el XLSX que se descarga: es el mismo archivo. Fue una
+ * decisión pedida expresamente.
+ */
+function sinMezclaEnPerdidas(xml: string) {
+  return xml.replace(
+    /(<conditionalFormatting sqref="D(?:16|18|20):M(?:16|18|20)">\s*<cfRule type="colorScale"[^>]*>\s*<colorScale>)\s*<cfvo type="num" val="-1"\/>\s*<cfvo type="num" val="[01]"\/>/g,
+    '$1<cfvo type="num" val="0"/><cfvo type="num" val="1"/>'
+  );
 }
 
 function selectWorksheet(xml: string, selected: boolean) {

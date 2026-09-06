@@ -1,5 +1,79 @@
 # Clarvex Team — CLAUDE.md
 
+## Los PDF salen del Excel, no de un dibujo aparte — 6 de septiembre de 2026
+
+El gerente reportó que los PDF de Cuota Justa y RDS «salen muy diferentes, hasta
+chuecos» comparados con los que manda corporativo.
+
+⚠️ **La causa era que había DOS generadores que no se hablaban.** El XLSX es la
+plantilla corporativa —`lib/weekly-performance-xlsx.ts` la abre y le mete los
+datos conservando hojas, estilos y formato de impresión— pero el PDF se
+**redibujaba a mano** en `lib/weekly-performance-pdf.ts`: 449 líneas de pdf-lib
+con coordenadas fijas. Una imitación. Nada ataba una cosa a la otra, así que
+divergían: sin las etiquetas verticales del margen, con el amarillo tiñendo
+bloques enteros, las secciones como bandas horizontales y Helvetica en vez de
+Calibri.
+
+Ahora el PDF se genera **convirtiendo el propio XLSX** con LibreOffice
+(`lib/xlsx-a-pdf.ts`). No se parece al formato corporativo: **es** el formato
+corporativo.
+
+- **LibreOffice 24.2.7 instalado en el servidor** (`libreoffice-calc-nogui` +
+  `fonts-crosextra-carlito`, 321 MB, sin recomendados). El disco pasó de 84 % a
+  86 %. Esto **contradice a propósito** la decisión anterior de no depender de
+  Excel/LibreOffice en el servidor: se cambió sabiendo lo que cuesta, porque es
+  la única forma de que el PDF sea el documento y no una copia.
+- ⚠️ **Un perfil de usuario POR CONVERSIÓN** (`-env:UserInstallation`). Sin eso,
+  LibreOffice se niega a arrancar una segunda instancia con el mismo perfil, y
+  con dos instancias de PM2 dos exportaciones a la vez se pisan.
+- ⚠️ **Convierte TODAS las hojas visibles**, y la primera del libro es
+  `INSTRUCCIONES`: el PDF salía con una página A4 vertical de instrucciones
+  delante. `buildWeeklyPerformanceWorkbook` acepta `{ soloDocumento: true }`,
+  que la oculta **solo en la copia que se convierte**. El XLSX que descarga el
+  gerente la conserva: es donde dice que solo se llena lo amarillo.
+- ⚠️ **El idioma decide los nombres de mes.** Sin `LANG`/`LC_ALL` en español la
+  fila FECHA sale «23-Aug-26» y el corporativo dice «23-ago-26».
+- ⚠️ **Se comprueba la cabecera `%PDF`, no el código de salida.** LibreOffice
+  puede salir en 0 y dejar un fichero vacío; servir eso es peor que el respaldo.
+- **El trazado con pdf-lib se conserva como respaldo.** Si LibreOffice no está
+  —una máquina de desarrollo— la exportación sigue devolviendo un PDF y se
+  registra cuál de los dos salió. Sin esa línea, un servidor sin aprovisionar
+  serviría el PDF viejo para siempre y nadie sabría por qué «volvió a verse raro».
+
+⚠️ **El PDF dice `WHATSAPP` donde la app dice `PASILLO INFINITO`.** Es la palabra
+de la plantilla, y el XLSX siempre la usó; solo el dibujo a mano ponía el nombre
+interno. Cambiarlo es cambiar la plantilla.
+
+### El café de las PERDIDAS
+
+Las tres filas de `PERDIDA` del RDS no usan un semáforo: usan una **escala de
+color** rojo `FFFF0000` → verde `FF00B050`, y una escala **interpola**. Los
+rangos originales eran:
+
+```
+D16:M16   de -1 a 0     el cero caía en el tope    → verde
+D18:M18   de -1 a 1     el cero caía en el medio   → CAFÉ
+D20:M20   de -1 a 1     el cero caía en el medio   → CAFÉ
+```
+
+Con datos reales no se nota —las pérdidas son de cientos o miles de pesos y la
+escala los recorta a rojo o verde puros— pero una pérdida de **cero** salía café
+en dos filas y verde en la tercera. `sinMezclaEnPerdidas()` mueve las tres a
+**0 → 1**: cero o menos rojo, positivo verde, y las tres dicen lo mismo. Los
+colores no se tocan: son los extremos que ya traía la plantilla.
+
+⚠️ Queda una franja de mezcla entre `$0.00` y `$1.00`. No se cierra porque
+hacerlo exige sustituir la escala por reglas discretas, y eso pide rellenos
+nuevos en `styles.xml` que NO son los del formato corporativo. Un peso de pérdida
+no existe en la operación; un color distinto sí se vería en cada exportación.
+
+⚠️ Esto cambia también el XLSX que se descarga: es el mismo archivo.
+
+Comprobado convirtiendo en el servidor y comparando contra los PDF reales de la
+tienda: con datos dispares, negativo rojo, cero rojo y positivo verde, con los
+iconos de círculo y estrella intactos.
+
+
 ## Revisión adicional corregida — 5 de septiembre de 2026 (publicación autorizada)
 
 Estado local en `fix/auditoria-cierre-septiembre`, base `8bc44f5`. Autorización:

@@ -6,10 +6,36 @@ import {
   type WeeklyPerformanceDocument
 } from "@/lib/weekly-performance-xlsx";
 import { buildWeeklyPerformancePdf } from "@/lib/weekly-performance-pdf";
+import { convertirXlsxAPdf } from "@/lib/xlsx-a-pdf";
+import type { WeeklyPerformanceState } from "@/lib/weekly-performance";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 export const maxDuration = 60;
+
+/**
+ * El PDF sale del MISMO XLSX que se descarga, convertido con LibreOffice.
+ *
+ * ⚠️ Antes se dibujaba aparte con pdf-lib y por eso no se parecía al formato
+ * corporativo: eran dos generadores independientes. El XLSX ya es la plantilla,
+ * así que convertirlo da el documento exacto.
+ *
+ * ⚠️ **El dibujo anterior se conserva como respaldo.** Si LibreOffice no está
+ * instalado —una máquina de desarrollo, o el servidor antes de aprovisionarlo—
+ * el gerente sigue bajando un PDF utilizable en vez de un error. Se registra
+ * cuál de los dos salió: sin esa línea, un servidor sin LibreOffice serviría el
+ * PDF viejo indefinidamente y nadie sabría por qué «volvió a verse raro».
+ */
+async function construirPdf(state: WeeklyPerformanceState, document: WeeklyPerformanceDocument): Promise<Buffer> {
+  try {
+    const xlsx = await buildWeeklyPerformanceWorkbook(state, document, { soloDocumento: true });
+    return await convertirXlsxAPdf(xlsx);
+  } catch (error) {
+    const detalle = error instanceof Error ? error.message : String(error);
+    console.warn(`[weekly-performance] PDF por conversión no disponible, se usa el trazado propio: ${detalle}`);
+    return buildWeeklyPerformancePdf(state, document);
+  }
+}
 
 export async function GET(request: Request) {
   const unauthorized = requireAdminCapture(request);
@@ -26,7 +52,7 @@ export async function GET(request: Request) {
   try {
     const state = await getWeeklyPerformance(storeId, reportWeekStart, quotaWeekStart);
     const buffer = output === "pdf"
-      ? await buildWeeklyPerformancePdf(state, document)
+      ? await construirPdf(state, document)
       : await buildWeeklyPerformanceWorkbook(state, document);
     const filename = documentFilename(document, state.quotaWeek.weekNumber, state.reportWeek.weekNumber, output);
     const contentType = output === "pdf"

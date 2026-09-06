@@ -146,3 +146,83 @@ test("exporta Cuota Justa y RDS como archivos independientes sin eliminar hojas"
   assert.doesNotMatch(await rdsZip.file("xl/worksheets/sheet2.xml")!.async("string"), /tabSelected="1"/);
   assert.match(await rdsZip.file("xl/worksheets/sheet3.xml")!.async("string"), /tabSelected="1"/);
 });
+
+/* ─── la copia que se convierte a PDF ─────────────────────────────────────── */
+
+/** Estado `hidden`/`veryHidden` de una hoja dentro del workbook.xml. */
+async function estadoDeHoja(buffer: Buffer, nombre: string): Promise<string> {
+  const zip = await JSZip.loadAsync(buffer);
+  const xml = await zip.file("xl/workbook.xml")!.async("string");
+  const etiqueta = xml.match(new RegExp(`<sheet\\b[^>]*\\bname="${nombre}"[^>]*/>`));
+  assert.ok(etiqueta, `la plantilla no tiene la hoja «${nombre}»`);
+  const estado = etiqueta[0].match(/\sstate="([^"]+)"/);
+  return estado ? estado[1] : "visible";
+}
+
+test("⚠️ el XLSX que se DESCARGA conserva la hoja de instrucciones", async () => {
+  // Es donde dice que solo se llena lo amarillo: quitarla del archivo del
+  // gerente seria perder la unica guia que trae la plantilla.
+  const buffer = await buildWeeklyPerformanceWorkbook(state, "quota");
+  assert.equal(await estadoDeHoja(buffer, "INSTRUCCIONES"), "visible");
+});
+
+test("⚠️ la copia para PDF oculta las instrucciones y deja solo el documento", async () => {
+  /*
+   * LibreOffice convierte TODAS las hojas visibles, y «INSTRUCCIONES» es la
+   * primera del libro: sin ocultarla, el PDF salia con una pagina A4 vertical
+   * de instrucciones ANTES del documento. Se comprobo en el servidor.
+   */
+  const cuota = await buildWeeklyPerformanceWorkbook(state, "quota", { soloDocumento: true });
+  assert.equal(await estadoDeHoja(cuota, "INSTRUCCIONES"), "hidden");
+  assert.equal(await estadoDeHoja(cuota, "CJ"), "visible");
+  assert.equal(await estadoDeHoja(cuota, "RDS"), "hidden");
+
+  const rds = await buildWeeklyPerformanceWorkbook(state, "rds", { soloDocumento: true });
+  assert.equal(await estadoDeHoja(rds, "INSTRUCCIONES"), "hidden");
+  assert.equal(await estadoDeHoja(rds, "RDS"), "visible");
+  assert.equal(await estadoDeHoja(rds, "CJ"), "hidden");
+
+  // El combinado son las dos secciones y nada mas.
+  const ambos = await buildWeeklyPerformanceWorkbook(state, "combined", { soloDocumento: true });
+  assert.equal(await estadoDeHoja(ambos, "INSTRUCCIONES"), "hidden");
+  assert.equal(await estadoDeHoja(ambos, "CJ"), "visible");
+  assert.equal(await estadoDeHoja(ambos, "RDS"), "visible");
+
+  // Misma convencion que XLSX_VERIFY_*: deja las copias en disco para
+  // convertirlas a mano y comparar el PDF con el formato corporativo.
+  const destino = process.env.XLSX_PDF_OUTPUT_DIR;
+  if (destino) {
+    await fs.mkdir(destino, { recursive: true });
+    await fs.writeFile(`${destino}/quota.xlsx`, cuota);
+    await fs.writeFile(`${destino}/rds.xlsx`, rds);
+  }
+});
+
+test("⚠️ las PERDIDAS del RDS van de 0 a 1: cero es rojo, nunca café", async () => {
+  /*
+   * La plantilla trae una ESCALA de color rojo→verde, no un semáforo, y una
+   * escala interpola. Con los rangos originales --dos de las tres filas iban de
+   * -1 a 1-- una pérdida de CERO caía en el punto medio y se pintaba café,
+   * mientras la tercera fila (de -1 a 0) pintaba ese mismo cero de verde.
+   *
+   * Movido a 0 → 1 en las tres: cero o menos rojo, positivo verde, y las tres
+   * dicen lo mismo. Comprobado convirtiendo a PDF con datos dispares.
+   */
+  const buffer = await buildWeeklyPerformanceWorkbook(state, "rds");
+  const zip = await JSZip.loadAsync(buffer);
+  const rds = await zip.file("xl/worksheets/sheet3.xml")!.async("string");
+
+  const escalas = [...rds.matchAll(/<conditionalFormatting sqref="(D(?:16|18|20):M\d+)">[\s\S]*?<\/conditionalFormatting>/g)]
+    .map((bloque) => ({
+      rango: bloque[1],
+      valores: [...bloque[0].matchAll(/<cfvo type="num" val="([^"]+)"\/>/g)].map((v) => v[1])
+    }));
+
+  assert.equal(escalas.length, 3, "las tres filas de PERDIDA deben conservar su regla");
+  for (const escala of escalas) {
+    assert.deepEqual(escala.valores, ["0", "1"], `${escala.rango} debe ir de 0 a 1`);
+  }
+
+  // Los colores NO se tocan: son los extremos que ya traía el formato corporativo.
+  assert.match(rds, /<color rgb="FFFF0000"\/><color rgb="FF00B050"\/>/);
+});
