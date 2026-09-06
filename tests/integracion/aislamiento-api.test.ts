@@ -4,8 +4,9 @@ import { spawn, type ChildProcess } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import JSZip from "jszip";
 import { PrismaClient } from "@prisma/client";
-import { assertSafeTestEnvironment } from "../helpers";
+import { assertSafeDatabaseRecords, assertSafeTestEnvironment } from "../helpers";
 
 /**
  * Aislamiento entre tiendas **por la API de verdad**.
@@ -41,6 +42,8 @@ const NORTE = "TEST-STORE-001";
 const SUR = "TEST-STORE-002";
 const PUERTO = "3102";
 const RAIZ = `http://127.0.0.1:${PUERTO}`;
+// Credencial ficticia del backend de captura. Una sesión de asesor no la sustituye.
+const CAPTURE_SECRET = "solo-ci-captura-sintetica-no-es-un-secreto-real";
 
 /** Todo lo que identifica a la tienda vecina dentro de una respuesta JSON. */
 const HUELLAS_AJENAS = [SUR, "test-manager-2", "test-advisor-3", "TEST-GER-002", "TEST-ADV-003"];
@@ -149,6 +152,26 @@ test.before(async () => {
     await prisma.$disconnect();
     return;
   }
+  await assertSafeDatabaseRecords(prisma);
+  // Fixtures exclusivas de la base efímera; las escrituras bajo prueba irán por HTTP.
+  // El admin técnico no ocupa un segundo bloque GERENTE en la plantilla RDV.
+  await prisma.user.update({ where: { id: "test-admin-1" }, data: { checklistOnly: true } });
+  for (const [storeId, userId, suffix] of [[NORTE, "test-advisor-1", "norte"], [SUR, "test-advisor-3", "sur"]]) {
+    await prisma.user.update({ where: { id: userId }, data: {
+      name: suffix === "norte" ? "NorteSintetico Uno" : "SurSintetico Tres"
+    } });
+    await prisma.inventoryRound.create({ data: {
+      id: `TEST-ROUND-${suffix}`, storeId, name: `RONDA-TEST-${suffix}`,
+      startDate: new Date("2026-08-01T00:00:00Z"), basePieces: 100
+    } });
+    for (let i = 0; i < 14; i++) {
+      await prisma.schedule.create({ data: {
+        storeId, userId, date: new Date(Date.UTC(2026, 7, 2 + i)), status: "WORKING",
+        day: ["DOMINGO", "LUNES", "MARTES", "MIERCOLES", "JUEVES", "VIERNES", "SABADO"][i % 7],
+        weekStart: new Date(Date.UTC(2026, 7, i < 7 ? 2 : 9))
+      } });
+    }
+  }
 
   /*
    * ⚠️ `next dev` FUERZA `NODE_ENV=development`, así que al hijo se le retira
@@ -173,6 +196,8 @@ test.before(async () => {
       NODE_ENV: "development",
       ALLOW_INTEGRATION_TEST_DATABASE: undefined,
       PORT: PUERTO,
+      ADMIN_CAPTURE_SECRET: CAPTURE_SECRET,
+      NEXT_FONT_GOOGLE_MOCKED_RESPONSES: path.join(process.cwd(), "tests/google-fonts-fixture.cjs"),
       DATABASE_URL: process.env.TEST_DATABASE_URL
     }
   });
@@ -281,5 +306,112 @@ test("cada tienda ve la SUYA: la gerencia del sur recibe sus propios datos", asy
   assert.ok(crudo.includes("test-advisor-3"), "su asesor tiene que venir");
   for (const huella of [NORTE, "test-manager-1", "test-advisor-1", "TEST-GER-001"]) {
     assert.ok(!crudo.includes(huella), `la respuesta del sur trae "${huella}", que es del norte`);
+  }
+});
+
+async function captura(ruta: string, body?: unknown) {
+  return fetch(`${RAIZ}/api/admin/capture/${ruta}`, {
+    method: body === undefined ? "GET" : "POST",
+    headers: { Authorization: `Bearer ${CAPTURE_SECRET}`, "Content-Type": "application/json" },
+    body: body === undefined ? undefined : JSON.stringify(body)
+  });
+}
+
+test("KPIs por HTTP: una captura no escribe al asesor de la otra tienda y conserva centavos", async (t) => {
+  if (saltar) return t.skip(motivoSalto);
+  for (const [storeId, employeeNumber, importe] of [[NORTE, "TEST-ADV-001", 111.25], [SUR, "TEST-ADV-003", 222.50]] as const) {
+    const response = await captura("kpis", { storeId, entries: [{ employeeNumber, date: "2026-08-03", dailySales: importe, dailyGoal: 300, transactions: 1, pieces: 1 }] });
+    assert.equal(response.status, 200, await response.text());
+  }
+  const response = await captura("kpis", { storeId: NORTE, entries: [{
+    employeeNumber: "TEST-ADV-003", date: "2026-08-03", dailySales: 999, transactions: 1, pieces: 1
+  }] });
+  assert.equal(response.status, 200);
+  const result = await response.json() as { recordsCreated: number; recordsUpdated: number; employeesNotFound: string[] };
+  assert.equal(result.recordsCreated + result.recordsUpdated, 0);
+  assert.ok(result.employeesNotFound.includes("TEST-ADV-003"));
+  const rows = await prisma.kpi.findMany({ where: { date: new Date("2026-08-03T00:00:00Z") } });
+  assert.equal(rows.find(row => row.userId === "test-advisor-1")?.dailySales.toString(), "111.25");
+  assert.equal(rows.find(row => row.userId === "test-advisor-3")?.dailySales.toString(), "222.5");
+});
+
+test("Cuota Justa por HTTP guarda y lee únicamente la tienda solicitada por el backend autorizado", async (t) => {
+  if (saltar) return t.skip(motivoSalto);
+  const response = await captura("weekly-performance", {
+    storeId: NORTE, reportWeekStart: "2026-08-02", quotaWeekStart: "2026-08-02", scope: "quota",
+    actor: "test-ci", minimums: { "2026-08-02": 100.25 }, upliftPercent: 0, whatsappBudget: 0
+  });
+  assert.equal(response.status, 200, await response.text());
+  const own = await prisma.kpi.findFirst({ where: { userId: "test-advisor-1", date: new Date("2026-08-02T00:00:00Z") } });
+  assert.equal(own?.dailyGoal.toString(), "100.25");
+  assert.equal(await prisma.weeklyPerformanceClose.count({ where: { storeId: SUR } }), 0);
+  assert.equal(await prisma.kpi.count({ where: { storeId: SUR, date: new Date("2026-08-02T00:00:00Z") } }), 0);
+  for (const [storeId, propio, ajeno] of [[NORTE, "test-advisor-1", "test-advisor-3"], [SUR, "test-advisor-3", "test-advisor-1"]]) {
+    const read = await captura(`weekly-performance?storeId=${storeId}&weekStart=2026-08-02`);
+    const text = await read.text();
+    assert.equal(read.status, 200, text);
+    assert.ok(text.includes(propio));
+    assert.ok(!text.includes(ajeno));
+  }
+});
+
+test("Kardex por HTTP: movimientos y ronda ajena quedan aislados", async (t) => {
+  if (saltar) return t.skip(motivoSalto);
+  for (const [storeId, marker] of [[NORTE, "MOVIMIENTO-NORTE"], [SUR, "MOVIMIENTO-SUR"]]) {
+    const response = await captura("inventory", { storeId, entries: [{
+      date: "2026-08-03", type: "RECEPCION", quantity: 7, reference: marker, note: marker
+    }] });
+    assert.equal(response.status, 200, await response.text());
+  }
+  const response = await captura(`inventory?storeId=${NORTE}`);
+  const text = await response.text();
+  assert.equal(response.status, 200, text);
+  assert.ok(text.includes("MOVIMIENTO-NORTE"));
+  assert.ok(!text.includes("MOVIMIENTO-SUR"));
+  const ajena = await captura(`inventory?storeId=${NORTE}&roundId=TEST-ROUND-sur`);
+  assert.equal(ajena.status, 200);
+  assert.equal((await ajena.json() as { round: unknown }).round, null);
+  const moves = await prisma.inventoryMovement.findMany();
+  assert.ok(moves.some(m => m.storeId === NORTE && m.roundId === "TEST-ROUND-norte"));
+  assert.ok(moves.some(m => m.storeId === SUR && m.roundId === "TEST-ROUND-sur"));
+});
+
+async function contenidoXlsx(response: Response) {
+  assert.equal(response.status, 200);
+  const zip = await JSZip.loadAsync(await response.arrayBuffer());
+  return (await Promise.all(Object.values(zip.files).filter(f => !f.dir && f.name.endsWith(".xml")).map(f => f.async("string")))).join("\n");
+}
+
+test("exportaciones HTTP: XLSX real con datos propios y sin datos de la tienda vecina", async (t) => {
+  if (saltar) return t.skip(motivoSalto);
+  for (const [storeId, propio, ajeno] of [[NORTE, "NorteSintetico", "SurSintetico"], [SUR, "SurSintetico", "NorteSintetico"]]) {
+    for (const ruta of [`kpis/export?storeId=${storeId}&date=2026-08-03`, `weekly-performance/export?storeId=${storeId}&weekStart=2026-08-02`]) {
+      const xml = await contenidoXlsx(await captura(ruta));
+      assert.ok(xml.toLowerCase().includes(propio.toLowerCase()), `Faltan datos propios en ${ruta}`);
+      assert.ok(!xml.toLowerCase().includes(ajeno.toLowerCase()), `Datos ajenos en ${ruta}`);
+    }
+  }
+  const xml = await contenidoXlsx(await captura(`inventory/export?storeId=${NORTE}`));
+  assert.ok(xml.includes("MOVIMIENTO-NORTE"));
+  assert.ok(!xml.includes("MOVIMIENTO-SUR"));
+  const ajeno = await captura(`inventory/export?storeId=${NORTE}&roundId=TEST-ROUND-sur`);
+  assert.equal(ajeno.status, 404);
+});
+
+test("roles: una sesión de asesor o gerente no sustituye la autorización del backend de captura", async (t) => {
+  if (saltar) return t.skip(motivoSalto);
+  for (const numero of ["TEST-ADV-001", "TEST-GER-001"]) {
+    const cookie = await entrar(numero);
+    for (const ruta of ["kpis", "weekly-performance", "inventory"]) {
+      const response = await fetch(`${RAIZ}/api/admin/capture/${ruta}`, {
+        method: "POST", headers: { Cookie: cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ storeId: SUR })
+      });
+      assert.equal(response.status, 401, ruta);
+    }
+    for (const ruta of ["kpis/export", "weekly-performance/export", "inventory/export"]) {
+      const response = await fetch(`${RAIZ}/api/admin/capture/${ruta}?storeId=${SUR}`, { headers: { Cookie: cookie } });
+      assert.equal(response.status, 401, ruta);
+    }
   }
 });

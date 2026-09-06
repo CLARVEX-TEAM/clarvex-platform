@@ -109,7 +109,29 @@ case "$1" in
   save)   echo "pm2 save" >> "$SIM_REGISTRO_PM2" ;;
   jlist)
     CWD=$(cat "$SIM_BASE/pm2-cwd" 2>/dev/null || echo "")
-    printf '[{"name":"clarvex-team","pm2_env":{"pm_cwd":"%s"}}]' "$CWD"
+    OTRA="$CWD"
+    ESTADO=online
+    CUANTAS=2
+    EJECUTABLE_MALO=0
+    case "$CWD" in
+      *"${SIM_PM2_DEFECTO_EN:-__ninguna__}"*)
+        case "${SIM_PM2_DEFECTO:-}" in
+          mezclado) OTRA=/version-vieja ;;
+          caido) ESTADO=errored ;;
+          faltante) CUANTAS=1 ;;
+          duplicado) CUANTAS=3 ;;
+          ejecutable) EJECUTABLE_MALO=1 ;;
+        esac ;;
+    esac
+    printf '['
+    for i in $(seq 1 "$CUANTAS"); do
+      [ "$i" = 1 ] || printf ','
+      RUTA="$CWD"; [ "$i" = 1 ] || RUTA="$OTRA"
+      RUTA_BIN="$RUTA"
+      if [ "$i" = 2 ] && [ "$EJECUTABLE_MALO" = 1 ]; then RUTA_BIN="$RUTA/otro"; fi
+      printf '{"name":"clarvex-team","pm2_env":{"pm_cwd":"%s","status":"%s","pm_exec_path":"%s/node_modules/next/dist/bin/next"}}' "$RUTA" "$ESTADO" "$RUTA_BIN"
+    done
+    printf ']'
     ;;
   list) echo "clarvex-team online" ;;
 esac
@@ -155,8 +177,8 @@ montar_base() {
     # salud pasaban en verde SIN EJERCITARSE.
     git symbolic-ref HEAD refs/heads/main
     mkdir -p scripts
-    printf 'contenido\n' > package.json
-    printf 'module.exports={};\n' > ecosystem.config.cjs
+    printf '{}\n' > package.json
+    printf 'module.exports={apps:[{name:"clarvex-team",instances:2}]};\n' > ecosystem.config.cjs
     git add -A
     git commit --quiet -m "version simulada"
     # El guion hace `fetch origin main`, asi que `origin` es el propio repo.
@@ -314,6 +336,18 @@ comprobar "PM2 caido: intento recrear antes de rendirse" "1" "$(contar_en "$BASE
 comprobar "PM2 caido: no recompila al volver" "0" "$(grep -c 'build ok' "$BASE12/salida.txt" | awk '{print ($1>1)?1:0}')"
 
 echo
+# El defecto persiste tras start: no basta revisar solo el primer worker.
+for defecto in mezclado caido faltante duplicado ejecutable; do
+  CASO="$TMP/pm2-$defecto"; montar_base "$CASO" >/dev/null
+  ejecutar "$CASO" >/dev/null
+  PREVIA=$(cat "$CASO/estado/actual")
+  (cd "$CASO/repo" && echo otra > otro.txt && git add -A && git commit --quiet -m otra)
+  NUEVO_SHA=$(git -C "$CASO/repo" rev-parse --short=7 HEAD)
+  CODIGO=$(ejecutar "$CASO" SIM_PM2_DEFECTO="$defecto" SIM_PM2_DEFECTO_EN="$NUEVO_SHA")
+  comprobar "$defecto: rechaza la versión" 1 "$CODIGO"
+  comprobar "$defecto: restaura puntero" "$PREVIA" "$(cat "$CASO/estado/actual")"
+  comprobar "$defecto: restaura workers" "$PREVIA" "$(cat "$CASO/pm2-cwd")"
+done
 echo "  pasadas: $PASADAS   fallidas: $FALLIDAS"
 if [ "$FALLIDAS" -ne 0 ] && [ "${SIM_VERBOSO:-0}" = "1" ]; then
   for salida in "$TMP"/*/salida.txt; do

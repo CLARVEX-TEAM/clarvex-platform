@@ -570,11 +570,14 @@ function ritmoDelPeriodo(period: StoreAgentPeriod): { pct: number | null; fiable
  * ⚠️ La comparación contra el periodo anterior solo es limpia si cubre los
  * MISMOS días y los tiene capturados. Los meses retail duran cuatro o cinco
  * semanas, así que la ventana equivalente a veces se recorta; y un hueco en la
- * base infla la diferencia hacia arriba. Se dice, en vez de callarlo.
+ * base infla la diferencia hacia arriba. Solo se informa una diferencia cuando
+ * ambos lados están completos; los huecos actuales conservan su aviso de captura.
  */
-function comparacionLimpia(comparison: StoreAgentPeriod["comparison"]): boolean {
+function comparacionLimpia(period: StoreAgentPeriod): boolean {
+  const comparison = period.comparison;
   if (!comparison) return false;
-  return comparison.equivalent && comparison.baselineCapturedDays >= comparison.comparableDays;
+  return period.toDate.captureComplete && comparison.equivalent &&
+    comparison.baselineCapturedDays >= comparison.comparableDays;
 }
 
 function buildInsights(input: {
@@ -602,18 +605,16 @@ function buildInsights(input: {
 
   const mes = input.monthContext.comparison;
   const monthDelta = mes?.salesDeltaPct;
-  if (mes && monthDelta !== null && monthDelta !== undefined) {
+  if (mes && monthDelta !== null && monthDelta !== undefined && comparacionLimpia(input.monthContext)) {
     const direction = monthDelta >= 0 ? "arriba" : "abajo";
-    const matiz = comparacionLimpia(mes) ? "" : " (la ventana anterior no es equivalente: sirve de contexto, no de diferencia)";
-    insights.push(`${input.monthContext.title} está ${Math.abs(monthDelta).toFixed(1)} % ${direction} contra ${mes.label.toLowerCase()}${matiz}.`);
+    insights.push(`${input.monthContext.title} está ${Math.abs(monthDelta).toFixed(1)} % ${direction} contra ${mes.label.toLowerCase()}.`);
   }
 
   const semana = input.week.comparison;
   const weekDelta = semana?.salesDeltaPct;
-  if (semana && weekDelta !== null && weekDelta !== undefined && Math.abs(weekDelta) >= 10) {
+  if (semana && weekDelta !== null && weekDelta !== undefined && Math.abs(weekDelta) >= 10 && comparacionLimpia(input.week)) {
     const direction = weekDelta >= 0 ? "subió" : "bajó";
-    const matiz = comparacionLimpia(semana) ? "" : " (ventana no equivalente)";
-    insights.push(`La semana ${direction} ${Math.abs(weekDelta).toFixed(1)} % contra la semana anterior comparable${matiz}.`);
+    insights.push(`La semana ${direction} ${Math.abs(weekDelta).toFixed(1)} % contra la semana anterior comparable.`);
   }
 
   if (input.attention.length > 0) {

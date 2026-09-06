@@ -145,13 +145,13 @@ export async function POST(request: Request) {
   let recienCreado = false;
   let falloTransaccion: string | null = null;
   try {
-    await prisma.$transaction(
+    recienCreado = await prisma.$transaction(
       async (tx) => {
         const existe = await tx.auditLog.findFirst({
           where: { action: "slack.ops.ack", entity: payload.entity, entityId: payload.entityId },
           select: { id: true }
         });
-        if (existe) return;
+        if (existe) return false;
 
         await tx.auditLog.create({
           data: {
@@ -175,7 +175,9 @@ export async function POST(request: Request) {
             })
           }
         });
-        recienCreado = true;
+        // El callback termina ANTES del COMMIT. Solo el await exterior puede
+        // confirmar que este registro quedó persistido.
+        return true;
       },
       { isolationLevel: "Serializable" }
     );

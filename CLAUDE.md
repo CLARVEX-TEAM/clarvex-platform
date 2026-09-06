@@ -1,5 +1,71 @@
 # Clarvex Team — CLAUDE.md
 
+## Revisión adicional corregida — 5 de septiembre de 2026 (publicación autorizada)
+
+Estado local en `fix/auditoria-cierre-septiembre`, base `8bc44f5`. Autorización:
+«Arreglalo» y «sigue» tras la revisión; después, «as push y sube los cambios»
+autoriza commit y push de la rama para revisión. No incluye merge ni despliegue.
+El working tree estaba limpio antes de crear la rama; no se alteraron cambios
+ajenos, historial, remotes, credenciales ni infraestructura.
+
+Correcciones implementadas:
+
+1. `app/api/webhooks/slack/ack/route.ts`: el resultado de `$transaction` se asigna
+   DESPUÉS del await, no dentro del callback. Un INSERT que luego se revierte
+   en COMMIT ya no deja `recienCreado=true`. La relectura también cubre carreras
+   y fallos de conexión; sin registro confirmado devuelve 503 y no toca Slack.
+   `tests/slack-ack-transaction.test.ts` ejecuta el código del handler con sus
+   dependencias simuladas; cubre fallo anterior, COMMIT, lectura, GET, token
+   inválido, repetición y concurrencia simulada. No es una prueba de PostgreSQL.
+2. `scripts/deploy-release.sh`: valida todos los procesos `clarvex-team`, su
+   número configurado, estado online, cwd y ejecutable. Recomprueba tras start;
+   un solo worker correcto ya no basta. Escritura del puntero y pm2 save tienen
+   errores explícitos para no depender de errexit dentro de un if. Las 48
+   comprobaciones incluyen rollback de versiones mezcladas, procesos caídos,
+   faltantes y duplicados. No se recompila al revertir y no se revierte el esquema.
+3. `scripts/restaurar-aislado.sh`: crea un contenedor con nombre único y usa el
+   ID devuelto por Docker para start/exec/limpieza. Un conflicto de nombre nunca
+   autoriza eliminar el recurso existente, ni siquiera si lleva la etiqueta de
+   otra restauración. Se retiró RESTAURAR_FORZAR y el puerto publicado. La base
+   no tiene red; pg_restore usa exit-on-error y single-transaction. Cualquier
+   salida no cero, incluso 137 sin stderr, falla antes de aceptar recuentos.
+   Se omiten propietarios/ACL originales: no se certifica su restauración.
+   La simulación nueva tiene 23 comprobaciones sin Docker ni datos reales.
+4. `lib/retool-store-agent.ts`: las frases de aumento/caída exigen captura
+   completa actual Y anterior y ventanas equivalentes. Se conserva el aviso
+   por capturas faltantes y se prueba que las caídas reales aún se informan.
+5. `tests/integracion/aislamiento-api.test.ts`: de cinco a diez pruebas HTTP.
+   Añade captura propia/asesor ajeno, centavos, cuota sin escrituras vecinas,
+   movimientos/rondas del kardex, XLSX reales con marcadores propios y rechazo
+   de sesiones de asesor/gerente sin autorización de backend. Las fixtures
+   solo se escriben tras validar la base sintética. El secreto ficticio de
+   captura representa al backend multitienda; estas pruebas NO demuestran la
+   vinculación de identidad/tienda configurada fuera del repo en Retool.
+
+Validación local terminada: Node 22.23.1; 1,213 pruebas unitarias sin fallos ni
+omisiones; TypeScript sin emisión/incremental; ESLint completo y archivos nuevos
+sin avisos; YAML de ci.yml/deploy.yml; sintaxis bash; simulaciones 48/48 y 23/23.
+El build aislado aprobó con código 0 y generó 73 páginas. Se hizo en una copia
+temporal sin archivos `.env`, con URL de base ficticia, sin servicios reales y
+con el bloqueo de TCP externo de `tests/local-network-only.cjs`. Inicialmente
+falló por Google Fonts; `tests/google-fonts-fixture.cjs` sustituye el CSS solo
+en pruebas. También hubo que poner la copia en D: por un problema de resolución
+de Next con dependencias enlazadas entre discos. El build final solo mostró el
+warning conocido de Sentry/OpenTelemetry; no valida la apariencia tipográfica.
+
+No se ejecutó la integración contra PostgreSQL aquí: no se encontró Docker ni
+el servidor aislado esperado; no se instaló ni se usó una base existente. Las
+16 pruebas de integración quedan PENDIENTES de CI. El paso de CI precarga el
+bloqueo de red en Node, heredado por next dev, y las fuentes ficticias evitan
+descargas. La precarga se prueba permitiendo loopback y rechazando TCP, lookup
+y fetch externos. Requiere un checkout desechable sin archivos `.env`.
+
+Publicación autorizada de la rama para revisión; CI pendiente. Antes de fusionar
+o desplegar, exigir CI verde con todas las pruebas de integración ejecutadas;
+después decidir merge y deploy manual. No retirar la instalación
+antigua del servidor: el `.env` compartido puede seguir enlazado a ella. No se
+inspeccionó ni modificó ese enlace ni el contenido de ningún `.env` real.
+
 ## Buzón de la PC sin destellos de consola - 4 de septiembre de 2026
 
 El usuario reportó una ventana de PowerShell que aparecía y se cerraba sola.

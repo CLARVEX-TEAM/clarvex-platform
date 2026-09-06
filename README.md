@@ -137,7 +137,7 @@ docker exec -i clarvex_postgres pg_restore -d "$DB" --clean --if-exists < archiv
 ```bash
 pnpm exec tsc --noEmit
 pnpm exec eslint . --max-warnings 0
-pnpm test                                            # 1190 pruebas
+pnpm test
 pnpm run build
 ```
 
@@ -145,6 +145,7 @@ Y para lo que no es código de la app:
 
 ```bash
 bash tests/deploy-release.sim.sh    # el despliegue por versiones, sin AWS
+bash tests/restaurar-aislado.sim.sh # restauración, con Docker simulado
 bash -n scripts/*.sh                # los guiones de operación se pueden leer
 ```
 
@@ -165,12 +166,35 @@ tablas, y en una máquina de desarrollo no hay garantía de que la base apuntada
 sea de mentira.
 
 El trabajo `integracion` de la CI levanta ese Postgres como servicio efímero,
-con credenciales de mentira, y deja las variables de R2, Slack, Bedrock y Mercado
-Pago **vacías a propósito** para que nada salga a la red.
+con credenciales de mentira. El paso de integración precarga
+`tests/local-network-only.cjs`: rechaza archivos `.env` locales y conexiones TCP
+a hosts externos en Node, incluido el servidor hijo. La fuente de Google se
+sustituye por `tests/google-fonts-fixture.cjs` solo en las pruebas.
+
+La suite HTTP cubre lecturas por tienda, capturas de KPIs, Cuota Justa, kardex,
+exportaciones XLSX y rechazo de sesiones de gerente/asesor en los endpoints
+reservados al backend. El secreto de captura representa a un backend autorizado
+para varias tiendas: la vinculación de cada gerente con su tienda sigue siendo
+responsabilidad de `requireManagerIdentity` en Retool. Estas pruebas no verifican
+la configuración externa de Retool.
 
 ⚠️ Antes de truncar se comprueba el CONTENIDO, no solo el nombre de la base: un
 usuario sin prefijo `TEST-` o una tienda que no sea sintética abortan el
 borrado. Que la URL contenga «test» no basta.
+
+Para comprobar un respaldo ya disponible, en una máquina de pruebas con Docker:
+
+```bash
+bash scripts/restaurar-aislado.sh /ruta/al/respaldo.dump
+```
+
+El contenedor tiene nombre único por ejecución y no publica puertos ni tiene red.
+Si se especifica `RESTAURAR_CONTENEDOR` y el nombre está ocupado, aborta: ya no
+existe la opción `RESTAURAR_FORZAR`. La limpieza usa exclusivamente el ID devuelto
+por `docker create`, nunca un nombre preexistente. `pg_restore` debe terminar
+sin errores en una transacción; después se validan los recuentos. Se omiten
+propietarios y ACL originales en esta prueba aislada, por lo que no certifica
+su recuperación ni reemplaza una verificación funcional de los datos restaurados.
 
 ## Pantallas públicas (Playwright)
 

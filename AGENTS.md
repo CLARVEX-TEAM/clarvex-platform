@@ -1,5 +1,42 @@
 # AGENTS.md
 
+## Correcciones tras la revisión — 5 de septiembre de 2026, publicación autorizada
+
+Rama `fix/auditoria-cierre-septiembre`, basada en `8bc44f5`. El usuario pidió
+arreglar los cinco fallos reproducidos y ampliar la cobertura de aislamiento.
+El usuario autorizó commit y push de esta rama para revisión. La integración
+queda pendiente de CI; no se autorizó merge ni deploy en esta publicación.
+
+- Slack confirma la creación únicamente cuando termina el COMMIT. Si falla,
+  relee el registro y responde 503 sin actualizar Slack cuando no hay confirmación
+  persistida. Seis pruebas ejecutan el handler real con Prisma/Slack simulados.
+- Deploy verifica número, estado, cwd y ejecutable de TODOS los workers de PM2,
+  tanto tras reload como tras recrearlos. Solo después cambia el puntero. Fallos
+  de activación, escritura del estado o persistencia de PM2 vuelven por rollback.
+- Restauración usa `docker create` y conserva su ID; nunca borra ni reutiliza un
+  contenedor anterior. Ya NO existe `RESTAURAR_FORZAR`. Sin red ni puertos; un
+  código no cero de pg_restore invalida la prueba, aunque no haya texto de error.
+  Restaura en una transacción y comprueba recuentos con psql estricto.
+- Los insights comparan solo periodos equivalentes con captura completa en AMBOS
+  lados. Metas, acumulados, calendario, centavos y comisiones conservan sus reglas.
+- La suite HTTP añade KPIs, cuotas, kardex, archivos XLSX y rechazo de sesiones
+  personales en endpoints reservados al backend. El paso de CI bloquea conexiones
+  TCP externas en Node y usa fuentes simuladas para no descargar Google Fonts.
+
+Verificado: 1,213 pruebas unitarias, TypeScript, ESLint sin avisos, YAML de ambos
+workflows, sintaxis shell, simulación deploy 48/48 y restauración 23/23. Build
+con Node 22.23.1 aprobado en una copia temporal del mismo disco, sin `.env`, con
+configuración ficticia, red externa bloqueada y CSS de fuentes simulado. Generó
+73 páginas; solo quedó el aviso conocido de Sentry/OpenTelemetry. La prueba no
+certifica la apariencia de la fuente ni el funcionamiento con servicios reales.
+
+**Pendiente antes de fusionar o desplegar:** ejecutar CI con PostgreSQL efímero. Las 10
+pruebas HTTP ampliadas (16 junto a las seis de fixtures) NO se ejecutaron aquí:
+no había Docker ni PostgreSQL aislado disponible en las ubicaciones comprobadas.
+No se usó otra base ni se ejecutaron seed, backups, restauraciones o mensajes
+reales. La identidad del enlace firmado de Slack sigue siendo explícitamente
+no verificada; no se activó Interactivity ni se cambió Retool. Detalle en CLAUDE.md.
+
 > El resto de este archivo son pautas de diseño y de arranque, y siguen
 > vigentes. Esta primera sección es **el estado real del proyecto hoy** y va en
 > español porque es el idioma de `CLAUDE.md`, que es la fuente operativa.
