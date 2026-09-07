@@ -55,11 +55,17 @@ CONSERVAR="${CLARVEX_CONSERVAR:-4}"
 #
 # Medido en el servidor: fuente 13 MB, `node_modules` casi gratis --pnpm los
 # monta con enlaces duros a un almacén que ya está en disco-- y `.next` 2.0 GB
-# **de los que 1.9 GB son caché de webpack**, que se retira antes de activar.
+# **de los que 1.9 GB son caché de webpack**, que sale de la versión antes de
+# activar.
 #
-# O sea: durante el build hacen falta ~2 GB, y una vez retirada la caché la
-# versión se queda en ~150 MB. Por eso conservar cuatro sí cabe, y por eso el
-# umbral mira el pico y no el residuo.
+# O sea: durante el build hacen falta ~2 GB, y una vez fuera la caché la versión
+# se queda en ~150 MB. Por eso conservar cuatro sí cabe, y por eso el umbral
+# mira el pico y no el residuo.
+#
+# ⚠️ Desde que la caché se COMPARTE, esos 1.9 GB no desaparecen: se mudan a
+# `compartido/cache-webpack` y viven ahí entre despliegues. Es **una** copia, no
+# una por versión --que era el motivo real de borrarla-- y se descarta sola si
+# el disco aprieta o si pasa del tope. Ver el bloque de la caché más abajo.
 MB_NECESARIOS="${CLARVEX_MB_NECESARIOS:-3072}"
 
 OBJETIVO="${1:-}"
@@ -200,11 +206,71 @@ echo "$SALIDA_MIGRACION"
 MIGRO=1
 if echo "$SALIDA_MIGRACION" | grep -q "No pending migrations"; then MIGRO=0; fi
 
+# ── La caché de compilación se COMPARTE entre versiones ───────────────────
+#
+# ⚠️ **Antes se construía siempre en frío, y encima se pagaba dos veces.** Cada
+# versión se extrae limpia de git, así que `.next/cache/webpack` nacía vacía; el
+# build la llenaba --1.9 GB-- y al terminar el guion la borraba. O sea: se pagaba
+# construirla y luego se tiraba, en cada despliegue. Medido en producción, el
+# paso de construir tardaba **8 min 26 s**.
+#
+# El razonamiento que había aquí era correcto salvo en una cosa: decía que la
+# caché «acelera el siguiente build en ese mismo directorio, y cada versión se
+# construye en uno nuevo». Eso es consecuencia del diseño, no una ley. Con UNA
+# caché en `compartido/`, sí se reutiliza — y sigue habiendo una sola copia, que
+# era el motivo real de borrarla.
+#
+# ⚠️ **El disco manda sobre la velocidad.** Con el disco lleno Postgres deja de
+# escribir y la tienda no puede capturar; un build lento solo hace esperar. Por
+# eso la caché se usa únicamente si sobra margen, y se descarta si crece.
+CACHE_COMPARTIDA="$COMPARTIDO/cache-webpack"
+CACHE_EN_VERSION="$NUEVA/.next/cache/webpack"
+MB_CACHE_MAX="${MB_CACHE_MAX:-2000}"
+MB_LIBRES_PARA_CACHE="${MB_LIBRES_PARA_CACHE:-4000}"
+
+LIBRE_AHORA=$(df -Pm "$BASE" | tail -1 | awk '{print $4}')
+if [ "${LIBRE_AHORA:-0}" -lt "$MB_LIBRES_PARA_CACHE" ]; then
+  log "solo ${LIBRE_AHORA} MB libres: se descarta la caché compartida y se construye en frío"
+  rm -rf "$CACHE_COMPARTIDA"
+elif [ -d "$CACHE_COMPARTIDA" ]; then
+  CACHE_MB=$(du -sm "$CACHE_COMPARTIDA" 2>/dev/null | cut -f1)
+  if [ "${CACHE_MB:-0}" -gt "$MB_CACHE_MAX" ]; then
+    log "caché compartida en ${CACHE_MB} MB (tope ${MB_CACHE_MAX}): se descarta y se rehace"
+    rm -rf "$CACHE_COMPARTIDA"
+  else
+    log "caché compartida: ${CACHE_MB} MB"
+  fi
+fi
+
+# ⚠️ **Se MUEVE, no se enlaza.** La primera versión de esto ponía un enlace
+# simbólico, y la simulación lo delató: en Git Bash sobre Windows `ln -s` no
+# crea un enlace, **copia**. O sea que el guion se habría comportado de una
+# forma en el servidor y de otra donde se prueba, y la simulación habría estado
+# validando un camino que producción nunca recorre.
+#
+# `mv` dentro del mismo sistema de archivos es un renombrado: instantáneo, sin
+# copiar los 1.9 GB, e igual en todas partes. `compartido` y `releases` cuelgan
+# ambos de `$BASE`, así que siempre lo es.
+#
+# ⚠️ Si el despliegue se corta entre este `mv` y el de vuelta, la caché se queda
+# dentro de una versión a medias y `limpiar_fallida` se la lleva. Lo peor que
+# pasa entonces es un build en frío; no hay estado corrupto posible.
+mkdir -p "$NUEVA/.next/cache"
+if [ -d "$CACHE_COMPARTIDA" ]; then
+  mv "$CACHE_COMPARTIDA" "$CACHE_EN_VERSION"
+fi
+
 # ── Construir ─────────────────────────────────────────────────────────────
 #
 # Construye en el `.next` de ESTA versión. La que se está sirviendo no se toca:
 # ese era el fallo de fondo del guion anterior.
 if ! pnpm run build; then
+  # ⚠️ **Una caché envenenada rompería TODOS los despliegues siguientes**, y el
+  # error no señalaría hacia aquí: se vería como un build que falla sin motivo
+  # aparente, commit tras commit. Ante un fallo se tira y el siguiente intento
+  # arranca limpio.
+  rm -rf "$CACHE_EN_VERSION" "$CACHE_COMPARTIDA"
+  log "caché compartida descartada por si el fallo venía de ella"
   limpiar_fallida
   fatal "Falló el build. La versión activa sigue sirviendo y no se reinició nada."
 fi
@@ -227,14 +293,23 @@ log "versión preparada: $(cat "$NUEVA/.next/BUILD_ID")"
 # ⚠️ Y no hace falta: la caché acelera el SIGUIENTE build **en ese mismo
 # directorio**, y cada versión se construye en uno nuevo. Nunca se reutiliza.
 #
-# Se borra solo `webpack`, no `.next/cache` entero: `fetch-cache` e `images` sí
+# Se retira solo `webpack`, no `.next/cache` entero: `fetch-cache` e `images` sí
 # los usa `next start` en marcha. Es la misma distinción que ya vive en
 # `scripts/deploy.sh`.
-if [ -d "$NUEVA/.next/cache/webpack" ]; then
-  ANTES_MB=$(du -sm "$NUEVA/.next" | cut -f1)
-  rm -rf "$NUEVA/.next/cache/webpack"
-  log "caché de webpack retirada de la versión: ${ANTES_MB} MB → $(du -sm "$NUEVA/.next" | cut -f1) MB"
+#
+# ⚠️ **Se quita el ENLACE, no la caché.** Es la diferencia entre conservar el
+# trabajo para el siguiente despliegue y volver a tirarlo. `rm -f` sobre un
+# enlace simbólico borra el enlace; escribir una barra al final del nombre
+# borraría el contenido del destino.
+if [ -d "$CACHE_EN_VERSION" ]; then
+  # ⚠️ Se devuelve a `compartido` en vez de borrarla. Borrarla aquí --que es lo
+  # que hacía antes-- dejaba el siguiente build otra vez en frío, y sin decirlo:
+  # se vería como que la mejora no sirvió.
+  rm -rf "$CACHE_COMPARTIDA"
+  mv "$CACHE_EN_VERSION" "$CACHE_COMPARTIDA"
+  log "caché devuelta a compartido ($(du -sm "$CACHE_COMPARTIDA" 2>/dev/null | cut -f1) MB) para el siguiente despliegue"
 fi
+log "tamaño de la versión: $(du -sm "$NUEVA/.next" 2>/dev/null | cut -f1) MB de .next"
 
 # ── Activar ───────────────────────────────────────────────────────────────
 #
