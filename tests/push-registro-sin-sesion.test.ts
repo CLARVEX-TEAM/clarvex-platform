@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { guardarTokenNativo, saveSubscription } from "../components/PwaRegister";
+import { avisoDescartado, guardarTokenNativo, recordarDescarte, saveSubscription } from "../components/PwaRegister";
 
 /*
  * Por qué existen estas pruebas.
@@ -115,4 +115,39 @@ test("sin VAPID configurado no queda nada pendiente", async () => {
   stubFetch(() => new Response(JSON.stringify({}), { status: 200 }));
   const registro = { pushManager: { getSubscription: async () => null } } as unknown as ServiceWorkerRegistration;
   assert.equal(await saveSubscription(registro), true);
+});
+
+/*
+ * ⚠️ `localStorage` LANZA en algunas configuraciones, no devuelve null: el
+ * WebView con almacenamiento restringido, las cookies de terceros cortadas, una
+ * ventana privada. La lectura estaba sin proteger dentro del efecto, asi que un
+ * fallo ahi se llevaba por delante EL AVISO ENTERO -- el unico sitio desde donde
+ * se puede conceder el permiso. Y sin dejar rastro.
+ *
+ * En Node no existe `localStorage`, asi que el acceso lanza de verdad: el
+ * entorno de la prueba ES el caso hostil, sin necesidad de simularlo.
+ */
+
+test("un localStorage que lanza no descarta el aviso", () => {
+  assert.equal(typeof globalThis.localStorage, "undefined", "la prueba depende de que no exista");
+  assert.equal(avisoDescartado(), false, "ante la duda se ENSENA: un aviso de mas se cierra");
+});
+
+test("guardar el descarte con un localStorage que lanza no rompe nada", () => {
+  assert.doesNotThrow(() => recordarDescarte());
+});
+
+test("un descarte guardado si se respeta", () => {
+  const guardado = new Map<string, string>();
+  (globalThis as { localStorage?: unknown }).localStorage = {
+    getItem: (k: string) => guardado.get(k) ?? null,
+    setItem: (k: string, v: string) => void guardado.set(k, v)
+  };
+  try {
+    assert.equal(avisoDescartado(), false);
+    recordarDescarte();
+    assert.equal(avisoDescartado(), true);
+  } finally {
+    delete (globalThis as { localStorage?: unknown }).localStorage;
+  }
 });

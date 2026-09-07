@@ -89,6 +89,30 @@ export async function guardarTokenNativo(token: string): Promise<boolean> {
   return true;
 }
 
+/**
+ * ⚠️ **`localStorage` LANZA en algunas configuraciones**, no devuelve `null`:
+ * el WebView con almacenamiento restringido, un navegador con las cookies de
+ * terceros cortadas, una ventana privada. Sin proteger, la lectura reventaba
+ * dentro del efecto y se llevaba por delante **el aviso entero**, que es el
+ * unico sitio desde donde se puede conceder el permiso. Ante la duda se enseña:
+ * un aviso de mas se cierra; uno que nunca aparece no se puede pedir.
+ */
+export function avisoDescartado(): boolean {
+  try {
+    return localStorage.getItem("push-prompt-dismissed") === "1";
+  } catch {
+    return false;
+  }
+}
+
+export function recordarDescarte() {
+  try {
+    localStorage.setItem("push-prompt-dismissed", "1");
+  } catch {
+    // Se cerrara otra vez a la proxima. Es preferible a no poder cerrarlo.
+  }
+}
+
 // El canal tiene que existir ANTES de que llegue la primera notificación: si no
 // existe, Android la coloca en el de reserva de Firebase --importancia media-- y
 // entra muda. Crear uno que ya está no falla ni pierde los ajustes de la persona.
@@ -109,6 +133,9 @@ export function PwaRegister() {
   const [nativo, setNativo] = useState<PluginPush | null>(null);
   const [showBanner, setShowBanner] = useState(false);
   const pendiente = useRef<Pendiente>(null);
+  // Evita volver a pedir el token en cada vuelta a la app: el POST es un upsert,
+  // asi que repetirlo no rompe nada, pero es una peticion por cada foco.
+  const yaRegistrado = useRef(false);
   const pathname = usePathname();
 
   // Guarda, y si lo único que faltaba era la sesión, lo deja pendiente.
@@ -135,13 +162,31 @@ export function PwaRegister() {
 
   useEffect(() => {
     const alVolver = () => {
-      if (document.visibilityState === "visible" && pendiente.current) {
-        void registrar(pendiente.current);
-      }
+      if (document.visibilityState !== "visible") return;
+      if (pendiente.current) void registrar(pendiente.current);
+
+      // ⚠️ **El permiso se puede conceder DESDE LOS AJUSTES del sistema**, que
+      // es adonde Android manda a quien lo denego una vez --y desde donde
+      // cualquiera puede activarlo por su cuenta--. Al volver, la app sigue
+      // viva: el efecto de montaje NO se repite, asi que sin esto el permiso
+      // queda dado y el aparato sin registrar, hasta que alguien mate la app.
+      // Paso de verdad la primera vez que se probo.
+      if (!nativo || yaRegistrado.current) return;
+      void (async () => {
+        try {
+          const estado = await nativo.checkPermissions();
+          if (estado.receive !== "granted") return;
+          yaRegistrado.current = true;
+          setShowBanner(false);
+          await prepararYRegistrar(nativo);
+        } catch (error) {
+          console.error("[push nativo] No se pudo reintentar el registro al volver:", (error as Error).message);
+        }
+      })();
     };
     document.addEventListener("visibilitychange", alVolver);
     return () => document.removeEventListener("visibilitychange", alVolver);
-  }, [registrar]);
+  }, [registrar, nativo]);
 
   // ── Camino NATIVO: la app de Android ────────────────────────────────────
   //
@@ -188,6 +233,7 @@ export function PwaRegister() {
 
         const estado = await plugin.checkPermissions();
         if (estado.receive === "granted") {
+          yaRegistrado.current = true;
           await prepararYRegistrar(plugin);
           return;
         }
@@ -195,7 +241,7 @@ export function PwaRegister() {
         // que la persona lo cambie en los ajustes del sistema. Insistir con el
         // aviso solo enseñaría un botón que no hace nada.
         if (estado.receive === "denied") return;
-        if (!localStorage.getItem("push-prompt-dismissed")) setShowBanner(true);
+        if (!avisoDescartado()) setShowBanner(true);
       } catch (error) {
         console.error("[push nativo] No se pudo preparar el registro:", (error as Error).message);
       }
@@ -279,8 +325,7 @@ export function PwaRegister() {
         if (permission === "granted") {
           void registrar({ tipo: "web", registro: registration });
         } else if (permission === "default") {
-          const dismissed = localStorage.getItem("push-prompt-dismissed");
-          if (!dismissed) setShowBanner(true);
+          if (!avisoDescartado()) setShowBanner(true);
         }
       })
       .catch(() => undefined);
@@ -293,7 +338,10 @@ export function PwaRegister() {
     if (nativo) {
       try {
         const estado = await nativo.requestPermissions();
-        if (estado.receive === "granted") await prepararYRegistrar(nativo);
+        if (estado.receive === "granted") {
+          yaRegistrado.current = true;
+          await prepararYRegistrar(nativo);
+        }
       } catch (error) {
         console.error("[push nativo] No se pudo pedir el permiso:", (error as Error).message);
       }
@@ -312,7 +360,7 @@ export function PwaRegister() {
 
   function handleDismiss() {
     setShowBanner(false);
-    localStorage.setItem("push-prompt-dismissed", "1");
+    recordarDescarte();
   }
 
   if (!showBanner) return null;
