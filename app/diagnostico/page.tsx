@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { CANAL_AVISOS, enContenedorNativo, plataformaNativa, pushNativo } from "@/lib/puente-nativo";
 
 /**
- * Pantalla de diagnóstico de las notificaciones.
+ * Pantalla de diagnóstico del aparato.
  *
  * ⚠️ **Existe porque el fallo de esto es MUDO por naturaleza.** Una notificación
  * que no llega no deja rastro en ninguna pantalla, y la cadena tiene seis
@@ -16,6 +16,11 @@ import { CANAL_AVISOS, enContenedorNativo, plataformaNativa, pushNativo } from "
  */
 
 type Linea = { que: string; valor: string; bien: boolean | null };
+
+function hayCamara(): boolean {
+  const md = (navigator as Navigator & { mediaDevices?: MediaDevices }).mediaDevices;
+  return typeof md?.getUserMedia === "function";
+}
 
 export default function DiagnosticoPush() {
   const [lineas, setLineas] = useState<Linea[] | null>(null);
@@ -45,9 +50,48 @@ export default function DiagnosticoPush() {
         bien: Boolean(plugin)
       },
       { que: "API de Push del navegador", valor: "PushManager" in window ? "sí" : "no (normal en la app)", bien: null },
-      { que: "API de Notification", valor: "Notification" in window ? "sí" : "no (normal en la app)", bien: null }
+      { que: "API de Notification", valor: "Notification" in window ? "sí" : "no (normal en la app)", bien: null },
+
+      // ⚠️ Estas dos NO son de notificaciones, y estan aqui a proposito: fallan
+      // igual de calladas y por el mismo motivo -- el WebView no trae encendido
+      // lo que el navegador si -- asi que se miran en el mismo sitio.
+      {
+        que: "Camara (escaner de marbetes)",
+        // ⚠️ El tipado de TypeScript da `mediaDevices` por SIEMPRE presente, y
+        // no lo esta: desaparece fuera de un contexto seguro y en WebView con la
+        // camara sin permiso. Por eso se mira con un tipo propio y opcional; con
+        // el de la libreria, la comprobacion se optimiza a `true` y esta fila
+        // mentiria justo donde importa.
+        valor: hayCamara() ? "disponible" : "NO disponible",
+        bien: hayCamara()
+      },
+      {
+        que: "Lector de codigos",
+        valor: "BarcodeDetector" in window ? "nativo" : "por jsQR (mas lento, pero sirve)",
+        bien: null
+      },
+      {
+        que: "Huella (WebAuthn)",
+        valor: window.PublicKeyCredential ? "disponible" : "NO disponible",
+        bien: Boolean(window.PublicKeyCredential)
+      }
     ];
     setLineas(base);
+
+    // ⚠️ Tener `PublicKeyCredential` NO basta: puede existir y no haber
+    // autenticador de plataforma --sin huella registrada en el telefono, o el
+    // WebView sin enrutar a los servicios de Google--. Esta es la pregunta que
+    // de verdad contesta si la huella va a funcionar.
+    if (window.PublicKeyCredential?.isUserVerifyingPlatformAuthenticatorAvailable) {
+      window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable()
+        .then((hay) =>
+          setLineas((p) => [
+            ...(p ?? []),
+            { que: "Autenticador del sistema", valor: hay ? "listo" : "no hay", bien: hay }
+          ])
+        )
+        .catch((e: Error) => anotar(`No se pudo preguntar por el autenticador: ${e.message}`));
+    }
 
     if (!plugin) return;
     plugin
@@ -107,7 +151,7 @@ export default function DiagnosticoPush() {
 
   return (
     <main className="mx-auto max-w-2xl px-4 py-8">
-      <h1 className="text-xl font-semibold text-ink">Diagnóstico de notificaciones</h1>
+      <h1 className="text-xl font-semibold text-ink">Diagnóstico del aparato</h1>
       <p className="mt-2 text-sm text-muted">
         Qué ve la app desde dentro. No muestra datos de nadie.
       </p>
