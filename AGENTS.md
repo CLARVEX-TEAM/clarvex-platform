@@ -2,8 +2,9 @@
 
 ## Lector del POS: relectura e historial privado — 6 de septiembre de 2026
 
-Cambio LOCAL en `fix/pos-devoluciones-relectura`, basado en `7616c87` de la rama
-de notificaciones. No se publicó ni desplegó. Las fotos recibidas muestran el
+Cambio en `fix/pos-devoluciones-relectura`, basado en `7616c87` de la rama
+de notificaciones, implementado en `d449347`. El usuario autorizó subir la rama
+y crear el PR para revisión; CI pendiente, sin merge ni deploy. Las fotos recibidas muestran el
 rechazo, no el reporte original completo: no se puede confirmar qué columna
 se transcribió mal ni modificar la fórmula de devoluciones a partir de ellas.
 
@@ -34,9 +35,10 @@ No hay migraciones, cambios de fórmulas, permisos de Retool ni servicios nuevos
 Verificado: 103 pruebas pertinentes con Node 22.23.1, proveedores/sesiones
 simulados y archivos temporales; TypeScript completo sin emisión e incremental,
 ESLint de los archivos afectados. Siete regresiones de relectura fallaban antes
-del arreglo. El estado del build y la preparación de publicación se detallan en
-CLAUDE.md. Commit local autorizado; sin push, merge o deploy. Pendiente comprobar
-el PDF/captura original del caso reportado y publicar. No se leyeron `.env`
+del arreglo. Build aislado aprobado: 73 páginas, configuración ficticia y red
+externa bloqueada. La preparación de publicación se detalla en CLAUDE.md.
+Pendiente comprobar el PDF/captura original del caso reportado y validar CI antes
+de integrar o desplegar. No se leyeron `.env`
 reales ni se invocaron lectores remotos, bases, Retool o producción.
 
 ## Correcciones tras la revisión — 5 de septiembre de 2026, publicación autorizada

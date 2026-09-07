@@ -5,9 +5,9 @@
 Estado: implementado y probado LOCALMENTE en `fix/pos-devoluciones-relectura`,
 base `7616c87`. La solicitud corresponde al error de Retool «La lectura no
 cuadra» reportado al cargar días con devoluciones. Se conservó el trabajo de
-FCM que ya estaba en la rama de origen. El usuario autorizó el commit local del
-arreglo y del historial; sin push, merge o deploy, ni escrituras en Retool, AWS,
-Slack o una base real.
+FCM que ya estaba en la rama de origen. El arreglo y el historial quedaron en
+`d449347`. Después, el usuario autorizó subir la rama y crear el PR para revisión.
+CI pendiente; sin merge, deploy ni escrituras en Retool, AWS, Slack o una base real.
 
 Las dos fotos solo permiten leer el mensaje de rechazo. Los tres importes de
 cada fila no cumplen la identidad existente de bruto/descuento/posterior: eso
@@ -107,7 +107,11 @@ cuotas, caducidad, rutas y enlaces. Incluye recuperación de la respuesta de IA,
 403/401 en descarga/listado, error de disco y ausencia de archivo en éxito.
 TypeScript completo sin emisión/incremental y ESLint afectado aprobados. Las
 comprobaciones específicas de modos POSIX quedan para Linux/CI; aquí se corrió
-Windows. Build aislado en verificación; no se probó ninguna base ni servicio real.
+Windows. Build aislado aprobado con Node 22.23.1 en una copia temporal del mismo
+disco: 73 páginas, sin `.env`, configuración ficticia, red externa bloqueada y CSS
+de fuentes simulado. Solo apareció el aviso conocido de Sentry/OpenTelemetry;
+la prueba no certifica la tipografía ni los servicios reales. No se probó ninguna
+base real. La CI del PR queda pendiente de ejecución en GitHub.
 
 ## Notificaciones en la app de Android — 6 de septiembre de 2026
 
