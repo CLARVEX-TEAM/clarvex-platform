@@ -1,8 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
 import { ArrowDownToLine, X } from "lucide-react";
 import { actualizadorNativo, appNativa, enContenedorNativo, type PluginActualizador } from "@/lib/puente-nativo";
+import { hayQueMirar, siguePendiente } from "@/lib/actualizacion-app";
 
 /**
  * Avisa de que hay una versión nueva de la app, y la instala.
@@ -41,45 +43,98 @@ export function ActualizacionApp() {
   const [plugin, setPlugin] = useState<PluginActualizador | null>(null);
   const [descartada, setDescartada] = useState(false);
 
-  useEffect(() => {
-    if (!enContenedorNativo()) return;
+  /*
+   * ⚠️ **Esto miraba UNA vez por documento y se quedaba con esa respuesta.**
+   * El layout raíz no se vuelve a montar en una navegación de cliente, así que
+   * quien abría la app estando al día no se enteraba de ninguna publicación
+   * posterior hasta cerrarla del todo. Y un 401 en `/login` --donde este
+   * componente también monta, porque vive en el layout-- la mataba para toda
+   * la sesión. Ver `lib/actualizacion-app.ts`.
+   */
+  const pendiente = useRef(true);
+  const ultimaMirada = useRef(0);
+  const descargandoRef = useRef(false);
+  descargandoRef.current = estado === "descargando";
+  const pathname = usePathname();
+
+  const comprobar = useCallback(async () => {
+    if (!enContenedorNativo()) {
+      pendiente.current = false;
+      return;
+    }
     const actualizador = actualizadorNativo();
     const app = appNativa();
     // Una versión vieja de la app no trae el plugin. No es un fallo: no puede
     // actualizarse sola y hay que mandarle el APK a mano, una última vez.
-    if (!actualizador || !app) return;
+    if (!actualizador || !app) {
+      pendiente.current = false;
+      return;
+    }
+    if (
+      !hayQueMirar({
+        pendiente: pendiente.current,
+        descargando: descargandoRef.current,
+        ultimaMirada: ultimaMirada.current,
+        ahora: Date.now()
+      })
+    ) {
+      return;
+    }
     setPlugin(actualizador);
 
-    let vivo = true;
-    void (async () => {
-      try {
-        const info = await app.getInfo();
-        // ⚠️ Se compara el `build` (versionCode), que es un entero y el único
-        // orden fiable. `version` es "1.2" y compararlo como texto pone la 1.10
-        // por debajo de la 1.9.
-        const instalada = Number.parseInt(info.build, 10);
-        const respuesta = await fetch("/api/app/version");
-        if (!respuesta.ok || !vivo) return;
-        const datos = (await respuesta.json()) as Publicada | { hay: false };
-        if (!datos.hay || !Number.isFinite(instalada)) {
-          setEstado("al-dia");
-          return;
-        }
-        if (datos.versionCode <= instalada) {
-          setEstado("al-dia");
-          return;
-        }
-        setNueva(datos);
-        setEstado("disponible");
-      } catch {
-        // Sin red o servidor caído: no se enseña nada. Volverá a mirar al
-        // siguiente arranque.
-        setEstado("al-dia");
+    try {
+      const info = await app.getInfo();
+      // ⚠️ Se compara el `build` (versionCode), que es un entero y el único
+      // orden fiable. `version` es "1.2" y compararlo como texto pone la 1.10
+      // por debajo de la 1.9.
+      const instalada = Number.parseInt(info.build, 10);
+      const respuesta = await fetch("/api/app/version");
+      if (!respuesta.ok) {
+        // ⚠️ Un 401 es «todavía no hay sesión», no «no hay actualización».
+        pendiente.current = siguePendiente(respuesta.status);
+        return;
       }
-    })();
-    return () => {
-      vivo = false;
+      const datos = (await respuesta.json()) as Publicada | { hay: false };
+      pendiente.current = false;
+      ultimaMirada.current = Date.now();
+      if (!datos.hay || !Number.isFinite(instalada) || datos.versionCode <= instalada) {
+        setEstado("al-dia");
+        return;
+      }
+      setNueva(datos);
+      setEstado((antes) => (antes === "descargando" ? antes : "disponible"));
+    } catch {
+      // Sin red o servidor caído: `pendiente` sigue como estaba, así que se
+      // reintenta al volver a la app.
+      //
+      // ⚠️ No se pisa una tarjeta ya visible. Un corte de señal en una
+      // comprobación POSTERIOR haría desaparecer un aviso correcto, y la
+      // persona no vería la actualización hasta media hora después.
+      setEstado((antes) => (antes === "disponible" || antes === "descargando" ? antes : "al-dia"));
+    }
+  }, []);
+
+  /*
+   * Al arrancar y en cada cambio de pantalla, pero SOLO mientras falte una
+   * respuesta buena. Esto dispara también al montar, así que cubre el arranque
+   * sin un efecto aparte --con los dos salían dos peticiones a la vez-- y es lo
+   * que recupera el 401 del login un instante después de entrar.
+   */
+  useEffect(() => {
+    if (pendiente.current) void comprobar();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname]);
+
+  // ⚠️ Y al VOLVER a la app, que es lo que faltaba: sin esto, una versión
+  // publicada con la app ya abierta no se ofrecía nunca. `hayQueMirar` lo
+  // limita a una vez cada media hora.
+  useEffect(() => {
+    const alVolver = () => {
+      if (document.visibilityState === "visible") void comprobar();
     };
+    document.addEventListener("visibilitychange", alVolver);
+    return () => document.removeEventListener("visibilitychange", alVolver);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const instalar = useCallback(async () => {
