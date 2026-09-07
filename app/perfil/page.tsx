@@ -275,11 +275,11 @@ export default function ProfilePage() {
                 tiene barra de direcciones: dentro del contenedor no hay forma de
                 escribir una ruta, y el diagnostico solo dice algo util ahi
                 dentro. En el navegador saldra todo en rojo, y es lo correcto. */}
-            <Link href="/diagnostico-push" className="mb-3 block">
+            <Link href="/diagnostico" className="mb-3 block">
               <Card className="p-3.5 transition active:scale-[0.99]">
                 <div className="flex items-center gap-3">
                   <span className="grid size-10 place-items-center rounded-2xl bg-panel text-ink/70"><BellRing size={19} /></span>
-                  <div className="min-w-0 flex-1"><h2 className="font-semibold text-ink">Notificaciones</h2><p className="text-xs text-muted">¿No te llegan avisos? Revisa este aparato.</p></div>
+                  <div className="min-w-0 flex-1"><h2 className="font-semibold text-ink">Diagnóstico</h2><p className="text-xs text-muted">¿No te llegan avisos o falla la cámara? Revisa aquí.</p></div>
                   <ChevronRight size={18} className="shrink-0 text-muted" />
                 </div>
               </Card>
