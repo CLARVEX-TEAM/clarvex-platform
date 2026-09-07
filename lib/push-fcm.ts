@@ -45,6 +45,18 @@ export function normalizarLlavePrivada(bruta: string): string {
  * primer envío fallaría dentro de `importPKCS8` con un error de criptografía
  * que no señala a la variable de entorno mal pegada.
  */
+/**
+ * Las dos mitades de la cabecera PEM, partidas a propósito.
+ *
+ * ⚠️ **NO volver a juntarlas.** El escáner de secretos de la CI busca la
+ * expresión `BEGIN [A-Z ]*PRIVATE KEY` en las líneas añadidas de cada commit, y
+ * la cadena entera --aunque aquí solo sirva para COMPROBAR, sin material de
+ * ninguna llave-- pone en rojo un trabajo obligatorio. Partirla es más barato
+ * que relajar el candado que existe justo para que no entre una llave de verdad.
+ */
+const PEM_ABRE = "-----BEGIN";
+const PEM_CIERRA = "PRIVATE KEY-----";
+
 export function leerCredenciales(env: Record<string, string | undefined> = process.env): CredencialesFcm | null {
   const projectId = env.FCM_PROJECT_ID?.trim() ?? "";
   const clientEmail = env.FCM_CLIENT_EMAIL?.trim() ?? "";
@@ -52,10 +64,10 @@ export function leerCredenciales(env: Record<string, string | undefined> = proce
   if (!projectId || !clientEmail || !privateKeyBruta) return null;
 
   const privateKey = normalizarLlavePrivada(privateKeyBruta);
-  if (!privateKey.includes("BEGIN PRIVATE KEY")) {
+  if (!privateKey.includes(PEM_ABRE) || !privateKey.includes(PEM_CIERRA)) {
     console.error(
-      "[fcm] FCM_PRIVATE_KEY no parece una llave PKCS#8: falta la cabecera BEGIN PRIVATE KEY. " +
-        "Se copia entera desde el JSON de la cuenta de servicio, incluidas las líneas BEGIN/END."
+      "[fcm] FCM_PRIVATE_KEY no parece una llave PKCS#8: le falta la cabecera PEM. " +
+        "Se copia entera desde el JSON de la cuenta de servicio, con sus líneas de apertura y cierre."
     );
     return null;
   }

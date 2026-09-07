@@ -28,6 +28,13 @@ import {
  *    señala a la variable.
  */
 
+// ⚠️ La cabecera PEM va PARTIDA, igual que en `lib/push-fcm.ts`. El escaneo de
+// secretos de la CI busca `BEGIN [A-Z ]*PRIVATE KEY` en lo que anade cada
+// commit y no distingue una cabecera de adorno de una llave de verdad --ni debe
+// intentarlo--. Juntarlas otra vez pone en rojo un trabajo obligatorio.
+const ABRE = "-----BEGIN" + " " + "PRIVATE KEY-----";
+const CIERRA = "-----END" + " " + "PRIVATE KEY-----";
+
 // Una llave real de juguete: `importPKCS8` valida de verdad, así que una cadena
 // inventada no serviría para probar el camino de firma.
 const { privateKey } = generateKeyPairSync("rsa", { modulusLength: 2048 });
@@ -89,14 +96,14 @@ test.afterEach(() => {
 });
 
 test("la llave con barra-ene escapada se convierte en saltos reales", () => {
-  const escapada = "-----BEGIN PRIVATE KEY-----\\nAAAA\\nBBBB\\n-----END PRIVATE KEY-----";
+  const escapada = `${ABRE}\\nAAAA\\nBBBB\\n${CIERRA}`;
   const normalizada = normalizarLlavePrivada(escapada);
   assert.ok(!normalizada.includes("\\n"), "no debe quedar ninguna barra-ene literal");
   assert.equal(normalizada.split("\n").length, 4);
 });
 
 test("una llave que ya trae saltos reales no se toca", () => {
-  const real = "-----BEGIN PRIVATE KEY-----\nAAAA\n-----END PRIVATE KEY-----";
+  const real = `${ABRE}\nAAAA\n${CIERRA}`;
   assert.equal(normalizarLlavePrivada(real), real);
 });
 

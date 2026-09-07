@@ -1940,7 +1940,7 @@ conviene comprobarlo a propósito.
 
 ⚠️ **La llave se pega con `\n` literales** y el código los convierte; también
 acepta saltos reales si se pega entre comillas. Lo que NO acepta es una llave sin
-la línea `BEGIN PRIVATE KEY`: ahí avisa y no firma.
+las líneas de cabecera PEM: ahí avisa y no firma.
 
 ### Correo transaccional (Resend) — restablecer el PIN
 
