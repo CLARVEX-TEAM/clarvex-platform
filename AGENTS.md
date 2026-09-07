@@ -1,5 +1,46 @@
 # AGENTS.md
 
+## Lector del POS: relectura e historial privado — 6 de septiembre de 2026
+
+Cambio en `fix/pos-devoluciones-relectura`, basado en `7616c87` de la rama
+de notificaciones, implementado en `d449347`. El usuario autorizó subir la rama
+y crear el PR para revisión; CI pendiente, sin merge ni deploy. Las fotos recibidas muestran el
+rechazo, no el reporte original completo: no se puede confirmar qué columna
+se transcribió mal ni modificar la fórmula de devoluciones a partir de ellas.
+
+Se comprobó un fallo del flujo: `readPosReport` aceptaba el primer JSON con forma
+válida; la API rechazaba después sus cuentas sin activar otra lectura. Ahora
+comprueba también `posCaptureRows` antes de elegir un resultado. Una lectura
+inconsistente pasa al siguiente lector, o a una segunda lectura con Bedrock si
+es el único configurado. Ambos reciben el mapa de columnas y conservan los
+signos de netos y promedios. No se reconstruyen importes ni se relajan tolerancias.
+
+Los 55 segundos incluyen ahora Bedrock y Gemini, con tiempo restante por intento.
+Un reporte de varios días se rechaza directamente; no se insiste para cambiar
+sus fechas. Tras agotar intentos se pide el original y la API no devuelve prellenado.
+
+El usuario autorizó además guardar futuros rechazos y hacer commit del arreglo.
+La API de captura conserva el original, su SHA-256, intentos de IA y causa del
+rechazo en una carpeta privada fuera del checkout y las releases. Devuelve un
+folio solo si el archivo quedó guardado. Una lectura correcta no se archiva.
+No se puede recuperar con esto el reporte anterior que no se conservó.
+
+Consulta por `/api/admin/pos-diagnostics`, con sesión real de administrador de
+plataforma; no admite el secreto de captura ni sesiones demo. Caducidad de acceso
+a siete días, máximo 100 casos/128 MiB; limpieza al guardar y guion de purga local
+para programar al publicar. Originales como adjuntos, sin caché ni URLs públicas.
+Ruta predeterminada: `~/.local/share/clarvex/pos-diagnostics`, del usuario de PM2.
+No hay migraciones, cambios de fórmulas, permisos de Retool ni servicios nuevos.
+
+Verificado: 103 pruebas pertinentes con Node 22.23.1, proveedores/sesiones
+simulados y archivos temporales; TypeScript completo sin emisión e incremental,
+ESLint de los archivos afectados. Siete regresiones de relectura fallaban antes
+del arreglo. Build aislado aprobado: 73 páginas, configuración ficticia y red
+externa bloqueada. La preparación de publicación se detalla en CLAUDE.md.
+Pendiente comprobar el PDF/captura original del caso reportado y validar CI antes
+de integrar o desplegar. No se leyeron `.env`
+reales ni se invocaron lectores remotos, bases, Retool o producción.
+
 ## Correcciones tras la revisión — 5 de septiembre de 2026, publicación autorizada
 
 Rama `fix/auditoria-cierre-septiembre`, basada en `8bc44f5`. El usuario pidió

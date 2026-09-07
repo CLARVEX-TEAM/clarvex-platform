@@ -5,6 +5,8 @@ import { matchPosRows, posCaptureRows } from "@/lib/pos-productivity";
 import { isVisionConfigured, readPosReport } from "@/lib/pos-vision";
 import { prisma } from "@/lib/prisma";
 import { PERSON_WHERE } from "@/lib/store-people";
+import { decodePosDocument, posFailureStore } from "@/lib/pos-failure-store";
+import type { PosVisionTrace } from "@/lib/pos-vision-diagnostics";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -15,7 +17,8 @@ export const maxDuration = 60;
  * filas listas para revisar: venta, tickets, piezas, bruto y descuento por
  * asesor.
  *
- * **No escribe NADA.** El guardado sigue siendo el de siempre
+ * No guarda KPIs. Los rechazos conservan un diagnóstico privado temporal.
+ * El guardado de ventas sigue siendo el de siempre
  * (`POST /api/admin/capture/kpis`), después de que quien captura vea la vista
  * previa. Leer y guardar separados es lo que permite confiar en una lectura
  * automática: si algo salió mal, se ve antes de que toque la base.
@@ -58,14 +61,35 @@ export async function POST(request: Request) {
   if (!store) return NextResponse.json({ error: "Tienda no encontrada." }, { status: 404 });
 
   const document = parsed.data.imageBase64.replace(/^data:.*?;base64,/, "");
-  const read = await readPosReport(document, parsed.data.mimeType);
+  try { decodePosDocument(document); }
+  catch { return NextResponse.json({ error: "El archivo no tiene una codificación válida." }, { status: 400 }); }
+  const trace: PosVisionTrace = { attempts: [] };
+  const reject = async (stage: "vision" | "validation" | "matching", error: string, detail: string[]) => {
+    let diagnosticId: string | null = null;
+    try {
+      diagnosticId = await posFailureStore().save({
+        storeId: store.id, mimeType: parsed.data.mimeType, documentBase64: document,
+        stage, error: [error, ...detail].join("\n"), attempts: trace.attempts
+      });
+    } catch {
+      // No imprimir el original, nombres, importes, salida de IA ni errores del SDK.
+      console.warn("[pos-history] No se pudo conservar el diagnóstico de una lectura rechazada.");
+    }
+    return NextResponse.json({
+      error, detail: [...detail, diagnosticId
+        ? `Diagnóstico privado guardado. Folio: ${diagnosticId}.`
+        : "No se pudo guardar el diagnóstico. Conserva el archivo original para revisión."],
+      diagnosticId, diagnosticSaved: diagnosticId !== null
+    }, { status: 422, headers: { "Cache-Control": "private, no-store" } });
+  };
+  const read = await readPosReport(document, parsed.data.mimeType, trace);
   if (!read.ok) {
-    return NextResponse.json({ error: "No se pudo leer el reporte.", detail: [read.error] }, { status: 422 });
+    return reject("vision", "No se pudo leer el reporte.", [read.error]);
   }
 
   const converted = posCaptureRows(read.value);
   if (!converted.ok) {
-    return NextResponse.json({ error: "La lectura no cuadra.", detail: converted.error.split("\n") }, { status: 422 });
+    return reject("validation", "La lectura no cuadra.", converted.error.split("\n"));
   }
 
   const people = await prisma.user.findMany({
@@ -79,13 +103,8 @@ export async function POST(request: Request) {
   // Un nombre ambiguo detiene TODO: colgarle la venta del día a quien no es le
   // mueve el alcance y la comisión a dos personas a la vez.
   if (match.ambiguous.length > 0) {
-    return NextResponse.json(
-      {
-        error: "Hay nombres que encajan con varias personas.",
-        detail: match.ambiguous.map((item) => `«${item.name}» podría ser ${item.candidates.join(" o ")}.`)
-      },
-      { status: 422 }
-    );
+    return reject("matching", "Hay nombres que encajan con varias personas.",
+      match.ambiguous.map((item) => `«${item.name}» podría ser ${item.candidates.join(" o ")}.`));
   }
 
   return NextResponse.json({

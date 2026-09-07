@@ -1,6 +1,7 @@
 import { z } from "zod";
-import type { PosReport, PosRow } from "@/lib/pos-productivity";
+import { posCaptureRows, type PosReport, type PosRow } from "@/lib/pos-productivity";
 import { bedrockConfigured, readWithBedrock } from "@/lib/pos-vision-bedrock";
+import { recordPosAttempt, type PosVisionTrace } from "@/lib/pos-vision-diagnostics";
 
 /**
  * Lee el reporte «Productividad del vendedor» desde una captura de pantalla.
@@ -75,7 +76,7 @@ const RESPONSE_SCHEMA = {
           avgUnits: NUMBER,
           avgAmount: NUMBER
         },
-        required: ["name", "tickets", "units", "gross", "discount", "afterDiscount", "net", "avgUnits", "avgAmount"]
+        required: ["name", "tickets", "units", "unitsReturned", "gross", "discount", "afterDiscount", "returns", "net", "avgUnits", "avgAmount"]
       }
     }
   },
@@ -90,16 +91,25 @@ Reglas:
 - Una entrada en "rows" por VENDEDOR. NO incluyas la fila "Promedio".
 - Copia el nombre del vendedor TAL CUAL aparece, aunque esté cortado.
 - Todos los importes como número, sin signo de pesos ni comas.
+Correspondencia EXACTA con las columnas (no cambies el orden si hay devoluciones):
+- name = Nombre del vendedor
+- tickets = Tickets; units = Unidades Vendido; unitsReturned = Unidades Dev.
+- gross = Bruto Ventas; discount = Ventas Descuento
+- afterDiscount = Ventas posteriores Descuentos (NO es Neto Ventas)
+- returns = Bruto Devoluciones; net = Neto Ventas
+- avgUnits = Prom. Unidades; avgAmount = Prom. Monto
+
 - "discount", "unitsReturned" y "returns" en POSITIVO aunque en el reporte
-  aparezcan con el signo menos. Son las tres columnas que el reporte muestra en
-  negativo.
+  aparezcan con el signo menos. En devoluciones el descuento puede invertir su
+  signo; copia su magnitud, no lo restes tú. Copia las dos columnas de devolución
+  aunque valgan cero. Si una casilla no se alcanza a leer, pon null, no cero.
 - "net", "avgUnits" y "avgAmount" van CON su signo. Si el reporte los muestra en
   negativo, cópialos en negativo: es un día de devoluciones y así tiene que ser.
 - Copia los números exactamente como se ven. No calcules, no corrijas, no
   redondees. Si un dato no se alcanza a leer, pon null.`;
 
 /**
- * La forma exacta del JSON, para Bedrock.
+ * La forma exacta del JSON, para Bedrock; ambos lectores reciben el mapa de columnas.
  *
  * ⚠️ Gemini NO la necesita: se le manda `RESPONSE_SCHEMA` y el formato deja de
  * ser cosa suya. Bedrock no tiene ese mecanismo, y sin describirle la forma
@@ -121,16 +131,13 @@ y estos nombres de campo:
 dígito: las cuentas del reporte se comprueban después y basta un número mal
 leído para que la captura se detenga.
 
-Correspondencia con las columnas del reporte:
-- name = Nombre del vendedor
-- tickets = Tickets, units = Unidades Vendido, unitsReturned = Unidades Dev.
-- gross = Bruto Ventas, discount = Ventas Descuento (en positivo)
-- afterDiscount = Ventas posteriores Descuentos
-- returns = Bruto Devoluciones, net = Neto Ventas
-- avgUnits = Prom. Unidades, avgAmount = Prom. Monto
-
 ⚠️ "net", "avgUnits" y "avgAmount" LLEVAN SU SIGNO. En un día de devoluciones
 salen en negativo y así hay que copiarlos.`;
+
+const RELECTURA = `La lectura anterior no superó la validación. Relee TODO el
+documento original, prestando atención a la columna de devoluciones y a los
+importes completos de cada vendedor. No reconstruyas un número a partir de
+otros ni cambies valores para que cuadren: transcribe lo que realmente se ve.`;
 
 const rowSchema = z.object({
   name: z.string().min(1).max(120),
@@ -196,109 +203,130 @@ export function isVisionConfigured(): boolean {
  * Y la red es la misma: `posCaptureRows` comprueba después las cuatro cuentas
  * del reporte, venga de donde venga la lectura.
  */
-export async function readPosReport(imageBase64: string, mimeType: string): Promise<VisionOutcome> {
-  /*
-   * Bedrock va PRIMERO cuando está configurado, y Gemini queda de red.
-   *
-   * No es un cambio de bando: es que si Bedrock tiene un mal momento, la
-   * captura del día no puede quedarse sin leer. Es la misma lógica por la que
-   * abajo se recorren varios modelos de Gemini en vez de fijar uno.
-   *
-   * Con `BEDROCK_*` sin configurar, esto no se activa y todo sigue igual que
-   * antes — así el despliegue no cambia nada hasta que se quiera.
-   */
-  if (bedrockConfigured()) {
-    const outcome = await readWithBedrock(`${PROMPT}\n\n${SHAPE}`, imageBase64, mimeType);
-    if (outcome.ok) {
-      const validated = validateVisionText(outcome.text);
-      if (validated.ok) return validated;
-      /*
-       * Si llegó respuesta pero no valida, hay que ENTERARSE.
-       *
-       * El respaldo a Gemini salva la captura, pero al hacerlo esconde el
-       * problema: la lectura empieza a tardar la suma de los dos y desde fuera
-       * parece que Bedrock «no sirve». Fue exactamente lo que pasó el 21 de
-       * agosto de 2026 —el modelo devolvía `vendorName` en vez de `name`— y sin
-       * este aviso no había forma de verlo en los logs.
-       */
-      console.warn(`[pos-vision] Bedrock respondió pero la tabla no validó (${validated.reason}); se cae a Gemini.`);
-    } else {
-      console.warn(`[pos-vision] Bedrock no respondió (${outcome.problem}); se cae a Gemini.`);
+export async function readPosReport(imageBase64: string, mimeType: string, trace?: PosVisionTrace): Promise<VisionOutcome> {
+  const startedAt = Date.now();
+  const remaining = () => Math.max(0, BUDGET_MS - (Date.now() - startedAt));
+  const key = process.env.GEMINI_API_KEY ?? "";
+  const hasBedrock = bedrockConfigured();
+  if (!key && !hasBedrock) {
+    return { ok: false, error: "La lectura de capturas no está configurada en el servidor." };
+  }
+
+  let invalidReading = false;
+  let lastProblem = "";
+  const prompt = () => `${PROMPT}${invalidReading ? `\n\n${RELECTURA}` : ""}`;
+
+  // El formato y las cuentas se comprueban ANTES de elegir la lectura. Antes
+  // se devolvía el primer JSON válido y la API rechazaba sus cifras sin fallback.
+  const candidate = (text: string): Validation & { retryable?: boolean } => {
+    const validated = validateVisionText(text);
+    if (!validated.ok) return validated;
+    const capture = posCaptureRows(validated.value);
+    // Un reporte de varios días es una selección inválida del usuario, no una
+    // lectura a la que debamos insistir hasta que cambie las fechas.
+    if (!capture.ok && validated.value.from !== validated.value.to) {
+      return { ok: false, reason: capture.error, retryable: false };
+    }
+    return capture.ok ? validated : { ok: false, reason: capture.error };
+  };
+
+  if (hasBedrock) {
+    // Con un solo proveedor se permite una segunda transcripción del original.
+    // Si existe Gemini, se prefiere su lectura independiente tras el fallo.
+    const attempts = key ? 1 : 2;
+    for (let attempt = 0; attempt < attempts && remaining() > 0; attempt++) {
+      const attemptStart = Date.now();
+      const outcome = await readWithBedrock(
+        `${prompt()}\n\n${SHAPE}`, imageBase64, mimeType, Math.min(TIMEOUT_MS, remaining())
+      );
+      if (outcome.ok) {
+        const validated = candidate(outcome.text);
+        recordPosAttempt(trace, {
+          provider: "bedrock", model: process.env.BEDROCK_POS_MODEL ?? "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+          startedAt: new Date(attemptStart).toISOString(), durationMs: Date.now() - attemptStart,
+          text: outcome.rawText ?? outcome.text, accepted: validated.ok, problem: validated.ok ? null : validated.reason
+        });
+        if (validated.ok) return validated;
+        if (validated.retryable === false) return { ok: false, error: validated.reason };
+        invalidReading = true;
+        console.warn("[pos-vision] Bedrock: lectura inconsistente; se intentará otra transcripción.");
+      } else {
+        lastProblem = outcome.problem;
+        recordPosAttempt(trace, {
+          provider: "bedrock", model: process.env.BEDROCK_POS_MODEL ?? "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+          startedAt: new Date(attemptStart).toISOString(), durationMs: Date.now() - attemptStart,
+          text: null, accepted: false, problem: outcome.problem
+        });
+        console.warn(`[pos-vision] Bedrock no respondió (${outcome.problem}).`);
+      }
     }
   }
 
-  const key = process.env.GEMINI_API_KEY ?? "";
-  if (!key) return { ok: false, error: "La lectura de capturas no está configurada en el servidor." };
-
-  const body = JSON.stringify({
-    contents: [{ parts: [{ text: PROMPT }, { inline_data: { mime_type: mimeType, data: imageBase64 } }] }],
-    generationConfig: {
-      // Temperatura 0: esto es transcribir, no redactar. No queremos que
-      // "mejore" un número que se ve mal.
-      temperature: 0,
-      responseMimeType: "application/json",
-      responseSchema: RESPONSE_SCHEMA,
-      // Sin razonamiento: es copiar una tabla, no resolver nada. Con él, la
-      // llamada se pasaba del minuto.
-      thinkingConfig: { thinkingBudget: 0 }
-    }
-  });
-
-  /**
-   * Se recorren los modelos hasta que uno conteste. Un 503 («alta demanda»),
-   * un 429 o un intento que se atora NO son el final: son ese modelo teniendo
-   * un mal momento, y el siguiente suele responder al instante.
-   */
-  const startedAt = Date.now();
-  let payload: unknown;
-  let lastProblem = "";
-
-  for (const model of MODELS) {
-    if (Date.now() - startedAt > BUDGET_MS) break;
+  const models = MODELS.length === 1 && !hasBedrock ? [MODELS[0], MODELS[0]] : MODELS;
+  for (const model of key ? models : []) {
+    if (remaining() <= 0) break;
+    const attemptStart = Date.now();
+    let rawText: string | null = null;
+    let accepted = false;
+    let problem: string | null = null;
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+    const timer = setTimeout(() => controller.abort(), Math.min(TIMEOUT_MS, remaining()));
     try {
       const response = await fetch(`${ENDPOINT}/${model}:generateContent?key=${encodeURIComponent(key)}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         signal: controller.signal,
-        body
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt() }, { inline_data: { mime_type: mimeType, data: imageBase64 } }] }],
+          generationConfig: {
+            temperature: 0,
+            responseMimeType: "application/json",
+            responseSchema: RESPONSE_SCHEMA,
+            thinkingConfig: { thinkingBudget: 0 }
+          }
+        })
       });
       if (!response.ok) {
         lastProblem = response.status === 503 || response.status === 429
           ? "saturado"
           : `respondió ${response.status}`;
+        problem = lastProblem;
         continue;
       }
-      payload = await response.json();
-      break;
+      const text = extractText(await response.json());
+      rawText = text;
+      const validated = text ? candidate(text) : null;
+      accepted = validated?.ok === true;
+      problem = validated ? (validated.ok ? null : validated.reason) : "no devolvió texto";
+      if (validated?.ok) return validated;
+      if (validated && validated.retryable === false) return { ok: false, error: validated.reason };
+      invalidReading = true;
+      console.warn("[pos-vision] Gemini: lectura inconsistente; se intentará otra transcripción.");
     } catch (error) {
       lastProblem = error instanceof Error && error.name === "AbortError" ? "tardó demasiado" : "no se pudo contactar";
+      problem = lastProblem;
       continue;
     } finally {
       clearTimeout(timer);
+      recordPosAttempt(trace, {
+        provider: "gemini", model, startedAt: new Date(attemptStart).toISOString(),
+        durationMs: Date.now() - attemptStart, text: rawText, accepted, problem
+      });
     }
   }
 
-  if (payload === undefined) {
+  if (invalidReading) {
     return {
       ok: false,
-      error: `El lector no está disponible ahora mismo (${lastProblem || "sin respuesta"}). Intenta de nuevo en un par de minutos; si corre prisa, captura los números a mano.`
+      error: "No pudimos verificar todas las columnas del reporte tras releerlo. " +
+        "Las devoluciones sí están admitidas; no se cambiaron cifras para hacerlas cuadrar. " +
+        "Sube el PDF original de un solo día o una captura directa del POS con todas las columnas visibles; también puedes capturarlo manualmente."
     };
   }
-
-  const text = extractText(payload);
-  if (!text) return { ok: false, error: "El lector no devolvió nada legible." };
-
-  const validated = validateVisionText(text);
-  if (!validated.ok) {
-    console.warn(`[pos-vision] la tabla no validó: ${validated.reason}`);
-    return {
-      ok: false,
-      error: `La tabla leída no encaja con el reporte (${validated.reason}). Prueba con una captura más nítida, o sube el PDF.`
-    };
-  }
-  return validated;
+  return {
+    ok: false,
+    error: `El lector no está disponible ahora mismo (${lastProblem || "sin respuesta"}). Intenta de nuevo en un par de minutos; si corre prisa, captura los números a mano.`
+  };
 }
 
 /**
@@ -363,5 +391,5 @@ function extractText(payload: unknown): string | null {
   const text = parts.map((part) => (typeof part === "object" && part !== null ? (part as { text?: unknown }).text : null))
     .filter((value): value is string => typeof value === "string")
     .join("");
-  return text.trim() || null;
+  return text.trim() ? text : null;
 }

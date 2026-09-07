@@ -56,14 +56,15 @@ export function stripCodeFence(text: string): string {
 }
 
 export type BedrockOutcome =
-  | { ok: true; text: string }
+  | { ok: true; text: string; rawText?: string }
   | { ok: false; problem: string };
 
 /** Una sola llamada. El PDF va como documento; la imagen, como imagen. */
 export async function readWithBedrock(
   prompt: string,
   dataBase64: string,
-  mimeType: string
+  mimeType: string,
+  timeoutMs = TIMEOUT_MS
 ): Promise<BedrockOutcome> {
   const accessKeyId = process.env.BEDROCK_ACCESS_KEY_ID ?? "";
   const secretAccessKey = process.env.BEDROCK_SECRET_ACCESS_KEY ?? "";
@@ -103,12 +104,12 @@ export async function readWithBedrock(
         // Temperatura 0: esto es transcribir, no redactar.
         inferenceConfig: { maxTokens: 4000, temperature: 0 }
       }),
-      { abortSignal: AbortSignal.timeout(TIMEOUT_MS) }
+      { abortSignal: AbortSignal.timeout(Math.max(1, Math.min(TIMEOUT_MS, timeoutMs))) }
     );
 
-    const text = response.output?.message?.content?.find((part) => part.text)?.text ?? "";
+    const text = response.output?.message?.content?.map((part) => part.text ?? "").join("") ?? "";
     if (!text) return { ok: false, problem: "no devolvió texto" };
-    return { ok: true, text: stripCodeFence(text) };
+    return { ok: true, text: stripCodeFence(text), rawText: text };
   } catch (error) {
     const name = error instanceof Error ? error.name : "";
     if (name === "TimeoutError" || name === "AbortError") return { ok: false, problem: "tardó demasiado" };
