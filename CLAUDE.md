@@ -1,5 +1,114 @@
 # Clarvex Team — CLAUDE.md
 
+## POS: relectura y diagnóstico privado de rechazos — 6 de septiembre de 2026
+
+Estado: implementado y probado LOCALMENTE en `fix/pos-devoluciones-relectura`,
+base `7616c87`. La solicitud corresponde al error de Retool «La lectura no
+cuadra» reportado al cargar días con devoluciones. Se conservó el trabajo de
+FCM que ya estaba en la rama de origen. El usuario autorizó el commit local del
+arreglo y del historial; sin push, merge o deploy, ni escrituras en Retool, AWS,
+Slack o una base real.
+
+Las dos fotos solo permiten leer el mensaje de rechazo. Los tres importes de
+cada fila no cumplen la identidad existente de bruto/descuento/posterior: eso
+demuestra una inconsistencia de la transcripción, pero NO qué importe o columna
+del documento es correcto. Hace falta el PDF original o una captura directa del
+reporte completo para cerrar el caso real. No se dedujo una nueva fórmula ni se
+inventaron importes de devolución a partir de la diferencia.
+
+Fallo confirmado en `lib/pos-vision.ts`: el fallback comprobaba la estructura,
+pero no las cuentas, y Gemini dejaba de recorrer modelos al recibir HTTP 200.
+Ahora cada candidato pasa `validateVisionText` y `posCaptureRows` antes de salir.
+Cuando falla, se vuelve a transcribir el documento original; no se manda una
+tabla «corregida», ni se mezclan filas de lecturas distintas. Si solo existe
+Bedrock hay un máximo de dos intentos; Gemini recorre sus modelos, con una
+segunda lectura si es el único modelo/proveedor. Las lecturas correctas siguen
+saliendo a la primera. Se conserva la validación final en la API.
+
+Ambos proveedores reciben el mapa explícito de columnas, incluida la distinción
+entre «Ventas posteriores Descuentos», «Bruto Devoluciones» y «Neto Ventas».
+Gemini solicita también las dos columnas de devolución en su esquema. La
+instrucción de relectura exige transcribir, sin calcular cifras para cuadrarlas.
+Se mantienen IVA, centavos, piezas brutas, descuentos revertidos y netos negativos.
+
+El presupuesto de 55 s empieza antes de Bedrock; cada intento usa como máximo
+25 s y el tiempo restante. `readWithBedrock` admite ese límite como cuarto
+argumento opcional. Los errores de lectura persistentes devuelven un mensaje
+que pide el PDF/captura original o captura manual. Un rango de varios días se
+rechaza de inmediato para no fomentar que un reintento altere sus fechas.
+
+Validación de relectura inicial: 79 pruebas de POS, descuentos y captura de KPIs,
+sin fallos/omisiones, en Node 22.23.1. Diez pruebas nuevas ejecutan el lector real en VM con fronteras
+Bedrock/Gemini simuladas y datos sintéticos (solo los tres importes del rechazo
+se tomaron de la foto). Antes del arreglo fallaban siete de las primeras nueve.
+Cubren fallback aritmético y JSON, proveedor único, devolución pura, agotamiento,
+presupuesto compartido, configuración y rangos de varios días. TypeScript
+completo y ESLint afectado aprobados. No se ejecutó una lectura real con
+proveedores, no se leyeron entornos reales ni se usó ninguna base.
+
+### Historial privado aprobado después del arreglo
+
+El endpoint de Retool `/api/admin/capture/kpis/pos-report` archiva los rechazos
+HTTP 422 tras verificar secreto de captura, tienda y codificación: fallo final
+de lectura, validación contable o nombres ambiguos. Guarda el original exacto
+que recibió el servidor (puede haber sido reducido antes por Retool), su SHA-256,
+fecha, tienda, motivo y texto de cada intento de IA, proveedor/modelo y duración.
+Los errores de transporte quedan como intentos sin texto. Máximo ocho intentos,
+100,000 caracteres por respuesta; `textTruncated` declara si se recortó. No guarda
+claves, prompts, URLs con tokens ni una identidad inventada: el servicio de captura
+no acredita quién adjuntó el archivo (`source=capture-backend`, `actorVerified=false`).
+
+No se archivan lecturas finalmente correctas, errores previos a validar tienda/
+archivo ni cargas por Telegram. No se agrega nada a los KPIs o al AuditLog general.
+No sustituye el respaldo de datos ni permite recuperar originales de fallos
+anteriores a su publicación. Tampoco certifica la retención del proveedor o Retool.
+
+Persistencia en `lib/pos-failure-store.ts`: por omisión usa
+`~/.local/share/clarvex/pos-diagnostics` bajo el usuario que ejecuta PM2. Se puede
+fijar `POS_DIAGNOSTICS_DIR` a una ruta absoluta privada FUERA del checkout; se
+rechazan el checkout y carpetas enlazadas. La carpeta se crea con 0700 y los
+archivos con 0600 en Linux. Ambos workers comparten el historial y las releases
+no lo borran. Sin R2 público, credenciales nuevas ni migraciones.
+
+Escritura exclusiva entre procesos mediante `.writer-lock`, archivo temporal,
+sincronización a disco y rename. Reserva mínima de disco libre de 256 MiB,
+límite de 100 casos y 128 MiB confirmados, hasta 18 MB por archivo temporal.
+Si guardar falla, el rechazo mantiene su causa e indica `diagnosticSaved=false`,
+sin folio ni datos sensibles en el log; Retool recibe además ese aviso dentro de
+`detail`. No se cambió su frontend; queda pendiente verificar cómo presenta el
+folio la app publicada. Solo se afirma guardado después de completar la escritura.
+
+Consulta técnica con sesión de administrador de plataforma:
+
+- `GET /api/admin/pos-diagnostics`: lista JSON; filtro opcional `storeId`.
+- `GET /api/admin/pos-diagnostics?id=<folio>`: descarga el diagnóstico JSON.
+- `GET /api/admin/pos-diagnostics?id=<folio>&format=original`: descarga la imagen
+  o PDF original como adjunto; se verifica su huella antes de devolverlo.
+
+Se comprueba la sesión de servidor y `platformAdmin` en cada petición. Gerencia,
+asesores, demos y el secreto del backend por sí solo no acceden. No se añadió la
+ruta a las excepciones del middleware. Respuestas privadas sin caché, `nosniff`
+y CSP sandbox; no se renderiza HTML enviado por la IA. No hay panel nuevo en Retool.
+
+Los casos caducan para lectura/listado a los siete días; pueden eliminarse antes
+si se alcanza la cuota. La eliminación física ocurre en la siguiente escritura
+o al correr `node --import tsx scripts/purgar-pos-diagnostics.ts`. **Preparación
+pendiente al publicar:** programar ese guion diariamente con el mismo usuario y
+directorio de PM2 para limpiar también en días sin capturas. El guion no carga
+`.env`; una ruta personalizada debe pasarse explícitamente a la tarea. No se
+creó ningún cron ni se ejecutó la purga sobre archivos reales. Si un proceso muere
+con el bloqueo adquirido, no se roba el bloqueo: detener/descartar escritores
+activos y retirar solo el directorio vacío `.writer-lock` antes de reintentar.
+
+Validación ampliada: 103 pruebas sin fallos/omisiones, con Node 22.23.1. Los
+handlers y guardas de autenticación se ejecutan en VM con fronteras simuladas;
+el almacenamiento usa archivos temporales y verifica bytes/hash, concurrencia,
+cuotas, caducidad, rutas y enlaces. Incluye recuperación de la respuesta de IA,
+403/401 en descarga/listado, error de disco y ausencia de archivo en éxito.
+TypeScript completo sin emisión/incremental y ESLint afectado aprobados. Las
+comprobaciones específicas de modos POSIX quedan para Linux/CI; aquí se corrió
+Windows. Build aislado en verificación; no se probó ninguna base ni servicio real.
+
 ## Notificaciones en la app de Android — 6 de septiembre de 2026
 
 La app de la Play Store es la web dentro de un contenedor de Capacitor
