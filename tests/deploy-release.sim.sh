@@ -75,6 +75,17 @@ case "$1 ${2:-}" in
   "run build")
     [ "${SIM_FALLA_BUILD:-0}" = "1" ] && { echo "build: falla simulada" >&2; exit 1; }
     mkdir -p .next/server
+    # ⚠️ El build deja rastro DENTRO de la cache, para poder comprobar despues
+    # si se conservo o se tiro. Sin el rastro, "la carpeta existe" no distingue
+    # una cache reutilizada de una recien creada y vacia.
+    if [ "${SIM_BUILD_REEMPLAZA_CACHE:-0}" = "1" ]; then
+      # Simula que `next build` sustituye el enlace por un directorio real, que
+      # es el caso en el que la cache quedaria DENTRO de la version.
+      rm -rf .next/cache/webpack
+      mkdir -p .next/cache/webpack
+    fi
+    mkdir -p .next/cache/webpack
+    echo "rastro-del-build" >> .next/cache/webpack/marca.txt
     # Un build "que termina" pero deja el .next a medias.
     [ "${SIM_BUILD_INCOMPLETO:-0}" = "1" ] || echo "sim-build-id" > .next/BUILD_ID
     echo "build ok"; exit 0 ;;
@@ -370,6 +381,81 @@ comprobar "save fallido: NO vuelve a la anterior" "1" "$([ "$(cat "$BASE14/estad
 comprobar "save fallido: los workers se quedan en la nueva" "1" "$([ "$(cat "$BASE14/pm2-cwd")" != "$PREVIA14" ] && echo 1 || echo 0)"
 comprobar "save fallido: se avisa del reinicio" "1" "$(contar_en "$BASE14/salida.txt" 'REINICIO del servidor')"
 comprobar "save fallido: no se inventa que la anterior no responde" "0" "$(contar_en "$BASE14/salida.txt" 'TAMPOCO RESPONDE')"
+
+# 15. La cache de compilacion se COMPARTE entre versiones.
+#
+# ⚠️ Antes se construia siempre en frio: cada version se extrae limpia de git,
+# asi que la cache nacia vacia, el build la llenaba y el guion la borraba al
+# terminar. Se pagaba construirla y luego se tiraba, en cada despliegue. Medido
+# en produccion: el paso de construir tardaba 8 min 26 s.
+#
+# Lo que se comprueba no es "la carpeta existe" --una cache recien creada y
+# vacia tambien existe-- sino que el RASTRO que dejo el build siga ahi.
+BASE15="$TMP/cache"; montar_base "$BASE15" > /dev/null
+ejecutar "$BASE15" > /dev/null
+comprobar "cache: se conserva tras un build correcto" "1" \
+  "$([ -f "$BASE15/compartido/cache-webpack/marca.txt" ] && echo 1 || echo 0)"
+ACTIVA15=$(cat "$BASE15/estado/actual")
+comprobar "cache: NO viaja dentro de la version" "0" \
+  "$([ -e "$ACTIVA15/.next/cache/webpack" ] && echo 1 || echo 0)"
+
+# Un segundo despliegue tiene que ENCONTRARLA, que es todo el punto.
+(cd "$BASE15/repo" && printf 'dos\n' > dos.txt && git add -A && git commit --quiet -m dos && git update-ref refs/remotes/origin/main HEAD)
+ejecutar "$BASE15" > /dev/null
+comprobar "cache: el segundo despliegue la reutiliza" "1" \
+  "$(contar_en "$BASE15/salida.txt" 'caché compartida:')"
+comprobar "cache: acumula el trabajo de los dos builds" "2" \
+  "$(contar_en "$BASE15/compartido/cache-webpack/marca.txt" 'rastro-del-build')"
+
+# 16. ⚠️ Un build fallido TIRA la cache compartida.
+#
+# Una cache envenenada rompe TODOS los despliegues siguientes, y el error no
+# senala hacia ella: se ve como un build que falla sin motivo, commit tras
+# commit. Es el peor fallo posible de esta mejora, asi que ante la duda se tira.
+BASE16="$TMP/cache-rota"; montar_base "$BASE16" > /dev/null
+ejecutar "$BASE16" > /dev/null
+comprobar "cache rota: existe antes de fallar" "1" \
+  "$([ -f "$BASE16/compartido/cache-webpack/marca.txt" ] && echo 1 || echo 0)"
+(cd "$BASE16/repo" && printf 'tres\n' > tres.txt && git add -A && git commit --quiet -m tres && git update-ref refs/remotes/origin/main HEAD)
+CODIGO=$(ejecutar "$BASE16" SIM_FALLA_BUILD=1)
+comprobar "cache rota: el despliegue falla" "1" "$CODIGO"
+comprobar "cache rota: la cache se descarta" "0" \
+  "$([ -d "$BASE16/compartido/cache-webpack" ] && echo 1 || echo 0)"
+
+# 17. ⚠️ Con poco disco NO se usa cache. El disco manda sobre la velocidad:
+# con el disco lleno Postgres deja de escribir y la tienda no puede capturar;
+# un build lento solo hace esperar.
+BASE17="$TMP/cache-disco"; montar_base "$BASE17" > /dev/null
+ejecutar "$BASE17" > /dev/null
+(cd "$BASE17/repo" && printf 'cuatro\n' > cuatro.txt && git add -A && git commit --quiet -m cuatro && git update-ref refs/remotes/origin/main HEAD)
+CODIGO=$(ejecutar "$BASE17" MB_LIBRES_PARA_CACHE=99999999)
+comprobar "poco disco: el despliegue igual funciona" "0" "$CODIGO"
+comprobar "poco disco: lo dice en el registro" "1" \
+  "$(contar_en "$BASE17/salida.txt" 'se construye en frío')"
+
+# 18. ⚠️ Una cache que pasa del tope se descarta, no crece sin limite.
+BASE18="$TMP/cache-tope"; montar_base "$BASE18" > /dev/null
+ejecutar "$BASE18" > /dev/null
+(cd "$BASE18/repo" && printf 'cinco\n' > cinco.txt && git add -A && git commit --quiet -m cinco && git update-ref refs/remotes/origin/main HEAD)
+CODIGO=$(ejecutar "$BASE18" MB_CACHE_MAX=0)
+comprobar "tope: el despliegue igual funciona" "0" "$CODIGO"
+comprobar "tope: la cache se rehace" "1" \
+  "$(contar_en "$BASE18/salida.txt" 'se descarta y se rehace')"
+comprobar "tope: no acumula el rastro anterior" "1" \
+  "$(contar_en "$BASE18/compartido/cache-webpack/marca.txt" 'rastro-del-build')"
+
+# 19. ⚠️ Si `next build` sustituye el enlace por un directorio real, la cache
+# queda DENTRO de la version. Borrarla ahi dejaria el siguiente build otra vez
+# en frio, y sin decirlo: se veria como que la mejora no sirvio. Se mueve.
+BASE19="$TMP/cache-directorio"; montar_base "$BASE19" > /dev/null
+CODIGO=$(ejecutar "$BASE19" SIM_BUILD_REEMPLAZA_CACHE=1)
+comprobar "enlace sustituido: el despliegue funciona" "0" "$CODIGO"
+comprobar "enlace sustituido: la cache acaba en compartido" "1" \
+  "$([ -f "$BASE19/compartido/cache-webpack/marca.txt" ] && echo 1 || echo 0)"
+ACTIVA19=$(cat "$BASE19/estado/actual")
+comprobar "enlace sustituido: no se queda en la version" "0" \
+  "$([ -e "$ACTIVA19/.next/cache/webpack" ] && echo 1 || echo 0)"
+
 
 echo "  pasadas: $PASADAS   fallidas: $FALLIDAS"
 if [ "$FALLIDAS" -ne 0 ] && [ "${SIM_VERBOSO:-0}" = "1" ]; then
