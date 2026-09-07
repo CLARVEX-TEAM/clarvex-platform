@@ -284,6 +284,18 @@ fi
 #
 # Construye en el `.next` de ESTA versión. La que se está sirviendo no se toca:
 # ese era el fallo de fondo del guion anterior.
+# ⚠️ **`CLARVEX_CI_VERIFICADA=1` salta lint y tipos, y solo es legítimo aquí.**
+#
+# Medido: son 19 s de cada 64 s de build --casi un tercio-- y son trabajo
+# REPETIDO: el preflight de este despliegue exige CI verde del mismo SHA, y esa
+# CI ya corrió `tsc --noEmit` y `eslint . --max-warnings 0` enteros. El servidor
+# los rehacía, y es la máquina más lenta de las tres.
+#
+# La bandera se pone AQUÍ y no en `next.config.mjs` a propósito: un `pnpm build`
+# en cualquier otro sitio tiene que seguir comprobando. Este guion es el único
+# camino que trae la garantía consigo.
+export CLARVEX_CI_VERIFICADA=1
+
 if ! pnpm run build; then
   # ⚠️ **Una caché envenenada rompería TODOS los despliegues siguientes**, y el
   # error no señalaría hacia aquí: se vería como un build que falla sin motivo
