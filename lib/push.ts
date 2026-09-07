@@ -1,5 +1,6 @@
 import webpush from "web-push";
 import { prisma } from "@/lib/prisma";
+import { enviarPorFcm } from "@/lib/push-fcm";
 
 // Solo configurar VAPID cuando hay claves reales. En CI/tests (y en cualquier
 // entorno sin VAPID) el import no debe tumbar el proceso: Phase 3 del Copilot
@@ -19,12 +20,60 @@ export const VAPID_PUBLIC_KEY = vapidPublicKey;
 
 export type PushPayload = { title: string; body: string; icon?: string; tag?: string; url?: string };
 
+/**
+ * Manda la notificación por los DOS caminos que existen hoy:
+ *
+ * | Camino | Quién lo recibe |
+ * |---|---|
+ * | Web Push (VAPID) | el navegador y la PWA instalada |
+ * | FCM | la app de Android de la Play Store |
+ *
+ * ⚠️ **No son alternativas: son públicos distintos.** El WebView de Android no
+ * implementa la API de Push, así que dentro de la app instalada el camino de
+ * VAPID no puede ni pedir permiso; y un navegador de escritorio no tiene token
+ * de FCM. Quien tenga las dos --la PWA en el teléfono y la app-- recibe dos
+ * avisos; se prefiere eso a decidir por la persona cuál de sus aparatos calla.
+ *
+ * ⚠️ **Los dos caminos van por SEPARADO y ninguno puede tumbar al otro.** Antes
+ * la falta de claves VAPID cortaba la función entera; con dos destinos eso
+ * dejaría a la app sin notificaciones por un problema del navegador. Cada rama
+ * comprueba lo suyo y se lanzan con `allSettled`.
+ */
 export async function dispatchPushToUsers(userIds: string[], payload: PushPayload) {
   if (userIds.length === 0) return;
   if (process.env.NODE_ENV === "test" || process.env.MOCK_EXTERNAL_SERVICES === "true") {
     console.log(`[push mock] Dispatching notification to ${userIds.length} users: ${payload.title}`);
     return;
   }
+  await Promise.allSettled([enviarWebPush(userIds, payload), enviarNativo(userIds, payload)]);
+}
+
+/**
+ * FCM para la app de Android.
+ *
+ * ⚠️ El filtro de usuario activo es el MISMO que el de Web Push y por el mismo
+ * motivo: una baja no puede seguir recibiendo avisos de la tienda porque el
+ * llamante no filtró su lista. Duplicar la regla aquí es deliberado --son dos
+ * consultas-- y por eso las dos dicen `user: { active: true }`.
+ */
+async function enviarNativo(userIds: string[], payload: PushPayload) {
+  const aparatos = await prisma.deviceToken.findMany({
+    where: { userId: { in: userIds }, user: { active: true } },
+    select: { token: true }
+  });
+  if (aparatos.length === 0) return;
+
+  const { caducados } = await enviarPorFcm(
+    aparatos.map((a) => a.token),
+    { title: payload.title, body: payload.body, icon: payload.icon, tag: payload.tag, url: payload.url }
+  );
+
+  if (caducados.length > 0) {
+    await prisma.deviceToken.deleteMany({ where: { token: { in: caducados } } });
+  }
+}
+
+async function enviarWebPush(userIds: string[], payload: PushPayload) {
   if (!vapidPublicKey || !vapidPrivateKey) {
     console.warn("[push] VAPID keys missing — skipping dispatch");
     return;

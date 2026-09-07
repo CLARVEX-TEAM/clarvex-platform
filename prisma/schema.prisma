@@ -206,6 +206,7 @@ model User {
   notifications         Notification[]
   assignedPendings      Pending[]                 @relation("PendingOwner")
   pushSubscriptions     PushSubscription[]
+  deviceTokens          DeviceToken[]
   schedules             Schedule[]
   attendances           Attendance[]
   shiftRequests         ShiftRequest[]            @relation("ShiftRequester")
@@ -837,6 +838,36 @@ model PushSubscription {
   p256dh    String
   auth      String
   createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+/// Aparato Android que recibe notificaciones por FCM, desde la app de la Play
+/// Store. Es hermano de `PushSubscription`, no su sustituto: la PWA y el
+/// navegador siguen entrando por Web Push con VAPID.
+///
+/// ⚠️ Son DOS tablas y no una a proposito. Una suscripcion de Web Push es una
+/// terna endpoint/p256dh/auth que se cifra en el servidor; un token de FCM es
+/// una cadena opaca que se manda a Google. Meterlos juntos obligaria a dejar
+/// tres columnas anulables y a distinguirlos por una bandera, que es como se
+/// acaba mandando una carga cifrada a quien no la puede abrir.
+///
+/// ⚠️ El token es UNICO y puede CAMBIAR DE DUENO. Google lo reasigna al
+/// reinstalar la app o al borrar sus datos, asi que la clave natural es el
+/// token y el `userId` se sobrescribe al registrarlo: si dos personas comparten
+/// el telefono de la tienda, la ultima que entra es la que recibe. Guardarlo
+/// por (usuario, token) dejaria al anterior recibiendo las notificaciones de
+/// alguien mas en un aparato que ya no es suyo.
+model DeviceToken {
+  id        String   @id @default(cuid())
+  userId    String
+  /// El registration token de FCM. Identifica al aparato, no a la persona.
+  token     String   @unique
+  /// "android" hoy. Existe para no tener que migrar cuando llegue iOS.
+  platform  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])

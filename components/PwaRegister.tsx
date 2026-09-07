@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Bell, X } from "lucide-react";
+import { CANAL_AVISOS, enContenedorNativo, plataformaNativa, pushNativo, type PluginPush } from "@/lib/puente-nativo";
 
 function urlBase64ToUint8Array(base64String: string) {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
@@ -32,10 +33,103 @@ async function saveSubscription(registration: ServiceWorkerRegistration) {
   });
 }
 
+// El token de FCM identifica al APARATO. Se manda con la sesión de quien esté
+// dentro, y el servidor lo reasigna: el teléfono de la tienda cambia de manos.
+async function guardarTokenNativo(token: string) {
+  const platform = plataformaNativa();
+  if (platform !== "android") {
+    // Hoy solo existe la app de Android. Un token de otra plataforma se
+    // registraría mal etiquetado, y eso es peor que no registrarlo: al mandar
+    // se elegiría el camino equivocado sin que nada avise.
+    console.warn(`[push nativo] Plataforma sin soporte de registro: ${platform}`);
+    return;
+  }
+  const res = await fetch("/api/push/device", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ token, platform }),
+  });
+  if (!res.ok) {
+    console.error("[push nativo] El servidor rechazó el token del aparato —", res.status);
+  }
+}
+
+// El canal tiene que existir ANTES de que llegue la primera notificación: si no
+// existe, Android la coloca en el de reserva de Firebase --importancia media-- y
+// entra muda. Crear uno que ya está no falla ni pierde los ajustes de la persona.
+async function prepararYRegistrar(plugin: PluginPush) {
+  try {
+    await plugin.createChannel(CANAL_AVISOS);
+  } catch (error) {
+    // Si el canal falla, el registro sigue: más vale un aviso silencioso que
+    // ninguno. Pero se deja dicho, porque «no suena» es justo lo que se
+    // reportaría como «no llegan las notificaciones».
+    console.warn("[push nativo] No se pudo crear el canal de avisos:", (error as Error).message);
+  }
+  await plugin.register();
+}
+
 export function PwaRegister() {
   const [reg, setReg] = useState<ServiceWorkerRegistration | null>(null);
+  const [nativo, setNativo] = useState<PluginPush | null>(null);
   const [showBanner, setShowBanner] = useState(false);
 
+  // ── Camino NATIVO: la app de Android ────────────────────────────────────
+  //
+  // ⚠️ El WebView de Android no implementa la API de Push ni la de Notification,
+  // así que dentro de la app instalada el camino de abajo no puede ni pedir
+  // permiso: se queda sin avisos y sin decirlo. Aquí se piden al sistema, por
+  // FCM, con el plugin que el contenedor trae compilado.
+  useEffect(() => {
+    const plugin = enContenedorNativo() ? pushNativo() : null;
+    if (!plugin) return;
+    setNativo(plugin);
+
+    let montado = true;
+    let soltar: Array<() => Promise<void>> = [];
+
+    void (async () => {
+      try {
+        // ⚠️ Los oyentes van ANTES de `register()`. El token llega por el
+        // evento `registration`, y Google puede entregarlo de inmediato: con
+        // el orden al revés se pierde el de la primera vez --justo la que
+        // importa-- y no vuelve hasta que el token rote.
+        const asas = await Promise.all([
+          plugin.addListener("registration", (dato) => {
+            void guardarTokenNativo(dato.value).catch(() => undefined);
+          }),
+          plugin.addListener("registrationError", (dato) => {
+            console.error("[push nativo] Google no entregó el token:", dato.error);
+          }),
+        ]);
+        if (!montado) {
+          await Promise.all(asas.map((a) => a.remove()));
+          return;
+        }
+        soltar = asas.map((a) => () => a.remove());
+
+        const estado = await plugin.checkPermissions();
+        if (estado.receive === "granted") {
+          await prepararYRegistrar(plugin);
+          return;
+        }
+        // "denied" no se puede volver a preguntar desde la app: Android exige
+        // que la persona lo cambie en los ajustes del sistema. Insistir con el
+        // aviso solo enseñaría un botón que no hace nada.
+        if (estado.receive === "denied") return;
+        if (!localStorage.getItem("push-prompt-dismissed")) setShowBanner(true);
+      } catch (error) {
+        console.error("[push nativo] No se pudo preparar el registro:", (error as Error).message);
+      }
+    })();
+
+    return () => {
+      montado = false;
+      void Promise.all(soltar.map((s) => s())).catch(() => undefined);
+    };
+  }, []);
+
+  // ── Camino WEB: navegador y PWA ─────────────────────────────────────────
   useEffect(() => {
     if (!("serviceWorker" in navigator)) return;
 
@@ -79,6 +173,16 @@ export function PwaRegister() {
       window.clearInterval(updateTimer);
     };
 
+    // ⚠️ Dentro de la app, el service worker SÍ se registra --da la caché y el
+    // aviso de versión nueva-- pero el push lo lleva el efecto de arriba. Sin
+    // este corte, un WebView que sí exponga `Notification` enseñaría DOS avisos
+    // de activar notificaciones y el segundo suscribiría a un `pushManager` que
+    // no existe.
+    if (enContenedorNativo()) {
+      navigator.serviceWorker.register("/sw.js", { updateViaCache: "none" }).catch(() => undefined);
+      return cleanup;
+    }
+
     if (!("Notification" in window)) {
       navigator.serviceWorker.register("/sw.js", { updateViaCache: "none" }).catch(() => undefined);
       return cleanup;
@@ -104,8 +208,17 @@ export function PwaRegister() {
   }, []);
 
   async function handleActivate() {
-    if (!reg) return;
     setShowBanner(false);
+    if (nativo) {
+      try {
+        const estado = await nativo.requestPermissions();
+        if (estado.receive === "granted") await prepararYRegistrar(nativo);
+      } catch (error) {
+        console.error("[push nativo] No se pudo pedir el permiso:", (error as Error).message);
+      }
+      return;
+    }
+    if (!reg) return;
     try {
       const permission = await Notification.requestPermission();
       if (permission === "granted") {

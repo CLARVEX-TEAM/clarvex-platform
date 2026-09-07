@@ -1,5 +1,123 @@
 # Clarvex Team — CLAUDE.md
 
+## Notificaciones en la app de Android — 6 de septiembre de 2026
+
+La app de la Play Store es la web dentro de un contenedor de Capacitor
+(`D:\Documents\clarvex-movil`). El contenedor carga `team.clarvex.tech`, así que
+todo lo que se publica en la web aparece en el teléfono sin recompilar.
+
+⚠️ **Menos las notificaciones. El WebView de Android NO implementa la API de
+Push.** Ni `PushManager` ni `Notification` existen ahí, así que dentro de la app
+instalada `components/PwaRegister.tsx` no podía ni pedir permiso: registraba el
+service worker, salía por la rama de `!("Notification" in window)` y se quedaba
+callado. La PWA sí recibe avisos y la app **no**, sin ningún error en ninguna
+pantalla — que es lo peor de este fallo: una notificación que no llega no deja
+rastro. Es una limitación conocida del WebView, y FCM con un puente de JS es la
+salida estándar.
+
+- https://pushpad.xyz/blog/can-i-use-the-web-push-api-with-hybrid-mobile-apps
+- https://developer.mozilla.org/en-US/docs/Web/API/PushManager
+
+### El puente de Capacitor llega a la página remota
+
+⚠️ **`window.Capacitor` existe en `team.clarvex.tech` cuando la sirve la app.**
+No es evidente con `server.url` apuntando a un dominio externo, pero
+`Bridge.java` inyecta el puente con `addDocumentStartJavaScript` sobre el origen
+de `appUrl`, y `JSExport.getPluginJS` añade `window.Capacitor.PluginHeaders` con
+la lista de plugins que el binario trae **de verdad**.
+
+Eso decide el diseño: **la capa nativa se pide desde la web, no al revés.** La
+página tiene la sesión --su cookie-- así que registra el aparato con
+`/api/push/device` como quien guarda cualquier otra cosa. Lo contrario obligaría
+a darle credenciales propias a la app, y todo lo que se compila en el paquete lo
+puede leer quien lo descargue.
+
+⚠️ **`Capacitor.Plugins.PushNotifications` está `undefined`**, y es el atajo que
+parece correcto. `Plugins` lo rellena cada paquete de JS al importarse, y aquí no
+se importa ninguno a propósito: `lib/puente-nativo.ts` NO depende de
+`@capacitor/core` para no meter una dependencia de móvil en el bundle que también
+descargan los navegadores. Se pide con `Capacitor.registerPlugin("PushNotifications")`,
+después de comprobar `isPluginAvailable`, que mira `PluginHeaders`.
+
+### Los dos caminos van separados
+
+`dispatchPushToUsers` (`lib/push.ts`) manda por los dos y ninguno puede tumbar al
+otro:
+
+| Camino | Quién lo recibe |
+|---|---|
+| Web Push con VAPID | el navegador y la PWA instalada |
+| FCM (`lib/push-fcm.ts`) | la app de Android |
+
+⚠️ **Antes, la falta de claves VAPID cortaba la función entera.** Con dos
+destinos eso dejaría a la app sin avisos por un problema del navegador. Cada
+rama comprueba lo suyo y se lanzan con `allSettled`. El filtro de usuario activo
+está DUPLICADO en las dos consultas, deliberadamente: una baja no puede recibir
+avisos de la tienda porque el llamante no filtró su lista.
+
+Quien tenga la PWA y la app recibe dos avisos. Se prefiere eso a decidir por la
+persona cuál de sus aparatos calla.
+
+### Cuatro trampas que no dan error
+
+⚠️ **La importancia del CANAL manda sobre la prioridad del mensaje.** Desde
+Android 8, `priority: "high"` no basta: si el canal no existe, Firebase usa uno
+de reserva con importancia media y los avisos entran **mudos**. Se reportaría
+como «no llegan las notificaciones» y llegan. `CANAL_AVISOS` se crea desde la web
+con importancia 5 antes de registrar.
+
+⚠️ **El id del canal vive en dos repositorios.** `lib/push-canal.ts` lo exporta
+para el emisor y para quien lo crea; la cuarta copia es
+`default_notification_channel_id` en el AndroidManifest de `clarvex-movil`, que
+no se puede importar. Si divergen, otra vez mudo y sin error.
+
+⚠️ **FCM contesta 400 por un token muerto Y por un payload mal armado.** Tratar
+el segundo como el primero desregistraría los teléfonos de toda la tienda por un
+bug de una línea. `esTokenMuerto` solo caduca el aparato si el cuerpo señala al
+campo `message.token`; lo cubre `tests/push-fcm.test.ts`, comprobado poniéndolo
+en rojo.
+
+⚠️ **La llave privada llega con `\n` literales.** Un `.env` no admite un valor de
+varias líneas sin comillas, así que la de Google se pega escapada e
+`importPKCS8` la rechaza con un error que habla de PKCS#8 y no de comillas. Se
+aceptan las dos formas y se comprueba que tenga cabecera PEM antes de firmar.
+
+⚠️ **Y el icono de la barra de estado se pinta como SILUETA.** Un logo a color
+sale como un cuadro blanco. `ic_stat_clarvex` se generó extrayendo la marca del
+propio `public/icon-512.png` por saturación --por luminancia no vale: el azul
+claro del degradado tiene casi tanto brillo que el blanco-- e ignorando el borde,
+donde el icono lleva un resplandor cálido que cualquier umbral de blanco se traga.
+
+### La API v1, no la heredada
+
+`fcm.googleapis.com/fcm/send` --la de la «server key»-- está retirada desde 2024.
+La v1 firma cada petición con una cuenta de servicio: JWT RS256 con `jose`,
+canje por un token de acceso de una hora, y **una petición por aparato** (la v1
+no tiene envío múltiple; el endpoint `/batch` se fue con la API vieja). Son cinco
+personas por tienda: en paralelo termina en un suspiro.
+
+### Variables nuevas
+
+```env
+FCM_PROJECT_ID=
+FCM_CLIENT_EMAIL=
+FCM_PRIVATE_KEY=
+```
+
+Salen del JSON de una cuenta de servicio de Firebase con el rol **Firebase
+Cloud Messaging API Admin**, nada más. Sin las tres, `enviarPorFcm` no toca la
+red y Web Push sigue igual: la app se queda sin avisos y el resto no se entera.
+
+⚠️ **`google-services.json` NO es un secreto y SÍ va al repositorio** de
+`clarvex-movil`. Viaja dentro de cada APK, así que lo tiene cualquiera que
+descargue la app; y la compilación lo necesita. El secreto es la cuenta de
+servicio del servidor, que va al `.env` y nunca aquí.
+
+⚠️ **Sin ese archivo el APK se compila EN VERDE y sale mudo.** Capacitor aplica
+el plugin de Google solo si existe, y escribía el aviso en `logger.info`, que no
+se ve. Ahora sale por `logger.lifecycle` y el workflow lo escribe en el resumen
+de la ejecución, que es donde se mira después.
+
 ## Los PDF salen del Excel, no de un dibujo aparte — 6 de septiembre de 2026
 
 El gerente reportó que los PDF de Cuota Justa y RDS «salen muy diferentes, hasta
@@ -1802,6 +1920,27 @@ VAPID_PUBLIC_KEY=
 VAPID_PRIVATE_KEY=
 VAPID_SUBJECT=
 ```
+
+⚠️ **Estas cubren el navegador y la PWA, NO la app de Android.** El WebView no
+implementa la API de Push; la app va por FCM, aquí debajo. Ver «Notificaciones en
+la app de Android» al principio de este documento.
+
+### Notificaciones de la app de Android (FCM)
+
+```env
+FCM_PROJECT_ID=
+FCM_CLIENT_EMAIL=
+FCM_PRIVATE_KEY=
+```
+
+Del JSON de una cuenta de servicio de Firebase, con el rol **Firebase Cloud
+Messaging API Admin** y nada más. Sin las tres, la app se queda sin avisos y el
+resto de la app funciona igual — se registra en el log y no falla nada, así que
+conviene comprobarlo a propósito.
+
+⚠️ **La llave se pega con `\n` literales** y el código los convierte; también
+acepta saltos reales si se pega entre comillas. Lo que NO acepta es una llave sin
+las líneas de cabecera PEM: ahí avisa y no firma.
 
 ### Correo transaccional (Resend) — restablecer el PIN
 
