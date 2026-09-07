@@ -132,3 +132,28 @@ export function pluginNativo<T>(nombre: string): T | null {
 export function pushNativo(): PluginPush | null {
   return pluginNativo<PluginPush>("PushNotifications");
 }
+
+/** El plugin propio que descarga e instala una version nueva del APK. */
+export type PluginActualizador = {
+  puedeInstalar(): Promise<{ permitido: boolean }>;
+  abrirAjustesDeInstalacion(): Promise<void>;
+  descargarEInstalar(opciones: { url: string; sha256: string }): Promise<{ lanzado: boolean }>;
+  addListener(
+    evento: "progreso",
+    cb: (dato: { porcentaje: number }) => void
+  ): Promise<{ remove(): Promise<void> }>;
+};
+
+/** Lo que la app sabe de si misma. Lo da `@capacitor/app`, que ya viene dentro. */
+export type PluginApp = {
+  getInfo(): Promise<{ name: string; id: string; build: string; version: string }>;
+};
+
+/** `null` fuera del contenedor, o si esta version de la app no lo trae. */
+export function actualizadorNativo(): PluginActualizador | null {
+  return pluginNativo<PluginActualizador>("Actualizador");
+}
+
+export function appNativa(): PluginApp | null {
+  return pluginNativo<PluginApp>("App");
+}
