@@ -1,7 +1,11 @@
 "use client";
 
 /**
- * Visor de imágenes del chat, con zoom.
+ * Visor de imágenes a pantalla completa, con zoom.
+ *
+ * Nació para el chat y desde el 7 de septiembre de 2026 lo usan también
+ * comunicados, evidencias, faltantes y las páginas del checklist, a través de
+ * `ImagenAmpliable`, al final de este archivo.
  *
  * ⚠️ **El zoom se implementa a mano a propósito.** La app fija
  * `maximumScale: 1` en el viewport (`app/layout.tsx`) para que nadie acerque
@@ -39,12 +43,63 @@ export function VisorImagen({ url, onClose }: { url: string; onClose: () => void
     setPos({ x: 0, y: 0 });
   }, []);
 
+  /*
+   * ⚠️ **El botón físico de atrás tiene que cerrar el VISOR, no la pantalla.**
+   * En Android es el gesto natural para cerrar cualquier cosa que se abra
+   * encima; sin una parada de historial propia, se llevaba por delante la
+   * conversación o el comunicado que se estaba leyendo. Se apila una parada al
+   * abrir y se retira al cerrar.
+   */
+  const paradaPuesta = useRef(false);
+
+  /*
+   * ⚠️ **`onClose` NO puede ir en las dependencias.** Quien monta el visor lo
+   * pasa como función anónima --`onClose={() => setLightbox(null)}`--, así que
+   * cambia de identidad en cada pintado: con la dependencia, el efecto se
+   * repetiría y apilaría una parada de historial NUEVA cada vez. Haría falta
+   * pulsar atrás una docena de veces para salir. Se guarda en una referencia,
+   * que siempre tiene la última.
+   */
+  const refCerrar = useRef(onClose);
+  useEffect(() => {
+    refCerrar.current = onClose;
+  });
+
+  useEffect(() => {
+    paradaPuesta.current = true;
+    // La MISMA dirección a propósito: se quiere una parada para el botón de
+    // atrás, no una ruta nueva que el enrutador tendría que resolver.
+    window.history.pushState({ visorClarvex: true }, "", window.location.href);
+    const alVolver = () => {
+      paradaPuesta.current = false;
+      refCerrar.current();
+    };
+    window.addEventListener("popstate", alVolver);
+    return () => window.removeEventListener("popstate", alVolver);
+  }, []);
+
+  /*
+   * Cerrar a mano: la X, el fondo o Escape.
+   *
+   * ⚠️ Se avisa al padre DIRECTAMENTE y además se retira la parada. Esperar a
+   * que `history.back()` dispare `popstate` para cerrar dejaría el visor
+   * pegado si ese evento no llegara; y sin la bandera, el `popstate` que sí
+   * llega volvería a cerrar y retrocedería una pantalla de más.
+   */
+  const cerrar = useCallback(() => {
+    if (paradaPuesta.current) {
+      paradaPuesta.current = false;
+      window.history.back();
+    }
+    refCerrar.current();
+  }, []);
+
   // Escape cierra, y en escritorio es lo que la gente intenta primero.
   useEffect(() => {
-    const alPulsar = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    const alPulsar = (e: KeyboardEvent) => { if (e.key === "Escape") cerrar(); };
     window.addEventListener("keydown", alPulsar);
     return () => window.removeEventListener("keydown", alPulsar);
-  }, [onClose]);
+  }, [cerrar]);
 
   // `React.TouchList` y el `TouchList` del DOM no son el mismo tipo: el de
   // React no es iterable. Se toma el de React, que es el que llega aquí.
@@ -106,17 +161,17 @@ export function VisorImagen({ url, onClose }: { url: string; onClose: () => void
   return (
     <div
       className="fixed inset-0 z-[70] flex items-center justify-center overflow-hidden bg-black/95"
-      onClick={() => { if (escala <= 1) onClose(); }}
+      onClick={() => { if (escala <= 1) cerrar(); }}
       role="dialog"
       aria-modal="true"
       aria-label="Imagen"
     >
       <button
         type="button"
-        onClick={(e) => { e.stopPropagation(); onClose(); }}
+        onClick={(e) => { e.stopPropagation(); cerrar(); }}
         aria-label="Cerrar"
         className="absolute right-4 z-10 grid size-10 place-items-center rounded-full bg-white/15 text-white"
-        style={{ top: "max(1rem, env(safe-area-inset-top))" }}
+        style={{ top: "max(1rem, var(--safe-top))" }}
       >
         <X size={22} />
       </button>
@@ -126,7 +181,7 @@ export function VisorImagen({ url, onClose }: { url: string; onClose: () => void
           type="button"
           onClick={(e) => { e.stopPropagation(); reset(); }}
           className="absolute left-4 z-10 rounded-full bg-white/15 px-3 py-2 text-xs font-semibold text-white"
-          style={{ top: "max(1rem, env(safe-area-inset-top))" }}
+          style={{ top: "max(1rem, var(--safe-top))" }}
         >
           {escala.toFixed(1)}× · Ajustar
         </button>
@@ -135,7 +190,7 @@ export function VisorImagen({ url, onClose }: { url: string; onClose: () => void
         // el resto de la app no deja hacerlo.
         <span
           className="pointer-events-none absolute left-1/2 z-10 flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-white/12 px-3 py-1.5 text-[11px] font-medium text-white/80"
-          style={{ bottom: "max(1.5rem, env(safe-area-inset-bottom))" }}
+          style={{ bottom: "max(1.5rem, var(--safe-bottom))" }}
         >
           <ZoomIn size={13} /> Pellizca o toca dos veces para acercar
         </span>
@@ -170,5 +225,43 @@ export function VisorImagen({ url, onClose }: { url: string; onClose: () => void
         }}
       />
     </div>
+  );
+}
+
+/**
+ * Una imagen que se abre en el visor en vez de en el navegador.
+ *
+ * ⚠️ **El fallo que viene a arreglar es exclusivo de la app.** Comunicados,
+ * evidencias, faltantes y las páginas del checklist colgaban su miniatura de un
+ * `<a target="_blank">`. En un navegador eso abre una pestaña y se vuelve con
+ * atrás; dentro del WebView **no hay pestañas**, así que Android se lo pasaba a
+ * Chrome: tocar el flyer de un comunicado te sacaba de la app, y volver
+ * significaba buscarla entre las aplicaciones abiertas. El chat no lo sufría
+ * porque ya usaba este visor.
+ *
+ * ⚠️ **El botón físico de atrás cierra el VISOR, no la pantalla.** Se apila una
+ * parada en el historial al abrirlo. Sin eso, atrás --que en Android es el
+ * gesto natural para cerrar cualquier cosa que se abre encima-- se llevaba por
+ * delante el comunicado que se estaba leyendo.
+ */
+export function ImagenAmpliable({
+  src,
+  alt,
+  className,
+  children
+}: {
+  src: string;
+  alt: string;
+  className?: string;
+  children: React.ReactNode;
+}) {
+  const [abierto, setAbierto] = useState(false);
+  return (
+    <>
+      <button type="button" onClick={() => setAbierto(true)} className={className} aria-label={`Ampliar: ${alt}`}>
+        {children}
+      </button>
+      {abierto ? <VisorImagen url={src} onClose={() => setAbierto(false)} /> : null}
+    </>
   );
 }

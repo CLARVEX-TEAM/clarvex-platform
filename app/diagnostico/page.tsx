@@ -150,7 +150,7 @@ export default function DiagnosticoPush() {
   }
 
   return (
-    <main className="mx-auto max-w-2xl px-4 py-8">
+    <main className="pt-safe mx-auto max-w-2xl px-4 pb-8" style={{ ["--pt-safe-base" as string]: "2rem" }}>
       <h1 className="text-xl font-semibold text-ink">Diagnóstico del aparato</h1>
       <p className="mt-2 text-sm text-muted">
         Qué ve la app desde dentro. No muestra datos de nadie.

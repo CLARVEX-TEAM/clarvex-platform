@@ -31,7 +31,7 @@ export function PinStep({
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: -48 }}
       transition={{ duration: 0.48, ease: [0.22, 1, 0.36, 1] }}
-      className="flex min-h-screen flex-col"
+      className="pt-safe flex min-h-screen flex-col"
     >
       {/* Sección superior */}
       <div className="flex flex-1 flex-col items-center justify-center px-5 pt-10">

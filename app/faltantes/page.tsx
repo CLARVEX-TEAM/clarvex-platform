@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import NextImage from "next/image";
+import { ImagenAmpliable } from "@/components/VisorImagen";
 import { Check, ImagePlus, PackageSearch, RotateCcw, X } from "lucide-react";
 import { useSession } from "@/lib/use-session";
 import { INVENTORY_CATEGORIES, INVENTORY_CATEGORY_LABELS } from "@/lib/inventory";
@@ -233,9 +234,9 @@ function ReportRow({ report, isManager, busy, onResolve, onDelete, onReopen }: {
       </div>
       {report.note ? <p className="mt-2 text-sm text-muted">“{report.note}”</p> : null}
       {report.photoUrl ? (
-        <a href={report.photoUrl} target="_blank" rel="noopener noreferrer" className="mt-2 block overflow-hidden rounded-xl border border-line">
+        <ImagenAmpliable src={report.photoUrl} alt={report.productName} className="mt-2 block w-full overflow-hidden rounded-xl border border-line">
           <NextImage src={report.photoUrl} alt={report.productName} width={800} height={300} className="max-h-44 w-full object-cover" unoptimized />
-        </a>
+        </ImagenAmpliable>
       ) : null}
       <div className="mt-2.5 flex items-center gap-2">
         <ProfileAvatar name={report.reporter.name} photoUrl={report.reporter.photoUrl} size="sm" />

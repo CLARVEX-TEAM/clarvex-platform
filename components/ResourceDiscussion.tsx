@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { ImagenAmpliable } from "@/components/VisorImagen";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ImagePlus, MessageCircle, Send, X } from "lucide-react";
 import { ProfileAvatar } from "@/components/ui";
@@ -130,9 +131,9 @@ export function ResourceDiscussion({ target, className = "" }: { target: Target;
           {evidences.length > 0 ? (
             <div className="flex gap-2 overflow-x-auto pb-1">
               {evidences.map((item) => (
-                <a key={item.id} href={item.url} target="_blank" rel="noreferrer" className="relative h-24 w-24 shrink-0 overflow-hidden rounded-xl bg-white dark:bg-slate-700">
+                <ImagenAmpliable key={item.id} src={item.url} alt={item.note || "Evidencia"} className="relative h-24 w-24 shrink-0 overflow-hidden rounded-xl bg-white dark:bg-slate-700">
                   <Image src={item.url} alt={item.note || "Evidencia"} fill sizes="96px" className="object-cover" />
-                </a>
+                </ImagenAmpliable>
               ))}
             </div>
           ) : null}

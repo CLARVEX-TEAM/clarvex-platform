@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import NextImage from "next/image";
+import { ImagenAmpliable } from "@/components/VisorImagen";
 import { Camera, CheckCircle2, Circle, FileText, Image as ImageIcon, LogOut, Moon, SlidersHorizontal, Sun, X } from "lucide-react";
 import { getSession, logout } from "@/lib/auth";
 import { compressImage } from "@/lib/image-compress";
@@ -278,9 +279,9 @@ function ChecklistRow({ item, busy, onToggle, onPhoto }: { item: ChecklistItem; 
         {item.completedAt ? <p className="text-[11px] text-muted">✓ {new Date(item.completedAt).toLocaleTimeString("es-MX", { hour: "numeric", minute: "2-digit" })}</p> : null}
       </div>
       {item.evidenceUrl ? (
-        <a href={item.evidenceUrl} target="_blank" rel="noreferrer" className="shrink-0">
+        <ImagenAmpliable src={item.evidenceUrl} alt="Evidencia" className="shrink-0">
           <NextImage src={item.evidenceUrl} alt="Evidencia" width={40} height={40} className="size-10 rounded-lg object-cover" unoptimized />
-        </a>
+        </ImagenAmpliable>
       ) : null}
       <button type="button" onClick={() => cameraRef.current?.click()} disabled={busy} aria-label="Tomar foto" className="grid size-9 shrink-0 place-items-center rounded-xl border border-line text-muted transition hover:border-volt hover:text-volt active:scale-90 disabled:opacity-50">
         <Camera size={16} />
@@ -349,9 +350,9 @@ function ScanRow({ item, busy, onCapture, onRemove, onGeneratePdf }: {
         <div className="mt-2 flex flex-wrap gap-2 pl-[2.1rem]">
           {item.scans.map((scan, index) => (
             <div key={scan.id} className="relative">
-              <a href={scan.url} target="_blank" rel="noreferrer">
+              <ImagenAmpliable src={scan.url} alt={`Página ${index + 1}`}>
                 <NextImage src={scan.url} alt={`Página ${index + 1}`} width={56} height={56} className="size-14 rounded-lg object-cover" unoptimized />
-              </a>
+              </ImagenAmpliable>
               <span className="absolute bottom-0 left-0 rounded-tr-md rounded-bl-lg bg-black/60 px-1 text-[9px] font-semibold text-white">{index + 1}</span>
               <button type="button" onClick={() => onRemove(scan.id)} aria-label="Borrar página" className="absolute -right-1.5 -top-1.5 grid size-5 place-items-center rounded-full bg-rose-600 text-white shadow-sm transition active:scale-90">
                 <X size={11} />

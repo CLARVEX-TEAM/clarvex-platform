@@ -97,7 +97,12 @@ export function LiquidBottomNav() {
   if (kiosk !== false) return null;
 
   return (
-    <nav className="pointer-events-none fixed inset-x-0 bottom-2 z-30 px-3">
+    // ⚠️ La separación de abajo es `0.5rem` MÁS la barrita de gestos de Android.
+    // Con `bottom-2` a secas la barra quedaba justo encima de esa línea blanca,
+    // y ahí el gesto de volver al inicio se comía los toques de la pestaña.
+    // El valor lo publica la app; en el navegador y en la PWA vale cero y esto
+    // sigue siendo `bottom-2`.
+    <nav className="pointer-events-none fixed inset-x-0 bottom-[calc(0.5rem+var(--safe-bottom))] z-30 px-3">
       <div
         className="liquid-glass pointer-events-auto mx-auto grid max-w-md gap-0.5 rounded-[30px] border-line/80 bg-card/90 dark:bg-panel/95 p-1.5 shadow-[0_14px_34px_rgb(15_23_42_/_0.14)] backdrop-blur-xl"
         // El número de columnas sigue al de pestañas: con `grid-cols-6` fijo,
