@@ -120,6 +120,21 @@ trap 'rm -rf "$CERROJO"' EXIT
 # dejar a Postgres sin poder escribir.
 LIBRE_MB=$(df -Pm "$BASE" | tail -1 | awk '{print $4}')
 log "disco libre: ${LIBRE_MB} MB (se necesitan ${MB_NECESARIOS})"
+
+# ⚠️ **La caché es lo PRIMERO que se sacrifica, y por eso nunca bloquea.**
+#
+# Vive en `compartido` para acelerar el build, pero son ~1.7 GB en un disco al
+# 87 %. Sin esto, la caché podría crecer hasta impedir el despliegue que la
+# creó: la guarda de espacio corre antes, así que abortaría sin llegar siquiera
+# al bloque que sabe descartarla. Un despliegue imposible por una optimización
+# es peor que no tener la optimización.
+if [ "${LIBRE_MB:-0}" -lt "$MB_NECESARIOS" ] && [ -d "$COMPARTIDO/cache-webpack" ]; then
+  log "falta espacio; se descarta la caché compartida ($(du -sm "$COMPARTIDO/cache-webpack" 2>/dev/null | cut -f1) MB) y se vuelve a medir"
+  rm -rf "$COMPARTIDO/cache-webpack"
+  LIBRE_MB=$(df -Pm "$BASE" | tail -1 | awk '{print $4}')
+  log "disco libre tras liberarla: ${LIBRE_MB} MB"
+fi
+
 if [ "${LIBRE_MB:-0}" -lt "$MB_NECESARIOS" ]; then
   fatal "Sin espacio para preparar una versión. No se toca nada."
 fi
@@ -226,7 +241,12 @@ if echo "$SALIDA_MIGRACION" | grep -q "No pending migrations"; then MIGRO=0; fi
 CACHE_COMPARTIDA="$COMPARTIDO/cache-webpack"
 CACHE_EN_VERSION="$NUEVA/.next/cache/webpack"
 MB_CACHE_MAX="${MB_CACHE_MAX:-2000}"
-MB_LIBRES_PARA_CACHE="${MB_LIBRES_PARA_CACHE:-4000}"
+# ⚠️ **2500 y no 4000.** El primer valor que puse era MAYOR que el espacio libre
+# real del servidor (3.7 GB), asi que la cache se habria descartado en cada
+# despliegue y la mejora no se habria usado NUNCA -- funcionando en verde y sin
+# decir nada. El umbral tiene que dejar sitio para construir DESPUES de soltar
+# la cache, no exigir sitio como si la cache no ocupara el que ya ocupa.
+MB_LIBRES_PARA_CACHE="${MB_LIBRES_PARA_CACHE:-2500}"
 
 LIBRE_AHORA=$(df -Pm "$BASE" | tail -1 | awk '{print $4}')
 if [ "${LIBRE_AHORA:-0}" -lt "$MB_LIBRES_PARA_CACHE" ]; then

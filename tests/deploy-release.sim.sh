@@ -456,6 +456,21 @@ ACTIVA19=$(cat "$BASE19/estado/actual")
 comprobar "enlace sustituido: no se queda en la version" "0" \
   "$([ -e "$ACTIVA19/.next/cache/webpack" ] && echo 1 || echo 0)"
 
+# 20. La cache es lo PRIMERO que se sacrifica cuando falta disco.
+#
+# ⚠️ Sin esto, la cache podria crecer hasta impedir el despliegue que la creo:
+# la guarda de espacio corre ANTES del bloque que sabe descartarla, asi que
+# abortaria sin llegar a el. Un despliegue imposible por una optimizacion es
+# peor que no tener la optimizacion.
+BASE20="$TMP/cache-bloquea"; montar_base "$BASE20" > /dev/null
+ejecutar "$BASE20" > /dev/null
+comprobar "sin disco: la cache existe antes" "1" "$([ -d "$BASE20/compartido/cache-webpack" ] && echo 1 || echo 0)"
+(cd "$BASE20/repo" && printf 'seis
+' > seis.txt && git add -A && git commit --quiet -m seis && git update-ref refs/remotes/origin/main HEAD)
+ejecutar "$BASE20" CLARVEX_MB_NECESARIOS=99999999 > /dev/null
+comprobar "sin disco: la cache se libera para intentarlo" "0" "$([ -d "$BASE20/compartido/cache-webpack" ] && echo 1 || echo 0)"
+comprobar "sin disco: lo dice en el registro" "1" "$(contar_en "$BASE20/salida.txt" 'se descarta la caché compartida')"
+
 
 echo "  pasadas: $PASADAS   fallidas: $FALLIDAS"
 if [ "$FALLIDAS" -ne 0 ] && [ "${SIM_VERBOSO:-0}" = "1" ]; then
