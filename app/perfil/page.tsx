@@ -8,6 +8,7 @@ import { getBiometricRegistrationOptions, getSession, registerBiometric } from "
 import type { User, Role } from "@/lib/types";
 import { AppFrame, AppHeader, Badge, Button, Card, ProfileAvatar } from "@/components/ui";
 import { SaveButton } from "@/components/ActionButtons";
+import { AjusteCandado } from "@/components/AjusteCandado";
 import { useToast } from "@/components/Toast";
 import { useTheme, type Theme } from "@/components/ThemeProvider";
 
@@ -275,6 +276,8 @@ export default function ProfilePage() {
                 tiene barra de direcciones: dentro del contenedor no hay forma de
                 escribir una ruta, y el diagnostico solo dice algo util ahi
                 dentro. En el navegador saldra todo en rojo, y es lo correcto. */}
+            <AjusteCandado />
+
             <Link href="/diagnostico" className="mb-3 block">
               <Card className="p-3.5 transition active:scale-[0.99]">
                 <div className="flex items-center gap-3">

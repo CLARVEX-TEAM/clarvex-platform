@@ -3,6 +3,7 @@ import { Geist } from "next/font/google";
 import "./globals.css";
 import { PwaRegister } from "@/components/PwaRegister";
 import { ActualizacionApp } from "@/components/ActualizacionApp";
+import { CandadoHuella } from "@/components/CandadoHuella";
 import { PageTransition } from "@/components/PageTransition";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { ToastProvider } from "@/components/Toast";
@@ -99,6 +100,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <Meteors />
             <PwaRegister />
             <ActualizacionApp />
+            <CandadoHuella />
             <UpdatePrompt />
             <OfflineBanner />
             <DomainMoveBanner />

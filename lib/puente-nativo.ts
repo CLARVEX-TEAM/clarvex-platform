@@ -157,3 +157,24 @@ export function actualizadorNativo(): PluginActualizador | null {
 export function appNativa(): PluginApp | null {
   return pluginNativo<PluginApp>("App");
 }
+
+/**
+ * La huella del sistema como CANDADO, distinta de la passkey.
+ *
+ * ⚠️ Las dos usan el mismo dedo y hacen cosas distintas. La passkey (WebAuthn)
+ * demuestra al SERVIDOR quién eres. Esto solo decide, en el teléfono, si se
+ * enseña la sesión que ya existe. Confundirlas llevaría a creer que este
+ * candado autentica, y no lo hace.
+ */
+export type PluginBiometria = {
+  disponible(): Promise<{ puede: boolean; motivo: "listo" | "sin-registrar" | "sin-lector" | "no-disponible" }>;
+  autenticar(opciones?: { titulo?: string; subtitulo?: string }): Promise<{
+    ok: boolean;
+    cancelado?: boolean;
+    motivo?: string;
+  }>;
+};
+
+export function biometriaNativa(): PluginBiometria | null {
+  return pluginNativo<PluginBiometria>("Biometria");
+}
