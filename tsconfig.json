@@ -29,5 +29,11 @@
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
   "//": "'Microsoft VS Code' es una instalacion de programa dentro del proyecto: trae sus propios .ts y el patron **/*.ts los recogia, asi que el typecheck fallaba por codigo ajeno. Se excluye igual que en .eslintrc.json y .gitignore. No se puede mover: es la instalacion viva del editor.",
-  "exclude": ["node_modules", "Microsoft VS Code"]
+  // ⚠️ `tmp/` ya estaba en `.gitignore` pero NO aquí, y eso rompía `tsc` sin
+  // decir por qué: las copias de trabajo que se dejan ahí --builds aislados,
+  // reproducciones de un fallo-- traen su propio código a medias, y el patrón
+  // `**/*.ts` las recogía. Salían errores de módulos inexistentes en archivos
+  // que no son de nadie, y se lee como si el proyecto estuviera roto. Es la
+  // misma trampa que "Microsoft VS Code", que está aquí por lo mismo.
+  "exclude": ["node_modules", "Microsoft VS Code", "tmp"]
 }

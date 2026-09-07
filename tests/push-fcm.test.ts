@@ -166,23 +166,78 @@ test("el mensaje lleva notificacion Y datos, y los datos son cadenas", async () 
   assert.equal((mensaje.android as Record<string, unknown>).priority, "high");
 });
 
-test("un 404 marca el aparato como caducado", async () => {
-  stubFetch(() => new Response(JSON.stringify({ error: { status: "UNREGISTERED" } }), { status: 404 }));
+// ⚠️ Los cuerpos de abajo NO estan inventados: se capturaron contra la FCM real
+// el 6 de septiembre de 2026, con la cuenta de servicio de Clarvex. Importa,
+// porque la version anterior de estas pruebas suponia una forma que Google NO
+// usa --un 404 con `status: UNREGISTERED`-- y por eso daba por buena una regla
+// que decidia por el codigo de estado.
+
+// Token con forma invalida, proyecto correcto. Google contesta 400, no 404.
+const CUERPO_TOKEN_INVALIDO = JSON.stringify({
+  error: {
+    code: 400,
+    message: "The registration token is not a valid FCM registration token",
+    status: "INVALID_ARGUMENT",
+    details: [
+      { "@type": "type.googleapis.com/google.firebase.fcm.v1.FcmError", errorCode: "INVALID_ARGUMENT" },
+      {
+        "@type": "type.googleapis.com/google.rpc.BadRequest",
+        fieldViolations: [{ field: "message.token", description: "The registration token is not a valid..." }]
+      }
+    ]
+  }
+});
+
+// App desinstalada. Google lo marca con `errorCode: UNREGISTERED`.
+const CUERPO_DESINSTALADA = JSON.stringify({
+  error: {
+    code: 404,
+    message: "Requested entity was not found.",
+    status: "NOT_FOUND",
+    details: [{ "@type": "type.googleapis.com/google.firebase.fcm.v1.FcmError", errorCode: "UNREGISTERED" }]
+  }
+});
+
+// Proyecto inexistente o sin permisos. Contesta 403, NO 404.
+const CUERPO_PROYECTO_MAL = JSON.stringify({
+  error: {
+    code: 403,
+    message: "Permission denied on resource project clarvex-team-que-no-existe-999.",
+    status: "PERMISSION_DENIED",
+    details: [{ "@type": "type.googleapis.com/google.rpc.ErrorInfo", reason: "CONSUMER_INVALID" }]
+  }
+});
+
+test("la app desinstalada caduca el aparato", async () => {
+  stubFetch(() => new Response(CUERPO_DESINSTALADA, { status: 404 }));
   const resultado = await enviarPorFcm(["token-muerto"], { title: "x", body: "y" });
   assert.deepEqual(resultado.caducados, ["token-muerto"]);
   assert.equal(resultado.enviados, 0);
 });
 
-test("un 400 que senala al campo del token tambien lo caduca", async () => {
-  const cuerpo = JSON.stringify({
-    error: {
-      status: "INVALID_ARGUMENT",
-      details: [{ fieldViolations: [{ field: "message.token", description: "Invalid registration token" }] }]
-    }
-  });
-  stubFetch(() => new Response(cuerpo, { status: 400 }));
+test("un token con forma invalida tambien caduca", async () => {
+  stubFetch(() => new Response(CUERPO_TOKEN_INVALIDO, { status: 400 }));
   const resultado = await enviarPorFcm(["token-raro"], { title: "x", body: "y" });
   assert.deepEqual(resultado.caducados, ["token-raro"]);
+});
+
+test("un proyecto mal configurado NO borra los aparatos de la tienda", async () => {
+  // Es el fallo mas caro posible aqui: un error de configuracion NUESTRO que
+  // desregistre todos los telefonos. Vuelven solos, pero solo cuando cada
+  // persona abra la app, y mientras tanto nadie recibe nada.
+  stubFetch(() => new Response(CUERPO_PROYECTO_MAL, { status: 403 }));
+  const resultado = await enviarPorFcm(["token-sano-1", "token-sano-2"], { title: "x", body: "y" });
+  assert.deepEqual(resultado.caducados, [], "un 403 de configuracion no puede caducar a nadie");
+  assert.equal(resultado.enviados, 0);
+});
+
+test("un 404 SIN explicacion no caduca nada", async () => {
+  // Antes cualquier 404 vaciaba la tabla. Un 404 puede salir tambien por una
+  // ruta mal armada, y ante la duda no se borra: acumular tokens muertos cuesta
+  // una peticion desperdiciada; borrar los vivos deja a la tienda sin avisos.
+  stubFetch(() => new Response(JSON.stringify({ error: { code: 404, message: "Not found." } }), { status: 404 }));
+  const resultado = await enviarPorFcm(["token-sano"], { title: "x", body: "y" });
+  assert.deepEqual(resultado.caducados, []);
 });
 
 test("un 400 por culpa NUESTRA no borra el aparato de nadie", async () => {
@@ -204,7 +259,7 @@ test("un aparato muerto no impide entregar a los demas", async () => {
   stubFetch((llamada) => {
     const mensaje = (llamada.cuerpo as { message: { token: string } }).message;
     return mensaje.token === "malo"
-      ? new Response("{}", { status: 404 })
+      ? new Response(CUERPO_DESINSTALADA, { status: 404 })
       : new Response("{}", { status: 200 });
   });
   const resultado = await enviarPorFcm(["bueno-1", "malo", "bueno-2"], { title: "x", body: "y" });

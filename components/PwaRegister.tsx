@@ -1,8 +1,28 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
 import { Bell, X } from "lucide-react";
 import { CANAL_AVISOS, enContenedorNativo, plataformaNativa, pushNativo, type PluginPush } from "@/lib/puente-nativo";
+
+/**
+ * ⚠️ **Este componente se monta en el LAYOUT RAÍZ, o sea también en `/login`.**
+ *
+ * Ahí todavía no hay sesión, así que cualquier registro que se intente vuelve en
+ * **401** — y el login navega con `router.replace`, que es navegación de cliente:
+ * el layout NO se remonta y el efecto no se vuelve a ejecutar. Un aparato que
+ * consigue su token en la pantalla de acceso se quedaba sin registrar hasta el
+ * SIGUIENTE arranque de la app, justo cuando la persona acaba de conceder el
+ * permiso y espera que funcione. Y sin un solo error a la vista.
+ *
+ * Por eso lo que no se pudo guardar queda PENDIENTE y se reintenta por evento
+ * --al cambiar de pantalla y al volver a la app--, nunca con un temporizador:
+ * es la misma regla que `useSession`, y por el mismo motivo.
+ */
+type Pendiente =
+  | { tipo: "nativo"; token: string }
+  | { tipo: "web"; registro: ServiceWorkerRegistration }
+  | null;
 
 function urlBase64ToUint8Array(base64String: string) {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
@@ -11,10 +31,11 @@ function urlBase64ToUint8Array(base64String: string) {
   return Uint8Array.from(Array.from(raw).map((c) => c.charCodeAt(0)));
 }
 
-async function saveSubscription(registration: ServiceWorkerRegistration) {
+/** `true` si quedó registrado; `false` si hay que reintentarlo con sesión. */
+export async function saveSubscription(registration: ServiceWorkerRegistration): Promise<boolean> {
   const res = await fetch("/api/push/vapid-public-key");
   const { vapidPublicKey } = (await res.json()) as { vapidPublicKey?: string };
-  if (!vapidPublicKey) return;
+  if (!vapidPublicKey) return true; // Sin VAPID configurado no hay nada que reintentar.
   const existing = await registration.pushManager.getSubscription();
   const subscription =
     existing ??
@@ -26,32 +47,46 @@ async function saveSubscription(registration: ServiceWorkerRegistration) {
     endpoint: string;
     keys: { p256dh: string; auth: string };
   };
-  await fetch("/api/push/subscribe", {
+  const guardado = await fetch("/api/push/subscribe", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ endpoint, p256dh: keys.p256dh, auth: keys.auth }),
   });
+  // ⚠️ Antes no se miraba la respuesta. En `/login` este POST vuelve 401 y la
+  // suscripción se perdía sin dejar ni una línea: el navegador quedaba
+  // suscrito ante el servicio de push y el servidor sin saberlo, así que no le
+  // llegaba nada y todo parecía correcto.
+  if (guardado.status === 401) return false;
+  if (!guardado.ok) console.error("[push web] El servidor rechazó la suscripción —", guardado.status);
+  return true;
 }
 
-// El token de FCM identifica al APARATO. Se manda con la sesión de quien esté
-// dentro, y el servidor lo reasigna: el teléfono de la tienda cambia de manos.
-async function guardarTokenNativo(token: string) {
+/**
+ * El token de FCM identifica al APARATO. Se manda con la sesión de quien esté
+ * dentro, y el servidor lo reasigna: el teléfono de la tienda cambia de manos.
+ *
+ * Devuelve `false` solo cuando falta la sesión, que es lo único que se arregla
+ * reintentando. Un rechazo por otra causa se registra y no se insiste.
+ */
+export async function guardarTokenNativo(token: string): Promise<boolean> {
   const platform = plataformaNativa();
   if (platform !== "android") {
     // Hoy solo existe la app de Android. Un token de otra plataforma se
     // registraría mal etiquetado, y eso es peor que no registrarlo: al mandar
     // se elegiría el camino equivocado sin que nada avise.
     console.warn(`[push nativo] Plataforma sin soporte de registro: ${platform}`);
-    return;
+    return true;
   }
   const res = await fetch("/api/push/device", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ token, platform }),
   });
+  if (res.status === 401) return false;
   if (!res.ok) {
     console.error("[push nativo] El servidor rechazó el token del aparato —", res.status);
   }
+  return true;
 }
 
 // El canal tiene que existir ANTES de que llegue la primera notificación: si no
@@ -73,6 +108,40 @@ export function PwaRegister() {
   const [reg, setReg] = useState<ServiceWorkerRegistration | null>(null);
   const [nativo, setNativo] = useState<PluginPush | null>(null);
   const [showBanner, setShowBanner] = useState(false);
+  const pendiente = useRef<Pendiente>(null);
+  const pathname = usePathname();
+
+  // Guarda, y si lo único que faltaba era la sesión, lo deja pendiente.
+  const registrar = useCallback(async (que: NonNullable<Pendiente>) => {
+    try {
+      const hecho = que.tipo === "nativo"
+        ? await guardarTokenNativo(que.token)
+        : await saveSubscription(que.registro);
+      pendiente.current = hecho ? null : que;
+    } catch {
+      // Sin red. Se conserva: los mismos eventos que traen la sesión traen
+      // también la conexión de vuelta.
+      pendiente.current = que;
+    }
+  }, []);
+
+  // ⚠️ El reintento va por EVENTO, no por temporizador. Entrar produce una
+  // navegación de cliente --`router.replace` en el login-- y volver a la app
+  // produce un `visibilitychange`. Insistir cada X segundos gastaría batería sin
+  // ninguna señal de que algo haya cambiado; es la regla de `useSession`.
+  useEffect(() => {
+    if (pendiente.current) void registrar(pendiente.current);
+  }, [pathname, registrar]);
+
+  useEffect(() => {
+    const alVolver = () => {
+      if (document.visibilityState === "visible" && pendiente.current) {
+        void registrar(pendiente.current);
+      }
+    };
+    document.addEventListener("visibilitychange", alVolver);
+    return () => document.removeEventListener("visibilitychange", alVolver);
+  }, [registrar]);
 
   // ── Camino NATIVO: la app de Android ────────────────────────────────────
   //
@@ -81,8 +150,17 @@ export function PwaRegister() {
   // permiso: se queda sin avisos y sin decirlo. Aquí se piden al sistema, por
   // FCM, con el plugin que el contenedor trae compilado.
   useEffect(() => {
-    const plugin = enContenedorNativo() ? pushNativo() : null;
-    if (!plugin) return;
+    if (!enContenedorNativo()) return;
+    const plugin = pushNativo();
+    // ⚠️ Estamos DENTRO de la app pero el binario no trae el plugin: es una
+    // version vieja instalada sobre la web nueva. Sin esta linea se quedaria
+    // sin notificaciones y sin decirlo, que es justo el fallo que este archivo
+    // vino a cerrar. El camino web de abajo tampoco la cubre: el WebView no
+    // tiene API de Push.
+    if (!plugin) {
+      console.warn("[push nativo] Esta version de la app no trae el plugin de notificaciones.");
+      return;
+    }
     setNativo(plugin);
 
     let montado = true;
@@ -96,7 +174,7 @@ export function PwaRegister() {
         // importa-- y no vuelve hasta que el token rote.
         const asas = await Promise.all([
           plugin.addListener("registration", (dato) => {
-            void guardarTokenNativo(dato.value).catch(() => undefined);
+            void registrar({ tipo: "nativo", token: dato.value });
           }),
           plugin.addListener("registrationError", (dato) => {
             console.error("[push nativo] Google no entregó el token:", dato.error);
@@ -127,7 +205,10 @@ export function PwaRegister() {
       montado = false;
       void Promise.all(soltar.map((s) => s())).catch(() => undefined);
     };
-  }, []);
+    // `registrar` es estable (`useCallback` sin dependencias), asi que esto
+    // sigue corriendo UNA vez. Va en la lista para no apagar la regla del lint:
+    // si algun dia deja de ser estable, conviene que avise.
+  }, [registrar]);
 
   // ── Camino WEB: navegador y PWA ─────────────────────────────────────────
   useEffect(() => {
@@ -196,7 +277,7 @@ export function PwaRegister() {
         registration.update().catch(() => undefined);
         const permission = Notification.permission;
         if (permission === "granted") {
-          saveSubscription(registration).catch(() => undefined);
+          void registrar({ tipo: "web", registro: registration });
         } else if (permission === "default") {
           const dismissed = localStorage.getItem("push-prompt-dismissed");
           if (!dismissed) setShowBanner(true);
@@ -205,7 +286,7 @@ export function PwaRegister() {
       .catch(() => undefined);
 
     return cleanup;
-  }, []);
+  }, [registrar]);
 
   async function handleActivate() {
     setShowBanner(false);
@@ -222,7 +303,7 @@ export function PwaRegister() {
     try {
       const permission = await Notification.requestPermission();
       if (permission === "granted") {
-        await saveSubscription(reg);
+        await registrar({ tipo: "web", registro: reg });
       }
     } catch {
       // push no soportado

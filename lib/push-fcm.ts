@@ -40,12 +40,6 @@ export function normalizarLlavePrivada(bruta: string): string {
 }
 
 /**
- * Devuelve las credenciales solo si las tres están y la llave tiene forma de
- * PEM. Media configuración es peor que ninguna: sin esta comprobación, el
- * primer envío fallaría dentro de `importPKCS8` con un error de criptografía
- * que no señala a la variable de entorno mal pegada.
- */
-/**
  * Las dos mitades de la cabecera PEM, partidas a propósito.
  *
  * ⚠️ **NO volver a juntarlas.** El escáner de secretos de la CI busca la
@@ -57,6 +51,12 @@ export function normalizarLlavePrivada(bruta: string): string {
 const PEM_ABRE = "-----BEGIN";
 const PEM_CIERRA = "PRIVATE KEY-----";
 
+/**
+ * Devuelve las credenciales solo si las tres están y la llave tiene forma de
+ * PEM. Media configuración es peor que ninguna: sin esta comprobación, el
+ * primer envío fallaría dentro de `importPKCS8` con un error de criptografía
+ * que no señala a la variable de entorno mal pegada.
+ */
 export function leerCredenciales(env: Record<string, string | undefined> = process.env): CredencialesFcm | null {
   const projectId = env.FCM_PROJECT_ID?.trim() ?? "";
   const clientEmail = env.FCM_CLIENT_EMAIL?.trim() ?? "";
@@ -193,15 +193,37 @@ function construirMensaje(token: string, payload: MensajeFcm) {
   };
 }
 
-/** Un token que Google marca como muerto. Cualquier otro error se reintenta otro día. */
-function esTokenMuerto(status: number, cuerpo: string): boolean {
-  // 404 = UNREGISTERED: la app se desinstaló o Google rotó el token.
-  if (status === 404) return true;
-  // 400 = INVALID_ARGUMENT. Solo cuenta si se queja del CAMPO del token: el
-  // mismo código sale por un payload mal armado, y eso es un fallo NUESTRO que
-  // no debe borrarle el aparato a nadie.
-  if (status === 400) return /"field"\s*:\s*"message\.token"/.test(cuerpo);
-  return false;
+/**
+ * Un token que Google marca como muerto. Cualquier otro error se reintenta otro
+ * día.
+ *
+ * ⚠️ **Decide por el CUERPO, no por el código de estado.** Borrar el aparato de
+ * alguien es irreversible desde aquí --vuelve a registrarse solo si abre la
+ * app-- así que ante la duda NO se borra. Comprobado contra la FCM real el 6 de
+ * septiembre de 2026:
+ *
+ * | Caso | Respuesta |
+ * |---|---|
+ * | token inválido, proyecto correcto | **400** con `fieldViolations` en `message.token` |
+ * | proyecto inexistente | **403** `PERMISSION_DENIED`, no 404 |
+ *
+ * Los dos códigos salen también por causas nuestras: un 400 por un payload mal
+ * armado y un 404 por una ruta equivocada. Si se contaran por el estado, un bug
+ * de una línea desregistraría los teléfonos de toda la tienda de golpe.
+ *
+ * ⚠️ **Un 404 a secas ya NO caduca nada.** Antes sí, y era la pieza más
+ * peligrosa: cualquier 404 inesperado vaciaba la tabla. Lo que queda si el
+ * candado se pasa de estricto es que se acumulen tokens muertos --una petición
+ * desperdiciada por aviso, y nada más-- y además quedan a la vista en el log.
+ */
+function esTokenMuerto(cuerpo: string): boolean {
+  // La app se desinstaló o Google rotó el token. Es la marca que Google
+  // documenta para eso, y viene dentro de un detalle `FcmError`.
+  if (/"errorCode"\s*:\s*"UNREGISTERED"/.test(cuerpo)) return true;
+  // El token no tiene forma de token. Google señala el campo exacto, y ese
+  // señalamiento es lo que distingue «el token es basura» de «el mensaje lo
+  // armamos mal nosotros», que llegan con el mismo 400.
+  return /"field"\s*:\s*"message\.token"/.test(cuerpo);
 }
 
 export async function enviarPorFcm(tokens: string[], payload: MensajeFcm): Promise<ResultadoFcm> {
@@ -238,10 +260,13 @@ export async function enviarPorFcm(tokens: string[], payload: MensajeFcm): Promi
           return;
         }
         const cuerpo = await respuesta.text();
-        if (esTokenMuerto(respuesta.status, cuerpo)) {
+        if (esTokenMuerto(cuerpo)) {
           caducados.push(token);
           return;
         }
+        // Todo lo demás se registra y el aparato se conserva. Aquí caen los
+        // problemas de configuración --403 por proyecto o permisos-- que hay
+        // que arreglar en el servidor, no borrando los teléfonos del equipo.
         console.error("[fcm] Envío rechazado — status:", respuesta.status, "cuerpo:", cuerpo.slice(0, 300));
       } catch (error) {
         console.error("[fcm] Error enviando notificación:", (error as Error).message);
