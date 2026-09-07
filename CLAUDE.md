@@ -131,6 +131,39 @@ salida estándar.
 - https://pushpad.xyz/blog/can-i-use-the-web-push-api-with-hybrid-mobile-apps
 - https://developer.mozilla.org/en-US/docs/Web/API/PushManager
 
+### Desplegado el 7 de septiembre de 2026
+
+Autorizado expresamente. `main` en `e591e3c`, sirviendo
+`releases/20260907-044543-e591e3c`. La corrida de Deploy paso su preflight --CI
+verde del mismo SHA-- y termino en verde.
+
+⚠️ **El despliegue llevo tambien el trabajo de POS de otra sesion** (PR #47,
+endpoint `/api/admin/pos-diagnostics`), porque se despliega `main` entero y no
+un subconjunto. Se aviso antes de correrlo y se comprobo su superficie de
+autenticacion: sesion real de admin de plataforma, `denyDemo`, cabeceras
+privadas y validacion de entrada.
+
+Comprobado despues, con instrumentos distintos del que hizo el cambio:
+
+- `/api/health` desde internet: `200`, `db: ok`, 0.31 s.
+- Los **dos** procesos de PM2 `online`, con cero reinicios y con el `cwd` en la
+  version nueva. Es el paso que senala «Actualizar la app en produccion»: si PM2
+  se queda apuntando a la ruta vieja, los despliegues parecen funcionar sin
+  cambiar nada.
+- La migracion aplicada: `DeviceToken` existe, 0 filas.
+- El `.env` de la version nueva resuelve a `/home/ubuntu/clarvex-app/.env` y ve
+  las tres variables `FCM_*`.
+
+⚠️ **`/proc/<pid>/environ` NO sirve para comprobar el `.env`.** Muestra el
+entorno con el que arranco el proceso, y Next.js carga el archivo en tiempo de
+EJECUCION: ahi no aparece ninguna variable del `.env`, ni siquiera
+`DATABASE_URL` --que la app esta usando, porque la salud dice `db: ok`--. Leerlo
+como «faltan las credenciales» manda a buscar donde no esta el problema; se
+descubrio comprobando con una variable de control.
+
+Queda una sola pieza sin probar de extremo a extremo: token real -> telefono
+real. El resto de la cadena del servidor si se probo contra la FCM de verdad.
+
 ### El puente de Capacitor llega a la página remota
 
 ⚠️ **`window.Capacitor` existe en `team.clarvex.tech` cuando la sirve la app.**
