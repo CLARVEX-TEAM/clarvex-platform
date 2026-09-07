@@ -201,6 +201,47 @@ propio `public/icon-512.png` por saturación --por luminancia no vale: el azul
 claro del degradado tiene casi tanto brillo que el blanco-- e ignorando el borde,
 donde el icono lleva un resplandor cálido que cualquier umbral de blanco se traga.
 
+### Lo que salio de revisar esto antes de fusionarlo
+
+⚠️ **`PwaRegister` se monta en el LAYOUT RAIZ, o sea tambien en `/login`.** Ahi
+no hay sesion, asi que el registro del aparato volvia **401** — y el login
+navega con `router.replace`, que es navegacion de cliente: el layout NO se
+remonta y el efecto no se repite. En la primera instalacion el token se conseguia
+en la pantalla de acceso y **se perdia**; la app no recibia nada hasta el
+siguiente arranque, justo cuando la persona acaba de conceder el permiso. Sin un
+solo error a la vista.
+
+⚠️ El camino WEB tenia el mismo fallo y **ni siquiera miraba la respuesta**: el
+navegador quedaba suscrito ante el servicio de push y el servidor sin saberlo.
+Es anterior a este trabajo; se arregla igual porque es la misma linea.
+
+Lo que no se pudo guardar queda pendiente y se reintenta **por evento** --al
+cambiar de pantalla y al volver a la app--, nunca por temporizador. Se distingue
+el 401 («aun no hay sesion», se reintenta) de cualquier otro rechazo (no se
+insiste): confundirlos pierde el aparato en silencio por un lado, o golpea al
+servidor en cada navegacion por el otro. `tests/push-registro-sin-sesion.test.ts`,
+comprobada en rojo contra el comportamiento anterior.
+
+⚠️ **Un 404 de FCM ya NO caduca el aparato por si solo.** La regla decidia por el
+codigo de estado y eso era lo mas peligroso del archivo. Sondeado contra la FCM
+real el 6 de septiembre de 2026 con la cuenta de servicio de Clarvex:
+
+| Caso | Respuesta real |
+|---|---|
+| token invalido, proyecto correcto | **400** con `fieldViolations` en `message.token` |
+| proyecto inexistente | **403 PERMISSION_DENIED**, no 404 |
+
+O sea que el desastre que se temia --un `FCM_PROJECT_ID` mal puesto borrando
+todos los tokens-- no ocurre por esa via, pero un 404 inesperado si lo habria
+hecho. Ahora se decide por el CUERPO: `errorCode: UNREGISTERED` o el
+señalamiento del campo del token. Si el candado se pasa de estricto, lo que pasa
+es que se acumulan tokens muertos --una peticion desperdiciada por aviso-- y
+quedan a la vista en el log. Al reves no tiene arreglo.
+
+⚠️ **Estar dentro del contenedor sin el plugin ya se avisa.** Una version vieja
+de la app sobre la web nueva se quedaba sin notificaciones y sin decirlo, porque
+el camino web tampoco la cubre.
+
 ### La API v1, no la heredada
 
 `fcm.googleapis.com/fcm/send` --la de la «server key»-- está retirada desde 2024.
