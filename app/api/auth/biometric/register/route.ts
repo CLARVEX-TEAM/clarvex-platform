@@ -4,6 +4,7 @@ import type { RegistrationResponseJSON } from "@simplewebauthn/server";
 import { denyDemo, isApiError, requireSession } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
 import { ORIGIN, RP_ID } from "@/lib/webauthn";
+import { origenesAceptados } from "@/lib/webauthn-origenes";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -34,7 +35,9 @@ export async function POST(request: Request) {
     verification = await verifyRegistrationResponse({
       response: body,
       expectedChallenge: challenge.challenge,
-      expectedOrigin: ORIGIN,
+      // El dominio y, si esta declarada en assetlinks.json, la app de
+      // Android: dentro del contenedor el origen es `android:apk-key-hash:...`.
+      expectedOrigin: origenesAceptados(ORIGIN),
       expectedRPID: RP_ID,
       requireUserVerification: true
     });

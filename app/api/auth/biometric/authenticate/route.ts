@@ -9,6 +9,7 @@ import { clientIp } from "@/lib/request-ip";
 import { publicUser } from "@/lib/security";
 import { createSessionToken, SESSION_COOKIE, sessionCookieOptions } from "@/lib/session";
 import { ORIGIN, RP_ID } from "@/lib/webauthn";
+import { origenesAceptados } from "@/lib/webauthn-origenes";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -49,7 +50,9 @@ export async function POST(request: Request) {
     verification = await verifyAuthenticationResponse({
       response: authResponse,
       expectedChallenge: challenge.challenge,
-      expectedOrigin: ORIGIN,
+      // El dominio y, si esta declarada en assetlinks.json, la app de
+      // Android: dentro del contenedor el origen es `android:apk-key-hash:...`.
+      expectedOrigin: origenesAceptados(ORIGIN),
       expectedRPID: RP_ID,
       credential: {
         id: credential.credentialId,
