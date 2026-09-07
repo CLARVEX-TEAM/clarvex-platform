@@ -5,6 +5,11 @@ import { bearerToken, SESSION_COOKIE, verifySessionToken, type Session } from "@
 const managerRoutes = ["/manager", "/pendientes", "/bitacora", "/comunicados", "/datos", "/escritorio"];
 const advisorRoutes = ["/advisor", "/kpis", "/horarios", "/actividad"];
 const sharedRoutes = [
+  // Diagnóstico de notificaciones: lo abre cualquiera con sesión, porque el
+  // problema que resuelve --«no me llegan los avisos»-- le pasa a cualquiera y
+  // no debería depender de que haya un gerente cerca. Solo enseña de qué es
+  // capaz el aparato, ningún dato de la tienda ni de personas.
+  "/diagnostico-push",
   "/plan",
   "/kpis",
   "/horarios",
@@ -272,6 +277,11 @@ export const config = {
     "/kudos/:path*",
     "/capacitacion/:path*",
     "/asistencia/:path*",
+    // Diagnóstico de notificaciones. No enseña datos de nadie --solo lo que el
+    // aparato es capaz de hacer-- pero pasa por aquí igual: una pantalla sin
+    // sesión es superficie que hay que justificar, y esta no lo necesita.
+    "/diagnostico-push/:path*",
+    "/diagnostico-push",
     "/uniformes/:path*",
     "/solicitudes/:path*",
     "/soporte/:path*"
