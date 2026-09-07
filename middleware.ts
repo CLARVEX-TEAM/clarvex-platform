@@ -46,7 +46,19 @@ const publicApiExact = new Set([
   "/api/auth/pin-reset/confirm",
   "/api/auth/biometric/authenticate",
   "/api/auth/biometric/authenticate-options",
-  "/api/push/vapid-public-key"
+  "/api/push/vapid-public-key",
+  // ⚠️ **Descarga del APK: sin sesión a propósito, y NO sin autorización.**
+  //
+  // Quien la pide es el descargador nativo de Android, que va por fuera del
+  // WebView y no lleva la cookie. La autorización es un token firmado que solo
+  // se emite desde `/api/app/version` --que SÍ exige sesión-- y caduca en diez
+  // minutos. El handler lo verifica y responde 401 sin él.
+  //
+  // Se lista la ruta EXACTA y no el prefijo `/api/app/`: `/api/app/version`
+  // tiene que seguir pidiendo sesión, y una ruta futura ahí debajo no puede
+  // quedar pública por herencia. Es el mismo criterio que la nota de
+  // `/api/admin/sync-source`.
+  "/api/app/apk"
 ]);
 
 /**
