@@ -17,6 +17,12 @@
   --color-line: 236 236 239;
   --color-ink: 23 24 28;
   --color-muted: 131 132 140;
+
+  /* Cuánto ocupan las barras del sistema. Ver el bloque de `.pt-safe`. */
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
 }
 
 .dark {
@@ -40,12 +46,25 @@
 
 /* PWA en iOS: con viewport-fit=cover + barra de estado translúcida, el
    contenido pegado al tope queda debajo del notch. Estas utilidades añaden
-   el inset seguro sin pelear con las clases de padding de Tailwind. */
+   el inset seguro sin pelear con las clases de padding de Tailwind.
+
+   ⚠️ **Van por variable y no por `env()` directo porque en Android `env()`
+   MIENTE.** Ahí solo reporta el recorte de la pantalla —la muesca de la
+   cámara—, nunca las barras de estado y de navegación. En iOS y en la PWA de
+   Chrome estas utilidades funcionaban; dentro de la app valían cero, así que
+   los títulos quedaban bajo la barra de estado y la barra inferior encima de
+   la barrita de gestos. Es la misma web con y sin fallo según el envoltorio,
+   y por eso costó verlo.
+
+   `BarrasDelSistema.java`, en la app de Android, sobrescribe estas variables
+   con las medidas reales. Donde nadie las sobrescribe se quedan con `env()`,
+   que es exactamente el comportamiento anterior: una versión vieja de la app
+   no empeora. */
 .pt-safe {
-  padding-top: calc(env(safe-area-inset-top) + var(--pt-safe-base, 0px));
+  padding-top: calc(var(--safe-top) + var(--pt-safe-base, 0px));
 }
 .top-safe {
-  top: env(safe-area-inset-top);
+  top: var(--safe-top);
 }
 
 html {

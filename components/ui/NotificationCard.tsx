@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { ImagenAmpliable } from "@/components/VisorImagen";
 import { Bell } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { GlassCard } from "./GlassCard";
@@ -38,9 +39,9 @@ export function NotificationCard({
           </div>
           <p className="mt-2 text-[13px] leading-5 text-muted">{body}</p>
           {imageUrl ? (
-            <a href={imageUrl} target="_blank" rel="noopener noreferrer" className="mt-2.5 block overflow-hidden rounded-2xl border border-line">
+            <ImagenAmpliable src={imageUrl} alt="Imagen del comunicado" className="mt-2.5 block w-full overflow-hidden rounded-2xl border border-line">
               <Image src={imageUrl} alt="Imagen del comunicado" width={800} height={400} className="w-full object-cover" />
-            </a>
+            </ImagenAmpliable>
           ) : null}
           {action ? <div className="mt-2.5">{action}</div> : null}
         </div>

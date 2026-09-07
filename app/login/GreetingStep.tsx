@@ -34,7 +34,8 @@ export function GreetingStep({
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: -48 }}
       transition={{ duration: 0.48, ease: [0.22, 1, 0.36, 1] }}
-      className="flex min-h-screen flex-col items-center px-5 pb-10 pt-16"
+      className="pt-safe flex min-h-screen flex-col items-center px-5 pb-10"
+      style={{ ["--pt-safe-base" as string]: "4rem" }}
     >
       {/* Iniciales con glow.
           NO se muestra la foto: este saludo se pinta SIN sesión, así que la foto
