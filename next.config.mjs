@@ -51,10 +51,31 @@ const frameSrc = ["'self'", retoolOrigin].filter(Boolean).join(" ");
 // sin recibir un arreglo ya desplegado.
 const buildId = process.env.BUILD_ID ?? Date.now().toString(36);
 
+/**
+ * ⚠️ **Solo el despliegue puede saltarse lint y tipos, y solo porque la CI ya
+ * los corrió sobre ESTE MISMO commit.**
+ *
+ * Medido: de 64 s de build, 19 s son «Linting and checking validity of types» —
+ * casi un tercio. Y es trabajo repetido: el preflight del despliegue **exige**
+ * CI verde del mismo SHA, y esa CI ya pasó `tsc --noEmit` y
+ * `eslint . --max-warnings 0` completos. El servidor los rehace, y encima es la
+ * máquina más lenta de las tres.
+ *
+ * ⚠️ **Por defecto NO se salta nada.** Un `pnpm build` en cualquier otro sitio
+ * sigue comprobando: la bandera la pone `deploy-release.sh`, que es el único
+ * camino que tiene la garantía. Al revés --apagarlo siempre y confiar en que
+ * alguien mire la CI-- es como se cuela un error de tipos a producción.
+ *
+ * Si algún día el despliegue dejara de exigir CI verde, esto tiene que volver.
+ */
+const ciYaVerifico = process.env.CLARVEX_CI_VERIFICADA === "1";
+
 const nextConfig = {
   reactStrictMode: true,
   generateBuildId: () => buildId,
   env: { NEXT_PUBLIC_BUILD_ID: buildId },
+  typescript: { ignoreBuildErrors: ciYaVerifico },
+  eslint: { ignoreDuringBuilds: ciYaVerifico },
 
   // URL limpia para el manual de uso (archivo estático en /public/manual.html).
   async rewrites() {
