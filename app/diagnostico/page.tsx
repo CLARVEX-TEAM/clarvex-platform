@@ -96,6 +96,23 @@ export default function DiagnosticoPush() {
         bien: candadoActivado()
       },
       {
+        /*
+         * ⚠️ Lo que vio el guion de arranque, ANTES de que React montara nada.
+         * Es la ÚNICA forma de saber si el puente de Capacitor llegó tarde:
+         * mirarlo más adelante --como hacen todas las filas de arriba-- siempre
+         * dice que sí, porque para entonces ya está. Ese desfase es lo que dejó
+         * el candado sin pedir la huella con todo lo demás en verde.
+         */
+        que: "Arranque · puente / nativo / candado",
+        valor: (() => {
+          const a = (window as unknown as { __clarvexArranque?: { puente: boolean; nativo: boolean; candado: boolean } })
+            .__clarvexArranque;
+          if (!a) return "el guion no corrió";
+          return `${a.puente ? "sí" : "NO"} / ${a.nativo ? "sí" : "NO"} / ${a.candado ? "sí" : "no"}`;
+        })(),
+        bien: null
+      },
+      {
         // Lo que decidió el guion de arranque, ANTES del primer pintado. Si dice
         // «no» con el candado activado, el velo se quedaria oculto por CSS.
         que: "Candado · marca de arranque",

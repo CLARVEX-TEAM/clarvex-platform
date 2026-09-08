@@ -163,3 +163,29 @@ test("al volver a la app se relee la preferencia, no la del montaje", () => {
     "el oyente vuelve a decidir al montar en vez de al volver"
   );
 });
+
+test("no se da por vencido a la primera si el puente aun no llego", () => {
+  /*
+   * ⚠️ El puente de Capacitor se inyecta al arrancar el documento, pero si el
+   * WebView del telefono no admite ese enganche llega DESPUES de que React
+   * monte. Preguntar una sola vez y concluir «no hay contenedor» dejaba el
+   * candado sin pedir la huella NUNCA --con el interruptor encendido y todo
+   * verde en el diagnostico, porque para cuando se mira el puente ya llego.
+   *
+   * Aqui si toca sondear en vez de esperar un evento: la llegada del puente no
+   * dispara ninguno. Pero ACOTADO, porque en un navegador no va a llegar nunca.
+   */
+  const fuente = readFileSync(join(raiz, "components", "CandadoHuella.tsx"), "utf8");
+  assert.match(fuente, /ESPERA_PUENTE_MS/, "no espera al puente");
+  assert.doesNotMatch(
+    fuente,
+    /useEffect\(\(\) => \{\n    if \(!enContenedorNativo\(\)\) \{\n      setEstado\("abierto"\);/,
+    "vuelve a rendirse a la primera si el puente no ha llegado"
+  );
+
+  const espera = /const ESPERA_PUENTE_MS = ([\d_]+)/.exec(fuente);
+  assert.ok(espera, "no se encontró la espera");
+  const ms = Number(espera[1].replace(/_/g, ""));
+  // Ni cero --no serviría de nada-- ni tanto que un navegador se quede mirando.
+  assert.ok(ms >= 1_000 && ms <= 10_000, `espera fuera de rango: ${ms}`);
+});
