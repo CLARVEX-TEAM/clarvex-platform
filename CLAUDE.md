@@ -1,5 +1,171 @@
 # Clarvex Team — CLAUDE.md
 
+## La app debajo de las barras, y el aviso de actualización — 7 de septiembre de 2026
+
+El gerente reportó tres cosas usando la app. Las dos primeras son el mismo fallo
+visto por sus dos extremos; la tercera destapó que el mecanismo de actualización
+nunca se había ejecutado contra un teléfono.
+
+Desplegado en `6a78315`, `8240471` y `5bb0c67`. APK **1.3 (versionCode 4)**
+publicada en el manifiesto del servidor y comprobada instalándola.
+
+### ⚠️ En Android, `env(safe-area-inset-*)` NO cubre las barras del sistema
+
+Solo reporta el recorte de la pantalla --la muesca de la cámara--, **nunca** la
+barra de estado ni la de navegación. En iOS y en la PWA de Chrome vale; dentro
+del WebView de la app vale **cero**.
+
+Las utilidades `.pt-safe` y `.top-safe` ya existían y ya estaban puestas en
+todas las cabeceras: no había nada mal escrito, simplemente no medían nada. Con
+`targetSdk 35`, desde Android 15 la app va de borde a borde por obligación, así
+que el hueco que antes ponía el sistema desapareció y los títulos quedaron bajo
+el reloj y la barra de la app encima de la barrita de gestos, donde el gesto de
+volver al inicio se come los toques de las pestañas.
+
+**Es la misma web con y sin fallo según el envoltorio**, y por eso costó verlo.
+
+Ahora las medidas vienen de cuatro variables --`--safe-top`, `--safe-bottom`,
+`--safe-left` y `--safe-right`-- que rellena `BarrasDelSistema.java`, en
+`clarvex-movil`. Donde nadie las rellena se quedan con `env()` de respaldo, así
+que el navegador, la PWA y una versión vieja de la app se comportan igual que
+antes: se puede desplegar la web antes que el APK.
+
+⚠️ **La barra inferior y el hueco de `AppFrame` suben JUNTOS.** Subir solo la
+barra la deja tapando el último renglón de cada pantalla.
+
+⚠️ **`.pt-safe` SUSTITUYE el `padding-top`, no lo suma.** Ponerla sobre algo que
+ya tenía `pt-16` se lleva por delante esa separación; para conservarla va
+`--pt-safe-base` en el `style`, como hacen `AppHeader`, `HomeHeader` y
+`CabeceraChat`.
+
+#### Por qué no se usa `adjustMarginsForEdgeToEdge` de Capacitor
+
+Encoge el WebView hasta dejarlo entre las barras, y es una sola línea de
+configuración. Se probó y **se descartó**: deja dos franjas sólidas pintadas con
+el fondo de la VENTANA, y esta app elige claro/oscuro **por dentro**, con un
+interruptor propio que puede no coincidir con el de Android. Quien tuviera la
+app en claro y el teléfono en oscuro vería dos bandas negras. Publicando las
+medidas, la web sigue pintando de borde a borde con **su** fondo.
+
+⚠️ **Y su valor por omisión es `"disable"`, no `"auto"`.** La documentación de
+Capacitor dice que faltando la opción se comprueba Android 15; su
+`CapConfig.java` dice lo contrario. Sin esa línea no se ajusta nada, y el
+síntoma parece un problema de CSS nuestro.
+
+⚠️ **Solo viajan ENTEROS del Java al WebView.** `String.format` usa la
+configuración regional del teléfono y en español escribe `11,6`, que CSS
+descarta sin decir nada: el fallo habría salido solo en los teléfonos de la
+tienda y jamás en una prueba en inglés. La división se hace en JavaScript.
+
+⚠️ **El oyente de insets va en la RAÍZ, no en el WebView.** Puesto en el WebView
+se sustituye su propio reparto, y con él se pierde el recorte de pantalla que sí
+sabe usar por su cuenta.
+
+⚠️ **Y hay que volver a publicarlas en cada carga.** Los insets se avisan cuando
+CAMBIAN --al girar el teléfono, al entrar en multiventana--, no al cargar una
+página. Una recarga estrenaba un documento sin las variables.
+
+### ⚠️ Un `target="_blank"` SACA de la app
+
+En el WebView no hay pestañas, así que Android se lo pasa a Chrome. Tocar el
+flyer de un comunicado sacaba de la app, y volver significaba buscarla entre las
+aplicaciones abiertas.
+
+Comunicados, evidencias, faltantes y las páginas del checklist colgaban de ahí.
+El chat **no** lo sufría porque ya tenía visor propio, y es ese el que se
+reutiliza mediante `ImagenAmpliable`, en `components/VisorImagen.tsx`. Los
+enlaces a PDF y los enlaces del chat se quedan como están: ahí salir al
+navegador es lo correcto.
+
+⚠️ **El botón físico de atrás tiene que cerrar el VISOR, no la pantalla.** Se
+apila una parada de historial al abrirlo. El efecto que la apila va SIN
+dependencias: quien monta el visor pasa `onClose` como función anónima, así que
+cambia en cada pintado, y con la dependencia se apilaría una parada por pintado.
+
+### ⚠️ Un componente del layout raíz se ejecuta UNA VEZ por documento
+
+`app/layout.tsx` no se vuelve a montar en una navegación de cliente. Un
+`useEffect(..., [])` de ahí dentro corre una sola vez y su respuesta queda
+congelada para toda la vida del documento.
+
+**Esto ya ha pasado DOS veces, con dos componentes hermanos:**
+
+| Componente | Qué se perdía |
+|---|---|
+| `PwaRegister` | el token del aparato, conseguido en `/login` y rechazado con 401 |
+| `ActualizacionApp` | el aviso de versión nueva, contestado antes de publicarla |
+
+Se arregló el primero el 6 de septiembre y **no el segundo**, que se había
+escrito el mismo día. El 7 se publicó la 1.3 con la app abierta y no se la
+ofreció a nadie: el manifiesto anunciaba la 2, el teléfono tenía la 3, «al día»,
+y la 4 se publicó después.
+
+⚠️ **Y lo del layout raíz monta también en `/login`**, donde todavía no hay
+sesión. Un endpoint que la exija devuelve **401**, y como el login navega con
+`router.replace` --navegación de cliente-- no hay remonte ni segunda
+oportunidad. **401 es «todavía no sé», no «no hay nada»**; cualquier otro
+rechazo sí es definitivo, porque repetir un 500 en cada pantalla no lo arregla.
+
+La regla para lo próximo que se monte ahí: **reintentar por EVENTO** --cambio de
+pantalla mientras falte respuesta, y regreso a la app--, nunca por temporizador,
+que gastaría batería sin ninguna señal de que algo haya cambiado.
+
+### El aviso de actualización, probado por fin contra un teléfono
+
+Estaba escrito entero y **nunca se había ejecutado de punta a punta**. La primera
+actualización real destapó dos fallos más:
+
+⚠️ **El enlace de descarga tiene que ser ABSOLUTO.** El manifiesto lo entrega
+relativo --`/api/app/apk?t=…`--, que es lo natural en la web, pero quien descarga
+no es el WebView: es `Actualizador.java`, con `new URL(url)`. Sin esquema lanza
+`MalformedURLException: no protocol`, y el mensaje sale en rojo dentro de la
+tarjeta **con el token entero a la vista**.
+
+Se resuelve en la WEB (`urlAbsolutaDeDescarga`) y no en el plugin ni en el
+servidor: el plugin ya viaja dentro de los APK repartidos y no se puede cambiar
+sin repartir otro; y el origen del WebView es de donde se cargó la app, que es
+exactamente el servidor que firmó el token.
+
+⚠️ **`REQUEST_INSTALL_PACKAGES` se concede FUERA de la app.** Al volver de los
+ajustes, la tarjeta seguía diciendo «Abrir ajustes de Android» con el permiso ya
+dado: nada lo volvía a mirar, y había que cerrar la app entera.
+
+⚠️ **Tras concederlo hay que pedir un enlace NUEVO.** El token dura diez minutos,
+y entre ir a los ajustes, buscar Clarvex en la lista y volver se puede pasar: sin
+eso el permiso queda bien y la descarga falla con un **401 que no dice nada de un
+token caducado**.
+
+⚠️ **Nunca se vuelve a preguntar a media descarga**, ni forzando. La respuesta
+reescribe el estado de la tarjeta y la barra de progreso desaparecería con el
+archivo a medias. La guarda va lo PRIMERO en `hayQueMirar` justamente por eso.
+
+⚠️ **Nada de esto se ve fallar.** No hay pantalla de error ni línea de registro:
+la persona no ve nada, exactamente igual que cuando de verdad no hay versión
+nueva. Los dos casos son indistinguibles desde fuera, y por eso lleva pruebas.
+
+### Publicar una versión nueva de la app
+
+El APK vive fuera del repositorio, en `compartido/apk/`. Lo compila Actions
+(`apk.yml`) y se firma con la llave de los secretos: **la huella tiene que seguir
+siendo `87:58:A3:26:…`**, que es la de `assetlinks.json` y la que permite
+instalar encima sin desinstalar ni perder la sesión.
+
+⚠️ **El archivo PRIMERO, el manifiesto DESPUÉS.** Al revés, el manifiesto
+apuntaría un instante a algo que no existe y la app diría «no se pudo descargar».
+
+⚠️ **El manifiesto se cambia con `mv`, nunca escribiéndolo en su sitio.** Los dos
+workers de PM2 lo leen, y a medio escribir uno se encuentra un JSON partido.
+
+⚠️ **Subir el `versionCode`.** Android no reemplaza una versión por otra con el
+mismo código, y el aviso compara ese entero. Olvidarlo es un fallo mudo.
+
+⚠️ **Comprobar el SHA-256 EN EL SERVIDOR** antes de que el manifiesto lo apunte,
+subiéndolo con otro nombre. Es lo que la app compara antes de instalar.
+
+⚠️ **El aviso solo lo ve quien YA tiene la app.** `/api/app/version` exige sesión
+y `ActualizacionApp` solo se pinta dentro del contenedor nativo: la PRIMERA
+instalación sigue siendo a mano.
+
 ## POS: relectura y diagnóstico privado de rechazos — 6 de septiembre de 2026
 
 Estado: implementado y probado LOCALMENTE en `fix/pos-devoluciones-relectura`,
