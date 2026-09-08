@@ -189,3 +189,34 @@ test("no se da por vencido a la primera si el puente aun no llego", () => {
   // Ni cero --no serviría de nada-- ni tanto que un navegador se quede mirando.
   assert.ok(ms >= 1_000 && ms <= 10_000, `espera fuera de rango: ${ms}`);
 });
+
+test("espera al PLUGIN, no solo al contenedor", () => {
+  /*
+   * ⚠️ Medido en un teléfono: el contenedor decía «listo» a los **0 ms** y el
+   * plugin todavía no estaba, porque `PluginHeaders` --la lista que consulta
+   * `isPluginAvailable`-- la inyecta Capacitor en un guion aparte que llega
+   * después. La traza real fue:
+   *
+   *     contenedor listo tras 0 ms
+   *     sin plugin Biometria -> abierto
+   *
+   * ...y un segundo más tarde el plugin ya estaba. Esperar solo al contenedor
+   * no arregla nada: ese nunca es el que falta.
+   */
+  const fuente = readFileSync(join(raiz, "components", "CandadoHuella.tsx"), "utf8");
+
+  // La condición de espera tiene que incluir el plugin.
+  assert.match(
+    fuente,
+    /const bio = enContenedorNativo\(\) \? biometriaNativa\(\) : null;/,
+    "la espera no mira el plugin"
+  );
+  // Y no puede volver a rendirse en cuanto el contenedor diga que sí.
+  assert.doesNotMatch(
+    fuente,
+    /if \(!enContenedorNativo\(\)\) \{\n        if \(esperado >= ESPERA_PUENTE_MS\)/,
+    "vuelve a esperar solo al contenedor"
+  );
+  // Y al volver de segundo plano se recupera si la ventana de arranque falló.
+  assert.match(fuente, /al volver: plugin recuperado/, "no reintenta conseguir el plugin al volver");
+});

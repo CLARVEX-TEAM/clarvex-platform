@@ -112,10 +112,28 @@ export function CandadoHuella() {
     const intentar = () => {
       if (cancelado) return;
 
-      if (!enContenedorNativo()) {
+      /*
+       * ⚠️ **Se espera al PLUGIN, no al contenedor.** La primera version de
+       * esta espera preguntaba solo por `enContenedorNativo()`, y ese ya decia
+       * que si a los 0 ms: el nucleo del puente se inyecta enseguida. Lo que
+       * llega DESPUES es `PluginHeaders`, la lista de lo que el binario trae de
+       * verdad, que Capacitor manda en un guion aparte -- y es justo lo que
+       * consulta `isPluginAvailable`. Resultado medido en un telefono:
+       *
+       *   contenedor listo tras 0 ms
+       *   sin plugin Biometria -> abierto
+       *
+       * ...y un segundo despues el plugin estaba disponible. El candado se
+       * abria para siempre por unos milisegundos de diferencia, y todo lo que
+       * se mirara luego decia que estaba bien.
+       */
+      const bio = enContenedorNativo() ? biometriaNativa() : null;
+      if (!bio) {
         if (esperado >= ESPERA_PUENTE_MS) {
-          // Ya no va a llegar: esto es un navegador o la PWA.
-          traza(`sin contenedor tras ${esperado} ms -> abierto`);
+          // Ya no va a llegar: un navegador, la PWA, o una versión de la app
+          // que no trae el plugin. No se tapa nada: dejarlo cerrado sin poder
+          // abrirlo encerraría a la persona fuera.
+          traza(`sin plugin tras ${esperado} ms (contenedor=${enContenedorNativo()}) -> abierto`);
           setEstado("abierto");
           return;
         }
@@ -124,19 +142,11 @@ export function CandadoHuella() {
         return;
       }
 
-      arrancar();
+      arrancar(bio);
     };
 
-    const arrancar = () => {
-      traza(`contenedor listo tras ${esperado} ms`);
-      const bio = biometriaNativa();
-      // Una versión de la app sin el plugin: no se tapa nada. Dejarlo cerrado
-      // sin poder abrirlo encerraría a la persona fuera.
-      if (!bio) {
-        traza("sin plugin Biometria -> abierto");
-        setEstado("abierto");
-        return;
-      }
+    const arrancar = (bio: PluginBiometria) => {
+      traza(`plugin listo tras ${esperado} ms`);
       /*
        * ⚠️ **La referencia se guarda SIEMPRE, también con el candado apagado.**
        * Antes solo se guardaba si ya estaba encendido al abrir la app, así que
@@ -195,6 +205,17 @@ export function CandadoHuella() {
        * nada. Por el mismo motivo la comprobación del plugin vive aquí dentro y
        * no en el cuerpo del efecto.
        */
+      // ⚠️ Si la ventana de arranque se quedó sin plugin, se vuelve a pedir
+      // aquí: para cuando la persona regresa a la app, `PluginHeaders` lleva
+      // rato puesto. Sin esto, un arranque desafortunado dejaba el candado
+      // muerto hasta cerrar la app del todo.
+      if (!plugin.current) {
+        const recuperado = biometriaNativa();
+        if (recuperado) {
+          plugin.current = recuperado;
+          traza("al volver: plugin recuperado");
+        }
+      }
       if (!plugin.current || !candadoActivado()) {
         traza(`al volver: plugin=${Boolean(plugin.current)} candado=${candadoActivado()} -> nada`);
         return;
