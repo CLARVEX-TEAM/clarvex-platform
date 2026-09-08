@@ -284,8 +284,14 @@ export default function ComunicadosPage() {
             </div>
             {/* ⚠️ Se dice aquí, no en el código: lo que sale del correo hay que
                 mirarlo antes de mandárselo a toda la tienda. */}
+            {/* ⚠️ Se nombra el CÓDIGO aparte cuando lo hay. Un dígito de menos
+                pasa desapercibido al leer por encima y se descubre en la caja,
+                con el cliente delante: pasó en la primera prueba con un correo
+                real, donde se perdió el último dígito de `750300002142`. */}
             <p className="text-[11px] leading-4 text-muted">
-              Revisa la vigencia y las restricciones antes de publicar.
+              {borradorPromo.body.includes("Código:")
+                ? "Revisa la vigencia, las restricciones y sobre todo el código: compáralo dígito por dígito con el correo."
+                : "Revisa la vigencia y las restricciones antes de publicar."}
             </p>
             <button
               type="button"
