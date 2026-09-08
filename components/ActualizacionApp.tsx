@@ -215,7 +215,7 @@ export function ActualizacionApp() {
   return (
     <div
       data-transient
-      className="fixed bottom-20 left-4 right-4 z-50 rounded-2xl border border-volt/30 bg-panel px-4 py-3 shadow-lg"
+      className="fixed bottom-[calc(5rem+var(--safe-bottom))] left-4 right-4 z-50 rounded-2xl border border-volt/30 bg-panel px-4 py-3 shadow-lg"
     >
       <div className="flex items-start gap-3">
         <span className="mt-0.5 grid size-9 shrink-0 place-items-center rounded-2xl bg-volt/12 text-volt">

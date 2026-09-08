@@ -56,6 +56,9 @@ export function CandadoHuella() {
   const [motivo, setMotivo] = useState("");
   const plugin = useRef<PluginBiometria | null>(null);
   const salioEn = useRef<number | null>(null);
+  // El oyente de visibilidad se registra una vez y no ve el estado de React.
+  const estadoRef = useRef<Estado>("comprobando");
+  estadoRef.current = estado;
 
   const pedir = useCallback(async () => {
     const bio = plugin.current;
@@ -205,6 +208,19 @@ export function CandadoHuella() {
        * nada. Por el mismo motivo la comprobación del plugin vive aquí dentro y
        * no en el cuerpo del efecto.
        */
+      /*
+       * ⚠️ **Si el velo ya está puesto, no se pide nada más.** Un candado
+       * cerrado ya tiene su botón de «Desbloquear»; volver a lanzar el diálogo
+       * cada vez que la app reaparece --el teclado, un gesto, un aviso del
+       * sistema-- es lo que se siente como «me la pide al cambiar de pantalla».
+       * Solo se pregunta desde «abierto», que es el único estado donde tiene
+       * sentido volver a cerrar.
+       */
+      if (estadoRef.current !== "abierto") {
+        traza(`al volver: ya estaba en «${estadoRef.current}» -> no se vuelve a pedir`);
+        return;
+      }
+
       // ⚠️ Si la ventana de arranque se quedó sin plugin, se vuelve a pedir
       // aquí: para cuando la persona regresa a la app, `PluginHeaders` lleva
       // rato puesto. Sin esto, un arranque desafortunado dejaba el candado
@@ -222,7 +238,17 @@ export function CandadoHuella() {
       }
       const toca = hayQueVolverAPedir(salioEn.current);
       traza(`al volver: salio hace ${salioEn.current ? Date.now() - salioEn.current : "nunca"} ms, toca=${toca}`);
-      if (toca) void pedir();
+      if (!toca) return;
+      /*
+       * ⚠️ **El tiempo fuera se CONSUME al decidir, no al acertar.** Antes solo
+       * se borraba cuando la huella salía bien, así que quien cancelara una vez
+       * quedaba con la marca vieja puesta: cada regreso a la app volvía a
+       * pasar el umbral y volvía a pedirla, sin haber salido de nuevo. Un
+       * cancelado deja el velo puesto --que es lo correcto, hay que
+       * desbloquear-- pero no rearma la cuenta.
+       */
+      salioEn.current = null;
+      void pedir();
     };
     document.addEventListener("visibilitychange", alCambiar);
     return () => document.removeEventListener("visibilitychange", alCambiar);

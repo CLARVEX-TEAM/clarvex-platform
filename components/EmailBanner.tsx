@@ -92,7 +92,7 @@ export function EmailBanner() {
   if (!visible) return null;
 
   return (
-    <div className="pointer-events-none fixed inset-x-0 z-[190] flex justify-center px-3 bottom-[calc(84px+env(safe-area-inset-bottom))] lg:bottom-6 lg:justify-end lg:px-6">
+    <div className="pointer-events-none fixed inset-x-0 z-[190] flex justify-center px-3 bottom-[calc(84px+var(--safe-bottom))] lg:bottom-6 lg:justify-end lg:px-6">
       {/* `desk-adopt`: el aviso vive en el layout raíz, fuera del subárbol
           [data-surface="desk"]. Sin esta clase se pintaría con la paleta del
           móvil encima del lienzo del escritorio (ver desktop.css). */}
