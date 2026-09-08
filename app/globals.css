@@ -67,6 +67,19 @@
   top: var(--safe-top);
 }
 
+/* El velo del candado de huella.
+   ⚠️ **Nace oculto y lo enseña el guion de arranque**, no React. Su estado
+   inicial no puede saber si el candado hace falta --eso vive en localStorage y
+   en el puente nativo-- así que el velo se pintaba SIEMPRE durante un instante,
+   tambien en el navegador y en la PWA, donde no hay candado ninguno. Es el
+   mismo problema del parpadeo del tema y se resuelve igual. */
+.candado-pantalla {
+  display: none;
+}
+html[data-candado="1"] .candado-pantalla {
+  display: flex;
+}
+
 html {
   background: var(--bg);
   overscroll-behavior: none;

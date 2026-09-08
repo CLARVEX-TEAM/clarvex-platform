@@ -62,13 +62,26 @@ export function CandadoHuella() {
       return;
     }
     const bio = biometriaNativa();
-    // Una versión de la app sin el plugin, o el candado apagado: no se tapa
-    // nada. Dejarlo cerrado sin poder abrirlo encerraría a la persona fuera.
-    if (!bio || !candadoActivado()) {
+    // Una versión de la app sin el plugin: no se tapa nada. Dejarlo cerrado sin
+    // poder abrirlo encerraría a la persona fuera.
+    if (!bio) {
       setEstado("abierto");
       return;
     }
+    /*
+     * ⚠️ **La referencia se guarda SIEMPRE, también con el candado apagado.**
+     * Antes solo se guardaba si ya estaba encendido al abrir la app, así que
+     * quien lo activaba desde Perfil se quedaba sin oyente: el candado no hacía
+     * absolutamente nada hasta cerrar la app del todo, y sin decirlo. El layout
+     * raíz no se vuelve a montar en una navegación de cliente, así que no había
+     * segunda oportunidad en toda la sesión.
+     */
     plugin.current = bio;
+
+    if (!candadoActivado()) {
+      setEstado("abierto");
+      return;
+    }
 
     void (async () => {
       const { puede } = await bio.disponible();
@@ -85,24 +98,49 @@ export function CandadoHuella() {
 
   // Volver a pedirlo al regresar de segundo plano, con un minuto de gracia.
   useEffect(() => {
-    if (!plugin.current) return;
     const alCambiar = () => {
       if (document.visibilityState === "hidden") {
         salioEn.current = Date.now();
         return;
       }
+      /*
+       * ⚠️ **La preferencia se lee AHORA, no al montar.** Se puede haber
+       * encendido --o apagado-- desde Perfil sin que la app se reinicie, y
+       * decidirlo al montar es justo lo que hacía que activarlo no sirviera de
+       * nada. Por el mismo motivo la comprobación del plugin vive aquí dentro y
+       * no en el cuerpo del efecto.
+       */
+      if (!plugin.current || !candadoActivado()) return;
       if (hayQueVolverAPedir(salioEn.current)) void pedir();
     };
     document.addEventListener("visibilitychange", alCambiar);
     return () => document.removeEventListener("visibilitychange", alCambiar);
   }, [pedir]);
 
+  /*
+   * ⚠️ **En un navegador la pantalla del candado se veía un instante.** El
+   * estado nace en «comprobando», que no es «abierto», así que el velo se
+   * pintaba ANTES de que el efecto pudiera mirar si hacía falta: en Brave o en
+   * la PWA aparecía el candado y se quitaba solo. Quien lo viera pensaría que la
+   * app se cuelga al abrir.
+   *
+   * Quien decide antes del primer pintado es el guion de arranque de
+   * `app/layout.tsx`, igual que con el tema; el CSS mantiene el velo oculto
+   * mientras no lo confirme. Aquí solo se pone al día para las veces
+   * siguientes --volver de segundo plano-- y NUNCA desde «comprobando», que es
+   * lo que devolvería el destello por la puerta de atrás.
+   */
+  useEffect(() => {
+    if (estado === "comprobando") return;
+    document.documentElement.dataset.candado = estado === "abierto" ? "0" : "1";
+  }, [estado]);
+
   if (estado === "abierto") return null;
 
   return (
     <div
       data-transient
-      className="fixed inset-0 z-[100] flex flex-col items-center justify-center gap-6 bg-panel px-8"
+      className="candado-pantalla fixed inset-0 z-[100] flex-col items-center justify-center gap-6 bg-panel px-8"
     >
       <span className="grid size-20 place-items-center rounded-full bg-volt/12 text-volt">
         {estado === "pidiendo" ? <Fingerprint size={36} /> : <Lock size={32} />}

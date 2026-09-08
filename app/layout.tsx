@@ -80,11 +80,34 @@ var d=t==='dark'||((t==='system'||t===null||t===undefined)&&window.matchMedia('(
 if(d)document.documentElement.classList.add('dark');
 }catch(e){}})();`;
 
+/**
+ * Decide si hay que tapar la app con el candado, ANTES del primer pintado.
+ *
+ * ⚠️ **Sin esto el candado parpadea en el navegador.** `CandadoHuella` no puede
+ * saber en su estado inicial si hace falta --depende de `localStorage` y de que
+ * exista el puente nativo, y las dos cosas son de cliente-- asi que pintaba el
+ * velo siempre durante un instante. En Brave y en la PWA aparecia el candado y
+ * se quitaba solo, que se lee como que la app se cuelga al abrir.
+ *
+ * Las dos condiciones se comprueban aqui igual que en el componente:
+ * `isNativePlatform()` del puente de Capacitor y la misma clave de
+ * `lib/candado-huella.ts`. Si divergen, vuelve el parpadeo o --peor-- el velo
+ * se queda puesto donde no toca.
+ */
+const CANDADO_SCRIPT = `(function(){try{
+var c=window.Capacitor;
+if(c&&typeof c.isNativePlatform==='function'&&c.isNativePlatform()===true
+   &&localStorage.getItem('clarvex-candado-huella')==='1'){
+  document.documentElement.dataset.candado='1';
+}
+}catch(e){}})();`;
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="es" suppressHydrationWarning className={geist.variable}>
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
+        <script dangerouslySetInnerHTML={{ __html: CANDADO_SCRIPT }} />
       </head>
       <body>
         <ThemeProvider>

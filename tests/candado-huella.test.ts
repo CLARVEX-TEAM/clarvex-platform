@@ -89,3 +89,77 @@ test("la gracia es de un minuto, ni cero ni eterna", () => {
   // abierto en el mostrador toda la comida.
   assert.ok(GRACIA_MS >= 30_000 && GRACIA_MS <= 300_000, `gracia fuera de rango: ${GRACIA_MS}`);
 });
+
+/*
+ * Las cuatro de abajo son de CABLEADO, no de lógica, y por eso miran la fuente:
+ * los dos fallos que cubren se reportaron desde un teléfono y ninguno daba
+ * error. Uno pintaba el candado un instante en el navegador --donde no hay
+ * candado ninguno-- y el otro dejaba el candado encendido sin hacer nada.
+ */
+
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
+const raiz = join(__dirname, "..");
+const leer = (ruta: string) => readFileSync(join(raiz, ruta), "utf8");
+
+test("el velo nace OCULTO y solo lo enseña el atributo del arranque", () => {
+  // ⚠️ El estado inicial de React no puede saber si el candado hace falta: eso
+  // vive en localStorage y en el puente nativo. Sin esta regla, el velo se
+  // pinta SIEMPRE un instante, tambien en Brave y en la PWA.
+  const css = leer("app/globals.css");
+  assert.match(css, /\.candado-pantalla\s*\{\s*display:\s*none;?\s*\}/, "el velo no nace oculto");
+  assert.match(
+    css,
+    /html\[data-candado="1"\]\s+\.candado-pantalla\s*\{\s*display:\s*flex;?\s*\}/,
+    "nada lo vuelve a enseñar"
+  );
+
+  // Y la clase de Tailwind `flex` NO puede estar en el elemento: pondria
+  // `display:flex` con la misma especificidad y anularia el ocultado.
+  const componente = leer("components/CandadoHuella.tsx");
+  const velo = /className="candado-pantalla[^"]*"/.exec(componente);
+  assert.ok(velo, "el velo no lleva la clase que lo oculta");
+  assert.doesNotMatch(velo[0], /\bflex\b(?!-)/, "`flex` de Tailwind anula el ocultado del velo");
+});
+
+test("el guion de arranque y el componente usan la MISMA clave", () => {
+  // Si divergen vuelve el parpadeo, o peor: el velo se queda puesto donde no
+  // toca y no hay forma de quitarlo desde dentro.
+  const clave = /const CLAVE = "([^"]+)"/.exec(leer("lib/candado-huella.ts"));
+  assert.ok(clave, "no se encontró la clave del candado");
+  assert.ok(
+    leer("app/layout.tsx").includes(`localStorage.getItem('${clave[1]}')`),
+    `el guion de arranque no lee ${clave[1]}`
+  );
+});
+
+test("la referencia al plugin se guarda ANTES de mirar la preferencia", () => {
+  /*
+   * ⚠️ Este es el fallo reportado: guardarla solo cuando el candado ya estaba
+   * encendido dejaba sin oyente a quien lo activara desde Perfil, asi que el
+   * candado no hacia NADA hasta cerrar la app del todo. El layout raiz no se
+   * remonta, o sea que no habia segunda oportunidad en toda la sesion.
+   */
+  const fuente = leer("components/CandadoHuella.tsx");
+  const posPlugin = fuente.indexOf("plugin.current = bio;");
+  const posPref = fuente.indexOf("if (!candadoActivado())");
+  assert.ok(posPlugin > 0 && posPref > 0, "no se encontraron las dos lineas");
+  assert.ok(
+    posPlugin < posPref,
+    "la preferencia se mira antes de guardar el plugin: activarlo desde Perfil no servira de nada"
+  );
+});
+
+test("al volver a la app se relee la preferencia, no la del montaje", () => {
+  // Se puede haber encendido o apagado desde Perfil sin reiniciar la app.
+  const fuente = leer("components/CandadoHuella.tsx");
+  const oyente = /const alCambiar = \(\) => \{[\s\S]*?\n {4}\};/.exec(fuente);
+  assert.ok(oyente, "no se encontró el oyente de visibilidad");
+  assert.match(oyente[0], /candadoActivado\(\)/, "el oyente no relee la preferencia");
+  assert.doesNotMatch(
+    fuente,
+    /useEffect\(\(\) => \{\n    if \(!plugin\.current\) return;/,
+    "el oyente vuelve a decidir al montar en vez de al volver"
+  );
+});
