@@ -37,6 +37,17 @@ export default function ComunicadosPage() {
   const [generatingAnnouncement, setGeneratingAnnouncement] = useState(false);
   const [announcementPrompt, setAnnouncementPrompt] = useState("");
   const [showAnnouncementPrompt, setShowAnnouncementPrompt] = useState(false);
+  /*
+   * El comunicado que el bot dejó redactado a partir del correo de promociones
+   * del corporativo.
+   *
+   * ⚠️ **Se OFRECE, no se aplica solo.** Llenar el formulario sin que nadie lo
+   * pida haría que un borrador viejo pisara lo que la persona estuviera
+   * escribiendo. Y sobre todo: entre leer el correo y publicarlo a toda la
+   * tienda tiene que haber una persona mirando, porque una restricción mal
+   * leída aquí se convierte en un precio equivocado en el mostrador.
+   */
+  const [borradorPromo, setBorradorPromo] = useState<{ id: string; title: string; body: string } | null>(null);
 
   async function handleGenerateAnnouncement() {
     if (!announcementPrompt.trim()) return;
@@ -59,6 +70,31 @@ export default function ComunicadosPage() {
     } finally {
       setGeneratingAnnouncement(false);
     }
+  }
+
+  useEffect(() => {
+    if (session?.role === "ASESOR") return;
+    fetch("/api/promos/borrador")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => setBorradorPromo(d?.borrador ?? null))
+      // Es accesorio: si no se puede pedir, la pantalla funciona igual.
+      .catch(() => undefined);
+  }, [session?.role]);
+
+  async function usarBorradorPromo() {
+    if (!borradorPromo) return;
+    setTitle(borradorPromo.title);
+    setBody(borradorPromo.body);
+    setBorradorPromo(null);
+    // ⚠️ Se marca usado DESPUÉS de llenar el formulario. Al revés, un fallo de
+    // red dejaría el borrador cerrado y el formulario vacío: el correo se
+    // habría perdido y no habría forma de recuperarlo desde la app.
+    await fetch("/api/promos/borrador", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: borradorPromo.id })
+    }).catch(() => undefined);
+    toast("Comunicado cargado. Revisa la vigencia y las restricciones antes de publicar.", "success");
   }
 
   const load = useCallback(
@@ -232,6 +268,34 @@ export default function ComunicadosPage() {
         </div>
 
         {!data ? <div className="mb-3 space-y-2.5"><Skeleton className="h-28 rounded-[28px]" /><Skeleton className="h-40 rounded-[28px]" /></div> : null}
+
+        {borradorPromo ? (
+          <Card className="mb-3 border-volt/40 bg-volt/[0.06] space-y-2.5">
+            <div className="flex items-start gap-2.5">
+              <span className="mt-0.5 grid size-9 shrink-0 place-items-center rounded-2xl bg-volt/15 text-volt">
+                <Sparkles size={17} />
+              </span>
+              <div className="min-w-0 flex-1">
+                <h2 className="font-semibold text-ink">Llegó una promoción</h2>
+                <p className="mt-0.5 text-xs text-muted">
+                  Del correo del corporativo, ya redactada: <span className="font-semibold text-ink">{borradorPromo.title}</span>
+                </p>
+              </div>
+            </div>
+            {/* ⚠️ Se dice aquí, no en el código: lo que sale del correo hay que
+                mirarlo antes de mandárselo a toda la tienda. */}
+            <p className="text-[11px] leading-4 text-muted">
+              Revisa la vigencia y las restricciones antes de publicar.
+            </p>
+            <button
+              type="button"
+              onClick={() => void usarBorradorPromo()}
+              className="w-full rounded-xl bg-volt px-4 py-2.5 text-sm font-semibold text-white active:scale-[0.99] transition"
+            >
+              Cargar en el formulario
+            </button>
+          </Card>
+        ) : null}
 
         {session?.role !== "ASESOR" ? (
           <Card className="mb-3 space-y-3">

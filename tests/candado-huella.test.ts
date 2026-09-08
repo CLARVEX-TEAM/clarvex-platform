@@ -91,7 +91,18 @@ test("la gracia es de un minuto, ni cero ni eterna", () => {
 });
 
 /*
- * Las cuatro de abajo son de CABLEADO, no de lógica, y por eso miran la fuente:
+ * ⚠️ **Estas comprobaciones sobre la fuente NO pueden anclar en un salto de
+ * línea literal.** El repositorio guarda LF y el working tree de Windows queda
+ * en CRLF en cuanto git toca el archivo: un `\n` en el patrón pasa en CI y falla
+ * en local. Y en un `doesNotMatch` es peor, porque pasa por el motivo
+ * equivocado y deja de vigilar nada sin que se note.
+ *
+ * Lo que se afirma aquí es el ORDEN de las cosas, no el blanco que las separa.
+ * Por eso van con `\s*` o `\r?\n`.
+ */
+
+/*
+ * Las de abajo son de CABLEADO, no de lógica, y por eso miran la fuente:
  * los dos fallos que cubren se reportaron desde un teléfono y ninguno daba
  * error. Uno pintaba el candado un instante en el navegador --donde no hay
  * candado ninguno-- y el otro dejaba el candado encendido sin hacer nada.
@@ -154,12 +165,12 @@ test("la referencia al plugin se guarda ANTES de mirar la preferencia", () => {
 test("al volver a la app se relee la preferencia, no la del montaje", () => {
   // Se puede haber encendido o apagado desde Perfil sin reiniciar la app.
   const fuente = leer("components/CandadoHuella.tsx");
-  const oyente = /const alCambiar = \(\) => \{[\s\S]*?\n {4}\};/.exec(fuente);
+  const oyente = /const alCambiar = \(\) => \{[\s\S]*?\r?\n {4}\};/.exec(fuente);
   assert.ok(oyente, "no se encontró el oyente de visibilidad");
   assert.match(oyente[0], /candadoActivado\(\)/, "el oyente no relee la preferencia");
   assert.doesNotMatch(
     fuente,
-    /useEffect\(\(\) => \{\n    if \(!plugin\.current\) return;/,
+    /useEffect\(\(\) => \{\s*if \(!plugin\.current\) return;/,
     "el oyente vuelve a decidir al montar en vez de al volver"
   );
 });
@@ -214,7 +225,7 @@ test("espera al PLUGIN, no solo al contenedor", () => {
   // Y no puede volver a rendirse en cuanto el contenedor diga que sí.
   assert.doesNotMatch(
     fuente,
-    /if \(!enContenedorNativo\(\)\) \{\n        if \(esperado >= ESPERA_PUENTE_MS\)/,
+    /if \(!enContenedorNativo\(\)\) \{\s*if \(esperado >= ESPERA_PUENTE_MS\)/,
     "vuelve a esperar solo al contenedor"
   );
   // Y al volver de segundo plano se recupera si la ventana de arranque falló.
@@ -256,7 +267,7 @@ test("el tiempo fuera se consume al decidir, no al acertar", () => {
   const fuente = readFileSync(join(raiz, "components", "CandadoHuella.tsx"), "utf8");
   assert.match(
     fuente,
-    /if \(!toca\) return;[\s\S]{0,600}salioEn\.current = null;\n {6}void pedir\(\);/,
+    /if \(!toca\) return;[\s\S]{0,800}salioEn\.current = null;\s*void pedir\(\);/,
     "no se limpia el tiempo fuera antes de pedirla"
   );
 });

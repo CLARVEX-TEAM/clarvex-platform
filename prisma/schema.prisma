@@ -81,6 +81,7 @@ model Store {
   retailAlertLogs         RetailAlertLog[]
   reportDeliveries        ReportDelivery[]
   weeklyPerformanceCloses WeeklyPerformanceClose[]
+  promoDrafts             PromoDraft[]
 }
 
 model StoreFixture {
@@ -743,6 +744,31 @@ enum CommissionPayoutType {
 enum CommissionBasis {
   MINIMO
   META
+}
+
+/// Un comunicado REDACTADO a partir del correo de promociones del corporativo,
+/// esperando a que la gerencia lo revise.
+///
+/// ⚠️ **No es un comunicado: es un borrador.** Vive aparte de `Announcement` a
+/// proposito. Meterlo alli con una bandera de «sin publicar» obligaria a
+/// acordarse del filtro en las seis consultas que leen comunicados hoy, y la
+/// que se olvidara publicaria una promocion sin revisar a toda la tienda. Aqui
+/// no puede pasar: quien lee comunicados no ve esta tabla.
+model PromoDraft {
+  id        String    @id @default(cuid())
+  storeId   String
+  /// Titulo y cuerpo ya armados con la plantilla fija de `promo-comunicado.ts`.
+  title     String
+  body      String
+  /// Los campos tal como los devolvio la lectura, por si hay que revisarla.
+  datos     Json
+  /// Cuando la gerencia lo usa deja de ofrecerse. No se borra: si el comunicado
+  /// sale mal, el borrador es lo unico que dice que decia el correo.
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+  store     Store     @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@index([storeId, usedAt])
 }
 
 model Announcement {
