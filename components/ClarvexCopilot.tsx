@@ -212,7 +212,7 @@ export function ClarvexCopilot() {
       {/* En móvil se sube por encima de la barra inferior; en escritorio no hay
           barra, así que baja. Antes era `bottom-20` en ambos y en el monitor
           quedaba flotando a media pantalla sin motivo. */}
-      <div className="fixed bottom-[calc(84px+env(safe-area-inset-bottom))] right-4 z-50 lg:bottom-6 lg:right-6">
+      <div className="fixed bottom-[calc(84px+var(--safe-bottom))] right-4 z-50 lg:bottom-6 lg:right-6">
         <motion.button
           onClick={() => setIsOpen(true)}
           aria-label="Abrir Clarvex Copilot"

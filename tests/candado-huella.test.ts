@@ -220,3 +220,58 @@ test("espera al PLUGIN, no solo al contenedor", () => {
   // Y al volver de segundo plano se recupera si la ventana de arranque falló.
   assert.match(fuente, /al volver: plugin recuperado/, "no reintenta conseguir el plugin al volver");
 });
+
+test("lo que va ENCIMA de la barra sube con la barrita de gestos", () => {
+  /*
+   * ⚠️ Todos estos estaban calibrados para una barra inferior pegada al borde.
+   * Al separarla de la barrita de gestos, la barra subió y se los tragó: en
+   * Pendientes el botón «Crear» quedó encima de las pestañas y no se podía
+   * tocar. Reportado desde un teléfono.
+   *
+   * ⚠️ Y `env(safe-area-inset-bottom)` NO vale aquí: dentro del WebView de
+   * Android es cero. Es el mismo error que se arregló en el resto de la app.
+   */
+  const encimaDeLaBarra = [
+    "components/ui/QuickLink.tsx",
+    "components/ActualizacionApp.tsx",
+    "components/PwaRegister.tsx",
+    "components/UpdatePrompt.tsx",
+    "components/EmailBanner.tsx"
+  ];
+  for (const ruta of encimaDeLaBarra) {
+    const fuente = readFileSync(join(raiz, ruta), "utf8");
+    const fijos = fuente.match(/fixed[^"]*bottom-\[?[^\s"]*/g) ?? [];
+    assert.ok(fijos.length > 0, `${ruta}: no se encontró ningún elemento fijo abajo`);
+    for (const clase of fijos) {
+      assert.match(clase, /var\(--safe-bottom\)/, `${ruta}: «${clase}» no sube con la barrita de gestos`);
+      assert.doesNotMatch(clase, /env\(safe-area-inset-bottom\)/, `${ruta}: «${clase}» usa env(), que en la app vale cero`);
+    }
+  }
+});
+
+test("el tiempo fuera se consume al decidir, no al acertar", () => {
+  // ⚠️ Antes solo se borraba cuando la huella salia bien: quien cancelara una
+  // vez quedaba con la marca vieja y cada regreso volvia a pedirla, sin haber
+  // salido de nuevo.
+  const fuente = readFileSync(join(raiz, "components", "CandadoHuella.tsx"), "utf8");
+  assert.match(
+    fuente,
+    /if \(!toca\) return;[\s\S]{0,600}salioEn\.current = null;\n {6}void pedir\(\);/,
+    "no se limpia el tiempo fuera antes de pedirla"
+  );
+});
+
+test("con el velo ya puesto NO se vuelve a lanzar el dialogo", () => {
+  /*
+   * ⚠️ Un candado cerrado ya tiene su boton de «Desbloquear». Volver a lanzar
+   * el dialogo cada vez que la app reaparece --el teclado, un gesto, un aviso
+   * del sistema-- es lo que se siente como «me la pide al cambiar de pantalla».
+   * Reportado desde un telefono.
+   */
+  const fuente = readFileSync(join(raiz, "components", "CandadoHuella.tsx"), "utf8");
+  assert.match(
+    fuente,
+    /if \(estadoRef\.current !== "abierto"\) \{/,
+    "se puede volver a pedir la huella con el velo ya puesto"
+  );
+});

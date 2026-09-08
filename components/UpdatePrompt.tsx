@@ -71,7 +71,7 @@ export function UpdatePrompt() {
     // versión nueva, sin conexión, instalar PWA). Las pruebas visuales los
     // ocultan porque su presencia depende del entorno, no del diseño, y harían
     // que la misma pantalla se capturara distinta en cada ejecución.
-    <div data-transient className="fixed inset-x-3 bottom-24 z-50 mx-auto max-w-md">
+    <div data-transient className="fixed inset-x-3 bottom-[calc(6rem+var(--safe-bottom))] z-50 mx-auto max-w-md">
       <div className="flex items-center gap-3 rounded-2xl border border-volt/30 bg-volt px-4 py-3 shadow-lg">
         <RefreshCw size={18} className="shrink-0 text-white" />
         <p className="flex-1 text-sm font-bold text-white">Hay una versión nueva de la app.</p>
