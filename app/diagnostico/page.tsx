@@ -26,12 +26,14 @@ function hayCamara(): boolean {
 export default function DiagnosticoPush() {
   const [lineas, setLineas] = useState<Linea[] | null>(null);
   const [registro, setRegistro] = useState<string[]>([]);
+  const [traza, setTraza] = useState<string[]>([]);
 
   const anotar = useCallback((texto: string) => {
     setRegistro((previo) => [...previo, texto]);
   }, []);
 
   useEffect(() => {
+    setTraza((window as unknown as { __clarvexCandado?: string[] }).__clarvexCandado ?? []);
     const cap = (window as unknown as { Capacitor?: { PluginHeaders?: { name: string }[] } }).Capacitor;
     const plugin = pushNativo();
     const cabeceras = cap?.PluginHeaders?.map((h) => h.name) ?? [];
@@ -270,6 +272,23 @@ export default function DiagnosticoPush() {
         ))}
         {lineas === null && <div className="px-4 py-3 text-sm text-muted">Mirando…</div>}
       </div>
+
+      {/* ⚠️ El camino que tomo el candado AL ARRANCAR. Las filas de arriba dicen
+          como estan las cosas AHORA, y ese desfase es justo lo que hizo falla
+          tres rondas para ver: el candado decide en el primer segundo y todo lo
+          que se mire despues ya vale lo que deberia haber valido. */}
+      {traza.length > 0 && (
+        <div className="mt-6 rounded-2xl border border-line bg-panel p-3.5">
+          <h2 className="text-sm font-semibold text-ink">Qué hizo el candado al arrancar</h2>
+          <ol className="mt-2 space-y-1">
+            {traza.map((linea, i) => (
+              <li key={`${i}-${linea}`} className="font-mono text-[11px] leading-4 text-muted">
+                {linea}
+              </li>
+            ))}
+          </ol>
+        </div>
+      )}
 
       <button
         onClick={() => void probarCandado()}

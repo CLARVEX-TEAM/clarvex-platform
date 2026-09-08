@@ -27,6 +27,29 @@ type Estado = "comprobando" | "abierto" | "cerrado" | "pidiendo" | "rechazado";
 const ESPERA_PUENTE_MS = 3_000;
 const CADA_MS = 150;
 
+/**
+ * Deja escrito por dónde pasó el candado, para poder leerlo en el diagnóstico.
+ *
+ * ⚠️ **Existe porque tres hipótesis seguidas fueron falsas.** Este componente
+ * decide entre seis salidas y todas terminan igual desde fuera: la app con la
+ * cara normal, sin pedir nada y sin ningún error. Mirar las condiciones DESPUÉS
+ * --que es lo que hacen las demás filas del diagnóstico-- no sirve: para
+ * entonces ya valen lo que deberían haber valido. La única forma de saber qué
+ * pasó es anotarlo cuando pasa.
+ *
+ * No guarda ningún dato de nadie: solo por qué rama salió.
+ */
+function traza(paso: string): void {
+  try {
+    const w = window as unknown as { __clarvexCandado?: string[] };
+    if (!w.__clarvexCandado) w.__clarvexCandado = [];
+    // Solo la hora, para ver el orden y cuánto tardó cada paso.
+    w.__clarvexCandado.push(`${new Date().toISOString().slice(11, 23)} ${paso}`);
+  } catch {
+    // Si ni esto se puede, no se rompe nada por un registro.
+  }
+}
+
 export function CandadoHuella() {
   // Empieza cerrado a propósito: ver el aviso de arriba.
   const [estado, setEstado] = useState<Estado>("comprobando");
@@ -37,9 +60,11 @@ export function CandadoHuella() {
   const pedir = useCallback(async () => {
     const bio = plugin.current;
     if (!bio) {
+      traza("pedir: sin plugin guardado -> abierto");
       setEstado("abierto");
       return;
     }
+    traza("pedir: llamando a autenticar()");
     setEstado("pidiendo");
     try {
       const r = await bio.autenticar({
@@ -47,14 +72,17 @@ export function CandadoHuella() {
         subtitulo: "Confirma que eres tú para continuar"
       });
       if (r.ok) {
+        traza("autenticar: ok -> abierto");
         salioEn.current = null;
         setEstado("abierto");
         return;
       }
+      traza(`autenticar: NO ok (cancelado=${r.cancelado})`);
       // Cancelar y fallar no son lo mismo: uno decidió no entrar ahora.
       setMotivo(r.cancelado ? "" : r.motivo ?? "");
       setEstado("rechazado");
     } catch (error) {
+      traza(`autenticar: lanzó ${(error as Error).message}`);
       setMotivo((error as Error).message ?? "");
       setEstado("rechazado");
     }
@@ -87,6 +115,7 @@ export function CandadoHuella() {
       if (!enContenedorNativo()) {
         if (esperado >= ESPERA_PUENTE_MS) {
           // Ya no va a llegar: esto es un navegador o la PWA.
+          traza(`sin contenedor tras ${esperado} ms -> abierto`);
           setEstado("abierto");
           return;
         }
@@ -99,10 +128,12 @@ export function CandadoHuella() {
     };
 
     const arrancar = () => {
+      traza(`contenedor listo tras ${esperado} ms`);
       const bio = biometriaNativa();
       // Una versión de la app sin el plugin: no se tapa nada. Dejarlo cerrado
       // sin poder abrirlo encerraría a la persona fuera.
       if (!bio) {
+        traza("sin plugin Biometria -> abierto");
         setEstado("abierto");
         return;
       }
@@ -117,13 +148,19 @@ export function CandadoHuella() {
       plugin.current = bio;
 
       if (!candadoActivado()) {
+        traza("candado APAGADO al montar -> abierto");
         setEstado("abierto");
         return;
       }
+      traza("candado encendido, preguntando a disponible()");
 
       void (async () => {
-        const { puede } = await bio.disponible();
-        if (cancelado) return;
+        const { puede, motivo: porque } = await bio.disponible();
+        traza(`disponible(): puede=${puede} motivo=${porque}`);
+        if (cancelado) {
+          traza("el efecto se habia cancelado: se abandona");
+          return;
+        }
         if (!puede) {
           // El teléfono ya no tiene huella registrada. Se abre: el candado es
           // una capa de más, no la puerta. Encerrar a alguien porque borró su
@@ -135,8 +172,10 @@ export function CandadoHuella() {
       })();
     };
 
+    traza("montado");
     intentar();
     return () => {
+      traza("desmontado (efecto cancelado)");
       cancelado = true;
       if (temporizador) clearTimeout(temporizador);
     };
@@ -156,8 +195,13 @@ export function CandadoHuella() {
        * nada. Por el mismo motivo la comprobación del plugin vive aquí dentro y
        * no en el cuerpo del efecto.
        */
-      if (!plugin.current || !candadoActivado()) return;
-      if (hayQueVolverAPedir(salioEn.current)) void pedir();
+      if (!plugin.current || !candadoActivado()) {
+        traza(`al volver: plugin=${Boolean(plugin.current)} candado=${candadoActivado()} -> nada`);
+        return;
+      }
+      const toca = hayQueVolverAPedir(salioEn.current);
+      traza(`al volver: salio hace ${salioEn.current ? Date.now() - salioEn.current : "nunca"} ms, toca=${toca}`);
+      if (toca) void pedir();
     };
     document.addEventListener("visibilitychange", alCambiar);
     return () => document.removeEventListener("visibilitychange", alCambiar);
