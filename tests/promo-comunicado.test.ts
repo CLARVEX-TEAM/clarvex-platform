@@ -149,3 +149,39 @@ test("⚠️ el titulo es la promocion, NO el asunto del correo", () => {
   assert.match(prompt, /NO es el asunto del correo/, "el prompt no distingue el asunto del titulo");
   assert.match(prompt, /CAPAS BASE SEPTIEMBRE/, "el prompt no trae el ejemplo real que lo desambigua");
 });
+
+test("un encabezado no puede colarse como aviso", () => {
+  /*
+   * ⚠️ Salio contra el segundo correo real: metio en «Importante» la linea
+   * «Mercancia que no participa con un Descuento Base/Adicional en la
+   * promocion:», que es el TITULO de la lista de exclusiones, no una
+   * instruccion. Deja la seccion de avisos sin significado, y esa seccion
+   * existe para que se lea lo que hay que obedecer.
+   *
+   * La regla vive en el prompt, asi que se comprueba que el prompt la diga.
+   */
+  const prompt = readFileSync(join(__dirname, "..", "lib", "promo-vision.ts"), "utf8");
+  assert.match(prompt, /un ENCABEZADO no es un aviso/, "el prompt no distingue encabezado de aviso");
+  assert.match(prompt, /termina en ":"/, "el prompt no da la señal para reconocerlo");
+});
+
+test("el codigo se lee digito a digito o no se lee", () => {
+  /*
+   * ⚠️ Tambien del correo real: devolvio `75030000214` donde el correo decia
+   * `750300002142`. Un digito de menos es una promocion que no se puede aplicar
+   * en caja, con el cliente delante.
+   *
+   * No hay forma de garantizarlo desde el codigo --lo transcribe el modelo-- asi
+   * que el prompt pide prudencia y la pantalla manda comprobarlo.
+   */
+  const prompt = readFileSync(join(__dirname, "..", "lib", "promo-vision.ts"), "utf8");
+  assert.match(prompt, /CADA DÍGITO CUENTA/, "el prompt no avisa de lo que cuesta un dígito perdido");
+  assert.match(prompt, /devuelve null en vez de arriesgar/, "el prompt no prefiere callar antes que inventar");
+
+  const pantalla = readFileSync(join(__dirname, "..", "app", "comunicados", "page.tsx"), "utf8");
+  assert.match(
+    pantalla,
+    /dígito por dígito/,
+    "la pantalla no manda comprobar el código, que es el campo que no se puede confiar"
+  );
+});

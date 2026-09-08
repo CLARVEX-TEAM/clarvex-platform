@@ -42,6 +42,16 @@ REGLAS QUE NO PUEDES ROMPER:
    de mañana no puede hacerse venta producto del 60% bajo esa promoción".
    Cópialo entero. Perder esta línea es el error más caro que puedes cometer.
 
+3b. Pero un ENCABEZADO no es un aviso. "Mercancía que no participa con un
+   Descuento Base/Adicional en la promoción:" es el título de la lista de
+   exclusiones, no una instrucción: no lo pongas en "avisos". Si una línea
+   termina en ":" y lo que sigue es una lista, es un encabezado.
+
+3c. El código es un número largo y CADA DÍGITO CUENTA: con uno de menos la
+   promoción no se puede aplicar en caja. Léelo dígito a dígito y transcríbelo
+   completo; si no lo ves con total claridad, devuelve null en vez de arriesgar
+   uno incompleto.
+
 4. Los saludos, la firma y los datos del remitente NO son parte de nada.
 
 4b. "promocion" es el TÍTULO QUE VA DENTRO DEL MENSAJE, en negrita, justo encima
