@@ -37,12 +37,19 @@ export type EstadoMirada = {
   /** Cuándo se obtuvo la última respuesta buena. */
   ultimaMirada: number;
   ahora: number;
+  /**
+   * Hay un motivo concreto para preguntar ahora mismo: se acaba de conceder el
+   * permiso de instalar y hace falta un enlace nuevo.
+   */
+  forzar?: boolean;
 };
 
-export function hayQueMirar({ pendiente, descargando, ultimaMirada, ahora }: EstadoMirada): boolean {
-  // ⚠️ Nunca a media descarga: la respuesta reescribiría el estado de la
-  // tarjeta y la barra de progreso desaparecería con el archivo a medias.
+export function hayQueMirar({ pendiente, descargando, ultimaMirada, ahora, forzar = false }: EstadoMirada): boolean {
+  // ⚠️ Nunca a media descarga, ni forzando: la respuesta reescribiría el estado
+  // de la tarjeta y la barra de progreso desaparecería con el archivo a medias.
+  // Va lo PRIMERO justamente para que `forzar` no pueda saltárselo.
   if (descargando) return false;
+  if (forzar) return true;
   // Sin respuesta definitiva se insiste siempre que haya ocasión. Es el caso
   // del 401 en `/login`: la sesión aparece un instante después.
   if (pendiente) return true;
@@ -59,4 +66,31 @@ export function hayQueMirar({ pendiente, descargando, ultimaMirada, ahora }: Est
  */
 export function siguePendiente(estado: number): boolean {
   return estado === 401;
+}
+
+/**
+ * La dirección que se le pasa al descargador nativo.
+ *
+ * ⚠️ **Tiene que ser ABSOLUTA.** El manifiesto entrega una ruta relativa
+ * --`/api/app/apk?t=…`-- porque es lo natural dentro de la web, pero quien
+ * descarga no es el WebView: es código Java que hace `new URL(url)`, y eso con
+ * una ruta sin esquema lanza `MalformedURLException: no protocol`. El mensaje
+ * sale en rojo dentro de la tarjeta, con el token entero a la vista, y no dice
+ * nada de lo que de verdad pasa.
+ *
+ * Pasó con la primera actualización real, la 1.3 del 7 de septiembre de 2026:
+ * el mecanismo se había escrito entero y nunca se había ejecutado de punta a
+ * punta contra un teléfono.
+ *
+ * ⚠️ **Se resuelve AQUÍ y no en el servidor** a propósito. El plugin ya viaja
+ * dentro de los APK repartidos y no se puede cambiar sin repartir otro; la web
+ * sí se despliega. Y el origen del WebView es de donde se cargó la app, que es
+ * exactamente el servidor que firmó el token — el servidor tendría que deducir
+ * su propia dirección pública de una variable de entorno.
+ *
+ * Una dirección que ya venga absoluta se devuelve intacta, así que si algún día
+ * el servidor las manda enteras esto no estorba.
+ */
+export function urlAbsolutaDeDescarga(url: string, origen: string): string {
+  return new URL(url, origen).toString();
 }

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
-import { RECHEQUEO_MS, hayQueMirar, siguePendiente } from "../lib/actualizacion-app";
+import { RECHEQUEO_MS, hayQueMirar, siguePendiente, urlAbsolutaDeDescarga } from "../lib/actualizacion-app";
 
 /*
  * Por qué existen estas pruebas.
@@ -104,5 +104,78 @@ test("el componente reintenta por EVENTO, no una sola vez", () => {
     fuente,
     /if \(!respuesta\.ok \|\| !vivo\) return;/,
     "vuelve a tratar cualquier rechazo como definitivo"
+  );
+});
+
+test("la direccion de descarga se manda ABSOLUTA al descargador nativo", () => {
+  // ⚠️ Quien descarga es Java, no el WebView: `new URL("/api/app/apk?t=…")`
+  // lanza `no protocol` y el error sale en rojo con el token a la vista.
+  const origen = "https://team.clarvex.tech";
+  assert.equal(
+    urlAbsolutaDeDescarga("/api/app/apk?t=abc.def.ghi", origen),
+    "https://team.clarvex.tech/api/app/apk?t=abc.def.ghi"
+  );
+});
+
+test("el token del enlace sobrevive intacto", () => {
+  // Un JWT lleva puntos, guiones y guiones bajos; si algo los reescribiera, la
+  // firma dejaria de validar y la descarga daria 401 en vez de un error claro.
+  const t = "eyJhbGciOiJIUzI1NiJ9.eyJ2Ijo0LCJzdWIiOiJhZHJpYW4ifQ.N_2X9Wobv2dlhI-a";
+  const salida = urlAbsolutaDeDescarga(`/api/app/apk?t=${t}`, "https://team.clarvex.tech");
+  assert.ok(salida.endsWith(`?t=${t}`), salida);
+});
+
+test("una direccion ya absoluta se deja como esta", () => {
+  // Asi el dia que el servidor las mande enteras esto no estorba.
+  const abs = "https://team.clarvex.tech/api/app/apk?t=abc";
+  assert.equal(urlAbsolutaDeDescarga(abs, "https://otra.cosa.tech"), abs);
+});
+
+test("forzar pregunta aunque no toque, pero NUNCA a media descarga", () => {
+  const ahora = 10 ** 9;
+  // Es lo que pasa al volver de los ajustes de Android con el permiso ya dado:
+  // toca pedir un enlace nuevo aunque se preguntara hace un minuto.
+  assert.equal(
+    hayQueMirar({ pendiente: false, descargando: false, ultimaMirada: ahora - 1_000, ahora, forzar: true }),
+    true
+  );
+  // ⚠️ Pero forzar no puede saltarse la descarga en curso: la barra de progreso
+  // desapareceria con el archivo a medias.
+  assert.equal(
+    hayQueMirar({ pendiente: false, descargando: true, ultimaMirada: 0, ahora, forzar: true }),
+    false
+  );
+});
+
+test("el componente vuelve a mirar el PERMISO al regresar de los ajustes", () => {
+  /*
+   * ⚠️ El permiso de instalar se concede FUERA de la app. Sin volver a mirarlo,
+   * la tarjeta seguia diciendo «Abrir ajustes de Android» con el permiso ya
+   * dado, y habia que cerrar la app entera. Reportado en un telefono real.
+   */
+  const fuente = readFileSync(join(__dirname, "..", "components", "ActualizacionApp.tsx"), "utf8");
+  assert.match(
+    fuente,
+    /estadoRef\.current === "sin-permiso"[\s\S]{0,400}puedeInstalar\(\)/,
+    "al volver a la app no se comprueba si ya concedieron el permiso"
+  );
+  assert.match(
+    fuente,
+    /comprobar\(true\)/,
+    "tras conceder el permiso hace falta un enlace nuevo: el anterior dura diez minutos"
+  );
+});
+
+test("el componente manda la direccion ABSOLUTA, no la del manifiesto", () => {
+  const fuente = readFileSync(join(__dirname, "..", "components", "ActualizacionApp.tsx"), "utf8");
+  assert.match(
+    fuente,
+    /urlAbsolutaDeDescarga\(nueva\.url, window\.location\.origin\)/,
+    "el descargador nativo hace new URL(): una ruta relativa lanza «no protocol»"
+  );
+  assert.doesNotMatch(
+    fuente,
+    /descargarEInstalar\(\{ url: nueva\.url/,
+    "vuelve a mandar la ruta relativa al descargador nativo"
   );
 });
