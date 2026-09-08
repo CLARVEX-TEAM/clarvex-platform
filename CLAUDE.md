@@ -88,12 +88,21 @@ cambia en cada pintado, y con la dependencia se apilaría una parada por pintado
 `useEffect(..., [])` de ahí dentro corre una sola vez y su respuesta queda
 congelada para toda la vida del documento.
 
-**Esto ya ha pasado DOS veces, con dos componentes hermanos:**
+**Esto ya ha pasado TRES veces, con tres componentes hermanos del mismo
+archivo, y las tres se reportaron desde un teléfono porque ninguna da error:**
 
 | Componente | Qué se perdía |
 |---|---|
 | `PwaRegister` | el token del aparato, conseguido en `/login` y rechazado con 401 |
 | `ActualizacionApp` | el aviso de versión nueva, contestado antes de publicarla |
+| `CandadoHuella` | el candado activado desde Perfil, decidido al abrir la app |
+
+⚠️ **El tercero es el más ilustrativo.** `CandadoHuella` guardaba la referencia
+al plugin **solo si el candado ya estaba encendido al montar**. Quien lo
+activaba desde Perfil se quedaba sin oyente de segundo plano: el interruptor
+decía «activado» y el candado no hacía absolutamente nada hasta cerrar la app
+del todo. La preferencia hay que leerla **en el momento de decidir**, no al
+montar.
 
 Se arregló el primero el 6 de septiembre y **no el segundo**, que se había
 escrito el mismo día. El 7 se publicó la 1.3 con la app abierta y no se la
@@ -109,6 +118,27 @@ rechazo sí es definitivo, porque repetir un 500 en cada pantalla no lo arregla.
 La regla para lo próximo que se monte ahí: **reintentar por EVENTO** --cambio de
 pantalla mientras falte respuesta, y regreso a la app--, nunca por temporizador,
 que gastaría batería sin ninguna señal de que algo haya cambiado.
+
+### ⚠️ Y lo que TAPA la pantalla no puede decidirse en un efecto
+
+`CandadoHuella` nace en estado «comprobando», que no es «abierto», así que
+pintaba su velo **antes** de que ningún efecto pudiera mirar si hacía falta. En
+Brave y en la PWA aparecía el candado y se quitaba solo: se lee como que la app
+se cuelga al abrir.
+
+No se arregla con el estado inicial de React, porque lo que decide vive en
+`localStorage` y en el puente nativo, y las dos cosas son de cliente: cualquier
+valor que difiera del servidor rompe la hidratación.
+
+Se resuelve como el parpadeo del tema, que es el mismo problema: un guion en
+línea en `app/layout.tsx` mira las dos condiciones **antes del primer pintado** y
+marca `data-candado` en el `html`; el CSS deja el velo en `display:none` mientras
+no esté esa marca. React solo lo mantiene al día para las veces siguientes, y
+**nunca desde «comprobando»**, que devolvería el parpadeo por la puerta de atrás.
+
+⚠️ El elemento NO puede llevar la clase `flex` de Tailwind: pondría
+`display:flex` con la misma especificidad y anularía el ocultado. Lo cubre
+`tests/candado-huella.test.ts`.
 
 ### El aviso de actualización, probado por fin contra un teléfono
 
