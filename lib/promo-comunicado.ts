@@ -58,6 +58,22 @@ export function esRestriccionDeLaTienda(nombreArchivo: string): { vale: boolean;
   return { vale: false, porque: "el nombre no dice si es TH o TJ" };
 }
 
+/**
+ * Quita la palabra «Vigencia» del principio, si viene.
+ *
+ * ⚠️ **Red de seguridad, no sustituto del prompt.** El correo escribe «Vigencia
+ * del 01 al 10 de septiembre 2026» y la plantilla ya pone su propio
+ * encabezado: sin esto sale «Vigencia: Vigencia del 01 al 10…». Se le pide al
+ * modelo que la quite, pero un prompt orienta y no garantiza, y esto es lo
+ * primero que lee el equipo.
+ *
+ * Solo se toca el principio y solo esa palabra: lo demás va literal, como todo
+ * aquí.
+ */
+export function limpiarVigencia(vigencia: string): string {
+  return vigencia.trim().replace(/^vigencia\s*:?\s*/i, "").trim();
+}
+
 /** Una lista en viñetas, o nada si está vacía. */
 function vinetas(titulo: string, lineas: string[]): string {
   const limpias = lineas.map((l) => l.trim()).filter(Boolean);
@@ -75,7 +91,7 @@ function vinetas(titulo: string, lineas: string[]): string {
 export function redactarComunicado(promo: PromoExtraida): Comunicado {
   const partes: string[] = [];
 
-  partes.push(`Vigencia: ${promo.vigencia.trim()}`);
+  partes.push(`Vigencia: ${limpiarVigencia(promo.vigencia)}`);
 
   const descuentos = vinetas("Descuentos:", promo.descuentos);
   if (descuentos) partes.push(descuentos);

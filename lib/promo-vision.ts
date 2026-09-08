@@ -19,8 +19,8 @@ Axo México con las promociones de la semana para una tienda Tommy Hilfiger.
 Devuelve SOLO un objeto JSON con esta forma exacta:
 
 {
-  "promocion": "nombre de la promoción tal como aparece",
-  "vigencia": "la línea de vigencia completa, tal cual",
+  "promocion": "nombre de la promoción, del CUERPO del mensaje",
+  "vigencia": "las fechas, SIN la palabra Vigencia",
   "descuentos": ["cada línea de descuento, literal"],
   "codigo": "el número largo que acompaña a la promoción, o null",
   "noParticipa": ["cada línea de la mercancía que NO participa, literal"],
@@ -43,6 +43,17 @@ REGLAS QUE NO PUEDES ROMPER:
    Cópialo entero. Perder esta línea es el error más caro que puedes cometer.
 
 4. Los saludos, la firma y los datos del remitente NO son parte de nada.
+
+4b. "promocion" es el TÍTULO QUE VA DENTRO DEL MENSAJE, en negrita, justo encima
+   de la vigencia. NO es el asunto del correo ni lo que sale en la barra de
+   arriba de la pantalla. En un correo cuyo asunto es "PROMOCIONES TH
+   SEPTIEMBRE" y cuyo cuerpo empieza con "CAPAS BASE SEPTIEMBRE", la promoción
+   es CAPAS BASE SEPTIEMBRE. El asunto agrupa varias promociones del mes; el
+   título del cuerpo es la de este correo.
+
+4c. "vigencia" son solo las fechas y su horario si lo hay, SIN la palabra
+   "Vigencia" delante. De "Vigencia del 01 al 10 de septiembre 2026" se devuelve
+   "del 01 al 10 de septiembre 2026".
 
 5. Si la captura no es un correo de promociones, devuelve
    {"promocion":"","vigencia":"","descuentos":[],"codigo":null,"noParticipa":[],"avisos":[]}.
