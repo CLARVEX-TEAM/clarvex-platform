@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { Bell, X } from "lucide-react";
-import { CANAL_AVISOS, enContenedorNativo, plataformaNativa, pushNativo, type PluginPush } from "@/lib/puente-nativo";
+import { appNativa, CANAL_AVISOS, enContenedorNativo, plataformaNativa, pushNativo, type PluginPush } from "@/lib/puente-nativo";
 
 /**
  * ⚠️ **Este componente se monta en el LAYOUT RAÍZ, o sea también en `/login`.**
@@ -77,10 +77,32 @@ export async function guardarTokenNativo(token: string): Promise<boolean> {
     console.warn(`[push nativo] Plataforma sin soporte de registro: ${platform}`);
     return true;
   }
+  /*
+   * De paso se registra QUE version corre este aparato.
+   *
+   * ⚠️ **Si no se puede averiguar, se registra igual sin ella.** El token es lo
+   * que decide si llegan las notificaciones; la version solo sirve para mirar
+   * como va un despliegue. Dejar al aparato sin avisos porque un plugin no
+   * contesto seria cambiar lo importante por lo accesorio.
+   */
+  let version: { appBuild?: number; appVersion?: string } = {};
+  try {
+    const app = appNativa();
+    if (app) {
+      const info = await app.getInfo();
+      const build = Number.parseInt(info.build, 10);
+      // `build` es el versionCode y es lo unico comparable: "1.10" como texto
+      // queda por debajo de "1.9".
+      if (Number.isFinite(build)) version = { appBuild: build, appVersion: info.version };
+    }
+  } catch {
+    // Sin version: se sigue.
+  }
+
   const res = await fetch("/api/push/device", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ token, platform }),
+    body: JSON.stringify({ token, platform, ...version }),
   });
   if (res.status === 401) return false;
   if (!res.ok) {
