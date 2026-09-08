@@ -1,8 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import {
   esRestriccionDeLaTienda,
   faltaAlgo,
+  limpiarVigencia,
   redactarComunicado,
   type PromoExtraida
 } from "../lib/promo-comunicado";
@@ -109,4 +112,40 @@ test("un comunicado a medias se detiene antes de publicarse", () => {
   assert.deepEqual(faltaAlgo({ ...capasBase, vigencia: "  " }), ["la vigencia"]);
   assert.deepEqual(faltaAlgo({ ...capasBase, descuentos: [] }), ["los descuentos"]);
   assert.deepEqual(faltaAlgo({ ...capasBase, promocion: "" }).length, 1);
+});
+
+test("la palabra «Vigencia» no sale dos veces", () => {
+  /*
+   * ⚠️ Salio en la primera prueba contra un correo REAL. El corporativo escribe
+   * «Vigencia del 01 al 10 de septiembre 2026» y la plantilla pone su propio
+   * encabezado: el resultado era «Vigencia: Vigencia del 01 al 10…», y es lo
+   * primero que lee el equipo.
+   */
+  const { body } = redactarComunicado({ ...capasBase, vigencia: "Vigencia del 01 al 10 de septiembre 2026" });
+  assert.ok(body.includes("Vigencia: del 01 al 10 de septiembre 2026"), body.split("\n")[0]);
+  assert.ok(!body.includes("Vigencia: Vigencia"), "la palabra sale duplicada");
+});
+
+test("limpiar la vigencia NO se come las fechas", () => {
+  // Solo se quita la palabra del principio. Todo lo demas va literal.
+  assert.equal(limpiarVigencia("Vigencia del 07 al 09 a partir de las 2pm"), "del 07 al 09 a partir de las 2pm");
+  assert.equal(limpiarVigencia("VIGENCIA: 01 al 10"), "01 al 10");
+  assert.equal(limpiarVigencia("del 01 al 10"), "del 01 al 10");
+  // Y «vigencia» a mitad de frase no se toca.
+  assert.equal(limpiarVigencia("Del 1 al 5, sin vigencia extendida"), "Del 1 al 5, sin vigencia extendida");
+});
+
+test("⚠️ el titulo es la promocion, NO el asunto del correo", () => {
+  /*
+   * Tambien salio contra el correo real: el asunto era «PROMOCIONES TH
+   * SEPTIEMBRE» --agrupa varias promociones del mes-- y la promocion de ESE
+   * correo era «CAPAS BASE SEPTIEMBRE». Publicar el asunto como titulo hace que
+   * dos comunicados distintos del mismo mes se llamen igual.
+   *
+   * Esto vive en el prompt, asi que se comprueba que el prompt lo diga: es lo
+   * unico que se puede afirmar sin llamar al modelo.
+   */
+  const prompt = readFileSync(join(__dirname, "..", "lib", "promo-vision.ts"), "utf8");
+  assert.match(prompt, /NO es el asunto del correo/, "el prompt no distingue el asunto del titulo");
+  assert.match(prompt, /CAPAS BASE SEPTIEMBRE/, "el prompt no trae el ejemplo real que lo desambigua");
 });
