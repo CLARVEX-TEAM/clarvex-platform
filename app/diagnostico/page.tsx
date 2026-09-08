@@ -99,7 +99,11 @@ export default function DiagnosticoPush() {
         // Lo que decidió el guion de arranque, ANTES del primer pintado. Si dice
         // «no» con el candado activado, el velo se quedaria oculto por CSS.
         que: "Candado · marca de arranque",
-        valor: document.documentElement.dataset.candado === "1" ? "puesta" : "sin poner",
+        // ⚠️ Se enseña el valor CRUDO. La primera version decia «sin poner»
+        // tanto si el guion nunca la puso como si valia "0" --que es lo normal
+        // despues de desbloquear-- y son cosas distintas: una es un fallo del
+        // arranque y la otra el funcionamiento correcto.
+        valor: document.documentElement.dataset.candado ?? "ausente",
         bien: null
       }
     ];
@@ -193,6 +197,40 @@ export default function DiagnosticoPush() {
     }
   }
 
+  /**
+   * Llama al candado a mano y cuenta QUÉ contesta.
+   *
+   * ⚠️ **Lo que de verdad hace falta saber es si contesta.** Un
+   * `BiometricPrompt` que no se puede montar --la actividad todavía no está
+   * lista, el diálogo no se puede pintar-- deja la promesa colgada para
+   * siempre: desde JavaScript se ve EXACTAMENTE igual que si nunca se hubiera
+   * llamado, y la app se queda con la cara normal sin pedir nada. Por eso hay
+   * vigilante de tiempo: sin él, un cuelgue y una llamada que no ocurre son
+   * indistinguibles, que es justo donde llevamos dos rondas atascados.
+   */
+  const probarCandado = useCallback(async () => {
+    const bio = biometriaNativa();
+    if (!bio) {
+      anotar("El plugin Biometria no está disponible.");
+      return;
+    }
+    anotar("Llamando a autenticar()…");
+    let contesto = false;
+    const vigilante = setTimeout(() => {
+      if (!contesto) anotar("⚠️ autenticar() NO contestó en 15 s: el diálogo se quedó colgado.");
+    }, 15_000);
+    try {
+      const r = await bio.autenticar({ titulo: "Prueba del candado", subtitulo: "Solo para diagnóstico" });
+      contesto = true;
+      anotar(`autenticar() contestó: ok=${r.ok}${r.cancelado ? " (cancelado)" : ""}${r.motivo ? ` — ${r.motivo}` : ""}`);
+    } catch (e) {
+      contesto = true;
+      anotar(`autenticar() lanzó: ${(e as Error).message}`);
+    } finally {
+      clearTimeout(vigilante);
+    }
+  }, [anotar]);
+
   return (
     <main className="pt-safe mx-auto max-w-2xl px-4 pb-8" style={{ ["--pt-safe-base" as string]: "2rem" }}>
       <h1 className="text-xl font-semibold text-ink">Diagnóstico del aparato</h1>
@@ -217,8 +255,15 @@ export default function DiagnosticoPush() {
       </div>
 
       <button
+        onClick={() => void probarCandado()}
+        className="mt-6 w-full rounded-xl border border-line px-4 py-3 text-sm font-semibold text-ink"
+      >
+        Probar el candado ahora
+      </button>
+
+      <button
         onClick={() => void probar()}
-        className="mt-6 w-full rounded-xl bg-volt px-4 py-3 text-sm font-semibold text-white"
+        className="mt-3 w-full rounded-xl bg-volt px-4 py-3 text-sm font-semibold text-white"
       >
         Intentar registrar este aparato
       </button>
