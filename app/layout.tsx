@@ -89,17 +89,26 @@ if(d)document.documentElement.classList.add('dark');
  * velo siempre durante un instante. En Brave y en la PWA aparecia el candado y
  * se quitaba solo, que se lee como que la app se cuelga al abrir.
  *
- * Las dos condiciones se comprueban aqui igual que en el componente:
- * `isNativePlatform()` del puente de Capacitor y la misma clave de
- * `lib/candado-huella.ts`. Si divergen, vuelve el parpadeo o --peor-- el velo
- * se queda puesto donde no toca.
+ * ⚠️ **Solo mira `localStorage`, NO el puente de Capacitor.** Preguntar aqui
+ * por `window.Capacitor` parecia mas correcto y es justo lo que fallaba: el
+ * puente se inyecta en el arranque del documento, y si el WebView del telefono
+ * no admite ese enganche llega DESPUES de este guion. Resultado: la marca no se
+ * ponia nunca en la app, que es el unico sitio donde hace falta.
+ *
+ * Mirar solo la preferencia es seguro porque esa clave **solo puede existir en
+ * la app**: el interruptor que la escribe (`AjusteCandado`) no se pinta fuera
+ * del contenedor nativo. Un navegador no la tiene, asi que no puede tapar nada.
+ *
+ * Se deja ademas anotado lo que vio el arranque --`window.__clarvexArranque`--
+ * porque es la unica forma de saber DESPUES si el puente llego tarde: mirarlo
+ * mas adelante siempre dice que si.
  */
 const CANDADO_SCRIPT = `(function(){try{
 var c=window.Capacitor;
-if(c&&typeof c.isNativePlatform==='function'&&c.isNativePlatform()===true
-   &&localStorage.getItem('clarvex-candado-huella')==='1'){
-  document.documentElement.dataset.candado='1';
-}
+var nativo=!!(c&&typeof c.isNativePlatform==='function'&&c.isNativePlatform()===true);
+var encendido=localStorage.getItem('clarvex-candado-huella')==='1';
+window.__clarvexArranque={puente:!!c,nativo:nativo,candado:encendido};
+if(encendido)document.documentElement.dataset.candado='1';
 }catch(e){}})();`;
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

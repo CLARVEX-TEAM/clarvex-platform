@@ -23,6 +23,10 @@ import { candadoActivado, hayQueVolverAPedir } from "@/lib/candado-huella";
 
 type Estado = "comprobando" | "abierto" | "cerrado" | "pidiendo" | "rechazado";
 
+/** Cuánto se espera al puente antes de dar por hecho que esto es un navegador. */
+const ESPERA_PUENTE_MS = 3_000;
+const CADA_MS = 150;
+
 export function CandadoHuella() {
   // Empieza cerrado a propósito: ver el aviso de arriba.
   const [estado, setEstado] = useState<Estado>("comprobando");
@@ -56,44 +60,86 @@ export function CandadoHuella() {
     }
   }, []);
 
+  /*
+   * ⚠️ **El puente de Capacitor puede NO ESTAR todavía cuando corre esto.**
+   * Se inyecta al arrancar el documento, pero si el WebView del teléfono no
+   * admite ese enganche llega más tarde --después de que React monte--. El
+   * componente preguntaba una sola vez, veía «no hay contenedor», concluía que
+   * no había nada que tapar y se quedaba así para siempre: el candado no pedía
+   * la huella NUNCA, con el interruptor encendido y todo verde en el
+   * diagnóstico, porque para cuando se mira el puente ya llegó.
+   *
+   * `PwaRegister` y `ActualizacionApp` sobreviven a esto porque reintentan por
+   * evento; este decidía una vez. Es el mismo fallo de familia por tercera vez.
+   *
+   * Aquí sí toca sondear y no esperar un evento: la llegada del puente no
+   * dispara ninguno. Va ACOTADO --tres segundos-- porque en un navegador no va
+   * a llegar nunca y no puede quedarse mirando toda la sesión.
+   */
   useEffect(() => {
-    if (!enContenedorNativo()) {
-      setEstado("abierto");
-      return;
-    }
-    const bio = biometriaNativa();
-    // Una versión de la app sin el plugin: no se tapa nada. Dejarlo cerrado sin
-    // poder abrirlo encerraría a la persona fuera.
-    if (!bio) {
-      setEstado("abierto");
-      return;
-    }
-    /*
-     * ⚠️ **La referencia se guarda SIEMPRE, también con el candado apagado.**
-     * Antes solo se guardaba si ya estaba encendido al abrir la app, así que
-     * quien lo activaba desde Perfil se quedaba sin oyente: el candado no hacía
-     * absolutamente nada hasta cerrar la app del todo, y sin decirlo. El layout
-     * raíz no se vuelve a montar en una navegación de cliente, así que no había
-     * segunda oportunidad en toda la sesión.
-     */
-    plugin.current = bio;
+    let cancelado = false;
+    let esperado = 0;
+    let temporizador: ReturnType<typeof setTimeout> | null = null;
 
-    if (!candadoActivado()) {
-      setEstado("abierto");
-      return;
-    }
+    const intentar = () => {
+      if (cancelado) return;
 
-    void (async () => {
-      const { puede } = await bio.disponible();
-      if (!puede) {
-        // El teléfono ya no tiene huella registrada. Se abre: el candado es una
-        // capa de más, no la puerta. Encerrar a alguien porque borró su huella
-        // sería peor que no tener candado.
+      if (!enContenedorNativo()) {
+        if (esperado >= ESPERA_PUENTE_MS) {
+          // Ya no va a llegar: esto es un navegador o la PWA.
+          setEstado("abierto");
+          return;
+        }
+        esperado += CADA_MS;
+        temporizador = setTimeout(intentar, CADA_MS);
+        return;
+      }
+
+      arrancar();
+    };
+
+    const arrancar = () => {
+      const bio = biometriaNativa();
+      // Una versión de la app sin el plugin: no se tapa nada. Dejarlo cerrado
+      // sin poder abrirlo encerraría a la persona fuera.
+      if (!bio) {
         setEstado("abierto");
         return;
       }
-      await pedir();
-    })();
+      /*
+       * ⚠️ **La referencia se guarda SIEMPRE, también con el candado apagado.**
+       * Antes solo se guardaba si ya estaba encendido al abrir la app, así que
+       * quien lo activaba desde Perfil se quedaba sin oyente: el candado no
+       * hacía absolutamente nada hasta cerrar la app del todo, y sin decirlo.
+       * El layout raíz no se vuelve a montar en una navegación de cliente, así
+       * que no había segunda oportunidad en toda la sesión.
+       */
+      plugin.current = bio;
+
+      if (!candadoActivado()) {
+        setEstado("abierto");
+        return;
+      }
+
+      void (async () => {
+        const { puede } = await bio.disponible();
+        if (cancelado) return;
+        if (!puede) {
+          // El teléfono ya no tiene huella registrada. Se abre: el candado es
+          // una capa de más, no la puerta. Encerrar a alguien porque borró su
+          // huella sería peor que no tener candado.
+          setEstado("abierto");
+          return;
+        }
+        await pedir();
+      })();
+    };
+
+    intentar();
+    return () => {
+      cancelado = true;
+      if (temporizador) clearTimeout(temporizador);
+    };
   }, [pedir]);
 
   // Volver a pedirlo al regresar de segundo plano, con un minuto de gracia.
