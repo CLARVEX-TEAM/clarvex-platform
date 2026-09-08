@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { ArrowDownToLine, X } from "lucide-react";
 import { actualizadorNativo, appNativa, enContenedorNativo, type PluginActualizador } from "@/lib/puente-nativo";
-import { hayQueMirar, siguePendiente } from "@/lib/actualizacion-app";
+import { hayQueMirar, siguePendiente, urlAbsolutaDeDescarga } from "@/lib/actualizacion-app";
 
 /**
  * Avisa de que hay una versión nueva de la app, y la instala.
@@ -53,11 +53,16 @@ export function ActualizacionApp() {
    */
   const pendiente = useRef(true);
   const ultimaMirada = useRef(0);
+  // Los oyentes de eventos se registran una vez y no ven el estado de React:
+  // lo leen por referencia.
+  const estadoRef = useRef(estado);
+  estadoRef.current = estado;
+  const pluginRef = useRef<PluginActualizador | null>(null);
   const descargandoRef = useRef(false);
   descargandoRef.current = estado === "descargando";
   const pathname = usePathname();
 
-  const comprobar = useCallback(async () => {
+  const comprobar = useCallback(async (forzar = false) => {
     if (!enContenedorNativo()) {
       pendiente.current = false;
       return;
@@ -75,11 +80,13 @@ export function ActualizacionApp() {
         pendiente: pendiente.current,
         descargando: descargandoRef.current,
         ultimaMirada: ultimaMirada.current,
-        ahora: Date.now()
+        ahora: Date.now(),
+        forzar
       })
     ) {
       return;
     }
+    pluginRef.current = actualizador;
     setPlugin(actualizador);
 
     try {
@@ -130,7 +137,34 @@ export function ActualizacionApp() {
   // limita a una vez cada media hora.
   useEffect(() => {
     const alVolver = () => {
-      if (document.visibilityState === "visible") void comprobar();
+      if (document.visibilityState !== "visible") return;
+      void (async () => {
+        /*
+         * ⚠️ **El permiso de instalar se concede FUERA de la app**, en los
+         * ajustes de Android, así que al volver la tarjeta seguía diciendo
+         * «Abrir ajustes de Android» aunque el permiso ya estuviera dado: había
+         * que cerrar la app entera para que se enterase. Nada lo volvía a
+         * mirar.
+         */
+        if (estadoRef.current === "sin-permiso") {
+          const p = pluginRef.current;
+          if (!p) return;
+          try {
+            const { permitido } = await p.puedeInstalar();
+            // Sigue sin darlo: no se toca la tarjeta, que ya explica qué hacer.
+            if (!permitido) return;
+          } catch {
+            return;
+          }
+          // ⚠️ Y se pide un enlace NUEVO. El de descarga dura diez minutos, y
+          // entre ir a los ajustes, buscar Clarvex en la lista y volver, se
+          // puede pasar: sin esto el permiso quedaría bien y la descarga
+          // fallaría con un 401 que no dice nada de un token caducado.
+          await comprobar(true);
+          return;
+        }
+        void comprobar();
+      })();
     };
     document.addEventListener("visibilitychange", alVolver);
     return () => document.removeEventListener("visibilitychange", alVolver);
@@ -152,7 +186,13 @@ export function ActualizacionApp() {
       setPorcentaje(0);
       const oyente = await plugin.addListener("progreso", (d) => setPorcentaje(d.porcentaje));
       try {
-        await plugin.descargarEInstalar({ url: nueva.url, sha256: nueva.sha256 });
+        // ⚠️ ABSOLUTA. Quien descarga es Java --`new URL(url)`--, no el
+        // WebView: una ruta relativa lanza `no protocol` y el error sale en
+        // rojo en la tarjeta, con el token entero a la vista.
+        await plugin.descargarEInstalar({
+          url: urlAbsolutaDeDescarga(nueva.url, window.location.origin),
+          sha256: nueva.sha256
+        });
       } finally {
         await oyente.remove();
       }
