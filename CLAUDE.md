@@ -104,6 +104,44 @@ decía «activado» y el candado no hacía absolutamente nada hasta cerrar la ap
 del todo. La preferencia hay que leerla **en el momento de decidir**, no al
 montar.
 
+### ⚠️ `enContenedorNativo()` dice que sí ANTES de que existan los plugins
+
+Lo más caro de todo esto, y lo menos evidente. Costó cuatro rondas y tres
+hipótesis falsas sobre el código.
+
+El puente de Capacitor llega en **dos piezas**. El núcleo --`isNativePlatform`,
+`getPlatform`-- se inyecta al arrancar el documento y está listo enseguida.
+`PluginHeaders` --la lista de lo que el binario trae de verdad-- viaja en un
+guion aparte y llega **después**. Y es justo esa lista la que consulta
+`isPluginAvailable`, o sea la que decide si `pluginNativo()` devuelve el plugin
+o `null`.
+
+Medido en un teléfono, con la traza del propio componente:
+
+```
+05:14:27.774 montado
+05:14:27.774 contenedor listo tras 0 ms
+05:14:27.774 sin plugin Biometria -> abierto
+```
+
+Cero milisegundos para el contenedor, y el plugin todavía sin llegar. El candado
+se abrió para siempre por esa diferencia.
+
+⚠️ **Esperar a `enContenedorNativo()` NO sirve**: ese nunca es el que falta. Si
+algo necesita un plugin al arrancar, la condición de espera tiene que ser **el
+plugin**, y hay que sondear porque su llegada no dispara ningún evento.
+
+⚠️ **Y el diagnóstico mentía sin querer.** Sus trece filas salían verdes --el
+plugin disponible, el sistema listo, el candado activado-- porque se miran
+DESPUÉS, cuando ya está todo puesto. Mirar las condiciones más tarde no dice
+nada de un fallo de arranque: hay que **anotar el camino cuando ocurre**. De ahí
+`window.__clarvexCandado` y el bloque «Qué hizo el candado al arrancar».
+
+La regla general, que es la que salió cara: **ante un fallo que solo pasa al
+arrancar, grabar la traza antes que razonar sobre el código.** Las tres
+hipótesis previas eran plausibles y las tres estaban equivocadas; la traza lo
+resolvió en un intento.
+
 Se arregló el primero el 6 de septiembre y **no el segundo**, que se había
 escrito el mismo día. El 7 se publicó la 1.3 con la app abierta y no se la
 ofreció a nadie: el manifiesto anunciaba la 2, el teléfono tenía la 3, «al día»,
