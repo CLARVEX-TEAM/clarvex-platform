@@ -22,7 +22,17 @@ const esquema = z.object({
   // publicado. Se acota por longitud para no aceptar basura, sin inventar una
   // forma exacta que Google puede cambiar sin avisar.
   token: z.string().min(64).max(4096),
-  platform: z.literal("android")
+  platform: z.literal("android"),
+  /**
+   * Que version de la app corre este aparato.
+   *
+   * ⚠️ **Opcionales, y por eso el registro no se cae sin ellas.** Una version
+   * de la app anterior a esto no las manda, y rechazar su registro la dejaria
+   * sin notificaciones por un dato que solo sirve para mirar el despliegue:
+   * seria cambiar algo que funciona por algo que informa.
+   */
+  appBuild: z.number().int().positive().max(1_000_000).optional(),
+  appVersion: z.string().min(1).max(32).optional()
 });
 
 export async function POST(request: Request) {
@@ -32,16 +42,24 @@ export async function POST(request: Request) {
   const parsed = await parseJson(request, esquema);
   if ("response" in parsed) return parsed.response;
 
-  const { token, platform } = parsed.data;
+  const { token, platform, appBuild, appVersion } = parsed.data;
 
   // ⚠️ Se actualiza POR TOKEN, no por (usuario, token). Google reasigna el
   // token al reinstalar la app o al borrar sus datos, y el teléfono de la
   // tienda lo usan varias personas: sin esto, la anterior seguiría recibiendo
   // en un aparato que ya no es suyo. La última sesión que lo registra manda.
+  // ⚠️ Si no vienen, se dejan como estaban en vez de ponerlas a null: una
+  // version vieja de la app registrandose no puede borrar lo que ya se sabia
+  // de ese aparato.
+  const version = {
+    ...(appBuild === undefined ? {} : { appBuild }),
+    ...(appVersion === undefined ? {} : { appVersion })
+  };
+
   await prisma.deviceToken.upsert({
     where: { token },
-    update: { userId: session.userId, platform },
-    create: { userId: session.userId, token, platform }
+    update: { userId: session.userId, platform, ...version },
+    create: { userId: session.userId, token, platform, ...version }
   });
 
   return NextResponse.json({ ok: true }, { status: 201 });

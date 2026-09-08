@@ -10,6 +10,10 @@ const sharedRoutes = [
   // no debería depender de que haya un gerente cerca. Solo enseña de qué es
   // capaz el aparato, ningún dato de la tienda ni de personas.
   "/diagnostico",
+  // De dónde se baja la app de Android la primera vez. La abre cualquiera con
+  // sesión porque todo el equipo tiene que instalarla; lo único de gerencia es
+  // el reparto, y eso lo cierra su propio endpoint por rol.
+  "/app",
   "/plan",
   "/kpis",
   "/horarios",
@@ -294,6 +298,7 @@ export const config = {
     // sesión es superficie que hay que justificar, y esta no lo necesita.
     "/diagnostico/:path*",
     "/diagnostico",
+    "/app",
     "/uniformes/:path*",
     "/solicitudes/:path*",
     "/soporte/:path*"
