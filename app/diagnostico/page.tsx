@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { CANAL_AVISOS, enContenedorNativo, plataformaNativa, pushNativo } from "@/lib/puente-nativo";
+import { biometriaNativa, CANAL_AVISOS, enContenedorNativo, plataformaNativa, pushNativo } from "@/lib/puente-nativo";
+import { candadoActivado } from "@/lib/candado-huella";
 
 /**
  * Pantalla de diagnóstico del aparato.
@@ -74,6 +75,32 @@ export default function DiagnosticoPush() {
         que: "Huella (WebAuthn)",
         valor: window.PublicKeyCredential ? "disponible" : "NO disponible",
         bien: Boolean(window.PublicKeyCredential)
+      },
+
+      /*
+       * ⚠️ El CANDADO es otra cosa que la huella de WebAuthn, aunque usen el
+       * mismo dedo: aquella demuestra al servidor quien eres, este solo decide
+       * si se enseña lo que ya esta abierto. Falla igual de callado --el
+       * interruptor dice «activado» y no pasa nada-- y tiene cuatro eslabones,
+       * asi que se miran los cuatro por separado. Con «no me la pide» a secas no
+       * hay forma de saber cual es.
+       */
+      {
+        que: "Candado · plugin Biometria",
+        valor: biometriaNativa() ? "disponible" : "NO disponible",
+        bien: Boolean(biometriaNativa())
+      },
+      {
+        que: "Candado · activado en este aparato",
+        valor: candadoActivado() ? "sí" : "no",
+        bien: candadoActivado()
+      },
+      {
+        // Lo que decidió el guion de arranque, ANTES del primer pintado. Si dice
+        // «no» con el candado activado, el velo se quedaria oculto por CSS.
+        que: "Candado · marca de arranque",
+        valor: document.documentElement.dataset.candado === "1" ? "puesta" : "sin poner",
+        bien: null
       }
     ];
     setLineas(base);
@@ -91,6 +118,23 @@ export default function DiagnosticoPush() {
           ])
         )
         .catch((e: Error) => anotar(`No se pudo preguntar por el autenticador: ${e.message}`));
+    }
+
+    // ⚠️ Que el plugin exista NO basta: el telefono puede no tener lector, o
+    // tenerlo sin ninguna huella dada de alta. Son dos problemas distintos --uno
+    // no tiene arreglo y el otro se resuelve en los ajustes en un minuto-- y
+    // esta es la unica linea que los separa.
+    const bio = biometriaNativa();
+    if (bio) {
+      bio
+        .disponible()
+        .then(({ puede, motivo }) =>
+          setLineas((p) => [
+            ...(p ?? []),
+            { que: "Candado · el sistema puede pedirla", valor: puede ? "sí" : `no (${motivo})`, bien: puede }
+          ])
+        )
+        .catch((e: Error) => anotar(`Biometria.disponible() falló: ${e.message}`));
     }
 
     if (!plugin) return;
