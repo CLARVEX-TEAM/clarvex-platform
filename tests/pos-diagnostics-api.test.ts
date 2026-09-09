@@ -46,7 +46,7 @@ const attempt = { provider: "gemini" as const, model: "ficticio", startedAt: "20
 type FilaHorario = { userId: string; status: string; user: { name: string } };
 
 function capture(
-  mode: "fail" | "ok" | "ambiguous" | "invalid" = "fail",
+  mode: "fail" | "ok" | "ambiguous" | "invalid" | "vacio" = "fail",
   storageFails = false,
   storeExists = true,
   horario: FilaHorario[] = []
@@ -82,7 +82,14 @@ function capture(
           assert.equal(document, original.toString("base64")); assert.equal(mime, "application/pdf");
           trace.attempts.push(attempt);
           return mode === "fail" ? { ok: false, error: "No cuadra la cuenta" } : {
-            ok: true, value: mode === "invalid" ? { ...report, rows: [{ ...row, gross: 1001 }] } : report
+            ok: true,
+            value: mode === "invalid" ? { ...report, rows: [{ ...row, gross: 1001 }] }
+              // Una fila ENTERA en ceros: pasa las cuatro cuentas del reporte
+              // --0-0=0 dos veces, y con cero tickets las otras dos ni se
+              // ejecutan-- asi que es una lectura «valida» que no dice nada.
+              : mode === "vacio" ? { ...report, rows: [{ ...row, tickets: 0, units: 0, unitsReturned: 0,
+                  gross: 0, discount: 0, afterDiscount: 0, returns: 0, net: 0, avgUnits: 0, avgAmount: 0 }] }
+              : report
           };
         }
       },
@@ -259,6 +266,38 @@ test("captura POS: sin horario capturado no se inventa un aviso", async () => {
   // «No hay horario» no es «no trabajó nadie». Un aviso que sale siempre deja
   // de leerse, y entonces no sirve el día que señala algo real.
   const json = await (await capture("ok").route.POST(request())).json();
+  assert.deepEqual(json.scheduledMissing, []);
+  assert.equal(json.scheduledMissingNotice, null);
+});
+
+test("⚠️ captura POS: una fila leída ENTERA EN CEROS cuenta como no aparecer", async () => {
+  /*
+   * Es peor que no leer a esa persona. La fila pasa las cuatro cuentas del
+   * reporte --0-0=0 dos veces, y con cero tickets las otras dos ni se
+   * ejecutan--, así que llega a la vista previa como una lectura válida y
+   * prellena un CERO con toda confianza sobre alguien que pudo haber vendido.
+   *
+   * Y quien captura lo hace con prisa: si la pantalla no lo señala, se guarda.
+   * Los dos casos --ausente y en ceros-- pierden exactamente lo mismo, así que
+   * se avisan igual.
+   */
+  const e = capture("vacio", false, true, [
+    { userId: "a", status: "WORKING", user: { name: "ASESOR SINTETICO" } }
+  ]);
+  const json = await (await e.route.POST(request())).json();
+
+  assert.deepEqual(json.scheduledMissing, ["ASESOR SINTETICO"]);
+  assert.match(json.scheduledMissingNotice, /ASESOR SINTETICO/);
+  // La fila sigue viajando: se avisa, no se esconde ni se detiene la carga.
+  assert.equal(json.entries.length, 1);
+  assert.equal(json.entries[0].pieces, 0);
+});
+
+test("captura POS: quien SÍ vendió no se señala aunque esté en el horario", async () => {
+  // La otra mitad de la regla: el aviso solo sale cuando no hay actividad.
+  const json = await (await capture("ok", false, true, [
+    { userId: "a", status: "WORKING", user: { name: "ASESOR SINTETICO" } }
+  ]).route.POST(request())).json();
   assert.deepEqual(json.scheduledMissing, []);
   assert.equal(json.scheduledMissingNotice, null);
 });

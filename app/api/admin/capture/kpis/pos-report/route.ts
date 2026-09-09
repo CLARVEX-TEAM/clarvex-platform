@@ -129,9 +129,23 @@ export async function POST(request: Request) {
         where: { storeId: parsed.data.storeId, date: diaDelReporte, user: PERSON_WHERE },
         select: { userId: true, status: true, user: { select: { name: true } } }
       });
+  /*
+   * ⚠️ **Aparecer con la fila en CEROS cuenta como no aparecer.**
+   *
+   * Una fila leída entera en ceros pasa las cuatro cuentas del reporte --0-0=0
+   * las dos veces, y con cero tickets las otras dos ni se ejecutan--, así que
+   * es una lectura «válida» que no dice nada. Y es PEOR que no leer a esa
+   * persona: se prellena un cero con toda confianza sobre alguien que pudo
+   * haber vendido, y quien captura con prisa lo guarda sin mirar.
+   *
+   * Los dos casos pierden exactamente lo mismo, así que se avisan igual.
+   */
+  const conVenta = match.matched
+    .filter((item) => item.row.transactions !== 0 || item.row.dailySales !== 0 || item.row.pieces !== 0)
+    .map((item) => item.user.id);
   const scheduledMissing = quienFaltaEnElReporte(
     horario.map((fila) => ({ userId: fila.userId, name: fila.user.name, status: fila.status })),
-    match.matched.map((item) => item.user.id)
+    conVenta
   );
 
   return NextResponse.json({
