@@ -5,6 +5,7 @@ import { timingSafeEqual } from "node:crypto";
 import vm from "node:vm";
 import ts from "typescript";
 import * as zod from "zod";
+import * as ausentes from "../lib/pos-ausentes";
 import * as productivity from "../lib/pos-productivity";
 import { decodePosDocument } from "../lib/pos-failure-store";
 import type { PosFailure } from "../lib/pos-failure-store";
@@ -41,12 +42,20 @@ const id = "20000000-0000-4000-8000-000000000001";
 const attempt = { provider: "gemini" as const, model: "ficticio", startedAt: "2026-09-06T00:00:00.000Z",
   durationMs: 20, text: '{"lectura":"sintética"}', accepted: false, textTruncated: false, problem: "Cuenta incorrecta" };
 
-function capture(mode: "fail" | "ok" | "ambiguous" | "invalid" = "fail", storageFails = false, storeExists = true) {
+/** El horario del día del reporte. Vacío por omisión: sin horario no se avisa. */
+type FilaHorario = { userId: string; status: string; user: { name: string } };
+
+function capture(
+  mode: "fail" | "ok" | "ambiguous" | "invalid" = "fail",
+  storageFails = false,
+  storeExists = true,
+  horario: FilaHorario[] = []
+) {
   const saved: Array<Record<string, unknown>> = [];
   let reads = 0, queries = 0;
   const route = load<typeof import("../app/api/admin/capture/kpis/pos-report/route")>(
     "app/api/admin/capture/kpis/pos-report/route.ts", {
-      "next/server": next, zod, "@/lib/admin-capture-auth": auth, "@/lib/pos-productivity": productivity,
+      "next/server": next, zod, "@/lib/admin-capture-auth": auth, "@/lib/pos-productivity": productivity, "@/lib/pos-ausentes": ausentes,
       "@/lib/store-people": { PERSON_WHERE: { active: true } },
       "@/lib/prisma": { prisma: {
         store: { findUnique: async () => { queries++; return storeExists ? { id: "TEST-STORE-A" } : null; } },
@@ -56,6 +65,14 @@ function capture(mode: "fail" | "ok" | "ambiguous" | "invalid" = "fail", storage
             { id: "a", name: "ASESOR SINTETICO UNO", employeeNumber: "1" },
             { id: "b", name: "ASESOR SINTETICO DOS", employeeNumber: "2" }
           ] : [{ id: "a", name: row.name, employeeNumber: "1" }];
+        } },
+        // El horario del día del reporte: la segunda opinión que delata una
+        // fila que el lector nunca vio. Ver `lib/pos-ausentes`.
+        schedule: { findMany: async (args: { where: { date: Date } }) => {
+          // ⚠️ Se consulta la fecha DEL REPORTE, no la de hoy. Si esto se
+          // rompiera, el aviso no saltaría nunca y parecería que funciona.
+          assert.equal(args.where.date.toISOString(), "2026-09-05T00:00:00.000Z");
+          return horario;
         } }
       } },
       "@/lib/pos-vision": {
@@ -209,4 +226,39 @@ test("historial POS HTTP: filtro de tienda, inexistentes, formatos inválidos y 
   const response = await history("admin", true).route.GET(query());
   assert.equal(response.status, 503);
   assert.ok(!(await response.text()).includes("ruta privada"));
+});
+
+test("⚠️ captura POS: quien trabajó y no viene en el reporte se avisa, sin detener la carga", async () => {
+  /*
+   * Es la única red contra una fila que el lector NUNCA VIO: las cuatro cuentas
+   * del reporte son todas dentro de la fila, así que las que sobreviven cuadran
+   * solas, y `unmatched` no la ve porque no hay nombre que reportar.
+   *
+   * Sin esto, un día con una persona perdida se captura con menos piezas y el
+   * kardex resta de menos: el descuadre aparece en el conteo físico, semanas
+   * después y sin rastro de qué día fue. Pasó en la ronda de agosto de 2026.
+   */
+  const e = capture("ok", false, true, [
+    { userId: "a", status: "WORKING", user: { name: "ASESOR SINTETICO" } },
+    { userId: "b", status: "WORKING", user: { name: "QUIEN FALTA" } },
+    { userId: "c", status: "OFF", user: { name: "QUIEN DESCANSA" } }
+  ]);
+  const response = await e.route.POST(request());
+
+  assert.equal(response.status, 200, "avisar NO puede detener la carga: se puede trabajar y no vender");
+  const json = await response.json();
+  assert.deepEqual(json.scheduledMissing, ["QUIEN FALTA"]);
+  assert.ok(!json.scheduledMissing.includes("QUIEN DESCANSA"), "quien descansa no se echa de menos");
+  assert.match(json.scheduledMissingNotice, /QUIEN FALTA/);
+  // Y lo que ya funcionaba sigue igual: el prellenado no se toca.
+  assert.equal(json.entries.length, 1);
+  assert.equal(json.entries[0].pieces, row.units);
+});
+
+test("captura POS: sin horario capturado no se inventa un aviso", async () => {
+  // «No hay horario» no es «no trabajó nadie». Un aviso que sale siempre deja
+  // de leerse, y entonces no sirve el día que señala algo real.
+  const json = await (await capture("ok").route.POST(request())).json();
+  assert.deepEqual(json.scheduledMissing, []);
+  assert.equal(json.scheduledMissingNotice, null);
 });

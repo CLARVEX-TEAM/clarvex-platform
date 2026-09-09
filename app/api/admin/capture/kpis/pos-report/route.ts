@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireAdminCapture } from "@/lib/admin-capture-auth";
+import { avisoDeAusentes, quienFaltaEnElReporte } from "@/lib/pos-ausentes";
 import { matchPosRows, posCaptureRows } from "@/lib/pos-productivity";
 import { isVisionConfigured, readPosReport } from "@/lib/pos-vision";
 import { prisma } from "@/lib/prisma";
@@ -107,6 +108,32 @@ export async function POST(request: Request) {
       match.ambiguous.map((item) => `«${item.name}» podría ser ${item.candidates.join(" o ")}.`));
   }
 
+  /*
+   * ⚠️ **La única red contra una fila que el lector NUNCA VIO.**
+   *
+   * Las cuatro cuentas de `posCaptureRows` viven dentro de cada fila, así que
+   * una fila entera perdida las pasa todas: las que quedan cuadran solas.
+   * `unmatched` tampoco la ve — habla de nombres leídos que no se pudieron
+   * emparejar, y aquí no hay nombre que reportar.
+   *
+   * El horario es la segunda opinión: lo captura otra persona por otra vía, así
+   * que no es la misma lectura mirándose al espejo. Se compara contra la fecha
+   * DEL REPORTE, no contra la que se esté capturando en pantalla.
+   *
+   * Avisa y no detiene: se puede trabajar y no vender. Ver `lib/pos-ausentes`.
+   */
+  const diaDelReporte = new Date(`${read.value.from}T00:00:00.000Z`);
+  const horario = Number.isNaN(diaDelReporte.getTime())
+    ? []
+    : await prisma.schedule.findMany({
+        where: { storeId: parsed.data.storeId, date: diaDelReporte, user: PERSON_WHERE },
+        select: { userId: true, status: true, user: { select: { name: true } } }
+      });
+  const scheduledMissing = quienFaltaEnElReporte(
+    horario.map((fila) => ({ userId: fila.userId, name: fila.user.name, status: fila.status })),
+    match.matched.map((item) => item.user.id)
+  );
+
   return NextResponse.json({
     ok: true,
     date: read.value.from,
@@ -123,6 +150,8 @@ export async function POST(request: Request) {
       grossSales: item.row.grossSales,
       discountAmount: item.row.discountAmount
     })),
-    unmatched: match.unmatched
+    unmatched: match.unmatched,
+    scheduledMissing,
+    scheduledMissingNotice: avisoDeAusentes(scheduledMissing)
   });
 }

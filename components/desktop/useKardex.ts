@@ -58,6 +58,8 @@ export type KardexPayload = {
   daily: KardexDay[];
   change: number | null;
   movements: KardexMovement[];
+  /** ⚠️ La lista viene cortada: la pantalla no puede presentar sus sumas como completas. */
+  movementsTruncated?: boolean;
 };
 
 export function useKardex() {

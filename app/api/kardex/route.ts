@@ -10,6 +10,15 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 /**
+ * Tope de movimientos que viajan a la pantalla.
+ *
+ * Generoso a propósito: una ronda son unos dos meses y la tienda más cargada no
+ * llega a cien. Lo que NO puede pasar es cortar sin decirlo, porque encima de
+ * esta lista se suman piezas a mano.
+ */
+const TOPE_MOVIMIENTOS = 500;
+
+/**
  * Kardex de la tienda de la sesión, para las pantallas de Clarvex.
  *
  * ⚠️ No confundir con `/api/inventory`, que es el reporte de FALTANTES de
@@ -74,9 +83,20 @@ export async function GET() {
       difference: state.difference,
       daily,
       change: dailyChange(daily),
-      // Los últimos movimientos bastan para la vista; el detalle completo se
-      // consulta en el archivo exportado.
-      movements: state.movements.slice(0, 60).map((movement) => ({
+      /*
+       * ⚠️ **Van TODOS los de la ronda, no los últimos sesenta.**
+       *
+       * El recorte anterior valía cuando la pantalla solo los ENSEÑABA. Desde
+       * que se pueden marcar filas y sumarlas, una lista cortada devuelve un
+       * total que se lee como completo y no lo es — y el kardex de esta tienda
+       * ya iba por 50 de los 60 que se mandaban.
+       *
+       * El tope sigue existiendo para que una ronda desbocada no tire la
+       * pantalla, pero ahora se DECLARA: `movementsTruncated` es lo que le
+       * permite a la pantalla negarse a sumar, en vez de sumar de menos.
+       */
+      movementsTruncated: state.movements.length > TOPE_MOVIMIENTOS,
+      movements: state.movements.slice(0, TOPE_MOVIMIENTOS).map((movement) => ({
         id: movement.id,
         date: movement.date.toISOString().slice(0, 10),
         type: movement.type,
