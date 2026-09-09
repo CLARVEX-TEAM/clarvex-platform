@@ -1637,6 +1637,68 @@ días—: **13 de 13**.
 - El primer arranque necesita referencias: se sembraron a mano con las fotos del
   reporte de la semana 34, extraídas del propio `.pptx`.
 
+### Las promociones del corporativo — 9 de septiembre de 2026
+
+Se manda al bot la captura del correo de promociones **con el pie `promo`** y
+contesta con el comunicado ya redactado, esperando en Clarvex. **No publica
+nada**: deja un `PromoDraft` que gerencia abre, revisa y publica. Misma
+separación que el reconocimiento de zonas del visual, y por el mismo motivo —un
+correo mal leído aquí se convierte en un precio equivocado en el mostrador—.
+
+La lectura vive en `lib/promo-vision.ts` (Bedrock) y la redacción en
+`lib/promo-comunicado.ts`, con plantilla fija: el modelo **extrae campos**, no
+escribe. Una restricción reescrita es una restricción cambiada.
+
+⚠️ **La rama va en el MISMO flujo de n8n, `clarvexvisualsemanal`.** Un bot de
+Telegram admite **un solo webhook**: dos flujos con su propio disparador se
+pelean por él y el que pierde deja de recibir mensajes sin decir nada.
+
+⚠️ **Antes, CUALQUIER foto caía en el flujo del visual** (salida 0 del switch
+«Que quiere»), así que una captura de promoción se habría guardado como la foto
+de una zona. Se distinguen por el PIE, que es lo que ese flujo ya usaba para
+nombrar el hueco. La rama nueva se mete ANTES y no toca ninguna de las
+anteriores; se comprobó evaluando las dos expresiones sobre catorce mensajes
+—foto sin pie, pie de zona, los cinco comandos de texto, chat ajeno— y solo
+cambian de ruta los dos casos de promoción. La guarda del chat sigue primero,
+así que una foto «promo» desde otro chat se ignora igual que siempre.
+
+⚠️ **La petición va con `neverError`.** El endpoint contesta **422 con el motivo
+en claro** —«la captura no deja ver la vigencia»— y ese texto es lo único útil de
+la respuesta: dice qué falta para mandar otra sin adivinar. Sin `neverError`,
+n8n lanza y el aviso genérico lo tapa.
+
+#### Cómo se actualiza un flujo de n8n aquí
+
+⚠️ **`--activeState=fromJson` NO existe en este despliegue.** Solo funciona en
+modo cola o multi-main; el nuestro es modo normal y el import responde «workflow
+activation is not supported». Y el import **por omisión DESACTIVA** lo que
+importa. Como este flujo es el dueño del webhook del bot, importarlo a secas
+deja la tienda sin recibir **nada** por Telegram, el visual incluido.
+
+Los tres pasos, y ninguno sobra:
+
+```bash
+docker exec n8n n8n import:workflow --input=/tmp/v.json
+docker exec n8n n8n publish:workflow --id=clarvexvisualsemanal   # lo reactiva
+docker restart n8n                                                # relee de la base
+```
+
+⚠️ El **reinicio no es opcional**: n8n mantiene la versión vieja en memoria y sin
+él la rama nueva no existe aunque el import diga que salió bien. Lo dice el
+propio comando: «Changes will not take effect if n8n is running».
+
+⚠️ **La copia versionada decía `active: false` mientras el flujo corre ACTIVO.**
+Ahora dice `true`. Importarla como estaba lo habría apagado. Los otros JSON de
+`scripts/n8n-*.json` siguen con `false` y tienen el mismo problema latente: antes
+de importar cualquiera, comprobar su estado real en la base.
+
+Se comprueba después con instrumentos distintos: la fila de `workflow_entity`
+—`active`, número de nodos, salida 7 del switch— y el log del arranque, que tiene
+que decir `Activated workflow "Clarvex — Visual semanal"`. Que la base diga
+`active: 1` no demuestra que el proceso registrara el webhook.
+
+Respaldo previo: `/home/ubuntu/n8n-workflow-backups/visual-semanal-antes-promo-20260909-213502.json`.
+
 ### Y el copiloto flotante se retiró
 
 Nadie lo usaba y su botón estorbaba en todas las pantallas. Se quitó el
