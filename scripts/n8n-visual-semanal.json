@@ -2,7 +2,7 @@
   {
     "id": "clarvexvisualsemanal",
     "name": "Clarvex — Visual semanal",
-    "active": false,
+    "active": true,
     "nodes": [
       {
         "parameters": {
@@ -30,8 +30,8 @@
       {
         "parameters": {
           "mode": "expression",
-          "numberOutputs": 7,
-          "output": "={{ (() => { const m = $json.message; if (m.chat.id !== 8328057325) return 3; if (m.photo) return 0; const t = (m.text || '').trim().toLowerCase(); if (t === 'visual armar') return 1; if (t === 'visual reconocer') return 4; if (t === 'visual confirmar') return 5; if (t.startsWith('visual cambiar')) return 6; if (t === 'visual') return 2; return 3;})() }}",
+          "numberOutputs": 8,
+          "output": "={{ (() => { const m = $json.message; if (m.chat.id !== 8328057325) return 3; const pie = (m.caption || '').trim().toLowerCase(); if (m.photo && pie.startsWith('promo')) return 7; if (m.photo) return 0; const t = (m.text || '').trim().toLowerCase(); if (t === 'visual armar') return 1; if (t === 'visual reconocer') return 4; if (t === 'visual confirmar') return 5; if (t.startsWith('visual cambiar')) return 6; if (t === 'visual') return 2; return 3;})() }}",
           "options": {}
         },
         "id": "v0000000-0002-4000-8000-000000000002",
@@ -439,6 +439,92 @@
           -260,
           640
         ]
+      },
+      {
+        "parameters": {
+          "resource": "file",
+          "fileId": "={{ $('Mensaje').first().json.message.photo[$('Mensaje').first().json.message.photo.length - 1].file_id }}",
+          "download": true
+        },
+        "id": "v0000000-0021-4000-8000-000000000021",
+        "name": "Bajar la promo",
+        "type": "n8n-nodes-base.telegram",
+        "typeVersion": 1.2,
+        "onError": "continueErrorOutput",
+        "position": [
+          -440,
+          520
+        ],
+        "credentials": {
+          "telegramApi": {
+            "id": "c7bIjyLeljGWy3yc",
+            "name": "Telegram account 2"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "jsCode": "// La captura viaja en base64 dentro del JSON, igual que la del reporte del POS.\n//\n// ⚠️ NO se deja en disco como las del visual. Aquellas son doce, pesadas, y se\n// arman despues en una plantilla, asi que viven en un volumen compartido; esta\n// es una sola y el servidor la lee y la olvida.\nconst binario = await this.helpers.getBinaryDataBuffer(0, 'data');\nconst meta = $input.first().binary.data;\n\nreturn [{\n  json: {\n    storeId: 'clarvex-demo-store',\n    imagenBase64: binario.toString('base64'),\n    // Telegram recomprime las fotos a JPEG. Se manda lo que declare el binario\n    // y se cae a jpeg, que es lo que de verdad llega.\n    mimeType: meta && meta.mimeType ? meta.mimeType : 'image/jpeg'\n  }\n}];"
+        },
+        "id": "v0000000-0022-4000-8000-000000000022",
+        "name": "Armar la promo",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "onError": "continueErrorOutput",
+        "position": [
+          -200,
+          520
+        ]
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "https://team.clarvex.tech/api/admin/capture/promos",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "=Bearer {{ $env.ADMIN_CAPTURE_SECRET }}"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify($json) }}",
+          "options": {
+            "timeout": 120000,
+            "response": {
+              "response": {
+                "neverError": true,
+                "fullResponse": true
+              }
+            }
+          }
+        },
+        "id": "v0000000-0023-4000-8000-000000000023",
+        "name": "Leer la promo",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "onError": "continueErrorOutput",
+        "position": [
+          40,
+          520
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "// El endpoint contesta 201 con el comunicado ya redactado, o 4xx con el motivo\n// EN CLARO --y ese motivo es justo lo que hay que ensenar: dice QUE falta en la\n// captura, para poder mandar otra sin adivinar--.\n//\n// ⚠️ Por eso la peticion va con neverError: sin eso n8n lanzaria y el aviso\n// generico taparia el unico texto util de la respuesta.\nconst r = $json;\nconst cuerpo = r.body || {};\n\nif (r.statusCode !== 201) {\n  return [{ json: { respuesta: cuerpo.error || 'No se pudo leer la promocion.' } }];\n}\n\n// Telegram corta en 4096 caracteres. Se recorta el CUERPO y se avisa, en vez de\n// dejar que el mensaje se pierda entero o llegue mutilado sin decirlo.\nconst TOPE = 3200;\nlet texto = cuerpo.body || '';\nlet recortado = false;\nif (texto.length > TOPE) { texto = texto.slice(0, TOPE); recortado = true; }\n\nconst lineas = [\n  'Borrador listo en Clarvex. NO se publico nada.',\n  '',\n  cuerpo.title || '(sin titulo)',\n  '',\n  texto\n];\nif (recortado) lineas.push('', '[...] El comunicado sigue; abrelo en Clarvex para verlo completo.');\nlineas.push(\n  '',\n  'Revisalo antes de publicarlo. Los descuentos y las restricciones van tal cual los mando el corporativo.',\n  'El CODIGO es lo unico que nadie puede comprobar solo: compara digito por digito contra el correo.'\n);\n\nreturn [{ json: { respuesta: lineas.join('\\n') } }];"
+        },
+        "id": "v0000000-0024-4000-8000-000000000024",
+        "name": "Decir el borrador",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "onError": "continueErrorOutput",
+        "position": [
+          280,
+          520
+        ]
       }
     ],
     "connections": {
@@ -494,6 +580,13 @@
           [
             {
               "node": "Leer el cambio",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Bajar la promo",
               "type": "main",
               "index": 0
             }
@@ -765,6 +858,78 @@
         ]
       },
       "Decir el mensaje": {
+        "main": [
+          [
+            {
+              "node": "Responder",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Avisar del fallo",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Bajar la promo": {
+        "main": [
+          [
+            {
+              "node": "Armar la promo",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Avisar del fallo",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Armar la promo": {
+        "main": [
+          [
+            {
+              "node": "Leer la promo",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Avisar del fallo",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Leer la promo": {
+        "main": [
+          [
+            {
+              "node": "Decir el borrador",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Avisar del fallo",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Decir el borrador": {
         "main": [
           [
             {
