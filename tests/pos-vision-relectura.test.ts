@@ -14,8 +14,21 @@ const fila = {
   gross: 1000, discount: 100, afterDiscount: 900, returns: 200,
   net: 700, avgUnits: 1.5, avgAmount: 350
 };
+/*
+ * El pie «Promedio» del reporte. Con UNA fila la media es esa misma fila.
+ *
+ * ⚠️ Se calcula a proposito, incluso para las filas incoherentes: lo que estas
+ * pruebas comprueban es que una fila cuyas CUENTAS INTERNAS no cuadran provoca
+ * otra lectura. Un pie que ademas no cuadrara mezclaria las dos causas y ya no
+ * se sabria cual de las dos disparo la relectura.
+ */
+const pie = (row: typeof fila) => ({
+  tickets: row.tickets, units: row.units, gross: row.gross,
+  afterDiscount: row.afterDiscount, net: row.net,
+  avgUnits: row.avgUnits, avgAmount: row.avgAmount
+});
 const reporte = (row = fila) => JSON.stringify({
-  from: "2026-09-05", to: "2026-09-05", storeNumber: "TEST", rows: [row]
+  from: "2026-09-05", to: "2026-09-05", storeNumber: "TEST", rows: [row], promedio: pie(row)
 });
 const erroresReportados = [
   { gross: 40249, discount: 13234, afterDiscount: 27715 },

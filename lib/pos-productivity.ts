@@ -44,12 +44,40 @@ export type PosRow = {
   avgAmount: number;
 };
 
+/**
+ * La fila «Promedio» del pie del reporte.
+ *
+ * ⚠️ **Es la única comprobación que mira el reporte ENTERO**, y durante meses se
+ * tiró a la basura: el prompt decía «NO incluyas la fila Promedio».
+ *
+ * Las cuatro cuentas de `rowProblems` viven todas DENTRO de cada fila, así que
+ * una fila entera que el lector no vio las pasa todas —las que quedan cuadran
+ * solas— y el día se captura de menos sin que nada lo delate. Esta media es la
+ * que lo caza, porque **depende de CUÁNTAS filas hay**.
+ *
+ * Medido contra cinco reportes reales de TH San Agustín (4, 5, 6, 7 y 9 de
+ * septiembre de 2026): la media es exacta al centavo en las columnas de dinero
+ * y los enteros salen redondeados. Con cuatro vendedores caza una fila perdida
+ * por ~$700 de desviación y un error de UN PESO por $0.25.
+ */
+export type PosPromedio = {
+  tickets: number;
+  units: number;
+  gross: number;
+  afterDiscount: number;
+  net: number;
+  avgUnits: number;
+  avgAmount: number;
+};
+
 export type PosReport = {
   /** Del encabezado: «Desde» y «Hasta». Tienen que ser el MISMO día. */
   from: string;
   to: string;
   storeNumber: string | null;
   rows: PosRow[];
+  /** La fila «Promedio» del pie. Ver `PosPromedio`. */
+  promedio?: PosPromedio | null;
 };
 
 export type PosOutcome<T> = { ok: true; value: T } | { ok: false; error: string };
@@ -169,6 +197,61 @@ export function rowProblems(row: PosRow): string[] {
 }
 
 /**
+ * ¿Las filas leídas dan la media que el propio reporte imprime?
+ *
+ * ⚠️ **Se comprueban SIETE columnas y no las diez.** `discount`, `returns` y
+ * `unitsReturned` se quedan fuera a propósito: el reporte las imprime en
+ * negativo y el prompt las pide en magnitud, así que su signo aquí sería una
+ * fuente de rechazos falsos. Y no hacen falta — `rowProblems` ya las ata a
+ * `gross`, `afterDiscount` y `net` fila por fila, y esas tres SÍ se comprueban
+ * aquí. Validar los extremos de una resta valida la resta.
+ *
+ * Las tolerancias no son un número al azar:
+ *
+ * - **Dinero**: la media es exacta al centavo; el margen cubre el redondeo a dos
+ *   decimales del propio reporte (medido: la mayor desviación real fue medio
+ *   centavo).
+ * - **Enteros**: el reporte redondea la media a entero --6.5 unidades salen
+ *   como 7-- así que el margen es de medio, más un pelo. Aquí no se puede
+ *   apretar; el peso lo llevan las columnas de dinero.
+ */
+export function promedioProblemas(rows: PosRow[], promedio: PosPromedio): string[] {
+  if (rows.length === 0) return ["no hay filas que comparar contra el promedio"];
+
+  const media = (saca: (fila: PosRow) => number) => rows.reduce((total, fila) => total + saca(fila), 0) / rows.length;
+  const problemas: string[] = [];
+
+  const dinero: Array<[string, number, number]> = [
+    ["Bruto Ventas", media((f) => f.gross), promedio.gross],
+    ["Ventas posteriores Descuentos", media((f) => f.afterDiscount), promedio.afterDiscount],
+    ["Neto Ventas", media((f) => f.net), promedio.net],
+    ["Prom. Unidades", media((f) => f.avgUnits), promedio.avgUnits],
+    ["Prom. Monto", media((f) => f.avgAmount), promedio.avgAmount]
+  ];
+  for (const [columna, calculada, impresa] of dinero) {
+    if (!close(calculada, impresa)) {
+      problemas.push(
+        `${columna}: las ${rows.length} filas promedian ${round2(calculada)} y el reporte imprime ${impresa}.`
+      );
+    }
+  }
+
+  const enteros: Array<[string, number, number]> = [
+    ["Tickets", media((f) => f.tickets), promedio.tickets],
+    ["Unidades Vendido", media((f) => f.units), promedio.units]
+  ];
+  for (const [columna, calculada, impresa] of enteros) {
+    if (Math.abs(calculada - impresa) > 0.5 + CENT) {
+      problemas.push(
+        `${columna}: las ${rows.length} filas promedian ${round2(calculada)} y el reporte imprime ${impresa}.`
+      );
+    }
+  }
+
+  return problemas;
+}
+
+/**
  * Convierte el reporte en filas listas para capturar, o explica por qué no.
  *
  * No devuelve nada a medias: si una sola fila no cuadra, se detiene entera. Una
@@ -196,6 +279,34 @@ export function posCaptureRows(report: PosReport): PosOutcome<PosCapture[]> {
     .map((row) => normalize(row.name))
     .find((name, index, list) => list.indexOf(name) !== index);
   if (repeated) return { ok: false, error: `El vendedor «${repeated}» aparece dos veces en el reporte.` };
+
+  /*
+   * ⚠️ **Sin la fila «Promedio» no se acepta la lectura.**
+   *
+   * Es la ÚNICA comprobación que mira el reporte entero: todo lo de arriba vive
+   * dentro de cada fila, así que una fila que el lector no vio pasa las cuatro
+   * cuentas y el día entra de menos. Dejarla opcional sería dejar esa puerta
+   * abierta justo cuando quien captura va con prisa y no revisa.
+   *
+   * Un fallo aquí no es definitivo: `readPosReport` vuelve a transcribir el
+   * documento, así que una lectura que se saltó el pie se corrige sola.
+   */
+  if (!report.promedio) {
+    return {
+      ok: false,
+      error:
+        "No se leyó la fila «Promedio» del pie del reporte, que es la que permite comprobar que no falte ningún vendedor. Manda la captura con el pie de la tabla incluido."
+    };
+  }
+
+  const desviadas = promedioProblemas(report.rows, report.promedio);
+  if (desviadas.length > 0) {
+    return {
+      ok: false,
+      error:
+        `Las ${report.rows.length} filas leídas no dan el promedio que imprime el reporte, así que falta alguna o hay un número mal leído:\n${desviadas.join("\n")}`
+    };
+  }
 
   return {
     ok: true,

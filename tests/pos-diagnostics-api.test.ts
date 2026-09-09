@@ -36,7 +36,29 @@ const auth = load<typeof import("../lib/admin-capture-auth")>("lib/admin-capture
 }, { ADMIN_CAPTURE_SECRET: secret });
 const row = { name: "ASESOR SINTETICO", tickets: 2, units: 4, unitsReturned: 1,
   gross: 1000, discount: 100, afterDiscount: 900, returns: 200, net: 700, avgUnits: 1.5, avgAmount: 350 };
-const report = { from: "2026-09-05", to: "2026-09-05", storeNumber: "TEST", rows: [row] };
+/*
+ * El pie «Promedio» del reporte, que `posCaptureRows` exige: es lo único que
+ * mira el documento entero y caza una fila que el lector no vio.
+ *
+ * ⚠️ Se calcula a partir de las filas de CADA caso, no una vez para todos. Con
+ * el pie del caso normal, el caso «invalid» --que existe para probar el rechazo
+ * por CUENTAS de la fila-- fallaría además por el pie, y el archivo dejaría de
+ * demostrar cuál de las dos cosas lo detuvo.
+ */
+const pie = (filas: Array<typeof row>) => {
+  const media = (saca: (f: typeof row) => number) => filas.reduce((t, f) => t + saca(f), 0) / filas.length;
+  const dos = (n: number) => Math.round(n * 100) / 100;
+  return {
+    tickets: Math.round(media((f) => f.tickets)), units: Math.round(media((f) => f.units)),
+    gross: dos(media((f) => f.gross)), afterDiscount: dos(media((f) => f.afterDiscount)),
+    net: dos(media((f) => f.net)), avgUnits: dos(media((f) => f.avgUnits)),
+    avgAmount: dos(media((f) => f.avgAmount))
+  };
+};
+const conPie = (filas: Array<typeof row>) => ({
+  from: "2026-09-05", to: "2026-09-05", storeNumber: "TEST", rows: filas, promedio: pie(filas)
+});
+const report = conPie([row]);
 const original = Buffer.from("%PDF-original-sintético");
 const id = "20000000-0000-4000-8000-000000000001";
 const attempt = { provider: "gemini" as const, model: "ficticio", startedAt: "2026-09-06T00:00:00.000Z",
@@ -83,12 +105,14 @@ function capture(
           trace.attempts.push(attempt);
           return mode === "fail" ? { ok: false, error: "No cuadra la cuenta" } : {
             ok: true,
-            value: mode === "invalid" ? { ...report, rows: [{ ...row, gross: 1001 }] }
+            value: mode === "invalid" ? conPie([{ ...row, gross: 1001 }])
               // Una fila ENTERA en ceros: pasa las cuatro cuentas del reporte
               // --0-0=0 dos veces, y con cero tickets las otras dos ni se
-              // ejecutan-- asi que es una lectura «valida» que no dice nada.
-              : mode === "vacio" ? { ...report, rows: [{ ...row, tickets: 0, units: 0, unitsReturned: 0,
-                  gross: 0, discount: 0, afterDiscount: 0, returns: 0, net: 0, avgUnits: 0, avgAmount: 0 }] }
+              // ejecutan-- y su pie tambien cuadra, porque cero entre uno es
+              // cero. Sigue siendo una lectura «valida» que no dice nada: eso
+              // es justo lo que el aviso del horario tiene que cazar.
+              : mode === "vacio" ? conPie([{ ...row, tickets: 0, units: 0, unitsReturned: 0,
+                  gross: 0, discount: 0, afterDiscount: 0, returns: 0, net: 0, avgUnits: 0, avgAmount: 0 }])
               : report
           };
         }
