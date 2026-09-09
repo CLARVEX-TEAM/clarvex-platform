@@ -23,6 +23,13 @@
 #    llega por eslint, que lee configuración nuestra y no entrada de terceros,
 #    así que la superficie real es nula; se sube igual para dejar el audit en
 #    cero. La 4.3.1 cambia el escaneo del array por un Set.
+#    Y el 8-sep-2026, un TERCERO contra la propia 4.3.1: GHSA-2883-xcg3-v3hh.
+#    Otra vez CPU, y otra vez por la puerta de al lado — `maxTotalMergeKeys` no
+#    CUENTA los mapas vacíos, así que fusionar repetidas veces una secuencia de
+#    ellos cuesta O(N*K) sin mover nunca el contador que debía frenarlo. El
+#    límite existía y no medía lo que se estaba gastando. Misma superficie nula
+#    que las dos anteriores (solo eslint, leyendo configuración nuestra) y misma
+#    decisión: se sube para dejar el audit en cero. Parche en la 4.3.2.
 #  - fast-uri <3.1.5 (GHSA-7p8r-x3mc-p8w7): confusión de host. Reconoce la
 #    autoridad de una URI solo tras "//", así que con "\\", "/\" o "\/" se traga
 #    el host dentro de la ruta. El URL nativo de Node sí trata "\" como "/", de
@@ -45,6 +52,6 @@ overrides:
   brace-expansion@1: 1.1.18
   brace-expansion@2: 2.1.4
   brace-expansion@5: 5.0.9
-  js-yaml@4: 4.3.1
+  js-yaml@4: 4.3.2
   fast-uri@<3.1.5: ">=3.1.5 <4"
   sharp@<0.35.0: ">=0.35.0 <0.36"
