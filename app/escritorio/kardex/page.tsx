@@ -2,6 +2,7 @@
 
 import { ArrowDownToLine, ArrowUpFromLine, Boxes, PackagePlus } from "lucide-react";
 import { Sparkline } from "@/components/desktop/DeskCharts";
+import { KardexMovimientos } from "@/components/desktop/KardexMovimientos";
 import { DesktopError } from "@/components/desktop/DesktopError";
 import {
   DeskEmpty,
@@ -17,7 +18,6 @@ import {
   deskTr
 } from "@/components/desktop/DeskUI";
 import {
-  MOVEMENT_LABELS,
   pieces,
   shortDay,
   signedPieces,
@@ -158,37 +158,11 @@ export default function EscritorioKardexPage() {
       </DeskReveal>
 
       <DeskReveal index={3}>
-        <DeskSection title="Últimos movimientos" hint="El detalle completo va en el kardex que se exporta para corporativo.">
-          {movements.length === 0 ? (
-            <DeskEmpty title="Todavía no hay movimientos en esta ronda" />
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[38rem]">
-                <thead className={deskThead}>
-                  <tr>
-                    <th className={deskTh}>Día</th>
-                    <th className={deskTh}>Movimiento</th>
-                    <th className={deskThRight}>Piezas</th>
-                    <th className={deskTh}>Folio</th>
-                    <th className={deskTh}>Contraparte</th>
-                    <th className={deskTh}>Quién</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {movements.map((movement) => (
-                    <tr key={movement.id} className={deskTr}>
-                      <td className={deskTdMuted}>{shortDay(movement.date)}</td>
-                      <td className={deskTd}>{MOVEMENT_LABELS[movement.type] ?? movement.type}</td>
-                      <td className={cn(deskTd, "text-right tabular-nums")}>{pieces(movement.quantity)}</td>
-                      <td className={deskTdMuted}>{movement.reference ?? "—"}</td>
-                      <td className={deskTdMuted}>{movement.counterpart ?? "—"}</td>
-                      <td className={deskTdMuted}>{movement.createdBy ?? "—"}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+        <DeskSection
+          title="Movimientos de la ronda"
+          hint="Filtra por tipo y marca las filas que quieras sumar, como en el Excel. Con Shift se marca un tramo entero."
+        >
+          <KardexMovimientos movements={movements} truncated={data.movementsTruncated === true} />
         </DeskSection>
       </DeskReveal>
     </div>

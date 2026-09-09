@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { matchPosRows, posCaptureRows, rowProblems, sameSurname, type PosRow } from "../lib/pos-productivity";
 
 /**
@@ -320,4 +322,71 @@ test("un nombre que no se parece a nadie sigue sin emparejar", () => {
 
   assert.equal(m.matched.length, 0);
   assert.deepEqual(m.unmatched, ["MARTINEZ, RICARDO"]);
+});
+
+/*
+ * ⚠️ El agujero de los CERO TICKETS.
+ *
+ * Las dos comprobaciones que miran `units` --el promedio de unidades y el de
+ * monto-- viven dentro de `if (row.tickets > 0)`. Con cero tickets NO SE
+ * EJECUTAN, y entonces `units` entra sin que nadie la haya mirado: dividir
+ * entre los tickets es lo unico que la ata a un numero impreso aparte.
+ *
+ * Y `pieces` sale de `units`, asi que esas unidades bajan al kardex como piezas
+ * vendidas y se restan del inventario teorico. El descuadre no aparece hasta el
+ * conteo fisico, sin rastro de que dia fue.
+ *
+ * Esto importa mas de lo que parece porque la tienda captura con prisa y no
+ * siempre revisa la vista previa: si la validacion no lo detiene, se guarda.
+ */
+test("⚠️ con 0 tickets no pueden entrar unidades sin que nadie las mire", () => {
+  const vacia = {
+    name: "ASESOR", tickets: 0, units: 0, unitsReturned: 0, gross: 0, discount: 0,
+    afterDiscount: 0, returns: 0, net: 0, avgUnits: 0, avgAmount: 0
+  };
+  // Una fila realmente vacia sigue siendo valida: el reporte puede listar a
+  // quien no vendio, y rechazarla bloquearia la captura de un dia legitimo.
+  assert.deepEqual(rowProblems(vacia), []);
+
+  // Pero 37 unidades sin una sola transaccion es imposible, y pasaba entera.
+  const problemas = rowProblems({ ...vacia, units: 37 });
+  assert.equal(problemas.length, 1, JSON.stringify(problemas));
+  assert.match(problemas[0], /37 unidades con 0 tickets/);
+});
+
+test("con 0 tickets, una venta distinta de cero se sigue rechazando", () => {
+  // Es la comprobacion que ya existia; no se pierde al agregar la de unidades.
+  // Las cuentas internas cuadran --900 sin descuento ni devoluciones-- para que
+  // lo unico que pueda saltar sea la comprobacion de los tickets.
+  const problemas = rowProblems({
+    name: "ASESOR", tickets: 0, units: 0, unitsReturned: 0, gross: 900, discount: 0,
+    afterDiscount: 900, returns: 0, net: 900, avgUnits: 0, avgAmount: 0
+  });
+  assert.equal(problemas.length, 1, JSON.stringify(problemas));
+  assert.match(problemas[0], /venta con 0 tickets/);
+});
+
+test("las unidades DEVUELTAS con 0 tickets NO se rechazan", () => {
+  /*
+   * No esta confirmado que una devolucion genere ticket en este POS, y
+   * `unitsReturned` no baja al kardex --solo participa en la cuenta del
+   * promedio--. Exigirlo arriesgaria bloquear un dia legitimo a cambio de nada.
+   */
+  assert.deepEqual(rowProblems({
+    name: "ASESOR", tickets: 0, units: 0, unitsReturned: 9, gross: 0, discount: 0,
+    afterDiscount: 0, returns: 0, net: 0, avgUnits: 0, avgAmount: 0
+  }), []);
+});
+
+test("el prompt avisa de que un cero en tickets apaga la comprobacion", () => {
+  /*
+   * La defensa de arriba rechaza la fila, pero rechazar la captura del dia es
+   * caro. Mejor que el lector no ponga ese cero por descarte: si no ve la
+   * casilla, null --que el esquema rechaza con el campo nombrado-- en vez de un
+   * cero que apaga la unica comprobacion de las unidades.
+   */
+  const prompt = readFileSync(join(__dirname, "..", "lib", "pos-vision.ts"), "utf8");
+  assert.match(prompt, /DÍGITO A DÍGITO/, "el prompt no pide leer digito a digito");
+  assert.match(prompt, /SOSTIENEN LA COMPROBACIÓN/, "el prompt no dice que los promedios son los que validan");
+  assert.match(prompt, /pon null y no un cero/, "el prompt no evita el cero por descarte en tickets");
 });

@@ -132,7 +132,20 @@ dígito: las cuentas del reporte se comprueban después y basta un número mal
 leído para que la captura se detenga.
 
 ⚠️ "net", "avgUnits" y "avgAmount" LLEVAN SU SIGNO. En un día de devoluciones
-salen en negativo y así hay que copiarlos.`;
+salen en negativo y así hay que copiarlos.
+
+⚠️ LEE CADA NÚMERO DÍGITO A DÍGITO, de izquierda a derecha, y no de un vistazo.
+4,498 y 4,499 se ven casi iguales en pantalla y no valen lo mismo. Lo mismo con
+1 y 7, 3 y 8, 5 y 6, y con el 0 y el 8 en tipografía pequeña. Nadie va a
+comparar tu lectura contra el reporte: lo que escribas aquí se guarda.
+
+⚠️ "tickets", "avgUnits" y "avgAmount" SOSTIENEN LA COMPROBACIÓN DEL RESTO.
+Parecen redundantes y no lo son: dividir el neto y las unidades entre los
+tickets es lo ÚNICO que permite detectar después un dígito mal leído en las
+demás columnas. Cópialos con sus decimales exactos, sin redondear.
+
+⚠️ "tickets" en CERO apaga esa comprobación entera, así que no pongas cero por
+descarte: si la casilla de tickets no se ve, pon null y no un cero.`;
 
 const RELECTURA = `La lectura anterior no superó la validación. Relee TODO el
 documento original, prestando atención a la columna de devoluciones y a los

@@ -11,7 +11,7 @@ overrides:
   brace-expansion@1: 1.1.18
   brace-expansion@2: 2.1.4
   brace-expansion@5: 5.0.9
-  js-yaml@4: 4.3.1
+  js-yaml@4: 4.3.2
   fast-uri@<3.1.5: '>=3.1.5 <4'
   sharp@<0.35.0: '>=0.35.0 <0.36'
 
@@ -2784,8 +2784,8 @@ packages:
   js-tokens@4.0.0:
     resolution: {integrity: sha512-RdJUflcE3cUzKiMqQgsCu06FPu9UdIJO0beYbPhHN4k6apgJtifcoCtT9bcxOpYBtpD2kCM6Sbzg4CausW/PKQ==}
 
-  js-yaml@4.3.1:
-    resolution: {integrity: sha512-CY6crGq313MX8GkwvB7tzgp99vjQxY1++5y10/BKN/GUfHqWaOGQMNZkBvqSzsZKWk/ijwHlWzzkLulsGHhjWQ==}
+  js-yaml@4.3.2:
+    resolution: {integrity: sha512-SFNOvSJ+Dgf/9An904Yx+CgSlIPCkIpao4qo51lpee25TIRejdH3rhR4EZMGoNx3/TP3O+wzWuiTFl4sqbltzA==}
     hasBin: true
 
   jsesc@3.1.0:
@@ -3772,8 +3772,8 @@ packages:
   util-deprecate@1.0.2:
     resolution: {integrity: sha512-EPD5q1uXyFxJpCrLnCc1nHnq3gOa6DZBocAIiI2TaSCA7VCJ1UJDMagCzIkXNsUYfD1daK//LTEQ8xiIbrHtcw==}
 
-  uuid@14.0.1:
-    resolution: {integrity: sha512-6ZxzVpzDXDa3bJWaHilVayA+BH/1zmxCJoVgvmqJnid/gPoKHxUrS/aC/T6LGQtNHT+XHG9fXPJB4d+IrU30Ew==}
+  uuid@14.0.2:
+    resolution: {integrity: sha512-xZe/16rV4aa+HGSOCiY2YeLT1OybRLrrkL/Rqaq7p7GMVXjFh+6wN4oMYgjFmnSnhY8t6Xpdl2l9qmnHYuMHwQ==}
     hasBin: true
 
   victory-vendor@37.3.6:
@@ -4351,7 +4351,7 @@ snapshots:
       globals: 13.24.0
       ignore: 5.3.2
       import-fresh: 3.3.1
-      js-yaml: 4.3.1
+      js-yaml: 4.3.2
       minimatch: 3.1.5
       strip-json-comments: 3.1.1
     transitivePeerDependencies:
@@ -6337,7 +6337,7 @@ snapshots:
       imurmurhash: 0.1.4
       is-glob: 4.0.3
       is-path-inside: 3.0.3
-      js-yaml: 4.3.1
+      js-yaml: 4.3.2
       json-stable-stringify-without-jsonify: 1.0.1
       levn: 0.4.1
       lodash.merge: 4.6.2
@@ -6385,7 +6385,7 @@ snapshots:
       saxes: 5.0.1
       tmp: 0.2.7
       unzipper: 0.10.14
-      uuid: 14.0.1
+      uuid: 14.0.2
 
   fast-csv@4.3.6:
     dependencies:
@@ -6801,7 +6801,7 @@ snapshots:
 
   js-tokens@4.0.0: {}
 
-  js-yaml@4.3.1:
+  js-yaml@4.3.2:
     dependencies:
       argparse: 2.0.1
 
@@ -7890,7 +7890,7 @@ snapshots:
 
   util-deprecate@1.0.2: {}
 
-  uuid@14.0.1: {}
+  uuid@14.0.2: {}
 
   victory-vendor@37.3.6:
     dependencies:

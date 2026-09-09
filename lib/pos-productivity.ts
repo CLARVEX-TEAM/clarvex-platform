@@ -138,8 +138,24 @@ export function rowProblems(row: PosRow): string[] {
     if (!close(row.net / row.tickets, row.avgAmount, 0.011)) {
       problems.push(`${who}: el neto entre ${row.tickets} tickets no da ${row.avgAmount}.`);
     }
-  } else if (row.net !== 0) {
-    problems.push(`${who}: hay venta con 0 tickets.`);
+  } else {
+    /*
+     * ⚠️ **Con 0 tickets, las DOS comprobaciones de arriba no se ejecutan.**
+     *
+     * Y son las únicas que miran `units`: dividir entre los tickets es lo que
+     * ata las unidades a un número impreso aparte. Sin ellas, `units` entra sin
+     * que nadie la haya mirado —una fila con 0 tickets y 37 unidades pasaba
+     * entera— y esas 37 bajan al kardex como piezas vendidas.
+     *
+     * No se puede vender una unidad sin una transacción, así que con cero
+     * tickets las unidades tienen que ser cero. No se comprueban aquí las
+     * DEVUELTAS: no está confirmado que una devolución genere ticket en este
+     * POS, y `unitsReturned` no baja al kardex —solo participa en la cuenta del
+     * promedio—, así que exigirlo arriesgaría bloquear un día legítimo a cambio
+     * de nada.
+     */
+    if (row.net !== 0) problems.push(`${who}: hay venta con 0 tickets.`);
+    if (row.units !== 0) problems.push(`${who}: hay ${row.units} unidades con 0 tickets.`);
   }
   /*
    * El descuento NO entra aquí: su signo es informativo y lo resuelve
