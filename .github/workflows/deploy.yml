@@ -46,8 +46,28 @@ jobs:
         run: |
           set -euo pipefail
 
-          if [ "$CONFIRMAR" != "DESPLEGAR" ]; then
-            echo "::error::Escribe DESPLEGAR en el campo de confirmacion."
+          # ⚠️ **Se recortan los espacios de los extremos.**
+          #
+          # El teclado del telefono agrega un espacio al terminar una palabra, y
+          # este workflow se lanza desde el movil. El 9 de septiembre de 2026 el
+          # despliegue 47 se cayo en cuatro segundos por un "DESPLEGAR " con
+          # espacio al final, y el mensaje --«Escribe DESPLEGAR»-- se lee como
+          # si no se hubiera escrito nada: manda a repetir exactamente lo mismo.
+          # Peor aun, «Volver a ejecutar» reutiliza los mismos datos, asi que
+          # reintentar desde ahi vuelve a fallar igual.
+          #
+          # El relleno no es una defensa: la friccion esta en tener que escribir
+          # la palabra, y "DESPLEGAR " la escribe igual de a proposito. Lo que
+          # NO se acepta es otra palabra, ni minusculas, ni texto alrededor.
+          # Solo los EXTREMOS: `tr -d` borraria tambien los de en medio y
+          # "DES PLEGAR" pasaria, que ya es otra palabra.
+          CONFIRMADO="$(printf '%s' "$CONFIRMAR" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
+          if [ "$CONFIRMADO" != "DESPLEGAR" ]; then
+            if [ -n "$CONFIRMADO" ]; then
+              echo "::error::El campo de confirmacion dice '$CONFIRMAR' y tiene que decir DESPLEGAR."
+            else
+              echo "::error::Escribe DESPLEGAR en el campo de confirmacion."
+            fi
             exit 1
           fi
 
