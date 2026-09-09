@@ -30,11 +30,36 @@ const DIA_17: PosRow[] = [
   fila({ name: "TREVIAO, EDUARDO AL", tickets: 2, units: 3, gross: 4497, discount: 399.6, afterDiscount: 4097.4, net: 4097.4, avgUnits: 1.5, avgAmount: 2048.7 })
 ];
 
+/**
+ * El pie «Promedio», calculado a partir de las filas.
+ *
+ * ⚠️ Calcularlo aquí sería trampa en `tests/pos-promedio.test.ts` --ahí los
+ * valores van transcritos de reportes REALES, porque lo que se comprueba es
+ * justamente que las filas den ese pie--. En ESTE archivo no se comprueba el
+ * pie: se comprueban el IVA, el emparejamiento de nombres y las cuentas de cada
+ * fila. Aquí el pie solo tiene que existir y ser coherente para que la lectura
+ * llegue entera a lo que sí se está probando.
+ */
+const pieDe = (rows: PosRow[]) => {
+  const media = (saca: (f: PosRow) => number) => rows.reduce((t, f) => t + saca(f), 0) / rows.length;
+  const dos = (n: number) => Math.round(n * 100) / 100;
+  return {
+    tickets: Math.round(media((f) => f.tickets)),
+    units: Math.round(media((f) => f.units)),
+    gross: dos(media((f) => f.gross)),
+    afterDiscount: dos(media((f) => f.afterDiscount)),
+    net: dos(media((f) => f.net)),
+    avgUnits: dos(media((f) => f.avgUnits)),
+    avgAmount: dos(media((f) => f.avgAmount))
+  };
+};
+
 const reporte = (rows: PosRow[], from = "2026-08-17", to = "2026-08-17") => ({
   from,
   to,
   storeNumber: "3029",
-  rows
+  rows,
+  promedio: pieDe(rows)
 });
 
 test("convierte la venta a SIN IVA", () => {

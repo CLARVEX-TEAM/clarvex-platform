@@ -25,7 +25,21 @@ const RESPUESTA_DEL_LECTOR = JSON.stringify({
     { name: "CASTRO, JAZMIN", tickets: 2, units: 3, unitsReturned: 0, gross: 4997.0, discount: 2199.0, afterDiscount: 2798.0, returns: 0, net: 2798.0, avgUnits: 1.5, avgAmount: 1399.0 },
     { name: "HERNANDEZ, JESUS ADR", tickets: 2, units: 4, unitsReturned: 0, gross: 8196.0, discount: 1519.2, afterDiscount: 6676.8, returns: 0, net: 6676.8, avgUnits: 2.0, avgAmount: 3338.4 },
     { name: "REYES, ITZEL SAIDY", tickets: 1, units: 0, unitsReturned: -1, gross: 0, discount: 679.6, afterDiscount: 679.6, returns: -1699.0, net: -1019.4, avgUnits: -1.0, avgAmount: -1019.4 }
-  ]
+  ],
+  /*
+   * El pie «Promedio», la media de las tres filas.
+   *
+   * ⚠️ En un dia de devoluciones el pie tambien sale en NEGATIVO en las
+   * columnas que arrastran la devolucion, igual que la fila que la origina.
+   * Ponerle suelo aqui rechazaria justo el dia que hay que mirar con mas
+   * cuidado, que es el fallo del 27 de agosto de 2026 por el que existe este
+   * archivo.
+   */
+  promedio: {
+    tickets: 2, units: 2, gross: 4397.67,
+    afterDiscount: 3384.8, net: 2818.47,
+    avgUnits: 0.83, avgAmount: 1239.33
+  }
 });
 
 test("un dia con devolucion pasa el validador", () => {

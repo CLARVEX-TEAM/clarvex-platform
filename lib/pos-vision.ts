@@ -88,7 +88,11 @@ const PROMPT = `Lee la tabla del reporte "Productividad del vendedor" y devuelve
 Reglas:
 - "from" y "to" salen de "Desde" y "Hasta", en formato YYYY-MM-DD.
 - "storeNumber" es el "Nº de tienda".
-- Una entrada en "rows" por VENDEDOR. NO incluyas la fila "Promedio".
+- Una entrada en "rows" por VENDEDOR. La fila "Promedio" del pie NO va en
+  "rows": va aparte, en "promedio". Copiala SIEMPRE, aunque parezca redundante:
+  es lo unico que permite comprobar despues que no falte ningun vendedor, y sin
+  ella la lectura se rechaza entera. Si no alcanzas a verla, pon "promedio":
+  null --nunca la calcules tu--.
 - Copia el nombre del vendedor TAL CUAL aparece, aunque esté cortado.
 - Todos los importes como número, sin signo de pesos ni comas.
 Correspondencia EXACTA con las columnas (no cambies el orden si hay devoluciones):
@@ -125,7 +129,7 @@ Correspondencia EXACTA con las columnas (no cambies el orden si hay devoluciones
 const SHAPE = `Devuelve SOLO el JSON, sin texto alrededor, con esta forma exacta
 y estos nombres de campo:
 
-{"from":"AAAA-MM-DD","to":"AAAA-MM-DD","storeNumber":"","rows":[{"name":"","tickets":0,"units":0,"unitsReturned":0,"gross":1499.00,"discount":599.60,"afterDiscount":899.40,"returns":0.00,"net":899.40,"avgUnits":1.00,"avgAmount":899.40}]}
+{"from":"AAAA-MM-DD","to":"AAAA-MM-DD","storeNumber":"","rows":[{"name":"","tickets":0,"units":0,"unitsReturned":0,"gross":1499.00,"discount":599.60,"afterDiscount":899.40,"returns":0.00,"net":899.40,"avgUnits":1.00,"avgAmount":899.40}],"promedio":{"tickets":2,"units":2,"gross":4097.75,"afterDiscount":3698.05,"net":3448.30,"avgUnits":1.08,"avgAmount":2011.55}}
 
 ⚠️ LOS IMPORTES LLEVAN DOS DECIMALES. Cópialos completos y mira bien cada
 dígito: las cuentas del reporte se comprueban después y basta un número mal
@@ -150,7 +154,11 @@ descarte: si la casilla de tickets no se ve, pon null y no un cero.`;
 const RELECTURA = `La lectura anterior no superó la validación. Relee TODO el
 documento original, prestando atención a la columna de devoluciones y a los
 importes completos de cada vendedor. No reconstruyas un número a partir de
-otros ni cambies valores para que cuadren: transcribe lo que realmente se ve.`;
+otros ni cambies valores para que cuadren: transcribe lo que realmente se ve.
+
+Comprueba tambien que no se te haya quedado ningun vendedor fuera y que la
+fila "Promedio" del pie este copiada: si las filas no dan ese promedio, es que
+falta alguna o hay un numero mal leido.`;
 
 const rowSchema = z.object({
   name: z.string().min(1).max(120),
@@ -193,7 +201,29 @@ const responseSchema = z.object({
   to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   // A veces llega como número (3029) pese al esquema: se acepta y se normaliza.
   storeNumber: z.union([z.string().max(32), z.number()]).nullable().optional(),
-  rows: z.array(rowSchema).min(1).max(60)
+  rows: z.array(rowSchema).min(1).max(60),
+  /*
+   * La fila «Promedio» del pie.
+   *
+   * Nullable porque el modelo tiene que poder decir «no la veo» en vez de
+   * inventarla: posCaptureRows rechaza la lectura y readPosReport vuelve a
+   * transcribir el documento, asi que un pie que no se vio se corrige solo.
+   *
+   * ⚠️ Sus columnas de dinero llevan SIGNO --el neto de un dia de devoluciones
+   * sale en rojo-- asi que aqui no hay suelo, igual que en las filas.
+   */
+  promedio: z
+    .object({
+      tickets: z.number().min(-100_000).max(100_000),
+      units: z.number().min(-1_000_000).max(1_000_000),
+      gross: z.number().min(-100_000_000).max(100_000_000),
+      afterDiscount: z.number().min(-100_000_000).max(100_000_000),
+      net: z.number().min(-100_000_000).max(100_000_000),
+      avgUnits: z.number().min(-100_000).max(100_000),
+      avgAmount: z.number().min(-100_000_000).max(100_000_000)
+    })
+    .nullable()
+    .optional()
 });
 
 export type VisionOutcome = { ok: true; value: PosReport } | { ok: false; error: string };
@@ -391,7 +421,10 @@ export function validateVisionText(text: string): Validation {
   }));
 
   const storeNumber = parsed.data.storeNumber == null ? null : String(parsed.data.storeNumber);
-  return { ok: true, value: { from: parsed.data.from, to: parsed.data.to, storeNumber, rows } };
+  return {
+    ok: true,
+    value: { from: parsed.data.from, to: parsed.data.to, storeNumber, rows, promedio: parsed.data.promedio ?? null }
+  };
 }
 
 /** El texto de la respuesta de Gemini, sin dar por hecha su forma. */
