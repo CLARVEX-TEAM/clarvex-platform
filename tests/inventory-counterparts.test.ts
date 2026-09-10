@@ -75,3 +75,33 @@ test("cada opcion trae etiqueta lista para mostrar", () => {
     assert.ok(option.label.length > 0, `${option.code} sin etiqueta`);
   }
 });
+
+test("⚠️ el 03000 de la hoja de traspaso ES el CEDIS", () => {
+  /*
+   * La hoja imprime «Ubicación de recepción: 03000 - TOMMY» con la razón
+   * «CGRAL - Devolución A. Gral.». El kardex de papel de la tienda siempre lo
+   * anotó como CEDIS: mismo sitio, dos nombres. Sin la equivalencia, un
+   * traspaso leído de la hoja se rechaza con «no está en el catálogo».
+   */
+  const encontrado = findCounterpart("03000");
+  assert.ok(encontrado, "03000 no resuelve a nada");
+  assert.equal(encontrado.code, "CEDIS");
+});
+
+test("la equivalencia NO agrega una fila al catálogo", () => {
+  /*
+   * ⚠️ Dos filas para el mismo destino partirían el histórico en dos y ninguna
+   * sumaría lo que de verdad salió — y ahí va la mayor parte del movimiento.
+   * El desplegable tiene que seguir enseñando CEDIS una sola vez.
+   */
+  const opciones = counterpartOptions();
+  assert.equal(opciones.filter((o) => o.code === "CEDIS").length, 1);
+  assert.equal(opciones.filter((o) => o.code === "03000").length, 0);
+});
+
+test("la equivalencia no se traga un código real", () => {
+  // 03029 es la propia tienda y sigue siendo ella misma.
+  assert.equal(findCounterpart("03029")?.code, "03029");
+  assert.equal(findCounterpart("03009")?.code, "03009");
+  assert.equal(findCounterpart("99999"), null);
+});

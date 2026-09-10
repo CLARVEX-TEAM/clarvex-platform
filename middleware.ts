@@ -86,6 +86,7 @@ const captureRoutes = new Set([
   // Captura del correo de promociones del corporativo. NO publica: deja un
   // borrador de comunicado esperando a que la gerencia lo revise.
   "/api/admin/capture/promos",
+  "/api/admin/capture/traspasos",
   // Export mensual RDV lleno. Solo lee KPIs y devuelve XLSX en binario/base64.
   "/api/admin/capture/kpis/export",
   "/api/admin/capture/goals",

@@ -64,7 +64,18 @@ export async function readWithBedrock(
   prompt: string,
   dataBase64: string,
   mimeType: string,
-  timeoutMs = TIMEOUT_MS
+  timeoutMs = TIMEOUT_MS,
+  /*
+   * El modelo, cuando hace falta uno distinto del de siempre.
+   *
+   * ⚠️ Existe para poder leer el MISMO documento con DOS modelos y exigir que
+   * coincidan. Medido el 9 de septiembre de 2026 contra cinco reportes reales
+   * del POS: Haiku y Sonnet fallaron una vez cada uno y en sitios DISTINTOS
+   * --uno en el pie, el otro en la venta de una asesora--, así que sus erratas
+   * son independientes. Es la única comprobación posible cuando el documento no
+   * trae ninguna cuenta que cierre, como la hoja de traspaso.
+   */
+  modelId: string = MODEL
 ): Promise<BedrockOutcome> {
   const accessKeyId = process.env.BEDROCK_ACCESS_KEY_ID ?? "";
   const secretAccessKey = process.env.BEDROCK_SECRET_ACCESS_KEY ?? "";
@@ -99,7 +110,7 @@ export async function readWithBedrock(
   try {
     const response = await client.send(
       new ConverseCommand({
-        modelId: MODEL,
+        modelId,
         messages: [{ role: "user", content }],
         // Temperatura 0: esto es transcribir, no redactar.
         inferenceConfig: { maxTokens: 4000, temperature: 0 }
