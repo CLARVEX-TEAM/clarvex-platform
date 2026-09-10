@@ -113,8 +113,28 @@ export const COUNTERPARTS: Counterpart[] = [
 
 const BY_CODE = new Map(COUNTERPARTS.map((entry) => [entry.code, entry]));
 
+/**
+ * Códigos que usa el SISTEMA del corporativo y que el catálogo de la tienda
+ * llama de otra forma.
+ *
+ * ⚠️ La hoja de traspaso imprime «Ubicación de recepción: 03000 - TOMMY», con la
+ * razón «CGRAL - Devolución A. Gral.»: es el almacén general, que en el kardex
+ * de papel de la tienda siempre se anotó como **CEDIS**. Son el mismo sitio con
+ * dos nombres, y sin esta equivalencia un traspaso leído de la hoja se
+ * rechazaría con «la contraparte 03000 no está en el catálogo».
+ *
+ * ⚠️ **Va como equivalencia y NO como entrada nueva del catálogo.** Dos filas
+ * para el mismo destino partirían el histórico en dos, y ninguna de las dos
+ * sumaría lo que de verdad salió — con 71 de los 129 envíos de la 1ra ronda
+ * yendo ahí, eso es la mayor parte del movimiento de la tienda.
+ */
+const EQUIVALENTES: Record<string, string> = {
+  "03000": "CEDIS"
+};
+
 export function findCounterpart(code: string): Counterpart | null {
-  return BY_CODE.get(code.trim().toUpperCase()) ?? null;
+  const limpio = code.trim().toUpperCase();
+  return BY_CODE.get(EQUIVALENTES[limpio] ?? limpio) ?? null;
 }
 
 /** Etiqueta que se muestra: el nombre corto si lo hay, si no el oficial. */

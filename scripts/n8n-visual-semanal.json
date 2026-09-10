@@ -30,8 +30,8 @@
       {
         "parameters": {
           "mode": "expression",
-          "numberOutputs": 8,
-          "output": "={{ (() => { const m = $json.message; if (m.chat.id !== 8328057325) return 3; const pie = (m.caption || '').trim().toLowerCase(); if (m.photo && pie.startsWith('promo')) return 7; if (m.photo) return 0; const t = (m.text || '').trim().toLowerCase(); if (t === 'visual armar') return 1; if (t === 'visual reconocer') return 4; if (t === 'visual confirmar') return 5; if (t.startsWith('visual cambiar')) return 6; if (t === 'visual') return 2; return 3;})() }}",
+          "numberOutputs": 9,
+          "output": "={{ (() => { const m = $json.message; if (m.chat.id !== 8328057325) return 3; const pie = (m.caption || '').trim().toLowerCase(); if (m.photo && pie.startsWith('promo')) return 7; if (m.photo && pie.startsWith('traspaso')) return 8; if (m.photo) return 0; const t = (m.text || '').trim().toLowerCase(); if (t === 'visual armar') return 1; if (t === 'visual reconocer') return 4; if (t === 'visual confirmar') return 5; if (t.startsWith('visual cambiar')) return 6; if (t === 'visual') return 2; return 3;})() }}",
           "options": {}
         },
         "id": "v0000000-0002-4000-8000-000000000002",
@@ -525,6 +525,92 @@
           280,
           520
         ]
+      },
+      {
+        "parameters": {
+          "resource": "file",
+          "fileId": "={{ $('Mensaje').first().json.message.photo[$('Mensaje').first().json.message.photo.length - 1].file_id }}",
+          "download": true
+        },
+        "id": "v0000000-0031-4000-8000-000000000031",
+        "name": "Bajar el traspaso",
+        "type": "n8n-nodes-base.telegram",
+        "typeVersion": 1.2,
+        "onError": "continueErrorOutput",
+        "position": [
+          -440,
+          760
+        ],
+        "credentials": {
+          "telegramApi": {
+            "id": "c7bIjyLeljGWy3yc",
+            "name": "Telegram account 2"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "jsCode": "// La foto de la hoja viaja en base64, como la del reporte del POS.\n//\n// Se manda tambien el APTO de la tienda: es contra lo que el servidor comprueba\n// que la hoja sea SUYA --en una salida, la tienda es la ubicacion de envio--.\n// ⚠️ Va aqui y no sale de la base porque `Store` todavia no guarda el APTO. El\n// dia que lo guarde, esta linea sobra.\nconst binario = await this.helpers.getBinaryDataBuffer(0, 'data');\nconst meta = $input.first().binary.data;\n\nreturn [{\n  json: {\n    storeId: 'clarvex-demo-store',\n    apto: '03029',\n    createdBy: 'telegram',\n    imagenBase64: binario.toString('base64'),\n    mimeType: meta && meta.mimeType ? meta.mimeType : 'image/jpeg'\n  }\n}];"
+        },
+        "id": "v0000000-0032-4000-8000-000000000032",
+        "name": "Armar el traspaso",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "onError": "continueErrorOutput",
+        "position": [
+          -200,
+          760
+        ]
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "https://team.clarvex.tech/api/admin/capture/traspasos",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "=Bearer {{ $env.ADMIN_CAPTURE_SECRET }}"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify($json) }}",
+          "options": {
+            "timeout": 120000,
+            "response": {
+              "response": {
+                "neverError": true,
+                "fullResponse": true
+              }
+            }
+          }
+        },
+        "id": "v0000000-0033-4000-8000-000000000033",
+        "name": "Leer el traspaso",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "onError": "continueErrorOutput",
+        "position": [
+          40,
+          760
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "// El servidor contesta 201 con el traspaso YA GUARDADO, o 4xx con el motivo en\n// claro. Ese motivo es lo unico util de la respuesta: dice si las dos lecturas\n// no coincidieron, o que numero no cuadra.\nconst r = $json;\nconst cuerpo = r.body || {};\n\nif (r.statusCode !== 201) {\n  const lineas = [cuerpo.error || 'No se pudo leer la hoja.'];\n  for (const d of (cuerpo.detalle || [])) lineas.push('- ' + d);\n  lineas.push('', 'No se guardo nada. Manda otra foto, mas derecha y con el encabezado completo.');\n  return [{ json: { respuesta: lineas.join('\\n') } }];\n}\n\nconst sentido = cuerpo.direccion === 'SALIDA' ? 'Salida a' : 'Entrada de';\nconst lineas = [\n  'Traspaso guardado en el kardex.',\n  '',\n  'Folio ' + cuerpo.folio,\n  sentido + ' ' + cuerpo.contraparte,\n  cuerpo.piezas + ' piezas · ' + cuerpo.fecha\n];\n\n/*\n * ⚠️ Se dice CUANTO se pudo comprobar, y no se calla ninguno de los tres casos.\n *\n * La hoja no trae una cuenta que cierre --solo llega la primera pagina y sus\n * renglones no suman el total-- asi que la comprobacion real es que dos modelos\n * distintos hayan leido lo mismo. Si alguna comprobacion no corrio, quien\n * captura tiene que saberlo para mirar el papel: callarlo dejaria «se\n * comprobo» y «no se pudo» indistinguibles.\n */\nconst avisos = [];\nif (!cuerpo.confirmadaPorDos) avisos.push('La segunda lectura no respondio, asi que las piezas se leyeron UNA sola vez: comprueba el total contra la hoja.');\nif (!cuerpo.comprobadaLaTienda) avisos.push('No se pudo comprobar que la hoja sea de tu tienda.');\nif (cuerpo.cuadraLaPagina) avisos.push('Los renglones de la hoja suman el total, asi que el numero esta doblemente confirmado.');\nif (avisos.length > 0) lineas.push('', ...avisos);\n\nreturn [{ json: { respuesta: lineas.join('\\n') } }];"
+        },
+        "id": "v0000000-0034-4000-8000-000000000034",
+        "name": "Decir el traspaso",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "onError": "continueErrorOutput",
+        "position": [
+          280,
+          760
+        ]
       }
     ],
     "connections": {
@@ -587,6 +673,13 @@
           [
             {
               "node": "Bajar la promo",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Bajar el traspaso",
               "type": "main",
               "index": 0
             }
@@ -930,6 +1023,78 @@
         ]
       },
       "Decir el borrador": {
+        "main": [
+          [
+            {
+              "node": "Responder",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Avisar del fallo",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Bajar el traspaso": {
+        "main": [
+          [
+            {
+              "node": "Armar el traspaso",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Avisar del fallo",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Armar el traspaso": {
+        "main": [
+          [
+            {
+              "node": "Leer el traspaso",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Avisar del fallo",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Leer el traspaso": {
+        "main": [
+          [
+            {
+              "node": "Decir el traspaso",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Avisar del fallo",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Decir el traspaso": {
         "main": [
           [
             {
