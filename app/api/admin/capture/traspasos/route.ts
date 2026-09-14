@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireAdminCapture } from "@/lib/admin-capture-auth";
 import { captureInventoryMovements } from "@/lib/inventory-kardex";
+import { resolveMonterreyDate } from "@/lib/cron-time";
 import { prisma } from "@/lib/prisma";
 import { contraparteDe, cuadraLaPagina, problemasDeHoja } from "@/lib/traspaso-hoja";
 import { leerHojaTraspaso, traspasoConfigurado } from "@/lib/traspaso-vision";
@@ -89,9 +90,26 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "No se reconoció la otra ubicación del traspaso." }, { status: 422 });
   }
 
+  /*
+   * ⚠️ **El traspaso se fecha HOY, no con la fecha de la hoja.**
+   *
+   * La que imprime el papel es la de IMPRESIÓN --arriba a la derecha, junto a la
+   * hora-- y su campo «Fecha en que se despachó» viene EN BLANCO. Una hoja se
+   * puede imprimir un día y despachar al siguiente, así que fecharla por el
+   * papel mete el movimiento en un día en que la mercancía todavía estaba en la
+   * tienda. La tienda lo captura cuando sale, y ese es el día que cuenta.
+   *
+   * ⚠️ **Y «hoy» es el de MONTERREY, no el del servidor.** La máquina corre en
+   * UTC, seis horas por delante: a partir de las seis de la tarde allá, un
+   * `new Date()` aquí ya dice mañana, y el traspaso caería en el día siguiente
+   * --o en la semana siguiente, o al otro lado del corte de una ronda--.
+   * `resolveMonterreyDate` es el mismo cálculo que usan los crons.
+   */
+  const fechaDelMovimiento = resolveMonterreyDate().dateKey;
+
   const guardado = await captureInventoryMovements(storeId, [
     {
-      date: hoja.fecha,
+      date: fechaDelMovimiento,
       type: hoja.direccion === "SALIDA" ? "TRANSFERENCIA_SALIDA" : "TRANSFERENCIA_ENTRADA",
       // Siempre positiva: el sentido lo pone el tipo, nunca el signo.
       quantity: hoja.piezas,
@@ -111,7 +129,8 @@ export async function POST(request: Request) {
       ok: true,
       folio: hoja.folio,
       piezas: hoja.piezas,
-      fecha: hoja.fecha,
+      fecha: fechaDelMovimiento,
+      fechaImpresaEnLaHoja: hoja.fechaImpresa,
       direccion: hoja.direccion,
       contraparte: contraparte.label,
       /*
