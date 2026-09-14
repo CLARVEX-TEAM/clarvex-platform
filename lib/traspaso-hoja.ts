@@ -34,22 +34,36 @@ export type HojaTraspaso = {
   destino: string | null;
   /** «Total unidades enviadas». El del ENCABEZADO, no la suma de renglones. */
   piezas: number;
-  /** `YYYY-MM-DD`. */
-  fecha: string;
+  /*
+   * La fecha IMPRESA en la hoja, arriba a la derecha. Solo informativa.
+   *
+   * ⚠️ **NO es la fecha del movimiento.** Es cuándo se IMPRIMIÓ el papel, y el
+   * campo «Fecha en que se despachó» de la hoja viene en blanco. El traspaso se
+   * fecha el día en que la tienda lo captura --ver la ruta--, así que esto solo
+   * viaja para poder enseñarlo. Nullable: si no se lee, no pasa nada.
+   */
+  fechaImpresa: string | null;
   /** Las cantidades por talla que se alcanzan a ver en ESTA página. */
   renglones: number[];
 };
 
-/** Los campos en los que las dos lecturas TIENEN que coincidir. */
-const DECISIVOS = ["folio", "direccion", "piezas", "destino", "origen", "fecha"] as const;
+/**
+ * Los campos en los que las dos lecturas TIENEN que coincidir.
+ *
+ * ⚠️ **La fecha impresa NO está aquí, a propósito.** No decide nada de lo que se
+ * guarda --el movimiento se fecha el día de la captura-- así que exigir que las
+ * dos lecturas coincidan en ella rechazaría hojas buenas por un campo que no se
+ * usa. Un candado que rechaza sin que haya nada en juego solo enseña a
+ * desconfiar de los candados.
+ */
+const DECISIVOS = ["folio", "direccion", "piezas", "destino", "origen"] as const;
 
 const ETIQUETA: Record<(typeof DECISIVOS)[number], string> = {
   folio: "el folio",
   direccion: "si es entrada o salida",
   piezas: "las piezas",
   destino: "la ubicación de recepción",
-  origen: "la ubicación de envío",
-  fecha: "la fecha"
+  origen: "la ubicación de envío"
 };
 
 /**
@@ -91,9 +105,11 @@ export function problemasDeHoja(hoja: HojaTraspaso, tienda: string): string[] {
   if (!Number.isInteger(hoja.piezas) || hoja.piezas <= 0) {
     problemas.push(`las piezas «${hoja.piezas}» no son un entero positivo`);
   }
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(hoja.fecha)) {
-    problemas.push(`la fecha «${hoja.fecha}» no vino completa`);
-  }
+  /*
+   * ⚠️ **La fecha impresa NO se comprueba.** No decide nada: el movimiento se
+   * fecha el día de la captura. Rechazar una hoja porque su fecha vino a medias
+   * sería detener un traspaso bueno por un dato que solo se enseña.
+   */
 
   /*
    * ⚠️ **La tienda tiene que estar del lado que le toca.**

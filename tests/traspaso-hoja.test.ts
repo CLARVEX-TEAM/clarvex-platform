@@ -23,7 +23,7 @@ const HOJA: HojaTraspaso = {
   origen: "03029",
   destino: "03000",
   piezas: 48,
-  fecha: "2026-09-09",
+  fechaImpresa: "2026-09-09",
   renglones: [1, 2, 4, 1, 1, 3, 3, 1, 1, 1, 1, 2, 1, 1]
 };
 
@@ -94,7 +94,7 @@ test("folio, piezas y fecha tienen que venir enteros", () => {
   assert.ok(problemasDeHoja({ ...HOJA, folio: "17—557" }, TIENDA).some((p) => /no parece un número/.test(p)));
   assert.ok(problemasDeHoja({ ...HOJA, piezas: 0 }, TIENDA).some((p) => /entero positivo/.test(p)));
   assert.ok(problemasDeHoja({ ...HOJA, piezas: 4.5 }, TIENDA).some((p) => /entero positivo/.test(p)));
-  assert.ok(problemasDeHoja({ ...HOJA, fecha: "9/9/2026" }, TIENDA).some((p) => /no vino completa/.test(p)));
+  assert.ok(problemasDeHoja({ ...HOJA, fechaImpresa: null }, TIENDA).length === 0, "la fecha impresa no decide nada");
 });
 
 /* ─── Las dos lecturas ───────────────────────────────────────────────────── */
@@ -122,7 +122,7 @@ test("tambien se comparan folio, sentido, ubicaciones y fecha", () => {
   assert.equal(enQueDifieren(HOJA, { ...HOJA, folio: "1767558" }).length, 1);
   assert.equal(enQueDifieren(HOJA, { ...HOJA, direccion: "ENTRADA" }).length, 1);
   assert.equal(enQueDifieren(HOJA, { ...HOJA, destino: "03009" }).length, 1);
-  assert.equal(enQueDifieren(HOJA, { ...HOJA, fecha: "2026-09-08" }).length, 1);
+  assert.equal(enQueDifieren(HOJA, { ...HOJA, fechaImpresa: "2026-09-08" }).length, 0, "la fecha impresa NO decide");
 });
 
 test("⚠️ los RENGLONES no se comparan entre lecturas", () => {
@@ -151,4 +151,22 @@ test("⚠️ sin APTO no se compara la tienda, y no se inventa un problema", () 
   assert.deepEqual(problemasDeHoja(HOJA, "   "), []);
   // Y la hoja de otra tienda tampoco se rechaza: no hay contra que compararla.
   assert.deepEqual(problemasDeHoja({ ...HOJA, origen: "03009" }, ""), []);
+});
+
+test("⚠️ la fecha IMPRESA no decide nada y nunca detiene una hoja", () => {
+  /*
+   * La que imprime el papel es la de IMPRESION, y su campo «Fecha en que se
+   * despacho» viene EN BLANCO. El movimiento se fecha el dia en que la tienda
+   * captura --lo decide la ruta con la zona de Monterrey--, asi que esta solo
+   * viaja para enseñarla.
+   *
+   * Por eso ni se comprueba su formato ni se exige que las dos lecturas
+   * coincidan: rechazar por ella seria detener un traspaso bueno por un dato
+   * que no se guarda, y un candado que rechaza sin nada en juego solo enseña a
+   * desconfiar de los candados.
+   */
+  assert.deepEqual(problemasDeHoja({ ...HOJA, fechaImpresa: null }, TIENDA), []);
+  assert.deepEqual(problemasDeHoja({ ...HOJA, fechaImpresa: "9/9/2026" }, TIENDA), []);
+  assert.deepEqual(enQueDifieren(HOJA, { ...HOJA, fechaImpresa: null }), []);
+  assert.deepEqual(enQueDifieren(HOJA, { ...HOJA, fechaImpresa: "2026-01-01" }), []);
 });

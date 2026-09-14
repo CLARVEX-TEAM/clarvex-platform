@@ -102,7 +102,7 @@ function aHoja(crudo: unknown): HojaTraspaso | { problema: string } {
     origen: codigo(d.origen),
     destino: codigo(d.destino),
     piezas: d.piezas,
-    fecha: (d.fecha ?? "").trim(),
+    fechaImpresa: (d.fecha ?? "").trim() || null,
     renglones: (d.renglones ?? []).filter((n) => Number.isFinite(n))
   };
 }
