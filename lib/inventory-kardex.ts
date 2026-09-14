@@ -10,7 +10,9 @@ import {
   type MovementEntry,
   type NormalizedMovement,
   type LedgerRow,
-  type RoundEntry
+  type RoundEntry,
+  avisoDeFolioRepetido,
+  foliosRepetidos
 } from "@/lib/inventory-kardex-entry";
 import { prisma } from "@/lib/prisma";
 import { PERSON_WHERE } from "@/lib/store-people";
@@ -219,6 +221,35 @@ export async function captureInventoryMovements(
     else normalized.push(outcome.value);
   }
   if (errors.length > 0) return { ok: false, errors };
+
+  /*
+   * ⚠️ **El seguro contra capturar dos veces la misma hoja.**
+   *
+   * Un folio repetido suma sus piezas DOS VECES al teórico y no hay nada que lo
+   * delate: el kardex no puede saber que ese papel ya había pasado. El descuadre
+   * aparece hasta el conteo físico, semanas después y sin rastro de dónde salió.
+   * Pasó el 14 de septiembre de 2026 con el 1766932 --dos capturas en el mismo
+   * minuto, 12 piezas de más--.
+   *
+   * Va AQUÍ y no en cada pantalla a propósito: entran por dos vías --la captura
+   * de Retool y la foto por Telegram-- y un candado por pantalla deja la otra
+   * puerta abierta. Además es justo entre dos vías cuando más fácil es
+   * duplicar, porque ninguna ve lo que hizo la otra.
+   */
+  const conFolio = normalized.filter((movement) => movement.reference);
+  if (conFolio.length > 0) {
+    const yaEnLaRonda = await prisma.inventoryMovement.findMany({
+      where: {
+        roundId: round.id,
+        reference: { in: conFolio.map((movement) => movement.reference as string) }
+      },
+      select: { type: true, reference: true, quantity: true, date: true, createdBy: true }
+    });
+    const repetidos = foliosRepetidos(normalized, yaEnLaRonda);
+    if (repetidos.length > 0) {
+      return { ok: false, errors: repetidos.map((repetido) => avisoDeFolioRepetido(repetido)) };
+    }
+  }
 
   await prisma.inventoryMovement.createMany({
     data: normalized.map((movement) => ({ storeId, roundId: round.id, ...movement }))
