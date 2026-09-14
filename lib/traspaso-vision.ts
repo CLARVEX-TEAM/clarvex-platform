@@ -107,23 +107,37 @@ function aHoja(crudo: unknown): HojaTraspaso | { problema: string } {
   };
 }
 
-async function unaLectura(
-  dataBase64: string,
-  mimeType: string,
-  modelo: string
-): Promise<HojaTraspaso | { problema: string }> {
+type Intento = { hoja: HojaTraspaso | { problema: string }; ms: number };
+
+/**
+ * Una lectura, cronometrada.
+ *
+ * ⚠️ **Sin el cronómetro, un «a veces tarda mucho» no se puede perseguir.** n8n
+ * conserva las últimas veintidós ejecuciones y el tiempo de cada modelo no queda
+ * en ningún sitio, así que una queja del día siguiente llega sin nada que mirar.
+ *
+ * Medido el 14 de septiembre de 2026 contra la hoja real del traspaso 1767557,
+ * tres vueltas: el rápido ~1.6 s y el segundo ~3.1 s. Cualquier queja futura se
+ * compara contra eso en vez de razonar sobre el código.
+ */
+async function unaLectura(dataBase64: string, mimeType: string, modelo: string): Promise<Intento> {
+  const inicio = Date.now();
   const salida = await readWithBedrock(PROMPT, dataBase64, mimeType, 25_000, modelo);
-  if (!salida.ok) return { problema: salida.problem };
+  const ms = Date.now() - inicio;
+  if (!salida.ok) return { hoja: { problema: salida.problem }, ms };
   try {
-    return aHoja(JSON.parse(salida.text));
+    return { hoja: aHoja(JSON.parse(salida.text)), ms };
   } catch {
-    return { problema: "la respuesta no vino en el formato esperado" };
+    return { hoja: { problema: "la respuesta no vino en el formato esperado" }, ms };
   }
 }
 
+/** Lo que tardó cada modelo, para poder perseguir una queja de lentitud. */
+export type TiemposTraspaso = { rapido: number; segundo: number; total: number };
+
 export type LecturaTraspaso =
-  | { ok: true; hoja: HojaTraspaso; confirmadaPorDos: boolean }
-  | { ok: false; problema: string; detalle?: string[] };
+  | { ok: true; hoja: HojaTraspaso; confirmadaPorDos: boolean; ms: TiemposTraspaso }
+  | { ok: false; problema: string; detalle?: string[]; ms: TiemposTraspaso };
 
 export function traspasoConfigurado(): boolean {
   return bedrockConfigured();
@@ -141,16 +155,21 @@ export function traspasoConfigurado(): boolean {
  * que a veces existe y a veces no, sin forma de saber cuál fue.
  */
 export async function leerHojaTraspaso(dataBase64: string, mimeType: string): Promise<LecturaTraspaso> {
-  const [primera, segunda] = await Promise.all([
+  const arranque = Date.now();
+  const [uno, dos] = await Promise.all([
     unaLectura(dataBase64, mimeType, RAPIDO),
     unaLectura(dataBase64, mimeType, SEGUNDO)
   ]);
+  const ms: TiemposTraspaso = { rapido: uno.ms, segundo: dos.ms, total: Date.now() - arranque };
+
+  const primera = uno.hoja;
+  const segunda = dos.hoja;
 
   if ("problema" in primera) {
-    return { ok: false, problema: `No se pudo leer la hoja: ${primera.problema}.` };
+    return { ok: false, problema: `No se pudo leer la hoja: ${primera.problema}.`, ms };
   }
   if ("problema" in segunda) {
-    return { ok: true, hoja: primera, confirmadaPorDos: false };
+    return { ok: true, hoja: primera, confirmadaPorDos: false, ms };
   }
 
   const diferencias = enQueDifieren(primera, segunda);
@@ -158,8 +177,9 @@ export async function leerHojaTraspaso(dataBase64: string, mimeType: string): Pr
     return {
       ok: false,
       problema: "Las dos lecturas de la hoja no coinciden, así que alguna leyó mal un número.",
-      detalle: diferencias
+      detalle: diferencias,
+      ms
     };
   }
-  return { ok: true, hoja: primera, confirmadaPorDos: true };
+  return { ok: true, hoja: primera, confirmadaPorDos: true, ms };
 }
