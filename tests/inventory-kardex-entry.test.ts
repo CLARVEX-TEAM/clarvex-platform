@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  avisoDeFolioRepetido,
+  claveDeFolio,
+  foliosRepetidos,
   countDifference,
   movementLabel,
   normalizeRoundEntry,
@@ -378,4 +381,87 @@ test("la venta es derivada: sin id, para que no se pueda borrar como un movimien
 test("un día sin piezas vendidas no ensucia el libro", () => {
   const rows = buildLedger([], [{ date: new Date("2026-08-20T00:00:00.000Z"), pieces: 0 }]);
   assert.equal(rows.length, 0);
+});
+
+/* ─── El seguro contra capturar dos veces la misma hoja ──────────────────── */
+
+test("⚠️ un folio que ya esta en la ronda se rechaza", () => {
+  /*
+   * Es el caso REAL del 14 de septiembre de 2026: el folio 1766932 entro dos
+   * veces en el mismo minuto y sumo 12 piezas de mas al teorico.
+   *
+   * Lo que lo hace grave es que no se ve: el kardex no puede saber que ese
+   * papel ya habia pasado, asi que el descuadre aparece hasta el conteo fisico
+   * y sin rastro de donde salio.
+   */
+  const yaEsta = [
+    { type: "TRANSFERENCIA_SALIDA", reference: "1766932", quantity: 12, date: new Date("2026-09-14T00:00:00Z"), createdBy: "itzel" }
+  ];
+  const repetidos = foliosRepetidos([{ type: "TRANSFERENCIA_SALIDA", reference: "1766932", quantity: 12 }], yaEsta);
+
+  assert.equal(repetidos.length, 1);
+  assert.equal(repetidos[0].folio, "1766932");
+  const aviso = avisoDeFolioRepetido(repetidos[0]);
+  assert.match(aviso, /1766932/);
+  assert.match(aviso, /2026-09-14/, "tiene que decir cuando se capturo, para poder buscarlo");
+  assert.match(aviso, /12 piezas/);
+  assert.match(aviso, /itzel/, "y quien lo capturo");
+});
+
+test("⚠️ tambien se caza dentro del MISMO envio", () => {
+  // Son dos descuidos distintos: volver a mandar una hoja, y mandarla dos veces
+  // en la misma tanda. El segundo no lo veria una comprobacion contra la base.
+  const repetidos = foliosRepetidos(
+    [
+      { type: "TRANSFERENCIA_SALIDA", reference: "1766932", quantity: 12 },
+      { type: "TRANSFERENCIA_SALIDA", reference: "1766932", quantity: 12 }
+    ],
+    []
+  );
+  assert.equal(repetidos.length, 1);
+  assert.match(avisoDeFolioRepetido(repetidos[0]), /dos veces en este mismo env[ií]o/);
+});
+
+test("el folio se compara NORMALIZADO", () => {
+  /*
+   * Un espacio de sobra o una minuscula es el MISMO papel. Compararlo literal
+   * dejaria pasar el duplicado justo cuando viene de dos vias distintas --una
+   * tecleada y otra leida de una foto-- que es cuando mas facil es duplicar.
+   */
+  const yaEsta = [{ type: "TRANSFERENCIA_SALIDA", reference: "1766932" }];
+  assert.equal(foliosRepetidos([{ type: "TRANSFERENCIA_SALIDA", reference: " 1766932 " }], yaEsta).length, 1);
+  assert.equal(foliosRepetidos([{ type: "TRANSFERENCIA_SALIDA", reference: "1766932" }], yaEsta).length, 1);
+});
+
+test("el mismo folio con OTRO tipo no es el mismo papel", () => {
+  // Una entrada y una salida son dos documentos distintos; el corporativo puede
+  // reusar la numeracion entre ellos.
+  const yaEsta = [{ type: "TRANSFERENCIA_SALIDA", reference: "1766932" }];
+  assert.deepEqual(foliosRepetidos([{ type: "TRANSFERENCIA_ENTRADA", reference: "1766932" }], yaEsta), []);
+});
+
+test("⚠️ los movimientos SIN folio no se comparan entre si", () => {
+  /*
+   * Un ajuste o una devolucion no llevan papel. Agruparlos por «sin folio»
+   * rechazaria el segundo ajuste legitimo del dia, que es justo lo que la
+   * tienda hace cuando aparece una merma despues de otra.
+   */
+  const dosAjustes = [
+    { type: "AJUSTE_NEGATIVO", reference: null },
+    { type: "AJUSTE_NEGATIVO", reference: null }
+  ];
+  assert.deepEqual(foliosRepetidos(dosAjustes, [{ type: "AJUSTE_NEGATIVO", reference: null }]), []);
+  assert.equal(claveDeFolio({ type: "AJUSTE_NEGATIVO", reference: "  " }), null);
+});
+
+test("una tanda sin repetidos pasa entera", () => {
+  const repetidos = foliosRepetidos(
+    [
+      { type: "TRANSFERENCIA_SALIDA", reference: "1766932" },
+      { type: "TRANSFERENCIA_SALIDA", reference: "1766933" },
+      { type: "RECEPCION", reference: "A-1" }
+    ],
+    [{ type: "TRANSFERENCIA_SALIDA", reference: "1766900" }]
+  );
+  assert.deepEqual(repetidos, []);
 });

@@ -564,3 +564,109 @@ export function buildLedger(
     return left.source === "KPIS" ? -1 : 1;
   });
 }
+
+/* ─── El seguro contra capturar dos veces la misma hoja ──────────────────── */
+
+/** Lo mínimo para saber si dos movimientos son el mismo papel. */
+export type MovimientoConFolio = {
+  type: string;
+  reference: string | null;
+  quantity?: number;
+  date?: Date | string | null;
+  createdBy?: string | null;
+};
+
+/**
+ * La clave de un papel: su tipo y su folio.
+ *
+ * ⚠️ **Se normaliza.** Un folio con un espacio de sobra o en minúsculas es el
+ * MISMO papel, y compararlo literal dejaría pasar el duplicado justo cuando
+ * viene de dos vías distintas --una tecleada a mano y otra leída de una foto--
+ * que es cuando más fácil es capturarlo dos veces.
+ */
+export function claveDeFolio(movimiento: MovimientoConFolio): string | null {
+  const folio = (movimiento.reference ?? "").trim().toUpperCase();
+  if (!folio) return null;
+  return `${movimiento.type}\u0000${folio}`;
+}
+
+/**
+ * ¿Alguno de estos movimientos repite un folio?
+ *
+ * ⚠️ **Un folio capturado dos veces suma sus piezas DOS VECES al teórico**, y no
+ * hay nada que lo delate: el kardex no puede saber que ese papel ya había
+ * pasado. El descuadre aparece hasta el conteo físico, semanas después y sin
+ * rastro de dónde salió. Pasó el 14 de septiembre de 2026 con el folio 1766932,
+ * capturado dos veces en el mismo minuto: 12 piezas de más.
+ *
+ * Se mira en las DOS direcciones, porque son dos descuidos distintos:
+ *  · contra lo que ya está en la ronda --volver a mandar la misma hoja--;
+ *  · dentro del mismo envío --la misma hoja dos veces en una tanda--.
+ *
+ * ⚠️ Los movimientos SIN folio no se comparan. Un ajuste o una devolución no
+ * llevan papel, y agruparlos por «sin folio» rechazaría el segundo ajuste
+ * legítimo del día.
+ */
+export function foliosRepetidos(
+  nuevos: MovimientoConFolio[],
+  yaEnLaRonda: MovimientoConFolio[]
+): Array<{ folio: string; tipo: string; anterior: MovimientoConFolio | null; enEsteEnvio: boolean }> {
+  const existentes = new Map<string, MovimientoConFolio>();
+  for (const movimiento of yaEnLaRonda) {
+    const clave = claveDeFolio(movimiento);
+    if (clave && !existentes.has(clave)) existentes.set(clave, movimiento);
+  }
+
+  const vistos = new Map<string, MovimientoConFolio>();
+  const repetidos: Array<{ folio: string; tipo: string; anterior: MovimientoConFolio | null; enEsteEnvio: boolean }> = [];
+
+  for (const movimiento of nuevos) {
+    const clave = claveDeFolio(movimiento);
+    if (!clave) continue;
+    const folio = (movimiento.reference ?? "").trim();
+    /*
+     * ⚠️ De DONDE viene el duplicado cambia a donde hay que mirar, asi que se
+     * distingue: «ya esta en la ronda» manda a buscar una captura anterior, y
+     * «viene dos veces en este envio» manda a mirar la tanda que se acaba de
+     * mandar. Decir lo uno por lo otro manda a buscar donde no esta.
+     */
+    const enLaRonda = existentes.get(clave) ?? null;
+    const enElEnvio = vistos.get(clave) ?? null;
+    if (enLaRonda || enElEnvio) {
+      repetidos.push({
+        folio,
+        tipo: movimiento.type,
+        anterior: enLaRonda ?? enElEnvio,
+        enEsteEnvio: enLaRonda === null
+      });
+      continue;
+    }
+    vistos.set(clave, movimiento);
+  }
+  return repetidos;
+}
+
+/** El aviso, con lo que hace falta para decidir: cuándo, cuántas y quién. */
+export function avisoDeFolioRepetido(repetido: {
+  folio: string;
+  anterior: MovimientoConFolio | null;
+  enEsteEnvio?: boolean;
+}): string {
+  const previo = repetido.anterior;
+  if (repetido.enEsteEnvio || !previo) {
+    return `El folio ${repetido.folio} viene dos veces en este mismo envío: mándalo una sola vez.`;
+  }
+  const cuando =
+    previo.date instanceof Date
+      ? previo.date.toISOString().slice(0, 10)
+      : typeof previo.date === "string"
+        ? previo.date.slice(0, 10)
+        : null;
+  const partes = [
+    `El folio ${repetido.folio} ya está capturado en esta ronda`,
+    cuando ? ` el ${cuando}` : "",
+    previo.quantity !== undefined ? ` con ${previo.quantity} piezas` : "",
+    previo.createdBy ? ` (${previo.createdBy})` : ""
+  ];
+  return `${partes.join("")}. Capturarlo otra vez contaría sus piezas dos veces en el teórico.`;
+}
