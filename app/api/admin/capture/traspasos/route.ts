@@ -79,7 +79,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const { hoja, confirmadaPorDos } = lectura;
+  const { hoja, confirmadaPorDos, ms } = lectura;
   const problemas = problemasDeHoja(hoja, apto);
   if (problemas.length > 0) {
     return NextResponse.json({ error: "La hoja no se puede capturar.", detalle: problemas }, { status: 422 });
@@ -141,7 +141,17 @@ export async function POST(request: Request) {
       confirmadaPorDos,
       cuadraLaPagina: cuadraLaPagina(hoja),
       /** Falso cuando nadie mando el APTO y no se pudo comprobar la tienda. */
-      comprobadaLaTienda: apto.length > 0
+      comprobadaLaTienda: apto.length > 0,
+      /*
+       * Lo que tardo cada lectura.
+       *
+       * ⚠️ Va en la RESPUESTA y no solo al log: n8n conserva las ultimas
+       * veintidos ejecuciones, asi que un «a veces tarda mucho» reportado al dia
+       * siguiente ya no tiene nada que mirar. Puesto aqui, cada queja llega con
+       * su numero. Referencia medida el 14 de septiembre de 2026 contra la hoja
+       * real: el rapido ~1.6 s, el segundo ~3.1 s.
+       */
+      ms
     },
     { status: 201, headers: { "Cache-Control": "private, no-store" } }
   );
