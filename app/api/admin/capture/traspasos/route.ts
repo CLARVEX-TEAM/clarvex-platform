@@ -72,22 +72,33 @@ export async function POST(request: Request) {
   const apto = (parsed.data.apto ?? "").trim();
 
   const lectura = await leerHojaTraspaso(imagenBase64, mimeType);
+
+  /*
+   * ⚠️ **El tiempo viaja también en los RECHAZOS, y ahí es donde más falta
+   * hace.** El caso más lento que existe es un modelo agotando sus 25 s, y ese
+   * sale por un 422, no por el éxito. Dejar el cronómetro solo en la respuesta
+   * buena deja ciego justo el camino del que alguien se va a quejar: la queja
+   * llegaría otra vez sin un número que mirar, que es el problema que este
+   * cambio vino a cerrar.
+   */
+  const ms = lectura.ms;
+
   if (!lectura.ok) {
     return NextResponse.json(
-      { error: lectura.problema, detalle: lectura.detalle ?? [] },
+      { error: lectura.problema, detalle: lectura.detalle ?? [], ms },
       { status: 422, headers: { "Cache-Control": "private, no-store" } }
     );
   }
 
-  const { hoja, confirmadaPorDos, ms } = lectura;
+  const { hoja, confirmadaPorDos } = lectura;
   const problemas = problemasDeHoja(hoja, apto);
   if (problemas.length > 0) {
-    return NextResponse.json({ error: "La hoja no se puede capturar.", detalle: problemas }, { status: 422 });
+    return NextResponse.json({ error: "La hoja no se puede capturar.", detalle: problemas, ms }, { status: 422 });
   }
 
   const contraparte = contraparteDe(hoja);
   if (!contraparte) {
-    return NextResponse.json({ error: "No se reconoció la otra ubicación del traspaso." }, { status: 422 });
+    return NextResponse.json({ error: "No se reconoció la otra ubicación del traspaso.", ms }, { status: 422 });
   }
 
   /*
@@ -121,7 +132,10 @@ export async function POST(request: Request) {
   ]);
 
   if (!guardado.ok) {
-    return NextResponse.json({ error: "No se pudo guardar el traspaso.", detalle: guardado.errors }, { status: 422 });
+    return NextResponse.json(
+      { error: "No se pudo guardar el traspaso.", detalle: guardado.errors, ms },
+      { status: 422 }
+    );
   }
 
   return NextResponse.json(
