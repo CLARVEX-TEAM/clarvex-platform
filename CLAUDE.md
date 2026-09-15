@@ -12,8 +12,21 @@ autenticado a esa ruta exacta, para recibir el aviso de actualización.
 El usuario autorizó continuar y señaló la distribución por servidor. Se conserva
 el circuito de `compartido/apk/version.json`, descarga firmada y validación SHA-256.
 Primero se valida/sube el binario y luego se cambia el manifiesto atómicamente.
-Estado inicial de esta corrección: implementación local, publicación pendiente;
-la comprobación final de cámara necesita el teléfono. No se leyeron `.env` reales.
+Implementación subida para revisión: [PR 93 web](https://github.com/CLARVEX-TEAM/clarvex-platform/pull/93)
+y [PR 3 Android](https://github.com/CLARVEX-TEAM/clarvex-movil/pull/3).
+Pasaron 28 pruebas locales pertinentes, TypeScript completo, ESLint de los
+archivos afectados, análisis XML y git diff --check. No se hizo build completo
+local ni se generó una APK. La [CI web](https://github.com/CLARVEX-TEAM/clarvex-platform/actions/runs/35021791738)
+y la [compilación Android](https://github.com/CLARVEX-TEAM/clarvex-movil/actions/runs/35021794570)
+no llegaron a iniciar sus pasos: GitHub informa pagos recientes fallidos o
+límite de gasto insuficiente. No se modificó facturación ni se omitió CI.
+
+Sin merge, deploy ni publicación de APK: consulta de solo lectura al servidor
+confirmó versionCode 4 / 1.3 en el manifiesto. Tras desbloquear Actions, ejecutar
+las validaciones del SHA exacto, compilar con la firma habitual y comparar el
+certificado antes de publicar por el circuito existente. No anunciar la 1.4
+antes de que su binario esté disponible y verificado. La comprobación final
+de cámara necesita el teléfono. No se leyeron `.env` reales ni claves de firma.
 
 ## La app debajo de las barras, y el aviso de actualización — 7 de septiembre de 2026
 
