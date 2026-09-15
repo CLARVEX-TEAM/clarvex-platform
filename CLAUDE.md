@@ -1,5 +1,20 @@
 # Clarvex Team — CLAUDE.md
 
+## Cámara y actualización del kiosko — 15 de septiembre de 2026
+
+Dos causas encontradas: ScanRow pedía JPEG/PNG, pero BridgeWebChromeClient de
+Capacitor solo abre captura con `image/*`; además el manifiesto Android no
+declaraba la consulta IMAGE_CAPTURE usada por resolveActivity en Android 11+.
+CAMERA concedido no resuelve esa visibilidad. Se ajustan web y APK 1.4 (código 5).
+El middleware bloqueaba `/api/app/version` al kiosko: se habilita únicamente GET
+autenticado a esa ruta exacta, para recibir el aviso de actualización.
+
+El usuario autorizó continuar y señaló la distribución por servidor. Se conserva
+el circuito de `compartido/apk/version.json`, descarga firmada y validación SHA-256.
+Primero se valida/sube el binario y luego se cambia el manifiesto atómicamente.
+Estado inicial de esta corrección: implementación local, publicación pendiente;
+la comprobación final de cámara necesita el teléfono. No se leyeron `.env` reales.
+
 ## La app debajo de las barras, y el aviso de actualización — 7 de septiembre de 2026
 
 El gerente reportó tres cosas usando la app. Las dos primeras son el mismo fallo

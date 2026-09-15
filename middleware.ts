@@ -206,7 +206,10 @@ export async function middleware(request: NextRequest) {
     }
     // Usuario kiosko: solo las APIs del checklist (y auth/sesión). Cualquier otra
     // se corta aquí, además de que los handlers ya validan rol.
-    if (session.checklistOnly && !pathname.startsWith("/api/checklist") && !pathname.startsWith("/api/auth/")) {
+    // El kiosko también necesita consultar la APK disponible. La ruta sigue
+    // exigiendo sesión y firma su propio enlace temporal de descarga.
+    const consultaActualizacion = pathname === "/api/app/version" && request.method === "GET";
+    if (session.checklistOnly && !pathname.startsWith("/api/checklist") && !pathname.startsWith("/api/auth/") && !consultaActualizacion) {
       return NextResponse.json({ error: "Sin permiso." }, { status: 403 });
     }
     // Sesión DEMO: SOLO LECTURA. Cualquier método que cambie estado se corta aquí

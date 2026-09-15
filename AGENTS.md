@@ -1,5 +1,14 @@
 # AGENTS.md
 
+## Cámara del kiosko y APK 1.4 — 15 de septiembre de 2026
+
+Arreglo en `fix/kiosko-camara-apk`: el escaneo solicita `image/*`, que es el
+tipo exacto que Capacitor reconoce para captura. La galería conserva su entrada
+separada. El kiosko puede hacer GET a `/api/app/version` con sesión; otras APIs
+y métodos mantienen sus restricciones. La APK de `clarvex-movil` añade la
+consulta IMAGE_CAPTURE y sube a versionCode 5 / 1.4. Publicación y comprobación
+en teléfono pendientes mientras se prepara el cambio. No se requieren migraciones.
+
 ## Lector del POS: relectura e historial privado — 6 de septiembre de 2026
 
 Cambio en `fix/pos-devoluciones-relectura`, basado en `7616c87` de la rama
