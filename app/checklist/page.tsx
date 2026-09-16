@@ -376,7 +376,7 @@ function ScanRow({ item, busy, onCapture, onRemove, onGeneratePdf }: {
       ) : null}
       {pdfError ? <p className="mt-1 pl-[2.1rem] text-[11px] font-semibold text-rose-600">{pdfError}</p> : null}
 
-      <input ref={fileRef} type="file" accept="image/jpeg,image/png" capture="environment" className="hidden" onChange={(event) => { const file = event.target.files?.[0]; if (file) onCapture(file); event.target.value = ""; }} />
+      <input ref={fileRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(event) => { const file = event.target.files?.[0]; if (file) onCapture(file); event.target.value = ""; }} />
     </div>
   );
 }
