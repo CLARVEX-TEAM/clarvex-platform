@@ -1,5 +1,50 @@
 # AGENTS.md
 
+## Cámara del kiosko y APK 1.4 publicadas — 16 de septiembre de 2026
+
+Publicación directa autorizada expresamente por el usuario, con Actions aún
+bloqueado por facturación. PR 93 web integrado en `aa59f6c` y PR 3 Android en
+`088ec24`; sus árboles coinciden con los validados (`5722221` y `1da79fd`).
+Web activa: `/home/ubuntu/clarvex/releases/20260916-053857-aa59f6c`, build
+`mu3o7v1q`. PM2 conservó la ruta vieja al recargar; el guion lo detectó y
+recreó ambos workers. Verificados los dos online con cwd/ejecutable nuevos,
+salud pública OK y hash del chunk de checklist servido por HTTPS, con ambas
+entradas de cámara `image/*`.
+
+APK 1.4/código 5 publicada el 16 a las 13:37 UTC en `compartido/apk/clarvex-5.apk`.
+Firma idéntica a la APK 1.3 descargada del servidor; hash
+`48b1780afa73e17e5cd8491d3cd82ce980fd2e18571b5180c3745ef179640d98`,
+7,880,747 bytes. Se subió/verificó el binario antes de reemplazar atómicamente
+`version.json`, conservando la APK 1.3 y respaldo del manifiesto. La función
+real `versionPublicada()` lee 1.4 y el hash correcto. Versionado y descarga
+siguen devolviendo 401 sin sesión/token.
+
+Antes del despliegue: 1,437 pruebas sin fallos ni saltos, TypeScript y ESLint
+completos, build aislado de 75 páginas y 71 simulaciones de deploy aprobadas.
+Sin cambios de esquema: 107 migraciones al día y ninguna aplicada. La CI de
+GitHub y las pruebas con PostgreSQL efímero no se ejecutaron en esta publicación;
+no se cambiaron workflows ni facturación. Falta instalar/aceptar 1.4 y probar
+cámara/escaneo/galería en el teléfono real. Las secciones siguientes describen
+el estado previo a esta publicación.
+
+## APK 1.4 compilada localmente — continuación del 15 de septiembre de 2026
+
+El bloqueo de Actions no impide compilar en este equipo. Se encontró la firma
+estable en la carpeta privada de Clarvex del caché de Claude y se comprobó que
+su certificado coincide con `assetlinks.json` local y de producción. No se
+rotaron claves ni se guardaron contraseñas en Git o en la entrega.
+
+APK generada desde el SHA Android `1da79fd93b99be6bd36d763fefbead069e007cd9`,
+en copia aislada, con Java 21 y SDK Android 35 bajo `D:\Apps\clarvex-android`.
+Entrega: `D:\Documents\clarvex-entregas\apk-1.4\clarvex-team-1.4.apk`.
+SHA-256: `48b1780afa73e17e5cd8491d3cd82ce980fd2e18571b5180c3745ef179640d98`.
+Verificados firma APK v1/v2, paquete, versión 1.4/código 5, consulta
+IMAGE_CAPTURE y componentes Firebase dentro del binario. Pasaron 29 pruebas
+web relacionadas. Es la variante debug firmada con la llave propia, igual al
+workflow actual. Falta publicación web/APK y prueba física de cámara; no hubo
+merge, push, deploy ni cambios en el servidor. Procedimiento local en
+`D:\Documents\clarvex-movil\docs\compilar-local.md`.
+
 ## Cámara del kiosko y APK 1.4 — 15 de septiembre de 2026
 
 Arreglo en `fix/kiosko-camara-apk`: el escaneo solicita `image/*`, que es el

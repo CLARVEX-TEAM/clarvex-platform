@@ -1,5 +1,61 @@
 # Clarvex Team — CLAUDE.md
 
+## Cámara y APK 1.4 en producción — 16 de septiembre de 2026
+
+El usuario autorizó «Pública la apk y el cambio web» y continuar por comando
+directo, con Actions bloqueado por facturación. Se integraron PR 93 web
+(`aa59f6c3951bb4f12fe499ce18745c1622d37c61`) y PR 3 Android (`088ec24`).
+Se comprobó igualdad de árboles con los commits validados/compilados.
+
+Validación web en copia aislada sin `.env`: TypeScript completo, ESLint sin
+avisos, 1,437 pruebas sin fallos ni saltos, build de 75 páginas con configuración
+ficticia, red externa Node bloqueada y fuentes simuladas; 71 comprobaciones del
+simulador de deploy. No equivale a una CI verde: Actions sigue bloqueado y no
+se ejecutó la suite con PostgreSQL efímero. No se modificaron workflows.
+
+Se extrajo `scripts/deploy-release.sh` del SHA aprobado y se ejecutó en AWS.
+No había migraciones pendientes (107 al día), ni diferencias en migraciones.
+La compilación real aprobó. PM2 mantuvo el cwd anterior tras reload: la guarda
+lo detectó, recreó ambos workers y solo entonces cambió el puntero. Versión:
+`/home/ubuntu/clarvex/releases/20260916-053857-aa59f6c`; build `mu3o7v1q`.
+Verificados ambos procesos online, sus cwd/ejecutables, salud pública, build
+servido y SHA-256 del chunk de checklist descargado por HTTPS. Contiene las
+dos entradas `accept="image/*"` con captura.
+
+APK publicada a las `2026-09-16T13:37:02Z`: `compartido/apk/clarvex-5.apk`,
+versión 1.4/código 5, 7,880,747 bytes, SHA-256
+`48b1780afa73e17e5cd8491d3cd82ce980fd2e18571b5180c3745ef179640d98`.
+Se comparó el certificado también con la APK 1.3 obtenida del servidor:
+idéntico. Primero transferencia temporal/hash; después nombre final y reemplazo
+atómico del manifiesto. Respaldo:
+`compartido/apk/version-antes-de-1.4-20260916T133702Z.json`; APK 1.3 conservada.
+La función real `versionPublicada()` confirma versión, bytes y hash. Ambos
+endpoints mantienen 401 sin sesión/token; no se fabricaron sesiones de prueba.
+
+Evidencia local: `D:\Apps\clarvex-android\publicacion-1.4` (logs y JSON de
+verificación). La prueba física de cámara/escaneo/galería queda al usuario tras
+aceptar la actualización 1.4. Las secciones inferiores son antecedentes.
+
+## Compilación local de APK 1.4 resuelta — 15 de septiembre de 2026
+
+La continuación generó la APK aunque Actions sigue bloqueado. La copia local
+de la firma estable existe y su certificado coincide con el declarado por
+producción; no hace falta generar otra llave. Herramientas instaladas en
+`D:\Apps\clarvex-android`, compilación aislada del SHA Android `1da79fd`.
+Guía reproducible: `D:\Documents\clarvex-movil\docs\compilar-local.md`.
+
+Entrega verificada: `D:\Documents\clarvex-entregas\apk-1.4\clarvex-team-1.4.apk`
+(7,880,747 bytes). SHA-256:
+`48b1780afa73e17e5cd8491d3cd82ce980fd2e18571b5180c3745ef179640d98`.
+Firma APK v1/v2 correcta, certificado estable `87:58:A3:26:…`, paquete
+`tech.clarvex.team`, versión 1.4/código 5, consulta IMAGE_CAPTURE y Firebase
+incluidos. XML y 29 pruebas de cámara/actualización/assetlinks aprobados.
+
+Esto sustituye únicamente el bloqueo de compilación descrito debajo: todavía
+no se publicó la APK ni el cambio web del PR 93, no hubo merge/push/deploy y
+falta la prueba en el teléfono. La variante es debug con firma propia, como
+la distribuida por el workflow APK; no se generó AAB en esta continuación.
+
 ## Cámara y actualización del kiosko — 15 de septiembre de 2026
 
 Dos causas encontradas: ScanRow pedía JPEG/PNG, pero BridgeWebChromeClient de
