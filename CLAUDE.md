@@ -7,7 +7,7 @@ respuestas: Power Automate devolvió 707 «Acceso no autorizado al CDB». AXO no
 compartirá permisos. Por eso la implementación no usa API de Forms, Power
 Automate, RPA ni scraping.
 
-En `feat/asistencia-axo-recordatorios`, `/checklist` enseña a gerencia una tarjeta
+En `feat/asistencia-axo-recordatorios` (PR 94), `/checklist` enseña a gerencia una tarjeta
 diaria con la plantilla laboral ordenada igual que el Forms, distingue hora real
 de «Sin captura», abre el enlace configurado en `Store.attendanceFormUrl` y
 registra «enviado» en `ReportDelivery` (`AXO-DIARIO-AAAA-MM-DD`). La confirmación
@@ -33,9 +33,10 @@ el Forms de San Agustín.
 
 Validación local: `prisma validate/format/generate`, TypeScript sin emisión,
 ESLint completo sin avisos, 1,441 pruebas sin fallos/saltos y build de 75 páginas.
-Solo apareció el aviso conocido de Sentry/OpenTelemetry. Pendiente: commit/push,
-CI con PostgreSQL efímero, integración, deploy, migración y crontab de `ubuntu`.
-Producción y APK siguen sin cambios por este trabajo.
+Solo apareció el aviso conocido de Sentry/OpenTelemetry. Actions volvió a
+terminar con cero pasos por el bloqueo de facturación, por lo que no hubo CI ni
+PostgreSQL efímero. Pendiente: integración, deploy, migración y crontab de
+`ubuntu`. Producción y APK siguen sin cambios por este trabajo.
 
 ## Cámara y APK 1.4 en producción — 16 de septiembre de 2026
 

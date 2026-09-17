@@ -7,7 +7,7 @@ el código 707 «Operación prohibida / Acceso no autorizado al CDB» y AXO no d
 acceso de propietario o colaborador. No intentar leer respuestas ni automatizar
 el navegador de Microsoft Forms.
 
-Rama local `feat/asistencia-axo-recordatorios`. Clarvex prepara la lista del día
+Rama `feat/asistencia-axo-recordatorios`, PR 94. Clarvex prepara la lista del día
 en el orden gerente/subgerente/asesores, muestra entrada real cuando ya existe,
 abre el Forms oficial de la tienda y guarda una confirmación diaria de gerencia
 en `ReportDelivery` con auditoría. La interfaz aclara que Microsoft conserva la
@@ -21,9 +21,10 @@ asistencia: 10:30 y 10:50 si continúa pendiente, límite 11:00. Aviso de energ�
 está marcado, no avisa. Todos deduplican por usuario/tienda/día.
 
 Validado localmente: Prisma schema/generate, TypeScript, ESLint completo, 1,441
-pruebas sin fallos ni saltos y build de 75 páginas. Falta commit/push, CI,
-integración, deploy, migración y añadir los tres horarios al crontab de `ubuntu`.
-No se cambió producción ni el APK.
+pruebas sin fallos ni saltos y build de 75 páginas. GitHub Actions volvió a
+terminar sin ejecutar pasos por el bloqueo de facturación; no es una prueba
+fallida. Falta integrar, desplegar, aplicar la migración y añadir los tres
+horarios al crontab de `ubuntu`. No se cambió producción ni el APK.
 
 ## Cámara del kiosko y APK 1.4 publicadas — 16 de septiembre de 2026
 
