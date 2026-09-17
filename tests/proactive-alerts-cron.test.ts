@@ -14,6 +14,8 @@ test("Crons de alertas proactivas — autorización y dedupe", async (t) => {
     try {
       const { POST: weekGoalPost } = await import("../app/api/cron/week-goal-alert/route");
       const { POST: overduePost } = await import("../app/api/cron/pending-overdue-managers/route");
+      const { POST: axoPost } = await import("../app/api/cron/attendance-axo-reminder/route");
+      const { POST: energyPost } = await import("../app/api/cron/energy-checklist-reminder/route");
 
       const noAuth = new Request("http://localhost/api/cron/week-goal-alert", { method: "POST" });
       const res1 = await weekGoalPost(noAuth);
@@ -25,6 +27,12 @@ test("Crons de alertas proactivas — autorización y dedupe", async (t) => {
       const badAuth = new Request("http://localhost/api/cron/week-goal-alert", { method: "POST", headers: { authorization: "Bearer wrong" } });
       const res3 = await weekGoalPost(badAuth);
       assert.equal(res3.status, 401);
+
+      const res4 = await axoPost(new Request("http://localhost/api/cron/attendance-axo-reminder", { method: "POST" }));
+      assert.equal(res4.status, 401);
+
+      const res5 = await energyPost(new Request("http://localhost/api/cron/energy-checklist-reminder", { method: "POST" }));
+      assert.equal(res5.status, 401);
     } finally {
       process.env.CRON_SECRET = original;
     }

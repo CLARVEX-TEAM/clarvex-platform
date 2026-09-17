@@ -28,7 +28,8 @@ const typeMeta: Record<string, { label: string; icon: LucideIcon }> = {
   KUDO: { label: "Reconocimiento", icon: HeartHandshake },
   SHIFT_REQUEST: { label: "Solicitud", icon: CalendarClock },
   INVENTORY_REPORT: { label: "Inventario", icon: PackageSearch },
-  NEW_TRAINING: { label: "Capacitación", icon: GraduationCap }
+  NEW_TRAINING: { label: "Capacitación", icon: GraduationCap },
+  CHECKLIST_REMINDER: { label: "Checklist", icon: ClipboardCheck }
 };
 
 const typeHref: Record<string, string> = {
@@ -39,7 +40,8 @@ const typeHref: Record<string, string> = {
   KPI_GOAL_REACHED: "/escritorio/kpis",
   DAILY_SUMMARY: "/escritorio/kpis",
   COMMENT_ADDED: "/escritorio/bitacora",
-  EVIDENCE_ADDED: "/escritorio/bitacora"
+  EVIDENCE_ADDED: "/escritorio/bitacora",
+  CHECKLIST_REMINDER: "/checklist"
 };
 
 export default function EscritorioNotificaciones() {

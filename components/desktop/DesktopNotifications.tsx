@@ -27,7 +27,8 @@ const typeIcon: Record<string, LucideIcon> = {
   KUDO: HeartHandshake,
   SHIFT_REQUEST: CalendarClock,
   INVENTORY_REPORT: PackageSearch,
-  NEW_TRAINING: GraduationCap
+  NEW_TRAINING: GraduationCap,
+  CHECKLIST_REMINDER: ClipboardCheck
 };
 
 // Destinos dentro del escritorio cuando existe equivalente; si no, a la app.
@@ -37,7 +38,8 @@ const typeHref: Record<string, string> = {
   PENDING_ASSIGNED: "/escritorio/pendientes",
   NEW_TRAINING: "/escritorio/capacitacion",
   KPI_GOAL_REACHED: "/escritorio/kpis",
-  DAILY_SUMMARY: "/escritorio/kpis"
+  DAILY_SUMMARY: "/escritorio/kpis",
+  CHECKLIST_REMINDER: "/checklist"
 };
 
 export function DesktopNotifications() {

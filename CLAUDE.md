@@ -1,5 +1,42 @@
 # Clarvex Team — CLAUDE.md
 
+## Asistencia AXO sin acceso al Forms — preparada, no publicada — 16 de septiembre de 2026
+
+La cuenta `tommy_sanagustin@grupoaxo.com` puede responder el Forms pero no leer
+respuestas: Power Automate devolvió 707 «Acceso no autorizado al CDB». AXO no
+compartirá permisos. Por eso la implementación no usa API de Forms, Power
+Automate, RPA ni scraping.
+
+En `feat/asistencia-axo-recordatorios`, `/checklist` enseña a gerencia una tarjeta
+diaria con la plantilla laboral ordenada igual que el Forms, distingue hora real
+de «Sin captura», abre el enlace configurado en `Store.attendanceFormUrl` y
+registra «enviado» en `ReportDelivery` (`AXO-DIARIO-AAAA-MM-DD`). La confirmación
+es idempotente, se audita y se etiqueta honestamente como declaración de
+gerencia; no se presenta como respuesta verificada por Microsoft.
+
+Nuevos crons autenticados:
+
+- `/api/cron/attendance-axo-reminder?stage=1030` a las 10:30 de Monterrey.
+- `/api/cron/attendance-axo-reminder?stage=1050` a las 10:50.
+- `/api/cron/energy-checklist-reminder` a las 12:15, lunes/miércoles/viernes.
+
+Los avisos crean notificación interna `CHECKLIST_REMINDER`, mandan Web Push/FCM,
+abren `/checklist` y deduplican con `RetailAlertLog`. El de asistencia se omite
+cuando ya existe la confirmación del día. El de energía se limita a tiendas con
+el interruptor activo y también se omite si encuentra un punto activo cuyo
+nombre contiene «energ» ya marcado ese día.
+
+La migración `20260916190000_operational_checklist_reminders` es aditiva y
+configura `clarvex-demo-store` con el Forms recibido y energía activa. Para otra
+tienda hay que guardar su propio enlace y activar su interruptor; nunca reutilizar
+el Forms de San Agustín.
+
+Validación local: `prisma validate/format/generate`, TypeScript sin emisión,
+ESLint completo sin avisos, 1,441 pruebas sin fallos/saltos y build de 75 páginas.
+Solo apareció el aviso conocido de Sentry/OpenTelemetry. Pendiente: commit/push,
+CI con PostgreSQL efímero, integración, deploy, migración y crontab de `ubuntu`.
+Producción y APK siguen sin cambios por este trabajo.
+
 ## Cámara y APK 1.4 en producción — 16 de septiembre de 2026
 
 El usuario autorizó «Pública la apk y el cambio web» y continuar por comando

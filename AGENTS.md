@@ -1,5 +1,30 @@
 # AGENTS.md
 
+## Asistencia AXO y recordatorios operativos preparados — 16 de septiembre de 2026
+
+Power Automate quedó descartado con evidencia real: la cuenta de tienda recibe
+el código 707 «Operación prohibida / Acceso no autorizado al CDB» y AXO no dará
+acceso de propietario o colaborador. No intentar leer respuestas ni automatizar
+el navegador de Microsoft Forms.
+
+Rama local `feat/asistencia-axo-recordatorios`. Clarvex prepara la lista del día
+en el orden gerente/subgerente/asesores, muestra entrada real cuando ya existe,
+abre el Forms oficial de la tienda y guarda una confirmación diaria de gerencia
+en `ReportDelivery` con auditoría. La interfaz aclara que Microsoft conserva la
+respuesta oficial y que Clarvex solo registra la declaración de envío.
+
+La migración aditiva `20260916190000_operational_checklist_reminders` agrega el
+enlace por tienda, el interruptor de energía y el tipo de notificación. Configura
+solo `clarvex-demo-store` —TH SAN AGUSTIN real— con el enlace recibido. Avisos de
+asistencia: 10:30 y 10:50 si continúa pendiente, límite 11:00. Aviso de energía:
+12:15 lunes/miércoles/viernes, límite 13:00; si existe un punto con «energ» y ya
+está marcado, no avisa. Todos deduplican por usuario/tienda/día.
+
+Validado localmente: Prisma schema/generate, TypeScript, ESLint completo, 1,441
+pruebas sin fallos ni saltos y build de 75 páginas. Falta commit/push, CI,
+integración, deploy, migración y añadir los tres horarios al crontab de `ubuntu`.
+No se cambió producción ni el APK.
+
 ## Cámara del kiosko y APK 1.4 publicadas — 16 de septiembre de 2026
 
 Publicación directa autorizada expresamente por el usuario, con Actions aún

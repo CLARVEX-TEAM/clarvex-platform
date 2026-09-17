@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import NextImage from "next/image";
 import { ImagenAmpliable } from "@/components/VisorImagen";
-import { Camera, CheckCircle2, Circle, FileText, Image as ImageIcon, LogOut, Moon, SlidersHorizontal, Sun, X } from "lucide-react";
+import { Camera, CheckCircle2, Circle, Clock3, ExternalLink, FileCheck2, FileText, Image as ImageIcon, LogOut, Moon, SlidersHorizontal, Sun, X } from "lucide-react";
 import { getSession, logout } from "@/lib/auth";
 import { compressImage } from "@/lib/image-compress";
 import { DocScanner } from "@/components/DocScanner";
@@ -25,6 +25,24 @@ type ChecklistItem = {
   completedBy: string | null;
   scans: ScanPhoto[];
 };
+type AxoAttendance = {
+  enabled: true;
+  date: string;
+  dateLabel: string;
+  dueTime: string;
+  formUrl: string;
+  status: "CONFIRMED" | "PENDING" | "OVERDUE";
+  confirmedAt: string | null;
+  confirmedBy: string | null;
+  people: Array<{
+    name: string;
+    role: string;
+    roleLabel: string;
+    expectedAt: string;
+    arrivedAt: string | null;
+    attendanceCaptured: boolean;
+  }>;
+};
 
 /** Un escaneo (varias fotos) se considera hecho cuando ya tiene al menos una. */
 function isDone(item: ChecklistItem): boolean {
@@ -44,6 +62,9 @@ export default function ChecklistPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [busyKey, setBusyKey] = useState<string | null>(null);
+  const [axoAttendance, setAxoAttendance] = useState<AxoAttendance | null>(null);
+  const [axoConfirming, setAxoConfirming] = useState(false);
+  const [axoError, setAxoError] = useState("");
   // Foto recién capturada, esperando que se ajusten las esquinas en el escáner.
   const [scanning, setScanning] = useState<{ item: ChecklistItem; file: File } | null>(null);
 
@@ -59,8 +80,36 @@ export default function ChecklistPage() {
   useEffect(() => {
     if (!session) return;
     void load();
+    if (session.role === "GERENTE" || session.role === "SUBGERENTE") void loadAxoAttendance();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session]);
+
+  async function loadAxoAttendance() {
+    try {
+      const response = await fetch("/api/attendance-axo", { cache: "no-store" });
+      const payload = await response.json() as AxoAttendance | { enabled: false };
+      if (response.ok && payload.enabled) setAxoAttendance(payload);
+    } catch {
+      // El checklist principal sigue funcionando aunque este apoyo no cargue.
+    }
+  }
+
+  async function confirmAxoAttendance() {
+    setAxoConfirming(true);
+    setAxoError("");
+    try {
+      const response = await fetch("/api/attendance-axo", { method: "POST" });
+      const payload = await response.json() as AxoAttendance | { error?: string };
+      if (!response.ok || !("enabled" in payload) || !payload.enabled) {
+        throw new Error("error" in payload ? payload.error : "No se pudo registrar el envío.");
+      }
+      setAxoAttendance(payload);
+    } catch (requestError) {
+      setAxoError(requestError instanceof Error ? requestError.message : "No se pudo registrar el envío.");
+    } finally {
+      setAxoConfirming(false);
+    }
+  }
 
   async function load() {
     setLoading(true);
@@ -208,6 +257,14 @@ export default function ChecklistPage() {
       />
       <AppFrame>
         {error ? <Card className="mb-3 text-sm font-semibold text-rose-700">{error}</Card> : null}
+        {axoAttendance ? (
+          <AxoAttendanceCard
+            report={axoAttendance}
+            confirming={axoConfirming}
+            error={axoError}
+            onConfirm={() => void confirmAxoAttendance()}
+          />
+        ) : null}
         {loading ? (
           <Card className="text-sm font-semibold text-muted">Cargando checklist...</Card>
         ) : (
@@ -263,6 +320,88 @@ export default function ChecklistPage() {
         />
       ) : null}
     </>
+  );
+}
+
+function AxoAttendanceCard({ report, confirming, error, onConfirm }: {
+  report: AxoAttendance;
+  confirming: boolean;
+  error: string;
+  onConfirm: () => void;
+}) {
+  const confirmed = report.status === "CONFIRMED";
+  const overdue = report.status === "OVERDUE";
+  return (
+    <Card className="mb-3 p-3.5">
+      <div className="flex items-start gap-3">
+        <span className={`grid size-10 shrink-0 place-items-center rounded-xl ${confirmed ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300" : overdue ? "bg-rose-100 text-rose-700 dark:bg-rose-950/50 dark:text-rose-300" : "bg-blue-100 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300"}`}>
+          {confirmed ? <CheckCircle2 size={19} /> : <FileCheck2 size={19} />}
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-base font-semibold text-ink">Asistencia AXO</h2>
+            <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${confirmed ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300" : overdue ? "bg-rose-100 text-rose-700 dark:bg-rose-950/50 dark:text-rose-300" : "bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300"}`}>
+              {confirmed ? "Enviado" : overdue ? "Fuera de horario" : `Antes de ${report.dueTime}`}
+            </span>
+          </div>
+          {confirmed ? (
+            <p className="mt-1 text-xs leading-5 text-muted">
+              Confirmado por {report.confirmedBy ?? "gerencia"} a las {new Date(report.confirmedAt!).toLocaleTimeString("es-MX", { hour: "numeric", minute: "2-digit" })}.
+            </p>
+          ) : (
+            <p className="mt-1 text-xs leading-5 text-muted">
+              Ten listas las imágenes del POS y la foto grupal. Envía el formulario oficial y después registra la confirmación aquí.
+            </p>
+          )}
+        </div>
+      </div>
+
+      {!confirmed && report.people.length ? (
+        <details className="mt-3 rounded-xl bg-black/[0.035] px-3 py-2 dark:bg-white/[0.05]">
+          <summary className="cursor-pointer text-xs font-bold text-ink">
+            Lista para capturar · {report.people.length} {report.people.length === 1 ? "persona" : "personas"}
+          </summary>
+          <div className="mt-2 max-h-52 divide-y divide-line/70 overflow-y-auto">
+            {report.people.map((person) => (
+              <div key={`${person.role}-${person.name}`} className="flex items-center justify-between gap-3 py-2">
+                <div className="min-w-0">
+                  <p className="truncate text-xs font-bold text-ink">{person.name}</p>
+                  <p className="text-[11px] text-muted">{person.roleLabel} · Entrada programada {person.expectedAt}</p>
+                </div>
+                <span className={`shrink-0 text-[11px] font-bold ${person.arrivedAt ? "text-emerald-700 dark:text-emerald-300" : "text-amber-700 dark:text-amber-300"}`}>
+                  {person.arrivedAt ?? "Sin captura"}
+                </span>
+              </div>
+            ))}
+          </div>
+        </details>
+      ) : null}
+
+      {!confirmed ? (
+        <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <a
+            href={report.formUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-volt px-4 text-sm font-semibold text-white shadow-[0_8px_20px_rgb(37_99_235_/_0.22)] transition hover:bg-[#1D4ED8] active:scale-95 focus:outline-none focus-visible:ring-4 focus-visible:ring-volt/40"
+          >
+            <ExternalLink size={17} /> Abrir Forms de AXO
+          </a>
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={confirming}
+            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-line bg-panel px-4 text-sm font-semibold text-ink transition hover:border-volt hover:text-volt active:scale-95 disabled:opacity-55 focus:outline-none focus-visible:ring-4 focus-visible:ring-volt/40"
+          >
+            <Clock3 size={17} /> {confirming ? "Registrando…" : "Registrar como enviado"}
+          </button>
+        </div>
+      ) : null}
+      {error ? <p className="mt-2 text-xs font-semibold text-rose-600 dark:text-rose-400">{error}</p> : null}
+      <p className="mt-2 text-[10px] leading-4 text-muted">
+        Microsoft conserva la respuesta oficial. Clarvex registra la confirmación de gerencia.
+      </p>
+    </Card>
   );
 }
 

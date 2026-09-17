@@ -33,7 +33,10 @@ export async function rdvMonthEndFor(storeId: string, today: Date): Promise<Date
 /** Entregas de esta tienda ya confirmadas como subidas. */
 export async function confirmedPeriodKeys(storeId: string): Promise<string[]> {
   const rows = await prisma.reportDelivery.findMany({
-    where: { storeId },
+    // ReportDelivery también guarda la confirmación diaria del Forms de AXO.
+    // Excluirla evita que 40 días de entregas diarias desplacen del límite los
+    // cierres quincenales/mensuales que esta función necesita consultar.
+    where: { storeId, kind: { in: ["QUINCENA", "MES"] } },
     select: { periodKey: true },
     orderBy: { createdAt: "desc" },
     take: 40
