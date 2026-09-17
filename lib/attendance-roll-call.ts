@@ -63,6 +63,7 @@ export type RosterPerson = {
   employeeNumber: string;
   name: string;
   shortName: string;
+  role: string;
   expectedAt: string;
   /** Estado del horario: WORKING, OFF, VACATION, PAID_DAY, INVENTORY. */
   scheduled: string;
@@ -88,7 +89,7 @@ export async function rosterDelDia(
 
   const turnos = await prisma.schedule.findMany({
     where: { storeId, date: dia, status: { in: [...EN_PLANTILLA] }, user: PERSON_WHERE },
-    select: { startTime: true, status: true, user: { select: { id: true, name: true, employeeNumber: true } } }
+    select: { startTime: true, status: true, user: { select: { id: true, name: true, employeeNumber: true, role: true } } }
   });
 
   const asistencias = await prisma.attendance.findMany({
@@ -103,6 +104,7 @@ export async function rosterDelDia(
       employeeNumber: t.user.employeeNumber,
       name: t.user.name,
       shortName: firstName(t.user.name),
+      role: t.user.role,
       expectedAt: expectedEntry(t.startTime),
       scheduled: t.status,
       yaCapturado: Boolean(ya),
