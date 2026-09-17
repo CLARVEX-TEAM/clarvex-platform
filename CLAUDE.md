@@ -1,13 +1,13 @@
 # Clarvex Team — CLAUDE.md
 
-## Asistencia AXO sin acceso al Forms — preparada, no publicada — 16 de septiembre de 2026
+## Asistencia AXO sin acceso al Forms — publicada — 16 de septiembre de 2026
 
 La cuenta `tommy_sanagustin@grupoaxo.com` puede responder el Forms pero no leer
 respuestas: Power Automate devolvió 707 «Acceso no autorizado al CDB». AXO no
 compartirá permisos. Por eso la implementación no usa API de Forms, Power
 Automate, RPA ni scraping.
 
-En `feat/asistencia-axo-recordatorios` (PR 94), `/checklist` enseña a gerencia una tarjeta
+PR 94 quedó integrado en `c31929e`. `/checklist` enseña a gerencia una tarjeta
 diaria con la plantilla laboral ordenada igual que el Forms, distingue hora real
 de «Sin captura», abre el enlace configurado en `Store.attendanceFormUrl` y
 registra «enviado» en `ReportDelivery` (`AXO-DIARIO-AAAA-MM-DD`). La confirmación
@@ -31,12 +31,37 @@ configura `clarvex-demo-store` con el Forms recibido y energía activa. Para otr
 tienda hay que guardar su propio enlace y activar su interruptor; nunca reutilizar
 el Forms de San Agustín.
 
-Validación local: `prisma validate/format/generate`, TypeScript sin emisión,
+Validación local previa: `prisma validate/format/generate`, TypeScript sin emisión,
 ESLint completo sin avisos, 1,441 pruebas sin fallos/saltos y build de 75 páginas.
 Solo apareció el aviso conocido de Sentry/OpenTelemetry. Actions volvió a
 terminar con cero pasos por el bloqueo de facturación, por lo que no hubo CI ni
-PostgreSQL efímero. Pendiente: integración, deploy, migración y crontab de
-`ubuntu`. Producción y APK siguen sin cambios por este trabajo.
+PostgreSQL efímero.
+
+El usuario autorizó publicación directa. El guion conservado en la versión
+activa y el extraído del merge tienen el mismo SHA-256
+`3cc3e96def50ec6f8bbbc0a13875ed4c2dc866a2f3dc8354e401e3c7678e47fd`.
+Desplegó `c31929e` en
+`/home/ubuntu/clarvex/releases/20260917-040301-c31929e`, build `mu508d4l`.
+Aplicó `20260916190000_operational_checklist_reminders` y dejó 108 migraciones
+al día. PM2 retuvo el cwd anterior tras reload; la guarda recreó ambos workers.
+Después se verificaron los dos online con cwd/ejecutable nuevos y salud HTTPS 200.
+
+Crontab de `ubuntu`, expresado en UTC del servidor:
+
+- `30 16 * * *`: asistencia 10:30 de Monterrey.
+- `50 16 * * *`: asistencia 10:50 de Monterrey.
+- `15 18 * * 1,3,5`: energía 12:15 lunes/miércoles/viernes.
+
+Las líneas llaman al wrapper 700
+`/home/ubuntu/clarvex/compartido/bin/cron-authenticated-post.sh`; este acepta
+solo los tres endpoints y lee el secreto del `.env` compartido en cada ejecución.
+El crontab no contiene una copia nueva del secreto. Respaldo anterior con modo
+600: `/home/ubuntu/logs/crontab-before-operational-reminders-20260917-041129.txt`.
+No se ejecutó ningún cron manual durante el smoke para no enviar recordatorios
+reales. Se comprobó sintaxis del wrapper, tres líneas instaladas, Forms de la
+tienda configurado, energía activa, rutas nuevas protegidas con 401 y salud 200.
+Pendiente únicamente la prueba visual/confirmación con gerencia y observar la
+primera entrega programada. El APK no cambió.
 
 ## Cámara y APK 1.4 en producción — 16 de septiembre de 2026
 

@@ -1,13 +1,13 @@
 # AGENTS.md
 
-## Asistencia AXO y recordatorios operativos preparados — 16 de septiembre de 2026
+## Asistencia AXO y recordatorios operativos publicados — 16 de septiembre de 2026
 
 Power Automate quedó descartado con evidencia real: la cuenta de tienda recibe
 el código 707 «Operación prohibida / Acceso no autorizado al CDB» y AXO no dará
 acceso de propietario o colaborador. No intentar leer respuestas ni automatizar
 el navegador de Microsoft Forms.
 
-Rama `feat/asistencia-axo-recordatorios`, PR 94. Clarvex prepara la lista del día
+PR 94 integrado en `c31929e`. Clarvex prepara la lista del día
 en el orden gerente/subgerente/asesores, muestra entrada real cuando ya existe,
 abre el Forms oficial de la tienda y guarda una confirmación diaria de gerencia
 en `ReportDelivery` con auditoría. La interfaz aclara que Microsoft conserva la
@@ -20,11 +20,26 @@ asistencia: 10:30 y 10:50 si continúa pendiente, límite 11:00. Aviso de energ�
 12:15 lunes/miércoles/viernes, límite 13:00; si existe un punto con «energ» y ya
 está marcado, no avisa. Todos deduplican por usuario/tienda/día.
 
-Validado localmente: Prisma schema/generate, TypeScript, ESLint completo, 1,441
-pruebas sin fallos ni saltos y build de 75 páginas. GitHub Actions volvió a
-terminar sin ejecutar pasos por el bloqueo de facturación; no es una prueba
-fallida. Falta integrar, desplegar, aplicar la migración y añadir los tres
-horarios al crontab de `ubuntu`. No se cambió producción ni el APK.
+Publicación directa autorizada por el usuario porque GitHub Actions volvió a
+terminar sin ejecutar pasos por el bloqueo de facturación. El guion usado desde
+la versión activa tiene el mismo SHA-256 que el extraído de `c31929e`. Producción:
+`/home/ubuntu/clarvex/releases/20260917-040301-c31929e`, build `mu508d4l`.
+Aplicó la migración nueva —108 al día—, recreó los dos workers cuando PM2 conservó
+el cwd anterior y verificó ambos online en la ruta nueva y salud pública 200.
+
+El crontab de `ubuntu` quedó con 10:30 y 10:50 diarios para asistencia, y 12:15
+lunes/miércoles/viernes para energía, todos en hora de Monterrey. Usa el wrapper
+privado `compartido/bin/cron-authenticated-post.sh`, que obtiene `CRON_SECRET`
+en tiempo de ejecución; no se copió el secreto al crontab. Respaldo 600:
+`/home/ubuntu/logs/crontab-before-operational-reminders-20260917-041129.txt`.
+No se ejecutaron los crons manualmente para evitar notificaciones reales.
+
+Verificado después del corte: Forms de `clarvex-demo-store` configurado en el
+host de Microsoft, energía activa, rutas sin autorización en 401 y ambos workers
+con cwd/ejecutable nuevos. Antes del despliegue pasaron Prisma schema/generate,
+TypeScript, ESLint completo, 1,441 pruebas sin fallos ni saltos y build de 75
+páginas. El APK no cambió. Falta comprobar la tarjeta y la confirmación con una
+sesión real de gerencia, y observar la primera entrega programada.
 
 ## Cámara del kiosko y APK 1.4 publicadas — 16 de septiembre de 2026
 
