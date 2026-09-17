@@ -1,10 +1,12 @@
 # AGENTS.md
 
-## APK 1.5, primer incremento listo para prueba — 16 de septiembre de 2026
+## APK 1.5 y checklist nativo publicados — 16 de septiembre de 2026
 
-Plan aprobado y ejecución iniciada en `feat/apk-1-5-native-foundation`.
-Plataforma `f54266c`; Android `bedb870`. Aún no hay merge, deploy ni publicación.
-Producción continúa con APK 1.4.
+Publicación directa autorizada expresamente por el usuario. PR 95 de plataforma
+integrado en `0114dbc` y PR 4 de Android en `56ea499`; los cambios funcionales
+corresponden a `f54266c` y `bedb870`. GitHub Actions volvió a terminar antes de
+ejecutar trabajos por el bloqueo de facturación, así que se usó la validación
+local completa y el procedimiento versionado del servidor.
 
 El checklist rediseñado se activa solo dentro de Android y mantiene la interfaz
 web anterior. Incluye progreso, Apertura/Cierre, siguiente tarea, una sola acción
@@ -20,10 +22,26 @@ Versión 1.5/código 6, 8,070,306 bytes, SHA-256
 Firma v1/v2 y certificado idéntico a 1.4; DEX y manifiesto contienen escáner,
 cámara, FCM y reglas de no respaldo.
 
-Verificado: 1,442 pruebas web, TypeScript, ESLint, build aislado de 75 páginas,
-revisión visual móvil sin overflow/excepciones y Gradle completo. Pendientes:
-teléfono real, CI/PostgreSQL efímero y registro criptográfico/guard del servidor.
-No presentar la ocultación por Capacitor como exclusividad de seguridad.
+Web activa: `/home/ubuntu/clarvex/releases/20260917-051701-0114dbc`, build
+`mu52vi3x`. El despliegue encontró 108 migraciones al día y ninguna pendiente;
+PM2 conservó las rutas anteriores al recargar, el guion recreó los dos workers y
+verificó ambos online en la release nueva. Salud pública OK y chunks publicados
+con `data-native-checklist` y `ScannerDocumentos`.
+
+APK 1.5/código 6 publicada a las 05:26:10 UTC en `compartido/apk/clarvex-6.apk`.
+SHA-256 `0856b2ebadc2be1b3fb97c2ce124f5a52ab4ae55de30afb253280b9b7468fc67`,
+8,070,306 bytes. Se validó el archivo remoto antes de reemplazar atómicamente el
+manifiesto; se conservaron la APK 1.4 y el respaldo
+`version-antes-de-1.5-20260917T052610Z.json`. `versionPublicada()` devuelve 1.5,
+tamaño y hash correctos; versión y descarga continúan en 401 sin sesión.
+
+Verificado antes del corte: 1,442 pruebas web, TypeScript, ESLint, build aislado
+de 75 páginas, revisión visual móvil sin overflow/excepciones, Gradle completo,
+firma v1/v2 y certificado idéntico a 1.4. Pendiente únicamente la aceptación en
+el teléfono real: instalar sobre 1.4 y probar escaneo, cancelación, galería,
+varias páginas y subida. No presentar la ocultación por Capacitor como
+exclusividad de seguridad; el registro criptográfico/guard del servidor sigue
+como incremento posterior del plan.
 
 ## Asistencia AXO y recordatorios operativos publicados — 16 de septiembre de 2026
 

@@ -1,11 +1,11 @@
 # Clarvex Team — CLAUDE.md
 
-## Primer incremento de APK 1.5 — candidata firmada, sin publicar — 16 de septiembre de 2026
+## APK 1.5 y checklist nativo publicados — 16 de septiembre de 2026
 
-El usuario aprobó el plan completo de funciones exclusivas de APK y pidió
-comenzar. La primera entrega vertical quedó en
-`feat/apk-1-5-native-foundation`: plataforma `f54266c` y Android `bedb870`.
-No hay merge, despliegue web ni publicación de APK.
+El usuario autorizó integrar y publicar directamente. PR 95 quedó integrado en
+plataforma `0114dbc` y PR 4 en Android `56ea499`; los árboles funcionales
+validados corresponden a `f54266c` y `bedb870`. Actions no inició trabajos por
+el bloqueo conocido de facturación; no fue un fallo de pruebas.
 
 La APK muestra una versión propia del checklist solo cuando Capacitor reporta
 Android: progreso total, selector Apertura/Cierre, siguiente tarea, una única
@@ -33,9 +33,23 @@ contiene cámara, FCM y el escáner.
 Candidata: `D:\Documents\clarvex-entregas\apk-1.5-candidata\clarvex-team-1.5.apk`,
 versión 1.5/código 6, 8,070,306 bytes, SHA-256
 `0856b2ebadc2be1b3fb97c2ce124f5a52ab4ae55de30afb253280b9b7468fc67`.
-Firma v1/v2 y certificado idéntico a APK 1.4. Pendiente: prueba física de
-escaneo/cancelación/galería/subida en el kiosco, CI/PostgreSQL efímero, revisión
-y decisión explícita de integrar/desplegar/publicar. Producción sigue en APK 1.4.
+Firma v1/v2 y certificado idéntico a APK 1.4.
+
+Plataforma desplegada mediante el guion extraído del SHA exacto en
+`/home/ubuntu/clarvex/releases/20260917-051701-0114dbc`, build `mu52vi3x`.
+No había migraciones pendientes entre las 108 registradas. El guion detectó el
+cwd anterior de PM2, recreó ambos workers y confirmó salud pública, base de datos
+y los chunks del checklist/escáner en la release activa.
+
+APK publicada el 17 a las 05:26:10 UTC en `compartido/apk/clarvex-6.apk`, tras
+validar en el servidor hash y 8,070,306 bytes. `version.json` se reemplazó al
+final y de forma atómica; conserva APK 1.4 y respaldo
+`version-antes-de-1.5-20260917T052610Z.json`. `versionPublicada()` confirma 1.5,
+tamaño y hash, y los endpoints anónimos siguen respondiendo 401.
+
+Pendiente: prueba física de instalación sobre 1.4, escaneo de varias páginas,
+cancelación, galería y subida en el kiosco. No hay un dispositivo ADB conectado
+a este equipo, por lo que esa aceptación no se debe presentar como realizada.
 
 ## Asistencia AXO sin acceso al Forms — publicada — 16 de septiembre de 2026
 
