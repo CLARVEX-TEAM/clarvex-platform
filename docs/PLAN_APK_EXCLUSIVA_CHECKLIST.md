@@ -1,6 +1,6 @@
 # Plan de trabajo: experiencia exclusiva de APK y nuevo checklist
 
-**Estado:** aprobado y en ejecución; APK 1.5 publicada y segunda etapa de identidad en revisión
+**Estado:** aprobado y en ejecución; APK 1.5.1 publicada y aceptada en equipo real
 **Fecha:** 17 de septiembre de 2026
 **Repositorios:** `clarvex-platform` y `clarvex-movil`
 
@@ -28,10 +28,10 @@ El trabajo debe conseguir cuatro resultados:
 - Notificaciones nativas abren únicamente rutas internas validadas.
 - Backups y transferencia de datos de la app desactivados.
 - Actualizador limitado al host HTTPS oficial, 50 MiB, paquete, versión y firma.
-- Pendiente de aceptación física: probar escaneo, cancelación, galería, varias
-  páginas y subida en el teléfono kiosco.
+- Aceptación física completada el 17 de septiembre mediante APK 1.5.1: cámara,
+  escáner, galería, varias páginas, notificaciones y operación general correctas.
 
-### Segunda etapa en revisión — 17 de septiembre de 2026
+### Segunda etapa publicada y aceptada — 17 de septiembre de 2026
 
 - Plugin `DispositivoClarvex` con identificador de instalación y llave EC P-256
   no exportable en Android Keystore.

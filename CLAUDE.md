@@ -39,8 +39,10 @@ APK publicada a las `2026-09-17T21:42:34Z` en
 `apksigner` valida v1/v2 y el certificado estable. El servidor verificó archivo
 antes de activar atómicamente el manifiesto; conserva APK 1.5 y respaldo
 `version-antes-de-1.5.1-20260917T214234Z.json`. `versionPublicada()` coincide y
-las rutas sin sesión responden 401. Pendiente: actualización y prueba física de
-registro/firma/FCM en el teléfono.
+las rutas sin sesión responden 401. El usuario confirmó el 17 de septiembre la
+aceptación física tras actualizar: cámara, escáner, galería, varias páginas,
+notificaciones y operación general funcionan correctamente. APK 1.5.1 queda
+aceptada en el equipo real.
 
 ## APK 1.5 y checklist nativo publicados — 16 de septiembre de 2026
 
@@ -89,9 +91,9 @@ final y de forma atómica; conserva APK 1.4 y respaldo
 `version-antes-de-1.5-20260917T052610Z.json`. `versionPublicada()` confirma 1.5,
 tamaño y hash, y los endpoints anónimos siguen respondiendo 401.
 
-Pendiente: prueba física de instalación sobre 1.4, escaneo de varias páginas,
-cancelación, galería y subida en el kiosco. No hay un dispositivo ADB conectado
-a este equipo, por lo que esa aceptación no se debe presentar como realizada.
+La aceptación física quedó cubierta por la prueba posterior de APK 1.5.1 en el
+equipo real. El usuario confirmó cámara, escáner, galería, varias páginas y
+operación general; ya no queda pendiente la prueba del flujo nativo publicado.
 
 ## Asistencia AXO sin acceso al Forms — publicada — 16 de septiembre de 2026
 

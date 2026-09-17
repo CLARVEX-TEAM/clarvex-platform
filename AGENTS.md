@@ -45,8 +45,10 @@ versión, tamaño y hash; versión/descarga y rutas nativas continúan en 401 si
 Validación: Prisma format/generate/validate, TypeScript, ESLint, 1,450 pruebas
 sin fallos ni saltos, build local y build de servidor de 75 páginas, Gradle
 aislado limpio con 279 tareas, firma/paquete/versión/manifiesto y `git diff
---check`. Pendiente únicamente la aceptación en un teléfono real: actualizar
-sobre 1.5, entrar, abrir `/diagnostico`, verificar identidad y confirmar FCM.
+--check`. El usuario confirmó el 17 de septiembre la aceptación en el teléfono
+real después de actualizar: cámara, escáner, galería, flujo de varias páginas,
+notificaciones y operación general funcionan correctamente. APK 1.5.1 queda
+aceptada; el siguiente incremento es atestación y control de dispositivos.
 
 ## APK 1.5 y checklist nativo publicados — 16 de septiembre de 2026
 
@@ -85,11 +87,11 @@ tamaño y hash correctos; versión y descarga continúan en 401 sin sesión.
 
 Verificado antes del corte: 1,442 pruebas web, TypeScript, ESLint, build aislado
 de 75 páginas, revisión visual móvil sin overflow/excepciones, Gradle completo,
-firma v1/v2 y certificado idéntico a 1.4. Pendiente únicamente la aceptación en
-el teléfono real: instalar sobre 1.4 y probar escaneo, cancelación, galería,
-varias páginas y subida. No presentar la ocultación por Capacitor como
-exclusividad de seguridad; el registro criptográfico/guard del servidor sigue
-como incremento posterior del plan.
+firma v1/v2 y certificado idéntico a 1.4. La aceptación física quedó cubierta
+con la actualización posterior a 1.5.1: el usuario confirmó cámara, escáner,
+galería, varias páginas y operación general. No presentar la ocultación por
+Capacitor como exclusividad de seguridad; la atestación del alta sigue como
+incremento posterior del plan.
 
 ## Asistencia AXO y recordatorios operativos publicados — 16 de septiembre de 2026
 
