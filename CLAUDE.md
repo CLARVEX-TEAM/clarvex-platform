@@ -1,5 +1,36 @@
 # Clarvex Team — CLAUDE.md
 
+## APK 1.6 «Mi día» — candidata en revisión — 17 de septiembre de 2026
+
+Rama de plataforma `feat/apk-1.6-mi-dia`, basada en la 1.5.1 aceptada. La nueva
+portada existe solo dentro de Android y reúne turno, uniforme, asistencia, avance
+de venta, plan, pendientes, comunicados y accesos según rol. Conserva una copia
+de solo lectura para abrir la última jornada sin red. Navegador y PWA mantienen
+sus portadas actuales.
+
+La migración aditiva `20260917230000_apk_16_attendance_corrections` agrega
+solicitudes de corrección de asistencia y los tipos de aviso correspondientes.
+Cada solicitud queda auditada, puede llevar evidencia privada con enlace
+temporal y exige aprobación de otra persona de gerencia; nadie aprueba su propia
+corrección. El panel nativo de dispositivos permite consultar, revocar y
+reactivar equipos. Revocar elimina sus tokens FCM y retos pendientes; el teléfono
+cierra la sesión al detectar el cambio.
+
+El cron `/api/cron/shift-reminder` reclama una entrega única por usuario/día y
+avisa aproximadamente una hora antes del turno; al publicar debe programarse
+cada 15 minutos con el wrapper autenticado del servidor. Las notificaciones
+abren la sección exacta de Mi día. El botón Calendario solo aparece cuando el
+binario trae `CalendarioClarvex`, que abre el editor del sistema sin permiso de
+lectura/escritura del calendario.
+
+Validación local: Prisma format/generate/validate, TypeScript, ESLint, 1,456
+pruebas sin fallos ni saltos, build de 77 páginas y revisión visual Android a
+412 px sin overflow. Android `testDebugUnitTest assembleDebug` aprobó 279 tareas
+con Java 21/SDK 35. Falta commit, PR, integración, build firmado desde el SHA
+exacto, despliegue, alta del cron y prueba física; producción continúa en web
+`e219e51` y APK 1.5.1/código 7. No describir la vinculación existente como
+atestación de procedencia oficial.
+
 ## Vinculación de dispositivo y APK 1.5.1 — publicadas — 17 de septiembre de 2026
 
 El usuario autorizó integrar y publicar. PR 96 quedó integrado en plataforma

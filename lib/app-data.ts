@@ -49,6 +49,7 @@ const cache = new Map<string, CacheEntry>();
  * Subiendo el número, las copias viejas dejan de leerse solas.
  */
 const STORAGE_PREFIX = "clarvex-app-data-v1:";
+const MY_DAY_STORAGE_PREFIX = "clarvex-my-day-v1:";
 
 function readStored(key: string): CacheEntry | null {
   try {
@@ -98,6 +99,7 @@ export function clearAppDataCache() {
     // siguiente persona la ve al abrir la app, y encima sin haber entrado.
     for (const key of Object.keys(window.localStorage)) {
       if (key.startsWith(STORAGE_PREFIX)) window.localStorage.removeItem(key);
+      if (key.startsWith(MY_DAY_STORAGE_PREFIX)) window.localStorage.removeItem(key);
     }
   } catch {
     // Sin localStorage no hay nada que limpiar.

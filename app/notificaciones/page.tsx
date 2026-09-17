@@ -10,7 +10,7 @@ import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { useToast } from "@/components/Toast";
 import { AnimatedList } from "@/components/magic/AnimatedList";
 
-type NotificationType = "PLAN_READY" | "NEW_ANNOUNCEMENT" | "PENDING_ASSIGNED" | "TASK_COMPLETED" | "KPI_GOAL_REACHED" | "COMMENT_ADDED" | "EVIDENCE_ADDED" | "DAILY_SUMMARY" | "ANNOUNCEMENT_REACTION" | "CELEBRATION" | "KUDO" | "SHIFT_REQUEST" | "INVENTORY_REPORT" | "NEW_TRAINING" | "CHECKLIST_REMINDER";
+type NotificationType = "PLAN_READY" | "NEW_ANNOUNCEMENT" | "PENDING_ASSIGNED" | "TASK_COMPLETED" | "KPI_GOAL_REACHED" | "COMMENT_ADDED" | "EVIDENCE_ADDED" | "DAILY_SUMMARY" | "ANNOUNCEMENT_REACTION" | "CELEBRATION" | "KUDO" | "SHIFT_REQUEST" | "INVENTORY_REPORT" | "NEW_TRAINING" | "CHECKLIST_REMINDER" | "ATTENDANCE_CORRECTION" | "SHIFT_REMINDER";
 type NotificationItem = { id: string; type: NotificationType; title: string; body: string; readAt: string | null; createdAt: string };
 
 type TypeConfig = { label: string; icon: typeof Bell; tone: "default" | "warn" | "danger" | "success" };
@@ -30,7 +30,9 @@ const typeConfig: Record<NotificationType, TypeConfig> = {
   SHIFT_REQUEST: { label: "Solicitud", icon: CalendarClock, tone: "warn" },
   INVENTORY_REPORT: { label: "Inventario", icon: PackageSearch, tone: "danger" },
   NEW_TRAINING: { label: "Capacitación", icon: GraduationCap, tone: "success" },
-  CHECKLIST_REMINDER: { label: "Checklist", icon: ClipboardCheck, tone: "warn" }
+  CHECKLIST_REMINDER: { label: "Checklist", icon: ClipboardCheck, tone: "warn" },
+  ATTENDANCE_CORRECTION: { label: "Asistencia", icon: CalendarClock, tone: "warn" },
+  SHIFT_REMINDER: { label: "Turno", icon: CalendarClock, tone: "default" }
 };
 
 // Fallback para cualquier tipo desconocido (evita crashes si se agregan tipos nuevos en el backend).
@@ -52,6 +54,8 @@ const typeHref: Record<NotificationType, string> = {
   INVENTORY_REPORT: "/faltantes",
   NEW_TRAINING: "/capacitacion",
   CHECKLIST_REMINDER: "/checklist",
+  ATTENDANCE_CORRECTION: "/mi-dia?seccion=asistencia",
+  SHIFT_REMINDER: "/mi-dia?seccion=jornada",
 };
 
 export default function NotificationsPage() {

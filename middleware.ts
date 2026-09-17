@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { canManageDataSources } from "@/lib/access-control";
 import { bearerToken, SESSION_COOKIE, verifySessionToken, type Session } from "@/lib/session-token";
 
-const managerRoutes = ["/manager", "/pendientes", "/bitacora", "/comunicados", "/datos", "/escritorio"];
+const managerRoutes = ["/manager", "/pendientes", "/bitacora", "/comunicados", "/datos", "/escritorio", "/dispositivos"];
 const advisorRoutes = ["/advisor", "/kpis", "/horarios", "/actividad"];
 const sharedRoutes = [
   // Diagnóstico del aparato: lo abre cualquiera con sesión, porque el
@@ -10,6 +10,7 @@ const sharedRoutes = [
   // no debería depender de que haya un gerente cerca. Solo enseña de qué es
   // capaz el aparato, ningún dato de la tienda ni de personas.
   "/diagnostico",
+  "/mi-dia",
   // De dónde se baja la app de Android la primera vez. La abre cualquiera con
   // sesión porque todo el equipo tiene que instalarla; lo único de gerencia es
   // el reparto, y eso lo cierra su propio endpoint por rol.
@@ -279,6 +280,8 @@ export const config = {
     "/api/:path*",
     "/admin/:path*",
     "/manager/:path*",
+    "/mi-dia/:path*",
+    "/dispositivos/:path*",
     "/advisor/:path*",
     "/regional/:path*",
     "/pendientes/:path*",

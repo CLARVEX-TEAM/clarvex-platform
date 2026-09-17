@@ -14,6 +14,7 @@ import {
   MessageSquare,
 } from "lucide-react";
 import { getSession } from "@/lib/auth";
+import { enContenedorNativo } from "@/lib/puente-nativo";
 import { cn } from "@/lib/utils";
 import { haptic } from "@/lib/haptics";
 
@@ -56,7 +57,7 @@ export function LiquidBottomNav() {
   useEffect(() => {
     getSession()
       .then((session) => {
-        setHomeHref(session?.role === "ASESOR" ? "/advisor" : "/manager");
+        setHomeHref(enContenedorNativo() ? "/mi-dia" : session?.role === "ASESOR" ? "/advisor" : "/manager");
         setKpisEnabled(session?.kpisEnabled !== false);
         setKiosk(session?.checklistOnly === true);
       })
@@ -152,7 +153,7 @@ export function LiquidBottomNav() {
                 </motion.span>
               </span>
               <span className={cn("relative text-[10px] tracking-[-0.01em] transition-colors", active ? "font-semibold text-volt" : "font-bold text-muted")}>
-                {item.label}
+                {item.href === "/manager" && homeHref === "/mi-dia" ? "Hoy" : item.label}
               </span>
             </Link>
           );

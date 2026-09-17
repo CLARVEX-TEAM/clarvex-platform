@@ -8,13 +8,13 @@ datasource db {
 }
 
 model Store {
-  id                             String                    @id @default(cuid())
+  id                             String                        @id @default(cuid())
   name                           String
-  createdAt                      DateTime                  @default(now())
-  updatedAt                      DateTime                  @updatedAt
-  billingExempt                  Boolean                   @default(true)
+  createdAt                      DateTime                      @default(now())
+  updatedAt                      DateTime                      @updatedAt
+  billingExempt                  Boolean                       @default(true)
   subscriptionPaidUntil          DateTime?
-  pricePerUserMxn                Decimal?                  @db.Decimal(10, 2)
+  pricePerUserMxn                Decimal?                      @db.Decimal(10, 2)
   /// Etiqueta del tabulador de comisiones de la tienda (E, D, C…). En GUESS los
   /// importes cambian según esta letra, así que se guarda tal como la capturó la
   /// tienda para poder contrastarla después con el documento de central. NO
@@ -30,7 +30,7 @@ model Store {
   ///
   /// El valor por defecto es el conservador a propósito: si alguien da de alta
   /// una tienda y olvida configurarlo, se comporta como siempre.
-  commissionBasis                CommissionBasis           @default(MINIMO)
+  commissionBasis                CommissionBasis               @default(MINIMO)
   /// Interruptor para ocultar la sección de KPIs a una tienda.
   ///
   /// Existe porque un KPI vacío no es neutro: una pantalla llena de ceros se
@@ -40,14 +40,14 @@ model Store {
   ///
   /// Es una bandera y no una condición deducida a propósito: se enciende y se
   /// apaga sin desplegar, y no ata un estado temporal a la marca de la tienda.
-  kpisEnabled                    Boolean                   @default(true)
+  kpisEnabled                    Boolean                       @default(true)
   /// Formulario oficial de asistencia de AXO para esta tienda. Clarvex no lee
   /// sus respuestas: solo prepara la captura, abre este enlace y registra la
   /// confirmación diaria de gerencia.
   attendanceFormUrl              String?
   /// Activa el recordatorio de checklist de energía de lunes, miércoles y
   /// viernes. Es por tienda porque no todas operan este control externo.
-  energyChecklistReminderEnabled Boolean                   @default(false)
+  energyChecklistReminderEnabled Boolean                       @default(false)
   announcements                  Announcement[]
   chatRooms                      ChatRoom[]
   checklistEntries               ChecklistEntry[]
@@ -90,6 +90,7 @@ model Store {
   weeklyPerformanceCloses        WeeklyPerformanceClose[]
   promoDrafts                    PromoDraft[]
   nativeDevices                  NativeDevice[]
+  attendanceCorrectionRequests   AttendanceCorrectionRequest[]
 }
 
 model StoreFixture {
@@ -143,99 +144,101 @@ model SyncLog {
 }
 
 model User {
-  id                    String                    @id @default(cuid())
-  name                  String
-  email                 String                    @unique
-  employeeNumber        String                    @unique
-  passwordHash          String?
-  role                  Role
-  storeId               String
-  createdAt             DateTime                  @default(now())
-  updatedAt             DateTime                  @updatedAt
-  pinHash               String?
-  photoUrl              String?
-  biometricEnabled      Boolean                   @default(false)
-  lastLoginAt           DateTime?
-  birthDate             DateTime?
-  hireDate              DateTime?
-  hoursOwed             Float                     @default(0)
+  id                            String                        @id @default(cuid())
+  name                          String
+  email                         String                        @unique
+  employeeNumber                String                        @unique
+  passwordHash                  String?
+  role                          Role
+  storeId                       String
+  createdAt                     DateTime                      @default(now())
+  updatedAt                     DateTime                      @updatedAt
+  pinHash                       String?
+  photoUrl                      String?
+  biometricEnabled              Boolean                       @default(false)
+  lastLoginAt                   DateTime?
+  birthDate                     DateTime?
+  hireDate                      DateTime?
+  hoursOwed                     Float                         @default(0)
   /// Fecha de corte del banco de horas: `hoursOwed` ya cubre todo lo anterior.
   /// Sin ella se sumaria dos veces el historico cada vez que alguien ajusta el
   /// saldo a mano — la misma frontera que `vacationBaselineAt`.
-  hoursBaselineAt       DateTime?
+  hoursBaselineAt               DateTime?
   /// Saldo de vacaciones capturado a mano. NO es el saldo real: el que manda lo
   /// calcula lib/vacation-account (este + lo ganado en aniversarios − lo tomado).
-  vacationDays          Float                     @default(0)
+  vacationDays                  Float                         @default(0)
   /// Fecha de corte del saldo de arriba: lo anterior a ella YA está descontado.
   /// Sin esta frontera, las vacaciones viejas se restarían dos veces.
-  vacationBaselineAt    DateTime?
-  paidDays              Float                     @default(0)
+  vacationBaselineAt            DateTime?
+  paidDays                      Float                         @default(0)
   /// Fecha de corte del saldo de pago de días: lo capturado en `paidDays` ya
   /// cubre todo lo anterior. Sin ella se recontarían semanas viejas y el saldo
   /// saldría inflado — la misma frontera que `vacationBaselineAt`.
-  paidDaysBaselineAt    DateTime?
-  lastSeenAt            DateTime?
-  active                Boolean                   @default(true)
-  platformAdmin         Boolean                   @default(false)
+  paidDaysBaselineAt            DateTime?
+  lastSeenAt                    DateTime?
+  active                        Boolean                       @default(true)
+  platformAdmin                 Boolean                       @default(false)
   /// Usuario "kiosko" del celular de la tienda: SOLO ve el checklist (para los
   /// escaneos del cierre). El middleware lo encierra en /checklist.
-  checklistOnly         Boolean                   @default(false)
+  checklistOnly                 Boolean                       @default(false)
   /// Usuario de DEMOSTRACIÓN (tienda demo pública). Su sesión es de SOLO
   /// LECTURA: el middleware corta cualquier método que no sea GET.
-  isDemo                Boolean                   @default(false)
-  failedPinAttempts     Int                       @default(0)
-  pinLockedUntil        DateTime?
-  pinLockoutCount       Int                       @default(0)
-  sessionVersion        Int                       @default(0)
-  termsAcceptedAt       DateTime?
-  termsAcceptedVersion  String?
+  isDemo                        Boolean                       @default(false)
+  failedPinAttempts             Int                           @default(0)
+  pinLockedUntil                DateTime?
+  pinLockoutCount               Int                           @default(0)
+  sessionVersion                Int                           @default(0)
+  termsAcceptedAt               DateTime?
+  termsAcceptedVersion          String?
   /// Qué columna del uniforme le toca: MUJER | HOMBRE. No registra identidad:
   /// solo decide qué playera le corresponde (el martes ellas de negro, ellos de blanco).
-  uniformVariant        String?
-  authoredAnnouncements Announcement[]
-  announcementReactions AnnouncementReaction[]
-  announcementReads     AnnouncementRead[]
-  chatMemberships       ChatMember[]
-  chatMessages          ChatMessage[]
-  chatMessageDeliveries ChatMessageDelivery[]
-  chatMessageHides      ChatMessageHide[]
-  chatMessageReactions  ChatMessageReaction[]
-  chatMessageReads      ChatMessageRead[]
-  chatMentions          ChatMention[]
-  choreAssignments      ChoreAssignment[]
-  comments              Comment[]                 @relation("CommentAuthor")
-  plans                 DayPlan[]
-  employeeNumberAliases EmployeeNumberAlias[]
-  evidences             Evidence[]                @relation("EvidenceAuthor")
-  inventoryReports      InventoryReport[]         @relation("InventoryReporter")
-  inventoryResolved     InventoryReport[]         @relation("InventoryResolver")
-  kpis                  Kpi[]
-  kudosSent             Kudo[]                    @relation("KudoFrom")
-  kudosReceived         Kudo[]                    @relation("KudoTo")
-  notifications         Notification[]
-  assignedPendings      Pending[]                 @relation("PendingOwner")
-  pushSubscriptions     PushSubscription[]
-  deviceTokens          DeviceToken[]
-  schedules             Schedule[]
-  attendances           Attendance[]
-  shiftRequests         ShiftRequest[]            @relation("ShiftRequester")
-  swapsRequested        ShiftSwap[]               @relation("SwapRequester")
-  swapsReceived         ShiftSwap[]               @relation("SwapTarget")
-  authoredLogs          StoreLog[]
-  authoredSurveys       Survey[]                  @relation("SurveyAuthor")
-  surveyResponses       SurveyResponse[]          @relation("SurveyRespondent")
-  authoredTraining      TrainingResource[]        @relation("TrainingAuthor")
-  trainingViews         TrainingResourceView[]    @relation("TrainingViewer")
-  legalAcceptances      LegalAcceptance[]
-  store                 Store                     @relation(fields: [storeId], references: [id])
-  webAuthnCredentials   WebAuthnCredential[]
-  aiMemories            AiMemory[]
-  aiPlanHistories       AiPlanHistory[]
-  aiRecommendations     AiRecommendationHistory[]
-  retailAlertLogs       RetailAlertLog[]
-  reportDeliveries      ReportDelivery[]
-  pinResetTokens        PinResetToken[]
-  nativeDevices         NativeDevice[]
+  uniformVariant                String?
+  authoredAnnouncements         Announcement[]
+  announcementReactions         AnnouncementReaction[]
+  announcementReads             AnnouncementRead[]
+  chatMemberships               ChatMember[]
+  chatMessages                  ChatMessage[]
+  chatMessageDeliveries         ChatMessageDelivery[]
+  chatMessageHides              ChatMessageHide[]
+  chatMessageReactions          ChatMessageReaction[]
+  chatMessageReads              ChatMessageRead[]
+  chatMentions                  ChatMention[]
+  choreAssignments              ChoreAssignment[]
+  comments                      Comment[]                     @relation("CommentAuthor")
+  plans                         DayPlan[]
+  employeeNumberAliases         EmployeeNumberAlias[]
+  evidences                     Evidence[]                    @relation("EvidenceAuthor")
+  inventoryReports              InventoryReport[]             @relation("InventoryReporter")
+  inventoryResolved             InventoryReport[]             @relation("InventoryResolver")
+  kpis                          Kpi[]
+  kudosSent                     Kudo[]                        @relation("KudoFrom")
+  kudosReceived                 Kudo[]                        @relation("KudoTo")
+  notifications                 Notification[]
+  assignedPendings              Pending[]                     @relation("PendingOwner")
+  pushSubscriptions             PushSubscription[]
+  deviceTokens                  DeviceToken[]
+  schedules                     Schedule[]
+  attendances                   Attendance[]
+  shiftRequests                 ShiftRequest[]                @relation("ShiftRequester")
+  swapsRequested                ShiftSwap[]                   @relation("SwapRequester")
+  swapsReceived                 ShiftSwap[]                   @relation("SwapTarget")
+  authoredLogs                  StoreLog[]
+  authoredSurveys               Survey[]                      @relation("SurveyAuthor")
+  surveyResponses               SurveyResponse[]              @relation("SurveyRespondent")
+  authoredTraining              TrainingResource[]            @relation("TrainingAuthor")
+  trainingViews                 TrainingResourceView[]        @relation("TrainingViewer")
+  legalAcceptances              LegalAcceptance[]
+  store                         Store                         @relation(fields: [storeId], references: [id])
+  webAuthnCredentials           WebAuthnCredential[]
+  aiMemories                    AiMemory[]
+  aiPlanHistories               AiPlanHistory[]
+  aiRecommendations             AiRecommendationHistory[]
+  retailAlertLogs               RetailAlertLog[]
+  reportDeliveries              ReportDelivery[]
+  pinResetTokens                PinResetToken[]
+  nativeDevices                 NativeDevice[]
+  attendanceCorrectionRequests  AttendanceCorrectionRequest[]
+  reviewedAttendanceCorrections AttendanceCorrectionRequest[] @relation("AttendanceCorrectionReviewer")
 }
 
 model TrainingResource {
@@ -557,6 +560,33 @@ model Attendance {
 
   @@unique([userId, date])
   @@index([storeId, date])
+}
+
+/// Solicitud hecha desde la APK para corregir una entrada de asistencia.
+/// La captura original nunca se pisa al solicitar: gerencia revisa y la
+/// aprobación aplica el cambio en Attendance dentro de la misma transacción.
+model AttendanceCorrectionRequest {
+  id                 String           @id @default(cuid())
+  storeId            String
+  userId             String
+  date               DateTime         @db.Date
+  requestedStatus    AttendanceStatus
+  requestedArrivedAt String?
+  requestedLeftAt    String?
+  reason             String
+  evidenceUrl        String?
+  status             String           @default("PENDING")
+  managerNote        String?
+  reviewedById       String?
+  reviewedAt         DateTime?
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+  user               User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  store              Store            @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  reviewedBy         User?            @relation("AttendanceCorrectionReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+
+  @@index([storeId, status, createdAt])
+  @@index([userId, date, createdAt])
 }
 
 enum AttendanceStatus {
@@ -1640,6 +1670,8 @@ enum NotificationType {
   SURVEY
   NEW_CHAT_MESSAGE
   CHECKLIST_REMINDER
+  ATTENDANCE_CORRECTION
+  SHIFT_REMINDER
 }
 
 enum ChatRoomType {

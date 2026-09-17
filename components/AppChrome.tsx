@@ -48,6 +48,8 @@ const ROUTES_WITH_NAV = new Set([
   "/kpis",
   "/kudos",
   "/manager",
+  "/mi-dia",
+  "/dispositivos",
   "/notificaciones",
   "/pendientes",
   "/perfil",
