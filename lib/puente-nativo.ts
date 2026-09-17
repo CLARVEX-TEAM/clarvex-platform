@@ -199,6 +199,42 @@ export function scannerDocumentosNativo(): PluginScannerDocumentos | null {
   return pluginNativo<PluginScannerDocumentos>("ScannerDocumentos");
 }
 
+export type IdentidadDispositivoNativo = {
+  installationId: string;
+  publicKey: string;
+  keyAlgorithm: "ES256";
+  platform: "android";
+  packageName: string;
+  appBuild: number;
+  appVersion: string;
+  capabilities: string[];
+};
+
+export type DiagnosticoDispositivoNativo = {
+  installationId: string;
+  androidVersion: string;
+  androidSdk: number;
+  manufacturer: string;
+  model: string;
+  camera: boolean;
+  notifications: boolean;
+  network: "offline" | "wifi" | "cellular" | "ethernet" | "online";
+  freeStorageBytes: number;
+  webView: string;
+  automaticTime: boolean;
+};
+
+export type PluginDispositivoClarvex = {
+  identidad(): Promise<IdentidadDispositivoNativo>;
+  firmar(options: { payload: string }): Promise<{ installationId: string; signature: string }>;
+  diagnostico(): Promise<DiagnosticoDispositivoNativo>;
+};
+
+/** Identidad no exportable y diagnóstico del equipo, desde la APK posterior a 1.5. */
+export function dispositivoClarvexNativo(): PluginDispositivoClarvex | null {
+  return pluginNativo<PluginDispositivoClarvex>("DispositivoClarvex");
+}
+
 /** Convierte un `file://` privado devuelto por Android en una URL legible por el WebView. */
 export function urlArchivoNativo(ruta: string): string | null {
   const convertir = puente()?.convertFileSrc;

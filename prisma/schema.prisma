@@ -89,6 +89,7 @@ model Store {
   reportDeliveries               ReportDelivery[]
   weeklyPerformanceCloses        WeeklyPerformanceClose[]
   promoDrafts                    PromoDraft[]
+  nativeDevices                  NativeDevice[]
 }
 
 model StoreFixture {
@@ -234,6 +235,7 @@ model User {
   retailAlertLogs       RetailAlertLog[]
   reportDeliveries      ReportDelivery[]
   pinResetTokens        PinResetToken[]
+  nativeDevices         NativeDevice[]
 }
 
 model TrainingResource {
@@ -893,25 +895,74 @@ model PushSubscription {
 /// por (usuario, token) dejaria al anterior recibiendo las notificaciones de
 /// alguien mas en un aparato que ya no es suyo.
 model DeviceToken {
-  id         String   @id @default(cuid())
-  userId     String
+  id             String        @id @default(cuid())
+  userId         String
   /// El registration token de FCM. Identifica al aparato, no a la persona.
-  token      String   @unique
+  token          String        @unique
   /// "android" hoy. Existe para no tener que migrar cuando llegue iOS.
-  platform   String
+  platform       String
   /// El versionCode de la app instalada. Es el unico orden fiable: `appVersion`
   /// es "1.10" y comparado como texto queda por debajo de "1.9".
   ///
   /// Opcional a proposito: los aparatos registrados ANTES de esta columna no lo
   /// tienen y no se puede inventar. Se rellena solo en el siguiente arranque.
-  appBuild   Int?
+  appBuild       Int?
   /// Lo que se le ensena a una persona: "1.3".
-  appVersion String?
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  appVersion     String?
+  /// Instalación criptográfica que posee este token. Opcional para conservar
+  /// los registros de APK anteriores a la identidad nativa.
+  nativeDeviceId String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  nativeDevice   NativeDevice? @relation(fields: [nativeDeviceId], references: [id], onDelete: SetNull)
 
   @@index([userId])
+  @@index([nativeDeviceId])
+}
+
+/// Instalación Android identificada por una llave EC no exportable del
+/// Android Keystore. La sesión identifica a la persona; esta fila demuestra
+/// además qué instalación firmó una operación exclusiva de la APK.
+model NativeDevice {
+  id             String        @id @default(cuid())
+  installationId String        @unique
+  publicKey      String
+  keyAlgorithm   String        @default("ES256")
+  userId         String
+  storeId        String
+  profile        String        @default("PERSONAL")
+  appBuild       Int
+  appVersion     String
+  capabilities   Json
+  status         String        @default("ACTIVE")
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  lastSeenAt     DateTime      @default(now())
+  revokedAt      DateTime?
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  store          Store         @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  deviceTokens   DeviceToken[]
+
+  @@index([userId, status])
+  @@index([storeId, status])
+}
+
+/// Nonce de un solo uso para altas y peticiones firmadas. No se relaciona con
+/// NativeDevice porque REGISTER ocurre antes de que esa fila exista.
+model NativeDeviceChallenge {
+  id             String    @id @default(cuid())
+  installationId String
+  userId         String
+  storeId        String
+  purpose        String
+  nonce          String    @unique
+  expiresAt      DateTime
+  usedAt         DateTime?
+  createdAt      DateTime  @default(now())
+
+  @@index([installationId, purpose, expiresAt])
+  @@index([userId, createdAt])
 }
 
 model AnnouncementRead {

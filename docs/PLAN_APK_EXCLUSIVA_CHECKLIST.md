@@ -1,7 +1,7 @@
 # Plan de trabajo: experiencia exclusiva de APK y nuevo checklist
 
-**Estado:** aprobado y en ejecución; primer incremento de APK 1.5 implementado localmente  
-**Fecha:** 16 de septiembre de 2026  
+**Estado:** aprobado y en ejecución; APK 1.5 publicada y segunda etapa de identidad en revisión
+**Fecha:** 17 de septiembre de 2026
 **Repositorios:** `clarvex-platform` y `clarvex-movil`
 
 ## 1. Objetivo
@@ -28,8 +28,30 @@ El trabajo debe conseguir cuatro resultados:
 - Notificaciones nativas abren únicamente rutas internas validadas.
 - Backups y transferencia de datos de la app desactivados.
 - Actualizador limitado al host HTTPS oficial, 50 MiB, paquete, versión y firma.
-- Pendientes de esta versión: registro criptográfico del dispositivo,
-  diagnóstico ampliado y prueba física del escáner en el teléfono kiosco.
+- Pendiente de aceptación física: probar escaneo, cancelación, galería, varias
+  páginas y subida en el teléfono kiosco.
+
+### Segunda etapa en revisión — 17 de septiembre de 2026
+
+- Plugin `DispositivoClarvex` con identificador de instalación y llave EC P-256
+  no exportable en Android Keystore.
+- Registro autenticado por usuario/tienda/perfil, capacidades y versión, con
+  auditoría y asociación opcional del token FCM al dispositivo.
+- Retos de dos minutos y un solo uso; cada petición protegida firma método,
+  ruta, consulta, hash del cuerpo, timestamp y nonce.
+- Guard común `requireNativeDevice()` y primer endpoint protegido para comprobar
+  todo el recorrido desde Android hasta el servidor.
+- Diagnóstico ampliado: Android, equipo, WebView, red, hora automática,
+  almacenamiento, cámara, notificaciones, instalación y prueba de firma.
+- Migración aditiva; las APK publicadas anteriormente conservan su registro FCM.
+
+Esta etapa demuestra que una petición posee la llave privada registrada y evita
+la reutilización de firmas. El alta inicial aún no demuestra por sí sola que la
+llave nació dentro de la APK oficial: un cliente con sesión válida puede generar
+otra llave P-256 e intentar registrarla. Para declarar exclusividad criptográfica
+completa falta validar Android Key Attestation con el paquete y certificado de
+Clarvex, o someter el primer alta a aprobación de gerencia en equipos sin
+atestación. Hasta entonces debe describirse como **vinculación de dispositivo**.
 
 ## 2. Alcance funcional completo
 
@@ -94,8 +116,15 @@ implementará en dos capas.
   cuerpo, timestamp y nonce. La cookie de sesión sigue siendo obligatoria.
 - Nonces de un solo uso, ventana temporal corta, rotación y revocación auditada.
 - Guard común `requireNativeDevice()` para no repetir verificaciones.
-- Un dispositivo revocado pierde endpoints exclusivos, token FCM y sesión en el
-  siguiente heartbeat.
+- Un dispositivo revocado pierde los endpoints protegidos. La eliminación de su
+  token FCM y el cierre de sesión en heartbeat forman parte del panel de control
+  de dispositivos de la fase 1.6.
+
+La prueba de posesión no sustituye la prueba de procedencia de la aplicación.
+Antes de usar este registro como frontera de exclusividad se validará la cadena
+de Android Key Attestation, el nombre de paquete y el digest del certificado de
+firma. Los equipos que no puedan atestar requerirán aprobación explícita de
+gerencia; nunca se aceptará una bandera enviada por JavaScript como sustituto.
 
 ### Datos propuestos
 
@@ -183,8 +212,10 @@ la siguiente tarea y dejar evidencia clara.
 - Escáner documental nativo y subida compatible con las APIs actuales.
 - Diagnóstico básico de permisos, red, FCM, WebView y versión.
 
-**Salida:** el kiosco completa apertura/cierre y vouchers con el flujo nuevo; el
-navegador no puede usar endpoints exclusivos.
+**Salida:** el kiosco completa apertura/cierre y vouchers con el flujo nuevo; los
+endpoints protegidos exigen sesión, dispositivo vinculado y firma de un solo uso.
+La procedencia oficial se convierte en puerta obligatoria antes de mover a esos
+endpoints operaciones sensibles.
 
 ### APK 1.6 — Jornada personal, 2–3 semanas
 
@@ -246,8 +277,9 @@ publicables por separado; no hace falta esperar a la 1.8 para recibir valor.
 
 ## 8. Criterios de aceptación globales
 
-- Navegador/PWA: sin accesos visibles y 403 en endpoints nativos aunque exista
-  una sesión válida.
+- Navegador/PWA: sin accesos visibles; los endpoints protegidos rechazan la sesión
+  sin dispositivo vinculado y firma válida. El alta se cerrará con atestación o
+  aprobación antes de considerarlo un límite criptográfico de APK oficial.
 - APK registrada: sesión + firma válida; revocación efectiva y auditada.
 - Ninguna foto/PDF confirmado se pierde al cerrar la app, reiniciar o quitar red.
 - Reintentar una operación nunca duplica una captura o evidencia.
