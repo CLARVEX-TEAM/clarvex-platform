@@ -1,5 +1,42 @@
 # Clarvex Team — CLAUDE.md
 
+## Primer incremento de APK 1.5 — candidata firmada, sin publicar — 16 de septiembre de 2026
+
+El usuario aprobó el plan completo de funciones exclusivas de APK y pidió
+comenzar. La primera entrega vertical quedó en
+`feat/apk-1-5-native-foundation`: plataforma `f54266c` y Android `bedb870`.
+No hay merge, despliegue web ni publicación de APK.
+
+La APK muestra una versión propia del checklist solo cuando Capacitor reporta
+Android: progreso total, selector Apertura/Cierre, siguiente tarea, una única
+acción principal, evidencia secundaria y completadas plegables. La web/PWA
+conserva el checklist anterior. El escáner nativo usa ML Kit para hasta 25
+páginas, devuelve JPEG/PDF en caché privada y cae a la cámara estándar si el
+plugin no está disponible. Las páginas se suben por la API existente y quedan
+visibles una por una, incluso si una posterior falla.
+
+Las notificaciones pueden abrir rutas internas y rechazan destinos externos.
+El manifiesto desactiva backup/transferencia de datos. El actualizador acepta
+solo `https://team.clarvex.tech/api/app/apk`, limita a 50 MiB y valida paquete,
+versionCode y certificado antes de abrir el instalador. No hay migraciones ni
+endpoints nativos nuevos; por tanto, el registro criptográfico de dispositivo y
+el guard de exclusividad del servidor siguen pendientes en el plan.
+
+Validación web: TypeScript, ESLint, 1,442 pruebas sin fallos ni omisiones y
+build aislado de 75 páginas sin `.env`, con TCP externo bloqueado. Revisión
+visual simulando el puente Android a 412 px: sin desbordamiento ni excepciones y
+una sola acción primaria. Android: `testDebugUnitTest assembleDebug` y después
+build firmado aislado desde `bedb870`, 279 tareas aprobadas. El DEX contiene
+`ScannerDocumentos`, `DocumentScannerActivity` y `Actualizador`; el manifiesto
+contiene cámara, FCM y el escáner.
+
+Candidata: `D:\Documents\clarvex-entregas\apk-1.5-candidata\clarvex-team-1.5.apk`,
+versión 1.5/código 6, 8,070,306 bytes, SHA-256
+`0856b2ebadc2be1b3fb97c2ce124f5a52ab4ae55de30afb253280b9b7468fc67`.
+Firma v1/v2 y certificado idéntico a APK 1.4. Pendiente: prueba física de
+escaneo/cancelación/galería/subida en el kiosco, CI/PostgreSQL efímero, revisión
+y decisión explícita de integrar/desplegar/publicar. Producción sigue en APK 1.4.
+
 ## Asistencia AXO sin acceso al Forms — publicada — 16 de septiembre de 2026
 
 La cuenta `tommy_sanagustin@grupoaxo.com` puede responder el Forms pero no leer
