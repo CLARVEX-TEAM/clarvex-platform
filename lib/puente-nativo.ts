@@ -71,6 +71,10 @@ export type PluginPush = {
   createChannel(canal: CanalPush): Promise<void>;
   addListener(evento: "registration", cb: (dato: RegistroPush) => void): Promise<{ remove(): Promise<void> }>;
   addListener(evento: "registrationError", cb: (dato: { error: string }) => void): Promise<{ remove(): Promise<void> }>;
+  addListener(
+    evento: "pushNotificationActionPerformed",
+    cb: (dato: { actionId: string; notification: { data?: Record<string, unknown> } }) => void
+  ): Promise<{ remove(): Promise<void> }>;
 };
 
 type PuenteCapacitor = {
@@ -78,6 +82,7 @@ type PuenteCapacitor = {
   isPluginAvailable?: (nombre: string) => boolean;
   registerPlugin?: <T>(nombre: string) => T;
   getPlatform?: () => string;
+  convertFileSrc?: (ruta: string) => string;
 };
 
 function puente(): PuenteCapacitor | null {
@@ -177,4 +182,42 @@ export type PluginBiometria = {
 
 export function biometriaNativa(): PluginBiometria | null {
   return pluginNativo<PluginBiometria>("Biometria");
+}
+
+export type ResultadoEscanerNativo = {
+  cancelado: boolean;
+  paginas: string[];
+  pdf?: string | null;
+};
+
+export type PluginScannerDocumentos = {
+  escanear(opciones?: { limite?: number; galeria?: boolean }): Promise<ResultadoEscanerNativo>;
+};
+
+/** Escáner de documentos de ML Kit, disponible desde la APK 1.5. */
+export function scannerDocumentosNativo(): PluginScannerDocumentos | null {
+  return pluginNativo<PluginScannerDocumentos>("ScannerDocumentos");
+}
+
+/** Convierte un `file://` privado devuelto por Android en una URL legible por el WebView. */
+export function urlArchivoNativo(ruta: string): string | null {
+  const convertir = puente()?.convertFileSrc;
+  if (!convertir || !ruta.startsWith("file://")) return null;
+  try {
+    return convertir(ruta);
+  } catch {
+    return null;
+  }
+}
+
+/** Normaliza el destino de una notificación y rechaza dominios o esquemas externos. */
+export function rutaInternaDeNotificacion(valor: unknown, origen: string): string | null {
+  if (typeof valor !== "string" || !valor.startsWith("/") || valor.startsWith("//")) return null;
+  try {
+    const destino = new URL(valor, origen);
+    if (destino.origin !== origen) return null;
+    return `${destino.pathname}${destino.search}${destino.hash}`;
+  } catch {
+    return null;
+  }
 }

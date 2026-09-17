@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { biometriaNativa, CANAL_AVISOS, enContenedorNativo, plataformaNativa, pushNativo } from "@/lib/puente-nativo";
+import { biometriaNativa, CANAL_AVISOS, enContenedorNativo, plataformaNativa, pushNativo, scannerDocumentosNativo } from "@/lib/puente-nativo";
 import { candadoActivado } from "@/lib/candado-huella";
 
 /**
@@ -72,6 +72,11 @@ export default function DiagnosticoPush() {
         que: "Lector de codigos",
         valor: "BarcodeDetector" in window ? "nativo" : "por jsQR (mas lento, pero sirve)",
         bien: null
+      },
+      {
+        que: "Escáner nativo de documentos",
+        valor: scannerDocumentosNativo() ? "disponible" : "no incluido en esta versión",
+        bien: Boolean(scannerDocumentosNativo())
       },
       {
         que: "Huella (WebAuthn)",

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { Bell, X } from "lucide-react";
-import { appNativa, CANAL_AVISOS, enContenedorNativo, plataformaNativa, pushNativo, type PluginPush } from "@/lib/puente-nativo";
+import { appNativa, CANAL_AVISOS, enContenedorNativo, plataformaNativa, pushNativo, rutaInternaDeNotificacion, type PluginPush } from "@/lib/puente-nativo";
 
 /**
  * ⚠️ **Este componente se monta en el LAYOUT RAÍZ, o sea también en `/login`.**
@@ -245,6 +245,13 @@ export function PwaRegister() {
           }),
           plugin.addListener("registrationError", (dato) => {
             console.error("[push nativo] Google no entregó el token:", dato.error);
+          }),
+          plugin.addListener("pushNotificationActionPerformed", (dato) => {
+            const raw = dato.notification.data?.path ?? dato.notification.data?.url;
+            // Solo navegación interna. Una notificación no puede convertir un
+            // toque en una salida a otro dominio ni ejecutar un esquema ajeno.
+            const target = rutaInternaDeNotificacion(raw, window.location.origin);
+            if (target) window.location.assign(target);
           }),
         ]);
         if (!montado) {

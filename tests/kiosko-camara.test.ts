@@ -8,11 +8,23 @@ test("kiosko: fotos y escaneo solicitan captura compatible con Capacitor", () =>
   const source = readFileSync("app/checklist/page.tsx", "utf8");
   const inputs = [...source.matchAll(/<input\b[^>]+>/g)].map(([tag]) => tag);
   const cameras = inputs.filter(tag => tag.includes('capture="environment"'));
-  assert.equal(cameras.length, 2);
+  assert.ok(cameras.length >= 2);
   for (const camera of cameras) assert.match(camera, /accept="image\/\*"/);
-  const gallery = inputs.find(tag => tag.includes("ref={galleryRef}"));
-  assert.ok(gallery);
-  assert.doesNotMatch(gallery, /capture=/);
+  const galleries = inputs.filter(tag => tag.includes("ref={galleryRef}"));
+  assert.ok(galleries.length >= 1);
+  for (const gallery of galleries) assert.doesNotMatch(gallery, /capture=/);
+  assert.match(source, /scannerDocumentosNativo/);
+  assert.match(source, /data-native-checklist/);
+});
+
+test("APK: las notificaciones solo navegan a rutas internas", async () => {
+  const { rutaInternaDeNotificacion } = await import("../lib/puente-nativo");
+  const origin = "https://team.clarvex.tech";
+  assert.equal(rutaInternaDeNotificacion("/checklist?seccion=CIERRE#pendiente", origin), "/checklist?seccion=CIERRE#pendiente");
+  assert.equal(rutaInternaDeNotificacion("//malicioso.example/robar", origin), null);
+  assert.equal(rutaInternaDeNotificacion("https://malicioso.example/robar", origin), null);
+  assert.equal(rutaInternaDeNotificacion("javascript:alert(1)", origin), null);
+  assert.equal(rutaInternaDeNotificacion(42, origin), null);
 });
 
 test("kiosko: puede consultar actualizaciones, pero no otras APIs ni métodos", async () => {

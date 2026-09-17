@@ -4,12 +4,13 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import NextImage from "next/image";
 import { ImagenAmpliable } from "@/components/VisorImagen";
-import { Camera, CheckCircle2, Circle, Clock3, ExternalLink, FileCheck2, FileText, Image as ImageIcon, LogOut, Moon, SlidersHorizontal, Sun, X } from "lucide-react";
+import { Camera, CheckCircle2, ChevronDown, Circle, Clock3, ExternalLink, FileCheck2, FileText, Image as ImageIcon, LogOut, Moon, RefreshCw, SlidersHorizontal, Sun, X } from "lucide-react";
 import { getSession, logout } from "@/lib/auth";
 import { compressImage } from "@/lib/image-compress";
 import { DocScanner } from "@/components/DocScanner";
 import type { User } from "@/lib/types";
 import { AppFrame, AppHeader, Badge, Card, ProgressBar } from "@/components/ui";
+import { enContenedorNativo, scannerDocumentosNativo, urlArchivoNativo } from "@/lib/puente-nativo";
 
 type Section = "APERTURA" | "CIERRE";
 type ScanPhoto = { id: string; url: string; fileName: string | null; createdAt: string };
@@ -65,10 +66,13 @@ export default function ChecklistPage() {
   const [axoAttendance, setAxoAttendance] = useState<AxoAttendance | null>(null);
   const [axoConfirming, setAxoConfirming] = useState(false);
   const [axoError, setAxoError] = useState("");
+  const [activeSection, setActiveSection] = useState<Section>("APERTURA");
+  const [nativeExperience, setNativeExperience] = useState(false);
   // Foto recién capturada, esperando que se ajusten las esquinas en el escáner.
   const [scanning, setScanning] = useState<{ item: ChecklistItem; file: File } | null>(null);
 
   useEffect(() => {
+    setNativeExperience(enContenedorNativo());
     getSession().then((current) => {
       if (!current) { router.replace("/login"); return; }
       // El usuario kiosko SÍ entra aquí aunque sea ASESOR (es su única pantalla).
@@ -208,6 +212,43 @@ export default function ChecklistPage() {
     }
   }
 
+  async function addNativeScans(item: ChecklistItem) {
+    const scanner = scannerDocumentosNativo();
+    if (!scanner) return;
+    setBusyKey(item.key);
+    setError("");
+    try {
+      const result = await scanner.escanear({ limite: 25, galeria: true });
+      if (result.cancelado || result.paginas.length === 0) return;
+      const blobs: Blob[] = [];
+      for (const path of result.paginas) {
+        const url = urlArchivoNativo(path);
+        if (!url) throw new Error("La APK no pudo abrir una página escaneada.");
+        const response = await fetch(url);
+        if (!response.ok) throw new Error("La APK no pudo leer una página escaneada.");
+        blobs.push(await response.blob());
+      }
+      for (let index = 0; index < blobs.length; index++) {
+        const form = new FormData();
+        form.append("itemKey", item.key);
+        if (date) form.append("date", date);
+        form.append("image", blobs[index], `escaneo-${index + 1}.jpg`);
+        const response = await fetch("/api/checklist/scan", { method: "POST", body: form });
+        const payload = await response.json() as { scan?: ScanPhoto; error?: string };
+        if (!response.ok || !payload.scan) throw new Error(payload.error ?? `No se pudo subir la página ${index + 1}.`);
+        const added = payload.scan;
+        setItems((current) => current.map((entry) => entry.key === item.key
+          ? { ...entry, scans: [...entry.scans, added] }
+          : entry));
+      }
+      if (item.label.toLowerCase().includes("voucher")) void silentRefresh();
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "No se pudo usar el escáner nativo.");
+    } finally {
+      setBusyKey(null);
+    }
+  }
+
   async function removeScan(item: ChecklistItem, scanId: string) {
     setError("");
     const previous = items;
@@ -238,7 +279,6 @@ export default function ChecklistPage() {
 
   // Usuario kiosko (celular de la tienda): sin navegación ni "atrás", solo salir.
   const kiosk = session?.checklistOnly === true;
-
   return (
     <>
       <AppHeader
@@ -267,6 +307,19 @@ export default function ChecklistPage() {
         ) : null}
         {loading ? (
           <Card className="text-sm font-semibold text-muted">Cargando checklist...</Card>
+        ) : nativeExperience ? (
+          <NativeChecklist
+            items={items}
+            activeSection={activeSection}
+            busyKey={busyKey}
+            onSection={setActiveSection}
+            onToggle={(item) => void toggle(item)}
+            onPhoto={(item, file) => void attachPhoto(item, file)}
+            onCapture={(item, file) => setScanning({ item, file })}
+            onNativeScan={(item) => void addNativeScans(item)}
+            onRemove={(item, scanId) => void removeScan(item, scanId)}
+            onGeneratePdf={(item) => generatePdf(item)}
+          />
         ) : (
           <div className="space-y-3">
             {SECTIONS.map((section) => {
@@ -320,6 +373,168 @@ export default function ChecklistPage() {
         />
       ) : null}
     </>
+  );
+}
+
+function NativeChecklist({
+  items,
+  activeSection,
+  busyKey,
+  onSection,
+  onToggle,
+  onPhoto,
+  onCapture,
+  onNativeScan,
+  onRemove,
+  onGeneratePdf
+}: {
+  items: ChecklistItem[];
+  activeSection: Section;
+  busyKey: string | null;
+  onSection: (section: Section) => void;
+  onToggle: (item: ChecklistItem) => void;
+  onPhoto: (item: ChecklistItem, file: File) => void;
+  onCapture: (item: ChecklistItem, file: File) => void;
+  onNativeScan: (item: ChecklistItem) => void;
+  onRemove: (item: ChecklistItem, scanId: string) => void;
+  onGeneratePdf: (item: ChecklistItem) => Promise<{ pdfUrl: string; sentToTelegram: boolean }>;
+}) {
+  const done = items.filter(isDone).length;
+  const total = items.length;
+  const progress = total ? Math.round((done / total) * 100) : 0;
+  const sectionItems = items.filter((item) => item.section === activeSection);
+  const pendingItems = sectionItems.filter((item) => !isDone(item));
+  const completedItems = sectionItems.filter(isDone);
+  const nativeScannerAvailable = Boolean(scannerDocumentosNativo());
+
+  if (items.length === 0) {
+    return (
+      <section className="rounded-2xl bg-panel px-5 py-8 text-center shadow-[0_10px_30px_rgb(15_23_42_/_0.08)]">
+        <CheckCircle2 className="mx-auto text-muted" size={28} />
+        <h2 className="mt-3 text-base font-semibold text-ink">Sin puntos configurados</h2>
+        <p className="mt-1 text-sm leading-5 text-muted">Gerencia puede agregar puntos desde Editar.</p>
+      </section>
+    );
+  }
+
+  return (
+    <div className="space-y-5" data-native-checklist>
+      <section className="overflow-hidden rounded-2xl bg-[#172033] text-white shadow-[0_14px_34px_rgb(15_23_42_/_0.24)]">
+        <div className="px-5 pb-4 pt-5">
+          <div className="flex items-end justify-between gap-4">
+            <div>
+              <h2 className="text-xl font-semibold tracking-[-0.025em]">Avance de hoy</h2>
+              <p className="mt-1 text-sm text-blue-100/75">
+                {done === total ? "La tienda terminó el checklist." : `${total - done} ${total - done === 1 ? "punto pendiente" : "puntos pendientes"}`}
+              </p>
+            </div>
+            <p className="text-3xl font-semibold tabular-nums tracking-[-0.04em]">{progress}%</p>
+          </div>
+          <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/15" aria-label={`${progress}% completado`}>
+            <div className="h-full rounded-full bg-[#76E3B5] transition-[width] duration-500 motion-reduce:transition-none" style={{ width: `${progress}%` }} />
+          </div>
+          <div className="mt-3 flex items-center justify-between text-xs font-medium text-blue-100/70">
+            <span>{done} completados</span>
+            <span>{total} en total</span>
+          </div>
+        </div>
+      </section>
+
+      <div className="grid grid-cols-2 gap-2 rounded-2xl bg-black/[0.045] p-1.5 dark:bg-white/[0.055]" role="tablist" aria-label="Momento del checklist">
+        {SECTIONS.map((section) => {
+          const sectionTotal = items.filter((item) => item.section === section.id);
+          const sectionDone = sectionTotal.filter(isDone).length;
+          const selected = activeSection === section.id;
+          const SectionIcon = section.icon;
+          return (
+            <button
+              key={section.id}
+              type="button"
+              role="tab"
+              aria-selected={selected}
+              onClick={() => onSection(section.id)}
+              className={`flex min-h-12 items-center justify-center gap-2 rounded-xl px-3 text-sm font-semibold transition focus:outline-none focus-visible:ring-4 focus-visible:ring-volt/30 ${selected ? "bg-panel text-ink shadow-[0_5px_16px_rgb(15_23_42_/_0.12)]" : "text-muted"}`}
+            >
+              <SectionIcon size={17} />
+              <span>{section.label}</span>
+              <span className="tabular-nums text-xs opacity-65">{sectionDone}/{sectionTotal.length}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      <section aria-labelledby={`section-${activeSection}`}>
+        <div className="mb-3 flex items-end justify-between gap-4">
+          <div>
+            <h2 id={`section-${activeSection}`} className="text-lg font-semibold tracking-[-0.025em] text-ink">
+              {pendingItems.length ? "Siguiente por hacer" : `${activeSection === "APERTURA" ? "Apertura" : "Cierre"} completo`}
+            </h2>
+            <p className="mt-0.5 text-xs text-muted">
+              {pendingItems.length ? "Completa en orden o elige otro punto." : "Todo quedó registrado en esta sección."}
+            </p>
+          </div>
+          {pendingItems.length > 0 ? <Badge>{pendingItems.length} pendientes</Badge> : <Badge tone="success">Listo</Badge>}
+        </div>
+
+        <div className="space-y-2.5">
+          {pendingItems.map((item, index) => item.kind === "scan" ? (
+            <ScanRow
+              key={item.key}
+              item={item}
+              busy={busyKey === item.key}
+              native
+              featured={index === 0}
+              onNativeScan={nativeScannerAvailable ? () => onNativeScan(item) : undefined}
+              onCapture={(file) => onCapture(item, file)}
+              onRemove={(scanId) => onRemove(item, scanId)}
+              onGeneratePdf={() => onGeneratePdf(item)}
+            />
+          ) : (
+            <ChecklistRow
+              key={item.key}
+              item={item}
+              busy={busyKey === item.key}
+              native
+              featured={index === 0}
+              onToggle={() => onToggle(item)}
+              onPhoto={(file) => onPhoto(item, file)}
+            />
+          ))}
+        </div>
+
+        {completedItems.length > 0 ? (
+          <details className="group mt-5">
+            <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between rounded-xl px-1 text-sm font-semibold text-muted focus:outline-none focus-visible:ring-4 focus-visible:ring-volt/30">
+              <span>{completedItems.length} {completedItems.length === 1 ? "punto completado" : "puntos completados"}</span>
+              <ChevronDown size={18} className="transition-transform group-open:rotate-180" />
+            </summary>
+            <div className="mt-2 space-y-2.5">
+              {completedItems.map((item) => item.kind === "scan" ? (
+                <ScanRow
+                  key={item.key}
+                  item={item}
+                  busy={busyKey === item.key}
+                  native
+                  onNativeScan={nativeScannerAvailable ? () => onNativeScan(item) : undefined}
+                  onCapture={(file) => onCapture(item, file)}
+                  onRemove={(scanId) => onRemove(item, scanId)}
+                  onGeneratePdf={() => onGeneratePdf(item)}
+                />
+              ) : (
+                <ChecklistRow
+                  key={item.key}
+                  item={item}
+                  busy={busyKey === item.key}
+                  native
+                  onToggle={() => onToggle(item)}
+                  onPhoto={(file) => onPhoto(item, file)}
+                />
+              ))}
+            </div>
+          </details>
+        ) : null}
+      </section>
+    </div>
   );
 }
 
@@ -405,9 +620,68 @@ function AxoAttendanceCard({ report, confirming, error, onConfirm }: {
   );
 }
 
-function ChecklistRow({ item, busy, onToggle, onPhoto }: { item: ChecklistItem; busy: boolean; onToggle: () => void; onPhoto: (file: File) => void }) {
+function ChecklistRow({ item, busy, native = false, featured = false, onToggle, onPhoto }: {
+  item: ChecklistItem;
+  busy: boolean;
+  native?: boolean;
+  featured?: boolean;
+  onToggle: () => void;
+  onPhoto: (file: File) => void;
+}) {
   const cameraRef = useRef<HTMLInputElement>(null);
   const galleryRef = useRef<HTMLInputElement>(null);
+  if (native) {
+    return (
+      <article className={`rounded-2xl bg-panel px-4 py-4 ${featured ? "shadow-[0_12px_30px_rgb(15_23_42_/_0.13)]" : "shadow-[0_5px_18px_rgb(15_23_42_/_0.07)]"}`}>
+        <div className="flex items-start gap-3">
+          <span className={`mt-0.5 grid size-9 shrink-0 place-items-center rounded-xl ${item.completed ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300" : featured ? "bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300" : "bg-black/[0.045] text-muted dark:bg-white/[0.06]"}`}>
+            {item.completed ? <CheckCircle2 size={19} /> : <Circle size={19} />}
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className={`text-[15px] font-semibold leading-5 ${item.completed ? "text-muted" : "text-ink"}`}>{item.label}</p>
+            <p className="mt-1 text-xs leading-4 text-muted">
+              {busy ? "Guardando el cambio…" : item.completedAt
+                ? `Completado ${new Date(item.completedAt).toLocaleTimeString("es-MX", { hour: "numeric", minute: "2-digit" })}${item.completedBy ? ` · ${item.completedBy}` : ""}`
+                : item.evidenceUrl ? "Tiene evidencia · falta completar" : "Sin completar"}
+            </p>
+          </div>
+          {item.evidenceUrl ? (
+            <ImagenAmpliable src={item.evidenceUrl} alt="Evidencia" className="shrink-0">
+              <NextImage src={item.evidenceUrl} alt="Evidencia" width={44} height={44} className="size-11 rounded-xl object-cover" unoptimized />
+            </ImagenAmpliable>
+          ) : null}
+        </div>
+
+        <div className="mt-4 flex items-center gap-2">
+          <button
+            type="button"
+            onClick={onToggle}
+            disabled={busy}
+            aria-pressed={item.completed}
+            className={`inline-flex min-h-12 flex-1 items-center justify-center gap-2 rounded-xl px-4 text-sm font-semibold transition active:scale-[0.98] disabled:opacity-55 focus:outline-none focus-visible:ring-4 focus-visible:ring-volt/30 ${!item.completed && featured ? "bg-volt text-white shadow-[0_7px_18px_rgb(37_99_235_/_0.23)]" : "bg-black/[0.045] text-ink dark:bg-white/[0.06]"}`}
+          >
+            {busy ? <RefreshCw size={17} className="animate-spin" /> : item.completed ? <RefreshCw size={17} /> : <CheckCircle2 size={17} />}
+            {busy ? "Guardando…" : item.completed ? "Marcar pendiente" : "Completar punto"}
+          </button>
+          <details className="group relative">
+            <summary className="grid size-12 cursor-pointer list-none place-items-center rounded-xl bg-black/[0.045] text-muted transition active:scale-95 focus:outline-none focus-visible:ring-4 focus-visible:ring-volt/30 dark:bg-white/[0.06]" aria-label="Opciones de evidencia">
+              <Camera size={18} />
+            </summary>
+            <div className="absolute bottom-14 right-0 z-10 w-52 overflow-hidden rounded-2xl bg-panel p-1.5 shadow-[0_14px_40px_rgb(15_23_42_/_0.22)]">
+              <button type="button" onClick={() => cameraRef.current?.click()} disabled={busy} className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left text-sm font-semibold text-ink hover:bg-black/[0.04] disabled:opacity-50 dark:hover:bg-white/[0.05]">
+                <Camera size={17} className="text-volt" /> Tomar evidencia
+              </button>
+              <button type="button" onClick={() => galleryRef.current?.click()} disabled={busy} className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left text-sm font-semibold text-ink hover:bg-black/[0.04] disabled:opacity-50 dark:hover:bg-white/[0.05]">
+                <ImageIcon size={17} className="text-volt" /> Elegir de galería
+              </button>
+            </div>
+          </details>
+        </div>
+        <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(event) => { const file = event.target.files?.[0]; if (file) onPhoto(file); event.target.value = ""; }} />
+        <input ref={galleryRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(event) => { const file = event.target.files?.[0]; if (file) onPhoto(file); event.target.value = ""; }} />
+      </article>
+    );
+  }
   return (
     <div className="flex items-center gap-3 py-2.5">
       <button type="button" onClick={onToggle} disabled={busy} aria-pressed={item.completed} className="shrink-0 transition active:scale-90 disabled:opacity-50">
@@ -439,9 +713,12 @@ function ChecklistRow({ item, busy, onToggle, onPhoto }: { item: ChecklistItem; 
  * depósito). Se escanean las hojas y luego se juntan en UN PDF que se manda al
  * canal de Telegram. `capture="environment"` abre la cámara trasera directo.
  */
-function ScanRow({ item, busy, onCapture, onRemove, onGeneratePdf }: {
+function ScanRow({ item, busy, native = false, featured = false, onNativeScan, onCapture, onRemove, onGeneratePdf }: {
   item: ChecklistItem;
   busy: boolean;
+  native?: boolean;
+  featured?: boolean;
+  onNativeScan?: () => void;
   onCapture: (file: File) => void;
   onRemove: (scanId: string) => void;
   onGeneratePdf: () => Promise<{ pdfUrl: string; sentToTelegram: boolean }>;
@@ -468,6 +745,63 @@ function ScanRow({ item, busy, onCapture, onRemove, onGeneratePdf }: {
     } finally {
       setPdfBusy(false);
     }
+  }
+
+  if (native) {
+    return (
+      <article className={`rounded-2xl bg-panel px-4 py-4 ${featured ? "shadow-[0_12px_30px_rgb(15_23_42_/_0.13)]" : "shadow-[0_5px_18px_rgb(15_23_42_/_0.07)]"}`}>
+        <div className="flex items-start gap-3">
+          <span className={`mt-0.5 grid size-9 shrink-0 place-items-center rounded-xl ${done ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300" : "bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300"}`}>
+            {done ? <CheckCircle2 size={19} /> : <FileText size={18} />}
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="text-[15px] font-semibold leading-5 text-ink">{item.label}</p>
+            <p className="mt-1 text-xs leading-4 text-muted">
+              {busy ? "Subiendo páginas…" : pages ? `${pages} ${pages === 1 ? "página lista" : "páginas listas"}` : "Captura todas las hojas en una sola sesión"}
+            </p>
+          </div>
+          {done ? <Badge tone="success">{pages} pág.</Badge> : null}
+        </div>
+
+        {pages ? (
+          <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
+            {item.scans.map((scan, index) => (
+              <div key={scan.id} className="relative shrink-0">
+                <ImagenAmpliable src={scan.url} alt={`Página ${index + 1}`}>
+                  <NextImage src={scan.url} alt={`Página ${index + 1}`} width={64} height={64} className="size-16 rounded-xl object-cover" unoptimized />
+                </ImagenAmpliable>
+                <span className="absolute bottom-1 left-1 rounded-md bg-black/70 px-1.5 py-0.5 text-[10px] font-semibold text-white">{index + 1}</span>
+                <button type="button" onClick={() => onRemove(scan.id)} aria-label={`Borrar página ${index + 1}`} className="absolute -right-1.5 -top-1.5 grid size-6 place-items-center rounded-full bg-rose-600 text-white shadow-[0_4px_12px_rgb(225_29_72_/_0.3)]">
+                  <X size={12} />
+                </button>
+              </div>
+            ))}
+          </div>
+        ) : null}
+
+        <button
+          type="button"
+          onClick={() => onNativeScan ? onNativeScan() : fileRef.current?.click()}
+          disabled={busy}
+          className={`mt-4 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl px-4 text-sm font-semibold transition active:scale-[0.98] disabled:opacity-55 focus:outline-none focus-visible:ring-4 focus-visible:ring-volt/30 ${featured ? "bg-volt text-white shadow-[0_7px_18px_rgb(37_99_235_/_0.23)]" : "bg-black/[0.045] text-ink dark:bg-white/[0.06]"}`}
+        >
+          {busy ? <RefreshCw size={17} className="animate-spin" /> : <Camera size={17} />}
+          {busy ? "Subiendo…" : onNativeScan ? (pages ? "Agregar más páginas" : "Escanear documento") : (pages ? "Agregar otra foto" : "Tomar foto del documento")}
+        </button>
+
+        {pages ? (
+          <div className="mt-2 flex items-center justify-between gap-3">
+            <button type="button" onClick={() => void makePdf()} disabled={pdfBusy} className="min-h-11 text-left text-xs font-semibold text-volt disabled:opacity-50">
+              {pdfBusy ? "Generando PDF…" : pdf ? "Regenerar PDF" : "Generar PDF y enviar"}
+            </button>
+            {pdf ? <a href={pdf.url} target="_blank" rel="noreferrer" className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">PDF listo{pdf.sent ? " · enviado" : ""}</a> : null}
+          </div>
+        ) : null}
+        {pdfError ? <p className="mt-2 text-xs font-semibold text-rose-600 dark:text-rose-400">{pdfError}</p> : null}
+
+        <input ref={fileRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(event) => { const file = event.target.files?.[0]; if (file) onCapture(file); event.target.value = ""; }} />
+      </article>
+    );
   }
 
   return (
