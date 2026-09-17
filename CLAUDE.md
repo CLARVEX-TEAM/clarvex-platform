@@ -3,8 +3,8 @@
 ## Vinculación criptográfica de dispositivo — en revisión — 17 de septiembre de 2026
 
 La continuación del plan vive en `feat/native-device-security` de plataforma y
-Android. No se ha integrado ni publicado; producción conserva web `0114dbc` y
-APK 1.5/código 6.
+Android, con PR 96 y PR 5 abiertos y fusionables. No se ha integrado ni publicado;
+producción conserva web `0114dbc` y APK 1.5/código 6.
 
 `DispositivoClarvex` crea una llave P-256 no exportable en Android Keystore y un
 UUID privado de instalación. La web puede pedir identidad, firma y diagnóstico,
@@ -27,6 +27,9 @@ Pasaron Prisma format/generate/validate, TypeScript, ESLint, 1,450 pruebas sin
 fallos ni saltos, build de 75 páginas y `git diff --check`. Android aprobó
 `testDebugUnitTest assembleDebug` con 269 tareas. Faltan PostgreSQL efímero,
 prueba física y revisión; no hay migración aplicada ni cambios en producción.
+La corrida `35247560806` de plataforma terminó sin ejecutar pasos por el bloqueo
+de facturación; los jobs de integración/lint/pruebas quedaron saltados. Android
+no generó una corrida para su PR.
 
 ## APK 1.5 y checklist nativo publicados — 16 de septiembre de 2026
 

@@ -2,9 +2,10 @@
 
 ## Vinculación criptográfica de dispositivo en revisión — 17 de septiembre de 2026
 
-Ramas locales `feat/native-device-security` en plataforma y Android, basadas en
-los `main` publicados de APK 1.5. No se ha integrado, desplegado ni publicado
-otra APK. Producción continúa en plataforma `0114dbc` y APK 1.5/código 6.
+Ramas `feat/native-device-security` en plataforma y Android, basadas en los
+`main` publicados de APK 1.5. PR 96 de plataforma y PR 5 de Android abiertos y
+fusionables. No se ha integrado, desplegado ni publicado otra APK. Producción
+continúa en plataforma `0114dbc` y APK 1.5/código 6.
 
 Android añade `DispositivoClarvex`: genera una llave EC P-256 no exportable en
 Android Keystore, conserva un UUID privado de instalación, firma texto bajo
@@ -30,8 +31,10 @@ plan quedó corregido para llamarlo vinculación de dispositivo.
 Validación local: Prisma format/generate/validate, TypeScript, ESLint completo,
 1,450 pruebas sin fallos ni saltos, build de 75 páginas y `git diff --check`.
 Android aprobó `testDebugUnitTest assembleDebug`: 269 tareas, 16 ejecutadas y
-253 al día. Pendiente: pruebas HTTP con PostgreSQL efímero, aceptación en un
-teléfono y revisión antes de integrar.
+253 al día. La corrida CI `35247560806` terminó roja sin ejecutar pasos por el
+bloqueo conocido de facturación; integración con PostgreSQL y demás jobs quedaron
+saltados. El repo Android no creó corrida para el PR. Pendiente: pruebas HTTP con
+PostgreSQL efímero, aceptación en un teléfono y revisión antes de integrar.
 
 ## APK 1.5 y checklist nativo publicados — 16 de septiembre de 2026
 
