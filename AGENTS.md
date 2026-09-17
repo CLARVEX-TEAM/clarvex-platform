@@ -1,5 +1,30 @@
 # AGENTS.md
 
+## APK 1.5, primer incremento listo para prueba — 16 de septiembre de 2026
+
+Plan aprobado y ejecución iniciada en `feat/apk-1-5-native-foundation`.
+Plataforma `f54266c`; Android `bedb870`. Aún no hay merge, deploy ni publicación.
+Producción continúa con APK 1.4.
+
+El checklist rediseñado se activa solo dentro de Android y mantiene la interfaz
+web anterior. Incluye progreso, Apertura/Cierre, siguiente tarea, una sola acción
+principal y completadas plegables. El plugin ML Kit escanea hasta 25 páginas y
+usa la cámara estándar como fallback. FCM abre únicamente rutas internas. Android
+desactiva backup/transferencia y el actualizador valida host HTTPS, 50 MiB,
+paquete, versión superior y certificado.
+
+Candidata firmada desde el commit Android exacto:
+`D:\Documents\clarvex-entregas\apk-1.5-candidata\clarvex-team-1.5.apk`.
+Versión 1.5/código 6, 8,070,306 bytes, SHA-256
+`0856b2ebadc2be1b3fb97c2ce124f5a52ab4ae55de30afb253280b9b7468fc67`.
+Firma v1/v2 y certificado idéntico a 1.4; DEX y manifiesto contienen escáner,
+cámara, FCM y reglas de no respaldo.
+
+Verificado: 1,442 pruebas web, TypeScript, ESLint, build aislado de 75 páginas,
+revisión visual móvil sin overflow/excepciones y Gradle completo. Pendientes:
+teléfono real, CI/PostgreSQL efímero y registro criptográfico/guard del servidor.
+No presentar la ocultación por Capacitor como exclusividad de seguridad.
+
 ## Asistencia AXO y recordatorios operativos publicados — 16 de septiembre de 2026
 
 Power Automate quedó descartado con evidencia real: la cuenta de tienda recibe
