@@ -2,9 +2,10 @@
 
 ## APK 1.6 «Mi día» en revisión — 17 de septiembre de 2026
 
-Ramas `feat/apk-1.6-mi-dia` en plataforma y Android, basadas en los `main`
-publicados de 1.5.1. No se han integrado, desplegado ni publicado. Producción
-continúa en plataforma `e219e51` y APK 1.5.1/código 7.
+PR 97 de plataforma (`88da579`) y PR 6 de Android (`31ed616`) abiertos desde
+`feat/apk-1.6-mi-dia`, basados en los `main` publicados de 1.5.1. No se han
+integrado, desplegado ni publicado. Producción continúa en plataforma `e219e51`
+y APK 1.5.1/código 7.
 
 La portada exclusiva del contenedor Android reúne turno, uniforme, asistencia,
 avance, plan, pendientes y comunicados, con una copia local de solo lectura. La
@@ -21,9 +22,11 @@ anteriores.
 
 Validado: Prisma format/generate/validate, TypeScript, ESLint, 1,456 pruebas sin
 fallos ni saltos, build de 77 páginas, revisión visual a 412 px y Gradle
-`testDebugUnitTest assembleDebug` con 279 tareas. Pendiente: commit/PR, integrar,
-compilar y firmar desde el SHA exacto, desplegar, programar el cron y aceptar en
-teléfono real. La vinculación P-256 todavía no equivale a Key Attestation.
+`testDebugUnitTest assembleDebug` con 279 tareas. La CI de plataforma
+`35283067539` terminó sin ejecutar pasos por el bloqueo conocido de facturación;
+los trabajos restantes quedaron saltados. Pendiente: integrar, compilar y firmar
+desde el SHA exacto, desplegar, programar el cron y aceptar en teléfono real. La
+vinculación P-256 todavía no equivale a Key Attestation.
 
 ## Vinculación de dispositivo y APK 1.5.1 publicadas — 17 de septiembre de 2026
 

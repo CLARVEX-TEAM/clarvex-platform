@@ -2,7 +2,8 @@
 
 ## APK 1.6 «Mi día» — candidata en revisión — 17 de septiembre de 2026
 
-Rama de plataforma `feat/apk-1.6-mi-dia`, basada en la 1.5.1 aceptada. La nueva
+PR 97 abierto desde `feat/apk-1.6-mi-dia`; cambio funcional `88da579`, basado en
+la 1.5.1 aceptada. La nueva
 portada existe solo dentro de Android y reúne turno, uniforme, asistencia, avance
 de venta, plan, pendientes, comunicados y accesos según rol. Conserva una copia
 de solo lectura para abrir la última jornada sin red. Navegador y PWA mantienen
@@ -26,8 +27,10 @@ lectura/escritura del calendario.
 Validación local: Prisma format/generate/validate, TypeScript, ESLint, 1,456
 pruebas sin fallos ni saltos, build de 77 páginas y revisión visual Android a
 412 px sin overflow. Android `testDebugUnitTest assembleDebug` aprobó 279 tareas
-con Java 21/SDK 35. Falta commit, PR, integración, build firmado desde el SHA
-exacto, despliegue, alta del cron y prueba física; producción continúa en web
+con Java 21/SDK 35. La corrida CI `35283067539` terminó sin ejecutar pasos por
+el bloqueo conocido de facturación; los trabajos dependientes quedaron saltados.
+Falta integrar, compilar con firma desde el SHA exacto, desplegar, dar de alta el
+cron y probar en teléfono; producción continúa en web
 `e219e51` y APK 1.5.1/código 7. No describir la vinculación existente como
 atestación de procedencia oficial.
 
