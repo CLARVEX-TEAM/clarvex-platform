@@ -1,10 +1,10 @@
 # Clarvex Team — CLAUDE.md
 
-## Vinculación criptográfica de dispositivo — en revisión — 17 de septiembre de 2026
+## Vinculación de dispositivo y APK 1.5.1 — publicadas — 17 de septiembre de 2026
 
-La continuación del plan vive en `feat/native-device-security` de plataforma y
-Android, con PR 96 y PR 5 abiertos y fusionables. No se ha integrado ni publicado;
-producción conserva web `0114dbc` y APK 1.5/código 6.
+El usuario autorizó integrar y publicar. PR 96 quedó integrado en plataforma
+`e219e5188176a0cc30a521f137d852bbde1214cd` y PR 5 en Android
+`afff75bf7093122d25d9e26d47dcde56a77b4636`.
 
 `DispositivoClarvex` crea una llave P-256 no exportable en Android Keystore y un
 UUID privado de instalación. La web puede pedir identidad, firma y diagnóstico,
@@ -24,12 +24,23 @@ con paquete y digest del certificado, más aprobación gerencial como fallback e
 equipos incompatibles. No describir esta rama como exclusividad total de APK.
 
 Pasaron Prisma format/generate/validate, TypeScript, ESLint, 1,450 pruebas sin
-fallos ni saltos, build de 75 páginas y `git diff --check`. Android aprobó
-`testDebugUnitTest assembleDebug` con 269 tareas. Faltan PostgreSQL efímero,
-prueba física y revisión; no hay migración aplicada ni cambios en producción.
-La corrida `35247560806` de plataforma terminó sin ejecutar pasos por el bloqueo
-de facturación; los jobs de integración/lint/pruebas quedaron saltados. Android
-no generó una corrida para su PR.
+fallos ni saltos, build local de 75 páginas y `git diff --check`. Android se
+compiló de forma limpia desde el merge exacto con Java 21/SDK 35: 279 tareas.
+Actions no ejecutó pasos por facturación y no hubo PostgreSQL efímero.
+
+Plataforma activa: `/home/ubuntu/clarvex/releases/20260917-164858-e219e51`,
+build `mu5rld7z`. Aplicó `20260917010000_native_device_identity`; 109 migraciones
+al día. Ambos workers sirven la release nueva y la salud pública/base están OK.
+Las tablas nuevas existen sin dispositivos o retos antes del primer uso.
+
+APK publicada a las `2026-09-17T21:42:34Z` en
+`compartido/apk/clarvex-7.apk`, versión 1.5.1/código 7, 8,073,678 bytes, SHA-256
+`208284830469c723f07902deffbe84e5d64aecdf4557ff8575c50964308c0b17`.
+`apksigner` valida v1/v2 y el certificado estable. El servidor verificó archivo
+antes de activar atómicamente el manifiesto; conserva APK 1.5 y respaldo
+`version-antes-de-1.5.1-20260917T214234Z.json`. `versionPublicada()` coincide y
+las rutas sin sesión responden 401. Pendiente: actualización y prueba física de
+registro/firma/FCM en el teléfono.
 
 ## APK 1.5 y checklist nativo publicados — 16 de septiembre de 2026
 
