@@ -209,7 +209,10 @@ export async function middleware(request: NextRequest) {
     // El kiosko también necesita consultar la APK disponible. La ruta sigue
     // exigiendo sesión y firma su propio enlace temporal de descarga.
     const consultaActualizacion = pathname === "/api/app/version" && request.method === "GET";
-    if (session.checklistOnly && !pathname.startsWith("/api/checklist") && !pathname.startsWith("/api/auth/") && !consultaActualizacion) {
+    // La identidad nativa y FCM forman parte del propio kiosko. Los handlers
+    // siguen exigiendo sesión y, al asociar la instalación, firma de Keystore.
+    const identidadDelKiosko = pathname.startsWith("/api/app/native/") || pathname === "/api/push/device";
+    if (session.checklistOnly && !pathname.startsWith("/api/checklist") && !pathname.startsWith("/api/auth/") && !consultaActualizacion && !identidadDelKiosko) {
       return NextResponse.json({ error: "Sin permiso." }, { status: 403 });
     }
     // Sesión DEMO: SOLO LECTURA. Cualquier método que cambie estado se corta aquí

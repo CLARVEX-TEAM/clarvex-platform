@@ -18,6 +18,7 @@ import { EmailBanner } from "@/components/EmailBanner";
 import { DomainMoveBanner } from "@/components/DomainMoveBanner";
 import { AppChrome } from "@/components/AppChrome";
 import { SplashIntro } from "@/components/SplashIntro";
+import { NativeDeviceRegistration } from "@/components/NativeDeviceRegistration";
 import { Meteors } from "@/components/magic/Meteors";
 import { DotPattern } from "@/components/magic/DotPattern";
 
@@ -132,6 +133,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <Meteors />
             <PwaRegister />
             <ActualizacionApp />
+            <NativeDeviceRegistration />
             <CandadoHuella />
             <UpdatePrompt />
             <OfflineBanner />

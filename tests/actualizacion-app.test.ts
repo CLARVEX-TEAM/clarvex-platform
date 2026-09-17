@@ -111,7 +111,7 @@ test("la descarga esta listada por ruta EXACTA, no por prefijo", () => {
   const middleware = readFileSync("middleware.ts", "utf8");
   assert.match(middleware, /"\/api\/app\/apk"/, "la ruta del APK va en la lista exacta");
   assert.ok(
-    !/startsWith\("\/api\/app\//.test(middleware),
+    !/startsWith\("\/api\/app\/"\)/.test(middleware),
     "el prefijo /api/app/ NO puede ser publico: dejaria /api/app/version sin sesion"
   );
 });

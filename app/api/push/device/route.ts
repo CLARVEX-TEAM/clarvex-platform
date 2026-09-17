@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { isApiError, parseJson, requireSession } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
+import { isNativeDeviceError, requireNativeDevice } from "@/lib/native-device-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -32,17 +33,28 @@ const esquema = z.object({
    * seria cambiar algo que funciona por algo que informa.
    */
   appBuild: z.number().int().positive().max(1_000_000).optional(),
-  appVersion: z.string().min(1).max(32).optional()
+  appVersion: z.string().min(1).max(32).optional(),
+  installationId: z.string().uuid().optional()
 });
 
 export async function POST(request: Request) {
   const session = await requireSession();
   if (isApiError(session)) return session;
 
+  const signedRequest = request.clone();
   const parsed = await parseJson(request, esquema);
   if ("response" in parsed) return parsed.response;
 
-  const { token, platform, appBuild, appVersion } = parsed.data;
+  const { token, platform, appBuild, appVersion, installationId } = parsed.data;
+  let nativeDeviceId: string | undefined;
+  if (installationId) {
+    const device = await requireNativeDevice(signedRequest, session);
+    if (isNativeDeviceError(device)) return device;
+    if (device.installationId !== installationId) {
+      return NextResponse.json({ error: "La instalación firmada no coincide." }, { status: 403 });
+    }
+    nativeDeviceId = device.id;
+  }
 
   // ⚠️ Se actualiza POR TOKEN, no por (usuario, token). Google reasigna el
   // token al reinstalar la app o al borrar sus datos, y el teléfono de la
@@ -58,8 +70,8 @@ export async function POST(request: Request) {
 
   await prisma.deviceToken.upsert({
     where: { token },
-    update: { userId: session.userId, platform, ...version },
-    create: { userId: session.userId, token, platform, ...version }
+    update: { userId: session.userId, platform, nativeDeviceId, ...version },
+    create: { userId: session.userId, token, platform, nativeDeviceId, ...version }
   });
 
   return NextResponse.json({ ok: true }, { status: 201 });

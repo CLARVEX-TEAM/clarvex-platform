@@ -1,5 +1,36 @@
 # Clarvex Team — CLAUDE.md
 
+## Vinculación criptográfica de dispositivo — en revisión — 17 de septiembre de 2026
+
+La continuación del plan vive en `feat/native-device-security` de plataforma y
+Android, con PR 96 y PR 5 abiertos y fusionables. No se ha integrado ni publicado;
+producción conserva web `0114dbc` y APK 1.5/código 6.
+
+`DispositivoClarvex` crea una llave P-256 no exportable en Android Keystore y un
+UUID privado de instalación. La web puede pedir identidad, firma y diagnóstico,
+pero nunca leer la llave privada. El servidor registra usuario/tienda/perfil,
+versión y capacidades en la migración aditiva
+`20260917010000_native_device_identity`. Los retos caducan en dos minutos y se
+consumen una vez; `requireNativeDevice()` valida sesión, dispositivo activo,
+timestamp, método, ruta/consulta, SHA-256 del cuerpo y firma DER ECDSA. El token
+FCM se asocia a `NativeDevice` cuando existe el plugin, manteniendo el flujo
+anterior para APK viejas. La pantalla `/diagnostico` expone salud del equipo y
+una prueba firmada completa.
+
+Esta entrega es vinculación y prueba de posesión. El alta inicial acepta una
+llave P-256 presentada por una sesión válida, de modo que todavía no certifica
+el origen oficial del binario. La puerta siguiente será Android Key Attestation
+con paquete y digest del certificado, más aprobación gerencial como fallback en
+equipos incompatibles. No describir esta rama como exclusividad total de APK.
+
+Pasaron Prisma format/generate/validate, TypeScript, ESLint, 1,450 pruebas sin
+fallos ni saltos, build de 75 páginas y `git diff --check`. Android aprobó
+`testDebugUnitTest assembleDebug` con 269 tareas. Faltan PostgreSQL efímero,
+prueba física y revisión; no hay migración aplicada ni cambios en producción.
+La corrida `35247560806` de plataforma terminó sin ejecutar pasos por el bloqueo
+de facturación; los jobs de integración/lint/pruebas quedaron saltados. Android
+no generó una corrida para su PR.
+
 ## APK 1.5 y checklist nativo publicados — 16 de septiembre de 2026
 
 El usuario autorizó integrar y publicar directamente. PR 95 quedó integrado en

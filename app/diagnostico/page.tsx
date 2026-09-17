@@ -1,8 +1,17 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { biometriaNativa, CANAL_AVISOS, enContenedorNativo, plataformaNativa, pushNativo, scannerDocumentosNativo } from "@/lib/puente-nativo";
+import {
+  biometriaNativa,
+  CANAL_AVISOS,
+  dispositivoClarvexNativo,
+  enContenedorNativo,
+  plataformaNativa,
+  pushNativo,
+  scannerDocumentosNativo
+} from "@/lib/puente-nativo";
 import { candadoActivado } from "@/lib/candado-huella";
+import { nativeDeviceFetch, registerNativeDevice } from "@/lib/native-device-client";
 
 /**
  * Pantalla de diagnóstico del aparato.
@@ -51,6 +60,11 @@ export default function DiagnosticoPush() {
         que: "Plugin de notificaciones",
         valor: plugin ? "disponible" : "NO disponible",
         bien: Boolean(plugin)
+      },
+      {
+        que: "Identidad segura del dispositivo",
+        valor: dispositivoClarvexNativo() ? "disponible" : "no incluida en esta versión",
+        bien: Boolean(dispositivoClarvexNativo())
       },
       { que: "API de Push del navegador", valor: "PushManager" in window ? "sí" : "no (normal en la app)", bien: null },
       { que: "API de Notification", valor: "Notification" in window ? "sí" : "no (normal en la app)", bien: null },
@@ -132,6 +146,27 @@ export default function DiagnosticoPush() {
       }
     ];
     setLineas(base);
+
+    const devicePlugin = dispositivoClarvexNativo();
+    if (devicePlugin) {
+      Promise.all([devicePlugin.identidad(), devicePlugin.diagnostico()])
+        .then(([identity, diagnostic]) => {
+          const freeGb = diagnostic.freeStorageBytes / 1024 / 1024 / 1024;
+          setLineas((previous) => [
+            ...(previous ?? []),
+            { que: "Instalación", valor: identity.installationId.slice(0, 8), bien: true },
+            { que: "Llave del dispositivo", valor: identity.keyAlgorithm, bien: identity.keyAlgorithm === "ES256" },
+            { que: "Android / equipo", valor: `${diagnostic.androidVersion} · ${diagnostic.manufacturer} ${diagnostic.model}`, bien: true },
+            { que: "WebView", valor: diagnostic.webView, bien: diagnostic.webView !== "unknown" },
+            { que: "Red", valor: diagnostic.network, bien: diagnostic.network !== "offline" },
+            { que: "Hora automática", valor: diagnostic.automaticTime ? "activada" : "desactivada", bien: diagnostic.automaticTime },
+            { que: "Almacenamiento libre", valor: `${freeGb.toFixed(1)} GB`, bien: freeGb >= 0.5 },
+            { que: "Cámara del sistema", valor: diagnostic.camera ? "disponible" : "no encontrada", bien: diagnostic.camera },
+            { que: "Notificaciones Android", valor: diagnostic.notifications ? "permitidas" : "sin permiso", bien: diagnostic.notifications }
+          ]);
+        })
+        .catch((error: Error) => anotar(`Diagnóstico nativo: ${error.message}`));
+    }
 
     // ⚠️ Tener `PublicKeyCredential` NO basta: puede existir y no haber
     // autenticador de plataforma --sin huella registrada en el telefono, o el
@@ -221,6 +256,27 @@ export default function DiagnosticoPush() {
     }
   }
 
+  async function probarIdentidad() {
+    setRegistro([]);
+    if (!dispositivoClarvexNativo()) {
+      anotar("Esta versión de la APK todavía no incluye identidad segura.");
+      return;
+    }
+    try {
+      anotar("Generando o leyendo la llave protegida por Android…");
+      const registered = await registerNativeDevice();
+      anotar(`Servidor: instalación ${registered.installationId.slice(0, 8)} registrada.`);
+      const response = await nativeDeviceFetch("/api/app/native/device");
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({})) as { error?: string };
+        throw new Error(payload.error ?? `Firma rechazada (${response.status}).`);
+      }
+      anotar("Firma de un solo uso aceptada. El servidor comprobó la llave registrada de este dispositivo.");
+    } catch (error) {
+      anotar(`Identidad segura: ${error instanceof Error ? error.message : "falló la comprobación"}`);
+    }
+  }
+
   /**
    * Llama al candado a mano y cuenta QUÉ contesta.
    *
@@ -296,18 +352,27 @@ export default function DiagnosticoPush() {
       )}
 
       <button
-        onClick={() => void probarCandado()}
-        className="mt-6 w-full rounded-xl border border-line px-4 py-3 text-sm font-semibold text-ink"
+        onClick={() => void probarIdentidad()}
+        className="mt-6 w-full rounded-xl bg-volt px-4 py-3 text-sm font-semibold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-volt focus-visible:ring-offset-2"
       >
-        Probar el candado ahora
+        Verificar identidad del dispositivo
       </button>
 
-      <button
-        onClick={() => void probar()}
-        className="mt-3 w-full rounded-xl bg-volt px-4 py-3 text-sm font-semibold text-white"
-      >
-        Intentar registrar este aparato
-      </button>
+      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+        <button
+          onClick={() => void probarCandado()}
+          className="min-h-12 rounded-xl border border-line px-4 py-3 text-sm font-semibold text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-volt focus-visible:ring-offset-2"
+        >
+          Probar candado
+        </button>
+
+        <button
+          onClick={() => void probar()}
+          className="min-h-12 rounded-xl border border-line px-4 py-3 text-sm font-semibold text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-volt focus-visible:ring-offset-2"
+        >
+          Probar notificaciones
+        </button>
+      </div>
 
       {registro.length > 0 && (
         <ol className="mt-4 space-y-2 rounded-2xl border border-line p-4">

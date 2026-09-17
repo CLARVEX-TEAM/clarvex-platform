@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { Bell, X } from "lucide-react";
-import { appNativa, CANAL_AVISOS, enContenedorNativo, plataformaNativa, pushNativo, rutaInternaDeNotificacion, type PluginPush } from "@/lib/puente-nativo";
+import { appNativa, CANAL_AVISOS, dispositivoClarvexNativo, enContenedorNativo, plataformaNativa, pushNativo, rutaInternaDeNotificacion, type PluginPush } from "@/lib/puente-nativo";
+import { nativeDeviceFetch, registerNativeDevice } from "@/lib/native-device-client";
 
 /**
  * ⚠️ **Este componente se monta en el LAYOUT RAÍZ, o sea también en `/login`.**
@@ -99,11 +100,26 @@ export async function guardarTokenNativo(token: string): Promise<boolean> {
     // Sin version: se sigue.
   }
 
-  const res = await fetch("/api/push/device", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ token, platform, ...version }),
-  });
+  let res: Response;
+  const identityPlugin = dispositivoClarvexNativo();
+  if (identityPlugin) {
+    // La APK nueva asocia FCM a la instalación que acaba de demostrar posesión
+    // de su llave. Las APK anteriores conservan el registro compatible de abajo.
+    await registerNativeDevice();
+    const identity = await identityPlugin.identidad();
+    const body = JSON.stringify({ token, platform, ...version, installationId: identity.installationId });
+    res = await nativeDeviceFetch("/api/push/device", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body
+    });
+  } else {
+    res = await fetch("/api/push/device", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token, platform, ...version }),
+    });
+  }
   if (res.status === 401) return false;
   if (!res.ok) {
     console.error("[push nativo] El servidor rechazó el token del aparato —", res.status);

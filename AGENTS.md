@@ -1,5 +1,41 @@
 # AGENTS.md
 
+## Vinculación criptográfica de dispositivo en revisión — 17 de septiembre de 2026
+
+Ramas `feat/native-device-security` en plataforma y Android, basadas en los
+`main` publicados de APK 1.5. PR 96 de plataforma y PR 5 de Android abiertos y
+fusionables. No se ha integrado, desplegado ni publicado otra APK. Producción
+continúa en plataforma `0114dbc` y APK 1.5/código 6.
+
+Android añade `DispositivoClarvex`: genera una llave EC P-256 no exportable en
+Android Keystore, conserva un UUID privado de instalación, firma texto bajo
+demanda y reporta diagnóstico de Android, equipo, WebView, red, hora automática,
+almacenamiento, cámara y notificaciones. El plugin se registra antes de crear el
+puente y el manifiesto declara `ACCESS_NETWORK_STATE`.
+
+Plataforma añade la migración aditiva
+`20260917010000_native_device_identity`, modelos `NativeDevice` y
+`NativeDeviceChallenge`, asociación opcional de `DeviceToken`, alta auditada y
+retos de dos minutos/un solo uso. `requireNativeDevice()` firma método, ruta con
+consulta, SHA-256 del cuerpo, timestamp y nonce. FCM usa la firma cuando el APK
+ofrece identidad y conserva compatibilidad con APK anteriores. `/diagnostico`
+muestra el estado y prueba el recorrido completo. El kiosco solo abre las rutas
+nativas y FCM adicionales; sus demás restricciones siguen vigentes.
+
+Límite que no se debe sobreafirmar: esto prueba posesión de la llave registrada,
+pero el primer alta todavía no prueba que la llave provenga de la APK oficial.
+Antes de tratarlo como exclusividad criptográfica falta Android Key Attestation
+del paquete/certificado o aprobación gerencial para equipos sin atestación. El
+plan quedó corregido para llamarlo vinculación de dispositivo.
+
+Validación local: Prisma format/generate/validate, TypeScript, ESLint completo,
+1,450 pruebas sin fallos ni saltos, build de 75 páginas y `git diff --check`.
+Android aprobó `testDebugUnitTest assembleDebug`: 269 tareas, 16 ejecutadas y
+253 al día. La corrida CI `35247560806` terminó roja sin ejecutar pasos por el
+bloqueo conocido de facturación; integración con PostgreSQL y demás jobs quedaron
+saltados. El repo Android no creó corrida para el PR. Pendiente: pruebas HTTP con
+PostgreSQL efímero, aceptación en un teléfono y revisión antes de integrar.
+
 ## APK 1.5 y checklist nativo publicados — 16 de septiembre de 2026
 
 Publicación directa autorizada expresamente por el usuario. PR 95 de plataforma

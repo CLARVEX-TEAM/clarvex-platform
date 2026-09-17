@@ -1,0 +1,126 @@
+"use client";
+
+import { dispositivoClarvexNativo, type IdentidadDispositivoNativo } from "@/lib/puente-nativo";
+
+type Challenge = {
+  challengeId: string;
+  nonce: string;
+  expiresAt: string;
+  payload?: string;
+};
+
+type RegisteredDevice = {
+  id: string;
+  installationId: string;
+  profile: string;
+  status: string;
+  appBuild: number;
+  appVersion: string;
+};
+
+async function jsonOrError<T>(response: Response): Promise<T> {
+  const payload = await response.json().catch(() => ({})) as { error?: string } & T;
+  if (!response.ok) throw new Error(payload.error ?? `El servidor respondió ${response.status}.`);
+  return payload;
+}
+
+async function challenge(installationId: string, purpose: "REGISTER" | "REQUEST"): Promise<Challenge> {
+  const response = await fetch("/api/app/native/challenge", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ installationId, purpose })
+  });
+  return jsonOrError<Challenge>(response);
+}
+
+/** Registra o refresca la asociación de esta instalación con la sesión actual. */
+export async function registerNativeDevice(profile?: "PERSONAL" | "KIOSK"): Promise<RegisteredDevice> {
+  const plugin = dispositivoClarvexNativo();
+  if (!plugin) throw new Error("Esta APK no incluye identidad del dispositivo.");
+  const identity = await plugin.identidad();
+  const issued = await challenge(identity.installationId, "REGISTER");
+  if (!issued.payload) throw new Error("El servidor no entregó el texto de registro.");
+  const signed = await plugin.firmar({ payload: issued.payload });
+  if (signed.installationId !== identity.installationId) {
+    throw new Error("La identidad cambió durante el registro.");
+  }
+  const response = await fetch("/api/app/native/register", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      challengeId: issued.challengeId,
+      installationId: identity.installationId,
+      publicKey: identity.publicKey,
+      signature: signed.signature,
+      ...(profile ? { profile } : {}),
+      appBuild: identity.appBuild,
+      appVersion: identity.appVersion,
+      capabilities: identity.capabilities
+    })
+  });
+  const result = await jsonOrError<{ device: RegisteredDevice }>(response);
+  return result.device;
+}
+
+function bytesToHex(bytes: Uint8Array): string {
+  return Array.from(bytes, (value) => value.toString(16).padStart(2, "0")).join("");
+}
+
+async function sha256(value: string): Promise<string> {
+  const bytes = new TextEncoder().encode(value);
+  return bytesToHex(new Uint8Array(await crypto.subtle.digest("SHA-256", bytes)));
+}
+
+function requestManifest(input: {
+  challengeId: string;
+  nonce: string;
+  installationId: string;
+  timestamp: string;
+  method: string;
+  path: string;
+  bodySha256: string;
+}): string {
+  return [
+    "clarvex-native-v1",
+    "REQUEST",
+    input.challengeId,
+    input.nonce,
+    input.installationId,
+    input.timestamp,
+    input.method.toUpperCase(),
+    input.path,
+    input.bodySha256.toLowerCase()
+  ].join("\n");
+}
+
+/** Fetch firmado para endpoints que exigen `requireNativeDevice()`. */
+export async function nativeDeviceFetch(path: string, init: RequestInit = {}): Promise<Response> {
+  const plugin = dispositivoClarvexNativo();
+  if (!plugin) throw new Error("Esta función requiere la APK registrada.");
+  const identity: IdentidadDispositivoNativo = await plugin.identidad();
+  const issued = await challenge(identity.installationId, "REQUEST");
+  const method = (init.method ?? "GET").toUpperCase();
+  const body = typeof init.body === "string" ? init.body : "";
+  if (init.body !== undefined && typeof init.body !== "string") {
+    throw new Error("Las peticiones nativas firmadas deben usar un cuerpo JSON serializado.");
+  }
+  const url = new URL(path, window.location.origin);
+  if (url.origin !== window.location.origin) throw new Error("El destino firmado debe ser interno.");
+  const timestamp = String(Date.now());
+  const payload = requestManifest({
+    challengeId: issued.challengeId,
+    nonce: issued.nonce,
+    installationId: identity.installationId,
+    timestamp,
+    method,
+    path: `${url.pathname}${url.search}`,
+    bodySha256: await sha256(body)
+  });
+  const signed = await plugin.firmar({ payload });
+  const headers = new Headers(init.headers);
+  headers.set("X-Clarvex-Device-Id", identity.installationId);
+  headers.set("X-Clarvex-Device-Challenge", issued.challengeId);
+  headers.set("X-Clarvex-Device-Timestamp", timestamp);
+  headers.set("X-Clarvex-Device-Signature", signed.signature);
+  return fetch(`${url.pathname}${url.search}`, { ...init, method, body: body || undefined, headers });
+}
