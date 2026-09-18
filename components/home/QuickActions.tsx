@@ -4,49 +4,17 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { getSession } from "@/lib/auth";
-import { BarChart3, BookOpen, Boxes, CalendarClock, CalendarDays, CheckSquare, ClipboardCheck, ClipboardList, Clock, CreditCard, GraduationCap, HeartHandshake, PackageSearch, Shirt } from "lucide-react";
-import type { LucideIcon } from "lucide-react";
+import { accesosPara } from "@/lib/accesos-telefono";
 
-// El color se conserva en los datos pero el rediseño minimalista usa iconos
-// neutros — el color ya no decora cada acción.
-type ActionColor = "blue" | "green" | "purple" | "orange" | "pink" | "amber";
-
-interface Action {
-  href: string;
-  icon: LucideIcon;
-  label: string;
-  color: ActionColor;
-}
-
-const managerActions: Action[] = [
-  { href: "/plan", icon: CheckSquare, label: "Crear plan del día", color: "blue" },
-  { href: "/pendientes", icon: ClipboardList, label: "Crear pendiente", color: "green" },
-  { href: "/bitacora", icon: BookOpen, label: "Bitácora", color: "purple" },
-  { href: "/horarios", icon: CalendarDays, label: "Horarios", color: "orange" },
-  { href: "/kudos", icon: HeartHandshake, label: "Reconocer", color: "pink" },
-  { href: "/asistencia", icon: Clock, label: "Asistencia", color: "amber" },
-  { href: "/uniformes", icon: Shirt, label: "Uniformes", color: "pink" },
-  { href: "/solicitudes", icon: CalendarClock, label: "Días y cambios", color: "blue" },
-  { href: "/faltantes", icon: PackageSearch, label: "Faltantes", color: "orange" },
-  { href: "/capacitacion", icon: GraduationCap, label: "Capacitación", color: "purple" },
-  { href: "/encuestas", icon: ClipboardCheck, label: "Encuestas", color: "green" },
-  { href: "/conteos", icon: Boxes, label: "Conteos", color: "blue" },
-  { href: "/suscripcion", icon: CreditCard, label: "Suscripción", color: "green" }
-];
-
-const advisorActions: Action[] = [
-  { href: "/horarios", icon: CalendarDays, label: "Mis horarios", color: "orange" },
-  { href: "/pendientes", icon: ClipboardList, label: "Pendientes", color: "blue" },
-  { href: "/kpis", icon: BarChart3, label: "Mis KPIs", color: "green" },
-  { href: "/kudos", icon: HeartHandshake, label: "Reconocer", color: "pink" },
-  { href: "/asistencia", icon: Clock, label: "Mi asistencia", color: "amber" },
-  { href: "/uniformes", icon: Shirt, label: "Uniformes", color: "pink" },
-  { href: "/solicitudes", icon: CalendarClock, label: "Días y cambios", color: "blue" },
-  { href: "/faltantes", icon: PackageSearch, label: "Faltantes", color: "orange" },
-  { href: "/capacitacion", icon: GraduationCap, label: "Capacitación", color: "purple" },
-  { href: "/encuestas", icon: ClipboardCheck, label: "Encuestas", color: "green" },
-  { href: "/conteos", icon: Boxes, label: "Conteos", color: "blue" }
-];
+/*
+ * ⚠️ Las listas ya NO viven aquí: se movieron a `lib/accesos-telefono.ts`.
+ *
+ * Este componente solo se pinta en `/advisor` y `/manager`, así que cuando
+ * «Mi día» sustituyó a esas portadas dentro de la APK se llevó consigo la única
+ * entrada a nueve pantallas. Con la lista en un módulo aparte, «Mi día» ofrece
+ * exactamente los mismos accesos y con el mismo reparto por puesto, y
+ * `tests/accesos-telefono.test.ts` comprueba que ninguna quede huérfana.
+ */
 
 interface QuickActionsProps {
   variant?: "manager" | "advisor";
@@ -61,8 +29,9 @@ export function QuickActions({ variant = "manager", delay = 0.30 }: QuickActions
     getSession().then((session) => setKpisEnabled(session?.kpisEnabled !== false)).catch(() => undefined);
   }, []);
 
-  const base = variant === "manager" ? managerActions : advisorActions;
-  const actions = kpisEnabled ? base : base.filter((action) => action.href !== "/kpis");
+  // `accesosPara` decide por PUESTO; aquí la variante ya viene resuelta por la
+  // portada, así que se le pasa un puesto representativo de cada lado.
+  const actions = accesosPara(variant === "manager" ? "GERENTE" : "ASESOR", kpisEnabled);
 
   return (
     <motion.div

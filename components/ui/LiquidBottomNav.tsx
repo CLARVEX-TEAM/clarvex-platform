@@ -18,7 +18,9 @@ import { enContenedorNativo } from "@/lib/puente-nativo";
 import { cn } from "@/lib/utils";
 import { haptic } from "@/lib/haptics";
 
-const navItems: { href: string; label: string; icon: LucideIcon }[] = [
+// Exportada para que `tests/accesos-telefono.test.ts` pueda comprobar que
+// ninguna pantalla del teléfono se quede sin puerta de entrada.
+export const navItems: { href: string; label: string; icon: LucideIcon }[] = [
   { href: "/manager", label: "Inicio", icon: Home },
   { href: "/plan", label: "Plan", icon: CheckSquare },
   { href: "/pendientes", label: "Pend.", icon: AlertTriangle },

@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Clock3, ReceiptText, ShoppingBag, Timer } from "lucide-react";
-import { ProgressBar } from "@/components/ui";
+import { Clock3, ReceiptText, ShoppingBag } from "lucide-react";
+import { ClimaChip } from "@/components/my-day/ClimaIntro";
+import type { Clima } from "@/lib/clima";
 import { money } from "@/lib/format";
 
 const STORE_TIME_ZONE = "America/Monterrey";
@@ -72,16 +73,47 @@ function shiftMoment(shift: Shift, now: Date | null): string {
   return "Turno concluido por hoy";
 }
 
+/**
+ * El recuadro que abre «Mi día».
+ *
+ * Rediseñado el 18 de septiembre de 2026, con cuatro problemas concretos del
+ * anterior a la vista:
+ *
+ * 1. ⚠️ **La versión de la app ocupaba la esquina superior derecha**, el segundo
+ *    punto más visible de la pantalla, para un dato que solo sirve al dar
+ *    soporte. Baja al pie, en pequeño: sigue a mano y deja de competir.
+ * 2. ⚠️ **El saludo pesaba más que la venta.** «Hola, Adrián» iba a 2xl y la
+ *    cifra del día a 1.75rem: lo que menos informa mandaba sobre lo que más. El
+ *    saludo pasa a ser una línea de encabezado y el titular es el TURNO, que es
+ *    lo que se mira al abrir la app a media jornada.
+ * 3. ⚠️ **El turno salía dos veces** --el resumen arriba y la cuenta regresiva
+ *    abajo--, diciendo casi lo mismo con dos redacciones distintas. Queda una.
+ * 4. ⚠️ **Con la meta sin cargar pintaba 0 % y una barra vacía**, que se lee
+ *    como «vas malísimo» cuando en realidad no hay con qué comparar. Ahora sin
+ *    meta no se dibuja ni barra ni porcentaje, y se dice por qué.
+ *
+ * El fondo azul es deliberadamente el mismo en claro y en oscuro: es una
+ * superficie propia, con su texto blanco y su contraste resueltos dentro, así
+ * que no depende del tema del teléfono ni del interruptor de la app.
+ */
 export function MyDayHero({
   firstName,
   appVersion,
   shift,
-  performance
+  performance,
+  clima
 }: {
   firstName: string;
   appVersion: string;
   shift: Shift;
   performance: Performance;
+  /**
+   * ⚠️ Opcional a propósito: el clima puede no llegar --proveedor caído, el
+   * teléfono sin datos-- y el recuadro tiene que pintarse igual. Cuando llega,
+   * se queda aquí en pequeño para que la entrada no sea la ÚNICA forma de
+   * verlo.
+   */
+  clima?: Clima | null;
 }) {
   const [now, setNow] = useState<Date | null>(null);
 
@@ -92,59 +124,93 @@ export function MyDayHero({
     return () => window.clearInterval(timer);
   }, []);
 
+  const hayMeta = performance.goal > 0;
+
   const salesStatus = useMemo(() => {
-    if (performance.goal <= 0) return "Meta pendiente de cargar";
+    if (!hayMeta) return "Aún no hay meta cargada para hoy";
     const remaining = Math.max(0, performance.goal - performance.sales);
-    return remaining === 0 ? "Meta del día alcanzada" : `Te faltan ${money(remaining)} para la meta`;
-  }, [performance.goal, performance.sales]);
+    return remaining === 0
+      ? "Meta del día alcanzada"
+      : `Te faltan ${money(remaining)} para la meta`;
+  }, [hayMeta, performance.goal, performance.sales]);
+
+  // Se recorta al pintar: un 140 % desbordaría la barra por la derecha, y el
+  // número de al lado ya dice el valor real.
+  const anchoBarra = Math.max(0, Math.min(100, performance.progress));
 
   return (
-    <section aria-label="Resumen de mi jornada" className="relative isolate overflow-hidden rounded-2xl bg-[#09152F] px-5 py-5 text-white shadow-[0_16px_38px_rgb(4_12_28_/_0.28)] dark:bg-[#09152F]">
-      <span aria-hidden className="absolute inset-0 -z-20 bg-[linear-gradient(135deg,#071126_0%,#102D62_55%,#2563EB_130%)]" />
-      <span aria-hidden className="absolute -right-16 -top-20 -z-10 size-56 rounded-full bg-sky-300/25 blur-3xl" />
-      <span aria-hidden className="absolute -bottom-24 -left-16 -z-10 size-52 rounded-full bg-indigo-500/25 blur-3xl" />
-      <span aria-hidden className="absolute inset-x-0 bottom-0 -z-10 h-28 bg-[linear-gradient(180deg,transparent,rgb(3_10_24_/_0.42))]" />
+    <section
+      aria-label="Resumen de mi jornada"
+      className="relative isolate overflow-hidden rounded-[26px] bg-[#09152F] px-5 pb-4 pt-5 text-white shadow-[0_18px_40px_rgb(4_12_28_/_0.30)]"
+    >
+      <span aria-hidden className="absolute inset-0 -z-20 bg-[linear-gradient(150deg,#081228_0%,#12336E_58%,#2A6BF0_135%)]" />
+      <span aria-hidden className="absolute -right-20 -top-24 -z-10 size-60 rounded-full bg-sky-300/20 blur-3xl" />
 
-      <div className="flex items-start justify-between gap-4">
-        <div className="min-w-0">
-          <h2 className="truncate text-2xl font-semibold tracking-[-0.035em]">Hola, {firstName}</h2>
-          <p className="mt-1 truncate text-sm text-blue-100/80">{shift?.summary ?? "Horario pendiente de cargar"}</p>
-        </div>
-        <div className="shrink-0 text-right">
-          <div className="flex items-center justify-end gap-1.5 text-sm font-semibold tabular-nums">
-            <Clock3 size={15} className="text-sky-200" />
-            <time>{localTime(now)}</time>
+      {/* Encabezado: quién y qué hora es. Lo de menos peso, arriba y en pequeño. */}
+      <div className="flex items-center justify-between gap-3">
+        <p className="truncate text-[11px] font-semibold uppercase tracking-[0.14em] text-blue-100/70">
+          Hola, {firstName}
+        </p>
+        <span className="flex shrink-0 items-center gap-2.5 text-xs font-semibold tabular-nums text-blue-50">
+          {clima ? <ClimaChip clima={clima} /> : null}
+          <span className="flex items-center gap-1.5">
+            <Clock3 size={14} className="text-sky-200" />
+            <time className={now ? "transition-opacity duration-300" : "opacity-0"}>{localTime(now)}</time>
+          </span>
+        </span>
+      </div>
+
+      {/* El titular: en qué punto de la jornada estás. */}
+      <h2 className="mt-2 text-[1.35rem] font-semibold leading-tight tracking-[-0.03em]">
+        {shiftMoment(shift, now)}
+      </h2>
+
+      {/* La cifra del día, con su meta y su avance en un solo bloque. */}
+      <div className="mt-5 rounded-2xl bg-[#040C1C]/40 px-4 py-3.5">
+        <div className="flex items-end justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-blue-100/65">Mi venta de hoy</p>
+            <p className="mt-1 truncate text-[2rem] font-semibold leading-none tracking-[-0.035em] tabular-nums">
+              {money(performance.sales)}
+            </p>
           </div>
-          <p className="mt-1 text-[11px] font-semibold uppercase tracking-[0.1em] text-blue-100/70">Hora local · v{appVersion}</p>
+          {hayMeta ? (
+            <div className="shrink-0 text-right">
+              <p className="text-lg font-semibold leading-none tabular-nums text-sky-200">{performance.progress}%</p>
+              <p className="mt-1 text-[11px] font-medium tabular-nums text-blue-100/65">de {money(performance.goal)}</p>
+            </div>
+          ) : null}
         </div>
+
+        {hayMeta ? (
+          <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-white/12" role="presentation">
+            <div
+              className="h-full rounded-full bg-[linear-gradient(90deg,#7DD3FC,#38BDF8)] transition-[width] duration-500"
+              style={{ width: `${anchoBarra}%` }}
+            />
+          </div>
+        ) : null}
+
+        <p className="mt-2.5 text-xs font-medium text-blue-100/80">{salesStatus}</p>
       </div>
 
-      <div className="mt-6 flex items-end justify-between gap-4">
-        <div>
-          <p className="text-xs font-semibold text-blue-100/75">Mi venta de hoy</p>
-          <p className="mt-1 text-[1.75rem] font-semibold leading-none tracking-[-0.03em] tabular-nums">{money(performance.sales)}</p>
+      {/* Pie: los dos conteos del día y, en pequeño, la versión instalada. */}
+      <div className="mt-3.5 flex items-center justify-between gap-3 border-t border-blue-200/12 pt-3">
+        <div className="flex items-center gap-4">
+          <span className="flex items-center gap-1.5">
+            <ReceiptText size={14} className="text-sky-200/90" />
+            <span className="text-sm font-semibold tabular-nums">{performance.transactions}</span>
+            <span className="text-[11px] font-medium text-blue-100/65">tickets</span>
+          </span>
+          <span className="flex items-center gap-1.5">
+            <ShoppingBag size={14} className="text-sky-200/90" />
+            <span className="text-sm font-semibold tabular-nums">{performance.pieces}</span>
+            <span className="text-[11px] font-medium text-blue-100/65">prendas</span>
+          </span>
         </div>
-        <div className="text-right">
-          <p className="text-xl font-semibold tabular-nums">{performance.progress}%</p>
-          <p className="mt-0.5 text-xs font-medium text-blue-100/75">de {money(performance.goal)}</p>
-        </div>
-      </div>
-      <ProgressBar value={performance.progress} tone="sky" className="mt-3 bg-white/15" />
-      <p className="mt-2 text-xs font-medium text-blue-100/80">{salesStatus}</p>
-
-      <div className="mt-5 grid grid-cols-2 gap-x-4 gap-y-3 border-t border-blue-200/15 pt-4">
-        <div className="flex items-center gap-2.5">
-          <ReceiptText size={16} className="text-sky-200" />
-          <div><p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-blue-100/70">Tickets</p><p className="text-sm font-semibold tabular-nums">{performance.transactions}</p></div>
-        </div>
-        <div className="flex items-center gap-2.5">
-          <ShoppingBag size={16} className="text-sky-200" />
-          <div><p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-blue-100/70">Prendas</p><p className="text-sm font-semibold tabular-nums">{performance.pieces}</p></div>
-        </div>
-        <div className="col-span-2 flex items-center gap-2 rounded-xl bg-blue-950/35 px-3 py-2.5 text-xs font-semibold text-blue-50">
-          <Timer size={16} className="shrink-0 text-sky-200" />
-          <span>{shiftMoment(shift, now)}</span>
-        </div>
+        <span className="shrink-0 text-[10px] font-semibold uppercase tracking-[0.1em] text-blue-100/40">
+          v{appVersion}
+        </span>
       </div>
     </section>
   );

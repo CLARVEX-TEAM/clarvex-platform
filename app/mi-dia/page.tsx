@@ -21,7 +21,10 @@ import {
   WifiOff
 } from "lucide-react";
 import { AppFrame, AppHeader, Button, Card, ProgressBar } from "@/components/ui";
+import { ClimaIntro } from "@/components/my-day/ClimaIntro";
+import { MasAccesos } from "@/components/my-day/MasAccesos";
 import { MyDayHero } from "@/components/my-day/MyDayHero";
+import type { Clima } from "@/lib/clima";
 import { getSession } from "@/lib/auth";
 import { compressImage } from "@/lib/image-compress";
 import { money } from "@/lib/format";
@@ -113,6 +116,25 @@ export default function MyDayPage() {
   const [loading, setLoading] = useState(true);
   const [offline, setOffline] = useState(false);
   const [error, setError] = useState("");
+  /*
+   * La tienda puede tener KPIs apagados, y entonces ese acceso no se ofrece.
+   * Se asume ENCENDIDO hasta saber lo contrario: si la sesión tarda o falla, un
+   * acceso de más es mejor que ver la rejilla reacomodarse sola al cargar.
+   * Es el mismo criterio de la barra inferior.
+   */
+  const [kpisEnabled, setKpisEnabled] = useState(true);
+  /*
+   * El clima y su bienvenida.
+   *
+   * ⚠️ Se pide APARTE de la jornada y nunca se espera por él. Es un adorno: si
+   * tarda o falla, «Mi día» abre igual y la entrada sencillamente no se monta.
+   * Mezclarlo con la carga principal convertiría un servicio gratuito ajeno en
+   * un requisito para ver tu turno.
+   */
+  const [clima, setClima] = useState<Clima | null>(null);
+  const [ciudad, setCiudad] = useState("");
+  // Solo la PRIMERA vez: al refrescar a mano no se vuelve a tapar el recuadro.
+  const [introPendiente, setIntroPendiente] = useState(true);
   const [showCorrection, setShowCorrection] = useState(false);
   const [sending, setSending] = useState(false);
   const [reviewing, setReviewing] = useState<string | null>(null);
@@ -131,6 +153,7 @@ export default function MyDayPage() {
     try {
       const session = await getSession();
       if (!session) { router.replace("/login"); return; }
+      setKpisEnabled(session.kpisEnabled !== false);
       if (!enContenedorNativo()) {
         router.replace(session.role === "ASESOR" ? "/advisor" : "/manager");
         return;
@@ -165,6 +188,25 @@ export default function MyDayPage() {
   }, [router]);
 
   useEffect(() => { void load(); }, [load]);
+
+  /*
+   * ⚠️ Sin `.catch` esto tumbaría la pantalla entera por un adorno. El endpoint
+   * ya contesta `{ clima: null }` en vez de fallar, pero el teléfono sin datos
+   * hace que el propio `fetch` reviente, y esa es la situación NORMAL en una
+   * tienda con mala señal.
+   */
+  useEffect(() => {
+    let vigente = true;
+    fetch("/api/clima", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() as Promise<{ clima: Clima | null; ciudad: string }> : null))
+      .then((payload) => {
+        if (!vigente || !payload?.clima) return;
+        setClima(payload.clima);
+        setCiudad(payload.ciudad);
+      })
+      .catch(() => undefined);
+    return () => { vigente = false; };
+  }, []);
 
   useEffect(() => {
     if (!data) return;
@@ -322,7 +364,23 @@ export default function MyDayPage() {
           </div>
         ) : null}
 
-        <MyDayHero firstName={firstName} appVersion={data.device.appVersion} shift={data.shift} performance={data.performance} />
+        {/*
+          El recuadro se pinta SIEMPRE y la bienvenida del clima se le monta
+          encima: así no hay salto de altura al pasar de una al otro, y si el
+          clima no llegó no se nota nada.
+        */}
+        <div className="relative">
+          <MyDayHero
+            firstName={firstName}
+            appVersion={data.device.appVersion}
+            shift={data.shift}
+            performance={data.performance}
+            clima={clima}
+          />
+          {clima && introPendiente ? (
+            <ClimaIntro clima={clima} ciudad={ciudad} onTerminar={() => setIntroPendiente(false)} />
+          ) : null}
+        </div>
 
         <Link href={nextAction.href} className="tappable mt-3 flex min-h-20 items-center gap-3 rounded-2xl bg-blue-50 px-4 py-3 text-blue-950 dark:bg-blue-950/35 dark:text-blue-100">
           <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-blue-600 text-white"><Target size={19} /></span>
@@ -438,6 +496,14 @@ export default function MyDayPage() {
             {data.capabilities.canManageDevices ? <Quick href="/dispositivos" icon={<UsersRound size={18} />} label="Dispositivos" detail="Aprobar o revocar" /> : null}
           </div>
         </section>
+
+        {/*
+          ⚠️ Sin esto, nueve pantallas del teléfono no tienen POR DÓNDE entrarse
+          dentro de la APK: «Mi día» sustituyó a `/advisor` y `/manager`, y con
+          ellas se fue `QuickActions`, que era su única puerta.
+          Lo cubre `tests/accesos-telefono.test.ts`.
+        */}
+        <MasAccesos role={data.user.role} kpisEnabled={kpisEnabled} />
       </AppFrame>
     </>
   );
