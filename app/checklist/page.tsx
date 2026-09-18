@@ -12,6 +12,8 @@ import type { User } from "@/lib/types";
 import { AppFrame, AppHeader, Badge, Card, ProgressBar } from "@/components/ui";
 import { puedeConAsistenciaAxo } from "@/lib/operational-checklist-reminders";
 import { enContenedorNativo, scannerDocumentosNativo, urlArchivoNativo } from "@/lib/puente-nativo";
+import { EVENTO_ENTREGA, encolar } from "@/lib/cola-envio";
+import { camposDeEvidencia, camposDeTarea } from "@/lib/cola-checklist";
 
 type Section = "APERTURA" | "CIERRE";
 type ScanPhoto = { id: string; url: string; fileName: string | null; createdAt: string };
@@ -63,6 +65,7 @@ export default function ChecklistPage() {
   const [date, setDate] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [aviso, setAviso] = useState("");
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const [axoAttendance, setAxoAttendance] = useState<AxoAttendance | null>(null);
   const [axoConfirming, setAxoConfirming] = useState(false);
@@ -89,6 +92,19 @@ export default function ChecklistPage() {
     // que es justo cuando hay que pasar la lista al Forms. Lo decide
     // `puedeConAsistenciaAxo`, el mismo criterio que aplica el servidor.
     if (puedeConAsistenciaAxo(session)) void loadAxoAttendance();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session]);
+
+  /*
+   * Cuando la cola consigue mandar lo que estaba guardado, la pantalla tiene que
+   * enterarse: sin esto, la evidencia ya subida no aparecería hasta recargar y
+   * la persona la volvería a tomar.
+   */
+  useEffect(() => {
+    if (!session) return;
+    const alCambiar = () => { void silentRefresh(); };
+    window.addEventListener(EVENTO_ENTREGA, alCambiar);
+    return () => window.removeEventListener(EVENTO_ENTREGA, alCambiar);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session]);
 
@@ -147,16 +163,48 @@ export default function ChecklistPage() {
     }
   }
 
+  /**
+   * Manda la petición y distingue «el servidor dijo que no» de «no salió de
+   * aquí».
+   *
+   * ⚠️ Es la misma lección de `getSession()`: confundirlos pierde la captura
+   * cuando solo parpadeó la señal, o esconde un rechazo real como si fuera falta
+   * de red. Solo lo segundo se encola.
+   */
+  async function mandar(ruta: string, init: RequestInit): Promise<Response | null> {
+    try {
+      return await fetch(ruta, init);
+    } catch {
+      return null;
+    }
+  }
+
   async function toggle(item: ChecklistItem) {
     setBusyKey(item.key);
     const previous = items;
     setItems((current) => current.map((i) => i.key === item.key ? { ...i, completed: !i.completed } : i));
     try {
-      const response = await fetch("/api/checklist", {
+      const response = await mandar("/api/checklist", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ itemKey: item.key, completed: !item.completed, note: item.note ?? undefined })
       });
+
+      if (response === null) {
+        // Sin red: se guarda para mandarla al haber señal y la marca SE QUEDA.
+        // Devolverla a su sitio haría creer que no se registró.
+        const encolada = await encolar({
+          ruta: "/api/checklist",
+          etiqueta: item.label,
+          campos: camposDeTarea(item, date, !item.completed)
+        });
+        if (!encolada) {
+          setItems(previous);
+          setError("Sin conexión y sin sitio para guardarla. Inténtalo otra vez.");
+        }
+        return;
+      }
+
       const payload = await response.json() as { items: ChecklistItem[] };
       if (!response.ok) throw new Error();
       setItems(payload.items);
@@ -181,7 +229,22 @@ export default function ChecklistPage() {
       form.append("completed", String(item.completed));
       if (item.note) form.append("note", item.note);
       form.append("image", image, "evidencia.jpg");
-      const response = await fetch("/api/checklist", { method: "POST", body: form });
+      const response = await mandar("/api/checklist", { method: "POST", body: form });
+
+      if (response === null) {
+        const encolada = await encolar({
+          ruta: "/api/checklist",
+          etiqueta: `Evidencia de ${item.label}`,
+          campos: camposDeEvidencia(item, date, item.completed, image),
+          nombreArchivo: "evidencia.jpg"
+        });
+        setAviso(encolada
+          ? "Sin conexión: la foto quedó guardada y se envía sola al volver la señal."
+          : "");
+        if (!encolada) setError("Sin conexión y sin sitio para guardar la foto. Inténtalo otra vez.");
+        return;
+      }
+
       const payload = await response.json() as { items: ChecklistItem[]; error?: string };
       if (!response.ok) throw new Error(payload.error ?? "No se pudo subir la evidencia.");
       setItems(payload.items);
@@ -301,6 +364,7 @@ export default function ChecklistPage() {
       />
       <AppFrame>
         {error ? <Card className="mb-3 text-sm font-semibold text-rose-700">{error}</Card> : null}
+        {aviso ? <Card className="mb-3 text-sm font-semibold text-sky-700 dark:text-sky-300">{aviso}</Card> : null}
         {axoAttendance ? (
           <AxoAttendanceCard
             report={axoAttendance}
