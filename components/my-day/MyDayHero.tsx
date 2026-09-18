@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Clock3, ReceiptText, ShoppingBag } from "lucide-react";
+import { ClimaChip } from "@/components/my-day/ClimaIntro";
+import type { Clima } from "@/lib/clima";
 import { money } from "@/lib/format";
 
 const STORE_TIME_ZONE = "America/Monterrey";
@@ -98,12 +100,20 @@ export function MyDayHero({
   firstName,
   appVersion,
   shift,
-  performance
+  performance,
+  clima
 }: {
   firstName: string;
   appVersion: string;
   shift: Shift;
   performance: Performance;
+  /**
+   * ⚠️ Opcional a propósito: el clima puede no llegar --proveedor caído, el
+   * teléfono sin datos-- y el recuadro tiene que pintarse igual. Cuando llega,
+   * se queda aquí en pequeño para que la entrada no sea la ÚNICA forma de
+   * verlo.
+   */
+  clima?: Clima | null;
 }) {
   const [now, setNow] = useState<Date | null>(null);
 
@@ -141,9 +151,12 @@ export function MyDayHero({
         <p className="truncate text-[11px] font-semibold uppercase tracking-[0.14em] text-blue-100/70">
           Hola, {firstName}
         </p>
-        <span className="flex shrink-0 items-center gap-1.5 text-xs font-semibold tabular-nums text-blue-50">
-          <Clock3 size={14} className="text-sky-200" />
-          <time className={now ? "transition-opacity duration-300" : "opacity-0"}>{localTime(now)}</time>
+        <span className="flex shrink-0 items-center gap-2.5 text-xs font-semibold tabular-nums text-blue-50">
+          {clima ? <ClimaChip clima={clima} /> : null}
+          <span className="flex items-center gap-1.5">
+            <Clock3 size={14} className="text-sky-200" />
+            <time className={now ? "transition-opacity duration-300" : "opacity-0"}>{localTime(now)}</time>
+          </span>
         </span>
       </div>
 
