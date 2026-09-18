@@ -1,5 +1,28 @@
 # Clarvex Team — CLAUDE.md
 
+## Pulido de «Mi día» 1.6 — publicado — 17 de septiembre de 2026
+
+El usuario autorizó integrar y publicar. PR 98 quedó integrado en plataforma
+`1d08e2ce2cf7b5bc51289c0f73c1e65124a9c8a3`. «Accesos rápidos» sustituye
+Avisos por Conteos y abre `/conteos`. La tarjeta superior usa un fondo azul
+marino consistente en modo claro y oscuro, muestra la hora de Monterrey, el
+estado o cuenta regresiva del turno, venta, meta, restante, tickets y prendas,
+y emplea luces difuminadas sin reducir el contraste del texto.
+
+Producción quedó en
+`/home/ubuntu/clarvex/releases/20260918-032158-1d08e2c`, build `mu6e7e6v`.
+No hubo migraciones pendientes: las 110 permanecen al día. PM2 conservó rutas
+anteriores durante el reload y el guion recreó los dos workers; ambos quedaron
+online con cwd y ejecutable de la release nueva. Salud pública OK, `/mi-dia`
+devuelve 307 sin sesión y `/api/app/native/my-day` 401 sin autorización. El
+bundle publicado contiene «Inventario y marbetes».
+
+Antes del despliegue pasaron ESLint de los archivos afectados, las 1,456 pruebas
+sin fallos ni saltos, TypeScript, build de 77 páginas y revisión visual a 412 px
+en tema claro y oscuro sin overflow. El cambio es exclusivamente web dentro del
+contenedor Android: no modifica APK 1.6/código 8, firma, manifiesto, migraciones
+ni cron y no exige reinstalar la aplicación.
+
 ## APK 1.6 «Mi día» — publicada — 17 de septiembre de 2026
 
 El usuario autorizó integrar y publicar. PR 97 quedó integrado en plataforma

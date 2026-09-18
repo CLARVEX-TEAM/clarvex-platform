@@ -1,5 +1,27 @@
 # AGENTS.md
 
+## Pulido de «Mi día» 1.6 publicado — 17 de septiembre de 2026
+
+El usuario autorizó integrar y publicar el ajuste visual. PR 98 quedó integrado
+en plataforma en `1d08e2c`. «Accesos rápidos» sustituye Avisos por Conteos y
+abre `/conteos`; el resumen de jornada usa ahora una tarjeta azul marino estable
+en tema claro y oscuro, con hora de Monterrey, estado o cuenta regresiva del
+turno, venta, meta, restante, tickets y prendas. Los fondos difuminados son
+decorativos y respetan la legibilidad del contenido.
+
+Producción web: `/home/ubuntu/clarvex/releases/20260918-032158-1d08e2c`,
+build `mu6e7e6v`. El despliegue encontró las 110 migraciones al día. PM2 conservó
+las rutas anteriores al recargar, el guion recreó los dos workers y verificó
+ambos online en la release nueva; salud pública OK. `/mi-dia` redirige sin sesión
+y `/api/app/native/my-day` responde 401 sin autorización. El bundle activo
+contiene «Inventario y marbetes».
+
+Validado antes del corte: ESLint de los archivos afectados, 1,456 pruebas sin
+fallos ni saltos, TypeScript, build de 77 páginas y revisión visual a 412 px en
+tema claro y oscuro, sin desbordamiento. Es un cambio web consumido por el
+contenedor 1.6: APK 1.6/código 8, firma, manifiesto y cron no cambiaron, por lo
+que no requiere reinstalación.
+
 ## APK 1.6 «Mi día» publicada — 17 de septiembre de 2026
 
 Publicación directa autorizada por el usuario. PR 97 de plataforma quedó
