@@ -4,6 +4,7 @@ import { requireCron } from "@/lib/cron-auth";
 import { monterreyMinutesOfDay, resolveMonterreyDate } from "@/lib/cron-time";
 import { createNotifications } from "@/lib/notifications";
 import { prisma } from "@/lib/prisma";
+import { NOTIFIABLE_WHERE } from "@/lib/store-people";
 import { dispatchPushToUsers } from "@/lib/push";
 import { shiftReminderText, shouldSendShiftReminder } from "@/lib/shift-reminder";
 
@@ -32,7 +33,14 @@ export async function POST(request: Request) {
         date: { gte: today.utcDate, lt: dayEnd },
         status: { in: ["WORKING", "INVENTORY"] },
         startTime: { not: null },
-        user: { active: true }
+        /*
+         * ⚠️ `active: true` no bastaba: dejaba pasar al aparato de la tienda y a
+         * las cuentas DEMO, que son públicas y compartidas. Este es el único
+         * cron que recorre todas las tiendas —los demás parten de una lista ya
+         * acotada— así que es el único que podía mandarle un aviso a la demo, y
+         * se lo mandó. Ver `NOTIFIABLE_WHERE`.
+         */
+        user: NOTIFIABLE_WHERE
       },
       select: { userId: true, storeId: true, startTime: true, zone: true }
     }),

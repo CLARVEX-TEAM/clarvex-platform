@@ -28,6 +28,28 @@ export const PERSON_WHERE = {
   checklistOnly: false
 };
 
+/**
+ * A quién se le puede mandar un aviso operativo.
+ *
+ * ⚠️ **`PERSON_WHERE` no basta para una notificación.** Deja fuera al aparato de
+ * la tienda, pero NO a las cuentas de demostración, que son públicas y
+ * compartidas: cualquiera que entre por `/api/demo/manager` las usa.
+ *
+ * El 18 de septiembre de 2026 el recordatorio de turno mandó sus tres primeros
+ * avisos de la vida... a Sofía Ramírez, Valeria Cruz y Mateo Luna, de «Boutique
+ * Aurora (Demo)». Es el único cron que recorre TODAS las tiendas —los demás
+ * parten de una lista de tiendas ya acotada— y por eso fue el único que lo
+ * sufrió.
+ *
+ * No es solo ruido: los avisos quedan escritos en la tienda demo, que es lo
+ * primero que ve quien entra a mirar el producto.
+ */
+export const NOTIFIABLE_WHERE = {
+  active: true,
+  checklistOnly: false,
+  isDemo: false
+};
+
 /** ¿Este registro es una persona y no el aparato de la tienda? */
 export function isRealPerson(user: { active?: boolean; checklistOnly?: boolean }): boolean {
   return user.active !== false && user.checklistOnly !== true;
