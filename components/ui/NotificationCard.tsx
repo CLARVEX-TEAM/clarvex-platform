@@ -37,7 +37,25 @@ export function NotificationCard({
             </div>
             <StatusBadge tone={unread ? "success" : "default"}>{unread ? "nuevo" : "leido"}</StatusBadge>
           </div>
-          <p className="mt-2 text-[13px] leading-5 text-muted">{body}</p>
+          {/*
+            ⚠️ `whitespace-pre-line` o el comunicado se lee como un muro.
+
+            Los comunicados del corporativo vienen con estructura: una línea de
+            vigencia, una lista de descuentos, otra de lo que no participa. El
+            escritorio ya la respetaba --mismo texto, misma base de datos-- y
+            aquí se colapsaba todo en un párrafo, así que el mismo comunicado se
+            leía bien en la computadora y mal en el teléfono, que es donde lo
+            lee el equipo. Reportado el 18 de septiembre de 2026.
+
+            `pre-line` y no `pre-wrap`: conserva los saltos de línea pero junta
+            los espacios repetidos, así que una sangría accidental al pegar el
+            texto no abre un hueco en la tarjeta. Es lo mismo que usa el
+            escritorio.
+
+            `break-words` porque estos avisos traen códigos largos sin espacios
+            --«75030000214»-- y en 412 px se salen de la tarjeta.
+          */}
+          <p className="mt-2 whitespace-pre-line break-words text-[13px] leading-5 text-muted">{body}</p>
           {imageUrl ? (
             <ImagenAmpliable src={imageUrl} alt="Imagen del comunicado" className="mt-2.5 block w-full overflow-hidden rounded-2xl border border-line">
               <Image src={imageUrl} alt="Imagen del comunicado" width={800} height={400} className="w-full object-cover" />
