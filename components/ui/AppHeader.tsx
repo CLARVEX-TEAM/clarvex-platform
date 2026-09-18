@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ArrowLeft, Bell } from "lucide-react";
+import { rutaDeInicio } from "@/lib/puente-nativo";
 import { cn } from "@/lib/utils";
 import { GradientText } from "@/components/magic/GradientText";
 import { ProfileAvatar } from "./ProfileAvatar";
@@ -75,7 +76,13 @@ export function AppHeader({
       <div className="mx-auto flex max-w-md items-center justify-between gap-3">
         <div className="flex min-w-0 items-start gap-3">
           {backHref ? (
-            <Link href={backHref} className="tappable solid-card mt-0.5 grid size-9 shrink-0 place-items-center rounded-[18px] text-ink/70" aria-label="Regresar al inicio">
+            /*
+              ⚠️ `rutaDeInicio` traduce `/manager` y `/advisor` a «Mi día»
+              dentro de la APK. Se hace AQUÍ y no en las siete pantallas que lo
+              piden: así la próxima que escriba `backHref="/manager"` queriendo
+              decir «al inicio» tampoco saca al usuario a la portada de la web.
+            */
+            <Link href={rutaDeInicio(backHref)} className="tappable solid-card mt-0.5 grid size-9 shrink-0 place-items-center rounded-[18px] text-ink/70" aria-label="Regresar al inicio">
               <ArrowLeft size={18} />
             </Link>
           ) : avatar || photoUrl ? (

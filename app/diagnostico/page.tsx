@@ -51,6 +51,19 @@ export default function DiagnosticoPush() {
       { que: "window.Capacitor", valor: cap ? "presente" : "ausente", bien: Boolean(cap) },
       { que: "Plataforma", valor: plataformaNativa(), bien: plataformaNativa() === "android" },
       { que: "Dentro del contenedor", valor: enContenedorNativo() ? "sí" : "no", bien: enContenedorNativo() },
+      /*
+       * ⚠️ Se enseña QUÉ señal contestó, no solo el resultado. El fallo del
+       * arranque en frío era que el puente no había llegado todavía; con una
+       * sola fila que dijera «sí» eso queda invisible, porque para cuando
+       * alguien abre el diagnóstico ya llegó todo.
+       */
+      {
+        que: "Marca de la app en el agente",
+        valor: typeof navigator !== "undefined" && /ClarvexApp\/[\d.]+/.test(navigator.userAgent)
+          ? (navigator.userAgent.match(/ClarvexApp\/[\d.]+/)?.[0] ?? "sí")
+          : "ausente",
+        bien: typeof navigator !== "undefined" && navigator.userAgent.includes("ClarvexApp/")
+      },
       {
         que: "Plugins compilados",
         valor: cabeceras.length ? cabeceras.join(", ") : "ninguno",

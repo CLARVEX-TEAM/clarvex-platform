@@ -1,5 +1,80 @@
 # Clarvex Team — CLAUDE.md
 
+## Tres fallos que no daban error — 18 de septiembre de 2026
+
+Los tres se reportaron usando la app y los tres comparten forma: **nada falla,
+nada se registra, y la persona ve algo que parece normal.**
+
+### ⚠️ La app arrancaba en la portada de la WEB
+
+«Cuando recién entro me aparece la interfaz de inicio que era exclusiva para la
+web; tengo que cambiar de pantalla y regresar para que cargue la nueva.» Y lo
+mismo tras actualizar la APK, que es otro arranque en frío.
+
+`enContenedorNativo()` leía **solo** `window.Capacitor`, que el contenedor
+inyecta con `addDocumentStartJavaScript` al empezar el documento. En un arranque
+en frío la raíz de la app puede preguntar ANTES de que llegue: contesta «no soy
+la app» y `app/page.tsx` manda a `/manager`. Queda en el registro del proxy con
+la misma marca de segundo:
+
+```
+13:12:36  "/"          la app abre la raíz
+13:12:36  "/manager"   y la raíz la manda a la portada web
+```
+
+La salida no fue esperar al puente sino **una segunda señal que no puede llegar
+tarde**: `appendUserAgent: "ClarvexApp/1.6"` en `capacitor.config.ts`. El WebView
+fija el agente antes de cargar nada, así que viaja en la primera petición y está
+en `navigator.userAgent` desde la primera línea de JavaScript.
+
+⚠️ **Se compara el PREFIJO `ClarvexApp/`, nunca la versión.** Cada APK escribe la
+suya; buscar una exacta dejaría fuera a los teléfonos sin actualizar, que son
+justo los que no se arreglan publicando una APK nueva. Comprobado contra el
+registro del proxy: 2,839 peticiones reales con 1.3, 1.4, 1.5, 1.5.1 y 1.6.
+
+⚠️ **Esto NO sustituye a `isPluginAvailable`.** «Soy la app» y «los plugins ya
+llegaron» son dos piezas distintas del puente, y confundirlas es exactamente lo
+que costó el candado de la huella. Y es una decisión de INTERFAZ: un agente se
+falsifica, y lo que protege las APIs nativas sigue siendo la sesión y la firma
+del dispositivo.
+
+De paso, `rutaDeInicio()` traduce `/manager` y `/advisor` a «Mi día» dentro de la
+APK. Siete pantallas pedían volver a `/manager` con `backHref`, sacando al
+usuario a la web con el mismo efecto pero a mano. Se traduce en `AppHeader`, en
+un solo sitio, para que la próxima pantalla que lo escriba tampoco lo sufra.
+
+### ⚠️ Nueve pantallas se quedaron sin ninguna entrada
+
+Al sustituir «Mi día» a `/advisor` y `/manager` dentro de la APK se dejó de
+pintar `components/home/QuickActions.tsx`, que era la ÚNICA puerta a Bitácora,
+Reconocer, Asistencia, Días y cambios, Faltantes, Capacitación, Encuestas,
+Suscripción y Equipo. Siguen existiendo, siguen llevando barra inferior y nadie
+podía abrirlas.
+
+Las listas viven ahora en `lib/accesos-telefono.ts`, las usan las dos portadas
+con el mismo reparto por puesto, y `tests/accesos-telefono.test.ts` comprueba que
+toda ruta con barra inferior tenga por dónde entrar.
+
+### ⚠️ Tres crons llevaban semanas fallando en silencio
+
+- `shift-reminder`, el recordatorio de turno que la APK 1.6 anuncia en sus
+  novedades, **nunca entregó un solo aviso**. La lista blanca de
+  `cron-authenticated-post.sh` se escribió el 16 con tres endpoints y el trabajo
+  de la 1.6 agregó el cuarto cron sin agregar la cuarta entrada: cada ejecución
+  salía con `endpoint no permitido` y código 2.
+- `cron-plan-reminder.sh` y `cron-pending-overdue-managers.sh` seguían apuntando
+  al servidor VIEJO —`/root/clarvex-app/.env` y `app.adrianluna.mx`, que hoy
+  responde 404— desde el 25 y 26 de agosto, el día siguiente a la mudanza a AWS.
+  **24 días.**
+
+Lo más ilustrativo es que los dos guiones están BIEN escritos: tienen una guarda
+explícita para que un `.env` movido no acabe en un 401 mudo, y la guarda funcionó
+perfecto — escribió el error correcto 24 veces en un archivo que nadie abre.
+
+⚠️ **Hay 27 archivos de log de cron en el servidor y nada los mira.** Esa es la
+lección que queda, y es la tercera vez que este documento la escribe. Respaldo
+del arreglo en `/home/ubuntu/logs/crons-antes-de-arreglo-20260918T060801Z/`.
+
 ## Estado funcional y roadmap después de APK 1.6 — 17 de septiembre de 2026
 
 La versión vigente es APK 1.6/código 8 con la web del merge
