@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { CheckCircle2, CloudUpload, TriangleAlert, WifiOff } from "lucide-react";
-import { EVENTO_CAMBIO, drenar, olvidarFallidas, resumen } from "@/lib/cola-envio";
+import { EVENTO_CAMBIO, EVENTO_ENTREGA, drenar, olvidarFallidas, resumen } from "@/lib/cola-envio";
+import { siguienteConexion, type SenalDeConexion } from "@/lib/conexion";
 
 /**
  * La franja de estado de arriba. Avisa "Sin conexión", "Conexión restablecida"
@@ -16,6 +17,11 @@ import { EVENTO_CAMBIO, drenar, olvidarFallidas, resumen } from "@/lib/cola-envi
  * captura que no llegó y no se dice deja a la persona creyendo que quedó
  * guardada, que es el fallo que esta app lleva meses persiguiendo en otras
  * formas. Se van cuando la persona dice que ya las rehizo.
+ *
+ * ⚠️ **Y «sin conexión» se despinta con TRES señales, no solo con el evento
+ * `online`.** En Android ese evento puede no llegar nunca: reportado en tienda
+ * el 18 de septiembre de 2026, con las capturas ya entregadas y la franja roja
+ * todavía puesta. La decisión vive en `lib/conexion`, con pruebas.
  */
 export function OfflineBanner() {
   const [offline, setOffline] = useState(false);
@@ -26,26 +32,50 @@ export function OfflineBanner() {
     void resumen().then(({ pendientes, fallidas }) => setCola({ pendientes, fallidas }));
   }, []);
 
-  useEffect(() => {
-    if (typeof navigator !== "undefined") setOffline(!navigator.onLine);
-    const goOffline = () => setOffline(true);
-    const goOnline = () => {
-      setOffline((wasOffline) => {
-        if (wasOffline) {
-          setJustReconnected(true);
-          window.dispatchEvent(new Event("clarvex-online"));
-          window.setTimeout(() => setJustReconnected(false), 2500);
-        }
-        return false;
-      });
-    };
-    window.addEventListener("offline", goOffline);
-    window.addEventListener("online", goOnline);
-    return () => {
-      window.removeEventListener("offline", goOffline);
-      window.removeEventListener("online", goOnline);
-    };
+  /*
+   * Todas las señales pasan por aquí para que la regla esté en un solo sitio y
+   * se pueda probar. `clarvex-online` se emite al recuperar, que es lo que hace
+   * que las demás pantallas vuelvan a pedir sus datos.
+   */
+  const senal = useCallback((entrada: SenalDeConexion) => {
+    setOffline((sinConexion) => {
+      const estado = siguienteConexion(sinConexion, entrada);
+      if (estado.recupero) {
+        setJustReconnected(true);
+        window.dispatchEvent(new Event("clarvex-online"));
+        window.setTimeout(() => setJustReconnected(false), 2500);
+      }
+      return estado.sinConexion;
+    });
   }, []);
+
+  useEffect(() => {
+    const mirar = () => {
+      if (typeof navigator !== "undefined") senal({ tipo: "mirada", enLinea: navigator.onLine });
+    };
+    mirar();
+
+    const cayo = () => senal({ tipo: "evento-offline" });
+    const volvio = () => senal({ tipo: "evento-online" });
+    /*
+     * ⚠️ Una entrega es la prueba MÁS fuerte de que hay conexión: el servidor
+     * acaba de contestar. Es la que rescata el caso de Android, donde el evento
+     * `online` puede no llegar jamás.
+     */
+    const entrego = () => senal({ tipo: "entrega" });
+
+    window.addEventListener("offline", cayo);
+    window.addEventListener("online", volvio);
+    window.addEventListener(EVENTO_ENTREGA, entrego);
+    // Volver a la app SÍ llega siempre en Android; ahí se vuelve a mirar.
+    document.addEventListener("visibilitychange", mirar);
+    return () => {
+      window.removeEventListener("offline", cayo);
+      window.removeEventListener("online", volvio);
+      window.removeEventListener(EVENTO_ENTREGA, entrego);
+      document.removeEventListener("visibilitychange", mirar);
+    };
+  }, [senal]);
 
   /*
    * ⚠️ **La cola se vacía por EVENTO, nunca por temporizador.** Insistir cada X

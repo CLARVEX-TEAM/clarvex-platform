@@ -64,8 +64,14 @@ export async function encolar(encargo: Encargo): Promise<boolean> {
   return guardada;
 }
 
-/** El resultado de un intento, en los términos que entiende `veredicto`. */
-async function intentar(op: OperacionGuardada): Promise<{ status: number | null; codigo: string | null }> {
+/**
+ * El resultado de un intento, en los términos que entiende `veredicto`.
+ *
+ * Exportada para poder probarla: es la única parte de la cola que toca la red, y
+ * lo que se le puede romper --perder la clave, perder la foto, leer mal el
+ * código del 409-- no da error, solo pierde capturas.
+ */
+export async function intentar(op: OperacionGuardada): Promise<{ status: number | null; codigo: string | null }> {
   const form = new FormData();
   for (const [nombre, valor] of op.campos) {
     if (typeof valor === "string") form.append(nombre, valor);
@@ -89,6 +95,9 @@ async function intentar(op: OperacionGuardada): Promise<{ status: number | null;
    * candado de idempotencia significan lo contrario y distinguirlos por una
    * frase ataría la cola a algo que alguien reescribirá.
    */
+  // El `clone()` es defensivo: hoy nadie lee el cuerpo después de esto, así que
+  // ninguna prueba puede demostrar que haga falta. Se conserva para que quien
+  // añada esa lectura no se encuentre el flujo ya consumido.
   let codigo: string | null = null;
   try {
     const cuerpo = await respuesta.clone().json() as { codigo?: unknown };
