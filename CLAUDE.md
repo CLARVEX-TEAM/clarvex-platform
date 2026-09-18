@@ -1,9 +1,10 @@
 # Clarvex Team — CLAUDE.md
 
-## APK 1.6 «Mi día» — candidata en revisión — 17 de septiembre de 2026
+## APK 1.6 «Mi día» — publicada — 17 de septiembre de 2026
 
-PR 97 abierto desde `feat/apk-1.6-mi-dia`; cambio funcional `88da579`, basado en
-la 1.5.1 aceptada. La nueva
+El usuario autorizó integrar y publicar. PR 97 quedó integrado en plataforma
+`d9c786cbc0489f3acfacf7867ac361346c7dad8e` y PR 6 en Android
+`8af890ed1123f291309f3d8bc827507872686cff`. La nueva
 portada existe solo dentro de Android y reúne turno, uniforme, asistencia, avance
 de venta, plan, pendientes, comunicados y accesos según rol. Conserva una copia
 de solo lectura para abrir la última jornada sin red. Navegador y PWA mantienen
@@ -18,21 +19,39 @@ reactivar equipos. Revocar elimina sus tokens FCM y retos pendientes; el teléfo
 cierra la sesión al detectar el cambio.
 
 El cron `/api/cron/shift-reminder` reclama una entrega única por usuario/día y
-avisa aproximadamente una hora antes del turno; al publicar debe programarse
-cada 15 minutos con el wrapper autenticado del servidor. Las notificaciones
+avisa aproximadamente una hora antes del turno. Quedó programado cada 15 minutos
+con el wrapper autenticado del servidor. Las notificaciones
 abren la sección exacta de Mi día. El botón Calendario solo aparece cuando el
 binario trae `CalendarioClarvex`, que abre el editor del sistema sin permiso de
 lectura/escritura del calendario.
 
-Validación local: Prisma format/generate/validate, TypeScript, ESLint, 1,456
+Validación: Prisma format/generate/validate, TypeScript, ESLint, 1,456
 pruebas sin fallos ni saltos, build de 77 páginas y revisión visual Android a
 412 px sin overflow. Android `testDebugUnitTest assembleDebug` aprobó 279 tareas
 con Java 21/SDK 35. La corrida CI `35283067539` terminó sin ejecutar pasos por
 el bloqueo conocido de facturación; los trabajos dependientes quedaron saltados.
-Falta integrar, compilar con firma desde el SHA exacto, desplegar, dar de alta el
-cron y probar en teléfono; producción continúa en web
-`e219e51` y APK 1.5.1/código 7. No describir la vinculación existente como
-atestación de procedencia oficial.
+
+La candidata se compiló de forma aislada desde el merge Android exacto:
+`D:\Documents\clarvex-entregas\apk-1.6-candidata\clarvex-team-1.6.apk`,
+8,074,680 bytes, SHA-256
+`5f14380c188cc6ec9ddf4b7c7b1618fa27ed0b9bdd364b16789c31dc711774ee`.
+`aapt`, `dexdump` y `apksigner` confirman paquete, versión 1.6/código 8, plugins
+nativos, firma v1/v2 y el certificado estable.
+
+Plataforma activa: `/home/ubuntu/clarvex/releases/20260918-025201-d9c786c`,
+build `mu6d4w57`. Aplicó la migración nueva; 110 migraciones al día. Ambos
+workers sirven la release exacta y la salud pública/base están OK. El cron quedó
+una sola vez y su respaldo 600 está en
+`/home/ubuntu/logs/crontab-before-shift-reminder-20260918-030037Z.txt`; no se
+invocó manualmente para evitar notificaciones reales.
+
+APK publicada a las `2026-09-18T03:01:17Z` en
+`compartido/apk/clarvex-8.apk`. El servidor validó bytes y SHA-256 antes de
+activar `version.json`, conservó APK 1.5.1 y el respaldo
+`version-antes-de-1.6-20260918T030130Z.json`. `versionPublicada()` devuelve 1.6,
+tamaño y hash correctos. Los endpoints sin sesión responden 401 y el POST del
+cron sin secreto también. Falta aceptación en teléfono real. No describir la
+vinculación existente como atestación de procedencia oficial.
 
 ## Vinculación de dispositivo y APK 1.5.1 — publicadas — 17 de septiembre de 2026
 

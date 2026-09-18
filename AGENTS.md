@@ -1,11 +1,10 @@
 # AGENTS.md
 
-## APK 1.6 «Mi día» en revisión — 17 de septiembre de 2026
+## APK 1.6 «Mi día» publicada — 17 de septiembre de 2026
 
-PR 97 de plataforma (`88da579`) y PR 6 de Android (`31ed616`) abiertos desde
-`feat/apk-1.6-mi-dia`, basados en los `main` publicados de 1.5.1. No se han
-integrado, desplegado ni publicado. Producción continúa en plataforma `e219e51`
-y APK 1.5.1/código 7.
+Publicación directa autorizada por el usuario. PR 97 de plataforma quedó
+integrado en `d9c786c` y PR 6 de Android en `8af890e`, ambos desde
+`feat/apk-1.6-mi-dia` y sobre los `main` publicados de 1.5.1.
 
 La portada exclusiva del contenedor Android reúne turno, uniforme, asistencia,
 avance, plan, pendientes y comunicados, con una copia local de solo lectura. La
@@ -14,19 +13,36 @@ corrección y avisos. Gerencia puede aprobar o rechazar solicitudes de otras
 personas, abrir evidencia mediante URL firmada y administrar dispositivos. Una
 revocación elimina FCM/retos y el teléfono cierra sesión al comprobar su estado.
 
-El cron `/api/cron/shift-reminder` deduplica por usuario/día y debe instalarse
-cada 15 minutos al desplegar. Las notificaciones abren la sección pertinente de
+El cron `/api/cron/shift-reminder` deduplica por usuario/día y quedó instalado
+cada 15 minutos con el wrapper autenticado. Las notificaciones abren la sección pertinente de
 Mi día. Android sube a 1.6/código 8 y añade `CalendarioClarvex`, un intent al
 editor del sistema sin permiso de calendario; la web oculta el botón en APK
 anteriores.
 
 Validado: Prisma format/generate/validate, TypeScript, ESLint, 1,456 pruebas sin
 fallos ni saltos, build de 77 páginas, revisión visual a 412 px y Gradle
-`testDebugUnitTest assembleDebug` con 279 tareas. La CI de plataforma
+`clean testDebugUnitTest assembleDebug` con 279 tareas. La CI de plataforma
 `35283067539` terminó sin ejecutar pasos por el bloqueo conocido de facturación;
-los trabajos restantes quedaron saltados. Pendiente: integrar, compilar y firmar
-desde el SHA exacto, desplegar, programar el cron y aceptar en teléfono real. La
-vinculación P-256 todavía no equivale a Key Attestation.
+los trabajos restantes quedaron saltados.
+
+Producción web: `/home/ubuntu/clarvex/releases/20260918-025201-d9c786c`, build
+`mu6d4w57`. Aplicó `20260917230000_apk_16_attendance_corrections` y dejó 110
+migraciones al día. Los dos workers están online con cwd/ejecutable de esa
+release y salud pública/base OK. El crontab contiene una sola entrada para el
+recordatorio; respaldo 600 en
+`/home/ubuntu/logs/crontab-before-shift-reminder-20260918-030037Z.txt`. No se
+ejecutó manualmente para no enviar avisos reales.
+
+APK 1.6/código 8 publicada a las 03:01:17 UTC en
+`compartido/apk/clarvex-8.apk`: 8,074,680 bytes, SHA-256
+`5f14380c188cc6ec9ddf4b7c7b1618fa27ed0b9bdd364b16789c31dc711774ee`.
+Firma v1/v2 y certificado estable; candidata reproducible en
+`D:\Documents\clarvex-entregas\apk-1.6-candidata\clarvex-team-1.6.apk`.
+El servidor validó bytes/hash antes de reemplazar el manifiesto y conservó
+`version-antes-de-1.6-20260918T030130Z.json`. `versionPublicada()` confirma
+versión, bytes y hash; versión, descarga y rutas nativas siguen en 401 sin
+sesión. Pendiente aceptación en teléfono real. La vinculación P-256 todavía no
+equivale a Android Key Attestation.
 
 ## Vinculación de dispositivo y APK 1.5.1 publicadas — 17 de septiembre de 2026
 
