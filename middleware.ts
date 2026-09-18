@@ -73,6 +73,10 @@ const publicApiExact = new Set([
  */
 const captureRoutes = new Set([
   "/api/admin/capture/schedules",
+  // Traduce el bloque de horarios copiado del Excel. Solo LEE: devuelve lo que
+  // entendió para que una persona lo revise, y quien guarda sigue siendo
+  // `/api/admin/capture/schedules`, arriba.
+  "/api/admin/capture/schedules/pegado",
   "/api/admin/capture/attendance",
   // Pase de lista: marca a su hora a quien tenia turno y solo se nombra la
   // excepcion. Escribe asistencia, con el mismo secreto y las mismas reglas.
