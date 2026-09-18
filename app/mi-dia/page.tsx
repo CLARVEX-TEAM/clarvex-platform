@@ -21,6 +21,7 @@ import {
   WifiOff
 } from "lucide-react";
 import { AppFrame, AppHeader, Button, Card, ProgressBar } from "@/components/ui";
+import { MasAccesos } from "@/components/my-day/MasAccesos";
 import { MyDayHero } from "@/components/my-day/MyDayHero";
 import { getSession } from "@/lib/auth";
 import { compressImage } from "@/lib/image-compress";
@@ -113,6 +114,13 @@ export default function MyDayPage() {
   const [loading, setLoading] = useState(true);
   const [offline, setOffline] = useState(false);
   const [error, setError] = useState("");
+  /*
+   * La tienda puede tener KPIs apagados, y entonces ese acceso no se ofrece.
+   * Se asume ENCENDIDO hasta saber lo contrario: si la sesión tarda o falla, un
+   * acceso de más es mejor que ver la rejilla reacomodarse sola al cargar.
+   * Es el mismo criterio de la barra inferior.
+   */
+  const [kpisEnabled, setKpisEnabled] = useState(true);
   const [showCorrection, setShowCorrection] = useState(false);
   const [sending, setSending] = useState(false);
   const [reviewing, setReviewing] = useState<string | null>(null);
@@ -131,6 +139,7 @@ export default function MyDayPage() {
     try {
       const session = await getSession();
       if (!session) { router.replace("/login"); return; }
+      setKpisEnabled(session.kpisEnabled !== false);
       if (!enContenedorNativo()) {
         router.replace(session.role === "ASESOR" ? "/advisor" : "/manager");
         return;
@@ -438,6 +447,14 @@ export default function MyDayPage() {
             {data.capabilities.canManageDevices ? <Quick href="/dispositivos" icon={<UsersRound size={18} />} label="Dispositivos" detail="Aprobar o revocar" /> : null}
           </div>
         </section>
+
+        {/*
+          ⚠️ Sin esto, nueve pantallas del teléfono no tienen POR DÓNDE entrarse
+          dentro de la APK: «Mi día» sustituyó a `/advisor` y `/manager`, y con
+          ellas se fue `QuickActions`, que era su única puerta.
+          Lo cubre `tests/accesos-telefono.test.ts`.
+        */}
+        <MasAccesos role={data.user.role} kpisEnabled={kpisEnabled} />
       </AppFrame>
     </>
   );

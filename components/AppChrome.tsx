@@ -29,7 +29,7 @@ import { BottomNav } from "@/components/ui";
  * una barra que falta se ve enseguida; una barra encima del login o tapando una
  * conversación es peor y más difícil de notar.
  */
-const ROUTES_WITH_NAV = new Set([
+export const ROUTES_WITH_NAV = new Set([
   "/admin",
   "/advisor",
   "/asistencia",
