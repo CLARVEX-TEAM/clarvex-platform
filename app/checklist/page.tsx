@@ -10,6 +10,7 @@ import { compressImage } from "@/lib/image-compress";
 import { DocScanner } from "@/components/DocScanner";
 import type { User } from "@/lib/types";
 import { AppFrame, AppHeader, Badge, Card, ProgressBar } from "@/components/ui";
+import { puedeConAsistenciaAxo } from "@/lib/operational-checklist-reminders";
 import { enContenedorNativo, scannerDocumentosNativo, urlArchivoNativo } from "@/lib/puente-nativo";
 
 type Section = "APERTURA" | "CIERRE";
@@ -84,7 +85,10 @@ export default function ChecklistPage() {
   useEffect(() => {
     if (!session) return;
     void load();
-    if (session.role === "GERENTE" || session.role === "SUBGERENTE") void loadAxoAttendance();
+    // El kiosko tambien: es el telefono que esta a la mano al abrir la tienda,
+    // que es justo cuando hay que pasar la lista al Forms. Lo decide
+    // `puedeConAsistenciaAxo`, el mismo criterio que aplica el servidor.
+    if (puedeConAsistenciaAxo(session)) void loadAxoAttendance();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session]);
 

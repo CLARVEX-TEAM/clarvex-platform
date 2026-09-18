@@ -21,7 +21,13 @@
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
-import { avisoDeProblemas, cadenciaEnHoras, revisarRegistros, type RegistroCron } from "../lib/vigilancia-crons";
+import {
+  avisoDeProblemas,
+  cadenciaEnHoras,
+  revisarRegistros,
+  sinRastro,
+  type RegistroCron
+} from "../lib/vigilancia-crons";
 import { sendOpsAlert } from "../lib/webhooks";
 
 const CARPETA_LOGS = process.env.CRON_LOGS_DIR ?? "/home/ubuntu/logs";
@@ -116,7 +122,11 @@ async function main(): Promise<void> {
 
   // La línea de resumen va SIEMPRE, haya o no problemas: es lo que permite
   // saber después si el vigilante estuvo corriendo de verdad.
-  console.log(`[${sello}] [vigilar-crons] revisados ${registros.length}, con problema ${problemas.length}`);
+  const mudos = sinRastro(registros);
+  console.log(
+    `[${sello}] [vigilar-crons] revisados ${registros.length}, con problema ${problemas.length}` +
+      (mudos.length > 0 ? `, sin salida todavia: ${mudos.join(", ")}` : "")
+  );
   for (const p of problemas) console.log(`  · ${p.nombre}: ${p.motivo} — ${p.detalle}`);
 
   if (problemas.length === 0) return;

@@ -7,6 +7,7 @@ import { monterreyMinutesOfDay, resolveMonterreyDate } from "@/lib/cron-time";
 import {
   attendanceDeadlineState,
   axoAttendancePeriodKey,
+  puedeConAsistenciaAxo,
   roleLabel,
   roleOrder
 } from "@/lib/operational-checklist-reminders";
@@ -15,7 +16,6 @@ import { prisma } from "@/lib/prisma";
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-const MANAGER_ROLES = ["GERENTE", "SUBGERENTE"] as const;
 
 async function responseFor(storeId: string) {
   const today = resolveMonterreyDate();
@@ -70,8 +70,15 @@ async function responseFor(storeId: string) {
 
 /** Estado diario y lista ordenada como el Forms: gerencia, subgerencia, asesores. */
 export async function GET() {
-  const session = await requireSession([...MANAGER_ROLES]);
+  /*
+   * ⚠️ Sin filtro de ROL a proposito: el kiosko es un ASESOR y filtrar por
+   * puesto se lo abriria a todo el equipo. Lo decide `puedeConAsistenciaAxo`.
+   */
+  const session = await requireSession();
   if (isApiError(session)) return session;
+  if (!puedeConAsistenciaAxo(session)) {
+    return NextResponse.json({ error: "No tienes permiso para esta accion." }, { status: 403 });
+  }
   return NextResponse.json(await responseFor(session.storeId));
 }
 
@@ -81,8 +88,15 @@ export async function GET() {
  * comprobarlo. La auditoría conserva quién hizo la confirmación y a qué hora.
  */
 export async function POST() {
-  const session = await requireSession([...MANAGER_ROLES]);
+  /*
+   * ⚠️ Sin filtro de ROL a proposito: el kiosko es un ASESOR y filtrar por
+   * puesto se lo abriria a todo el equipo. Lo decide `puedeConAsistenciaAxo`.
+   */
+  const session = await requireSession();
   if (isApiError(session)) return session;
+  if (!puedeConAsistenciaAxo(session)) {
+    return NextResponse.json({ error: "No tienes permiso para esta accion." }, { status: 403 });
+  }
 
   const today = resolveMonterreyDate();
   const store = await prisma.store.findUnique({

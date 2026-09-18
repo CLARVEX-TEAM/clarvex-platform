@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { avisoDeProblemas, cadenciaEnHoras, revisarRegistro, revisarRegistros } from "../lib/vigilancia-crons";
+import { avisoDeProblemas, cadenciaEnHoras, revisarRegistro, revisarRegistros, sinRastro } from "../lib/vigilancia-crons";
 
 /*
  * Por qué existen estas pruebas.
@@ -169,4 +169,29 @@ test("un cron RECIEN programado que aun no le toca no se denuncia", () => {
   });
   assert.ok(viejo, "ya tuvo tiempo de sobra y nunca escribió");
   assert.equal(viejo.motivo, "nunca ha dejado salida");
+});
+
+test("sin saber cuando se programo, un log ausente NO se denuncia", () => {
+  /*
+   * ⚠️ En el servidor real esto es lo NORMAL: el usuario no puede fechar su
+   * propio crontab --`/var/spool/cron/crontabs/` está cerrado incluso para su
+   * dueño-- así que `horasDesdeElCrontab` llega en null. Se descubrió en la
+   * primera prueba en seco: el vigilante denunció al aviso de energía, que
+   * simplemente tenía su corrida dos horas más tarde.
+   */
+  const desconocido = revisarRegistro({
+    nombre: "energy-checklist-reminder",
+    ultimaLinea: null,
+    horasSinEscribir: null,
+    maxHoras: 72,
+    horasDesdeElCrontab: null
+  });
+  assert.equal(desconocido, null, "no se grita lo que no se puede saber");
+
+  // Pero no se pierde de vista: sale en el resumen del propio guion.
+  const mudos = sinRastro([
+    { nombre: "energy-checklist-reminder", ultimaLinea: null, horasSinEscribir: null, maxHoras: 72, horasDesdeElCrontab: null },
+    { nombre: "plan-reminder", ultimaLinea: "[..] OK", horasSinEscribir: 2, maxHoras: 26, horasDesdeElCrontab: null }
+  ]);
+  assert.deepEqual(mudos, ["energy-checklist-reminder"]);
 });

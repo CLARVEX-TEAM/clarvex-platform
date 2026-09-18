@@ -213,7 +213,17 @@ export async function middleware(request: NextRequest) {
     // La identidad nativa y FCM forman parte del propio kiosko. Los handlers
     // siguen exigiendo sesión y, al asociar la instalación, firma de Keystore.
     const identidadDelKiosko = pathname.startsWith("/api/app/native/") || pathname === "/api/push/device";
-    if (session.checklistOnly && !pathname.startsWith("/api/checklist") && !pathname.startsWith("/api/auth/") && !consultaActualizacion && !identidadDelKiosko) {
+    /*
+     * La asistencia de AXO: el kiosko ES el aparato que esta a la mano cuando se
+     * abre la tienda, que es cuando hay que pasar la lista al Forms.
+     *
+     * ⚠️ Ruta EXACTA, no un prefijo. Abrir todo lo que empiece por
+     * `/api/attendance` dejaria entrar de paso a la captura de asistencia
+     * --que escribe el banco de minutos-- al aparato menos protegido de la
+     * tienda. Es el tipo de descuido que no se ve hasta que alguien lo usa.
+     */
+    const asistenciaAxo = pathname === "/api/attendance-axo";
+    if (session.checklistOnly && !pathname.startsWith("/api/checklist") && !pathname.startsWith("/api/auth/") && !consultaActualizacion && !identidadDelKiosko && !asistenciaAxo) {
       return NextResponse.json({ error: "Sin permiso." }, { status: 403 });
     }
     // Sesión DEMO: SOLO LECTURA. Cualquier método que cambie estado se corta aquí
