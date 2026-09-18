@@ -226,7 +226,13 @@ function NotificationRow({ item, onRead, onDelete }: { item: NotificationItem; o
               </button>
             </div>
           </div>
-          <p className="mt-2 text-sm leading-5 text-muted">{item.body}</p>
+          {/*
+            Mismo criterio que la tarjeta de comunicados: si el aviso trae
+            saltos de línea, se respetan; si no los trae, no cambia nada. Y
+            `break-words` porque algunos avisos llevan códigos largos sin
+            espacios que en 412 px se salen de la tarjeta.
+          */}
+          <p className="mt-2 whitespace-pre-line break-words text-sm leading-5 text-muted">{item.body}</p>
         </div>
       </div>
     </Card>
