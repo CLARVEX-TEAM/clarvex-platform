@@ -235,6 +235,22 @@ export function dispositivoClarvexNativo(): PluginDispositivoClarvex | null {
   return pluginNativo<PluginDispositivoClarvex>("DispositivoClarvex");
 }
 
+export type PluginCalendarioClarvex = {
+  agregarEvento(options: {
+    title: string;
+    date: string;
+    start: string;
+    end: string;
+    location?: string;
+    notes?: string;
+  }): Promise<{ opened: boolean }>;
+};
+
+/** Abre el editor del calendario del sistema; no solicita acceso al calendario. */
+export function calendarioClarvexNativo(): PluginCalendarioClarvex | null {
+  return pluginNativo<PluginCalendarioClarvex>("CalendarioClarvex");
+}
+
 /** Convierte un `file://` privado devuelto por Android en una URL legible por el WebView. */
 export function urlArchivoNativo(ruta: string): string | null {
   const convertir = puente()?.convertFileSrc;

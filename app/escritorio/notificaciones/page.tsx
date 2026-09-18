@@ -29,7 +29,9 @@ const typeMeta: Record<string, { label: string; icon: LucideIcon }> = {
   SHIFT_REQUEST: { label: "Solicitud", icon: CalendarClock },
   INVENTORY_REPORT: { label: "Inventario", icon: PackageSearch },
   NEW_TRAINING: { label: "Capacitación", icon: GraduationCap },
-  CHECKLIST_REMINDER: { label: "Checklist", icon: ClipboardCheck }
+  CHECKLIST_REMINDER: { label: "Checklist", icon: ClipboardCheck },
+  ATTENDANCE_CORRECTION: { label: "Asistencia", icon: CalendarClock },
+  SHIFT_REMINDER: { label: "Turno", icon: CalendarClock }
 };
 
 const typeHref: Record<string, string> = {
@@ -41,7 +43,9 @@ const typeHref: Record<string, string> = {
   DAILY_SUMMARY: "/escritorio/kpis",
   COMMENT_ADDED: "/escritorio/bitacora",
   EVIDENCE_ADDED: "/escritorio/bitacora",
-  CHECKLIST_REMINDER: "/checklist"
+  CHECKLIST_REMINDER: "/checklist",
+  ATTENDANCE_CORRECTION: "/escritorio/notificaciones",
+  SHIFT_REMINDER: "/horarios"
 };
 
 export default function EscritorioNotificaciones() {

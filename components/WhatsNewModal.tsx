@@ -26,7 +26,7 @@ const CAPTURE_URL = "https://captura.adrianluna.mx/rr/app/captura-clarvex";
 // ⚠️ `/producto` es la página PÚBLICA del producto. Un comunicado interno
 // encima de ella es la misma falla que dejó a la demo abriendo con un aviso
 // sobre Grupo Axo: la ve quien viene de fuera, y no le dice nada.
-const EXCLUDED_PATHS = ["/login", "/mantenimiento", "/checklist", "/suspendida", "/producto"];
+const EXCLUDED_PATHS = ["/login", "/mantenimiento", "/checklist", "/mi-dia", "/suspendida", "/producto"];
 
 function canOpenCapture(user: User): boolean {
   return !user.checklistOnly && (user.role === "GERENTE" || user.role === "SUBGERENTE");
