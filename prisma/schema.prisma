@@ -1077,6 +1077,42 @@ model ChecklistScan {
   @@index([storeId, date, itemKey])
 }
 
+/// Una escritura que ya se hizo, para que un reintento no la repita.
+///
+/// ⚠️ **Es el cimiento de la captura sin conexión.** Una cola que reintenta sin
+/// esto duplica: la evidencia del checklist crea un objeto nuevo en R2 y una
+/// fila más en cada intento, y un folio de traspaso capturado dos veces suma sus
+/// piezas dos veces al teórico. El 14 de septiembre de 2026 pasó de verdad con
+/// el folio 1766932, sin cola de por medio.
+///
+/// El cliente manda una clave por operación; el servidor la reserva ANTES de
+/// escribir y guarda la respuesta al terminar. Un segundo intento con la misma
+/// clave recibe la respuesta original en vez de volver a escribir.
+model IdempotentWrite {
+  id        String   @id @default(cuid())
+  /// La clave que manda el cliente. Única DENTRO de la tienda: una tienda no
+  /// puede pisar ni leer la operación de otra adivinando una clave.
+  key       String
+  storeId   String
+  userId    String
+  /// Qué endpoint la atendió. Solo para leer el historial; no forma la clave.
+  route     String
+  /// Huella del cuerpo. La MISMA clave con OTRO cuerpo es un fallo del cliente
+  /// y se rechaza en alto: devolver la respuesta vieja se tragaría una
+  /// escritura real sin que nadie se entere.
+  bodyHash  String
+  /// `null` mientras la operación está en curso. Una clave reservada y sin
+  /// respuesta significa «se está escribiendo, o se cayó a medias»: ahí se
+  /// rechaza el reintento en vez de arriesgar un duplicado.
+  status    Int?
+  response  Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([storeId, key])
+  @@index([createdAt])
+}
+
 model DailyNotificationLog {
   id         String   @id @default(cuid())
   employeeId String
