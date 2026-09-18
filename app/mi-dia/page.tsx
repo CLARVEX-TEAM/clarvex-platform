@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   AlertCircle,
-  Bell,
+  Boxes,
   CalendarPlus,
   Check,
   ChevronRight,
@@ -21,6 +21,7 @@ import {
   WifiOff
 } from "lucide-react";
 import { AppFrame, AppHeader, Button, Card, ProgressBar } from "@/components/ui";
+import { MyDayHero } from "@/components/my-day/MyDayHero";
 import { getSession } from "@/lib/auth";
 import { compressImage } from "@/lib/image-compress";
 import { money } from "@/lib/format";
@@ -321,23 +322,7 @@ export default function MyDayPage() {
           </div>
         ) : null}
 
-        <section className="overflow-hidden rounded-2xl bg-ink px-5 py-5 text-white shadow-[0_14px_30px_rgb(15_23_42_/_0.2)] dark:bg-white dark:text-slate-950">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <h2 className="text-2xl font-semibold tracking-[-0.035em]">Hola, {firstName}</h2>
-              <p className="mt-1 text-sm text-white/70 dark:text-slate-600">{data.shift?.summary ?? "Horario pendiente de cargar"}</p>
-            </div>
-            <span className="rounded-full bg-white/12 px-3 py-1 text-xs font-semibold dark:bg-slate-900/8">{data.device.appVersion}</span>
-          </div>
-          <div className="mt-6 flex items-end justify-between gap-4">
-            <div>
-              <p className="text-xs font-semibold text-white/65 dark:text-slate-600">Avance de venta</p>
-              <p className="mt-0.5 text-xl font-semibold tabular-nums">{money(data.performance.sales)}</p>
-            </div>
-            <p className="text-right text-xs font-semibold text-white/65 dark:text-slate-600">{data.performance.progress}% de {money(data.performance.goal)}</p>
-          </div>
-          <ProgressBar value={data.performance.progress} className="mt-3 bg-white/15 dark:bg-slate-900/10" />
-        </section>
+        <MyDayHero firstName={firstName} appVersion={data.device.appVersion} shift={data.shift} performance={data.performance} />
 
         <Link href={nextAction.href} className="tappable mt-3 flex min-h-20 items-center gap-3 rounded-2xl bg-blue-50 px-4 py-3 text-blue-950 dark:bg-blue-950/35 dark:text-blue-100">
           <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-blue-600 text-white"><Target size={19} /></span>
@@ -448,7 +433,7 @@ export default function MyDayPage() {
             <Quick href="/horarios" icon={<Clock3 size={18} />} label="Horarios" detail={data.shift?.summary ?? "Consultar"} />
             <Quick href="/pendientes" icon={<ClipboardCheck size={18} />} label="Pendientes" detail={`${data.counts.openPendings} abiertos`} />
             <Quick href="/comunicados" icon={<Megaphone size={18} />} label="Comunicados" detail={`${data.counts.unreadAnnouncements} sin leer`} />
-            <Quick href="/notificaciones" icon={<Bell size={18} />} label="Avisos" detail={`${data.counts.unreadNotifications} nuevos`} />
+            <Quick href="/conteos" icon={<Boxes size={18} />} label="Conteos" detail="Inventario y marbetes" />
             {data.capabilities.canOpenChecklist ? <Quick href="/checklist" icon={<Check size={18} />} label="Checklist" detail="Apertura y cierre" /> : null}
             {data.capabilities.canManageDevices ? <Quick href="/dispositivos" icon={<UsersRound size={18} />} label="Dispositivos" detail="Aprobar o revocar" /> : null}
           </div>
