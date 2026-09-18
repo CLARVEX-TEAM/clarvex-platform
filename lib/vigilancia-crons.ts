@@ -116,11 +116,23 @@ export function revisarRegistro(registro: RegistroCron): ProblemaCron | null {
   const { nombre, ultimaLinea, horasSinEscribir, maxHoras } = registro;
 
   if (ultimaLinea === null || horasSinEscribir === null) {
-    const recienProgramado =
-      registro.horasDesdeElCrontab !== null &&
-      maxHoras !== null &&
-      registro.horasDesdeElCrontab < maxHoras;
-    if (recienProgramado) return null;
+    /*
+     * ⚠️ **Sin saber CUÁNDO se programó, esto no se avisa.** Un archivo que no
+     * existe puede ser un cron muerto o uno que se programó anteayer y todavía
+     * no le toca, y las dos cosas se ven idénticas desde aquí.
+     *
+     * Y casi siempre no se sabe: el usuario NO puede fechar su propio crontab
+     * --`/var/spool/cron/crontabs/` está cerrado incluso para su dueño-- así que
+     * `horasDesdeElCrontab` llega en `null` en el servidor real. Se descubrió en
+     * la primera prueba en seco, denunciando al aviso de energía, que
+     * simplemente tenía su corrida dos horas más tarde.
+     *
+     * No se pierde de vista: el guion lo escribe en su resumen (`sinRastro`),
+     * donde se ve sin despertar a nadie. Un vigilante que grita el primer día se
+     * muta, y entonces tampoco avisa el día que importa.
+     */
+    if (registro.horasDesdeElCrontab === null || maxHoras === null) return null;
+    if (registro.horasDesdeElCrontab < maxHoras) return null;
     return { nombre, motivo: "nunca ha dejado salida", detalle: "no existe su archivo de registro" };
   }
 
@@ -146,6 +158,16 @@ export function revisarRegistro(registro: RegistroCron): ProblemaCron | null {
   }
 
   return null;
+}
+
+/**
+ * Los que no han dejado NINGUNA salida todavía.
+ *
+ * No son un problema por sí solos --puede que aún no les toque-- pero conviene
+ * verlos en el resumen: si uno sigue aquí semana tras semana, es que no corre.
+ */
+export function sinRastro(registros: RegistroCron[]): string[] {
+  return registros.filter((r) => r.ultimaLinea === null).map((r) => r.nombre);
 }
 
 export function revisarRegistros(registros: RegistroCron[]): ProblemaCron[] {
