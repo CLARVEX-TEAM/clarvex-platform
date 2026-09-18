@@ -61,11 +61,21 @@ export function shortDayFromDate(date: Date): string {
   return dayDefinitions[date.getUTCDay()].short;
 }
 
+/** Lo que se va juntando mientras se recorre una hoja o un pegado. */
+type Acumulador = {
+  records: ParsedSchedule[];
+  weeks: Set<string>;
+  employeeNumbers: Set<string>;
+  unknownValues: Record<string, number>;
+  problemas: string[];
+};
+
+function nuevoAcumulador(): Acumulador {
+  return { records: [], weeks: new Set(), employeeNumbers: new Set(), unknownValues: {}, problemas: [] };
+}
+
 export function parseScheduleWorkbook(workbook: XLSX.WorkBook): ScheduleParseResult {
-  const records: ParsedSchedule[] = [];
-  const weeks = new Set<string>();
-  const employeeNumbers = new Set<string>();
-  const unknownValues: Record<string, number> = {};
+  const acc = nuevoAcumulador();
 
   for (const sheetName of workbook.SheetNames) {
     const sheet = workbook.Sheets[sheetName];
@@ -75,7 +85,34 @@ export function parseScheduleWorkbook(workbook: XLSX.WorkBook): ScheduleParseRes
       defval: null,
       raw: true
     }) as unknown[][];
+    recorrerFilas(rows, sheetName, acc);
+  }
 
+  return cerrar(acc);
+}
+
+function cerrar(acc: Acumulador): ScheduleParseResult {
+  return {
+    records: deduplicateRecords(acc.records),
+    weeks: Array.from(acc.weeks),
+    employeeNumbers: Array.from(acc.employeeNumbers),
+    unknownValues: acc.unknownValues
+  };
+}
+
+/**
+ * Recorre una matriz de celdas --una hoja del Excel, o un bloque pegado-- y
+ * saca de ahí los días de cada persona.
+ *
+ * ⚠️ **La misma función para las dos entradas, a propósito.** Encontrar el
+ * encabezado, emparejar la fila de fechas, mapear los estados y leer un rango
+ * de horas es lo difícil y ya estaba probado contra el archivo real. Escribir
+ * un segundo lector para el pegado habría creado dos verdades sobre la misma
+ * hoja, que es como se separan sin que nadie lo note.
+ */
+function recorrerFilas(rows: unknown[][], sheetName: string, acc: Acumulador): void {
+  const { records, weeks, employeeNumbers, unknownValues } = acc;
+  {
     for (let headerIndex = 0; headerIndex < rows.length; headerIndex += 1) {
       const columns = detectHeader(rows[headerIndex] ?? []);
       if (!columns) continue;
@@ -88,6 +125,28 @@ export function parseScheduleWorkbook(workbook: XLSX.WorkBook): ScheduleParseRes
         return date ? [{ ...day, date }] : [];
       });
       if (datedDays.length === 0) continue;
+
+      /*
+       * ⚠️ **La hoja se verifica a sí misma: el rótulo del día contra la fecha.**
+       *
+       * En el archivo las fechas son números de serie y no hay ambigüedad, pero
+       * PEGADO llegan como texto --«04/10/2026»-- y ahí día/mes y mes/día son
+       * las dos lecturas posibles. Con la primera sale DOMINGO, LUNES, MARTES…
+       * igual que los rótulos; con la segunda, VIERNES, DOMINGO, MIÉRCOLES.
+       *
+       * Así que la propia hoja dice cuál es la buena, y un pegado que no cuadre
+       * se reporta en vez de adivinarse. Un mes entero de descansos corridos un
+       * día no se ve al revisarlo: se ve cuando alguien no viene a trabajar.
+       */
+      for (const day of datedDays) {
+        const nombreDelDia = dayDefinitions[day.date.getUTCDay()]?.normalized;
+        if (nombreDelDia !== day.normalized) {
+          acc.problemas.push(
+            `${sheetName}: la columna ${day.normalized} trae ${formatDateKey(day.date)}, que cae en ${nombreDelDia}. ` +
+              "Revisa que las fechas estén como día/mes."
+          );
+        }
+      }
 
       const weekStart = datedDays.reduce((earliest, day) => day.date < earliest ? day.date : earliest, datedDays[0].date);
       const weekLabel = findWeekLabel(rows, headerIndex) || formatDateKey(weekStart);
@@ -109,15 +168,13 @@ export function parseScheduleWorkbook(workbook: XLSX.WorkBook): ScheduleParseRes
           const statusRaw = cleanCell(row[day.column]);
           if (!statusRaw) continue;
 
-          // Una celda con rango de horas (ej. "10:30-19:00" o "12-9") es un
-          // turno LABORANDO con hora de entrada y salida. Si no es horario, se
-          // interpreta como estatus (LABORANDO/DESCANSO/...).
-          const shift = parseTimeRange(statusRaw);
-          const status = shift ? "WORKING" : statusMap[normalizeText(statusRaw)];
-          if (!status) {
+          const leido = leerCelda(statusRaw);
+          if (!leido) {
             unknownValues[statusRaw] = (unknownValues[statusRaw] ?? 0) + 1;
             continue;
           }
+          const { status } = leido;
+          const shift = leido.start ? { start: leido.start, end: leido.end ?? "" } : null;
 
           records.push({
             employeeNumber,
@@ -136,18 +193,81 @@ export function parseScheduleWorkbook(workbook: XLSX.WorkBook): ScheduleParseRes
       }
     }
   }
+}
 
-  return {
-    records: deduplicateRecords(records),
-    weeks: Array.from(weeks),
-    employeeNumbers: Array.from(employeeNumbers),
-    unknownValues
-  };
+/**
+ * Lee el bloque que se copia de Excel y se pega en Retool.
+ *
+ * Al copiar, Excel entrega las celdas separadas por TABULADOR y las filas por
+ * salto de línea. Se arma la misma matriz que produce el archivo y se recorre
+ * con la misma función.
+ *
+ * ⚠️ Devuelve además `problemas`: fechas que no cuadran con su rótulo y valores
+ * de celda que no se reconocieron. Quien llama decide si son bloqueantes —lo
+ * son— pero el parser no decide por su cuenta qué se guarda.
+ */
+export function parseSchedulePaste(texto: string): ScheduleParseResult & { problemas: string[] } {
+  const acc = nuevoAcumulador();
+  const filas = texto
+    .replace(/\r\n?/g, "\n")
+    .split("\n")
+    // Una fila enteramente vacía separa semanas en la hoja; se conserva porque
+    // `recorrerFilas` corta bloques por encabezado, no por huecos.
+    .map((linea) => linea.split("\t").map((celda) => (celda.trim() === "" ? null : celda)));
+
+  recorrerFilas(filas, "pegado", acc);
+
+  const resultado = cerrar(acc);
+  const desconocidos = Object.keys(acc.unknownValues);
+  if (desconocidos.length > 0) {
+    acc.problemas.push(`No se reconocieron estos valores de celda: ${desconocidos.join(", ")}.`);
+  }
+  if (resultado.records.length === 0 && acc.problemas.length === 0) {
+    acc.problemas.push("No encontré ninguna semana en lo pegado. Copia desde la fila de DOMINGO…SÁBADO hacia abajo.");
+  }
+  return { ...resultado, problemas: acc.problemas };
 }
 
 // Detecta un rango de horas en la celda: "10:30-19:00", "10:30 a 7", "12-9"…
 // Convención retail: si la hora de salida es menor o igual a la de entrada, se
 // asume PM (entra 12, sale 9 → 21:00). Devuelve horas normalizadas "HH:MM".
+/**
+ * Qué dice una celda del horario.
+ *
+ * Tres formas, y las tres se usan en la hoja de la tienda:
+ *
+ *   `LABORANDO`              → trabaja, con el horario estándar
+ *   `10:30-19:00`            → trabaja, con esa hora
+ *   `LABORANDO 12:00-21:00`  → trabaja, con esa hora, sin perder la palabra
+ *
+ * ⚠️ **La tercera es la que pidió la tienda** (18 de septiembre de 2026): su
+ * hoja no tiene horas, y escribirlas solo en los turnos que se salen del
+ * estándar es lo que evita inventar un 10:30 para todo el mundo. Antes había
+ * que BORRAR la palabra y dejar solo el rango, y una hoja que se lee distinto
+ * según lo que alguien recuerde borrar es una hoja que se va a leer mal.
+ *
+ * ⚠️ Un estado que NO es de trabajo se queda sin horas aunque la celda las
+ * traiga: un descanso con horario no significa nada, y guardarlas haría que la
+ * asistencia lo midiera como si hubiera venido.
+ */
+function leerCelda(bruto: string): { status: ParsedScheduleStatus; start: string | null; end: string | null } | null {
+  const soloRango = parseTimeRange(bruto);
+  if (soloRango) return { status: "WORKING", start: soloRango.start, end: soloRango.end };
+
+  const conPalabra = bruto.match(/^(.*?)[\s,;]+(\d{1,2}(?::\d{2})?\s*(?:-|–|—|a|to)\s*\d{1,2}(?::\d{2})?)$/i);
+  if (conPalabra?.[1] && conPalabra[2]) {
+    const status = statusMap[normalizeText(conPalabra[1])];
+    const rango = parseTimeRange(conPalabra[2]);
+    if (status && rango) {
+      const trabaja = status === "WORKING" || status === "INVENTORY";
+      return { status, start: trabaja ? rango.start : null, end: trabaja ? rango.end : null };
+    }
+  }
+
+  const status = statusMap[normalizeText(bruto)];
+  return status ? { status, start: null, end: null } : null;
+}
+
 function parseTimeRange(value: unknown): { start: string; end: string } | null {
   const text = cleanCell(value);
   const match = text.match(/^(\d{1,2})(?::(\d{2}))?\s*(?:-|–|—|a|to)\s*(\d{1,2})(?::(\d{2}))?$/i);
