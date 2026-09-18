@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { canUseChecklist } from "@/lib/access-control";
+import { createHash } from "node:crypto";
 import { enforceUploadRateLimit, isApiError, parseJson, requireSession } from "@/lib/api";
+import { claveDeLaPeticion, conIdempotencia } from "@/lib/idempotencia-db";
 import { getStoreChecklistItem, loadStoreChecklistItems, type StoreChecklistItem } from "@/lib/checklist-store";
 import { resolveMonterreyDate } from "@/lib/cron-time";
 import { prisma } from "@/lib/prisma";
@@ -104,6 +106,8 @@ export async function POST(request: Request) {
   let note: string | null = null;
   let date: string;
   let evidenceUrl: string | undefined;
+  /** La evidencia ya validada, todavía sin subir. */
+  let imagen: { bytes: Uint8Array; tipo: string; extension: string } | null = null;
 
   if (contentType.includes("multipart/form-data")) {
     const form = await request.formData().catch(() => null);
@@ -119,12 +123,13 @@ export async function POST(request: Request) {
       const bytes = new Uint8Array(await imageFile.arrayBuffer());
       const validation = validateProfilePhoto(imageFile, bytes);
       if (!validation.valid) return NextResponse.json({ error: validation.error }, { status: 400 });
-      const key = storeKey(session.storeId, "checklist", `${itemKey}-${Date.now()}.${validation.extension}`);
-      try {
-        evidenceUrl = await uploadToR2(key, bytes, imageFile.type);
-      } catch {
-        return NextResponse.json({ error: "No se pudo subir la evidencia." }, { status: 500 });
-      }
+      /*
+       * ⚠️ Aquí solo se VALIDA; la subida ocurre dentro de la guarda de
+       * idempotencia, más abajo. Subiendo aquí, un reintento dejaría un objeto
+       * nuevo en R2 --el nombre lleva `Date.now()`-- antes de que nadie pudiera
+       * darse cuenta de que es el mismo intento. La guarda no serviría de nada.
+       */
+      imagen = { bytes, tipo: imageFile.type, extension: validation.extension };
     }
   } else {
     const parsed = await parseJson(request, jsonSchema);
@@ -138,41 +143,82 @@ export async function POST(request: Request) {
   const def = await getStoreChecklistItem(session.storeId, itemKey);
   if (!def) return NextResponse.json({ error: "Item de checklist no válido." }, { status: 400 });
 
+  /*
+   * ⚠️ Desde aquí hasta la respuesta va dentro de la guarda de idempotencia,
+   * SUBIDA INCLUIDA.
+   *
+   * Marcar la tarea es inofensivo de repetir --el upsert escribe lo mismo-- pero
+   * la evidencia no: cada intento crearía un objeto nuevo en R2 y otra fila. Es
+   * justo lo que hará una cola sin conexión al reintentar desde la tienda.
+   *
+   * Sin cabecera `Idempotency-Key` todo se comporta igual que antes: la guarda
+   * se AÑADE a quien la pide y no se le impone a lo que ya funciona.
+   */
+  /*
+   * ⚠️ Se capturan aquí y no dentro: en una función anidada TypeScript pierde
+   * el estrechamiento que dieron `isApiError` y la comprobación de `def`,
+   * porque el cierre podría llamarse más tarde.
+   */
+  const sesion = session;
+  const definicion = def;
+  const huellaImagen = imagen ? createHash("sha256").update(imagen.bytes).digest("hex") : null;
+  const resultado = await conIdempotencia(
+    {
+      clave: claveDeLaPeticion(request),
+      storeId: session.storeId,
+      userId: session.userId,
+      route: "/api/checklist",
+      cuerpo: { itemKey, completed, note, date, huellaImagen }
+    },
+    async () => guardarChecklist()
+  );
+  return NextResponse.json(resultado.body, { status: resultado.status });
+
+  async function guardarChecklist(): Promise<{ status: number; body: unknown }> {
+  if (imagen) {
+    const key = storeKey(sesion.storeId, "checklist", `${itemKey}-${Date.now()}.${imagen.extension}`);
+    try {
+      evidenceUrl = await uploadToR2(key, imagen.bytes, imagen.tipo);
+    } catch {
+      return { status: 500, body: { error: "No se pudo subir la evidencia." } };
+    }
+  }
+
   const base = {
-    section: def.section,
+    section: definicion.section,
     completed,
     note,
-    completedBy: completed ? session.userId : null,
+    completedBy: completed ? sesion.userId : null,
     completedAt: completed ? new Date() : null,
     ...(evidenceUrl ? { evidenceUrl } : {})
   };
 
   await prisma.checklistEntry.upsert({
-    where: { storeId_date_itemKey: { storeId: session.storeId, date, itemKey } },
+    where: { storeId_date_itemKey: { storeId: sesion.storeId, date, itemKey } },
     update: base,
-    create: { storeId: session.storeId, date, itemKey, ...base }
+    create: { storeId: sesion.storeId, date, itemKey, ...base }
   });
 
   // Si se subió foto de evidencia, avísale al canal de Telegram (igual que las
   // evidencias de pendientes/faltantes). Fire-and-forget: la evidencia YA quedó
   // guardada; que n8n esté caído no rompe la subida.
-  if (evidenceUrl && isPhotoWebhookEnabled(session.storeId)) {
+  if (evidenceUrl && isPhotoWebhookEnabled(sesion.storeId)) {
     const capturedUrl = evidenceUrl;
-    const item = def.label.replace(/^Escanear\s+/i, "");
+    const item = definicion.label.replace(/^Escanear\s+/i, "");
     const capturedNote = note;
     const createdAt = new Date();
     void (async () => {
-      const store = await prisma.store.findUnique({ where: { id: session.storeId }, select: { name: true } });
+      const store = await prisma.store.findUnique({ where: { id: sesion.storeId }, select: { name: true } });
       const signed = await signR2Url(capturedUrl, 6 * 60 * 60);
       await sendPhotoWebhook({
         type: "checklist",
         format: "photo",
-        storeId: session.storeId,
+        storeId: sesion.storeId,
         storeName: store?.name ?? "Tienda",
         caption: checklistEvidenceCaption({
           storeName: store?.name ?? "Tienda",
-          uploaderName: session.name,
-          employeeNumber: session.employeeNumber,
+          uploaderName: sesion.name,
+          employeeNumber: sesion.employeeNumber,
           item,
           note: capturedNote,
           createdAt
@@ -184,5 +230,6 @@ export async function POST(request: Request) {
     })().catch(() => undefined);
   }
 
-  return NextResponse.json(await loadChecklist(session.storeId, date));
+    return { status: 200, body: await loadChecklist(sesion.storeId, date) };
+  }
 }
