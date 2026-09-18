@@ -91,9 +91,75 @@ function puente(): PuenteCapacitor | null {
   return cap ?? null;
 }
 
-/** `true` solo dentro de la app instalada; `false` en navegador y en la PWA. */
+/**
+ * La marca que el contenedor añade a su User-Agent (`appendUserAgent` en
+ * `capacitor.config.ts`, en `clarvex-movil`).
+ *
+ * ⚠️ Se compara el PREFIJO, nunca la versión completa: cada APK escribe la
+ * suya --`ClarvexApp/1.3`, `1.4`, `1.5`, `1.5.1`, `1.6`-- y buscar una exacta
+ * dejaría fuera a todos los teléfonos que no se hayan actualizado. Comprobado
+ * contra el registro del proxy: 2,839 peticiones reales con las cinco.
+ */
+const MARCA_APP = "ClarvexApp/";
+
+function marcaDeLaApp(): boolean {
+  if (typeof navigator === "undefined") return false;
+  return navigator.userAgent.includes(MARCA_APP);
+}
+
+/**
+ * `true` solo dentro de la app instalada; `false` en navegador y en la PWA.
+ *
+ * ⚠️ **Se miran DOS señales, y la del agente es la que no compite.**
+ *
+ * `window.Capacitor` lo inyecta el contenedor con `addDocumentStartJavaScript`,
+ * así que en un arranque en frío puede no estar todavía cuando alguien
+ * pregunta. Y quien pregunta primero es la raíz de la app: si contesta que no,
+ * manda a `/advisor` o `/manager` --la portada de la WEB-- dentro de la APK.
+ *
+ * Reportado por el gerente el 18 de septiembre de 2026 («cuando recién entro me
+ * aparece la interfaz de la web, tengo que cambiar de pantalla y regresar»), y
+ * lo mismo tras actualizar la APK, que es otro arranque en frío. Queda en el
+ * registro del proxy, con la misma marca de segundo:
+ *
+ *     13:12:36  "/"          la app abre la raíz
+ *     13:12:36  "/manager"   y la raíz la manda a la portada web
+ *
+ * El User-Agent, en cambio, lo fija el WebView ANTES de cargar nada: viaja en
+ * la primera petición y está en `navigator.userAgent` desde la primera línea de
+ * JavaScript. No hay carrera posible.
+ *
+ * ⚠️ **Esto NO sustituye a `isPluginAvailable`.** Decir «soy la app» no dice
+ * que los plugins hayan llegado --son dos piezas distintas del puente y esa
+ * confusión ya costó el candado de la huella--. Quien necesite un plugin sigue
+ * pidiéndolo por `pluginNativo()`, que mira `PluginHeaders`.
+ *
+ * ⚠️ Y es una decisión de INTERFAZ, no una frontera de seguridad: un agente se
+ * falsifica en dos clics. Lo que protege de verdad las APIs nativas es la
+ * sesión y la firma del dispositivo, que no cambian.
+ */
 export function enContenedorNativo(): boolean {
-  return puente()?.isNativePlatform?.() === true;
+  // El puente es la respuesta buena en cuanto existe.
+  if (puente()?.isNativePlatform?.() === true) return true;
+  // Y el agente cubre el hueco de antes, que es justo el arranque.
+  return marcaDeLaApp();
+}
+
+/**
+ * A dónde lleva «volver al inicio».
+ *
+ * ⚠️ Siete pantallas --Conteos, Pendientes, Plan, Bitácora, Equipo, Suscripción
+ * y Administración-- piden volver a `/manager`, que era la portada cuando se
+ * escribieron. Dentro de la APK la portada es «Mi día», así que ese botón
+ * sacaba de la experiencia de la app a la de la web, con el mismo efecto que el
+ * fallo de arranque pero provocado a mano.
+ *
+ * Solo traduce las DOS portadas. Cualquier otro destino se respeta tal cual:
+ * un «atrás» que lleva a la pantalla padre no tiene nada que ver con esto.
+ */
+export function rutaDeInicio(destino: string): string {
+  if (destino !== "/manager" && destino !== "/advisor") return destino;
+  return enContenedorNativo() ? "/mi-dia" : destino;
 }
 
 /** "android", "ios" o "web". Sirve para etiquetar el aparato al registrarlo. */
