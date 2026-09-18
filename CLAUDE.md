@@ -1,5 +1,86 @@
 # Clarvex Team — CLAUDE.md
 
+## Estado funcional y roadmap después de APK 1.6 — 17 de septiembre de 2026
+
+La versión vigente es APK 1.6/código 8 con la web del merge
+`1d08e2ce2cf7b5bc51289c0f73c1e65124a9c8a3`, release
+`/home/ubuntu/clarvex/releases/20260918-032158-1d08e2c` y build `mu6e7e6v`.
+Las capturas entregadas por el usuario demuestran instalación y apertura reales
+de «Mi día» en teléfono, tanto en tema claro como oscuro. El pulido de la tarjeta
+y el acceso a Conteos es web dentro del contenedor: no cambia APK, firma,
+manifiesto, migraciones o cron y llega al volver a cargar con conexión.
+
+### Inventario exacto de 1.6
+
+1. **Entrada y alcance.** `/mi-dia` solo funciona dentro del contenedor Android
+   personal. Fuera de Android redirige a la portada correspondiente al rol. Un
+   perfil `checklistOnly` o KIOSK abre Checklist directamente y la API nativa de
+   «Mi día» le responde 403.
+2. **Resumen diario.** La portada presenta usuario/tienda/fecha, hora de
+   Monterrey, estado o cuenta regresiva del turno, uniforme, asistencia, venta,
+   meta, restante, porcentaje, tickets, prendas, plan publicado, pendientes y
+   comunicados. Conserva la última respuesta como copia local de solo lectura.
+3. **Accesos rápidos.** Horarios, Pendientes, Comunicados y Conteos están
+   disponibles en la portada; Conteos abre `/conteos` para el inventario y los
+   marbetes ya existentes. Checklist y Dispositivos dependen de
+   `canOpenChecklist`/`canManageDevices`, concedidos a GERENTE, SUBGERENTE o
+   administrador de plataforma.
+4. **Correcciones de asistencia.** Cualquier usuario de la portada puede pulsar
+   «Corregir», proponer estado/entrada/salida, escribir un motivo y adjuntar una
+   imagen opcional. GERENTE, SUBGERENTE o administrador pueden revisar
+   solicitudes pendientes de otra persona. La evidencia se abre con URL firmada
+   temporal; nadie aprueba su propia solicitud y cada decisión queda auditada.
+5. **Calendario.** El botón se calcula con tres condiciones: `shift.start`,
+   `shift.end` y disponibilidad de `CalendarioClarvex`. Por eso una captura con
+   «Jornada programada» pero sin horas no muestra Calendario. El plugin abre el
+   editor del sistema con los datos propuestos y no solicita acceso para leer o
+   escribir calendarios.
+6. **Dispositivos y avisos.** Gerencia puede consultar, revocar y reactivar
+   equipos. Revocar elimina retos y tokens FCM asociados; el teléfono cierra la
+   sesión al comprobar su estado. Las notificaciones abren la sección pertinente
+   de «Mi día». `/api/cron/shift-reminder` deduplica por usuario/día y el servidor
+   lo ejecuta cada 15 minutos.
+7. **Límite offline.** La pantalla abre la última jornada guardada sin red, pero
+   no permite crear operaciones offline. Correcciones, checklist, asistencia y
+   soporte todavía necesitan conexión para persistir.
+
+### Módulos que ya existen frente al trabajo futuro
+
+La plataforma ya tiene las rutas generales `/capacitacion`, `/kudos` y
+`/soporte`, además de sus APIs. No contarlas como nuevas funciones de 1.7. Lo
+pendiente es crear su recorrido integrado, coherente y exclusivo dentro de APK,
+con las funciones adicionales descritas abajo.
+
+### APK 1.7 — alcance planeado, sin implementar
+
+1. **Credencial digital:** identidad visible en la APK, QR verificable, vigencia
+   y validación del lado servidor.
+2. **Capacitación integrada:** unidades, preguntas, avance, resultado y
+   certificado desde el flujo móvil.
+3. **Reconocimiento personal:** Kudos y objetivos personales resumidos en
+   «Mi día», con acceso al historial correspondiente.
+4. **Centro de soporte:** alta de caso con folio, categoría, evidencia,
+   conversación, estado y tiempo de atención.
+5. **Procedencia de dispositivo:** Android Key Attestation que valide paquete y
+   digest del certificado, más aprobación gerencial como alternativa para
+   equipos incompatibles. La vinculación P-256 actual solo prueba posesión de la
+   llave registrada.
+
+### APK 1.8 — alcance planeado, sin implementar
+
+1. Cola persistente de operaciones y sincronización mediante WorkManager.
+2. Checklist, evidencias, asistencia y soporte con escritura sin conexión,
+   reintentos idempotentes y resolución visible de conflictos.
+3. Escáner nativo de códigos de barras/QR conectado a Conteos.
+4. Kiosco administrado con lock task, autoarranque y políticas de dispositivo.
+5. Telemetría de salud del equipo: app/WebView, almacenamiento, red, cámara,
+   notificaciones, hora automática y última sincronización.
+
+La visibilidad por Capacitor es una decisión de interfaz, no una frontera de
+seguridad. Las APIs deben conservar sesión, rol, tienda y firma del dispositivo;
+no describir ninguna función como exclusiva criptográficamente de la APK hasta
+completar Key Attestation.
+
 ## Pulido de «Mi día» 1.6 — publicado — 17 de septiembre de 2026
 
 El usuario autorizó integrar y publicar. PR 98 quedó integrado en plataforma
@@ -73,7 +154,8 @@ APK publicada a las `2026-09-18T03:01:17Z` en
 activar `version.json`, conservó APK 1.5.1 y el respaldo
 `version-antes-de-1.6-20260918T030130Z.json`. `versionPublicada()` devuelve 1.6,
 tamaño y hash correctos. Los endpoints sin sesión responden 401 y el POST del
-cron sin secreto también. Falta aceptación en teléfono real. No describir la
+cron sin secreto también. Las capturas posteriores del usuario confirman la
+instalación y apertura reales de «Mi día» 1.6 en teléfono. No describir la
 vinculación existente como atestación de procedencia oficial.
 
 ## Vinculación de dispositivo y APK 1.5.1 — publicadas — 17 de septiembre de 2026

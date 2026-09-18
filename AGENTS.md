@@ -1,5 +1,71 @@
 # AGENTS.md
 
+## Estado funcional y ruta después de APK 1.6 — 17 de septiembre de 2026
+
+La versión vigente es APK 1.6/código 8 con la web del merge `1d08e2c` en la
+release `20260918-032158-1d08e2c` y build `mu6e7e6v`. Las capturas del usuario
+confirman instalación y apertura reales de «Mi día» en teléfono, incluidos tema
+claro/oscuro y los datos de jornada. El pulido web posterior no requiere otra
+APK; se recibe al volver a cargar el contenedor con conexión.
+
+### Qué está terminado en 1.6 y cuándo aparece
+
+- «Mi día» es una portada exclusiva del contenedor Android personal. Resume
+  turno, uniforme, asistencia, venta/meta/restante, tickets, prendas, plan,
+  pendientes, comunicados y accesos rápidos. El navegador/PWA conserva su
+  portada; el perfil kiosco abre directamente Checklist y recibe 403 si intenta
+  usar la API de «Mi día».
+- Accesos rápidos muestra Horarios, Pendientes, Comunicados y Conteos para los
+  usuarios de la portada. Checklist y Dispositivos aparecen solo cuando la API
+  concede capacidad de gerencia: GERENTE, SUBGERENTE o administrador de
+  plataforma. Conteos abre `/conteos` y cubre inventario/marbetes existentes.
+- «Corregir» permite solicitar un cambio de asistencia con motivo y evidencia
+  opcional. Gerencia puede aprobar o rechazar solicitudes de otra persona, ver
+  evidencia mediante URL firmada y nunca aprobar la propia.
+- Calendario aparece únicamente si el día tiene `start` y `end` exactos y el
+  binario expone `CalendarioClarvex`. Una jornada que solo dice «Jornada
+  programada» no muestra el botón. Al usarlo se abre el editor del calendario
+  del sistema; Clarvex no pide permiso de lectura/escritura del calendario.
+- Dispositivos permite a gerencia consultar, revocar y reactivar equipos. Una
+  revocación elimina retos/tokens FCM asociados y fuerza cierre de sesión cuando
+  el teléfono comprueba su estado.
+- Las notificaciones nativas abren la sección relacionada de «Mi día» y el
+  recordatorio de turno se deduplica por usuario/día. La copia offline actual es
+  solo lectura de la última jornada; no existe todavía una cola de escrituras.
+
+### Funciones existentes que no deben presentarse como novedades 1.7
+
+Las rutas generales `/capacitacion`, `/kudos` y `/soporte` ya existen en la
+plataforma. Lo pendiente es convertirlas en experiencias integradas y exclusivas
+de APK con los alcances siguientes; su mera existencia no significa que ese
+trabajo esté terminado.
+
+### Plan 1.7 — pendiente de implementación
+
+1. Credencial digital con QR verificable y reglas de vigencia.
+2. Capacitación dentro de la APK con unidades, preguntas, avance y certificado.
+3. Reconocimientos y resumen de objetivos personales dentro de «Mi día».
+4. Centro de soporte con folio, evidencia, conversación, estado y tiempo de
+   atención.
+5. Android Key Attestation del paquete/certificado, con aprobación gerencial
+   para equipos incompatibles. Hasta entonces la P-256 registrada demuestra
+   posesión de la llave, no procedencia criptográfica de la APK oficial.
+
+### Plan 1.8 — pendiente de implementación
+
+1. Cola persistente y sincronización con WorkManager.
+2. Checklist, evidencias, asistencia y soporte con escritura sin conexión y
+   resolución explícita de conflictos.
+3. Lector nativo de códigos de barras/QR para Conteos.
+4. Modo kiosco administrado: lock task, autoarranque y políticas del equipo.
+5. Telemetría operativa de salud, almacenamiento, red, cámara, notificaciones y
+   última sincronización de los dispositivos.
+
+No afirmar que ocultar componentes con Capacitor vuelve una función segura o
+exclusiva por sí sola. La autorización del servidor y la firma del dispositivo
+siguen siendo obligatorias; la procedencia oficial requiere la atestación
+pendiente.
+
 ## Pulido de «Mi día» 1.6 publicado — 17 de septiembre de 2026
 
 El usuario autorizó integrar y publicar el ajuste visual. PR 98 quedó integrado
@@ -63,8 +129,9 @@ Firma v1/v2 y certificado estable; candidata reproducible en
 El servidor validó bytes/hash antes de reemplazar el manifiesto y conservó
 `version-antes-de-1.6-20260918T030130Z.json`. `versionPublicada()` confirma
 versión, bytes y hash; versión, descarga y rutas nativas siguen en 401 sin
-sesión. Pendiente aceptación en teléfono real. La vinculación P-256 todavía no
-equivale a Android Key Attestation.
+sesión. Las capturas posteriores del usuario confirman instalación y apertura
+reales de «Mi día» 1.6. La vinculación P-256 todavía no equivale a Android Key
+Attestation.
 
 ## Vinculación de dispositivo y APK 1.5.1 publicadas — 17 de septiembre de 2026
 
