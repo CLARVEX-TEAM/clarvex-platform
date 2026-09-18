@@ -17,6 +17,12 @@ import { claveValida, decidir, huellaDelCuerpo } from "@/lib/idempotencia";
  * ⚠️ Sin clave, la escritura corre tal cual. La idempotencia se AÑADE a quien
  * la pide, no se impone: obligarla rompería a todo lo que ya escribe hoy.
  */
+/*
+ * ⚠️ Los dos 409 llevan `codigo` porque significan lo CONTRARIO para quien
+ * reintenta: «en-curso» hay que volver a intentarlo, «clave-repetida» no se va a
+ * arreglar nunca. Distinguirlos leyendo el texto del error ataría la cola a una
+ * frase que alguien reescribirá.
+ */
 export type Respuesta = { status: number; body: unknown };
 
 export type ResultadoIdempotente = Respuesta & {
@@ -68,14 +74,14 @@ export async function conIdempotencia(
     if (decision.decision === "conflicto") {
       return {
         status: 409,
-        body: { error: "Esa clave ya se usó para otra operación distinta." },
+        body: { error: "Esa clave ya se usó para otra operación distinta.", codigo: "clave-repetida" },
         repetida: false
       };
     }
     if (decision.decision === "en-curso") {
       return {
         status: 409,
-        body: { error: "Esa operación se está guardando. Vuelve a consultar antes de reintentar." },
+        body: { error: "Esa operación se está guardando. Vuelve a consultar antes de reintentar.", codigo: "en-curso" },
         repetida: false
       };
     }
