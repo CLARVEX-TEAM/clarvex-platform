@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import test from "node:test";
 import { ADVISOR_WHERE, NOTIFIABLE_WHERE, PERSON_WHERE, isRealPerson } from "../lib/store-people";
@@ -57,4 +57,52 @@ test("isRealPerson sigue siendo sobre el aparato, no sobre la demo", () => {
   assert.equal(isRealPerson({ active: true, checklistOnly: false }), true);
   assert.equal(isRealPerson({ active: true, checklistOnly: true }), false);
   assert.equal(isRealPerson({ active: false }), false);
+});
+
+test("ningun cron avisa a una persona dada de BAJA", () => {
+  /*
+   * ⚠️ Dos se habían quedado sin `active: true`: `pending-overdue-managers` y
+   * `week-goal-alert`. El día que se dé de baja a un gerente, seguiría
+   * recibiendo los avisos de su tienda — y una baja no se entera de que los
+   * recibe de más, así que nadie lo reporta.
+   *
+   * Cuando se encontró, los siete gerentes estaban activos: el fallo era real y
+   * su daño, cero. Es la clase de cosa que solo se ve buscándola.
+   *
+   * Mira el código fuente. No prueba que Postgres filtre; prueba que nadie
+   * quite el filtro sin enterarse.
+   */
+  const carpeta = path.join(__dirname, "..", "app", "api", "cron");
+  const conGerencia = readdirSync(carpeta).filter((n) => {
+    const ruta = path.join(carpeta, n, "route.ts");
+    return existsSync(ruta) && /GERENTE/.test(readFileSync(ruta, "utf8"));
+  });
+
+  assert.ok(conGerencia.length >= 5, "esperaba varios crons que avisen a gerencia");
+
+  /*
+   * ⚠️ Se mira una VENTANA de texto alrededor de cada «SUBGERENTE», no un
+   * regex de llaves balanceadas: eso no se puede con expresiones regulares y el
+   * primer intento dio cuatro falsos positivos --cortaba la llave en el
+   * `{ in: [...] }` del propio rol--. Un vigilante que grita sin motivo se
+   * ignora, y entonces no sirve de nada.
+   */
+  const sinFiltro: string[] = [];
+  for (const nombre of conGerencia) {
+    const fuente = readFileSync(path.join(carpeta, nombre, "route.ts"), "utf8");
+    let desde = 0;
+    for (;;) {
+      const donde = fuente.indexOf("SUBGERENTE", desde);
+      if (donde === -1) break;
+      desde = donde + 1;
+      const ventana = fuente.slice(Math.max(0, donde - 260), donde + 260);
+      // Solo interesan las consultas de USUARIOS; hay otros usos del rol.
+      if (!/user.findMany|users.findMany/.test(ventana)) continue;
+      if (/active:\s*true/.test(ventana)) continue;
+      if (/NOTIFIABLE_WHERE|PERSON_WHERE|ADVISOR_WHERE/.test(ventana)) continue;
+      sinFiltro.push(nombre);
+    }
+  }
+
+  assert.deepEqual(sinFiltro, [], `Estos crons avisarían a una persona dada de baja:\n${sinFiltro.join("\n")}`);
 });

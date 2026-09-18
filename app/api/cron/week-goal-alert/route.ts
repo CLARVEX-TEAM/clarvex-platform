@@ -47,7 +47,7 @@ export async function POST(request: Request) {
 
   for (const store of stores) {
     const managers = await prisma.user.findMany({
-      where: { storeId: store.id, role: { in: ["GERENTE", "SUBGERENTE"] } },
+      where: { storeId: store.id, role: { in: ["GERENTE", "SUBGERENTE"] }, active: true },
       select: { id: true, role: true, name: true, employeeNumber: true }
     });
     if (managers.length === 0) {

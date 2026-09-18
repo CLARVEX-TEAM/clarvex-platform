@@ -33,7 +33,7 @@ export async function POST(request: Request) {
   for (const store of stores) {
     const [managers, pendings] = await Promise.all([
       prisma.user.findMany({
-        where: { storeId: store.id, role: { in: ["GERENTE", "SUBGERENTE"] } },
+        where: { storeId: store.id, role: { in: ["GERENTE", "SUBGERENTE"] }, active: true },
         select: { id: true }
       }),
       prisma.pending.findMany({
