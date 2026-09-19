@@ -31,6 +31,8 @@ import { QuincenaCard } from "@/components/home/QuincenaCard";
 import { useAppData } from "@/lib/use-app-data";
 import { BlurFade } from "@/components/magic/BlurFade";
 import { ShineBorder } from "@/components/magic/ShineBorder";
+import { debeIrAMiDia } from "@/lib/portada";
+import { enContenedorNativo } from "@/lib/puente-nativo";
 
 const cardAnim = (delay: number) => ({
   initial: { opacity: 0, y: 12 },
@@ -84,6 +86,14 @@ export default function AdvisorDashboard() {
         if (!session) {
           noteLoginBounce("advisor");
           router.replace("/login");
+        } else if (debeIrAMiDia(session, enContenedorNativo())) {
+          /*
+           * ⚠️ La guarda va en el DESTINO, no solo en quien navega. Esta pantalla
+           * es la portada de la WEB: dentro de la APK no se debe ver nunca, y se
+           * llega por más de veinte sitios. Arreglar los orígenes uno a uno ya
+           * dejó fuera el login y el fallo se reportó dos veces el mismo día.
+           */
+          router.replace("/mi-dia");
         } else {
           clearLoginBounces();
           setUser(session);

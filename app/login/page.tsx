@@ -27,6 +27,8 @@ import { ConfirmStep } from "./ConfirmStep";
 import { ProfileStep } from "./ProfileStep";
 import { ReadyStep } from "./ReadyStep";
 import { EmailStep } from "./EmailStep";
+import { enContenedorNativo } from "@/lib/puente-nativo";
+import { portadaDe } from "@/lib/portada";
 
 type Step = "employee" | "greeting" | "pin" | "confirm" | "profile" | "ready" | "email";
 
@@ -132,7 +134,7 @@ export default function LoginPage() {
         setStep("email");
         return;
       }
-      goToDashboard(result.user.role);
+      goToDashboard(result.user);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "No fue posible iniciar sesión.");
       setStep("pin");
@@ -141,8 +143,14 @@ export default function LoginPage() {
     }
   }
 
-  function goToDashboard(role: string) {
-    router.replace(role === "ASESOR" ? "/advisor" : "/manager");
+  function goToDashboard(quien: { role: string; checklistOnly?: boolean }) {
+    /*
+     * ⚠️ Por `portadaDe`, no a mano. Entrar con el PIN dentro de la APK caía en
+     * la portada de la WEB: el arreglo del arranque en frío cubrió la raíz y
+     * los botones de volver, y se olvidó de este camino --que es por donde se
+     * entra en la primera instalación.
+     */
+    router.replace(portadaDe(quien, enContenedorNativo()));
     router.refresh();
   }
 
@@ -161,7 +169,7 @@ export default function LoginPage() {
       const payload = (await response.json().catch(() => ({}))) as { error?: string };
       throw new Error(payload.error || "No se pudo guardar el correo.");
     }
-    goToDashboard(user?.role ?? "ASESOR");
+    goToDashboard(user ?? { role: "ASESOR" });
   }
 
   function updatePin(value: string) {
@@ -270,7 +278,7 @@ export default function LoginPage() {
       const result = await authenticateBiometric(employeeNumber, authentication);
       await saveProfileWithAvatar(result.user);
       markDesktopFreshLogin();
-      router.replace(result.user.role === "ASESOR" ? "/advisor" : "/manager");
+      router.replace(portadaDe(result.user, enContenedorNativo()));
       router.refresh();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Autenticación biométrica fallida.");
@@ -382,7 +390,7 @@ export default function LoginPage() {
               isDark={isDark}
               card={card}
               onSave={saveEmailAndContinue}
-              onSkip={() => goToDashboard(user?.role ?? "ASESOR")}
+              onSkip={() => goToDashboard(user ?? { role: "ASESOR" })}
             />
           ) : null}
         </AnimatePresence>

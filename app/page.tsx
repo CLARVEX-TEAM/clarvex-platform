@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { enContenedorNativo } from "@/lib/puente-nativo";
+import { portadaDe } from "@/lib/portada";
 
 export default function HomePage() {
   const router = useRouter();
@@ -21,7 +22,7 @@ export default function HomePage() {
         try {
           const session = await getSession();
           if (cancelled) return;
-          router.replace(session ? (enContenedorNativo() ? "/mi-dia" : session.role === "ASESOR" ? "/advisor" : "/manager") : "/login");
+          router.replace(session ? portadaDe(session, enContenedorNativo()) : "/login");
           return;
         } catch {
           if (cancelled) return;
