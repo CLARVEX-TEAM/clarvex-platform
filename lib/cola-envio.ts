@@ -1,6 +1,6 @@
 "use client";
 
-import { borrar, guardar, leerTodo, type OperacionGuardada } from "@/lib/cola-almacen";
+import { borrar, cuerpoDe, guardar, leerTodo, type OperacionGuardada } from "@/lib/cola-almacen";
 import { resumenDeLaCola, siguiente, tras, veredicto, type Veredicto } from "@/lib/cola-offline";
 import { SinRed, nativeDeviceFetch } from "@/lib/native-device-client";
 
@@ -177,7 +177,22 @@ export async function drenar(): Promise<void> {
       const op = siguiente(cola);
       if (!op) break;
 
-      const { status, codigo, local } = await intentar(op);
+      /*
+       * ⚠️ El cuerpo se pide AHORA, no al listar. Con el almacén nativo,
+       * veinticinco fotos en base64 a la vez no caben en memoria; y además el
+       * trabajo en segundo plano puede haber mandado y borrado esta operación
+       * mientras la app estaba cerrada.
+       */
+      const conCuerpo = await cuerpoDe(op);
+      if (conCuerpo === null) {
+        // Ya no está: la mandó Android y la borró. No es un fallo, es que llegó.
+        await borrar(op.id);
+        cola = cola.filter((otra) => otra.id !== op.id);
+        avisar(EVENTO_ENTREGA);
+        continue;
+      }
+
+      const { status, codigo, local } = await intentar(conCuerpo);
       const fallo: Veredicto = local ? { decision: "rendirse", motivo: local } : veredicto(status, codigo);
       const despues = tras(op, fallo);
 
@@ -186,7 +201,7 @@ export async function drenar(): Promise<void> {
         cola = cola.filter((otra) => otra.id !== op.id);
         avisar(EVENTO_ENTREGA);
       } else {
-        const actualizada = { ...op, ...despues } as OperacionGuardada;
+        const actualizada = { ...conCuerpo, ...despues } as OperacionGuardada;
         await guardar(actualizada);
         cola = cola.map((otra) => (otra.id === op.id ? actualizada : otra));
         // Sigue pendiente: no hay red o el servidor no está. Parar aquí y
