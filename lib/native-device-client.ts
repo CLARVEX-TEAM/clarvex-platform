@@ -18,6 +18,18 @@ type RegisteredDevice = {
   appVersion: string;
 };
 
+/**
+ * La petición no llegó a salir.
+ *
+ * ⚠️ **No es lo mismo que «el servidor dijo que no», y confundirlos cuesta caro
+ * en los dos sentidos:** dar un corte de señal por definitivo pierde lo que la
+ * persona capturó, y reintentar un rechazo real atasca la cola para siempre. Es
+ * la misma lección que `getSession()`.
+ */
+export class SinRed extends Error {
+  constructor() { super("No se pudo contactar al servidor."); this.name = "SinRed"; }
+}
+
 async function jsonOrError<T>(response: Response): Promise<T> {
   const payload = await response.json().catch(() => ({})) as { error?: string } & T;
   if (!response.ok) throw new Error(payload.error ?? `El servidor respondió ${response.status}.`);
@@ -25,11 +37,17 @@ async function jsonOrError<T>(response: Response): Promise<T> {
 }
 
 async function challenge(installationId: string, purpose: "REGISTER" | "REQUEST"): Promise<Challenge> {
-  const response = await fetch("/api/app/native/challenge", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ installationId, purpose })
-  });
+  let response: Response;
+  try {
+    response = await fetch("/api/app/native/challenge", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ installationId, purpose })
+    });
+  } catch {
+    // Sin red ni siquiera hay reto que pedir: es el primer sitio donde se nota.
+    throw new SinRed();
+  }
   return jsonOrError<Challenge>(response);
 }
 
@@ -122,5 +140,9 @@ export async function nativeDeviceFetch(path: string, init: RequestInit = {}): P
   headers.set("X-Clarvex-Device-Challenge", issued.challengeId);
   headers.set("X-Clarvex-Device-Timestamp", timestamp);
   headers.set("X-Clarvex-Device-Signature", signed.signature);
-  return fetch(`${url.pathname}${url.search}`, { ...init, method, body: body || undefined, headers });
+  try {
+    return await fetch(`${url.pathname}${url.search}`, { ...init, method, body: body || undefined, headers });
+  } catch {
+    throw new SinRed();
+  }
 }

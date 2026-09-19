@@ -1,7 +1,8 @@
 "use client";
 
 import { borrar, guardar, leerTodo, type OperacionGuardada } from "@/lib/cola-almacen";
-import { resumenDeLaCola, siguiente, tras, veredicto } from "@/lib/cola-offline";
+import { resumenDeLaCola, siguiente, tras, veredicto, type Veredicto } from "@/lib/cola-offline";
+import { SinRed, nativeDeviceFetch } from "@/lib/native-device-client";
 
 /**
  * Quien de verdad manda lo que la cola decidió.
@@ -33,6 +34,9 @@ export type Encargo = {
   etiqueta: string;
   campos: Array<[string, string | Blob]>;
   nombreArchivo?: string | null;
+  /** Cuerpo JSON de una operación que exige firma del dispositivo. */
+  json?: string;
+  firmado?: boolean;
 };
 
 /**
@@ -57,7 +61,9 @@ export async function encolar(encargo: Encargo): Promise<boolean> {
     ultimoError: null,
     estado: "pendiente",
     campos: encargo.campos,
-    nombreArchivo: encargo.nombreArchivo ?? null
+    nombreArchivo: encargo.nombreArchivo ?? null,
+    ...(encargo.json !== undefined ? { json: encargo.json } : {}),
+    ...(encargo.firmado ? { firmado: true } : {})
   };
   const guardada = await guardar(operacion);
   if (guardada) avisar();
@@ -71,23 +77,33 @@ export async function encolar(encargo: Encargo): Promise<boolean> {
  * lo que se le puede romper --perder la clave, perder la foto, leer mal el
  * código del 409-- no da error, solo pierde capturas.
  */
-export async function intentar(op: OperacionGuardada): Promise<{ status: number | null; codigo: string | null }> {
-  const form = new FormData();
-  for (const [nombre, valor] of op.campos) {
-    if (typeof valor === "string") form.append(nombre, valor);
-    else form.append(nombre, valor, op.nombreArchivo ?? "archivo");
-  }
-
+export async function intentar(op: OperacionGuardada): Promise<{ status: number | null; codigo: string | null; local?: string }> {
   let respuesta: Response;
-  try {
-    respuesta = await fetch(op.ruta, {
-      method: "POST",
-      body: form,
-      headers: { "Idempotency-Key": op.id }
-    });
-  } catch {
-    // No llegó a salir. Es el caso normal en la tienda, no un error.
-    return { status: null, codigo: null };
+  if (op.firmado && typeof op.json === "string") {
+    try {
+      respuesta = await enviarFirmada(op);
+    } catch (error) {
+      // No llegó a salir. Es el caso normal en la tienda, no un error.
+      if (error instanceof SinRed) return { status: null, codigo: null };
+      /*
+       * ⚠️ Lo demás que se lance al FIRMAR es local --la APK sin el plugin de
+       * identidad, una identidad que ya no existe-- y no se arregla esperando.
+       * Reintentarlo atascaría la cola delante de todo lo demás, que es FIFO.
+       */
+      return { status: null, codigo: null, local: error instanceof Error ? error.message : "no se pudo firmar" };
+    }
+  } else {
+    try {
+      respuesta = await enviarFormulario(op);
+    } catch {
+      /*
+       * ⚠️ Aquí un throw es SIEMPRE falta de red: `fetch` solo rechaza cuando la
+       * petición no llegó a salir. Tratarlo como fallo local daría por perdida
+       * la captura ante un parpadeo de señal, que es el caso más común en la
+       * tienda y justo el que esta cola existe para cubrir.
+       */
+      return { status: null, codigo: null };
+    }
   }
 
   /*
@@ -107,6 +123,35 @@ export async function intentar(op: OperacionGuardada): Promise<{ status: number 
   }
 
   return { status: respuesta.status, codigo };
+}
+
+function enviarFormulario(op: OperacionGuardada): Promise<Response> {
+  const form = new FormData();
+  for (const [nombre, valor] of op.campos) {
+    if (typeof valor === "string") form.append(nombre, valor);
+    else form.append(nombre, valor, op.nombreArchivo ?? "archivo");
+  }
+  return fetch(op.ruta, { method: "POST", body: form, headers: { "Idempotency-Key": op.id } });
+}
+
+/**
+ * Pide reto y FIRMA ahora, no cuando se capturó.
+ *
+ * ⚠️ El reto es de un solo uso y la firma vale dos minutos: una firma guardada
+ * llegaría vencida. Firmar al enviar no relaja la protección --el aparato prueba
+ * posesión en el momento en que de verdad manda, que es lo que la ventana
+ * cubre-- pero sí obliga a que haya red, y por eso `SinRed` sale de aquí.
+ *
+ * ⚠️ `Idempotency-Key` viaja FUERA de lo que firma el dispositivo, que cubre
+ * método, ruta y cuerpo. No abre nada: el reto de un solo uso ya impide repetir
+ * la petición, y lo peor que haría cambiarla es provocar un rechazo.
+ */
+function enviarFirmada(op: OperacionGuardada): Promise<Response> {
+  return nativeDeviceFetch(op.ruta, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "Idempotency-Key": op.id },
+    body: op.json ?? ""
+  });
 }
 
 let drenando = false;
@@ -132,8 +177,9 @@ export async function drenar(): Promise<void> {
       const op = siguiente(cola);
       if (!op) break;
 
-      const { status, codigo } = await intentar(op);
-      const despues = tras(op, veredicto(status, codigo));
+      const { status, codigo, local } = await intentar(op);
+      const fallo: Veredicto = local ? { decision: "rendirse", motivo: local } : veredicto(status, codigo);
+      const despues = tras(op, fallo);
 
       if (despues === null) {
         await borrar(op.id);

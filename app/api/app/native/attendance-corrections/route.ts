@@ -7,6 +7,7 @@ import { denyDemo, enforceUploadRateLimit, isApiError, parseJson, requireSession
 import { dashboardDateKey } from "@/lib/dashboard-kpi";
 import { validateEvidenceImage } from "@/lib/evidence";
 import { dayBalanceMinutes } from "@/lib/hours-balance";
+import { claveDeLaPeticion, conIdempotencia } from "@/lib/idempotencia-db";
 import { isNativeDeviceError, requireNativeDevice } from "@/lib/native-device-auth";
 import { createNotifications } from "@/lib/notifications";
 import { prisma } from "@/lib/prisma";
@@ -73,56 +74,89 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "La fecha debe estar dentro de los últimos 60 días." }, { status: 400 });
   }
 
-  const existing = await prisma.attendanceCorrectionRequest.findFirst({
-    where: {
+  /*
+   * ⚠️ **Desde aquí todo va dentro de la guarda de idempotencia.**
+   *
+   * Esta operación se puede capturar sin señal y entregarse después, así que la
+   * cola la va a reintentar. Sin guarda, un reintento cuyo primer intento SÍ
+   * llegó --pero cuya respuesta se perdió-- choca con «ya tienes una corrección
+   * en revisión» y la cola se lo cuenta a la persona como «no se pudo guardar»:
+   * exactamente al revés de lo que pasó.
+   *
+   * La evidencia además crearía un objeto nuevo en R2 en cada intento.
+   */
+  const sesion = session;
+  const datos = parsed.data;
+  const resultado = await conIdempotencia(
+    {
+      clave: claveDeLaPeticion(request),
       storeId: session.storeId,
       userId: session.userId,
-      date: new Date(`${parsed.data.date}T00:00:00.000Z`),
+      route: "/api/app/native/attendance-corrections",
+      cuerpo: {
+        date: datos.date,
+        requestedStatus: datos.requestedStatus,
+        requestedArrivedAt: datos.requestedArrivedAt,
+        requestedLeftAt: datos.requestedLeftAt,
+        reason: datos.reason,
+        conEvidencia: Boolean(datos.evidence)
+      }
+    },
+    async () => guardarCorreccion()
+  );
+  return NextResponse.json(resultado.body, { status: resultado.status });
+
+  async function guardarCorreccion(): Promise<{ status: number; body: unknown }> {
+  const existing = await prisma.attendanceCorrectionRequest.findFirst({
+    where: {
+      storeId: sesion.storeId,
+      userId: sesion.userId,
+      date: new Date(`${datos.date}T00:00:00.000Z`),
       status: "PENDING"
     },
     select: { id: true }
   });
-  if (existing) return NextResponse.json({ error: "Ya tienes una corrección en revisión para ese día." }, { status: 409 });
+  if (existing) return { status: 409, body: { error: "Ya tienes una corrección en revisión para ese día." } };
 
   let evidenceUrl: string | null = null;
-  if (parsed.data.evidence) {
-    const limited = await enforceUploadRateLimit(session.userId);
-    if (limited) return limited;
-    const bytes = decodeBase64(parsed.data.evidence.data);
-    if (!bytes) return NextResponse.json({ error: "La evidencia no es una imagen válida." }, { status: 400 });
-    const validation = validateEvidenceImage({ type: parsed.data.evidence.mimeType, size: bytes.byteLength }, bytes);
-    if (!validation.valid) return NextResponse.json({ error: validation.error }, { status: 400 });
-    const key = storeKey(session.storeId, "evidences", `attendance-correction-${session.userId}-${Date.now()}-${crypto.randomUUID()}.${validation.extension}`);
+  if (datos.evidence) {
+    const limited = await enforceUploadRateLimit(sesion.userId);
+    if (limited) return { status: limited.status, body: await limited.json() };
+    const bytes = decodeBase64(datos.evidence.data);
+    if (!bytes) return { status: 400, body: { error: "La evidencia no es una imagen válida." } };
+    const validation = validateEvidenceImage({ type: datos.evidence.mimeType, size: bytes.byteLength }, bytes);
+    if (!validation.valid) return { status: 400, body: { error: validation.error } };
+    const key = storeKey(sesion.storeId, "evidences", `attendance-correction-${sesion.userId}-${Date.now()}-${crypto.randomUUID()}.${validation.extension}`);
     try {
-      evidenceUrl = await uploadToR2(key, bytes, parsed.data.evidence.mimeType);
+      evidenceUrl = await uploadToR2(key, bytes, datos.evidence.mimeType);
     } catch {
-      return NextResponse.json({ error: "No se pudo guardar la evidencia. Intenta nuevamente." }, { status: 503 });
+      return { status: 503, body: { error: "No se pudo guardar la evidencia. Intenta nuevamente." } };
     }
   }
 
   try {
     const correction = await prisma.attendanceCorrectionRequest.create({
       data: {
-        storeId: session.storeId,
-        userId: session.userId,
-        date: new Date(`${parsed.data.date}T00:00:00.000Z`),
-        requestedStatus: parsed.data.requestedStatus,
-        requestedArrivedAt: parsed.data.requestedArrivedAt,
-        requestedLeftAt: parsed.data.requestedLeftAt,
-        reason: parsed.data.reason,
+        storeId: sesion.storeId,
+        userId: sesion.userId,
+        date: new Date(`${datos.date}T00:00:00.000Z`),
+        requestedStatus: datos.requestedStatus,
+        requestedArrivedAt: datos.requestedArrivedAt,
+        requestedLeftAt: datos.requestedLeftAt,
+        reason: datos.reason,
         evidenceUrl
       }
     });
 
     const managers = await prisma.user.findMany({
-      where: { storeId: session.storeId, active: true, role: { in: ["GERENTE", "SUBGERENTE"] }, id: { not: session.userId } },
+      where: { storeId: sesion.storeId, active: true, role: { in: ["GERENTE", "SUBGERENTE"] }, id: { not: sesion.userId } },
       select: { id: true }
     });
     const managerIds = managers.map((manager) => manager.id);
     const title = "Corrección de asistencia";
-    const body = `${session.name} solicita revisar el ${parsed.data.date}.`;
+    const body = `${sesion.name} solicita revisar el ${datos.date}.`;
     await createNotifications(prisma, managerIds.map((userId) => ({
-      storeId: session.storeId,
+      storeId: sesion.storeId,
       userId,
       type: "ATTENDANCE_CORRECTION" as const,
       title,
@@ -130,17 +164,18 @@ export async function POST(request: Request) {
     })));
     dispatchPushToUsers(managerIds, { title, body, tag: `attendance-correction-${correction.id}`, url: "/mi-dia?seccion=correcciones" }).catch(() => undefined);
     await recordAudit({
-      session,
+      session: sesion,
       action: "attendance.correction.request",
       entity: "AttendanceCorrectionRequest",
       entityId: correction.id,
-      storeId: session.storeId,
-      detail: `${parsed.data.date} · ${parsed.data.requestedStatus} · evidencia=${Boolean(evidenceUrl)}`
+      storeId: sesion.storeId,
+      detail: `${datos.date} · ${datos.requestedStatus} · evidencia=${Boolean(evidenceUrl)}`
     });
-    return NextResponse.json({ ok: true, id: correction.id }, { status: 201 });
+    return { status: 201, body: { ok: true, id: correction.id } };
   } catch (error) {
     if (evidenceUrl) await deleteFromR2(evidenceUrl).catch(() => undefined);
     throw error;
+  }
   }
 }
 
