@@ -79,7 +79,18 @@ export async function encolar(encargo: Encargo): Promise<boolean> {
  */
 export async function intentar(op: OperacionGuardada): Promise<{ status: number | null; codigo: string | null; local?: string }> {
   let respuesta: Response;
-  if (op.firmado && typeof op.json === "string") {
+  if (!op.firmado && typeof op.json === "string") {
+    /*
+     * JSON sin firma: lo que el servidor espera como `application/json` y no
+     * exige dispositivo. Un throw aquí es SIEMPRE falta de red, igual que en el
+     * formulario.
+     */
+    try {
+      respuesta = await enviarJson(op);
+    } catch {
+      return { status: null, codigo: null };
+    }
+  } else if (op.firmado && typeof op.json === "string") {
     try {
       respuesta = await enviarFirmada(op);
     } catch (error) {
@@ -148,6 +159,14 @@ function enviarFormulario(op: OperacionGuardada): Promise<Response> {
  */
 function enviarFirmada(op: OperacionGuardada): Promise<Response> {
   return nativeDeviceFetch(op.ruta, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "Idempotency-Key": op.id },
+    body: op.json ?? ""
+  });
+}
+
+function enviarJson(op: OperacionGuardada): Promise<Response> {
+  return fetch(op.ruta, {
     method: "POST",
     headers: { "Content-Type": "application/json", "Idempotency-Key": op.id },
     body: op.json ?? ""

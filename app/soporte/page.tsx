@@ -4,6 +4,7 @@ import { useState } from "react";
 import { LifeBuoy, CheckCircle2, Send } from "lucide-react";
 import { AppFrame, AppHeader, Card } from "@/components/ui";
 import { cn } from "@/lib/utils";
+import { encolar } from "@/lib/cola-envio";
 
 const CATEGORIES = [
   { key: "problema", label: "Problema" },
@@ -18,6 +19,8 @@ export default function SoportePage() {
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState("");
+  /** Quedó guardado sin señal: se dice distinto, porque todavía no llegó. */
+  const [guardado, setGuardado] = useState(false);
 
   const canSend = subject.trim().length >= 3 && message.trim().length >= 10 && !sending;
 
@@ -25,22 +28,44 @@ export default function SoportePage() {
     if (!canSend) return;
     setSending(true);
     setError("");
+    const cuerpo = JSON.stringify({
+      subject: subject.trim(),
+      message: message.trim(),
+      category: category ?? undefined,
+      fromUrl: typeof document !== "undefined" ? document.referrer || undefined : undefined
+    });
+
     try {
-      const res = await fetch("/api/support", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          subject: subject.trim(),
-          message: message.trim(),
-          category: category ?? undefined,
-          fromUrl: typeof document !== "undefined" ? document.referrer || undefined : undefined
-        })
-      });
+      let res: Response;
+      try {
+        res = await fetch("/api/support", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: cuerpo
+        });
+      } catch {
+        /*
+         * ⚠️ Sin red NO se pierde lo escrito. Quien reporta un problema suele
+         * estar justo donde la señal falla --el almacén, el probador-- y hasta
+         * ahora el mensaje se borraba con un «intenta de nuevo».
+         *
+         * Se manda solo al volver la señal, y sin duplicar: la ruta ya lleva la
+         * guarda de idempotencia, porque un reintento abriría un SEGUNDO ticket
+         * en Zendesk.
+         */
+        const encolado = await encolar({
+          ruta: "/api/support",
+          etiqueta: `Soporte: ${subject.trim().slice(0, 40)}`,
+          campos: [],
+          json: cuerpo
+        });
+        if (encolado) { setSent(true); setGuardado(true); }
+        else setError("Sin conexión y sin sitio para guardarlo. Inténtalo de nuevo.");
+        return;
+      }
       const data = (await res.json().catch(() => ({}))) as { error?: string };
       if (!res.ok) { setError(data.error ?? "No se pudo enviar. Intenta de nuevo."); return; }
       setSent(true);
-    } catch {
-      setError("Sin conexión. Intenta de nuevo.");
     } finally {
       setSending(false);
     }
@@ -55,9 +80,11 @@ export default function SoportePage() {
             <span className="mx-auto mb-3 grid size-14 place-items-center rounded-2xl bg-mint/12 text-mint">
               <CheckCircle2 size={28} />
             </span>
-            <h2 className="text-lg font-semibold text-ink">¡Mensaje enviado!</h2>
+            <h2 className="text-lg font-semibold text-ink">{guardado ? "Guardado sin conexión" : "¡Mensaje enviado!"}</h2>
             <p className="mt-1.5 text-sm text-muted">
-              Nuestro equipo de soporte lo recibió y te contactará. Gracias por avisarnos.
+              {guardado
+                ? "Se enviará solo en cuanto vuelva la señal. No hace falta que lo escribas otra vez."
+                : "Nuestro equipo de soporte lo recibió y te contactará. Gracias por avisarnos."}
             </p>
             <button
               type="button"
