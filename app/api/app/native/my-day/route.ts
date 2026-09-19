@@ -6,6 +6,7 @@ import { progressPercent, shiftSummary } from "@/lib/my-day";
 import { prisma } from "@/lib/prisma";
 import { signR2Url } from "@/lib/r2";
 import { mergeWithDefaults, outfitFor, type UniformDay, type UniformVariant } from "@/lib/uniforms";
+import { retailMonthBoundsFor } from "@/lib/report-deadlines";
 
 export const dynamic = "force-dynamic";
 
@@ -23,7 +24,14 @@ export async function GET(request: Request) {
   const day = new Date(`${date}T00:00:00.000Z`);
   const manager = session.role === "GERENTE" || session.role === "SUBGERENTE" || session.platformAdmin;
 
-  const [user, store, shift, attendance, kpi, plan, pendings, announcements, uniformRows, corrections, unreadNotifications, pendingCorrections] = await Promise.all([
+  /*
+   * ⚠️ El mes de los Kudos es el RETAIL, no el natural. Es el mismo criterio que
+   * usa todo lo demás de la app --y mezclarlos ya costó una prima dominical de
+   * más por persona en agosto.
+   */
+  const mesRetail = retailMonthBoundsFor(day);
+
+  const [user, store, shift, attendance, kpi, plan, pendings, announcements, uniformRows, corrections, unreadNotifications, pendingCorrections, kudos] = await Promise.all([
     prisma.user.findFirst({
       where: { id: session.userId, storeId: session.storeId, active: true },
       select: { id: true, name: true, role: true, photoUrl: true, uniformVariant: true }
@@ -71,7 +79,20 @@ export async function GET(request: Request) {
       include: { user: { select: { name: true } } }
     }),
     prisma.notification.count({ where: { storeId: session.storeId, userId: session.userId, readAt: null } }),
-    manager ? prisma.attendanceCorrectionRequest.count({ where: { storeId: session.storeId, status: "PENDING" } }) : Promise.resolve(0)
+    manager ? prisma.attendanceCorrectionRequest.count({ where: { storeId: session.storeId, status: "PENDING" } }) : Promise.resolve(0),
+    prisma.kudo.findMany({
+      where: {
+        storeId: session.storeId,
+        toUserId: session.userId,
+        // `retailMonthBoundsFor` devuelve FECHAS, no cadenas: envolverlas en una
+        // plantilla daba una fecha inválida, y eso no lo atrapa el tipado.
+        createdAt: { gte: mesRetail.start, lte: mesRetail.end }
+      },
+      select: { emoji: true, message: true, createdAt: true, fromUser: { select: { name: true } } },
+      orderBy: { createdAt: "desc" },
+      // Tope bajo a propósito: solo hace falta contar y enseñar el último.
+      take: 50
+    })
   ]);
 
   if (!user || !store) return NextResponse.json({ error: "No se encontró tu jornada." }, { status: 404 });
@@ -145,6 +166,23 @@ export async function GET(request: Request) {
       unreadNotifications,
       openPendings: pendings.length,
       pendingCorrections
+    },
+    /*
+     * ⚠️ Solo los RECIBIDOS, y solo lo último. «Mi día» es una pantalla de
+     * arranque: una lista entera de reconocimientos la convertiría en otra cosa
+     * y empujaría abajo lo que de verdad hay que hacer hoy. El historial
+     * completo sigue en `/kudos`.
+     */
+    kudos: {
+      recibidosMes: kudos.length,
+      ultimo: kudos[0]
+        ? {
+            emoji: kudos[0].emoji,
+            message: kudos[0].message,
+            deQuien: kudos[0].fromUser.name,
+            cuando: kudos[0].createdAt.toISOString()
+          }
+        : null
     },
     capabilities: {
       canReviewCorrections: manager,

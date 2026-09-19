@@ -71,6 +71,8 @@ type MyDay = {
   announcements: Array<{ id: string; title: string; body: string; date: string; read: boolean }>;
   corrections: Correction[];
   counts: { unreadAnnouncements: number; unreadNotifications: number; openPendings: number; pendingCorrections: number };
+  /** Reconocimiento recibido en el mes retail. Solo lo último; el resto en `/kudos`. */
+  kudos?: { recibidosMes: number; ultimo: { emoji: string; message: string | null; deQuien: string; cuando: string } | null };
   capabilities: { canReviewCorrections: boolean; canOpenChecklist: boolean; canManageDevices: boolean };
 };
 
@@ -518,6 +520,36 @@ export default function MyDayPage() {
               ))}
             </div>
           </section>
+        ) : null}
+
+        {/*
+          ⚠️ Solo aparece cuando HAY reconocimiento. Una tarjeta vacía diciendo
+          «0 este mes» todos los días es un recordatorio diario de que nadie te
+          reconoció — lo contrario de para lo que existe esto.
+        */}
+        {data.kudos && data.kudos.recibidosMes > 0 ? (
+          <Link href="/kudos" className="tappable mt-6 block">
+            <Card className="flex items-start gap-3 p-4">
+              <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-mint/12 text-2xl" aria-hidden="true">
+                {data.kudos.ultimo?.emoji ?? "\u2b50"}
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold text-ink">
+                  {data.kudos.recibidosMes === 1
+                    ? "Te reconocieron este mes"
+                    : `${data.kudos.recibidosMes} reconocimientos este mes`}
+                </p>
+                {data.kudos.ultimo ? (
+                  <p className="mt-0.5 line-clamp-2 text-xs text-muted">
+                    {data.kudos.ultimo.message
+                      ? `«${data.kudos.ultimo.message}» — ${data.kudos.ultimo.deQuien}`
+                      : `De ${data.kudos.ultimo.deQuien}`}
+                  </p>
+                ) : null}
+              </div>
+              <ChevronRight size={18} className="mt-1 shrink-0 text-muted" />
+            </Card>
+          </Link>
         ) : null}
 
         <section className="mt-6">
