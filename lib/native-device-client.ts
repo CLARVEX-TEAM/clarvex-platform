@@ -1,6 +1,7 @@
 "use client";
 
 import { dispositivoClarvexNativo, type IdentidadDispositivoNativo } from "@/lib/puente-nativo";
+import { resumen } from "@/lib/cola-envio";
 
 type Challenge = {
   challengeId: string;
@@ -56,6 +57,17 @@ export async function registerNativeDevice(profile?: "PERSONAL" | "KIOSK"): Prom
   const plugin = dispositivoClarvexNativo();
   if (!plugin) throw new Error("Esta APK no incluye identidad del dispositivo.");
   const identity = await plugin.identidad();
+
+  /*
+   * ⚠️ La salud viaja con el registro, que ya ocurre al abrir la app. Un cron
+   * propio para esto sería otra cosa que mantener y que puede fallar callada
+   * --como los tres que llevaban semanas sin entregar nada.
+   *
+   * Si no se puede leer, se manda el registro SIN salud: perder la telemetría
+   * no puede costar el registro del aparato, que es lo que sostiene las
+   * notificaciones y las funciones firmadas.
+   */
+  const health = await salud(plugin);
   const issued = await challenge(identity.installationId, "REGISTER");
   if (!issued.payload) throw new Error("El servidor no entregó el texto de registro.");
   const signed = await plugin.firmar({ payload: issued.payload });
@@ -73,11 +85,35 @@ export async function registerNativeDevice(profile?: "PERSONAL" | "KIOSK"): Prom
       ...(profile ? { profile } : {}),
       appBuild: identity.appBuild,
       appVersion: identity.appVersion,
-      capabilities: identity.capabilities
+      capabilities: identity.capabilities,
+      ...(health ? { health } : {})
     })
   });
   const result = await jsonOrError<{ device: RegisteredDevice }>(response);
   return result.device;
+}
+
+/** La salud del equipo, o `null` si no se pudo leer. Nunca lanza. */
+async function salud(plugin: { diagnostico(): Promise<Record<string, unknown>> }): Promise<Record<string, string | number | boolean> | null> {
+  try {
+    const crudo = await plugin.diagnostico();
+    const salida: Record<string, string | number | boolean> = {};
+    for (const [clave, valor] of Object.entries(crudo)) {
+      // El identificador de instalación ya viaja aparte; repetirlo aquí sería
+      // guardarlo dos veces en la misma fila.
+      if (clave === "installationId") continue;
+      if (typeof valor === "string") salida[clave] = valor.slice(0, 128);
+      else if (typeof valor === "number" || typeof valor === "boolean") salida[clave] = valor;
+    }
+    const cola = await resumen().catch(() => null);
+    if (cola) {
+      salida["colaPendiente"] = cola.pendientes;
+      salida["colaFallida"] = cola.fallidas;
+    }
+    return salida;
+  } catch {
+    return null;
+  }
 }
 
 function bytesToHex(bytes: Uint8Array): string {

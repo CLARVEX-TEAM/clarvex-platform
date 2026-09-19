@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, RefreshCw, ShieldOff, Smartphone, TabletSmartphone } from "lucide-react";
+import { AlertTriangle, CheckCircle2, RefreshCw, ShieldOff, Smartphone, TabletSmartphone } from "lucide-react";
 import { AppFrame, AppHeader, Button, Card } from "@/components/ui";
 import { getSession } from "@/lib/auth";
 import { haptic } from "@/lib/haptics";
@@ -19,6 +19,8 @@ type Device = {
   appVersion: string;
   status: string;
   lastSeenAt: string;
+  /** Problemas del equipo, ya interpretados por el servidor. Vacío = va bien. */
+  avisos?: Array<{ gravedad: "alta" | "media"; texto: string }>;
   createdAt: string;
   revokedAt: string | null;
   notifications: boolean;
@@ -104,6 +106,21 @@ export default function DevicesPage() {
                     <div className="flex flex-wrap items-center gap-2"><p className="font-semibold text-ink">{device.user.name}</p>{current ? <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-semibold text-blue-700 dark:bg-blue-950/50 dark:text-blue-200">Este teléfono</span> : null}</div>
                     <p className="mt-0.5 text-xs text-muted">{device.profile === "KIOSK" ? "Kiosco" : "Personal"} · APK {device.appVersion} ({device.appBuild})</p>
                     <p className="mt-1 text-xs text-muted">Última conexión {new Intl.DateTimeFormat("es-MX", { dateStyle: "medium", timeStyle: "short" }).format(new Date(device.lastSeenAt))}</p>
+                    {/* ⚠️ Solo los PROBLEMAS. Una lista de comprobaciones en
+                        verde no demuestra nada --ya pasó con el candado de la
+                        huella-- y encima se deja de leer. */}
+                    {device.avisos?.length ? (
+                      <ul className="mt-2 space-y-1">
+                        {device.avisos.map((aviso) => (
+                          <li
+                            key={aviso.texto}
+                            className={`flex items-start gap-1.5 text-xs font-semibold ${aviso.gravedad === "alta" ? "text-rose-600 dark:text-rose-400" : "text-amber-600 dark:text-amber-400"}`}
+                          >
+                            <AlertTriangle size={13} className="mt-0.5 shrink-0" /> {aviso.texto}
+                          </li>
+                        ))}
+                      </ul>
+                    ) : null}
                     <div className="mt-2 flex items-center gap-1.5 text-xs font-semibold">
                       {active ? <><CheckCircle2 size={14} className="text-emerald-600" /><span className="text-emerald-700 dark:text-emerald-300">Activo</span></> : <><ShieldOff size={14} className="text-rose-600" /><span className="text-rose-700 dark:text-rose-300">Revocado</span></>}
                       <span className="text-muted">· {device.notifications ? "avisos activos" : "sin avisos"}</span>

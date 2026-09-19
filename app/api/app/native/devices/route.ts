@@ -4,6 +4,7 @@ import { denyDemo, isApiError, parseJson, requireSession } from "@/lib/api";
 import { recordAudit } from "@/lib/audit";
 import { isNativeDeviceError, requireNativeDevice } from "@/lib/native-device-auth";
 import { prisma } from "@/lib/prisma";
+import { avisosDelEquipo, type SaludCruda } from "@/lib/salud-equipo";
 
 export const dynamic = "force-dynamic";
 
@@ -46,6 +47,16 @@ export async function GET(request: Request) {
       appBuild: device.appBuild,
       appVersion: device.appVersion,
       status: device.status,
+      /*
+       * Los avisos se interpretan AQUÍ y no en la pantalla: la regla de cuándo
+       * un equipo está mal tiene que ser una sola, y está probada en
+       * `lib/salud-equipo`. Se mandan ya masticados, no la salud cruda.
+       */
+      avisos: avisosDelEquipo(
+        (device.health ?? null) as SaludCruda | null,
+        device.lastSeenAt,
+        device.healthAt
+      ),
       lastSeenAt: device.lastSeenAt.toISOString(),
       createdAt: device.createdAt.toISOString(),
       revokedAt: device.revokedAt?.toISOString() ?? null,

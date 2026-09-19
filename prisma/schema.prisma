@@ -970,6 +970,15 @@ model NativeDevice {
   updatedAt      DateTime      @updatedAt
   lastSeenAt     DateTime      @default(now())
   revokedAt      DateTime?
+  /// Última salud reportada por el equipo: WebView, almacenamiento, red,
+  /// cámara, notificaciones y hora automática. `null` mientras no reporte.
+  ///
+  /// Se guarda como JSON y NO en columnas: lo que se mide va a cambiar --hoy
+  /// son siete cosas, mañana ocho-- y una migración por cada una es una
+  /// migración que nadie va a querer hacer. Lo que se CONSULTA de verdad, que
+  /// es si algo está mal, se decide en `lib/salud-equipo.ts`.
+  health         Json?
+  healthAt       DateTime?
   user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   store          Store         @relation(fields: [storeId], references: [id], onDelete: Cascade)
   deviceTokens   DeviceToken[]
