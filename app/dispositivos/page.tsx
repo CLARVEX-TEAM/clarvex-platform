@@ -8,6 +8,7 @@ import { getSession } from "@/lib/auth";
 import { haptic } from "@/lib/haptics";
 import { nativeDeviceFetch, registerNativeDevice } from "@/lib/native-device-client";
 import { enContenedorNativo } from "@/lib/puente-nativo";
+import { portadaDe } from "@/lib/portada";
 
 type Device = {
   id: string;
@@ -38,7 +39,7 @@ export default function DevicesPage() {
       const session = await getSession();
       if (!session) { router.replace("/login"); return; }
       if (!enContenedorNativo() || (session.role !== "GERENTE" && session.role !== "SUBGERENTE" && !session.platformAdmin)) {
-        router.replace(session.role === "ASESOR" ? "/advisor" : "/manager");
+        router.replace(portadaDe(session, enContenedorNativo()));
         return;
       }
       await registerNativeDevice("PERSONAL");

@@ -12,6 +12,7 @@ import type { User } from "@/lib/types";
 import { AppFrame, AppHeader, Badge, Card, ProgressBar } from "@/components/ui";
 import { puedeConAsistenciaAxo } from "@/lib/operational-checklist-reminders";
 import { enContenedorNativo, scannerDocumentosNativo, urlArchivoNativo } from "@/lib/puente-nativo";
+import { portadaDe } from "@/lib/portada";
 import { EVENTO_ENTREGA, encolar } from "@/lib/cola-envio";
 import { camposDeEscaneo, camposDeEvidencia, camposDeTarea } from "@/lib/cola-checklist";
 
@@ -80,7 +81,7 @@ export default function ChecklistPage() {
     getSession().then((current) => {
       if (!current) { router.replace("/login"); return; }
       // El usuario kiosko SÍ entra aquí aunque sea ASESOR (es su única pantalla).
-      if (!current.checklistOnly && current.role === "ASESOR") { router.replace("/advisor"); return; }
+      if (!current.checklistOnly && current.role === "ASESOR") { router.replace(portadaDe(current, enContenedorNativo())); return; }
       setSession(current);
     });
   }, [router]);

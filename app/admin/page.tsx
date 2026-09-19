@@ -6,6 +6,8 @@ import { Building2, CheckCircle2, ChevronDown, KeyRound, Percent, Plus, ScrollTe
 import { getSession } from "@/lib/auth";
 import { money } from "@/lib/format";
 import { AppFrame, AppHeader, Button, Card } from "@/components/ui";
+import { enContenedorNativo } from "@/lib/puente-nativo";
+import { portadaDe } from "@/lib/portada";
 
 type CommissionRuleRow = {
   id: string;
@@ -120,7 +122,7 @@ export default function AdminPage() {
   useEffect(() => {
     getSession().then((current) => {
       if (!current) { router.replace("/login"); return; }
-      if (!current.platformAdmin) { router.replace(current.role === "ASESOR" ? "/advisor" : "/manager"); return; }
+      if (!current.platformAdmin) { router.replace(portadaDe(current, enContenedorNativo())); return; }
       void loadStores();
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps

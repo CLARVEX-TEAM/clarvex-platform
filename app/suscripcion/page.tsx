@@ -6,6 +6,8 @@ import { CheckCircle2, CreditCard, Loader2, ShieldCheck } from "lucide-react";
 import { getSession } from "@/lib/auth";
 import { money } from "@/lib/format";
 import { AppFrame, AppHeader, Badge, Button, Card } from "@/components/ui";
+import { enContenedorNativo } from "@/lib/puente-nativo";
+import { portadaDe } from "@/lib/portada";
 
 export const dynamic = "force-dynamic";
 
@@ -54,7 +56,7 @@ export default function SubscriptionPage() {
   useEffect(() => {
     getSession().then((session) => {
       if (!session) { router.replace("/login"); return; }
-      if (session.role === "ASESOR") { router.replace("/advisor"); return; }
+      if (session.role === "ASESOR") { router.replace(portadaDe(session, enContenedorNativo())); return; }
       load();
     }).catch(() => {});
   }, [router, load]);

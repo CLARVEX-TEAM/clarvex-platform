@@ -9,6 +9,8 @@ import { getSession, logout } from "@/lib/auth";
 import { money } from "@/lib/format";
 import type { User } from "@/lib/types";
 import { AppCopyright, Badge, Card, ProfileAvatar, ProgressBar, ProgressRing } from "@/components/ui";
+import { enContenedorNativo } from "@/lib/puente-nativo";
+import { portadaDe } from "@/lib/portada";
 
 interface StoreStat {
   id: string;
@@ -46,7 +48,7 @@ export default function RegionalDashboard() {
       if (!session) {
         router.replace("/login");
       } else if (session.role !== "REGIONAL") {
-        router.replace(session.role === "ASESOR" ? "/advisor" : "/manager");
+        router.replace(portadaDe(session, enContenedorNativo()));
       } else {
         setUser(session);
       }
