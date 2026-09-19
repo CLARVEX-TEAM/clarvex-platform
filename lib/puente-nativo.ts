@@ -317,6 +317,44 @@ export function calendarioClarvexNativo(): PluginCalendarioClarvex | null {
   return pluginNativo<PluginCalendarioClarvex>("CalendarioClarvex");
 }
 
+export type CampoEncolado =
+  | { nombre: string; texto: string }
+  | { nombre: string; base64: string; tipo: string; nombreArchivo: string };
+
+export type OperacionNativa = {
+  id: string;
+  ruta: string;
+  creada: number;
+  etiqueta: string;
+  firmado: boolean;
+  estado: string;
+  intentos: number;
+  ultimoError: string | null;
+};
+
+export type PluginColaClarvex = {
+  guardar(options: OperacionNativa & { campos: CampoEncolado[] }): Promise<{ guardada: boolean; motivo?: string }>;
+  listar(): Promise<{ operaciones: OperacionNativa[] }>;
+  leer(options: { id: string }): Promise<Partial<OperacionNativa & { campos: CampoEncolado[] }>>;
+  olvidar(options: { id: string }): Promise<void>;
+  programar(): Promise<void>;
+};
+
+/**
+ * La cola de lo capturado sin señal, guardada por Android.
+ *
+ * ⚠️ **Existe porque un worker de Android NO puede leer IndexedDB.** Vive dentro
+ * del WebView, en formato interno de Chromium. Guardando aquí, la web y el envío
+ * en segundo plano leen los MISMOS archivos, en vez de tener cada uno su copia
+ * --que se separarían en cuanto una escritura fallara.
+ *
+ * `null` en el navegador, en la PWA y en una APK anterior a la 1.7: ahí la cola
+ * sigue en IndexedDB y se vacía al abrir la app, como hasta ahora.
+ */
+export function colaClarvexNativa(): PluginColaClarvex | null {
+  return pluginNativo<PluginColaClarvex>("ColaClarvex");
+}
+
 /** Convierte un `file://` privado devuelto por Android en una URL legible por el WebView. */
 export function urlArchivoNativo(ruta: string): string | null {
   const convertir = puente()?.convertFileSrc;
