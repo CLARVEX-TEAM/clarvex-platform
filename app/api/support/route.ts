@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireSession, isApiError, parseJson } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
 import { createZendeskTicket, ZENDESK_ENABLED } from "@/lib/zendesk";
+import { claveDeLaPeticion, conIdempotencia } from "@/lib/idempotencia-db";
 
 export const dynamic = "force-dynamic";
 
@@ -33,11 +34,34 @@ export async function POST(request: Request) {
   if ("response" in parsed) return parsed.response;
   const { subject, message, category, fromUrl } = parsed.data;
 
+  /*
+   * ⚠️ **Desde aquí dentro de la guarda de idempotencia.** Crear un ticket en
+   * Zendesk NO es inofensivo de repetir: un reintento abre un SEGUNDO ticket y
+   * soporte atiende dos veces la misma cosa. Y reintentar es justo lo que hace
+   * la cola cuando esto se captura sin señal.
+   *
+   * Sin cabecera `Idempotency-Key` todo se comporta igual que antes.
+   */
+  const sesion = session;
+  const datos = parsed.data;
+  const resultado = await conIdempotencia(
+    {
+      clave: claveDeLaPeticion(request),
+      storeId: session.storeId,
+      userId: session.userId,
+      route: "/api/support",
+      cuerpo: { subject, message, category: category ?? null }
+    },
+    async () => abrirTicket()
+  );
+  return NextResponse.json(resultado.body, { status: resultado.status });
+
+  async function abrirTicket(): Promise<{ status: number; body: unknown }> {
   const user = await prisma.user.findUnique({
-    where: { id: session.userId },
+    where: { id: sesion.userId },
     select: { name: true, email: true, employeeNumber: true, role: true, store: { select: { name: true } } }
   });
-  if (!user) return NextResponse.json({ error: "Sesión no válida." }, { status: 401 });
+  if (!user) return { status: 401, body: { error: "Sesión no válida." } };
 
   const storeName = user.store?.name ?? "—";
   const catLabel = category ? CATEGORY_LABEL[category] : null;
@@ -60,11 +84,12 @@ export async function POST(request: Request) {
     body,
     requesterName: user.name,
     requesterEmail: user.email,
-    tags: ["clarvex-app", `store-${session.storeId}`, category ?? "general", user.role.toLowerCase()]
+    tags: ["clarvex-app", `store-${sesion.storeId}`, datos.category ?? "general", user.role.toLowerCase()]
   });
 
   if (!result.ok) {
-    return NextResponse.json({ error: "No se pudo enviar tu mensaje. Intenta de nuevo en un momento." }, { status: 502 });
+    return { status: 502, body: { error: "No se pudo enviar tu mensaje. Intenta de nuevo en un momento." } };
   }
-  return NextResponse.json({ ok: true, id: result.id });
+  return { status: 200, body: { ok: true, id: result.id } };
+  }
 }

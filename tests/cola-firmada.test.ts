@@ -164,3 +164,37 @@ test("⚠️ un fallo LOCAL se da por perdido en vez de atascar la cola", async 
   assert.equal(salida.status, null);
   assert.match(salida.local ?? "", /APK/);
 });
+
+test("⚠️ un JSON SIN firma se manda como JSON, no como formulario", () => {
+  /*
+   * El soporte no exige dispositivo: su cuerpo es JSON plano. Si saliera como
+   * formulario, la ruta lo rechazaría por no poder leerlo — y el mensaje de
+   * quien pidió ayuda se perdería con un error que no dice nada.
+   */
+  const soporte: OperacionGuardada = {
+    id: "c".repeat(20),
+    creada: 1,
+    ruta: "/api/support",
+    etiqueta: "Soporte: no abre la caja",
+    intentos: 0,
+    ultimoError: null,
+    estado: "pendiente",
+    campos: [],
+    nombreArchivo: null,
+    json: JSON.stringify({ subject: "No abre la caja", message: "Lleva desde ayer." })
+    // sin `firmado`
+  };
+
+  const caso = escenario();
+  return caso.intentar(soporte).then((salida) => {
+    assert.equal(salida.status, 200);
+    assert.equal(caso.firmadas.length, 0, "no se firma lo que no lo pide");
+    assert.equal(caso.planas.length, 1);
+
+    const enviada = caso.planas[0];
+    assert.equal(enviada?.init.body, soporte.json, "el cuerpo va tal cual");
+    const cabeceras = enviada?.init.headers as Record<string, string>;
+    assert.equal(cabeceras["Content-Type"], "application/json");
+    assert.equal(cabeceras["Idempotency-Key"], soporte.id, "y con la clave: un reintento abriría OTRO ticket");
+  });
+});
