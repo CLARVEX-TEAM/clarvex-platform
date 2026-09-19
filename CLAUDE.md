@@ -1,5 +1,126 @@
 # Clarvex Team — CLAUDE.md
 
+## APK 1.8 y centro de soporte — publicados — 19 de septiembre de 2026
+
+### APK 1.8 / código 10
+
+`compartido/apk/clarvex-10.apk`, **8,643,934 bytes**, SHA-256
+`232137a2bdcb50df3c9854050fc34b655757ca413cd9e593190707eb151743f4`.
+Certificado estable `8758a326…c29ffbc`, firma v1/v2.
+
+Compilada aislada desde el merge Android `877b2e3` --se comprobó que su árbol es
+IDÉNTICO al commit compilado, `351ab04`, antes de darla por válida--. Gradle
+`BUILD SUCCESSFUL`, 269 tareas. `EscanerCodigos` y `DispositivoClarvex` en
+`classes4.dex`, `GmsBarcodeScanning` en `classes.dex`.
+
+⚠️ **Permisos comparados contra la APK 1.7 real, no supuestos**: los mismos 13,
+sin una sola diferencia. Creció 149 KB, que es lo que confirma la decisión del
+escáner: `play-services-code-scanner` solo trae el conector y los modelos viven
+en los servicios de Google.
+
+Publicada por el circuito de siempre: nombre temporal, SHA-256 comprobado EN EL
+SERVIDOR, nombre definitivo, y solo entonces el manifiesto con `mv`. Respaldo
+`version-antes-de-1.8-20260919T153733Z.json`; APK 1.7 conservada.
+`versionPublicada()` confirma versión, bytes y hash.
+
+### Centro de soporte sobre Zendesk
+
+El usuario decidió que **Zendesk se queda**, así que esto se construye encima.
+PR 122 integrado en `373d6d2`, release `20260919-153709-373d6d2`, migración
+aditiva `20260919070000_support_cases`; 115 migraciones al día.
+
+⚠️ **Zendesk es el DUEÑO del caso; Clarvex es la ventana.** Es la decisión
+CONTRARIA a la del espejo del chat de Slack, y sale del mismo razonamiento: el
+dueño es quien de verdad opera el dato. Los agentes trabajan allí, allí vive el
+estado y allí se mide la atención.
+
+⚠️ **Entonces se guarda lo justo, y por dos motivos.** Que la persona vea SUS
+casos sin cuenta de Zendesk, y --el que importa-- que la autorización sea
+NUESTRA: una etiqueta `store-xxx` dentro del ticket no es una frontera de
+seguridad, es una etiqueta. El caso se busca por la fila de `SupportCase` CON su
+dueño, y solo entonces se usa su `zendeskId`.
+
+⚠️ **Las notas INTERNAS no se enseñan jamás**, y se filtran por `public`, NO por
+autor: el mismo agente escribe en público y una nota interna dos minutos después.
+Filtrada mal se vería como un mensaje más, sin error y sin registro.
+
+⚠️ **Ni gerencia ve los casos de su equipo.** Un caso puede ser sobre el gerente;
+abrirlo convertiría el único canal privado de la persona en uno más donde la lee
+su jefe.
+
+⚠️ **Un estado desconocido de Zendesk NO se traduce como resuelto**, y cuando
+Zendesk no contesta se enseña la última copia DICIENDO que no está al día.
+Inventar «resuelto» cierra un caso abierto; dejar la pantalla vacía lo hace
+desaparecer.
+
+⚠️ **«Mío» son VARIAS identidades.** Quien tiene correo real figura como
+solicitante y sus mensajes van a su nombre; quien tiene el correo inventado
+`@clarvex.local` --once de dieciocho-- no existe en Zendesk y lo suyo sale a
+nombre de la cuenta de API. Con una sola identidad, la mitad de los casos
+pintaría la conversación al revés: la persona leyendo sus propias palabras como
+si se las hubiera dicho soporte.
+
+El folio se DERIVA del id de Zendesk; un contador propio se separaría del suyo en
+cuanto se creara un ticket por correo o teléfono. Sin respuesta todavía, el
+tiempo de atención es `null` y NO cero.
+
+### Dos guardas que atraparon fallos reales ese día
+
+La credencial digital (PR 121) se coló por dos huecos y ninguno lo encontré yo:
+
+- `tests/accesos-telefono.test.ts`: el acceso apuntaba a una pantalla que no
+  estaba declarada como pantalla del teléfono.
+- `tests/middleware-matcher.test.ts`: la ruta entró al matcher del middleware sin
+  entrar a ninguna lista de permitidas, así que **redirigía**.
+
+⚠️ Y un tercero, que no atrapó ninguna prueba porque no existía: **`SplashIntro`
+tapaba la verificación pública de la credencial 2.5 segundos** con un velo a
+pantalla completa. Quien la abre es un desconocido con una cámara y lo único que
+necesita es saber si esa persona trabaja aquí. La regla vive ahora en
+`lib/portada.ts` como `esVerificacionPublica`, y la prueba comprueba el PATRÓN:
+recorre los componentes del layout raíz y falla NOMBRANDO a cualquiera que pinte
+un velo sin consultarla.
+
+⚠️ **Y `/v/<token>` no pasa por el middleware a propósito**, con el motivo escrito
+junto al matcher para que nadie lo «arregle»: lo que la protege es la firma del
+enlace y que enseña el mínimo, no una sesión.
+
+## La cola sin señal, probada en un teléfono — 19 de septiembre de 2026
+
+Se probó de punta a punta lo que faltaba de la APK 1.7: capturar sin señal y
+**con la app cerrada**. Cuatro tareas del checklist entraron en producción dentro
+del MISMO segundo, de `17:53:05.371` a `17:53:06.254` UTC.
+
+Esa ráfaga es la firma de una cola vaciándose: capturadas a lo largo de un rato y
+entregadas todas juntas al volver la red. Capturadas con señal estarían
+repartidas por minutos, una por toque. La base demuestra la entrega en ráfaga; que
+la app estuviera cerrada lo aporta quien hizo la prueba, y las dos cosas juntas
+solo encajan con el worker de Android — la web no vacía nada si nadie la abre.
+
+⚠️ **La prueba hay que hacerla con el CHECKLIST o una evidencia, nunca con una
+corrección de asistencia.** El worker salta a propósito las operaciones firmadas:
+su firma lleva una ventana de dos minutos y se firma al enviar, desde la web.
+Probar con una corrección y ver que no llega parece un fallo y es el
+comportamiento correcto.
+
+### ⚠️ La app NO arranca en frío sin señal
+
+Salió de camino y no lo arregla la cola. `capacitor.config.ts` carga
+`server.url: "https://team.clarvex.tech"` y **no hay nada local que mostrar**: en
+un arranque en frío sin red el WebView pinta su propia pantalla de error,
+`ERR_INTERNET_DISCONNECTED`, en inglés y con aspecto de navegador roto.
+
+No es la cola fallando: es que la app no llega a existir, así que la cola nunca
+entra en juego. Se lee como «la app está rota», y el caso no es raro --el teléfono
+se reinicia, o alguien la abre en el almacén--.
+
+⚠️ **Entonces la cola solo cubre el caso TIBIO**: la app ya cargada y la señal
+cayéndose debajo. Que es el caso real de la tienda, pero no el único.
+
+Capacitor admite `errorPath` con una pantalla local propia. Pendiente y sin
+implementar: diría en español qué pasa y que lo capturado no se ha perdido. Es
+cambio de APK, así que no se hizo sobre la marcha.
+
 ## La tienda ya puede capturar sin señal — 18 de septiembre de 2026
 
 La señal del centro comercial se cae a diario y hasta hoy eso se pagaba: una
@@ -260,8 +381,8 @@ comprobado EN EL SERVIDOR, nombre definitivo, y solo entonces el manifiesto con
 `mv`. Respaldo `version-antes-de-1.7-20260919T013738Z.json`; APK 1.6 conservada.
 `versionPublicada()` confirma versión, bytes y hash.
 
-**Pendiente de prueba física:** la captura sin señal con la app CERRADA. El
-arranque en «Mi día» sí quedó confirmado por el usuario.
+✅ **La captura sin señal con la app CERRADA quedó probada el 19 de septiembre**
+--ver la entrada de ese día--. El arranque en «Mi día» ya estaba confirmado.
 
 ## Tres fallos que no daban error — 18 de septiembre de 2026
 
@@ -424,10 +545,14 @@ escritura sin conexión y reintentos idempotentes. La «resolución visible de
 conflictos» quedó en su forma mínima --lo que el servidor rechaza de verdad se
 marca fallido y se nombra en pantalla-- sin pantalla propia de conflictos.
 
-3. Escáner nativo de códigos de barras/QR conectado a Conteos.
+✅ **3 y 5 se entregaron en APK 1.8**, el 19 de septiembre: escáner nativo de
+códigos conectado a Conteos y telemetría de salud del equipo. Con ellas fue la
+atestación de procedencia, en modo observar.
+
 4. Kiosco administrado con lock task, autoarranque y políticas de dispositivo.
-5. Telemetría de salud del equipo: app/WebView, almacenamiento, red, cámara,
-   notificaciones, hora automática y última sincronización.
+   ⚠️ **Lo único grande que queda, y no se empieza sin hablarlo**: el modo
+   *device owner* normalmente exige restablecer el teléfono de fábrica, o sea
+   dejar el equipo de la tienda sin servicio y reconfigurarlo entero.
 
 La visibilidad por Capacitor es una decisión de interfaz, no una frontera de
 seguridad. Las APIs deben conservar sesión, rol, tienda y firma del dispositivo;
