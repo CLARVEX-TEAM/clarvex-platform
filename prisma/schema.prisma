@@ -80,6 +80,7 @@ model Store {
   subscriptionPayments           SubscriptionPayment[]
   surveys                        Survey[]
   trainingResources              TrainingResource[]
+  trainingQuizzes                TrainingQuiz[]
   users                          User[]
   aiMemories                     AiMemory[]
   aiPlanHistories                AiPlanHistory[]
@@ -227,6 +228,7 @@ model User {
   surveyResponses               SurveyResponse[]              @relation("SurveyRespondent")
   authoredTraining              TrainingResource[]            @relation("TrainingAuthor")
   trainingViews                 TrainingResourceView[]        @relation("TrainingViewer")
+  trainingAttempts              TrainingAttempt[]             @relation("TrainingAttempts")
   legalAcceptances              LegalAcceptance[]
   store                         Store                         @relation(fields: [storeId], references: [id])
   webAuthnCredentials           WebAuthnCredential[]
@@ -256,7 +258,50 @@ model TrainingResource {
   author      User                   @relation("TrainingAuthor", fields: [authorId], references: [id], onDelete: Cascade)
   store       Store                  @relation(fields: [storeId], references: [id], onDelete: Cascade)
   views       TrainingResourceView[]
+  quiz        TrainingQuiz?
 
+  @@index([storeId, createdAt])
+}
+
+/// Evaluación de un recurso de capacitación.
+///
+/// ⚠️ Las preguntas viven en JSON --con su respuesta correcta-- y NUNCA salen
+/// así del servidor: `paraResponder()` las despoja antes de mandarlas. Ver
+/// `lib/capacitacion.ts`.
+model TrainingQuiz {
+  id         String            @id @default(cuid())
+  resourceId String            @unique
+  storeId    String
+  /// Mínimo para aprobar, en porcentaje.
+  passScore  Int               @default(80)
+  questions  Json
+  createdAt  DateTime          @default(now())
+  updatedAt  DateTime          @updatedAt
+  resource   TrainingResource  @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+  store      Store             @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  attempts   TrainingAttempt[]
+
+  @@index([storeId])
+}
+
+/// Un intento. Se guardan TODOS, no solo el que aprueba: el historial es lo que
+/// permite ver quién batalla con qué, y borrar los fallidos dejaría la
+/// capacitación pareciendo perfecta.
+model TrainingAttempt {
+  id        String       @id @default(cuid())
+  quizId    String
+  userId    String
+  storeId   String
+  score     Int
+  passed    Boolean
+  /// Lo que contestó, por id de pregunta. Sirve para saber qué se falla más.
+  answers   Json
+  createdAt DateTime     @default(now())
+  quiz      TrainingQuiz @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  user      User         @relation("TrainingAttempts", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([quizId, createdAt])
   @@index([storeId, createdAt])
 }
 
