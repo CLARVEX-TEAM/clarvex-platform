@@ -355,6 +355,34 @@ export function colaClarvexNativa(): PluginColaClarvex | null {
   return pluginNativo<PluginColaClarvex>("ColaClarvex");
 }
 
+export type LecturaDeCodigo = {
+  /** `false` cuando el teléfono no puede escanear nativamente: se usa el web. */
+  disponible: boolean;
+  cancelado: boolean;
+  valor: string;
+  formato?: number;
+  motivo?: string;
+};
+
+export type PluginEscanerCodigos = {
+  escanear(): Promise<LecturaDeCodigo>;
+};
+
+/**
+ * Lector de códigos nativo, desde APK 1.8.
+ *
+ * ⚠️ **Existe porque el WebView NO trae `BarcodeDetector`.** Es una función de
+ * Chrome, no del contenedor, así que dentro de la APK el escáner web cae siempre
+ * a jsQR: decodifica cuadro por cuadro en JavaScript sobre vídeo de 1080p. Se lee
+ * como «el escáner no sirve» en el teléfono de la tienda y perfecto en el
+ * navegador, siendo la misma web.
+ *
+ * `null` fuera de la APK 1.8: ahí sigue el escáner de siempre, que funciona.
+ */
+export function escanerCodigosNativo(): PluginEscanerCodigos | null {
+  return pluginNativo<PluginEscanerCodigos>("EscanerCodigos");
+}
+
 /** Convierte un `file://` privado devuelto por Android en una URL legible por el WebView. */
 export function urlArchivoNativo(ruta: string): string | null {
   const convertir = puente()?.convertFileSrc;
