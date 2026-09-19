@@ -74,6 +74,14 @@ export async function registerNativeDevice(profile?: "PERSONAL" | "KIOSK"): Prom
   if (signed.installationId !== identity.installationId) {
     throw new Error("La identidad cambió durante el registro.");
   }
+
+  /*
+   * ⚠️ El reto lo pone el SERVIDOR --sale del mismo desafío del registro-- y va
+   * dentro del certificado que firma el hardware. Sin él, una cadena buena
+   * capturada de otro teléfono valdría igual: la atestación no probaría nada de
+   * ESTA petición.
+   */
+  const attestation = await atestacion(plugin, `${issued.challengeId}${issued.nonce}`);
   const response = await fetch("/api/app/native/register", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -86,11 +94,34 @@ export async function registerNativeDevice(profile?: "PERSONAL" | "KIOSK"): Prom
       appBuild: identity.appBuild,
       appVersion: identity.appVersion,
       capabilities: identity.capabilities,
-      ...(health ? { health } : {})
+      ...(health ? { health } : {}),
+      ...(attestation ? { attestation } : {})
     })
   });
   const result = await jsonOrError<{ device: RegisteredDevice }>(response);
   return result.device;
+}
+
+/**
+ * La cadena de atestación, o `null` si este teléfono no puede.
+ *
+ * ⚠️ **Nunca lanza, y no poder atestiguar NO es un error.** Emuladores, Android
+ * viejo y algunos fabricantes no traen atestación por hardware; tratarlo como
+ * fallo dejaría esos equipos sin poder registrarse, que es peor que el ataque
+ * del que protege.
+ */
+async function atestacion(
+  plugin: { atestiguar?(options: { reto: string }): Promise<{ disponible: boolean; cadena?: string[] }> },
+  reto: string
+): Promise<string[] | null> {
+  // Una APK anterior a la 1.8 no trae el método: se registra como siempre.
+  if (typeof plugin.atestiguar !== "function") return null;
+  try {
+    const salida = await plugin.atestiguar({ reto });
+    return salida.disponible && Array.isArray(salida.cadena) && salida.cadena.length > 0 ? salida.cadena : null;
+  } catch {
+    return null;
+  }
 }
 
 /** La salud del equipo, o `null` si no se pudo leer. Nunca lanza. */
