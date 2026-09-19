@@ -14,7 +14,16 @@ const schema = z.object({
   profile: z.enum(["PERSONAL", "KIOSK"]).optional(),
   appBuild: z.number().int().positive().max(1_000_000),
   appVersion: z.string().min(1).max(32),
-  capabilities: z.array(z.string().regex(/^[a-z][a-zA-Z0-9]{1,47}$/)).max(32)
+  capabilities: z.array(z.string().regex(/^[a-z][a-zA-Z0-9]{1,47}$/)).max(32),
+  /*
+   * ⚠️ La salud es OPCIONAL y su forma queda abierta a propósito. Lo que se mide
+   * va a cambiar --hoy son siete cosas, mañana ocho-- y un esquema cerrado
+   * obligaría a desplegar el servidor antes que la APK cada vez. Lo que sí se
+   * acota es el TAMAÑO: esto lo manda un cliente y no puede crecer sin límite.
+   */
+  health: z.record(z.string().max(48), z.union([z.string().max(128), z.number(), z.boolean()]))
+    .refine((v) => Object.keys(v).length <= 32, "Demasiados campos de salud")
+    .optional()
 });
 
 export async function POST(request: Request) {
@@ -81,7 +90,10 @@ export async function POST(request: Request) {
         appBuild: input.appBuild,
         appVersion: input.appVersion,
         capabilities: input.capabilities,
-        lastSeenAt: now
+        lastSeenAt: now,
+        // Solo se pisa la salud si el equipo la mandó: una APK vieja no borra
+        // la última medida buena que sí tenemos de él.
+        ...(input.health ? { health: input.health, healthAt: now } : {})
       },
       create: {
         installationId: input.installationId,
@@ -92,7 +104,8 @@ export async function POST(request: Request) {
         appBuild: input.appBuild,
         appVersion: input.appVersion,
         capabilities: input.capabilities,
-        lastSeenAt: now
+        lastSeenAt: now,
+        ...(input.health ? { health: input.health, healthAt: now } : {})
       }
     });
     await tx.auditLog.create({

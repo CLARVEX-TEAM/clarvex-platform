@@ -5,6 +5,8 @@ import { createPortal } from "react-dom";
 import { motion } from "framer-motion";
 import { Flashlight, X } from "lucide-react";
 import { parseTagQr } from "@/lib/cycle-count";
+import { escanerCodigosNativo } from "@/lib/puente-nativo";
+import { decidirLectura } from "@/lib/escaner-codigos";
 
 // Escaneo del QR del marbete. Vive aparte porque lo usan el conteo fisico y el
 // conteo diario de una seccion.
@@ -31,7 +33,47 @@ export function ScannerOverlay({ onScan, onClose }: { onScan: (number: number) =
   const onScanRef = useRef(onScan);
   useEffect(() => { onScanRef.current = onScan; }, [onScan]);
 
+  /*
+   * ⚠️ **Dentro de la APK 1.8 se usa el lector NATIVO y ni se abre la cámara.**
+   * El WebView no trae `BarcodeDetector` --es de Chrome, no del contenedor-- así
+   * que aquí dentro el camino web cae siempre a jsQR, decodificando cuadro por
+   * cuadro en JavaScript sobre vídeo de 1080p. Es lento justo en el teléfono de
+   * la tienda y rápido en el navegador, siendo la misma pantalla.
+   *
+   * Si el plugin dice que NO está disponible --un teléfono sin servicios de
+   * Google-- se sigue al camino de siempre. Nadie se queda sin contar.
+   */
+  const [nativoResuelto, setNativoResuelto] = useState(false);
   useEffect(() => {
+    const plugin = escanerCodigosNativo();
+    if (!plugin) { setNativoResuelto(true); return; }
+    let vivo = true;
+    void plugin.escanear()
+      .then((lectura) => {
+        if (!vivo) return;
+        const que = decidirLectura(lectura);
+        // `web`: este teléfono no puede escanear nativamente. Se abre el de
+        // siempre en vez de dejar a nadie sin contar.
+        if (que.accion === "web") { setNativoResuelto(true); return; }
+        if (que.accion === "marbete") { onScanRef.current(que.numero); return; }
+        // Un código que no es de esta tienda se DICE: leerlo y no hacer nada se
+        // ve igual que un escáner roto, y se vuelve a intentar con el mismo.
+        if (que.accion === "ajeno") {
+          setError("Ese código no es de un marbete de esta tienda.");
+          setNativoResuelto(true);
+          return;
+        }
+        onClose();
+      })
+      .catch(() => { if (vivo) setNativoResuelto(true); });
+    return () => { vivo = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    // Mientras el nativo decide, NO se abre la cámara: dos lectores a la vez se
+    // pelean por ella y el teléfono devuelve la pista ocupada.
+    if (!nativoResuelto) return;
     let stream: MediaStream | null = null;
     let interval: ReturnType<typeof setInterval> | null = null;
     let cancelled = false;
@@ -160,6 +202,9 @@ export function ScannerOverlay({ onScan, onClose }: { onScan: (number: number) =
   // Mismo motivo que la hoja de captura: dentro de `AppFrame` el `fixed` queda
   // encerrado por su transform y la barra inferior se pinta encima.
   if (typeof document === "undefined") return null;
+  // Con el lector nativo la interfaz la pinta Android: aquí no se dibuja nada,
+  // o se vería un velo negro debajo del escáner del sistema.
+  if (!nativoResuelto && !error) return null;
 
   return createPortal(
     <motion.div
