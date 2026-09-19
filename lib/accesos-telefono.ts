@@ -1,4 +1,5 @@
 import {
+  BadgeCheck,
   BarChart3,
   BookOpen,
   Boxes,
@@ -49,6 +50,7 @@ export const ACCESOS_GERENCIA: AccesoTelefono[] = [
   { href: "/bitacora", icon: BookOpen, label: "Bitácora" },
   { href: "/horarios", icon: CalendarDays, label: "Horarios" },
   { href: "/kudos", icon: HeartHandshake, label: "Reconocer" },
+  { href: "/credencial", icon: BadgeCheck, label: "Mi credencial" },
   { href: "/asistencia", icon: Clock, label: "Asistencia" },
   { href: "/uniformes", icon: Shirt, label: "Uniformes" },
   { href: "/solicitudes", icon: CalendarClock, label: "Días y cambios" },
@@ -70,6 +72,7 @@ export const ACCESOS_ASESOR: AccesoTelefono[] = [
   { href: "/pendientes", icon: ClipboardList, label: "Pendientes" },
   { href: "/kpis", icon: BarChart3, label: "Mis KPIs" },
   { href: "/kudos", icon: HeartHandshake, label: "Reconocer" },
+  { href: "/credencial", icon: BadgeCheck, label: "Mi credencial" },
   { href: "/asistencia", icon: Clock, label: "Mi asistencia" },
   { href: "/uniformes", icon: Shirt, label: "Uniformes" },
   { href: "/solicitudes", icon: CalendarClock, label: "Días y cambios" },

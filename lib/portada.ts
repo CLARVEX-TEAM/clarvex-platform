@@ -43,3 +43,25 @@ export function portadaDe(quien: QuienEntra, enApp: boolean): string {
 export function debeIrAMiDia(quien: QuienEntra, enApp: boolean): boolean {
   return portadaDe(quien, enApp) === "/mi-dia";
 }
+
+/** Dónde vive la verificación pública de una credencial: `/v/<token>`. */
+export const RUTA_VERIFICACION = "/v";
+
+/**
+ * Si esta pantalla la abre alguien de FUERA del equipo.
+ *
+ * ⚠️ **Es la única pantalla de la app sin sesión que habla de personas**, y la
+ * abre un desconocido con una cámara: seguridad del centro comercial o
+ * supervisión de AXO comprobando una credencial. Por eso no lleva nada del
+ * envoltorio de la app --ni intro, ni barra inferior, ni compuertas--: lo único
+ * que esa persona necesita es saber, de un vistazo, si quien tiene delante
+ * trabaja aquí.
+ *
+ * Vive aquí, junto al resto de decisiones de «a dónde va quién», para que el
+ * próximo componente global que alguien monte en el layout raíz tenga dónde
+ * mirar antes de taparla.
+ */
+export function esVerificacionPublica(pathname: string | null | undefined): boolean {
+  if (!pathname) return false;
+  return pathname === RUTA_VERIFICACION || pathname.startsWith(`${RUTA_VERIFICACION}/`);
+}

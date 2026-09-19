@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { readFileSync } from "node:fs";
 import { globSync } from "node:fs";
-import { debeIrAMiDia, portadaDe } from "../lib/portada";
+import { debeIrAMiDia, esVerificacionPublica, portadaDe } from "../lib/portada";
 
 /*
  * Por qué existen estas pruebas.
@@ -80,5 +80,53 @@ test("⚠️ NADIE manda a una portada web sin pasar por `portadaDe`", () => {
     culpables,
     [],
     `Estas pantallas navegan a una portada web a mano. Usa \`portadaDe\`:\n  ${culpables.join("\n  ")}`
+  );
+});
+
+test("la verificacion publica se reconoce por su ruta", () => {
+  assert.equal(esVerificacionPublica("/v/abc.def"), true);
+  assert.equal(esVerificacionPublica("/v"), true);
+  // Ni una ruta que solo EMPIEZA igual: `/ventas` no es la verificación.
+  assert.equal(esVerificacionPublica("/ventas"), false);
+  assert.equal(esVerificacionPublica("/mi-dia"), false);
+  assert.equal(esVerificacionPublica(null), false);
+  assert.equal(esVerificacionPublica(undefined), false);
+});
+
+test("⚠️ nada del envoltorio de la app TAPA la verificacion publica", () => {
+  /*
+   * La abre un desconocido con una cámara --seguridad del centro comercial,
+   * supervisión de AXO-- y lo único que necesita es saber si quien tiene
+   * delante trabaja aquí.
+   *
+   * `SplashIntro` la tapaba 2.5 segundos con un velo a pantalla completa y
+   * `z-[9999]`, sin excluir ninguna ruta: una comprobación de un vistazo se
+   * convertía en una espera, y encima ante una marca que esa persona no conoce.
+   * No daba error ni dejaba rastro, como casi todo lo que este repositorio
+   * termina persiguiendo.
+   *
+   * Se comprueba el PATRÓN y no el arreglo: cualquier componente global del
+   * layout raíz que pinte un velo tiene que consultar `esVerificacionPublica`.
+   */
+  const raiz = sinComentarios(readFileSync("app/layout.tsx", "utf8"));
+  const montados = [...raiz.matchAll(/<([A-Z][A-Za-z]*)\s*\/>/g)].map((m) => m[1]!);
+  assert.ok(montados.length > 5, "no se pudieron leer los componentes del layout raiz");
+
+  const sinSalida: string[] = [];
+  for (const nombre of new Set(montados)) {
+    const archivo = globSync(`components/**/${nombre}.tsx`)[0];
+    if (!archivo) continue;
+    const fuente = sinComentarios(readFileSync(archivo, "utf8"));
+    // Un velo es lo que ocupa la pantalla entera por encima de todo lo demás.
+    const tapa = /fixed inset-0/.test(fuente) && /z-\[?9\d{2,}/.test(fuente);
+    if (!tapa) continue;
+    if (!/esVerificacionPublica/.test(fuente)) sinSalida.push(`${nombre} (${archivo.replace(/\\/g, "/")})`);
+  }
+
+  assert.deepEqual(
+    sinSalida,
+    [],
+    "Estos componentes del layout raiz pintan un velo a pantalla completa y no consultan " +
+      `esVerificacionPublica, asi que taparian la credencial a quien la escanea:\n${sinSalida.join("\n")}`
   );
 });
