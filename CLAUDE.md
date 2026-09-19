@@ -1,5 +1,268 @@
 # Clarvex Team — CLAUDE.md
 
+## La tienda ya puede capturar sin señal — 18 de septiembre de 2026
+
+La señal del centro comercial se cae a diario y hasta hoy eso se pagaba: una
+evidencia que no salía se perdía, y la persona volvía a tomar la foto o creía que
+había quedado. Ahora lo que no sale se guarda y se manda solo.
+
+Se publicó en cinco entregas (PR 107, 108, 110, 111 y 113 en plataforma; PR 7 en
+Android) y **APK 1.7 / código 9**. Al construirlo salieron dos agujeros que ya
+existían y que nadie había visto.
+
+### ⚠️ Primero la idempotencia, o la cola es una máquina de duplicar
+
+Una cola que reintenta sobre endpoints que no son idempotentes repite a escala lo
+que ya pasó a mano: el folio 1766932 capturado dos veces, sus doce piezas
+contadas doble en el teórico, y nada que lo delatara hasta el conteo físico.
+
+`lib/idempotencia.ts` decide y `lib/idempotencia-db.ts` la aplica sobre la tabla
+`IdempotentWrite` (migración `20260918200000_idempotent_write`).
+
+⚠️ **La reserva se inserta ANTES de escribir.** Guardar la respuesta al final no
+basta: dos intentos simultáneos --el de la cola y el del botón-- pasarían los dos
+por el hueco entre la consulta y la escritura. **El índice único es el único
+árbitro fiable**, y se relee después del choque en vez de confiar en el intento.
+Es la misma lección que costó el `ack` de Slack.
+
+⚠️ **Si la escritura revienta se SUELTA la reserva.** Dejándola puesta, el
+reintento chocaría contra «en curso» para siempre y la operación quedaría muerta
+sin forma de repetirla. El riesgo que queda escrito: si reventó DESPUÉS de haber
+escrito, el reintento duplica. Se elige así porque una excepción antes de
+responder casi siempre es una transacción que no confirmó, y una operación
+imposible de reintentar es un problema seguro frente a un duplicado improbable.
+
+⚠️ **La guarda se AÑADE a quien la pide.** Sin cabecera `Idempotency-Key` todo se
+comporta igual que antes; imponerla rompería a todo lo que ya escribe hoy.
+
+### ⚠️ Los dos 409 significan lo CONTRARIO
+
+El candado devuelve 409 en dos casos opuestos y la cola tiene que distinguirlos:
+
+| `codigo` | Qué es | Qué hace la cola |
+|---|---|---|
+| `en-curso` | se está guardando ahora | reintentar |
+| `clave-repetida` | esa clave ya se gastó en otra operación | rendirse |
+
+⚠️ **Se distinguen por el `codigo` del CUERPO, nunca por el texto del error.**
+Atarlo a una frase la ata a algo que alguien reescribirá.
+
+### Las decisiones viven fuera del navegador
+
+`lib/cola-offline.ts` no toca IndexedDB ni `fetch`: es lo único que se puede
+probar. Reintentar para siempre es tan malo como rendirse a la primera --una
+operación que nunca va a funcionar atasca la cola delante de todo lo demás.
+
+⚠️ **El 401 se REINTENTA.** «401 es todavía no sé, no no hay nada»: es la
+excepción que este proyecto ya pagó cara con el registro del aparato en `/login`.
+
+⚠️ **La cola es estrictamente FIFO y no se salta la que está atascada.** Dos
+operaciones del mismo ítem pueden ser «márcalo» y luego «desmárcalo», y las
+páginas de un escaneo se juntan en un PDF **por orden de envío**.
+
+⚠️ **Una captura que no llegó SIEMPRE se dice.** Las fallidas se nombran en la
+franja de arriba aunque no quede nada pendiente, y no se quitan solas. Dar por
+buena una foto que no se guardó es el fallo que esta app lleva meses
+persiguiendo en otras formas.
+
+### ⚠️ El DÍA viaja con la operación, y es el hueco que la clave no tapa
+
+`/api/checklist` marca el ítem del día que le llegue y, sin fecha, el del
+SERVIDOR. Una foto capturada el viernes sin señal y entregada el lunes marcaría
+la tarea del **lunes**: una escritura legítima, en el día equivocado, que la
+idempotencia no puede detener porque nunca hubo una primera.
+
+`lib/cola-checklist.ts` mete la fecha en el cuerpo. Sus pruebas fallan 3 de 5 si
+alguien la quita.
+
+### Dos agujeros que ya existían y salieron al encolar
+
+⚠️ **El escáner podía duplicar una página del PDF del cierre.** Cada POST a
+`/api/checklist/scan` sube un objeto nuevo a R2 --el nombre lleva `Date.now()`--
+y crea otra fila. Sin error ni log: se descubre abriendo el documento ya
+entregado a gerencia. La copia del voucher a la tarea de cierre también, y esa es
+peor: el duplicado saldría en el PDF **del cierre**, donde nadie lo buscaría.
+
+⚠️ **Una corrección de asistencia reintentada decía lo contrario de lo que
+pasó.** Si el primer intento llegó pero su respuesta se perdió, el reintento
+chocaba con «ya tienes una corrección en revisión» y la cola se lo contaba a la
+persona como «no se pudo guardar. Vuelve a hacerla». Se guardó.
+
+Los dos handlers se prueban de verdad, con sus fronteras simuladas --sin Prisma,
+sin `.env`, sin R2-- siguiendo el patrón de `tests/slack-ack-transaction.test.ts`.
+Contra el código que estaba publicado fallan 2 de 4 y 1 de 3.
+
+### ⚠️ La firma del dispositivo no se puede hacer al CAPTURAR
+
+La corrección de asistencia exige un reto del servidor --de un solo uso, que
+exige red-- y una firma con ventana de **dos minutos**. Guardada firmada,
+llegaría vencida.
+
+La cola pide reto y **firma en el momento del envío**. Eso no relaja nada: el
+aparato prueba posesión cuando de verdad manda, que es exactamente lo que la
+ventana protege.
+
+⚠️ `Idempotency-Key` viaja FUERA de lo que firma el dispositivo --que cubre
+método, ruta y cuerpo--. No abre nada: el reto de un solo uso ya impide repetir
+la petición, y lo peor que haría cambiarla es provocar un rechazo.
+
+⚠️ **`nativeDeviceFetch` lanzaba igual sin red que con un rechazo del servidor.**
+Para una pantalla da lo mismo; para una cola no. Ahora hay `SinRed`, y es la misma
+lección de `getSession()`.
+
+### ⚠️ Un worker de Android NO puede leer IndexedDB
+
+Vive dentro del WebView, en formato interno de Chromium, y no hay API para
+abrirlo desde Java. Por eso, **dentro de la APK 1.7 la cola se guarda en archivos
+privados de Android** (`ColaClarvex`) y la web escribe ahí en vez de en
+IndexedDB.
+
+⚠️ **El almacén nativo SUSTITUYE al de la web, no lo duplica.** Dos copias del
+mismo dato se separan en cuanto una escritura falla y ya no se sabe cuál vale. Es
+la misma razón por la que Slack es una ventana del chat y no un segundo dueño del
+mensaje.
+
+⚠️ **Y esto solo es seguro gracias a la clave de idempotencia.** Con el worker y
+la web pudiendo mandar lo mismo, sin ella cada captura se escribiría dos veces.
+
+Fuera de la APK 1.7 --navegador, PWA, APK vieja-- todo sigue igual en IndexedDB:
+se elige solo según exista el plugin.
+
+Detalles del lado Java que no dan error si se hacen mal:
+
+- **Lo que falla NO se borra**: se marca `fallida` y la web lo cuenta. Borrarlo
+  aquí lo haría desaparecer sin que nadie se entere.
+- **Archivo temporal y `renameTo`**: escribiendo encima, un corte deja un JSON
+  partido que nadie sabrá leer. Misma regla que el manifiesto del APK.
+- **El id se valida** porque compone un nombre de archivo: sin eso un `..`
+  escribiría fuera de la carpeta privada.
+- **Tope de 120 MB**: el escáner admite 25 páginas y sin tope una noche sin señal
+  llena el teléfono, y entonces deja de funcionar TODO. Al pasarse se DICE.
+- **`CONNECTED` + `KEEP`, nunca un temporizador.**
+- **Las operaciones firmadas se saltan** a propósito.
+- **El cuerpo se pide al ENVIAR, no al listar**: 25 fotos en base64 no caben en
+  memoria a la vez.
+- ⚠️ **Que el cuerpo ya no esté NO es un fallo**: lo mandó Android con la app
+  cerrada. Tratarlo como fallo diría «no se pudo guardar» sobre algo que llegó.
+
+Al publicar una versión puede haber capturas esperando señal en el teléfono, así
+que **los campos nuevos van opcionales y no se renombra lo viejo**. Hay una
+prueba que lo fija. ⚠️ El cambio de almacén de la 1.7 sí es un salto: conviene
+abrir la app con señal antes de instalarla, para que la cola quede vacía.
+
+### Lo que NO se encoló, y por qué
+
+- **Confirmación de asistencia AXO**: no lleva cuerpo y su periodo sale del día
+  del SERVIDOR, así que una entrega tardía confirmaría el día equivocado. Es una
+  declaración de gerencia hecha en la tienda, con wifi y con la persona delante.
+
+### ⚠️ En Android el evento `online` puede no llegar NUNCA
+
+Reportado en tienda con la cola ya publicada: «funciona, solo que la franja roja
+sigue ahí diciendo sin conexión». Las capturas se entregaron solas --prueba de
+que había red-- y el aviso seguía puesto.
+
+El aviso y la cola escuchaban señales distintas: la cola se vacía con
+`visibilitychange`, que sí llega siempre; la franja dependía del evento que no
+llega. Un aviso que miente en ESE sentido es el caro: le dice «no hay red» a
+quien sí la tiene, y la persona deja de capturar.
+
+`lib/conexion.ts` acepta tres señales más. ⚠️ **Una ENTREGA quita el aviso pase
+lo que pase**: si el servidor acaba de contestar hay conexión, y eso es un hecho
+--`navigator.onLine` es una opinión del sistema. Al revés no vale: que no haya
+entregas no demuestra nada, porque lo normal es no tener nada que mandar.
+
+## ⚠️ Arreglar los ORÍGENES no escala — 18 de septiembre de 2026
+
+«Cuando recién entro me aparece la interfaz de inicio que era exclusiva para la
+web» se reportó **dos veces el mismo día**. La primera corrección --el agente de
+usuario `ClarvexApp/`, la raíz y los botones de volver-- arregló los caminos que
+se veían y dejó fuera el **login**, que es por donde se entra en la primera
+instalación y cada vez que caduca la sesión.
+
+Una prueba escrita para buscar el PATRÓN en vez de comprobar el arreglo encontró
+**ocho pantallas más** haciendo lo mismo: suscripción, regional, equipo,
+dispositivos, checklist, admin y el login en dos sitios.
+
+Dos cambios, y el segundo es el que cierra esto:
+
+1. La regla vive en `lib/portada.ts`. ⚠️ **El kiosko se decide PRIMERO**: está
+   dado de alta con rol `ASESOR`, así que cualquier reparto por puesto se lo
+   lleva a la portada de asesor --ya se coló en doce consultas por eso mismo.
+2. ⚠️ **La guarda va también en el DESTINO.** `/manager` y `/advisor` se van a
+   «Mi día» al montar si estamos dentro de la APK. Así da igual por dónde se haya
+   llegado, incluida la pantalla que alguien escriba mañana.
+
+`tests/portada.test.ts` recorre `app/**/page.tsx` y falla **nombrando** la
+pantalla culpable. Se permiten `/escritorio/*`, que no vive dentro de la APK, y
+`/mi-dia`, que es la guarda inversa.
+
+**La lección, que es la tercera vez que este documento la escribe de otra forma:
+ante un fallo que se repite, la pregunta no es «¿está arreglado este camino?»
+sino «¿queda algún camino abierto?».**
+
+## Bedrock por el rol de la instancia — 18 de septiembre de 2026
+
+Preparado para retirar el usuario IAM `clarvex-bedrock`, creado el 21 de agosto
+cuando la app corría fuera de AWS.
+
+⚠️ **Borrarlo sin esto rompía producción en silencio.** Los dos módulos exigían
+las llaves del `.env` y sin ellas devuelven «sin credenciales»: el lector del POS
+se cae a Gemini --más lento, pero funciona-- y el reconocimiento de zonas del
+visual **se queda sin nada**, porque no tiene respaldo. El bot dejaría de
+proponer el reparto y nadie vería un error. Comprobado en AWS, no supuesto: la
+llave se usó contra `bedrock` ese mismo día a las `20:46 UTC`.
+
+`lib/bedrock-credenciales.ts` concentra la decisión. Con llaves es idéntico a
+antes; con `BEDROCK_USE_INSTANCE_ROLE=1` omite `credentials`, que es como se le
+dice al SDK que use su cadena por omisión --y ahí encuentra el rol.
+
+⚠️ **El rol se pide EXPLÍCITAMENTE, no se deduce de que falten las llaves.** Si
+bastara con eso, una máquina de desarrollo sin `.env` se pondría a buscar
+credenciales que no existen y a comerse los tiempos de espera del SDK.
+
+⚠️ **Y la variable se lee AL DECIDIR, no al cargar el módulo.** Congelarla arriba
+deja el valor del arranque para toda la vida del proceso, y PM2 recarga con
+`--update-env`. Es la trampa del candado de la huella otra vez; la primera
+versión del archivo la tenía y la prueba la puso en rojo.
+
+Estado: la política `solo-invocar-bedrock` se copió **literal** al rol
+`clarvex-instancia` --`InvokeModel` y `Converse`, solo Anthropic--, el `.env` de
+producción ya lleva la variable y no las llaves, y se verificó con el código real
+de la app que Haiku y Sonnet responden por el rol.
+
+⚠️ **La llave `AKIA…3NXC` sigue ACTIVA y sin usarse.** Falta desactivarla y,
+unos días después, comprobar `get-access-key-last-used` antes de borrar el
+usuario. No se pudo hacer porque el CLI de AWS de la máquina de Adrián se cuelga
+--`aws --version` también--, que es problema del equipo y no de la sesión.
+
+⚠️ **`clarvex-backup` tiene el mismo problema**: llave permanente, creada el
+mismo día, sin rotar. Si se retira una, esa merece la misma conversación.
+
+De paso: el presupuesto `clarvex-mensual` estaba en **$20 con $18.68 gastados** y
+doce días de mes por delante --iba a saltar en falso. Subido a **$45**, que da
+~45 % de margen sobre el ritmo real de ~$31/mes bruto. Conserva sus tres avisos.
+
+## APK 1.7 publicada — 18 de septiembre de 2026
+
+`compartido/apk/clarvex-9.apk`, versión 1.7/código 9, **8,491,241 bytes**,
+SHA-256 `745a2529f78e557fa0a77ec80a11ff3072b0ffc483ed49467e4e37a3e07d23c2`.
+Certificado estable `8758a326…c29ffbc`, firma v1/v2.
+
+Compilada aislada desde el merge Android exacto `5293bc5` con `npm ci` y
+`cap sync`, 248 tareas, Java 21 / SDK 35. Verificado que las clases nuevas están
+DENTRO del binario --`ColaClarvex` y `TrabajoDeCola` en `classes4.dex`,
+`WorkManagerImpl` en `classes.dex`-- y que el manifiesto trae el inicializador de
+WorkManager. **No pide ningún permiso nuevo.**
+
+Publicada por el circuito de siempre: archivo con nombre temporal, SHA-256
+comprobado EN EL SERVIDOR, nombre definitivo, y solo entonces el manifiesto con
+`mv`. Respaldo `version-antes-de-1.7-20260919T013738Z.json`; APK 1.6 conservada.
+`versionPublicada()` confirma versión, bytes y hash.
+
+**Pendiente de prueba física:** la captura sin señal con la app CERRADA. El
+arranque en «Mi día» sí quedó confirmado por el usuario.
+
 ## Tres fallos que no daban error — 18 de septiembre de 2026
 
 Los tres se reportaron usando la app y los tres comparten forma: **nada falla,
@@ -77,7 +340,12 @@ del arreglo en `/home/ubuntu/logs/crons-antes-de-arreglo-20260918T060801Z/`.
 
 ## Estado funcional y roadmap después de APK 1.6 — 17 de septiembre de 2026
 
-La versión vigente es APK 1.6/código 8 con la web del merge
+⚠️ **Lo de abajo describe el estado del 17 de septiembre y ya no es la versión
+vigente.** La actual es **APK 1.7/código 9** sobre la plataforma `2553ba7`; el
+inventario de 1.6 se conserva porque sigue siendo la descripción correcta de
+«Mi día», que no cambió. Ver las entradas del 18 de septiembre, al principio.
+
+La versión vigente era APK 1.6/código 8 con la web del merge
 `1d08e2ce2cf7b5bc51289c0f73c1e65124a9c8a3`, release
 `/home/ubuntu/clarvex/releases/20260918-032158-1d08e2c` y build `mu6e7e6v`.
 Las capturas entregadas por el usuario demuestran instalación y apertura reales
@@ -115,9 +383,12 @@ manifiesto, migraciones o cron y llega al volver a cargar con conexión.
    sesión al comprobar su estado. Las notificaciones abren la sección pertinente
    de «Mi día». `/api/cron/shift-reminder` deduplica por usuario/día y el servidor
    lo ejecuta cada 15 minutos.
-7. **Límite offline.** La pantalla abre la última jornada guardada sin red, pero
-   no permite crear operaciones offline. Correcciones, checklist, asistencia y
-   soporte todavía necesitan conexión para persistir.
+7. **Límite offline.** ⚠️ **Esto dejó de ser cierto el 18 de septiembre**, con
+   APK 1.7: checklist, evidencias, páginas del escáner y correcciones de
+   asistencia ya se capturan sin señal y se mandan solas, incluso con la app
+   cerrada. Ver «La tienda ya puede capturar sin señal», al principio. Siguen
+   exigiendo conexión el soporte y la confirmación de asistencia AXO, esta
+   última a propósito.
 
 ### Módulos que ya existen frente al trabajo futuro
 
@@ -126,7 +397,11 @@ La plataforma ya tiene las rutas generales `/capacitacion`, `/kudos` y
 pendiente es crear su recorrido integrado, coherente y exclusivo dentro de APK,
 con las funciones adicionales descritas abajo.
 
-### APK 1.7 — alcance planeado, sin implementar
+### APK 1.7 — lo planeado que sigue sin implementar
+
+⚠️ **La APK 1.7 se publicó el 18 de septiembre con OTRO contenido**: la cola sin
+conexión, que estaba planeada para 1.8. Lo de esta lista no entró; el número de
+versión avanzó por lo que sí se hizo. No darlo por hecho por ver «1.7» publicada.
 
 1. **Credencial digital:** identidad visible en la APK, QR verificable, vigencia
    y validación del lado servidor.
@@ -141,11 +416,14 @@ con las funciones adicionales descritas abajo.
    equipos incompatibles. La vinculación P-256 actual solo prueba posesión de la
    llave registrada.
 
-### APK 1.8 — alcance planeado, sin implementar
+### APK 1.8 — lo que queda
 
-1. Cola persistente de operaciones y sincronización mediante WorkManager.
-2. Checklist, evidencias, asistencia y soporte con escritura sin conexión,
-   reintentos idempotentes y resolución visible de conflictos.
+✅ **1 y 2 se entregaron en APK 1.7**, el 18 de septiembre: cola persistente con
+WorkManager, y checklist, evidencias, escáner y correcciones de asistencia con
+escritura sin conexión y reintentos idempotentes. La «resolución visible de
+conflictos» quedó en su forma mínima --lo que el servidor rechaza de verdad se
+marca fallido y se nombra en pantalla-- sin pantalla propia de conflictos.
+
 3. Escáner nativo de códigos de barras/QR conectado a Conteos.
 4. Kiosco administrado con lock task, autoarranque y políticas de dispositivo.
 5. Telemetría de salud del equipo: app/WebView, almacenamiento, red, cámara,
