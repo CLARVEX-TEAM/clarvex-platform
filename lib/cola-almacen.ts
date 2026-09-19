@@ -17,12 +17,30 @@ const BASE = "clarvex-cola";
 const VERSION = 1;
 const ALMACEN = "operaciones";
 
-/** Lo que se guarda: la operación y su cuerpo listo para reenviar. */
+/**
+ * Lo que se guarda: la operación y su cuerpo listo para reenviar.
+ *
+ * ⚠️ **Los campos nuevos van OPCIONALES y nunca se renombra lo viejo.** Al
+ * publicar una versión puede haber capturas ya guardadas en el teléfono de la
+ * tienda, esperando señal. Un formato que no sepa leerlas las pierde en
+ * silencio, que es justo lo que esta cola existe para evitar.
+ */
 export type OperacionGuardada = OperacionEnCola & {
   /** Campos del formulario. Los `Blob` viajan tal cual. */
   campos: Array<[string, string | Blob]>;
   /** Nombre del archivo, cuando el campo es un `Blob`. */
   nombreArchivo: string | null;
+  /** Cuerpo JSON ya serializado. Solo en las operaciones firmadas. */
+  json?: string;
+  /**
+   * `true` cuando hay que pedir reto al servidor y FIRMAR al enviar.
+   *
+   * ⚠️ **La firma NO se puede hacer al capturar.** Lleva un reto de un solo uso
+   * --que exige red-- y una ventana de dos minutos: guardada, llegaría vencida.
+   * Firmar al enviar no relaja nada: el aparato prueba posesión en el momento en
+   * que de verdad manda, que es lo que la ventana protege.
+   */
+  firmado?: boolean;
 };
 
 function abrir(): Promise<IDBDatabase> {

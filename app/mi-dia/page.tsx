@@ -10,6 +10,7 @@ import {
   Check,
   ChevronRight,
   ClipboardCheck,
+  CloudUpload,
   Clock3,
   ExternalLink,
   Megaphone,
@@ -30,7 +31,8 @@ import { compressImage } from "@/lib/image-compress";
 import { money } from "@/lib/format";
 import { haptic } from "@/lib/haptics";
 import { attendanceLabel, correctionStatusLabel } from "@/lib/my-day";
-import { nativeDeviceFetch, registerNativeDevice } from "@/lib/native-device-client";
+import { SinRed, nativeDeviceFetch, registerNativeDevice } from "@/lib/native-device-client";
+import { encolar } from "@/lib/cola-envio";
 import { calendarioClarvexNativo, enContenedorNativo } from "@/lib/puente-nativo";
 
 type Correction = {
@@ -116,6 +118,7 @@ export default function MyDayPage() {
   const [loading, setLoading] = useState(true);
   const [offline, setOffline] = useState(false);
   const [error, setError] = useState("");
+  const [aviso, setAviso] = useState("");
   /*
    * La tienda puede tener KPIs apagados, y entonces ese acceso no se ofrece.
    * Se asume ENCENDIDO hasta saber lo contrario: si la sesión tarda o falla, un
@@ -267,15 +270,42 @@ export default function MyDayPage() {
         reason: draft.reason,
         ...(evidence ? { evidence } : {})
       });
-      const response = await nativeDeviceFetch("/api/app/native/attendance-corrections", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body
-      });
+      let response: Response;
+      try {
+        response = await nativeDeviceFetch("/api/app/native/attendance-corrections", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body
+        });
+      } catch (fallo) {
+        /*
+         * ⚠️ Sin red esta operación NO se puede firmar: la firma lleva un reto
+         * de un solo uso que hay que pedirle al servidor, y vale dos minutos.
+         * Se guarda el cuerpo y la cola pide reto y FIRMA al enviarla, que es
+         * cuando el aparato de verdad prueba posesión.
+         */
+        if (!(fallo instanceof SinRed)) throw fallo;
+        const encolada = await encolar({
+          ruta: "/api/app/native/attendance-corrections",
+          etiqueta: `Corrección del ${draft.date}`,
+          campos: [],
+          json: body,
+          firmado: true
+        });
+        haptic(encolada ? "success" : "error");
+        if (encolada) {
+          setShowCorrection(false);
+          setAviso("Sin conexión: la solicitud quedó guardada y se envía sola al volver la señal.");
+        } else {
+          setError("Sin conexión y sin sitio para guardar la solicitud. Inténtalo otra vez.");
+        }
+        return;
+      }
       const payload = await response.json() as { error?: string };
       if (!response.ok) throw new Error(payload.error ?? "No se pudo enviar la solicitud.");
       haptic("success");
       setShowCorrection(false);
+      setAviso("");
       await load();
     } catch (submitError) {
       haptic("error");
@@ -361,6 +391,11 @@ export default function MyDayPage() {
         {error ? (
           <div className="mb-3 flex items-start gap-2 rounded-xl bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700 dark:bg-rose-950/40 dark:text-rose-200">
             <AlertCircle size={15} className="mt-0.5 shrink-0" /> {error}
+          </div>
+        ) : null}
+        {aviso ? (
+          <div className="mb-3 flex items-start gap-2 rounded-xl bg-sky-50 px-3 py-2 text-xs font-semibold text-sky-700 dark:bg-sky-950/40 dark:text-sky-200">
+            <CloudUpload size={15} className="mt-0.5 shrink-0" /> {aviso}
           </div>
         ) : null}
 
