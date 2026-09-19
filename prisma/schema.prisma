@@ -90,6 +90,7 @@ model Store {
   reportDeliveries               ReportDelivery[]
   weeklyPerformanceCloses        WeeklyPerformanceClose[]
   promoDrafts                    PromoDraft[]
+  supportCases                   SupportCase[]
   nativeDevices                  NativeDevice[]
   attendanceCorrectionRequests   AttendanceCorrectionRequest[]
 }
@@ -241,6 +242,7 @@ model User {
   nativeDevices                 NativeDevice[]
   attendanceCorrectionRequests  AttendanceCorrectionRequest[]
   reviewedAttendanceCorrections AttendanceCorrectionRequest[] @relation("AttendanceCorrectionReviewer")
+  supportCases                  SupportCase[]
 }
 
 model TrainingResource {
@@ -1924,4 +1926,46 @@ model CountPresence {
 
   @@unique([countKey, userId])
   @@index([countKey, at])
+}
+
+/// Un caso de soporte, visto desde Clarvex.
+///
+/// ⚠️ **Zendesk es el DUEÑO del caso; esto es una VENTANA.** Ahí trabajan los
+/// agentes, ahí vive el estado y ahí se mide el tiempo de atención. Es la
+/// decisión contraria a la del espejo del chat de Slack, y por el mismo motivo
+/// que allí: el dueño es quien de verdad opera el dato, y tener dos dueños deja
+/// los lados distintos en cuanto falla una petición.
+///
+/// ⚠️ **Entonces, ¿por qué se guarda algo?** Por dos cosas que Zendesk no puede
+/// dar: que la persona vea SUS casos sin tener cuenta de Zendesk, y —lo que de
+/// verdad importa— que la autorización sea NUESTRA. Una etiqueta `store-xxx` en
+/// el ticket no es una frontera de seguridad: cualquiera que adivine un id
+/// pediría el caso de otra tienda. Se busca por esta fila, con su dueño, y solo
+/// entonces se usa el `zendeskId`.
+///
+/// El estado y el tiempo son COPIA y pueden estar viejos. Lo que manda es
+/// Zendesk, y se relee al abrir el caso.
+model SupportCase {
+  id           String    @id @default(cuid())
+  storeId      String
+  userId       String
+  /// El ticket en Zendesk. Único: un caso nuestro es un ticket suyo.
+  zendeskId    Int       @unique
+  /// Folio legible que se le enseña a la persona. Se deriva del id de Zendesk,
+  /// nunca se inventa: dos folios para el mismo caso es peor que no tener folio.
+  folio        String    @unique
+  category     String
+  subject      String
+  /// Copia del estado de Zendesk en la última lectura.
+  status       String    @default("nuevo")
+  /// Cuándo contestó soporte por primera vez. De ahí sale el tiempo de atención.
+  firstReplyAt DateTime?
+  syncedAt     DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  store        Store     @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([storeId, createdAt])
 }
