@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { camposDeEvidencia, camposDeTarea } from "../lib/cola-checklist";
+import { camposDeEscaneo, camposDeEvidencia, camposDeTarea } from "../lib/cola-checklist";
 
 /*
  * Por qué existen estas pruebas.
@@ -53,4 +53,18 @@ test("la nota se conserva; sin nota no se manda vacia", () => {
   const conNota = camposDeTarea({ ...tarea, note: "faltó el cambio" }, "2026-09-18", true);
   assert.equal(valor(conNota, "note"), "faltó el cambio");
   assert.equal(valor(camposDeTarea(tarea, "2026-09-18", true), "note"), undefined);
+});
+
+test("⚠️ la pagina escaneada tambien lleva su dia, y NO lleva estado de tarea", () => {
+  /*
+   * Un escaneo no marca ni desmarca nada: solo agrega una página. Mandar
+   * `completed` aquí le cambiaría el estado a la tarea por el camino.
+   */
+  const pagina = new Blob(["pagina"], { type: "image/jpeg" });
+  const campos = camposDeEscaneo(tarea, "2026-09-18", pagina);
+  assert.equal(valor(campos, "date"), "2026-09-18");
+  assert.equal(valor(campos, "itemKey"), "abrir-caja");
+  assert.equal(valor(campos, "image"), pagina);
+  assert.equal(valor(campos, "completed"), undefined, "un escaneo no toca el estado de la tarea");
+  assert.equal(valor(campos, "note"), undefined);
 });

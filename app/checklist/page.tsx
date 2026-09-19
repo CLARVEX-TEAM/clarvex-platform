@@ -13,7 +13,7 @@ import { AppFrame, AppHeader, Badge, Card, ProgressBar } from "@/components/ui";
 import { puedeConAsistenciaAxo } from "@/lib/operational-checklist-reminders";
 import { enContenedorNativo, scannerDocumentosNativo, urlArchivoNativo } from "@/lib/puente-nativo";
 import { EVENTO_ENTREGA, encolar } from "@/lib/cola-envio";
-import { camposDeEvidencia, camposDeTarea } from "@/lib/cola-checklist";
+import { camposDeEscaneo, camposDeEvidencia, camposDeTarea } from "@/lib/cola-checklist";
 
 type Section = "APERTURA" | "CIERRE";
 type ScanPhoto = { id: string; url: string; fileName: string | null; createdAt: string };
@@ -151,9 +151,35 @@ export default function ChecklistPage() {
     }
   }
 
-  /** Refresco silencioso (sin spinner): para reflejar las páginas de vouchers que
-   *  se copian a la tarea de cierre del lado del servidor. */
-  async function silentRefresh() {
+  /**
+   * Refresco silencioso (sin spinner): para reflejar las páginas de vouchers que
+   * se copian a la tarea de cierre del lado del servidor, y lo que la cola
+   * consigue entregar después.
+   *
+   * ⚠️ **Las entregas seguidas se juntan en UN refresco.** El escáner nativo
+   * admite 25 páginas: sin esta guarda, vaciar la cola pediría el checklist
+   * entero 25 veces seguidas, justo cuando la señal acaba de volver y es mala.
+   * Al terminar se vuelve a mirar una vez, para no perder lo que llegó mientras
+   * tanto.
+   */
+  const refrescando = useRef(false);
+  const refrescoPendiente = useRef(false);
+
+  async function silentRefresh(): Promise<void> {
+    if (refrescando.current) { refrescoPendiente.current = true; return; }
+    refrescando.current = true;
+    try {
+      await pedirChecklist();
+    } finally {
+      refrescando.current = false;
+      if (refrescoPendiente.current) {
+        refrescoPendiente.current = false;
+        void silentRefresh();
+      }
+    }
+  }
+
+  async function pedirChecklist() {
     try {
       const response = await fetch("/api/checklist", { cache: "no-store" });
       const payload = await response.json() as { items: ChecklistItem[] };
@@ -264,7 +290,27 @@ export default function ChecklistPage() {
       form.append("itemKey", item.key);
       if (date) form.append("date", date);
       form.append("image", image, "escaneo.jpg");
-      const response = await fetch("/api/checklist/scan", { method: "POST", body: form });
+      const response = await mandar("/api/checklist/scan", { method: "POST", body: form });
+
+      if (response === null) {
+        /*
+         * Sin red la página queda encolada, pero NO se pinta una miniatura: no
+         * hay todavía ni id ni foto servida, y dibujar una falsa haría creer que
+         * ya subió. El aviso y la franja de arriba dicen lo que hay.
+         */
+        const encolada = await encolar({
+          ruta: "/api/checklist/scan",
+          etiqueta: `Página de ${item.label}`,
+          campos: camposDeEscaneo(item, date, image),
+          nombreArchivo: "escaneo.jpg"
+        });
+        setAviso(encolada
+          ? "Sin conexión: la página quedó guardada y se envía sola al volver la señal."
+          : "");
+        if (!encolada) setError("Sin conexión y sin sitio para guardar la página. Inténtalo otra vez.");
+        return;
+      }
+
       const payload = await response.json() as { scan?: ScanPhoto; error?: string };
       if (!response.ok || !payload.scan) throw new Error(payload.error ?? "No se pudo subir la foto.");
       const added = payload.scan;
@@ -295,18 +341,54 @@ export default function ChecklistPage() {
         if (!response.ok) throw new Error("La APK no pudo leer una página escaneada.");
         blobs.push(await response.blob());
       }
+      /*
+       * ⚠️ **En cuanto UNA página se encola, van a la cola TODAS las siguientes.**
+       *
+       * Estas páginas se juntan en un PDF y el orden es el del envío. Si la 3 se
+       * encola por un corte de señal y la 4 se manda directa porque la señal
+       * volvió, el PDF sale con la 4 antes que la 3 — y eso no se ve hasta abrir
+       * el documento ya entregado.
+       */
+      let sinRed = false;
+      let encoladas = 0;
       for (let index = 0; index < blobs.length; index++) {
-        const form = new FormData();
-        form.append("itemKey", item.key);
-        if (date) form.append("date", date);
-        form.append("image", blobs[index], `escaneo-${index + 1}.jpg`);
-        const response = await fetch("/api/checklist/scan", { method: "POST", body: form });
-        const payload = await response.json() as { scan?: ScanPhoto; error?: string };
-        if (!response.ok || !payload.scan) throw new Error(payload.error ?? `No se pudo subir la página ${index + 1}.`);
-        const added = payload.scan;
-        setItems((current) => current.map((entry) => entry.key === item.key
-          ? { ...entry, scans: [...entry.scans, added] }
-          : entry));
+        const pagina = blobs[index];
+        if (!pagina) continue;
+        const nombre = `escaneo-${index + 1}.jpg`;
+
+        if (!sinRed) {
+          const form = new FormData();
+          form.append("itemKey", item.key);
+          if (date) form.append("date", date);
+          form.append("image", pagina, nombre);
+          const response = await mandar("/api/checklist/scan", { method: "POST", body: form });
+          if (response !== null) {
+            const payload = await response.json() as { scan?: ScanPhoto; error?: string };
+            if (!response.ok || !payload.scan) throw new Error(payload.error ?? `No se pudo subir la página ${index + 1}.`);
+            const added = payload.scan;
+            setItems((current) => current.map((entry) => entry.key === item.key
+              ? { ...entry, scans: [...entry.scans, added] }
+              : entry));
+            continue;
+          }
+          sinRed = true;
+        }
+
+        const encolada = await encolar({
+          ruta: "/api/checklist/scan",
+          etiqueta: `Página ${index + 1} de ${item.label}`,
+          campos: camposDeEscaneo(item, date, pagina),
+          nombreArchivo: nombre
+        });
+        if (!encolada) {
+          setError(`Sin conexión y sin sitio para guardar la página ${index + 1}. Vuelve a escanearla.`);
+          break;
+        }
+        encoladas += 1;
+      }
+
+      if (encoladas > 0) {
+        setAviso(`Sin conexión: ${encoladas} página(s) quedaron guardadas y se envían solas al volver la señal.`);
       }
       if (item.label.toLowerCase().includes("voucher")) void silentRefresh();
     } catch (requestError) {

@@ -42,3 +42,21 @@ export function camposDeEvidencia(
 ): Array<[string, string | Blob]> {
   return [...base(item, fecha, completada), ["image", imagen]];
 }
+
+/**
+ * Una página escaneada del cierre.
+ *
+ * ⚠️ **No lleva `completed` ni `note` a propósito.** Un escaneo solo agrega una
+ * página; mandar el estado de la tarea aquí se lo cambiaría por el camino, y el
+ * endpoint de escaneo ni siquiera lo lee.
+ */
+export function camposDeEscaneo(
+  item: TareaEncolable,
+  fecha: string,
+  imagen: Blob
+): Array<[string, string | Blob]> {
+  const campos: Array<[string, string | Blob]> = [["itemKey", item.key]];
+  if (fecha) campos.push(["date", fecha]);
+  campos.push(["image", imagen]);
+  return campos;
+}
