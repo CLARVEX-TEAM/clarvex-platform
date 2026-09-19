@@ -294,6 +294,13 @@ export type PluginDispositivoClarvex = {
   identidad(): Promise<IdentidadDispositivoNativo>;
   firmar(options: { payload: string }): Promise<{ installationId: string; signature: string }>;
   diagnostico(): Promise<DiagnosticoDispositivoNativo>;
+  /**
+   * Cadena de atestación del origen del binario, desde APK 1.8.
+   *
+   * ⚠️ Opcional a propósito: una APK anterior no lo trae y tiene que poder
+   * registrarse igual.
+   */
+  atestiguar?(options: { reto: string }): Promise<{ disponible: boolean; cadena?: string[]; motivo?: string }>;
 };
 
 /** Identidad no exportable y diagnóstico del equipo, desde la APK posterior a 1.5. */

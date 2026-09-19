@@ -1,8 +1,11 @@
+import { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { denyDemo, isApiError, parseJson, requireSession } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
 import { nativeRegistrationManifest, verifyNativeSignature } from "@/lib/native-device-crypto";
+import { procedenciaDe } from "@/lib/atestacion";
+import { mirarCadena } from "@/lib/atestacion-cadena";
 
 export const dynamic = "force-dynamic";
 
@@ -23,7 +26,9 @@ const schema = z.object({
    */
   health: z.record(z.string().max(48), z.union([z.string().max(128), z.number(), z.boolean()]))
     .refine((v) => Object.keys(v).length <= 32, "Demasiados campos de salud")
-    .optional()
+    .optional(),
+  /** Cadena de atestación, en base64. Ver `lib/atestacion.ts`. */
+  attestation: z.array(z.string().min(16).max(16_384)).max(8).optional()
 });
 
 export async function POST(request: Request) {
@@ -74,6 +79,35 @@ export async function POST(request: Request) {
   }
 
   const now = new Date();
+
+  /*
+   * ⚠️ **Procedencia en modo OBSERVAR: se recoge y se enseña, no bloquea.**
+   * Encenderlo antes de ver qué reportan los equipos reales de la tienda dejaría
+   * fuera a quien trabaja — emuladores, Android viejo y algunos fabricantes no
+   * pueden atestiguar, y eso es normal.
+   *
+   * ⚠️ Y lo que se mira NO es la verificación completa: falta leer la extensión
+   * de Google dentro del certificado. Hasta entonces esto no demuestra la
+   * procedencia y no hay que describirlo así.
+   */
+  const cadena = input.attestation ? mirarCadena(input.attestation) : null;
+  const provenance = procedenciaDe({
+    cadena,
+    aprobadoPorGerencia: Boolean(current?.approvedAt)
+  });
+  const atestacion = cadena
+    ? {
+        provenance,
+        attestation: {
+          ok: cadena.ok,
+          ...(cadena.ok ? { nivel: cadena.nivel, raizConocida: cadena.raizConocida } : { motivo: cadena.motivo }),
+          ...("huellaRaiz" in cadena && cadena.huellaRaiz ? { huellaRaiz: cadena.huellaRaiz } : {}),
+          ...("largo" in cadena && cadena.largo ? { largo: cadena.largo } : {})
+        } as Prisma.InputJsonValue,
+        attestationAt: now
+      }
+    : {};
+
   const result = await prisma.$transaction(async (tx) => {
     const consumed = await tx.nativeDeviceChallenge.updateMany({
       where: { id: challenge.id, usedAt: null, expiresAt: { gt: now } },
@@ -93,7 +127,8 @@ export async function POST(request: Request) {
         lastSeenAt: now,
         // Solo se pisa la salud si el equipo la mandó: una APK vieja no borra
         // la última medida buena que sí tenemos de él.
-        ...(input.health ? { health: input.health, healthAt: now } : {})
+        ...(input.health ? { health: input.health, healthAt: now } : {}),
+        ...atestacion
       },
       create: {
         installationId: input.installationId,
@@ -105,7 +140,8 @@ export async function POST(request: Request) {
         appVersion: input.appVersion,
         capabilities: input.capabilities,
         lastSeenAt: now,
-        ...(input.health ? { health: input.health, healthAt: now } : {})
+        ...(input.health ? { health: input.health, healthAt: now } : {}),
+        ...atestacion
       }
     });
     await tx.auditLog.create({

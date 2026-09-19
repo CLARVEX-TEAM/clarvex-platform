@@ -21,6 +21,8 @@ type Device = {
   lastSeenAt: string;
   /** Problemas del equipo, ya interpretados por el servidor. Vacío = va bien. */
   avisos?: Array<{ gravedad: "alta" | "media"; texto: string }>;
+  /** Origen del binario, ya dicho en palabras. Ver `lib/atestacion`. */
+  procedencia?: { texto: string; tono: "bien" | "aviso" | "malo" };
   createdAt: string;
   revokedAt: string | null;
   notifications: boolean;
@@ -106,6 +108,17 @@ export default function DevicesPage() {
                     <div className="flex flex-wrap items-center gap-2"><p className="font-semibold text-ink">{device.user.name}</p>{current ? <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-semibold text-blue-700 dark:bg-blue-950/50 dark:text-blue-200">Este teléfono</span> : null}</div>
                     <p className="mt-0.5 text-xs text-muted">{device.profile === "KIOSK" ? "Kiosco" : "Personal"} · APK {device.appVersion} ({device.appBuild})</p>
                     <p className="mt-1 text-xs text-muted">Última conexión {new Intl.DateTimeFormat("es-MX", { dateStyle: "medium", timeStyle: "short" }).format(new Date(device.lastSeenAt))}</p>
+                    {device.procedencia ? (
+                      <p
+                        className={`mt-1 text-xs font-semibold ${
+                          device.procedencia.tono === "bien" ? "text-emerald-600 dark:text-emerald-400"
+                          : device.procedencia.tono === "malo" ? "text-rose-600 dark:text-rose-400"
+                          : "text-muted"
+                        }`}
+                      >
+                        {device.procedencia.texto}
+                      </p>
+                    ) : null}
                     {/* ⚠️ Solo los PROBLEMAS. Una lista de comprobaciones en
                         verde no demuestra nada --ya pasó con el candado de la
                         huella-- y encima se deja de leer. */}

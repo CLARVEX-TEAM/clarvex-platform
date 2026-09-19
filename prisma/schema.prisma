@@ -979,6 +979,18 @@ model NativeDevice {
   /// es si algo está mal, se decide en `lib/salud-equipo.ts`.
   health         Json?
   healthAt       DateTime?
+  /// Procedencia del binario. Ver `lib/atestacion.ts`.
+  ///
+  /// ⚠️ Se publica en modo OBSERVAR: se recoge y se enseña, pero NO bloquea.
+  /// Encenderlo antes de ver qué reportan los equipos reales dejaría fuera a
+  /// quien trabaja, que es el riesgo de verdad de esta función.
+  provenance     String        @default("PENDIENTE")
+  /// Lo que dijo la última cadena: resultado, motivo y huella de la raíz.
+  attestation    Json?
+  attestationAt  DateTime?
+  /// Quién y cuándo lo aprobó a mano, cuando el equipo no puede atestiguar.
+  approvedById   String?
+  approvedAt     DateTime?
   user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   store          Store         @relation(fields: [storeId], references: [id], onDelete: Cascade)
   deviceTokens   DeviceToken[]

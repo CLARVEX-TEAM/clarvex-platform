@@ -5,6 +5,7 @@ import { recordAudit } from "@/lib/audit";
 import { isNativeDeviceError, requireNativeDevice } from "@/lib/native-device-auth";
 import { prisma } from "@/lib/prisma";
 import { avisosDelEquipo, type SaludCruda } from "@/lib/salud-equipo";
+import { comoSeDice, type Procedencia } from "@/lib/atestacion";
 
 export const dynamic = "force-dynamic";
 
@@ -52,6 +53,7 @@ export async function GET(request: Request) {
        * un equipo está mal tiene que ser una sola, y está probada en
        * `lib/salud-equipo`. Se mandan ya masticados, no la salud cruda.
        */
+      procedencia: comoSeDice((device.provenance ?? "PENDIENTE") as Procedencia),
       avisos: avisosDelEquipo(
         (device.health ?? null) as SaludCruda | null,
         device.lastSeenAt,
