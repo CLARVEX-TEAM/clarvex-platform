@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireSession, isApiError, parseJson } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
 import { createZendeskTicket, ZENDESK_ENABLED } from "@/lib/zendesk";
+import { folioDe } from "@/lib/soporte";
 import { claveDeLaPeticion, conIdempotencia } from "@/lib/idempotencia-db";
 
 export const dynamic = "force-dynamic";
@@ -90,6 +91,36 @@ export async function POST(request: Request) {
   if (!result.ok) {
     return { status: 502, body: { error: "No se pudo enviar tu mensaje. Intenta de nuevo en un momento." } };
   }
-  return { status: 200, body: { ok: true, id: result.id } };
+
+  /*
+   * A quién pertenece el caso. Se guarda DESPUÉS de que Zendesk confirme el
+   * ticket, nunca antes: una fila apuntando a un ticket que no existe le daría
+   * a la persona un folio que no se puede abrir.
+   *
+   * ⚠️ Y si esto falla, el ticket YA está creado y soporte lo va a atender. No
+   * se devuelve error: se avisa de que no aparecerá en su lista, que es lo único
+   * que de verdad se perdió. Decirle «no se pudo enviar» sobre algo que sí se
+   * envió es el fallo que la corrección de asistencia ya tuvo.
+   */
+  if (typeof result.id !== "number") {
+    return { status: 200, body: { ok: true, seguimiento: false } };
+  }
+  try {
+    const caso = await prisma.supportCase.create({
+      data: {
+        storeId: sesion.storeId,
+        userId: sesion.userId,
+        zendeskId: result.id,
+        folio: folioDe(result.id),
+        category: datos.category ?? "general",
+        subject
+      },
+      select: { id: true, folio: true }
+    });
+    return { status: 200, body: { ok: true, id: result.id, casoId: caso.id, folio: caso.folio, seguimiento: true } };
+  } catch (error) {
+    console.error("[soporte] ticket creado pero sin registrar:", (error as Error).message);
+    return { status: 200, body: { ok: true, id: result.id, seguimiento: false } };
+  }
   }
 }

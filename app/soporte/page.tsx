@@ -1,10 +1,20 @@
 "use client";
 
-import { useState } from "react";
-import { LifeBuoy, CheckCircle2, Send } from "lucide-react";
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { LifeBuoy, CheckCircle2, Send, ChevronRight } from "lucide-react";
 import { AppFrame, AppHeader, Card } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import { encolar } from "@/lib/cola-envio";
+import { comoSeDice, hace, type EstadoCaso } from "@/lib/soporte";
+
+type CasoEnLista = {
+  id: string;
+  folio: string;
+  asunto: string;
+  estado: EstadoCaso;
+  abierto: string;
+};
 
 const CATEGORIES = [
   { key: "problema", label: "Problema" },
@@ -21,6 +31,21 @@ export default function SoportePage() {
   const [error, setError] = useState("");
   /** Quedó guardado sin señal: se dice distinto, porque todavía no llegó. */
   const [guardado, setGuardado] = useState(false);
+  const [casos, setCasos] = useState<CasoEnLista[]>([]);
+
+  /*
+   * Los casos anteriores. Si falla no se dice nada: lo que trae a alguien a esta
+   * pantalla es escribir, y un error sobre una lista que igual está vacía solo
+   * estorbaría delante del formulario.
+   */
+  useEffect(() => {
+    let vivo = true;
+    fetch("/api/support/casos", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: { casos?: CasoEnLista[] } | null) => { if (vivo && d?.casos) setCasos(d.casos); })
+      .catch(() => undefined);
+    return () => { vivo = false; };
+  }, [sent]);
 
   const canSend = subject.trim().length >= 3 && message.trim().length >= 10 && !sending;
 
@@ -75,6 +100,43 @@ export default function SoportePage() {
     <>
       <AppHeader title="Soporte" subtitle="¿Necesitas ayuda? Escríbenos." backHref="/perfil" />
       <AppFrame>
+        {casos.length > 0 && !sent ? (
+          <Card className="mb-3 p-0">
+            <p className="px-4 pb-1 pt-3.5 text-[11px] font-bold uppercase tracking-[0.12em] text-muted">Tus casos</p>
+            <ul>
+              {casos.map((caso) => {
+                const dicho = comoSeDice(caso.estado);
+                return (
+                  <li key={caso.id} className="border-t border-line/60 first:border-t-0">
+                    <Link
+                      href={`/soporte/${caso.id}`}
+                      className="flex items-center gap-3 px-4 py-3 transition active:scale-[0.99]"
+                    >
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-semibold text-ink">{caso.asunto}</span>
+                        <span className="mt-0.5 block text-[11px] text-muted">
+                          {caso.folio} · {hace(new Date(caso.abierto))}
+                        </span>
+                      </span>
+                      <span
+                        className={cn(
+                          "shrink-0 rounded-full px-2 py-1 text-[10px] font-bold",
+                          dicho.tono === "bien" ? "bg-mint/12 text-mint"
+                          : dicho.tono === "aviso" ? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
+                          : "bg-white/8 text-muted"
+                        )}
+                      >
+                        {dicho.texto}
+                      </span>
+                      <ChevronRight size={16} className="shrink-0 text-muted" />
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          </Card>
+        ) : null}
+
         {sent ? (
           <Card className="p-6 text-center">
             <span className="mx-auto mb-3 grid size-14 place-items-center rounded-2xl bg-mint/12 text-mint">

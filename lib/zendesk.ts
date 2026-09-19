@@ -68,3 +68,105 @@ export async function createZendeskTicket(input: ZendeskTicketInput): Promise<Ze
     clearTimeout(timeout);
   }
 }
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * Leer y contestar un caso.
+ *
+ * ⚠️ **Zendesk es el DUEÑO del caso.** El estado, la conversación y el tiempo de
+ * atención se leen de ahí en cada consulta; Clarvex solo guarda a quién
+ * pertenece el caso, que es lo que Zendesk no puede decidir por nosotros.
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+type Peticion = { ruta: string; metodo?: string; cuerpo?: unknown; ms?: number };
+
+async function zendesk<T>(p: Peticion): Promise<{ ok: true; data: T } | { ok: false; error: string }> {
+  if (!ZENDESK_ENABLED) return { ok: false, error: "Zendesk no está configurado." };
+  const auth = Buffer.from(`${email}/token:${apiToken}`).toString("base64");
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), p.ms ?? 10_000);
+  try {
+    const res = await fetch(`https://${subdomain}.zendesk.com${p.ruta}`, {
+      method: p.metodo ?? "GET",
+      headers: { "Content-Type": "application/json", Authorization: `Basic ${auth}` },
+      ...(p.cuerpo === undefined ? {} : { body: JSON.stringify(p.cuerpo) }),
+      signal: controller.signal
+    });
+    if (!res.ok) {
+      const detalle = await res.text().catch(() => "");
+      console.error("[zendesk]", p.metodo ?? "GET", p.ruta, "->", res.status, detalle.slice(0, 300));
+      /*
+       * ⚠️ 429 se distingue del resto. Zendesk limita peticiones por minuto y
+       * tratarlo como «no existe» haría desaparecer un caso de la pantalla de
+       * quien lo abrió justo cuando más lo mira.
+       */
+      return { ok: false, error: res.status === 429 ? "limite" : `estado-${res.status}` };
+    }
+    return { ok: true, data: (await res.json()) as T };
+  } catch (error) {
+    console.error("[zendesk] sin contacto:", (error as Error).message);
+    return { ok: false, error: "sin-contacto" };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+export type TicketZendesk = {
+  id: number;
+  status?: string;
+  subject?: string;
+  requester_id?: number;
+  created_at?: string;
+};
+
+export async function leerTicket(id: number): Promise<TicketZendesk | null> {
+  const r = await zendesk<{ ticket?: TicketZendesk }>({ ruta: `/api/v2/tickets/${id}.json` });
+  return r.ok ? r.data.ticket ?? null : null;
+}
+
+export type ComentarioZendesk = {
+  public?: boolean;
+  body?: string;
+  created_at?: string;
+  author_id?: number;
+};
+
+export async function leerComentarios(id: number): Promise<ComentarioZendesk[] | null> {
+  // 100 comentarios es mucho más de lo que dura un caso de tienda; sin paginar.
+  const r = await zendesk<{ comments?: ComentarioZendesk[] }>({
+    ruta: `/api/v2/tickets/${id}/comments.json?per_page=100`
+  });
+  return r.ok ? r.data.comments ?? [] : null;
+}
+
+/**
+ * Publica la respuesta de quien abrió el caso.
+ *
+ * ⚠️ **Va como comentario PÚBLICO.** Uno interno lo verían solo los agentes y
+ * quien escribió se quedaría esperando una respuesta a algo que nadie le
+ * contestó, sin forma de notar que su mensaje no llegó a ninguna parte.
+ */
+export async function responderTicket(id: number, texto: string): Promise<boolean> {
+  const r = await zendesk({
+    ruta: `/api/v2/tickets/${id}.json`,
+    metodo: "PUT",
+    cuerpo: { ticket: { comment: { body: texto, public: true } } }
+  });
+  return r.ok;
+}
+
+/**
+ * La id de nuestra propia cuenta de API en Zendesk.
+ *
+ * ⚠️ Hace falta para saber qué mensajes son de la persona: quien tiene el correo
+ * inventado `@clarvex.local` no existe en Zendesk, así que lo suyo se publica a
+ * nombre de esta cuenta. Sin esto, su conversación se pintaría al revés.
+ *
+ * Se cachea por proceso: no cambia, y es una petición por caso abierto.
+ */
+let cuentaPropia: number | null | undefined;
+export async function idDeNuestraCuenta(): Promise<number | null> {
+  if (cuentaPropia !== undefined) return cuentaPropia;
+  const r = await zendesk<{ user?: { id?: number } }>({ ruta: "/api/v2/users/me.json" });
+  cuentaPropia = r.ok ? r.data.user?.id ?? null : null;
+  return cuentaPropia;
+}
