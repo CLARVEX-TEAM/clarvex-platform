@@ -1,4 +1,5 @@
 import { BedrockRuntimeClient, ConverseCommand } from "@aws-sdk/client-bedrock-runtime";
+import { bedrockDisponible, credencialesBedrock, opcionesDeCliente } from "@/lib/bedrock-credenciales";
 
 /**
  * Lectura del reporte del POS con Amazon Bedrock.
@@ -26,7 +27,7 @@ const REGION = process.env.BEDROCK_REGION ?? "us-east-1";
 const TIMEOUT_MS = 25_000;
 
 export function bedrockConfigured(): boolean {
-  return Boolean(process.env.BEDROCK_ACCESS_KEY_ID && process.env.BEDROCK_SECRET_ACCESS_KEY);
+  return bedrockDisponible();
 }
 
 /** Formato de imagen que espera Bedrock, deducido del mime type. */
@@ -77,9 +78,8 @@ export async function readWithBedrock(
    */
   modelId: string = MODEL
 ): Promise<BedrockOutcome> {
-  const accessKeyId = process.env.BEDROCK_ACCESS_KEY_ID ?? "";
-  const secretAccessKey = process.env.BEDROCK_SECRET_ACCESS_KEY ?? "";
-  if (!accessKeyId || !secretAccessKey) return { ok: false, problem: "sin credenciales" };
+  const credenciales = credencialesBedrock();
+  if (!credenciales) return { ok: false, problem: "sin credenciales" };
 
   const bytes = Buffer.from(dataBase64, "base64");
   /*
@@ -104,7 +104,7 @@ export async function readWithBedrock(
 
   const client = new BedrockRuntimeClient({
     region: REGION,
-    credentials: { accessKeyId, secretAccessKey }
+    ...opcionesDeCliente(credenciales)
   });
 
   try {

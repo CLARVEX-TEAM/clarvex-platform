@@ -15,6 +15,7 @@
  * Corre una vez por semana con unos 24 mil tokens de entrada. El costo es de
  * centavos al mes; bajar de modelo aqui ahorra nada y cuesta un cruce de zonas.
  */
+import { bedrockDisponible, credencialesBedrock, opcionesDeCliente } from "@/lib/bedrock-credenciales";
 import { BedrockRuntimeClient, ConverseCommand } from "@aws-sdk/client-bedrock-runtime";
 import type { FotoAnonima, Referencia } from "@/lib/visual-reconocer";
 
@@ -26,7 +27,7 @@ const TIMEOUT_MS = 90_000;
 export type ReconocerOutcome = { ok: true; text: string } | { ok: false; problem: string };
 
 export function reconocerConfigurado(): boolean {
-  return Boolean(process.env.BEDROCK_ACCESS_KEY_ID && process.env.BEDROCK_SECRET_ACCESS_KEY);
+  return bedrockDisponible();
 }
 
 export async function repartirConBedrock(
@@ -34,9 +35,8 @@ export async function repartirConBedrock(
   referencias: Referencia[],
   fotos: FotoAnonima[]
 ): Promise<ReconocerOutcome> {
-  const accessKeyId = process.env.BEDROCK_ACCESS_KEY_ID ?? "";
-  const secretAccessKey = process.env.BEDROCK_SECRET_ACCESS_KEY ?? "";
-  if (!accessKeyId || !secretAccessKey) return { ok: false, problem: "sin credenciales" };
+  const credenciales = credencialesBedrock();
+  if (!credenciales) return { ok: false, problem: "sin credenciales" };
 
   /*
    * ⚠️ El orden importa: primero el encargo, luego cada zona con su nombre
@@ -55,7 +55,7 @@ export async function repartirConBedrock(
     content.push({ image: { format: "jpeg", source: { bytes: foto.contenido } } });
   });
 
-  const client = new BedrockRuntimeClient({ region: REGION, credentials: { accessKeyId, secretAccessKey } });
+  const client = new BedrockRuntimeClient({ region: REGION, ...opcionesDeCliente(credenciales) });
 
   try {
     const response = await client.send(
