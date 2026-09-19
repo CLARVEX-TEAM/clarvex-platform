@@ -37,7 +37,10 @@ const sharedRoutes = [
   "/solicitudes",
   "/escritorio",
   "/bitacora",
-  "/soporte"
+  "/soporte",
+  // La credencial es de cada quien: la abre cualquiera con sesión y solo
+  // muestra su propia identidad, nunca la de un compañero.
+  "/credencial"
 ];
 
 /** Rutas API públicas (sin cookie de sesión). Cron/webhooks usan su propio secreto. */
@@ -328,6 +331,15 @@ export const config = {
     "/app",
     "/uniformes/:path*",
     "/solicitudes/:path*",
-    "/soporte/:path*"
+    "/soporte/:path*",
+    "/credencial/:path*",
+    "/credencial"
+    /*
+     * ⚠️ `/v/<token>` NO está aquí, y es deliberado: es la verificación
+     * pública de una credencial. Supervisión de AXO, el centro comercial o
+     * un proveedor tienen que poder comprobarla con la cámara y sin instalar
+     * nada. Lo que la protege es la firma del enlace y que enseña el mínimo
+     * --nombre, puesto, tienda y vigencia--, no una sesión.
+     */
   ]
 };

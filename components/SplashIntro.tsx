@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { usePathname } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { CLARVEX_C_PATH } from "@/components/ClarvexIcon";
+import { esVerificacionPublica } from "@/lib/portada";
 
 /**
  * Intro cinematográfico de apertura (~2.4 s), estilo SaaS premium (Stripe /
@@ -26,6 +28,16 @@ const LOGO = 140; // px
 const C_PATH = CLARVEX_C_PATH;
 
 export function SplashIntro() {
+  const pathname = usePathname();
+  /*
+   * ⚠️ La verificación pública de una credencial NO lleva intro. Quien abre
+   * `/v/<token>` es un desconocido con una cámara --seguridad del centro
+   * comercial, supervisión de AXO-- y lo único que necesita es saber si esa
+   * persona trabaja aquí. Dos segundos y medio de velo a pantalla completa
+   * delante de esa respuesta convierten una comprobación de un vistazo en una
+   * espera, y encima ante una marca que no conoce.
+   */
+  const sinIntro = esVerificacionPublica(pathname);
   const [show, setShow] = useState(false);
   const reduce = useReducedMotion();
 
@@ -44,6 +56,9 @@ export function SplashIntro() {
     void import("@capacitor/splash-screen")
       .then(({ SplashScreen }) => SplashScreen.hide({ fadeOutDuration: 250 }))
       .catch(() => undefined);
+    // El splash NATIVO se oculta igual: esa línea es de la APK y no depende
+    // de en qué pantalla se entre.
+    if (sinIntro) return;
     try {
       if (sessionStorage.getItem("clarvex-splash")) return;
       sessionStorage.setItem("clarvex-splash", "1");
@@ -51,7 +66,7 @@ export function SplashIntro() {
     setShow(true);
     const timer = setTimeout(() => setShow(false), reduce ? 900 : 2500);
     return () => clearTimeout(timer);
-  }, [reduce]);
+  }, [reduce, sinIntro]);
 
   return (
     <AnimatePresence>
