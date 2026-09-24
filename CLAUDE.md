@@ -18,6 +18,30 @@ sin una sola diferencia. Creció 149 KB, que es lo que confirma la decisión del
 escáner: `play-services-code-scanner` solo trae el conector y los modelos viven
 en los servicios de Google.
 
+#### ⚠️ El escáner nativo NO es redundante con `BarcodeDetector`
+
+Escrito a propósito, porque el razonamiento contrario es tentador y lleva a
+retirar el plugin: `window.BarcodeDetector` --el que usa la PWA en Chrome de
+Android-- está respaldado **por el mismo ML Kit** de los servicios de Google. Con
+eso a la vista, el plugin nativo parece una duplicación que sobra.
+
+**No lo es, y lo demuestra el teléfono, no la teoría.** Probado en tienda el 19
+de septiembre: la APK va «de lujo, mucho mejor que la PWA».
+
+La diferencia no está en quién decodifica sino en **quién maneja la cámara**:
+
+| | |
+|---|---|
+| PWA | abrimos la cámara nosotros --`getUserMedia`, un `<video>`-- y llamamos al detector **cada 250 ms**, sin control del enfoque ni zoom, sobre el cuadro ya decodificado para mostrarse |
+| APK | no abrimos la cámara: `GmsBarcodeScanner` es una pantalla completa dentro de los servicios de Google, con su propia tubería, enfoque, exposición y **zoom automático** |
+
+El zoom automático es lo que más se nota: permite leer un marbete pequeño o de
+lejos sin acercar el teléfono. Mismo detector, tubería incomparable.
+
+⚠️ **En iPhone sigue siendo jsQR** y esto no lo arregla: Safari no implementa la
+Shape Detection API. Quien cuente desde un iPhone lo va a notar más lento, y no
+hay plugin que lo cubra desde la web.
+
 Publicada por el circuito de siempre: nombre temporal, SHA-256 comprobado EN EL
 SERVIDOR, nombre definitivo, y solo entonces el manifiesto con `mv`. Respaldo
 `version-antes-de-1.8-20260919T153733Z.json`; APK 1.7 conservada.
