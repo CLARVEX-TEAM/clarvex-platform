@@ -45,7 +45,6 @@ const PORTADAS = ["/mi-dia", "/advisor", "/manager"];
 const DESDE_SU_PADRE: Record<string, string> = {
   "/checklist/config": "se configura desde /checklist",
   "/conteos/marbetes": "se abre desde /conteos",
-  "/soporte": "cuelga de /perfil, junto a los datos de la cuenta",
   "/admin": "administración de TODAS las tiendas; se entra desde el escritorio, no es una herramienta del día"
 };
 
@@ -83,30 +82,32 @@ test("ningun acceso apunta a una pantalla que no existe", () => {
   assert.deepEqual(rotos, [], `Accesos que no llevan a ninguna pantalla del teléfono:\n${rotos.join("\n")}`);
 });
 
-test("las ocho pantallas que se perdieron vuelven a tener entrada", () => {
-  // Nombradas una a una a propósito: son el caso real que originó la prueba, y
-  // una lista genérica no demostraría que estas precisas volvieron.
-  const perdidas = [
-    "/bitacora",
-    "/kudos",
-    "/asistencia",
-    "/solicitudes",
-    "/faltantes",
-    "/capacitacion",
-    "/encuestas",
-    "/suscripcion",
-    "/equipo"
-  ];
+test("las pantallas que se perdieron y siguen vivas tienen entrada", () => {
+  // Nombradas una a una a propósito: son el caso real que originó la prueba.
+  // Las otras siete de aquella lista se cerraron a propósito con el plan de
+  // apagado; ver la prueba siguiente.
   const gerencia = new Set(ACCESOS_GERENCIA.map((a) => a.href));
-  for (const ruta of perdidas) {
+  for (const ruta of ["/asistencia", "/equipo"]) {
     assert.ok(gerencia.has(ruta), `${ruta} sigue sin acceso para gerencia`);
   }
+});
+
+test("las quince pantallas del plan de apagado no tienen ninguna puerta", () => {
+  // Fase 2 (24 de septiembre de 2026). Si alguien reclama una, se devuelve
+  // revirtiendo el cambio, y esta prueba se actualiza con él.
+  const cerradas = [
+    "/capacitacion", "/encuestas", "/kudos", "/bitacora", "/uniformes", "/solicitudes", "/faltantes", "/plan",
+    "/pendientes", "/comunicados", "/suscripcion", "/dispositivos", "/chat", "/soporte", "/credencial"
+  ];
+  const entradas = todasLasEntradas();
+  const abiertas = cerradas.filter((ruta) => entradas.has(ruta));
+  assert.deepEqual(abiertas, [], `Estas pantallas cerradas siguen teniendo entrada:\n${abiertas.join("\n")}`);
 });
 
 test("el asesor no ve los accesos de gerencia", () => {
   const delAsesor = new Set(ACCESOS_ASESOR.map((a) => a.href));
   // El reparto es el mismo que llevaba la portada anterior en producción.
-  for (const soloGerencia of ["/bitacora", "/suscripcion", "/equipo"]) {
+  for (const soloGerencia of ["/equipo"]) {
     assert.equal(delAsesor.has(soloGerencia), false, `${soloGerencia} no debería estar en la lista del asesor`);
   }
 });
@@ -117,8 +118,8 @@ test("los destacados de Mi dia no se repiten abajo", () => {
     assert.equal(secundarios.includes(destacado), false, `${destacado} aparecería dos veces en la misma pantalla`);
   }
   // Y el resto sí baja: sin esto, excluir de más pasaría desapercibido.
-  assert.ok(secundarios.includes("/kudos"));
-  assert.ok(secundarios.includes("/capacitacion"));
+  assert.ok(secundarios.includes("/asistencia"));
+  assert.ok(secundarios.includes("/equipo"));
 });
 
 test("KPIs desaparece de los accesos cuando la tienda lo tiene apagado", () => {

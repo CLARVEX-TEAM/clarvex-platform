@@ -13,7 +13,6 @@ import { computeDailyStreak } from "@/lib/streaks";
 import { computeAchievements } from "@/lib/achievements";
 import { buildSalesTrend, buildDailySeries } from "@/lib/trend";
 import type { User } from "@/lib/types";
-import Link from "next/link";
 import { AppFrame, Badge, Card, NotificationCard, SimulatorCard } from "@/components/ui";
 import { TaskList } from "@/components/TaskList";
 import { Confetti } from "@/components/Confetti";
@@ -293,12 +292,6 @@ export default function AdvisorDashboard() {
                 </p>
               </div>
             </div>
-            <Link
-              href="/comunicados"
-              className="shrink-0 rounded-full bg-[#2563EB] px-3.5 py-2 text-xs font-semibold text-white transition active:scale-95 dark:bg-[#6B9BFF]"
-            >
-              Leer
-            </Link>
           </motion.div>
           </ShineBorder>
         )}
@@ -553,14 +546,12 @@ export default function AdvisorDashboard() {
                     </p>
                     <div className="space-y-2">
                       {profile.recommendedResources.map((res: any) => (
-                        <Link
+                        <div
                           key={res.id}
-                          href={`/capacitacion`}
-                          className="flex items-center justify-between gap-2 rounded-lg bg-panel border border-line p-2 transition hover:border-volt/40"
+                          className="flex items-center justify-between gap-2 rounded-lg bg-panel border border-line p-2"
                         >
                           <span className="text-xs text-ink font-semibold truncate">{res.title}</span>
-                          <span className="text-[10px] text-volt shrink-0 font-bold uppercase tracking-wider">Ver artículo</span>
-                        </Link>
+                        </div>
                       ))}
                     </div>
                   </div>
@@ -616,9 +607,7 @@ export default function AdvisorDashboard() {
             </div>
             <div className="space-y-2">
               {unread.slice(0, 2).map((item) => (
-                <Link key={item.id} href="/comunicados" className="block">
-                  <NotificationCard title={item.title} body={item.body} meta="Comunicado pendiente" unread />
-                </Link>
+                <NotificationCard key={item.id} title={item.title} body={item.body} meta="Comunicado pendiente" unread />
               ))}
               {unread.length === 0 && (
                 <div className="border-t border-line py-2 text-[13px] text-muted">
