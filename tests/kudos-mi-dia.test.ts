@@ -36,18 +36,16 @@ test("⚠️ envolverlas en una plantilla da una fecha INVALIDA", () => {
   assert.ok(Number.isNaN(malo.getTime()), "la plantilla produce Invalid Date");
 });
 
-test("⚠️ la tarjeta NO se pinta sin reconocimiento", () => {
+test("⚠️ la tarjeta de Kudos ya NO se pinta en Mi dia", () => {
   /*
-   * Una tarjeta vacía diciendo «0 este mes» todos los días es un recordatorio
-   * diario de que nadie te reconoció — lo contrario de para lo que existe. La
-   * condición vive en `app/mi-dia/page.tsx` y esto la fija.
+   * Mientras existió, la condición era `data.kudos && data.kudos.recibidosMes > 0`:
+   * una tarjeta vacía diciendo «0 este mes» todos los días es un recordatorio
+   * diario de que nadie te reconoció. La fase 2 del plan de apagado (24 de
+   * septiembre de 2026) cerró Kudos, así que la tarjeta salió entera. Si vuelve,
+   * vuelve con esa condición.
    */
   const fuente = readFileSync("app/mi-dia/page.tsx", "utf8");
-  assert.match(
-    fuente,
-    /data\.kudos && data\.kudos\.recibidosMes > 0/,
-    "la tarjeta de Kudos tiene que seguir condicionada a que haya alguno"
-  );
+  assert.doesNotMatch(fuente, /href="\/kudos"/, "Mi día no puede volver a abrir Kudos");
 });
 
 test("solo se pide lo ULTIMO, no el historial entero", () => {

@@ -237,12 +237,6 @@ export default function ManagerDashboard() {
                 </p>
               </div>
             </div>
-            <Link
-              href="/comunicados"
-              className="shrink-0 rounded-full bg-[#2563EB] px-3.5 py-2 text-xs font-semibold text-white transition active:scale-95 dark:bg-[#6B9BFF]"
-            >
-              Leer
-            </Link>
           </motion.div>
           </ShineBorder>
         )}
@@ -405,7 +399,6 @@ export default function ManagerDashboard() {
                 <Megaphone className="text-muted" size={18} />
                 <h2 className="text-[15px] font-semibold">Comunicados recientes</h2>
               </div>
-              <Link href="/comunicados" className="text-xs font-semibold text-volt">Ver todos</Link>
             </div>
             {data.announcements.map((item) => (
               <div key={item.id} className="border-t border-line py-2.5 first:border-t-0 first:pt-0">
@@ -422,7 +415,6 @@ export default function ManagerDashboard() {
           <Card>
             <div className="mb-3 flex items-center justify-between">
               <h2 className="text-[15px] font-semibold">Pendientes de gerencia</h2>
-              <Link href="/pendientes" className="text-xs font-semibold text-volt">Ver todos</Link>
             </div>
             <div className="divide-y divide-white/[0.07]">
               {critical.map((pending) => (

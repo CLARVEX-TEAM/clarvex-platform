@@ -1,21 +1,4 @@
-import {
-  BadgeCheck,
-  BarChart3,
-  BookOpen,
-  Boxes,
-  CalendarClock,
-  CalendarDays,
-  CheckSquare,
-  ClipboardCheck,
-  ClipboardList,
-  Clock,
-  CreditCard,
-  GraduationCap,
-  HeartHandshake,
-  PackageSearch,
-  Shirt,
-  Users
-} from "lucide-react";
+import { BarChart3, Boxes, CalendarDays, Clock, Users } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 /**
@@ -43,42 +26,35 @@ export type AccesoTelefono = {
   label: string;
 };
 
+/**
+ * ⚠️ **Plan de apagado, fase 2 (24 de septiembre de 2026): se CERRARON las
+ * puertas de quince pantallas**: capacitación, encuestas, kudos, bitácora,
+ * uniformes, solicitudes, faltantes, plan, pendientes, comunicados,
+ * suscripción, dispositivos, chat, soporte y credencial.
+ *
+ * Las pantallas y sus datos siguen existiendo: solo se quitó por dónde llegar.
+ * Es la forma de comprobar que estaban muertas de verdad y no dormidas. Si
+ * alguien las reclama, se devuelven revirtiendo este cambio. No borrar tablas
+ * ni datos por esto: se retira el código, no la historia.
+ */
+
 /** Gerencia y subgerencia. */
 export const ACCESOS_GERENCIA: AccesoTelefono[] = [
-  { href: "/plan", icon: CheckSquare, label: "Crear plan del día" },
-  { href: "/pendientes", icon: ClipboardList, label: "Crear pendiente" },
-  { href: "/bitacora", icon: BookOpen, label: "Bitácora" },
   { href: "/horarios", icon: CalendarDays, label: "Horarios" },
-  { href: "/kudos", icon: HeartHandshake, label: "Reconocer" },
-  { href: "/credencial", icon: BadgeCheck, label: "Mi credencial" },
   { href: "/asistencia", icon: Clock, label: "Asistencia" },
-  { href: "/uniformes", icon: Shirt, label: "Uniformes" },
-  { href: "/solicitudes", icon: CalendarClock, label: "Días y cambios" },
-  { href: "/faltantes", icon: PackageSearch, label: "Faltantes" },
-  { href: "/capacitacion", icon: GraduationCap, label: "Capacitación" },
-  { href: "/encuestas", icon: ClipboardCheck, label: "Encuestas" },
   { href: "/conteos", icon: Boxes, label: "Conteos" },
   // ⚠️ «Equipo» no estaba en la rejilla anterior: colgaba de un botón suelto de
   // `/manager`, así que dentro de la APK se quedó sin entrada igual que los
   // demás. Es donde se capturan los correos reales y se marca el celular de la
   // tienda como kiosko.
-  { href: "/equipo", icon: Users, label: "Equipo" },
-  { href: "/suscripcion", icon: CreditCard, label: "Suscripción" }
+  { href: "/equipo", icon: Users, label: "Equipo" }
 ];
 
 /** Asesores y vendedores. */
 export const ACCESOS_ASESOR: AccesoTelefono[] = [
   { href: "/horarios", icon: CalendarDays, label: "Mis horarios" },
-  { href: "/pendientes", icon: ClipboardList, label: "Pendientes" },
   { href: "/kpis", icon: BarChart3, label: "Mis KPIs" },
-  { href: "/kudos", icon: HeartHandshake, label: "Reconocer" },
-  { href: "/credencial", icon: BadgeCheck, label: "Mi credencial" },
   { href: "/asistencia", icon: Clock, label: "Mi asistencia" },
-  { href: "/uniformes", icon: Shirt, label: "Uniformes" },
-  { href: "/solicitudes", icon: CalendarClock, label: "Días y cambios" },
-  { href: "/faltantes", icon: PackageSearch, label: "Faltantes" },
-  { href: "/capacitacion", icon: GraduationCap, label: "Capacitación" },
-  { href: "/encuestas", icon: ClipboardCheck, label: "Encuestas" },
   { href: "/conteos", icon: Boxes, label: "Conteos" }
 ];
 
@@ -103,14 +79,7 @@ export function accesosPara(role: string, kpisEnabled: boolean): AccesoTelefono[
  * alguien toca una sola de las dos, y entonces la prueba deja de significar
  * nada sin dejar de pasar.
  */
-export const DESTACADOS_MI_DIA = [
-  "/horarios",
-  "/pendientes",
-  "/comunicados",
-  "/conteos",
-  "/checklist",
-  "/dispositivos"
-];
+export const DESTACADOS_MI_DIA = ["/horarios", "/conteos", "/checklist"];
 
 /**
  * Los que «Mi día» ya enseña en grande, con su dato vivo al lado.
