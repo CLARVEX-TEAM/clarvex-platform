@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -8,12 +8,17 @@ import {
   Boxes,
   CalendarPlus,
   Check,
+  ChevronRight,
+  ClipboardCheck,
   CloudUpload,
   Clock3,
   ExternalLink,
+  Megaphone,
   RefreshCw,
   ShieldCheck,
   Shirt,
+  Target,
+  UsersRound,
   WifiOff
 } from "lucide-react";
 import { AppFrame, AppHeader, Button, Card, ProgressBar } from "@/components/ui";
@@ -218,6 +223,16 @@ export default function MyDayPage() {
     return () => window.clearTimeout(timer);
   }, [data]);
 
+  const nextAction = useMemo(() => {
+    const task = data?.plan?.tasks.find((item) => !item.completed);
+    if (task) return { label: task.title, href: "/plan", detail: "Siguiente tarea de tu plan" };
+    const pending = data?.pendings[0];
+    if (pending) return { label: pending.title, href: `/pendientes`, detail: "Pendiente por resolver" };
+    const announcement = data?.announcements.find((item) => !item.read);
+    if (announcement) return { label: announcement.title, href: "/comunicados", detail: "Comunicado por leer" };
+    return { label: "Tu jornada está al día", href: "/mi-dia", detail: "No hay acciones urgentes" };
+  }, [data]);
+
   async function addCalendar() {
     if (!data?.shift?.start || !data.shift.end) return;
     const plugin = calendarioClarvexNativo();
@@ -353,6 +368,7 @@ export default function MyDayPage() {
   }
 
   const firstName = data.user.name.split(" ")[0];
+  const openTasks = data.plan?.tasks.filter((task) => !task.completed) ?? [];
   const ownCorrections = data.corrections.filter((item) => item.userId === data.user.id);
   const reviewCorrections = data.capabilities.canReviewCorrections
     ? data.corrections.filter((item) => item.status === "PENDING" && item.userId !== data.user.id)
@@ -403,6 +419,15 @@ export default function MyDayPage() {
           ) : null}
         </div>
 
+        <Link href={nextAction.href} className="tappable mt-3 flex min-h-20 items-center gap-3 rounded-2xl bg-blue-50 px-4 py-3 text-blue-950 dark:bg-blue-950/35 dark:text-blue-100">
+          <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-blue-600 text-white"><Target size={19} /></span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-xs font-semibold text-blue-700 dark:text-blue-300">{nextAction.detail}</span>
+            <span className="mt-0.5 block truncate text-sm font-semibold">{nextAction.label}</span>
+          </span>
+          <ChevronRight size={18} />
+        </Link>
+
         <section id="mi-dia-jornada" className="mt-6 scroll-mt-24">
           <div className="flex items-end justify-between">
             <div>
@@ -420,10 +445,11 @@ export default function MyDayPage() {
               <Clock3 size={19} className="shrink-0 text-volt" />
               <div className="min-w-0 flex-1"><p className="text-xs text-muted">Turno</p><p className="text-sm font-semibold text-ink">{data.shift?.summary ?? "Sin horario"}</p></div>
             </div>
-            <div className="flex min-h-16 items-center gap-3 py-3">
+            <Link href="/uniformes" className="tappable flex min-h-16 items-center gap-3 py-3">
               <Shirt size={19} className="shrink-0 text-volt" />
               <div className="min-w-0 flex-1"><p className="text-xs text-muted">Uniforme</p><p className="text-sm font-semibold text-ink">{data.uniform ? `${data.uniform.top} · ${data.uniform.bottom}` : "Sin configuración"}</p></div>
-            </div>
+              <ChevronRight size={17} className="text-muted" />
+            </Link>
             <div className="flex min-h-16 items-center gap-3 py-3">
               <ShieldCheck size={19} className="shrink-0 text-volt" />
               <div className="min-w-0 flex-1"><p className="text-xs text-muted">Asistencia</p><p className="text-sm font-semibold text-ink">{attendanceLabel(data.attendance)}</p></div>
@@ -447,6 +473,21 @@ export default function MyDayPage() {
             <div className="mt-4 grid grid-cols-2 gap-2"><Button type="button" variant="ghost" onClick={() => setShowCorrection(false)}>Cancelar</Button><Button type="submit" variant="primary" loading={sending}>Enviar</Button></div>
           </form>
         ) : null}
+
+        <section className="mt-6">
+          <div className="flex items-end justify-between">
+            <div><h2 className="text-lg font-semibold tracking-[-0.025em] text-ink">Plan de hoy</h2><p className="text-xs text-muted">{openTasks.length ? `${openTasks.length} por completar` : "Todo en orden"}</p></div>
+            <Link href="/plan" className="min-h-11 px-2 py-3 text-xs font-semibold text-volt">Ver plan</Link>
+          </div>
+          <div className="mt-2 divide-y divide-line">
+            {data.plan?.tasks.length ? data.plan.tasks.slice(0, 5).map((task) => (
+              <Link key={task.id} href="/plan" className="tappable flex min-h-14 items-center gap-3 py-2">
+                <span className={`grid size-7 shrink-0 place-items-center rounded-full ${task.completed ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300" : "bg-panel text-muted"}`}>{task.completed ? <Check size={15} /> : <span className="size-2 rounded-full bg-current" />}</span>
+                <span className={`text-sm font-semibold ${task.completed ? "text-muted line-through" : "text-ink"}`}>{task.title}</span>
+              </Link>
+            )) : <p className="py-4 text-sm text-muted">No tienes tareas publicadas para hoy.</p>}
+          </div>
+        </section>
 
         {ownCorrections.length ? (
           <section className="mt-6"><h2 className="text-lg font-semibold tracking-[-0.025em] text-ink">Mis correcciones</h2><div className="mt-2 divide-y divide-line">{ownCorrections.slice(0, 3).map((item) => <div key={item.id} className="flex min-h-14 items-center justify-between gap-3 py-2"><div><p className="text-sm font-semibold text-ink">{item.date}</p><p className="text-xs text-muted">{item.reason}</p></div><span className="shrink-0 rounded-full bg-panel px-2.5 py-1 text-xs font-semibold text-ink">{correctionStatusLabel(item.status)}</span></div>)}</div></section>
@@ -482,18 +523,44 @@ export default function MyDayPage() {
         ) : null}
 
         {/*
-          ⚠️ Plan de apagado, fase 2 (24 de septiembre de 2026): se quitaron de
-          aquí el siguiente paso, el plan del día, los reconocimientos, el enlace
-          a Uniformes y los accesos a Pendientes, Comunicados y Dispositivos.
-          La API todavía los manda; recortarla es la fase 3, ANTES de retirar
-          esas funciones. Ver `lib/accesos-telefono.ts`.
+          ⚠️ Solo aparece cuando HAY reconocimiento. Una tarjeta vacía diciendo
+          «0 este mes» todos los días es un recordatorio diario de que nadie te
+          reconoció — lo contrario de para lo que existe esto.
         */}
+        {data.kudos && data.kudos.recibidosMes > 0 ? (
+          <Link href="/kudos" className="tappable mt-6 block">
+            <Card className="flex items-start gap-3 p-4">
+              <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-mint/12 text-2xl" aria-hidden="true">
+                {data.kudos.ultimo?.emoji ?? "\u2b50"}
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold text-ink">
+                  {data.kudos.recibidosMes === 1
+                    ? "Te reconocieron este mes"
+                    : `${data.kudos.recibidosMes} reconocimientos este mes`}
+                </p>
+                {data.kudos.ultimo ? (
+                  <p className="mt-0.5 line-clamp-2 text-xs text-muted">
+                    {data.kudos.ultimo.message
+                      ? `«${data.kudos.ultimo.message}» — ${data.kudos.ultimo.deQuien}`
+                      : `De ${data.kudos.ultimo.deQuien}`}
+                  </p>
+                ) : null}
+              </div>
+              <ChevronRight size={18} className="mt-1 shrink-0 text-muted" />
+            </Card>
+          </Link>
+        ) : null}
+
         <section className="mt-6">
           <h2 className="text-lg font-semibold tracking-[-0.025em] text-ink">Accesos rápidos</h2>
           <div className="mt-3 grid grid-cols-2 gap-2">
             <Quick href="/horarios" icon={<Clock3 size={18} />} label="Horarios" detail={data.shift?.summary ?? "Consultar"} />
+            <Quick href="/pendientes" icon={<ClipboardCheck size={18} />} label="Pendientes" detail={`${data.counts.openPendings} abiertos`} />
+            <Quick href="/comunicados" icon={<Megaphone size={18} />} label="Comunicados" detail={`${data.counts.unreadAnnouncements} sin leer`} />
             <Quick href="/conteos" icon={<Boxes size={18} />} label="Conteos" detail="Inventario y marbetes" />
             {data.capabilities.canOpenChecklist ? <Quick href="/checklist" icon={<Check size={18} />} label="Checklist" detail="Apertura y cierre" /> : null}
+            {data.capabilities.canManageDevices ? <Quick href="/dispositivos" icon={<UsersRound size={18} />} label="Dispositivos" detail="Aprobar o revocar" /> : null}
           </div>
         </section>
 

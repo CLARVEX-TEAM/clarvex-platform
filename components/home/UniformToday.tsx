@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Shirt } from "lucide-react";
+import Link from "next/link";
+import { ChevronRight, Shirt } from "lucide-react";
 import { outfitFor, swatchFor, type UniformDay, type UniformVariant } from "@/lib/uniforms";
 import { Card } from "@/components/ui";
 
@@ -43,8 +44,8 @@ export function UniformToday() {
   const outfit = outfitFor(day, variant);
 
   return (
-    <div className="block">
-      <Card className="mt-3 flex items-center gap-3 p-3.5">
+    <Link href="/uniformes" className="block">
+      <Card className="mt-3 flex items-center gap-3 p-3.5 transition active:scale-[0.99]">
         <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-volt/12 text-volt">
           <Shirt size={18} />
         </span>
@@ -56,8 +57,9 @@ export function UniformToday() {
             <Dot garment={outfit.bottom} /> {outfit.bottom}
           </p>
         </div>
+        <ChevronRight size={16} className="shrink-0 text-muted" />
       </Card>
-    </div>
+    </Link>
   );
 }
 

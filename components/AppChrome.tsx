@@ -20,32 +20,45 @@ import { BottomNav } from "@/components/ui";
  * Rutas de la app móvil que llevan barra. Lista explícita, no un prefijo: hay
  * pares que se parecen y se comportan distinto.
  *
+ * - `/chat` la lleva, pero `/chat/<id>` no: la conversación va a pantalla
+ *   completa.
  * - `/conteos/marbetes` la lleva, pero `/conteos/marbetes/imprimir` no: es una
  *   vista para imprimir.
  *
  * Una página nueva NO la tendrá hasta añadirla aquí. Es el error menos malo:
  * una barra que falta se ve enseguida; una barra encima del login o tapando una
  * conversación es peor y más difícil de notar.
- *
- * ⚠️ Las quince pantallas que cerró la fase 2 del plan de apagado (ver
- * `lib/accesos-telefono.ts`) salieron de esta lista a la vez que de los
- * accesos: una ruta con barra y sin entrada es justo lo que la guarda detecta.
  */
 export const ROUTES_WITH_NAV = new Set([
   "/admin",
   "/advisor",
   "/asistencia",
+  "/bitacora",
+  "/capacitacion",
+  "/chat",
   "/checklist",
   "/checklist/config",
+  "/comunicados",
   "/conteos",
   "/conteos/marbetes",
+  "/credencial",
+  "/encuestas",
   "/equipo",
+  "/faltantes",
   "/horarios",
   "/kpis",
+  "/kudos",
   "/manager",
   "/mi-dia",
+  "/dispositivos",
   "/notificaciones",
-  "/perfil"
+  "/pendientes",
+  "/perfil",
+  "/plan",
+  "/solicitudes",
+  "/soporte",
+  "/suscripcion",
+  "/uniformes"
 ]);
 
 // Detalle de un conteo: `/conteos/<id>`. Un tercer segmento ya es la vista de
