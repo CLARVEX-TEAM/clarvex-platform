@@ -10,7 +10,7 @@ import { showsBottomNav } from "../components/AppChrome";
  */
 
 test("las pantallas de la app movil la llevan", () => {
-  for (const ruta of ["/manager", "/advisor", "/mi-dia", "/horarios", "/asistencia", "/kpis", "/conteos", "/checklist", "/perfil"]) {
+  for (const ruta of ["/manager", "/advisor", "/plan", "/pendientes", "/chat", "/kpis", "/comunicados", "/checklist", "/perfil"]) {
     assert.equal(showsBottomNav(ruta), true, `${ruta} deberia llevar barra`);
   }
 });
@@ -27,15 +27,9 @@ test("el login y las paginas publicas NO la llevan", () => {
   }
 });
 
-test("las pantallas cerradas por el plan de apagado ya NO la llevan", () => {
-  // Fase 2 (24 de septiembre de 2026): siguen existiendo, pero sin puerta. Si
-  // una vuelve a llevar barra, tiene que volver también a tener entrada.
-  for (const ruta of [
-    "/bitacora", "/capacitacion", "/chat", "/comunicados", "/credencial", "/encuestas", "/faltantes",
-    "/kudos", "/dispositivos", "/pendientes", "/plan", "/solicitudes", "/soporte", "/suscripcion", "/uniformes"
-  ]) {
-    assert.equal(showsBottomNav(ruta), false, `${ruta} no deberia llevar barra`);
-  }
+test("una conversacion de chat va a pantalla completa", () => {
+  // `/chat` si, `/chat/<id>` no. Un prefijo se habria tragado los dos.
+  assert.equal(showsBottomNav("/chat"), true);
   assert.equal(showsBottomNav("/chat/abc123"), false);
 });
 

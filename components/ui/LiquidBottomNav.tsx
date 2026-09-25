@@ -5,7 +5,14 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion, useReducedMotion } from "framer-motion";
 import type { LucideIcon } from "lucide-react";
-import { BarChart3, Boxes, CalendarDays, Home } from "lucide-react";
+import {
+  AlertTriangle,
+  BarChart3,
+  CheckSquare,
+  Home,
+  ListChecks,
+  MessageSquare,
+} from "lucide-react";
 import { getSession } from "@/lib/auth";
 import { enContenedorNativo } from "@/lib/puente-nativo";
 import { cn } from "@/lib/utils";
@@ -13,15 +20,13 @@ import { haptic } from "@/lib/haptics";
 
 // Exportada para que `tests/accesos-telefono.test.ts` pueda comprobar que
 // ninguna pantalla del teléfono se quede sin puerta de entrada.
-//
-// ⚠️ Plan, Pendientes, Chat y Actividad salieron con la fase 2 del plan de
-// apagado (ver `lib/accesos-telefono.ts`). Sus huecos los ocupan Horarios y
-// Conteos, que es para lo que se abre la app.
 export const navItems: { href: string; label: string; icon: LucideIcon }[] = [
   { href: "/manager", label: "Inicio", icon: Home },
-  { href: "/horarios", label: "Horarios", icon: CalendarDays },
-  { href: "/conteos", label: "Conteos", icon: Boxes },
-  { href: "/kpis", label: "KPIs", icon: BarChart3 }
+  { href: "/plan", label: "Plan", icon: CheckSquare },
+  { href: "/pendientes", label: "Pend.", icon: AlertTriangle },
+  { href: "/chat", label: "Chat", icon: MessageSquare },
+  { href: "/kpis", label: "KPIs", icon: BarChart3 },
+  { href: "/comunicados", label: "Actividad", icon: ListChecks }
 ];
 
 /**
@@ -67,7 +72,7 @@ export function LiquidBottomNav() {
     const href = item.href === "/manager" ? homeHref : item.href;
     return pathname === href
       || (item.href === "/manager" && (pathname === "/manager" || pathname === "/advisor"))
-      || (item.href === "/conteos" && pathname.startsWith("/conteos"));
+      || (item.href === "/chat" && pathname.startsWith("/chat"));
   };
 
   // La distancia se lee DURANTE el render en que cambia la pestaña: el ref aún
