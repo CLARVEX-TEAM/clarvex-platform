@@ -91,6 +91,7 @@ model Store {
   weeklyPerformanceCloses        WeeklyPerformanceClose[]
   promoDrafts                    PromoDraft[]
   supportCases                   SupportCase[]
+  screenViews                    ScreenView[]
   nativeDevices                  NativeDevice[]
   attendanceCorrectionRequests   AttendanceCorrectionRequest[]
 }
@@ -243,6 +244,7 @@ model User {
   attendanceCorrectionRequests  AttendanceCorrectionRequest[]
   reviewedAttendanceCorrections AttendanceCorrectionRequest[] @relation("AttendanceCorrectionReviewer")
   supportCases                  SupportCase[]
+  screenViews                   ScreenView[]
 }
 
 model TrainingResource {
@@ -1968,4 +1970,35 @@ model SupportCase {
 
   @@index([userId, createdAt])
   @@index([storeId, createdAt])
+}
+
+/// Qué pantalla abre cada quien. Es la única forma de saber qué se usa.
+///
+/// ⚠️ **Existe porque medir ESCRITURAS se equivocó.** El 24 de septiembre de
+/// 2026 se cerraron quince pantallas contando filas escritas --conteos,
+/// checklists-- y en menos de un día la gerente preguntó por qué ya no le
+/// salían. Leer no deja rastro: el chat tenía 15 mensajes escritos por dos
+/// personas y 55 LEÍDOS por cinco.
+///
+/// ⚠️ **Se guarda quién, pero se lee AGREGADO.** El `userId` hace falta para la
+/// única pregunta que importa --cuántas PERSONAS distintas abren una pantalla,
+/// no cuántas veces la abre una-- y para nada más. Una pantalla que enseñe por
+/// dónde anduvo cada quien convierte esto en vigilancia del equipo, que es otra
+/// cosa y no se construye sin hablarlo.
+model ScreenView {
+  id        String   @id @default(cuid())
+  storeId   String
+  userId    String
+  /// La ruta YA NORMALIZADA por `lib/metrica-pantallas.ts`, nunca lo que mandó
+  /// el cliente: `/conteos/[id]`, no `/conteos/cmr9yr...`.
+  route     String
+  /// `apk` o `web`. Son dos superficies distintas y conviene no mezclarlas.
+  surface   String
+  createdAt DateTime @default(now())
+  store     Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([route, createdAt])
+  @@index([storeId, createdAt])
+  @@index([userId, createdAt])
 }

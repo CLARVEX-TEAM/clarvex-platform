@@ -17,6 +17,7 @@ import { DemoBanner } from "@/components/DemoBanner";
 import { EmailBanner } from "@/components/EmailBanner";
 import { DomainMoveBanner } from "@/components/DomainMoveBanner";
 import { AppChrome } from "@/components/AppChrome";
+import { MedidorDePantallas } from "@/components/MedidorDePantallas";
 import { SplashIntro } from "@/components/SplashIntro";
 import { NativeDeviceRegistration } from "@/components/NativeDeviceRegistration";
 import { Meteors } from "@/components/magic/Meteors";
@@ -151,6 +152,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 Aquí sobrevive a las navegaciones, que es lo que permite animar
                 la pastilla activa. */}
             <AppChrome />
+            {/* No pinta nada: apunta qué pantalla se abre. Tiene que vivir aquí
+                y no dentro de AppChrome, que devuelve null en las pantallas sin
+                barra --y ésas también hay que medirlas--. */}
+            <MedidorDePantallas />
             <WhatsNewModal />
             {/* El copiloto flotante se retiró el 26 de agosto de 2026: nadie lo
                 usaba y su botón estorbaba en todas las pantallas. Se quitó el
