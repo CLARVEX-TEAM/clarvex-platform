@@ -144,6 +144,29 @@ export async function getWeeklyPerformance(
   ]);
   if (!store) throw new Error("Tienda no encontrada.");
 
+  /*
+   * ⚠️ El orden se fija AQUI, sobre la lista misma, y no solo al armar las
+   * columnas. De `people` cuelgan tres cosas --el reparto diario de Cuota
+   * Justa, la rejilla de horarios y las columnas del RDS-- y arreglar una sola
+   * dejaba las otras dos en alfabetico, que fue exactamente lo que paso al
+   * primer intento: las columnas salian bien y el reparto seguia mal.
+   *
+   * Prisma no puede ordenarlo en la consulta: `employeeNumber` es una columna
+   * de TEXTO y ahi «113642» va antes que «95739». Se ordena en memoria, con la
+   * misma regla que usan el RDS y Retool.
+   */
+  const orden = ordenDelEquipo(
+    people.map((persona) => ({
+      id: persona.id,
+      role: persona.role as KpiReportItem["role"],
+      employeeNumber: persona.employeeNumber
+    }))
+  );
+  people.sort(
+    (izq, der) =>
+      (orden.get(izq.id) ?? Number.MAX_SAFE_INTEGER) - (orden.get(der.id) ?? Number.MAX_SAFE_INTEGER)
+  );
+
   const historyView = history.map((item) => {
     const savedQuotaStart = item.quotaSavedAt ? readPlan(item.plan)?.quotaWeekStart : null;
     const next = reconstructRdvWeek(savedQuotaStart
@@ -478,10 +501,9 @@ function buildReport(
   const roles = new Map(people.map((person) => [person.id, person.role as KpiReportItem["role"]]));
   const whatsappByUser = distributeWhatsappBudget(whatsappBudget, presence, roles);
   /*
-   * ⚠️ Cuota Justa y RDS NO reciben el orden del RDV --su sync lleva caído
-   * desde que Axo cerró los enlaces en agosto-- así que sin esto caían al
-   * desempate por nombre y los asesores salían alfabéticos. `ordenDelEquipo`
-   * los pone por puesto y número de empleado, que es como los lee la tienda.
+   * ⚠️ El orden llega ya hecho desde arriba --`ordenDelEquipo` sobre la lista
+   * completa-- y se pasa explicito para que `buildWeeklyCloseColumns` no caiga
+   * a su desempate por nombre.
    */
   const orden = ordenDelEquipo(
     people.map((persona) => ({
