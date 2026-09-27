@@ -10,7 +10,7 @@
     "dev": "next dev",
     "build": "prisma generate && cross-env NODE_OPTIONS=--max-old-space-size=6144 next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint .",
     "test": "cross-env NODE_ENV=test tsx --test tests/*.test.ts",
     "test:integration": "cross-env NODE_ENV=test ALLOW_INTEGRATION_TEST_DATABASE=true tsx --test tests/integration/*.test.ts",
     "test:security-protection": "cross-env NODE_ENV=test tsx --test tests/security-protection.test.ts",
