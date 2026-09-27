@@ -17,4 +17,34 @@
 .kpi-hero{background:var(--surface)}.kpi-heading em{color:var(--blue);font-style:normal}.big-score{color:var(--blue)}.segmented{background:var(--surface);border-color:var(--line);border-radius:999px}.segmented button{border-radius:999px}.segmented .selected{background:var(--blue);color:var(--ink)}
 .ai-conversation{background:var(--surface)}.conversation-head{border-color:var(--line)}.ai-welcome h2{font-size:38px;letter-spacing:-.06em}.prompt-grid button{border-color:var(--line);background:var(--surface-2);border-radius:12px}.prompt-grid button:hover{border-color:var(--blue);background:var(--blue-soft)}.ai-composer{border-color:var(--line);background:var(--surface-2);border-radius:12px}.ai-composer button{background:var(--blue);color:var(--ink);border-radius:50%}.context-item{border-color:var(--line)}
 .mobile-stage{background:#d8d0c4}.mobile-preview{border-color:#0b0a09;background:#171513;box-shadow:0 26px 70px rgba(0,0,0,.35)}.mobile-content{background:var(--surface)}.mobile-greeting{font-family:Georgia,serif;font-size:25px}.mobile-hero{background:var(--blue);color:var(--ink);border-radius:22px}.mobile-hero .eyebrow,.mobile-hero p{color:rgba(24,22,20,.68)}.mobile-sales strong{font-size:45px;letter-spacing:-.08em}.mobile-progress{background:rgba(24,22,20,.2)}.mobile-progress i{background:var(--ink)}.mobile-next,.mobile-attention-row{border-color:var(--line);background:var(--surface-2);border-radius:15px}.task-icon,.mobile-attention-icon{background:var(--blue-soft);color:var(--blue);border-radius:11px}.mobile-nav{background:color-mix(in srgb,var(--surface) 94%,transparent);border-color:var(--line)}.mobile-nav-active{color:var(--blue)}.mobile-ai{background:var(--blue);color:var(--ink)}.mobile-sync{color:var(--green)}.plan-summary{background:var(--blue-soft);border-radius:16px}.plan-progress{background:var(--line)}.plan-progress i{background:var(--blue)}.plan-task{border-color:var(--line)}.check-circle{border-color:var(--blue)}.check-circle.checked{background:var(--blue);color:var(--ink)}.mobile-ai-cta{background:var(--blue);color:var(--ink);border-radius:999px}
-@media (prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition-duration:0ms!important;animation-duration:0ms!important}}
+/* Motion layer: tactile, quiet, and intentional */
+.concept-shell button,.concept-shell input{transition:background-color .18s ease,border-color .18s ease,color .18s ease,box-shadow .18s ease,transform .18s ease,opacity .18s ease}
+.concept-shell button:active{transform:scale(.975)}
+.concept-shell button:focus-visible,.concept-shell input:focus-visible{outline:2px solid var(--blue);outline-offset:3px}
+.concept-topbar{box-shadow:0 1px 0 color-mix(in srgb,var(--line) 80%,transparent),0 14px 28px rgba(0,0,0,.08)}
+.concept-brand>span{box-shadow:0 0 0 0 color-mix(in srgb,var(--blue) 30%,transparent)}
+.concept-brand:hover>span{transform:rotate(-8deg) scale(1.08);box-shadow:0 0 0 7px color-mix(in srgb,var(--blue) 12%,transparent)}
+.screen-switcher{box-shadow:inset 0 1px 0 color-mix(in srgb,var(--text) 5%,transparent),0 8px 24px rgba(0,0,0,.08)}
+.screen-switcher button:hover{transform:translateY(-1px)}
+.nav-item{position:relative;overflow:hidden}
+.nav-item::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,color-mix(in srgb,var(--blue) 13%,transparent),transparent);opacity:0;transform:translateX(-12px);transition:opacity .18s ease,transform .18s ease}
+.nav-item:hover::after{opacity:1;transform:translateX(0)}
+.nav-item>*{position:relative;z-index:1}
+.nav-item.active{animation:nav-settle .35s ease both}
+.ask-button,.mobile-ai,.mobile-ai-cta{position:relative;overflow:hidden}
+.ask-button::before,.mobile-ai::before,.mobile-ai-cta::before{content:'';position:absolute;inset:-40% -20%;background:linear-gradient(105deg,transparent 35%,rgba(255,255,255,.28) 48%,transparent 60%);transform:translateX(-75%);transition:transform .7s ease}
+.ask-button:hover::before,.mobile-ai:hover::before,.mobile-ai-cta:hover::before{transform:translateX(75%)}
+.ask-button:hover,.mobile-ai-cta:hover{box-shadow:0 10px 24px color-mix(in srgb,var(--blue) 22%,transparent);transform:translateY(-2px)}
+.icon-button:hover{color:var(--blue);box-shadow:0 0 0 5px color-mix(in srgb,var(--blue) 10%,transparent)}
+.panel{animation:surface-in .45s cubic-bezier(.2,.8,.2,1) both}
+.attention-list button:hover,.prompt-grid button:hover,.mobile-next:hover,.mobile-attention-row:hover,.plan-task:hover{transform:translateY(-2px);box-shadow:0 10px 22px rgba(0,0,0,.12)}
+.ai-orb,.large-orb{animation:orb-breathe 3.2s ease-in-out infinite}
+.mobile-nav button{position:relative}
+.mobile-nav button:not(.mobile-ai):hover{transform:translateY(-2px)}
+.mobile-nav-active::after{content:'';position:absolute;bottom:5px;width:4px;height:4px;border-radius:50%;background:currentColor;animation:dot-in .25s ease both}
+.mobile-back svg{transform:rotate(180deg)}
+@keyframes surface-in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@keyframes nav-settle{from{transform:translateX(-3px)}to{transform:none}}
+@keyframes dot-in{from{transform:scale(0)}to{transform:scale(1)}}
+@keyframes orb-breathe{0%,100%{box-shadow:0 0 0 0 color-mix(in srgb,var(--blue) 0%,transparent)}50%{box-shadow:0 0 0 8px color-mix(in srgb,var(--blue) 9%,transparent)}}
+@media (prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition-duration:0ms!important;animation-duration:0ms!important}.concept-shell button:active{transform:none}}
