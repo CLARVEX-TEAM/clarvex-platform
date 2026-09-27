@@ -64,4 +64,16 @@
 @media (prefers-reduced-motion:no-preference){.desktop-stage{animation:drive-in .5s cubic-bezier(.2,.8,.2,1) both}.concept-shell button:hover{transition-duration:.14s}.mobile-nav button:hover{transform:translateY(-1px)}}
 @keyframes drive-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 @media (max-width:760px){.concept-topbar{padding:10px 14px}.concept-brand>span{width:22px;height:22px}.screen-switcher button{padding:7px 10px}.desktop-main{padding:24px 15px 44px}.mobile-stage{padding:18px 8px}.mobile-preview{border-width:5px}}
+/* Reference calibration: Linear navigation, Tesla restraint, Revolut data focus, Shopify retail clarity */
+.desktop-rail{position:relative}.desktop-rail::after{content:'';position:absolute;top:0;right:-1px;width:1px;height:100%;background:linear-gradient(180deg,transparent,var(--line) 18%,var(--line) 82%,transparent);pointer-events:none}
+.nav-item{isolation:isolate}.nav-item:not(.active):hover{background:color-mix(in srgb,var(--surface) 72%,transparent);color:var(--text)}
+.nav-item.active{font-weight:650}.nav-item.active svg{filter:drop-shadow(0 0 7px color-mix(in srgb,var(--blue) 22%,transparent))}
+.store-switcher:focus-visible,.rail-search:focus-visible{outline:2px solid var(--blue);outline-offset:3px}
+.hero-performance .panel-top{align-items:flex-start}.hero-context{display:flex;align-items:center;gap:6px}
+.attention-list button{transition:background-color .18s ease,transform .18s ease}.attention-list button:hover{background:color-mix(in srgb,var(--surface-2) 70%,transparent)}
+.team-row:hover{background:color-mix(in srgb,var(--surface-2) 48%,transparent)}
+.mobile-preview{overflow:hidden}.mobile-statusbar{padding-top:env(safe-area-inset-top)}.mobile-nav{padding-bottom:max(10px,env(safe-area-inset-bottom));box-shadow:0 -10px 26px rgba(0,0,0,.12)}
+.mobile-nav button{min-width:52px;min-height:44px}.mobile-nav button:focus-visible{outline-offset:-3px}.mobile-ai{box-shadow:0 6px 18px color-mix(in srgb,var(--blue) 18%,transparent)}
+.mobile-next:focus-within,.mobile-attention-row:focus-within,.plan-task:focus-within{outline:2px solid var(--blue);outline-offset:2px}
+@media (max-width:760px){.mobile-stage{min-height:calc(100vh - 96px);align-items:flex-start}.mobile-preview{min-height:calc(100vh - 132px)}.mobile-content{min-height:calc(100vh - 190px)}.mobile-nav{min-height:72px}.mobile-greeting{letter-spacing:-.055em}.mobile-sales strong{font-variant-numeric:tabular-nums}}
 @media (prefers-reduced-motion:reduce){.desktop-stage{animation:none}}
