@@ -1,7 +1,7 @@
 // En producción exigimos configuración explícita de WebAuthn: los defaults de
 // localhost solo valen en desarrollo. Falla ruidoso si falta en producción para
 // evitar un binding de origen/RP incorrecto.
-if (process.env.NODE_ENV === "production") {
+if (process.env.NODE_ENV === "production" && process.env.NEXT_PHASE !== "phase-production-build") {
   const missing = ["WEBAUTHN_RP_ID", "WEBAUTHN_ORIGIN"].filter((key) => !process.env[key]);
   if (missing.length > 0) {
     throw new Error(`Configura ${missing.join(", ")} en producción para la biometría (WebAuthn).`);
