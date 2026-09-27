@@ -39,6 +39,41 @@ export type WeeklyCloseColumn = {
 
 const ROLE_ORDER: Record<KpiReportItem["role"], number> = { GERENTE: 0, SUBGERENTE: 1, ASESOR: 2, REGIONAL: 3 };
 
+/**
+ * El orden de las columnas cuando el RDV no lo dicta: puesto, y dentro de cada
+ * puesto el NÚMERO DE EMPLEADO, de menor a mayor.
+ *
+ * ⚠️ **Antes desempataba por NOMBRE y salía alfabético** --Alonso, Jazmín,
+ * Waira--, que no es el orden en el que la tienda los lee ni el que traía el
+ * RDV. El número de empleado sí: es el orden de antigüedad en la empresa, lo
+ * asigna corporativo y nadie lo mantiene a mano, así que quien entre mañana se
+ * coloca solo.
+ *
+ * ⚠️ **Y se compara como NÚMERO, no como texto.** `employeeNumber` es una
+ * cadena: ordenada tal cual, `113642` va antes que `95739` porque empieza por
+ * uno, y el resultado es justo el contrario del que se busca.
+ *
+ * ⚠️ La consulta de Retool que pinta Horarios ordena igual, a mano, en SQL. Si
+ * una de las dos cambia, la otra tiene que cambiar con ella: son dos copias de
+ * la misma regla y no hay nada que las ate.
+ */
+export function ordenDelEquipo(
+  gente: Array<{ id: string; role: KpiReportItem["role"]; employeeNumber: string }>
+): Map<string, number> {
+  const numero = (valor: string) => {
+    const n = Number.parseInt(valor, 10);
+    // Un número que no lo es va al final, no al principio: `NaN` en una
+    // comparación deja el orden indefinido y sería peor que ponerlo último.
+    return Number.isFinite(n) ? n : Number.MAX_SAFE_INTEGER;
+  };
+  const ordenada = [...gente].sort(
+    (izq, der) =>
+      (ROLE_ORDER[izq.role] ?? 99) - (ROLE_ORDER[der.role] ?? 99)
+      || numero(izq.employeeNumber) - numero(der.employeeNumber)
+  );
+  return new Map(ordenada.map((persona, posicion) => [persona.id, posicion]));
+}
+
 export function buildWeeklyCloseColumns(
   members: KpiReportItem[],
   store: KpiReportItem,
@@ -47,8 +82,13 @@ export function buildWeeklyCloseColumns(
   rdvOrder: Map<string, number> | null = null
 ): WeeklyCloseColumn[] {
   // Orden de columnas: el mismo del RDV (gerente, subgerentes, vendedor 1, 2…)
-  // cuando el sync lo reporta; quien no aparezca en el RDV va al final por
-  // rol y nombre (mismo fallback de siempre).
+  // cuando el sync lo reporta, y si no, el que arma `ordenDelEquipo` --puesto y
+  // número de empleado--. Quien no esté en ninguno de los dos va al final.
+  //
+  // ⚠️ El desempate por NOMBRE se quitó a propósito: dejaba a los asesores en
+  // alfabético, que no es como los lee la tienda. Se conserva al final solo
+  // para que dos personas sin orden conocido salgan siempre igual y el archivo
+  // no cambie de una exportación a otra.
   const position = (item: KpiReportItem) => rdvOrder?.get(item.userId) ?? Number.MAX_SAFE_INTEGER;
   const ordered = [...members]
     .sort((left, right) =>

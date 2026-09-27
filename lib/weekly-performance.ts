@@ -10,6 +10,7 @@ import { weeklyReportChanged } from "@/lib/weekly-performance-documents";
 import {
   buildWeeklyCloseColumn,
   buildWeeklyCloseColumns,
+  ordenDelEquipo,
   distributeWhatsappBudget,
   type WeeklyCloseColumn
 } from "@/lib/weekly-close";
@@ -105,7 +106,7 @@ export async function getWeeklyPerformance(
     prisma.store.findUnique({ where: { id: storeId }, select: { id: true, name: true } }),
     prisma.user.findMany({
       where: { storeId, ...PERSON_WHERE, role: { in: [...TEAM_ROLES] } },
-      select: { id: true, name: true, role: true, photoUrl: true },
+      select: { id: true, name: true, role: true, photoUrl: true, employeeNumber: true },
       orderBy: [{ role: "asc" }, { name: "asc" }]
     }),
     prisma.schedule.findMany({
@@ -445,7 +446,14 @@ function buildScheduleGrid(
 
 function buildReport(
   rows: Parameters<typeof aggregateKpis>[0],
-  people: Array<{ id: string; name: string; role: string; photoUrl: string | null }>,
+  people: Array<{
+    id: string;
+    name: string;
+    role: string;
+    photoUrl: string | null;
+    // Lo pide `ordenDelEquipo` para colocar las columnas; ver más abajo.
+    employeeNumber: string;
+  }>,
   schedules: Array<{ userId: string; date: Date; status: string; statusRaw: string | null }>,
   dates: string[],
   whatsappBudget: number
@@ -469,8 +477,21 @@ function buildReport(
   ]));
   const roles = new Map(people.map((person) => [person.id, person.role as KpiReportItem["role"]]));
   const whatsappByUser = distributeWhatsappBudget(whatsappBudget, presence, roles);
+  /*
+   * ⚠️ Cuota Justa y RDS NO reciben el orden del RDV --su sync lleva caído
+   * desde que Axo cerró los enlaces en agosto-- así que sin esto caían al
+   * desempate por nombre y los asesores salían alfabéticos. `ordenDelEquipo`
+   * los pone por puesto y número de empleado, que es como los lee la tienda.
+   */
+  const orden = ordenDelEquipo(
+    people.map((persona) => ({
+      id: persona.id,
+      role: persona.role as KpiReportItem["role"],
+      employeeNumber: persona.employeeNumber
+    }))
+  );
   return {
-    columns: buildWeeklyCloseColumns(full, store, whatsappBudget, whatsappByUser),
+    columns: buildWeeklyCloseColumns(full, store, whatsappBudget, whatsappByUser, orden),
     store: buildWeeklyCloseColumn(store, store, whatsappBudget),
     whatsappBudget
   };
