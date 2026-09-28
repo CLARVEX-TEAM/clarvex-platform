@@ -137,7 +137,7 @@ export default function EscritorioKardexPage() {
       <DeskReveal index={2}>
         <DeskSection title="Día a día" hint="Existencia al cierre de cada día. Los días sin movimiento también aparecen: un hueco se leería como si el inventario hubiera dejado de existir.">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[34rem]">
+            <table className="w-full min-w-136">
               <thead className={deskThead}>
                 <tr>
                   <th className={deskTh}>Día</th>

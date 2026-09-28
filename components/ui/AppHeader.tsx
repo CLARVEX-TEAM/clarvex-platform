@@ -29,7 +29,7 @@ function NotificationBell() {
         <Bell size={18} />
       </Link>
       {unreadCount > 0 ? (
-        <span className="pointer-events-none absolute -right-1 -top-1 grid h-[18px] min-w-[18px] place-items-center rounded-full bg-rose-500 px-[5px] text-[10px] font-semibold leading-none text-white shadow-sm ring-2 ring-card dark:ring-void">
+        <span className="pointer-events-none absolute -right-1 -top-1 grid h-[18px] min-w-[18px] place-items-center rounded-full bg-orchid px-[5px] text-[10px] font-semibold leading-none text-white shadow-xs ring-2 ring-card dark:ring-void">
           {unreadCount > 99 ? "99+" : unreadCount}
         </span>
       ) : null}
@@ -66,10 +66,10 @@ export function AppHeader({
   return (
     <header
       className={cn(
-        "pt-safe sticky top-[var(--matchday-offset,0px)] z-20 border-b bg-card/85 dark:bg-void/95 px-4 backdrop-blur-xl transition-all duration-300",
+        "app-header pt-safe sticky top-(--matchday-offset,0px) z-20 border-b bg-card/85 dark:bg-void/95 px-4 backdrop-blur-xl transition-all duration-300",
         scrolled
-          ? "border-line pb-1 shadow-[0_8px_24px_rgb(15_23_42_/_0.1)]"
-          : "border-line/80 pb-2 shadow-[0_4px_16px_rgb(15_23_42_/_0.04)]"
+          ? "border-line pb-1 shadow-[0_8px_24px_rgb(15_23_42/0.1)]"
+          : "border-line/80 pb-2 shadow-[0_4px_16px_rgb(15_23_42/0.04)]"
       )}
       style={{ ["--pt-safe-base" as string]: scrolled ? "0.25rem" : "0.5rem" }}
     >
@@ -91,11 +91,11 @@ export function AppHeader({
             </Link>
           ) : null}
           <div className="min-w-0">
-            <p className={cn("font-bold uppercase tracking-[0.16em] text-volt/90 transition-all duration-300", scrolled ? "text-[9px] opacity-70" : "text-[10px] opacity-100")}>CLARVEX Team</p>
-            <h1 className="text-[1.15rem] font-semibold leading-tight tracking-[-0.035em] text-ink">
+            <p className={cn("app-header-eyebrow font-bold uppercase tracking-[0.16em] text-volt/90 transition-all duration-300", scrolled ? "text-[9px] opacity-70" : "text-[10px] opacity-100")}>CLARVEX Team</p>
+            <h1 className="app-header-title text-[1.15rem] font-semibold leading-tight tracking-[-0.035em] text-ink">
               <GradientText>{title}</GradientText>
             </h1>
-            <p className={cn("overflow-hidden text-[11px] leading-4 text-muted transition-all duration-300", scrolled ? "max-h-0 opacity-0" : "max-h-5 opacity-100")}>{subtitle}</p>
+            <p className={cn("app-header-sub overflow-hidden text-[11px] leading-4 text-muted transition-all duration-300", scrolled ? "max-h-0 opacity-0" : "max-h-5 opacity-100")}>{subtitle}</p>
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-1.5">

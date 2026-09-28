@@ -26,9 +26,9 @@ type AttendanceResponse = {
 };
 
 const TONE_STYLES = {
-  ok: { ring: "bg-emerald-500", chip: "text-emerald-700 dark:text-emerald-300", soft: "bg-emerald-500/10" },
-  warn: { ring: "bg-amber-500", chip: "text-amber-700 dark:text-amber-300", soft: "bg-amber-500/10" },
-  danger: { ring: "bg-rose-500", chip: "text-rose-700 dark:text-rose-300", soft: "bg-rose-500/10" }
+  ok: { ring: "bg-mint", chip: "text-mint", soft: "bg-mint/10" },
+  warn: { ring: "bg-ember", chip: "text-ember", soft: "bg-ember/10" },
+  danger: { ring: "bg-orchid", chip: "text-orchid", soft: "bg-orchid/10" }
 } as const;
 
 export function QuincenaCard({ userId }: { userId: string }) {
@@ -54,7 +54,7 @@ export function QuincenaCard({ userId }: { userId: string }) {
   if (failed) return null;
 
   if (!data) {
-    return <div className="h-40 animate-pulse rounded-[28px] bg-slate-200 dark:bg-slate-800" />;
+    return <div className="h-40 animate-pulse rounded-[28px] bg-panel" />;
   }
 
   const mine = data.records.filter((record) => record.userId === userId);
@@ -87,7 +87,7 @@ export function QuincenaCard({ userId }: { userId: string }) {
             {Array.from({ length: RETARDO_LIMIT }, (_, i) => (
               <span
                 key={i}
-                className={`size-2.5 rounded-full ${i < lates ? tone.ring : "bg-slate-300 dark:bg-slate-700"}`}
+                className={`size-2.5 rounded-full ${i < lates ? tone.ring : "bg-muted"}`}
               />
             ))}
           </div>
@@ -109,7 +109,7 @@ export function QuincenaCard({ userId }: { userId: string }) {
         </div>
         <span
           className={`shrink-0 text-lg font-semibold tabular-nums ${
-            balanceMinutes > 0 ? "text-emerald-600 dark:text-emerald-400" : balanceMinutes < 0 ? "text-rose-600 dark:text-rose-400" : "text-muted"
+            balanceMinutes > 0 ? "text-mint" : balanceMinutes < 0 ? "text-orchid" : "text-muted"
           }`}
         >
           {formatBalance(balanceMinutes)}

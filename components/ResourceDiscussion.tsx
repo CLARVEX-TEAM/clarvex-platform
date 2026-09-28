@@ -120,18 +120,18 @@ export function ResourceDiscussion({ target, className = "" }: { target: Target;
 
   return (
     <div className={`mt-2.5 border-t border-line/70 pt-2.5 ${className}`}>
-      <button type="button" onClick={() => void toggle()} className="flex min-h-10 w-full items-center justify-between rounded-xl px-2 text-sm font-semibold text-volt transition hover:bg-blue-50 active:scale-[0.99]" aria-expanded={open}>
+      <button type="button" onClick={() => void toggle()} className="flex min-h-10 w-full items-center justify-between rounded-xl px-2 text-sm font-semibold text-volt transition hover:bg-volt/10 active:scale-[0.99]" aria-expanded={open}>
         <span className="flex items-center gap-2"><MessageCircle size={16} /> Evidencias y comentarios</span>
         <span className="text-xs text-muted">{evidences.length + comments.length || "Abrir"}</span>
       </button>
       {open ? (
-        <div className="mt-2 space-y-3 rounded-2xl bg-slate-50/80 dark:bg-slate-800/80 p-3">
+        <div className="mt-2 space-y-3 rounded-2xl bg-panel p-3">
           {loading ? <p className="text-sm text-muted">Cargando actividad...</p> : null}
           {!loading && evidences.length === 0 ? <p className="text-sm text-muted">Aún no hay evidencias.</p> : null}
           {evidences.length > 0 ? (
             <div className="flex gap-2 overflow-x-auto pb-1">
               {evidences.map((item) => (
-                <ImagenAmpliable key={item.id} src={item.url} alt={item.note || "Evidencia"} className="relative h-24 w-24 shrink-0 overflow-hidden rounded-xl bg-white dark:bg-slate-700">
+                <ImagenAmpliable key={item.id} src={item.url} alt={item.note || "Evidencia"} className="relative h-24 w-24 shrink-0 overflow-hidden rounded-xl bg-white dark:bg-panel">
                   <Image src={item.url} alt={item.note || "Evidencia"} fill sizes="96px" className="object-cover" />
                 </ImagenAmpliable>
               ))}
@@ -146,12 +146,12 @@ export function ResourceDiscussion({ target, className = "" }: { target: Target;
                 </p>
                 <div className="flex gap-2 overflow-x-auto pb-1">
                   {previewUrls.map((url, i) => (
-                    <div key={i} className="relative h-24 w-24 shrink-0 overflow-hidden rounded-xl bg-white dark:bg-slate-700">
+                    <div key={i} className="relative h-24 w-24 shrink-0 overflow-hidden rounded-xl bg-white dark:bg-panel">
                       <Image src={url} alt={`Vista previa ${i + 1}`} fill sizes="96px" className="object-cover" unoptimized />
                       <button
                         type="button"
                         onClick={() => removeFile(i)}
-                        className="absolute right-1 top-1 grid size-7 place-items-center rounded-full bg-white/90 dark:bg-slate-700/90 text-ink shadow-sm"
+                        className="absolute right-1 top-1 grid size-7 place-items-center rounded-full bg-white/90 dark:bg-panel text-ink shadow-xs"
                         aria-label="Quitar foto"
                       >
                         <X size={14} />
@@ -166,7 +166,7 @@ export function ResourceDiscussion({ target, className = "" }: { target: Target;
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-xl border border-line bg-white dark:bg-slate-800 px-3 text-sm font-semibold text-ink transition active:scale-[0.99]"
+                className="flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-xl border border-line bg-white dark:bg-panel px-3 text-sm font-semibold text-ink transition active:scale-[0.99]"
               >
                 <ImagePlus size={17} />
                 {files.length > 0 ? `Agregar más fotos (${files.length}/${MAX_FILES})` : "Agregar evidencia"}
@@ -179,7 +179,7 @@ export function ResourceDiscussion({ target, className = "" }: { target: Target;
                 value={note}
                 onChange={(event) => setNote(event.target.value)}
                 maxLength={500}
-                className="min-h-11 rounded-xl border border-line bg-white dark:bg-slate-800 px-3 text-sm text-ink outline-none focus:border-volt"
+                className="min-h-11 rounded-xl border border-line bg-white dark:bg-panel px-3 text-sm text-ink outline-hidden focus:border-volt"
                 placeholder="Nota opcional (para todas las fotos)"
               />
             ) : null}
@@ -194,14 +194,14 @@ export function ResourceDiscussion({ target, className = "" }: { target: Target;
             {comments.length === 0 ? <p className="text-sm text-muted">Aún no hay comentarios.</p> : comments.map((item) => (
               <div key={item.id} className="flex gap-2">
                 <ProfileAvatar name={item.author.name} photoUrl={item.author.photoUrl} size="sm" className="size-8 rounded-full shadow-none" />
-                <div className="min-w-0 flex-1 rounded-xl bg-white dark:bg-slate-800 px-3 py-2">
+                <div className="min-w-0 flex-1 rounded-xl bg-white dark:bg-panel px-3 py-2">
                   <p className="text-xs font-semibold text-ink">{item.author.name}</p>
                   <p className="mt-0.5 text-sm leading-5 text-muted">{item.body}</p>
                 </div>
               </div>
             ))}
             <form onSubmit={sendComment} className="flex gap-2">
-              <input value={comment} onChange={(event) => setComment(event.target.value)} maxLength={1000} className="min-h-11 min-w-0 flex-1 rounded-xl border border-line bg-white dark:bg-slate-800 px-3 text-sm text-ink outline-none focus:border-volt" placeholder="Escribe un comentario" />
+              <input value={comment} onChange={(event) => setComment(event.target.value)} maxLength={1000} className="min-h-11 min-w-0 flex-1 rounded-xl border border-line bg-white dark:bg-panel px-3 text-sm text-ink outline-hidden focus:border-volt" placeholder="Escribe un comentario" />
               <button type="submit" disabled={!comment.trim()} className="grid size-11 shrink-0 place-items-center rounded-xl bg-volt text-white disabled:opacity-40" aria-label="Enviar comentario"><Send size={17} /></button>
             </form>
           </div>

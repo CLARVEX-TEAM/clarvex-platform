@@ -38,14 +38,14 @@ export function MentionText({
         <span
           key={`${m.userId}-${i}`}
           className={cn(
-            "rounded px-1 font-semibold",
+            "rounded-sm px-1 font-semibold",
             esMio
               ? claro
                 ? "bg-white/25 text-white"
-                : "bg-amber-100 text-amber-900 dark:bg-amber-400/25 dark:text-amber-200"
+                : "bg-ember/10 text-ember"
               : claro
                 ? "text-white/90 underline decoration-white/40"
-                : "text-brand"
+                : "text-volt"
           )}
         >
           {m.escrito}

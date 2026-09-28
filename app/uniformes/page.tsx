@@ -13,6 +13,7 @@ import {
   type UniformVariant
 } from "@/lib/uniforms";
 import { AppFrame, AppHeader, Button, Card, ProfileAvatar } from "@/components/ui";
+import { ShineBorder } from "@/components/externos/shine-border";
 import { useToast } from "@/components/Toast";
 import { cn } from "@/lib/utils";
 
@@ -24,10 +25,20 @@ function todayWeekday(): number {
   return new Date(`${key}T00:00:00.000Z`).getUTCDay();
 }
 
-function Swatch({ garment }: { garment: string }) {
+/**
+ * El color de la prenda.
+ *
+ * ⚠️ `claro` es para cuando va sobre el degradado del bloque principal: ahí el
+ * aro oscuro de siempre desaparece, y una prenda azul marino sobre fondo azul
+ * marino se queda sin borde y parece un agujero.
+ */
+function Swatch({ garment, claro = false }: { garment: string; claro?: boolean }) {
   return (
     <span
-      className="inline-block size-3 shrink-0 rounded-full ring-1 ring-black/15 dark:ring-white/25"
+      className={cn(
+        "inline-block shrink-0 rounded-full",
+        claro ? "size-4 ring-2 ring-white/60" : "size-3 ring-1 ring-black/15 dark:ring-white/25"
+      )}
       style={{ background: swatchFor(garment) }}
       aria-hidden
     />
@@ -102,25 +113,55 @@ export default function UniformesPage() {
     <>
       <AppHeader title="Uniformes" subtitle="Qué toca ponerse cada día." backHref={session?.role === "ASESOR" ? "/advisor" : "/manager"} />
       <AppFrame>
-        {/* Lo de HOY, que es lo único que importa al abrir */}
+        {/*
+          ⚠️ Lo de HOY es la pantalla, no una tarjeta más.
+
+          Esta pantalla existe para contestar «¿qué me pongo hoy?», y quien la
+          abre lo hace mientras se viste. Antes era una tarjeta con el mismo
+          peso que la lista de la semana y que el panel de variantes: había que
+          leer tres bloques para encontrar el que contestaba la pregunta.
+
+          El degradado y la marca de agua son los mismos que ya usan Conteos,
+          Checklist y Mi día -- salen de `.papel-hero`, así que si cambia el
+          logo cambia esto.
+        */}
         {mine ? (
-          <Card className="mb-3 p-4">
-            <p className="text-xs font-bold text-muted">Hoy · {WEEKDAY_LABEL[today]}</p>
-            <div className="mt-2 grid gap-1.5">
-              <p className="flex items-center gap-2 text-base font-semibold text-ink">
-                <Swatch garment={mine.top} /> {mine.top}
+          <section className="papel-hero papel-elev-alta relative mb-3 overflow-hidden rounded-[26px]">
+            <svg
+              aria-hidden
+              viewBox="0 0 512 512"
+              className="pointer-events-none absolute -right-10 -top-12 size-56 opacity-[0.07]"
+            >
+              <path fill="#FFFFFF" d="M108 171 256 86 403 171 210 283v-57l93-53-47-27-95 55v111l95 56 48-28v-57l99 58-147 85-148-84V171Z" />
+            </svg>
+            <ShineBorder borderWidth={2} duration={13} shineColor={["#FFFFFF", "#8BB8FF", "#FFFFFF"]} />
+            <div className="relative px-6 pb-6 pt-6">
+              <p className="text-xs font-semibold uppercase tracking-[0.09em] opacity-80">
+                Hoy · {WEEKDAY_LABEL[today]}
               </p>
-              <p className="flex items-center gap-2 text-base font-semibold text-ink">
-                <Swatch garment={mine.bottom} /> {mine.bottom}
-              </p>
+              <div className="mt-3 grid gap-2">
+                <p className="flex items-center gap-2.5 text-[21px] font-semibold leading-tight tracking-[-0.02em]">
+                  <Swatch garment={mine.top} claro /> {mine.top}
+                </p>
+                <p className="flex items-center gap-2.5 text-[21px] font-semibold leading-tight tracking-[-0.02em]">
+                  <Swatch garment={mine.bottom} claro /> {mine.bottom}
+                </p>
+              </div>
+              {mine.note ? <p className="mt-3 text-[13px] opacity-90">{mine.note}</p> : null}
+              {/*
+                ⚠️ El aviso de variante sin asignar se queda DENTRO del bloque,
+                pegado a la ropa que está enseñando: dice que lo de arriba puede
+                no ser lo tuyo. Suelto en la pantalla no se sabría a qué se
+                refiere.
+              */}
+              {!myVariant ? (
+                <p className="mt-3 rounded-xl bg-white/15 px-3 py-2 text-[12px] leading-relaxed">
+                  Gerencia aún no te asignó variante de uniforme. Arriba va la de
+                  mujer, solo como referencia.
+                </p>
+              ) : null}
             </div>
-            {mine.note ? <p className="mt-2 text-[11px] font-semibold text-amber-700 dark:text-amber-300">{mine.note}</p> : null}
-            {!myVariant ? (
-              <p className="mt-2 rounded-xl bg-amber-50 px-2.5 py-1.5 text-[11px] font-bold text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
-                Gerencia aún no te asignó variante de uniforme. Se te muestra la de mujer como referencia.
-              </p>
-            ) : null}
-          </Card>
+          </section>
         ) : null}
 
         {/* La semana completa */}
@@ -142,7 +183,12 @@ export default function UniformesPage() {
               const outfit = outfitFor(day, myVariant);
               const isToday = day.weekday === today;
               return (
-                <div key={day.weekday} className={cn("py-2.5", isToday && "rounded-xl bg-volt/[0.07] px-2")}>
+                /*
+                  ⚠️ Hoy se marca, pero sin fondo de color: el bloque de arriba
+                  ya lo dice en grande, y dos cosas gritando «hoy» en la misma
+                  pantalla se restan la una a la otra.
+                */
+                <div key={day.weekday} className="py-2.5">
                   <p className={cn("text-xs font-semibold", isToday ? "text-volt" : "text-muted")}>
                     {WEEKDAY_LABEL[day.weekday]}{isToday ? " · hoy" : ""}
                   </p>
@@ -157,7 +203,7 @@ export default function UniformesPage() {
                             value={day[field]}
                             onChange={(event) => editDay(day.weekday, field, event.target.value)}
                             maxLength={80}
-                            className="min-h-9 rounded-xl border border-line bg-panel px-2 text-xs font-bold text-ink outline-none focus:border-volt"
+                            className="min-h-9 rounded-xl border border-line bg-panel px-2 text-xs font-bold text-ink outline-hidden focus:border-volt"
                           />
                         </label>
                       ))}
@@ -196,7 +242,7 @@ export default function UniformesPage() {
                         onClick={() => setUsers((current) => current.map((row) => row.id === user.id ? { ...row, uniformVariant: row.uniformVariant === variant ? null : variant } : row))}
                         className={cn(
                           "rounded-xl px-2.5 py-1 text-[11px] font-semibold transition",
-                          user.uniformVariant === variant ? "bg-volt text-white" : "bg-slate-100 text-muted dark:bg-slate-800"
+                          user.uniformVariant === variant ? "bg-volt text-white" : "bg-panel text-muted"
                         )}
                       >
                         {variant === "MUJER" ? "Mujer" : "Hombre"}

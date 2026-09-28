@@ -11,10 +11,28 @@ import { fetchAppData, lastKnownAppData, type AppData } from "@/lib/app-data";
  * internet (evento custom `clarvex-online`).
  */
 export function useAppData() {
-  // Arranca con la última copia conocida, si la hay, para que el panel nunca
-  // aparezca vacío. `useState` con función para no leer el disco en cada
-  // render. Se refresca igual en el efecto de abajo.
-  const [data, setData] = useState<AppData | null>(() => lastKnownAppData());
+  /*
+   * Arranca con la última copia conocida, si la hay, para que el panel nunca
+   * aparezca vacío. `useState` con función para no leer el disco en cada
+   * render. Se refresca igual en el efecto de abajo.
+   *
+   * ⚠️ Pero la copia NO se puede enseñar en el primer pintado. Vive en el
+   * navegador, así que el servidor --que no lo tiene-- pinta el esqueleto y el
+   * cliente pintaba ya el panel lleno: dos árboles distintos en el mismo sitio,
+   * y React tira el HTML del servidor y vuelve a pintar la pantalla ENTERA.
+   * No da pantalla de error; se nota como un parpadeo al abrir y como las
+   * animaciones de entrada cortadas a la mitad, y le pasa a todo el que haya
+   * abierto la app antes --o sea, a toda la tienda.
+   *
+   * Por eso se lee igual de pronto, pero se ADOPTA justo después de hidratar:
+   * el primer pintado coincide con el del servidor y la copia entra un cuadro
+   * más tarde, que es lo que costaba el fallo.
+   */
+  const [copiaGuardada] = useState<AppData | null>(() => lastKnownAppData());
+  const [hidratado, setHidratado] = useState(false);
+  const [data, setData] = useState<AppData | null>(null);
+
+  useEffect(() => { setHidratado(true); }, []);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
 
@@ -39,5 +57,13 @@ export function useAppData() {
     };
   }, [load]);
 
-  return { data, lastUpdated, loadFailed, setLoadFailed, load } as const;
+  return {
+    // Lo que llegó del servidor manda; si todavía no llegó, la copia guardada,
+    // y solo una vez hidratado.
+    data: data ?? (hidratado ? copiaGuardada : null),
+    lastUpdated,
+    loadFailed,
+    setLoadFailed,
+    load
+  } as const;
 }

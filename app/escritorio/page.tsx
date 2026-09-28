@@ -348,15 +348,15 @@ function DashboardSkeleton() {
     <div className="space-y-9" aria-busy="true" aria-label="Cargando el resumen del día">
       <section className="grid animate-pulse gap-8 lg:grid-cols-2 lg:gap-12">
         <div>
-          <div className="h-4 w-24 rounded bg-panel" />
-          <div className="mt-3 h-11 w-56 rounded bg-panel" />
-          <div className="mt-3 h-4 w-64 rounded bg-panel" />
+          <div className="h-4 w-24 rounded-sm bg-panel" />
+          <div className="mt-3 h-11 w-56 rounded-sm bg-panel" />
+          <div className="mt-3 h-4 w-64 rounded-sm bg-panel" />
           <div className="mt-4 h-1.5 rounded-full bg-panel" />
         </div>
         <div className="lg:border-l lg:border-line lg:pl-12">
-          <div className="h-4 w-32 rounded bg-panel" />
+          <div className="h-4 w-32 rounded-sm bg-panel" />
           <div className="mt-4 space-y-3">
-            {[0, 1, 2, 3].map((i) => <div key={i} className="h-8 rounded bg-panel" />)}
+            {[0, 1, 2, 3].map((i) => <div key={i} className="h-8 rounded-sm bg-panel" />)}
           </div>
         </div>
       </section>
@@ -364,8 +364,8 @@ function DashboardSkeleton() {
       <section className="grid animate-pulse grid-cols-2 gap-y-6 sm:grid-cols-3 xl:grid-cols-5">
         {[0, 1, 2, 3, 4].map((i) => (
           <div key={i}>
-            <div className="h-3 w-16 rounded bg-panel" />
-            <div className="mt-2 h-6 w-20 rounded bg-panel" />
+            <div className="h-3 w-16 rounded-sm bg-panel" />
+            <div className="mt-2 h-6 w-20 rounded-sm bg-panel" />
           </div>
         ))}
       </section>

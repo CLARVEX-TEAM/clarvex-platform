@@ -82,33 +82,69 @@ export default function SubscriptionPage() {
       <AppHeader title="Suscripción" subtitle="Estado y pago de tu tienda" backHref="/manager" />
       <AppFrame>
         {paidNotice === "ok" ? (
-          <Card className="mb-3 flex items-center gap-2 border border-emerald-400/30 bg-emerald-50 p-3 text-sm font-bold text-emerald-700 dark:bg-emerald-950/30">
+          <Card className="mb-3 flex items-center gap-2 border border-mint/30 bg-mint/10 p-3 text-sm font-bold text-mint">
             <CheckCircle2 size={16} /> Recibimos tu pago. Puede tardar unos minutos en reflejarse.
           </Card>
         ) : null}
-        {error ? <Card className="mb-3 p-3 text-sm font-semibold text-rose-700">{error}</Card> : null}
+        {error ? <Card className="mb-3 p-3 text-sm font-semibold text-orchid">{error}</Card> : null}
 
         {!status ? (
           <Card className="p-4 text-sm font-semibold text-muted">Cargando…</Card>
         ) : (
           <>
-            <Card className="mb-3 p-4">
+            {/*
+              ⚠️ Esta pantalla contesta UNA pregunta --cuánto y hasta cuándo-- y
+              la respuesta estaba en una tarjeta con el mismo peso que el aviso
+              de abajo y que el historial. Ahora es el bloque principal, con el
+              degradado de `.papel-hero` que ya usan Conteos, Checklist,
+              Uniformes y Horarios: sale del logo, así que no hay un azul suelto
+              que se quede viejo.
+
+              ⚠️ La insignia de estado se queda DENTRO: «vencida» sobre el
+              degradado es lo primero que hay que ver, y suelta debajo pesaba
+              menos que el importe, que es justo al revés de lo que importa
+              cuando está vencida.
+            */}
+            <section className="papel-hero papel-elev-alta relative mb-3 overflow-hidden rounded-[26px]">
+              <svg
+                aria-hidden
+                viewBox="0 0 512 512"
+                className="pointer-events-none absolute -right-10 -top-12 size-52 opacity-[0.07]"
+              >
+                <path fill="#FFFFFF" d="M108 171 256 86 403 171 210 283v-57l93-53-47-27-95 55v111l95 56 48-28v-57l99 58-147 85-148-84V171Z" />
+              </svg>
+              <div className="relative px-6 pb-6 pt-6">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-muted">{status.storeName}</p>
-                  <h2 className="mt-1 text-2xl font-semibold text-ink">{money(status.amountMxn)}<span className="text-sm font-bold text-muted"> / mes</span></h2>
-                  <p className="mt-0.5 text-xs text-muted">{status.activeUsers} usuario{status.activeUsers === 1 ? "" : "s"} × {money(status.pricePerUserMxn)} · IVA incl.</p>
+                  <p className="text-[11px] font-bold uppercase tracking-[0.12em] opacity-75">{status.storeName}</p>
+                  <h2 className="mt-1 text-[30px] font-semibold leading-tight tracking-[-0.02em]">{money(status.amountMxn)}<span className="text-sm font-semibold opacity-75"> / mes</span></h2>
+                  <p className="mt-0.5 text-xs opacity-75">{status.activeUsers} usuario{status.activeUsers === 1 ? "" : "s"} × {money(status.pricePerUserMxn)} · IVA incl.</p>
                 </div>
-                {ui ? <Badge tone={ui.tone}>{ui.label}</Badge> : null}
+                {/*
+                  ⚠️ Insignia propia, no `Badge`. Sus tonos están pensados para
+                  fondo claro y sobre el degradado azul el verde de «Cortesía»
+                  casi no se lee. Aquí el estado se distingue por el PESO --el
+                  vencido va en blanco sólido, el resto translúcido-- que sí
+                  funciona sobre azul. Es lo mismo que pasó con el aro del color
+                  de prenda en Uniformes.
+                */}
+                {ui ? (
+                  <span className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold ${
+                    ui.tone === "danger" ? "bg-white text-[#B42318]" : "bg-white/20 text-white"
+                  }`}>
+                    {ui.label}
+                  </span>
+                ) : null}
               </div>
-              <p className="mt-3 text-sm text-muted">{ui?.text}</p>
+              <p className="mt-3 text-sm leading-relaxed opacity-90">{ui?.text}</p>
               {status.paidUntil && status.state !== "exenta" ? (
-                <p className="mt-2 text-sm font-bold text-ink">
+                <p className="mt-2 text-sm font-semibold">
                   {status.state === "vencida" ? "Venció el " : "Pagada hasta el "}{fmtDate(status.paidUntil)}
-                  {status.daysLeft !== null && status.daysLeft >= 0 ? <span className="font-semibold text-muted"> · {status.daysLeft} día{status.daysLeft === 1 ? "" : "s"}</span> : null}
+                  {status.daysLeft !== null && status.daysLeft >= 0 ? <span className="font-normal opacity-75"> · {status.daysLeft} día{status.daysLeft === 1 ? "" : "s"}</span> : null}
                 </p>
               ) : null}
-            </Card>
+              </div>
+            </section>
 
             {status.state !== "exenta" ? (
               status.canPayOnline ? (

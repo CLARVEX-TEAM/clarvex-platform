@@ -60,11 +60,11 @@ export function ConfirmDialog({
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.2 }}
-                  className="fixed inset-0 z-[70] bg-black/50 backdrop-blur-sm"
+                  className="fixed inset-0 z-70 bg-black/50 backdrop-blur-xs"
                 />
               }
             />
-            <div className="fixed inset-0 z-[70] flex items-end justify-center p-4 sm:items-center pointer-events-none">
+            <div className="fixed inset-0 z-70 flex items-end justify-center p-4 sm:items-center pointer-events-none">
               <Dialog.Popup
                 render={
                   <motion.div
@@ -72,7 +72,7 @@ export function ConfirmDialog({
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 20, scale: 0.98 }}
                     transition={{ type: "spring", stiffness: 380, damping: 30 }}
-                    className="pointer-events-auto relative w-full max-w-sm rounded-3xl border border-line bg-white p-6 shadow-2xl dark:bg-slate-900"
+                    className="pointer-events-auto relative w-full max-w-sm rounded-3xl border border-line bg-white p-6 shadow-2xl dark:bg-panel"
                   />
                 }
               >
@@ -80,7 +80,7 @@ export function ConfirmDialog({
                   initial={{ scale: 0.4, rotate: -10, opacity: 0 }}
                   animate={{ scale: 1, rotate: 0, opacity: 1 }}
                   transition={{ type: "spring", stiffness: 360, damping: 16, delay: 0.06 }}
-                  className="grid size-12 place-items-center rounded-2xl bg-rose-100 text-rose-600 dark:bg-rose-500/15 dark:text-rose-400"
+                  className="grid size-12 place-items-center rounded-2xl bg-orchid/10 text-orchid"
                 >
                   <AlertTriangle size={24} />
                 </motion.span>
@@ -93,7 +93,7 @@ export function ConfirmDialog({
                     type="button"
                     onClick={onCancel}
                     disabled={loading}
-                    className="tappable min-h-12 rounded-2xl bg-slate-100 text-sm font-semibold text-ink disabled:opacity-55 dark:bg-slate-800"
+                    className="tappable min-h-12 rounded-2xl bg-panel text-sm font-semibold text-ink disabled:opacity-55"
                   >
                     Cancelar
                   </button>

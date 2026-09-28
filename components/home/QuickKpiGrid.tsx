@@ -28,7 +28,7 @@ const valueClass: Record<KpiColor, string> = {
   blue: "text-ink",
   green: "text-ink",
   purple: "text-ink",
-  red: "text-[#DC2626] dark:text-[#F26B6B]"
+  red: "text-[#DC2626]"
 };
 
 // El sparkline es sutil: verde cuando la métrica es "buena", gris neutro el resto.
@@ -112,7 +112,7 @@ export function QuickKpiGrid({ cards, delay = 0.16 }: QuickKpiGridProps) {
             ) : card.progress !== undefined ? (
               <div className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-line">
                 <motion.div
-                  className="h-full rounded-full bg-[#2563EB] dark:bg-[#6B9BFF]"
+                  className="h-full rounded-full bg-[#2563EB]"
                   initial={{ width: 0 }}
                   animate={{ width: `${Math.min(100, Math.max(0, card.progress))}%` }}
                   transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1], delay: 0.3 }}

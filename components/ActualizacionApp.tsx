@@ -256,7 +256,7 @@ export function ActualizacionApp() {
           )}
 
           {estado === "error" && (
-            <p className="mt-2 text-xs text-rose-500">{motivo || "No se pudo descargar. Inténtalo otra vez."}</p>
+            <p className="mt-2 text-xs text-orchid">{motivo || "No se pudo descargar. Inténtalo otra vez."}</p>
           )}
         </div>
 

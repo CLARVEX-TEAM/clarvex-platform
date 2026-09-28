@@ -18,9 +18,9 @@ interface DailySalesCardProps {
 
 /** Color del pill de alcance — semántico (verde / ámbar / rojo), no el acento. */
 function pillTone(p: number): string {
-  if (p >= 100) return "text-[#16A34A] bg-[#EAF6EE] dark:text-[#3AD684] dark:bg-[#10261C]";
-  if (p >= 90) return "text-[#B45309] bg-[#FAF2E6] dark:text-[#E0A94A] dark:bg-[#2A2114]";
-  return "text-[#DC2626] bg-[#FCECEC] dark:text-[#F26B6B] dark:bg-[#2A1717]";
+  if (p >= 100) return "text-[#16A34A] bg-[#EAF6EE]";
+  if (p >= 90) return "text-[#B45309] bg-[#FAF2E6]";
+  return "text-[#DC2626] bg-[#FCECEC]";
 }
 
 export function DailySalesCard({ sales, goal, label = "Ventas de hoy", delay = 0.08, className, beam = false }: DailySalesCardProps) {
@@ -50,7 +50,7 @@ export function DailySalesCard({ sales, goal, label = "Ventas de hoy", delay = 0
         <p className="mt-2 text-[12.5px] text-muted">
           Meta del día <b className="font-semibold text-ink">{money(goal)}</b>
           {sales >= goal ? (
-            <> · <span className="font-semibold text-[#16A34A] dark:text-[#3AD684]">cumplida +{money(sales - goal)}</span></>
+            <> · <span className="font-semibold text-[#16A34A]">cumplida +{money(sales - goal)}</span></>
           ) : (
             <> · faltan <b className="font-semibold text-ink">{money(goal - sales)}</b></>
           )}
@@ -59,7 +59,7 @@ export function DailySalesCard({ sales, goal, label = "Ventas de hoy", delay = 0
 
       <div className="mt-3.5 h-1.5 overflow-hidden rounded-full bg-line">
         <motion.div
-          className="h-full rounded-full bg-[#2563EB] dark:bg-[#6B9BFF]"
+          className="h-full rounded-full bg-[#2563EB]"
           initial={{ width: 0 }}
           animate={{ width: `${Math.min(100, Math.max(0, progress))}%` }}
           transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1], delay: delay + 0.2 }}

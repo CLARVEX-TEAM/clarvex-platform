@@ -184,8 +184,8 @@ export function DesktopShell({ children }: { children: React.ReactNode }) {
         {/* relative z-10: el fondo es `fixed` con z-index 0, lo que crea un
             contexto de apilamiento; sin esto, el contenido estático quedaría
             pintado por DEBAJO de los resplandores. */}
-        <div className="relative z-10 flex min-h-screen flex-col pl-[var(--desk-gutter)]">
-          <header className="sticky top-0 z-[var(--z-header)] flex h-14 items-center gap-4 border-b border-line bg-card/85 px-6 backdrop-blur-xl xl:px-10">
+        <div className="relative z-10 flex min-h-screen flex-col pl-(--desk-gutter)">
+          <header className="sticky top-0 z-(--z-header) flex h-14 items-center gap-4 border-b border-line bg-card/85 px-6 backdrop-blur-xl xl:px-10">
             <div className="min-w-0 flex-1">
               {/* El título de sección es el ÚNICO texto con degradado de toda
                   la superficie, y por eso funciona: aparece en las 18 páginas

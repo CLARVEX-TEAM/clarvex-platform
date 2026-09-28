@@ -21,14 +21,14 @@ function MarqueeMessage() {
   return (
     <div className="flex shrink-0 items-center gap-3 px-4 text-[13px] font-semibold text-white sm:px-6 sm:text-sm">
       <span className="inline-flex items-center gap-1.5">
-        <Sparkles size={14} className="text-blue-100" />
+        <Sparkles size={14} className="text-volt" />
         Próximamente Clarvex tendrá un nuevo hogar
       </span>
-      <span className="inline-flex items-center gap-1.5 rounded-md border border-white/20 bg-[rgb(255_255_255_/_0.12)] px-2 py-0.5 font-black tracking-[0.01em]">
+      <span className="inline-flex items-center gap-1.5 rounded-md border border-white/20 bg-[rgb(255_255_255/0.12)] px-2 py-0.5 font-black tracking-[0.01em]">
         <Globe2 size={13} />
         {NEW_DOMAIN}
       </span>
-      <span className="inline-flex items-center gap-1.5 text-blue-100">
+      <span className="inline-flex items-center gap-1.5 text-volt">
         <Fingerprint size={14} />
         Al cambiar, registrarás tu huella una vez más
       </span>
@@ -73,7 +73,7 @@ export function DomainMoveBanner() {
           animate={{ opacity: 1, y: 0 }}
           exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -12 }}
           transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
-          className="desk-adopt relative z-[200] w-full bg-[#1D4ED8] text-white shadow-[0_6px_18px_rgb(29_78_216_/_0.18)]"
+          className="desk-adopt relative z-200 w-full bg-[#1D4ED8] text-white shadow-[0_6px_18px_rgb(29_78_216/0.18)]"
           style={{ paddingTop: "env(safe-area-inset-top)" }}
         >
           <p className="sr-only">
@@ -87,8 +87,8 @@ export function DomainMoveBanner() {
                 <MarqueeMessage />
                 <MarqueeMessage />
               </Marquee>
-              <div className="pointer-events-none absolute inset-y-0 left-0 w-8 bg-gradient-to-r from-[#1D4ED8] to-transparent sm:w-12" />
-              <div className="pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-[#1D4ED8] to-transparent sm:w-12" />
+              <div className="pointer-events-none absolute inset-y-0 left-0 w-8 bg-linear-to-r from-[#1D4ED8] to-transparent sm:w-12" />
+              <div className="pointer-events-none absolute inset-y-0 right-0 w-8 bg-linear-to-l from-[#1D4ED8] to-transparent sm:w-12" />
             </div>
 
             <button

@@ -147,7 +147,7 @@ export function ClimaIntro({ clima, ciudad, onTerminar }: { clima: Clima; ciudad
 export function ClimaChip({ clima }: { clima: Clima }) {
   const Icono = iconoDe(clima);
   return (
-    <span className="flex items-center gap-1 text-xs font-semibold tabular-nums text-blue-50">
+    <span className="flex items-center gap-1 text-xs font-semibold tabular-nums text-volt">
       <Icono size={14} className="text-sky-200" />
       {clima.temperatura}°
     </span>

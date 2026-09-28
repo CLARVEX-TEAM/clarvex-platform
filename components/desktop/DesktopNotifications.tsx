@@ -105,7 +105,7 @@ export function DesktopNotifications() {
       >
         <Bell size={17} />
         {unread > 0 ? (
-          <span className="pointer-events-none absolute -right-1 -top-1 grid h-[18px] min-w-[18px] place-items-center rounded-full bg-danger px-[5px] text-[10px] font-semibold leading-none text-white shadow-sm ring-2 ring-card">
+          <span className="pointer-events-none absolute -right-1 -top-1 grid h-[18px] min-w-[18px] place-items-center rounded-full bg-danger px-[5px] text-[10px] font-semibold leading-none text-white shadow-xs ring-2 ring-card">
             {unread > 99 ? "99+" : unread}
           </span>
         ) : null}
@@ -118,7 +118,7 @@ export function DesktopNotifications() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -8, scale: 0.98 }}
             transition={{ duration: 0.16, ease: [0.22, 1, 0.36, 1] }}
-            className="desk-floating absolute right-0 z-[var(--z-popover)] mt-2 w-96 overflow-hidden rounded-2xl"
+            className="desk-floating absolute right-0 z-(--z-popover) mt-2 w-96 overflow-hidden rounded-2xl"
           >
             <div className="flex items-center justify-between border-b border-line px-4 py-3">
               <p className="text-ui font-semibold text-ink">Notificaciones</p>
@@ -128,7 +128,7 @@ export function DesktopNotifications() {
                 </button>
               ) : null}
             </div>
-            <div className="max-h-[26rem] overflow-y-auto">
+            <div className="max-h-104 overflow-y-auto">
               {items.length === 0 ? (
                 <div className="px-4 py-10 text-center">
                   <p className="text-ui font-medium text-ink">Todo al día</p>

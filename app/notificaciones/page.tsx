@@ -168,13 +168,13 @@ export default function NotificationsPage() {
           unreadCount || items.length ? (
             <div className="flex items-center gap-1.5">
               {unreadCount ? <Button type="button" variant="ghost" onClick={markAllRead} className="min-h-11 px-3" aria-label="Marcar todas como leidas"><CheckCheck size={17} /></Button> : null}
-              {items.length ? <Button type="button" variant="ghost" onClick={() => setConfirmClear(true)} className="min-h-11 px-3 text-rose-500" aria-label="Borrar todas las notificaciones"><Trash2 size={17} /></Button> : null}
+              {items.length ? <Button type="button" variant="ghost" onClick={() => setConfirmClear(true)} className="min-h-11 px-3 text-orchid" aria-label="Borrar todas las notificaciones"><Trash2 size={17} /></Button> : null}
             </div>
           ) : null
         }
       />
       <AppFrame>
-        {error ? <Card className="mb-3 text-sm font-semibold text-rose-700">{error}</Card> : null}
+        {error ? <Card className="mb-3 text-sm font-semibold text-orchid">{error}</Card> : null}
         {loading ? <Card className="text-sm font-semibold text-muted">Cargando notificaciones...</Card> : items.length === 0 ? <Card className="py-8 text-center"><Target className="mx-auto text-volt" size={28} /><h2 className="mt-3 font-semibold text-ink">Sin notificaciones</h2><p className="mt-1 text-sm text-muted">Los planes, comunicados y pendientes apareceran aqui.</p></Card> : <AnimatedList className="space-y-2.5">{items.map((item) => <NotificationRow key={item.id} item={item} onRead={markRead} onDelete={deleteOne} />)}</AnimatedList>}
       </AppFrame>
       <ConfirmDialog
@@ -202,10 +202,10 @@ function NotificationRow({ item, onRead, onDelete }: { item: NotificationItem; o
   return (
     <Card
       onClick={handleClick}
-      className={`cursor-pointer ${item.readAt ? "p-3.5" : "bg-blue-50/70 dark:bg-blue-950/30 p-3.5 ring-1 ring-volt/15"}`}
+      className={`cursor-pointer ${item.readAt ? "p-3.5" : "bg-volt/8 p-3.5 ring-1 ring-volt/15"}`}
     >
       <div className="flex items-start gap-3">
-        <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-white dark:bg-slate-700 text-volt shadow-sm dark:shadow-none">
+        <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-card text-volt shadow-xs dark:shadow-none">
           <Icon size={18} />
         </span>
         <div className="min-w-0 flex-1">
@@ -220,7 +220,7 @@ function NotificationRow({ item, onRead, onDelete }: { item: NotificationItem; o
                 type="button"
                 onClick={(event) => { event.stopPropagation(); onDelete(item.id); }}
                 aria-label="Borrar notificación"
-                className="grid size-7 place-items-center rounded-full text-muted transition hover:bg-rose-50 hover:text-rose-500 dark:hover:bg-rose-950/30"
+                className="grid size-7 place-items-center rounded-full text-muted transition hover:bg-orchid/10 hover:text-orchid dark:hover:bg-orchid/12"
               >
                 <X size={15} />
               </button>
@@ -229,10 +229,10 @@ function NotificationRow({ item, onRead, onDelete }: { item: NotificationItem; o
           {/*
             Mismo criterio que la tarjeta de comunicados: si el aviso trae
             saltos de línea, se respetan; si no los trae, no cambia nada. Y
-            `break-words` porque algunos avisos llevan códigos largos sin
+            `wrap-break-word` porque algunos avisos llevan códigos largos sin
             espacios que en 412 px se salen de la tarjeta.
           */}
-          <p className="mt-2 whitespace-pre-line break-words text-sm leading-5 text-muted">{item.body}</p>
+          <p className="mt-2 whitespace-pre-line wrap-break-word text-sm leading-5 text-muted">{item.body}</p>
         </div>
       </div>
     </Card>

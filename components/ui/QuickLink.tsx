@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 export function QuickLink({ href, icon: Icon, label, className = "" }: { href: string; icon: LucideIcon; label: string; className?: string }) {
   return (
     <Link href={href} className={cn("tappable solid-card group flex min-h-12 items-center gap-2.5 rounded-[22px] px-3 text-[13px] font-semibold tracking-[-0.01em] text-ink/90", className)}>
-      <span className="grid size-8 place-items-center rounded-[16px] border border-volt/20 bg-volt/12 text-volt shadow-[inset_0_1px_0_rgb(255_255_255_/_0.12)] transition-transform duration-200 group-hover:scale-105 group-active:scale-95">
+      <span className="grid size-8 place-items-center rounded-[16px] border border-volt/20 bg-volt/12 text-volt shadow-[inset_0_1px_0_rgb(255_255_255/0.12)] transition-transform duration-200 group-hover:scale-105 group-active:scale-95">
         <Icon size={17} />
       </span>
       {label}
@@ -16,7 +16,29 @@ export function QuickLink({ href, icon: Icon, label, className = "" }: { href: s
   );
 }
 
-export function FloatingActionButton({ href, icon: Icon = Plus, label }: { href: string; icon?: LucideIcon; label: string }) {
+/**
+ * El botón flotante de acción.
+ *
+ * ⚠️ Acepta `href` **o** `onClick`, y no es un capricho: enlazando a un ancla,
+ * el destino tiene que estar YA pintado en la página. En Pendientes eso obligaba
+ * a dejar el formulario de crear siempre abierto, empujando la lista fuera de
+ * pantalla. Con `onClick` el formulario se abre al pulsar y la pantalla puede
+ * empezar por lo que se vino a ver.
+ */
+export function FloatingActionButton({ href, onClick, icon: Icon = Plus, label }: { href?: string; onClick?: () => void; icon?: LucideIcon; label: string }) {
+  /* ⚠️ Es la acción principal de su pantalla, así que va relleno de azul -- pero
+     PLANO. Llevaba el brillo de `btn-sheen`, que recorría el botón solo sin que
+     nadie lo tocara, y una sombra azul que teñía el papel blanco de debajo.
+     Queda una sombra neutra, que es la que lo despega de la lista. */
+  const clases = "tappable fixed bottom-[calc(5rem+var(--safe-bottom))] left-4 z-20 flex min-h-12 items-center gap-2 overflow-hidden rounded-full bg-volt px-4 text-sm font-semibold text-white shadow-[0_6px_16px_rgb(20_21_26/0.16)] hover:bg-[#1D4ED8]";
+  if (onClick) {
+    return (
+      <button type="button" onClick={onClick} className={clases}>
+        <Icon size={18} />
+        {label}
+      </button>
+    );
+  }
   return (
     // Abajo-IZQUIERDA a propósito: el botón del copiloto Clarvex es fijo abajo-
     // derecha en todas las pantallas (va en el layout). Si este FAB también fuera
@@ -27,7 +49,7 @@ export function FloatingActionButton({ href, icon: Icon = Plus, label }: { href:
     // barra de la barrita de gestos, la barra subió hasta unos 116 px y se tragó
     // este botón: en Pendientes quedaba encima de las pestañas y no se podía
     // tocar. Todo lo que viva encima de la barra tiene que subir CON ella.
-    <Link href={href} className="tappable btn-sheen fixed bottom-[calc(5rem+var(--safe-bottom))] left-4 z-20 flex min-h-12 items-center gap-2 overflow-hidden rounded-full bg-volt px-4 text-sm font-semibold text-white shadow-[0_10px_24px_rgb(37_99_235_/_0.32)] hover:bg-[#1D4ED8]">
+    <Link href={href ?? "#"} className={clases}>
       <Icon size={18} />
       {label}
     </Link>

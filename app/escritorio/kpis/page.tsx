@@ -214,7 +214,7 @@ export default function EscritorioKpis() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4"
           >
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
@@ -290,9 +290,9 @@ function PeriodBar({ period, setPeriod, selectedDate, setSelectedDate, rangeLabe
         <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-panel text-accent"><CalendarDays size={17} /></span>
         <div className="min-w-0"><p className="text-caption font-medium text-muted">Período</p><p className="truncate text-sm font-semibold text-ink">{rangeLabel}</p></div>
         {period === "week" ? (
-          <select aria-label="Seleccionar semana RDV" value={selectedDate} onChange={(event) => setSelectedDate(event.target.value)} className="min-h-9 rounded-xl bg-panel px-2 text-caption text-ink outline-none focus:ring-2 focus:ring-accent/40">{availableWeeks.map((week) => <option key={`${week.weekNumber}-${week.weekStart}`} value={week.weekStart}>Semana {week.weekNumber}</option>)}</select>
+          <select aria-label="Seleccionar semana RDV" value={selectedDate} onChange={(event) => setSelectedDate(event.target.value)} className="min-h-9 rounded-xl bg-panel px-2 text-caption text-ink outline-hidden focus:ring-2 focus:ring-accent/40">{availableWeeks.map((week) => <option key={`${week.weekNumber}-${week.weekStart}`} value={week.weekStart}>Semana {week.weekNumber}</option>)}</select>
         ) : (
-          <select aria-label="Seleccionar mes retail" value={availableRetailMonths.find((month) => selectedDate >= month.start && selectedDate <= month.end)?.start ?? availableRetailMonths.at(-1)?.start ?? selectedDate} onChange={(event) => setSelectedDate(event.target.value)} className="min-h-9 rounded-xl bg-panel px-2 text-caption text-ink outline-none focus:ring-2 focus:ring-accent/40">{availableRetailMonths.map((month) => <option key={month.start} value={month.start}>{month.label}</option>)}</select>
+          <select aria-label="Seleccionar mes retail" value={availableRetailMonths.find((month) => selectedDate >= month.start && selectedDate <= month.end)?.start ?? availableRetailMonths.at(-1)?.start ?? selectedDate} onChange={(event) => setSelectedDate(event.target.value)} className="min-h-9 rounded-xl bg-panel px-2 text-caption text-ink outline-hidden focus:ring-2 focus:ring-accent/40">{availableRetailMonths.map((month) => <option key={month.start} value={month.start}>{month.label}</option>)}</select>
         )}
       </div>
     </div>
@@ -582,10 +582,10 @@ function VentasView({ activeKpi, team, progress, periodLabel }: { activeKpi: Kpi
                 depender solo del color. */}
             <span className="flex items-center gap-4 text-caption text-muted">
               <span className="flex items-center gap-1.5">
-                <span aria-hidden className="size-2.5 rounded-sm" style={{ background: salesColor }} /> Venta
+                <span aria-hidden className="size-2.5 rounded-xs" style={{ background: salesColor }} /> Venta
               </span>
               <span className="flex items-center gap-1.5">
-                <span aria-hidden className="size-2.5 rounded-sm" style={{ background: goalColor }} /> Meta
+                <span aria-hidden className="size-2.5 rounded-xs" style={{ background: goalColor }} /> Meta
               </span>
             </span>
           </figcaption>
@@ -668,7 +668,7 @@ function ComisionView({ activeKpi, rules, simulatedSales, setSimulatedSales, act
         </Card>
         <Card className="p-5">
           <div className="mb-2.5 flex items-center gap-2"><Calculator className="text-accent" size={18} /><h2 className="text-lg font-semibold text-ink">Simulador {periodLabel}</h2></div>
-          <input value={simulatedSales} onChange={(event) => setSimulatedSales(event.target.value.replace(/[^\d.]/g, ""))} inputMode="decimal" placeholder={String(Math.round(activeKpi.sales))} aria-label={`Venta simulada ${periodLabel}`} className="min-h-14 w-full rounded-xl border border-line bg-panel px-4 text-h3 font-semibold text-ink outline-none transition-colors focus:border-accent" />
+          <input value={simulatedSales} onChange={(event) => setSimulatedSales(event.target.value.replace(/[^\d.]/g, ""))} inputMode="decimal" placeholder={String(Math.round(activeKpi.sales))} aria-label={`Venta simulada ${periodLabel}`} className="min-h-14 w-full rounded-xl border border-line bg-panel px-4 text-h3 font-semibold text-ink outline-hidden transition-colors focus:border-accent" />
         </Card>
       </div>
       <Card className="h-fit p-5">
@@ -865,7 +865,7 @@ function TargetSheet({ targets, period, onClose, onSave }: { targets: KpiTarget[
     : (["upt", "aur", "ept", "conversion", "achievement", "ticketElectronicoTienda", "ticketElectronicoAsesor"] as const);
 
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm" onMouseDown={(event) => { if (event.currentTarget === event.target && !saving) onClose(); }}>
+    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs" onMouseDown={(event) => { if (event.currentTarget === event.target && !saving) onClose(); }}>
       <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} transition={{ duration: 0.2 }} className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl dark:bg-void">
         <div className="mb-5 flex items-center justify-between">
           <h2 className="text-lg font-semibold text-ink">Metas KPI — {period === "SEMANA" ? "Semana" : "Mes"}</h2>
@@ -877,7 +877,7 @@ function TargetSheet({ targets, period, onClose, onSave }: { targets: KpiTarget[
             return (
               <div key={metric}>
                 <label className="text-caption font-medium text-muted">{config?.targetLabel}</label>
-                <input type="number" min="0" step="0.01" value={form[metric]} onChange={(e) => setForm((prev) => ({ ...prev, [metric]: e.target.value }))} placeholder={metric === "upt" ? "Ej: 1.5" : metric === "conversion" ? "Ej: 25" : "Ej: 50000"} className="mt-1 min-h-11 w-full rounded-2xl border border-line bg-panel px-4 text-sm font-bold text-ink outline-none focus:border-accent focus:ring-4 focus:ring-accent/15 dark:bg-panel" />
+                <input type="number" min="0" step="0.01" value={form[metric]} onChange={(e) => setForm((prev) => ({ ...prev, [metric]: e.target.value }))} placeholder={metric === "upt" ? "Ej: 1.5" : metric === "conversion" ? "Ej: 25" : "Ej: 50000"} className="mt-1 min-h-11 w-full rounded-2xl border border-line bg-panel px-4 text-sm font-bold text-ink outline-hidden focus:border-accent focus:ring-4 focus:ring-accent/15 dark:bg-panel" />
               </div>
             );
           })}

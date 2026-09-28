@@ -109,7 +109,7 @@ export function KpiHistoryView() {
               </div>
               <div className="flex items-center gap-2.5">
                 {delta !== null ? (
-                  <span className={cn("flex items-center gap-0.5 text-xs font-semibold", delta >= 0 ? "text-success" : "text-rose-600")}>
+                  <span className={cn("flex items-center gap-0.5 text-xs font-semibold", delta >= 0 ? "text-success" : "text-orchid")}>
                     {delta >= 0 ? <TrendingUp size={13} /> : <TrendingDown size={13} />}{Math.abs(delta).toFixed(1)}%
                   </span>
                 ) : null}
@@ -132,7 +132,7 @@ function DeltaChip({ label, delta }: { label: string; delta: number | null }) {
       {delta === null ? (
         <p className="mt-0.5 text-sm font-semibold text-muted">—</p>
       ) : (
-        <p className={cn("mt-0.5 flex items-center gap-1 text-sm font-semibold", positive ? "text-success" : "text-rose-600")}>
+        <p className={cn("mt-0.5 flex items-center gap-1 text-sm font-semibold", positive ? "text-success" : "text-orchid")}>
           {positive ? <TrendingUp size={14} /> : <TrendingDown size={14} />}{positive ? "+" : "−"}{Math.abs(delta).toFixed(1)}%
         </p>
       )}

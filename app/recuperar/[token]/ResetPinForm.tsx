@@ -56,16 +56,16 @@ export function ResetPinForm({ token, name }: { token: string; name: string }) {
     return (
       <div>
         <div className="mb-3 flex items-center gap-2">
-          <CheckCircle2 className="text-emerald-600" size={18} />
-          <h1 className="text-base font-semibold text-slate-900 dark:text-slate-100">PIN actualizado</h1>
+          <CheckCircle2 className="text-mint" size={18} />
+          <h1 className="text-base font-semibold text-ink dark:text-slate-100">PIN actualizado</h1>
         </div>
-        <p className="mb-5 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
+        <p className="mb-5 text-sm leading-relaxed text-muted">
           Ya puedes entrar con tu número de empleado y tu PIN nuevo. Si tenías la sesión abierta en otro dispositivo,
           se cerró por seguridad.
         </p>
         <Link
           href="/login"
-          className="flex w-full items-center justify-center rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-700"
+          className="flex w-full items-center justify-center rounded-xl bg-volt px-4 py-3 text-sm font-semibold text-white transition hover:bg-volt/12"
         >
           Iniciar sesión
         </Link>
@@ -76,15 +76,15 @@ export function ResetPinForm({ token, name }: { token: string; name: string }) {
   return (
     <form onSubmit={submit}>
       <div className="mb-1 flex items-center gap-2">
-        <KeyRound className="text-blue-600" size={16} />
-        <span className="text-sm font-semibold text-blue-700 dark:text-blue-400">Elige tu PIN nuevo</span>
+        <KeyRound className="text-volt" size={16} />
+        <span className="text-sm font-semibold text-volt">Elige tu PIN nuevo</span>
       </div>
-      <p className="mb-5 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
+      <p className="mb-5 text-sm leading-relaxed text-muted">
         {firstName ? `${firstName}, escribe` : "Escribe"} un PIN de 4 a 6 dígitos. Lo usarás junto con tu número de
         empleado para entrar.
       </p>
 
-      <label htmlFor="pin" className="mb-2 block text-xs font-semibold text-slate-700 dark:text-slate-300">
+      <label htmlFor="pin" className="mb-2 block text-xs font-semibold text-ink">
         PIN nuevo
       </label>
       <input
@@ -96,11 +96,11 @@ export function ResetPinForm({ token, name }: { token: string; name: string }) {
         autoFocus
         value={pin}
         onChange={(event) => setPin(event.target.value.replace(/\D/g, ""))}
-        className="mb-4 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-base tracking-[0.4em] text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
+        className="mb-4 w-full rounded-xl border border-line bg-white px-4 py-3 text-base tracking-[0.4em] text-ink outline-hidden transition focus:border-volt/30 focus:ring-2 focus:ring-volt/30 dark:border-line dark:bg-panel dark:text-slate-100"
         placeholder="••••"
       />
 
-      <label htmlFor="confirmation" className="mb-2 block text-xs font-semibold text-slate-700 dark:text-slate-300">
+      <label htmlFor="confirmation" className="mb-2 block text-xs font-semibold text-ink">
         Repite el PIN
       </label>
       <input
@@ -111,16 +111,16 @@ export function ResetPinForm({ token, name }: { token: string; name: string }) {
         maxLength={6}
         value={confirmation}
         onChange={(event) => setConfirmation(event.target.value.replace(/\D/g, ""))}
-        className="mb-4 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-base tracking-[0.4em] text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
+        className="mb-4 w-full rounded-xl border border-line bg-white px-4 py-3 text-base tracking-[0.4em] text-ink outline-hidden transition focus:border-volt/30 focus:ring-2 focus:ring-volt/30 dark:border-line dark:bg-panel dark:text-slate-100"
         placeholder="••••"
       />
 
-      {error ? <p className="mb-3 text-sm font-semibold text-red-500">{error}</p> : null}
+      {error ? <p className="mb-3 text-sm font-semibold text-orchid">{error}</p> : null}
 
       <button
         type="submit"
         disabled={busy}
-        className="w-full rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:opacity-60"
+        className="w-full rounded-xl bg-volt px-4 py-3 text-sm font-semibold text-white transition hover:bg-volt/12 disabled:opacity-60"
       >
         {busy ? "Guardando…" : "Guardar mi PIN nuevo"}
       </button>

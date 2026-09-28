@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 
@@ -69,14 +69,34 @@ test("las utilidades de arriba leen la variable, no env() directo", () => {
 test("la barra inferior y el hueco de las pantallas suben con la barrita de gestos", () => {
   // Los dos van JUNTOS. Subir solo la barra la deja tapando el último renglón;
   // subir solo el hueco deja la barra encima de la barrita de gestos.
-  assert.match(
-    leer("components/ui/LiquidBottomNav.tsx"),
-    /bottom-\[calc\(0\.5rem\+var\(--safe-bottom\)\)\]/,
-    "la barra inferior no despeja la barrita de gestos"
-  );
+  //
+  // ⚠️ Se comprueba el PROPÓSITO, no una clase concreta. Antes esta prueba
+  // exigía literalmente `bottom-[calc(0.5rem+var(--safe-bottom))]`, que era
+  // cómo lo resolvía la barra flotante. Al pasar a una barra pegada al borde el
+  // despeje se hace con RELLENO --el fondo llega hasta abajo y los toques
+  // quedan por encima de la barrita-- y la prueba fallaba sobre una barra que
+  // estaba bien. Lo que no puede faltar es `--safe-bottom` en la separación de
+  // abajo, sea `bottom-` o `pb-`.
+  // ⚠️ Se recorren TODAS las barras, no una.
+  //
+  // Desde el 27 de septiembre de 2026 hay dos --`BarraTelefonoApk` y
+  // `BarraTelefonoWeb`-- y `LiquidBottomNav` solo elige entre ellas. Esta prueba
+  // apuntaba al archivo que elige, que ya no pinta nada: pasaba a verde mirando
+  // un archivo sin barra, o fallaba sobre barras correctas. Buscándolas por
+  // patrón, la tercera que alguien escriba entra sola.
+  const barras = readdirSync(join(raiz, "components/ui"))
+    .filter((archivo) => /^BarraTelefono.*\.tsx$/.test(archivo));
+  assert.ok(barras.length >= 2, `se esperaban las dos barras del teléfono, se encontraron ${barras.length}`);
+  for (const archivo of barras) {
+    assert.match(
+      leer(`components/ui/${archivo}`),
+      /(bottom|pb)-\[calc\([^\]]*var\(--safe-bottom\)\)\]/,
+      `${archivo} no despeja la barrita de gestos`
+    );
+  }
   assert.match(
     leer("components/ui/AppFrame.tsx"),
-    /pb-\[calc\(6rem\+var\(--safe-bottom\)\)\]/,
+    /pb-\[calc\([0-9.]+rem\+var\(--safe-bottom\)\)\]/,
     "el hueco inferior de las pantallas no crece con la barra"
   );
 });

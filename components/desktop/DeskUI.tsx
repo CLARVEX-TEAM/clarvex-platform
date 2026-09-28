@@ -242,7 +242,7 @@ export function DeskMeter({ value, pace = null, className }: { value: number; pa
 
 /** Campo de formulario con los tokens del escritorio. */
 export const deskInput =
-  "min-h-10 w-full rounded-xl border border-line bg-panel px-2.5 text-ui text-ink outline-none transition-colors focus:border-accent";
+  "min-h-10 w-full rounded-xl border border-line bg-panel px-2.5 text-ui text-ink outline-hidden transition-colors focus:border-accent";
 
 /* ─── Tabla ──────────────────────────────────────────────────────────────── */
 // Clases sueltas en vez de un componente de tabla cerrado: cada pantalla tiene

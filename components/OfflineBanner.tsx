@@ -104,7 +104,7 @@ export function OfflineBanner() {
   }, [releerCola]);
 
   const franja =
-    "fixed inset-x-0 top-0 z-[90] flex items-center justify-center gap-2 px-4 text-center text-[13px] font-bold text-white shadow-md";
+    "fixed inset-x-0 top-0 z-90 flex items-center justify-center gap-2 px-4 text-center text-[13px] font-bold text-white shadow-md";
   const movimiento = {
     initial: { y: -48, opacity: 0 },
     animate: { y: 0, opacity: 1 },
@@ -120,11 +120,11 @@ export function OfflineBanner() {
   return (
     <AnimatePresence>
       {offline ? (
-        <motion.div key="offline" {...movimiento} data-transient className={`${franja} bg-rose-500`} style={alto}>
+        <motion.div key="offline" {...movimiento} data-transient className={`${franja} bg-orchid`} style={alto}>
           <WifiOff size={15} /> Sin conexión — revisa tu internet{pendientes}
         </motion.div>
       ) : cola.fallidas > 0 ? (
-        <motion.div key="fallidas" {...movimiento} data-transient className={`${franja} bg-amber-500`} style={alto}>
+        <motion.div key="fallidas" {...movimiento} data-transient className={`${franja} bg-ember`} style={alto}>
           <TriangleAlert size={15} />
           {cola.fallidas} captura{cola.fallidas === 1 ? "" : "s"} no se pudo guardar. Vuelve a hacerla.
           <button
@@ -140,7 +140,7 @@ export function OfflineBanner() {
           <CloudUpload size={15} /> Enviando {cola.pendientes} captura{cola.pendientes === 1 ? "" : "s"}…
         </motion.div>
       ) : justReconnected ? (
-        <motion.div key="online" {...movimiento} data-transient className={`${franja} bg-emerald-500`} style={alto}>
+        <motion.div key="online" {...movimiento} data-transient className={`${franja} bg-mint`} style={alto}>
           <CheckCircle2 size={15} /> Conexión restablecida
         </motion.div>
       ) : null}

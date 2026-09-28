@@ -9,6 +9,7 @@ import { useSession } from "@/lib/use-session";
 import { INVENTORY_CATEGORIES, INVENTORY_CATEGORY_LABELS } from "@/lib/inventory";
 import type { User } from "@/lib/types";
 import { AppFrame, AppHeader, Badge, Button, Card, ProfileAvatar } from "@/components/ui";
+import { SelectorChips } from "@/components/ui/SelectorChips";
 import { DeleteButton } from "@/components/ActionButtons";
 import { SendButton } from "@/components/SendButton";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
@@ -142,7 +143,7 @@ export default function FaltantesPage() {
 
   const open = reports.filter((report) => report.status === "ABIERTO");
   const resolved = reports.filter((report) => report.status === "RESUELTO");
-  const inputClass = "min-h-11 rounded-2xl border border-line bg-panel px-3 text-sm font-bold text-ink outline-none focus:border-volt";
+  const inputClass = "min-h-11 rounded-2xl border border-line bg-panel px-3 text-sm font-bold text-ink outline-hidden focus:border-volt";
 
   return (
     <>
@@ -158,12 +159,15 @@ export default function FaltantesPage() {
               <span className="text-xs font-bold text-muted">Producto</span>
               <input value={productName} onChange={(event) => setProductName(event.target.value)} maxLength={120} placeholder="Ej. Tenis modelo X talla 27" className={inputClass} />
             </label>
-            <label className="grid gap-1">
-              <span className="text-xs font-bold text-muted">Tipo</span>
-              <select value={category} onChange={(event) => setCategory(event.target.value)} className={inputClass}>
-                {INVENTORY_CATEGORIES.map((value) => <option key={value} value={value}>{INVENTORY_CATEGORY_LABELS[value]}</option>)}
-              </select>
-            </label>
+            <div>
+              <p className="mb-2 text-xs font-bold text-muted">Tipo</p>
+              <SelectorChips
+                ariaLabel="Tipo de faltante"
+                value={category}
+                onChange={setCategory}
+                options={INVENTORY_CATEGORIES.map((value) => ({ value, label: INVENTORY_CATEGORY_LABELS[value] ?? value }))}
+              />
+            </div>
             {preview ? (
               <div className="relative overflow-hidden rounded-2xl border border-line">
                 <NextImage src={preview} alt="Vista previa" width={800} height={300} className="max-h-48 w-full object-cover" unoptimized />
@@ -175,7 +179,7 @@ export default function FaltantesPage() {
               </button>
             )}
             <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={onPhotoChange} />
-            <textarea value={note} onChange={(event) => setNote(event.target.value)} maxLength={500} rows={2} placeholder="Nota (opcional)…" className="rounded-2xl border border-line bg-panel px-3 py-2.5 text-sm font-semibold text-ink outline-none focus:border-volt" />
+            <textarea value={note} onChange={(event) => setNote(event.target.value)} maxLength={500} rows={2} placeholder="Nota (opcional)…" className="rounded-2xl border border-line bg-panel px-3 py-2.5 text-sm font-semibold text-ink outline-hidden focus:border-volt" />
             <SendButton type="button" onClick={() => void submit()} loading={sending} success={sent} sentLabel="¡Enviado!" className="w-full">Enviar reporte</SendButton>
           </div>
         </Card>

@@ -28,6 +28,10 @@ const sharedRoutes = [
   "/encuestas",
   "/checklist",
   "/suscripcion",
+  // El catalogo de pantallas. Lo abre cualquiera con sesion porque solo
+  // enseña ACCESOS, y cada uno los filtra por puesto al entrar: lo que
+  // protege cada pantalla es su propia guarda, no esconder su enlace.
+  "/todo",
   "/suspendida",
   "/faltantes",
   "/kudos",
@@ -318,6 +322,7 @@ export const config = {
     "/encuestas/:path*",
     "/checklist/:path*",
     "/suscripcion/:path*",
+    "/todo",
     "/suspendida/:path*",
     "/faltantes/:path*",
     "/kudos/:path*",

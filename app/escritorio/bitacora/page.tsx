@@ -36,7 +36,7 @@ export default function EscritorioBitacora() {
   if (!data) {
     return (
       <div className="grid gap-10 xl:grid-cols-[22rem_minmax(0,1fr)]">
-        <DeskSkeleton className="h-[28rem]" />
+        <DeskSkeleton className="h-112" />
         <div className="space-y-3">{[0, 1, 2].map((i) => <DeskSkeleton key={i} className="h-28" />)}</div>
       </div>
     );

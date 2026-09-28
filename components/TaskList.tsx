@@ -62,7 +62,7 @@ export function TaskList({
                 type="button"
                 onClick={() => void remove(activity.id)}
                 disabled={deletingId === activity.id}
-                className="grid size-9 shrink-0 place-items-center rounded-xl border border-rose-200/60 bg-rose-50/60 text-rose-600 transition active:scale-95 disabled:opacity-50 dark:border-rose-500/30 dark:bg-rose-500/10"
+                className="grid size-9 shrink-0 place-items-center rounded-xl border border-orchid/30 bg-orchid/10 text-orchid transition active:scale-95 disabled:opacity-50"
                 aria-label="Eliminar actividad"
               >
                 <Trash2 size={15} />

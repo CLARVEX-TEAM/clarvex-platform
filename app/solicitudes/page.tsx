@@ -7,6 +7,7 @@ import { useSession } from "@/lib/use-session";
 import { DAY_BALANCE_LABELS, SHIFT_TYPE_LABELS, dayBalanceField, formatRequestDate, isHourType } from "@/lib/shift-requests";
 import type { User } from "@/lib/types";
 import { AppFrame, AppHeader, Badge, Button, Card, EmptyState, ProfileAvatar, Skeleton } from "@/components/ui";
+import { SelectorChips } from "@/components/ui/SelectorChips";
 import { ShiftSwaps } from "@/components/ShiftSwaps";
 
 type ShiftRequest = {
@@ -146,38 +147,58 @@ export default function SolicitudesPage() {
             <div className="grid grid-cols-2 gap-2">
               <label className="grid gap-1">
                 <span className="text-xs font-bold text-muted">Fecha</span>
-                <input type="date" value={date} onChange={(event) => setDate(event.target.value)} className="min-h-11 rounded-2xl border border-line bg-panel px-3 text-sm font-bold text-ink outline-none focus:border-volt" />
+                <input type="date" value={date} onChange={(event) => setDate(event.target.value)} className="min-h-11 rounded-2xl border border-line bg-panel px-3 text-sm font-bold text-ink outline-hidden focus:border-volt" />
               </label>
-              <label className="grid gap-1">
-                <span className="text-xs font-bold text-muted">Tipo</span>
-                <select value={type} onChange={(event) => setType(event.target.value)} className="min-h-11 rounded-2xl border border-line bg-panel px-3 text-sm font-bold text-ink outline-none focus:border-volt">
-                  <optgroup label="Día completo">
-                    <option value="VACACIONES">Vacaciones</option>
-                    <option value="DESCANSO">Descanso</option>
-                    <option value="PAGO_DIA">Pago de día</option>
-                  </optgroup>
-                  <optgroup label="Permiso de horas">
-                    <option value="SALIR_TEMPRANO">Salir temprano</option>
-                    <option value="ENTRAR_TARDE">Entrar tarde</option>
-                  </optgroup>
-                </select>
-              </label>
+              {/*
+                ⚠️ Los dos `<optgroup>` NO eran decoracion: separan pedir un DIA
+                de pedir HORAS de tu saldo, y de eso depende que el formulario
+                pida horas mas abajo. Un solo grupo de chips perderia esa
+                division, asi que van dos, cada uno con su titulo -- que ademas
+                se lee sin abrir nada, al contrario que un optgroup.
+              */}
+              <div className="col-span-2 grid gap-3">
+                <div>
+                  <p className="mb-2 text-xs font-bold text-muted">Día completo</p>
+                  <SelectorChips
+                    ariaLabel="Solicitud de día completo"
+                    value={type}
+                    onChange={setType}
+                    options={[
+                      { value: "VACACIONES", label: "Vacaciones" },
+                      { value: "DESCANSO", label: "Descanso" },
+                      { value: "PAGO_DIA", label: "Pago de día" }
+                    ]}
+                  />
+                </div>
+                <div>
+                  <p className="mb-2 text-xs font-bold text-muted">Permiso de horas</p>
+                  <SelectorChips
+                    ariaLabel="Permiso de horas"
+                    value={type}
+                    onChange={setType}
+                    options={[
+                      { value: "SALIR_TEMPRANO", label: "Salir temprano" },
+                      { value: "ENTRAR_TARDE", label: "Entrar tarde" }
+                    ]}
+                  />
+                </div>
+              </div>
             </div>
             {isHourType(type) ? (
               <label className="grid gap-1">
                 <span className="text-xs font-bold text-muted">Horas (de tu saldo de {balance} h)</span>
-                <input type="number" step="0.5" min="0.5" inputMode="decimal" value={hours} onChange={(event) => setHours(event.target.value)} placeholder="Ej. 2" className="min-h-11 rounded-2xl border border-line bg-panel px-3 text-sm font-bold text-ink outline-none focus:border-volt" />
+                <input type="number" step="0.5" min="0.5" inputMode="decimal" value={hours} onChange={(event) => setHours(event.target.value)} placeholder="Ej. 2" className="min-h-11 rounded-2xl border border-line bg-panel px-3 text-sm font-bold text-ink outline-hidden focus:border-volt" />
                 {balance <= 0 ? (
-                  <span className="text-xs font-semibold text-rose-600">No tienes saldo de horas. No puedes solicitar horas.</span>
+                  <span className="text-xs font-semibold text-orchid">No tienes saldo de horas. No puedes solicitar horas.</span>
                 ) : (Number(hours) || 0) > balance ? (
-                  <span className="text-xs font-semibold text-rose-600">Máximo {balance} h disponibles.</span>
+                  <span className="text-xs font-semibold text-orchid">Máximo {balance} h disponibles.</span>
                 ) : null}
               </label>
             ) : null}
             {dayBlocked ? (
-              <span className="text-xs font-semibold text-rose-600">No tienes saldo de {DAY_BALANCE_LABELS[dayField!]} disponible. No puedes solicitar este tipo.</span>
+              <span className="text-xs font-semibold text-orchid">No tienes saldo de {DAY_BALANCE_LABELS[dayField!]} disponible. No puedes solicitar este tipo.</span>
             ) : null}
-            <textarea value={reason} onChange={(event) => setReason(event.target.value)} maxLength={280} rows={2} placeholder="Motivo (opcional)…" className="rounded-2xl border border-line bg-panel px-3 py-2.5 text-sm font-semibold text-ink outline-none focus:border-volt" />
+            <textarea value={reason} onChange={(event) => setReason(event.target.value)} maxLength={280} rows={2} placeholder="Motivo (opcional)…" className="rounded-2xl border border-line bg-panel px-3 py-2.5 text-sm font-semibold text-ink outline-hidden focus:border-volt" />
             <Button type="button" variant="primary" icon={<Send size={16} />} onClick={() => void submit()} disabled={sending || hourBlocked || dayBlocked} className="w-full">{sending ? "Enviando…" : "Enviar solicitud"}</Button>
             {status ? <p className="text-sm font-semibold text-muted">{status}</p> : null}
           </div>
@@ -199,7 +220,7 @@ export default function SolicitudesPage() {
                   {request.reason ? <p className="mt-2 text-sm text-muted">“{request.reason}”</p> : null}
                   <div className="mt-3 grid grid-cols-2 gap-2">
                     <Button type="button" variant="primary" icon={<Check size={16} />} onClick={() => void resolve(request.id, "APROBADO")} disabled={busyId === request.id} className="min-h-10">Aprobar</Button>
-                    <Button type="button" variant="ghost" icon={<X size={16} />} onClick={() => void resolve(request.id, "RECHAZADO")} disabled={busyId === request.id} className="min-h-10 text-rose-600">Rechazar</Button>
+                    <Button type="button" variant="ghost" icon={<X size={16} />} onClick={() => void resolve(request.id, "RECHAZADO")} disabled={busyId === request.id} className="min-h-10 text-orchid">Rechazar</Button>
                   </div>
                 </div>
               ))}

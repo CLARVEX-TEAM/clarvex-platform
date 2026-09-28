@@ -74,7 +74,7 @@ export function SplashIntro() {
         <motion.div
           initial={{ opacity: 1 }}
           exit={{ opacity: 0, transition: { duration: 0.45, ease: "easeInOut" } }}
-          className="fixed inset-0 z-[9999] grid place-items-center overflow-hidden"
+          className="fixed inset-0 z-9999 grid place-items-center overflow-hidden"
           style={{ backgroundColor: "#0B1220" }}
         >
           <motion.div

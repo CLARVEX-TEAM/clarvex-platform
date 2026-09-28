@@ -1,0 +1,165 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   PAPEL — la capa de tema de la APK
+   ══════════════════════════════════════════════════════════════════════════
+
+   Qué es esto y por qué existe como hoja aparte.
+
+   El rediseño de septiembre de 2026 alcanza a las 46 pantallas del teléfono.
+   Editarlas una a una sería inrevisable y quedarían desparejas: la número 40 no
+   se parecería a la primera. Casi todas comparten tres piezas --`Card` la usan
+   50 archivos, `AppFrame` 39, `AppHeader` 35-- así que el rediseño vive aquí,
+   colgando de `[data-surface="papel"]`, y todas cambian a la vez y en el mismo
+   idioma.
+
+   ⚠️ **Y esto es lo que hace que sea EXCLUSIVO DE LA APK sin un solo `if`.**
+   El atributo lo pone `app/layout.tsx` solo cuando el agente trae `ClarvexApp/`.
+   Fuera de ahí --navegador, iPhone, PWA-- ninguna de estas reglas casa, así que
+   la web conserva su aspecto por construcción y no porque nos acordemos de
+   comprobarlo en cada cambio.
+
+   ⚠️ **Las primitivas conservan sus clases de siempre como base.** Aquí solo se
+   redefine lo que cambia. Por eso los asideros --`app-card`, `app-btn`,
+   `app-header`-- no hacen nada por sí solos: existen para que estas reglas
+   tengan dónde engancharse sin pelearse a golpe de `!important` con las
+   utilidades de Tailwind.
+
+   El sistema, en cuatro decisiones:
+
+   1. **El borde sustituye a la sombra.** Todo llevaba la misma sombra triple,
+      así que nada destacaba: con veinte tarjetas elevadas, ninguna está
+      elevada. Ahora la elevación se guarda para lo que de verdad flota --la
+      barra de abajo, un diálogo-- y el resto se separa con una línea.
+   2. **La acción principal es el extremo del NEUTRO**, no el azul. Tinta sobre
+      papel de día, papel sobre tinta de noche. El azul queda para los enlaces,
+      que es donde significa «esto te lleva a otro sitio».
+   3. **Radios más cerrados.** 28 px en una tarjeta de 90 px de alto la
+      convierten en una pastilla; 20 px la dejan parecer una hoja.
+   4. **La cabecera se calla.** Ocupaba tres renglones --marca, título,
+      subtítulo-- y el título iba en degradado. Encima de cada pantalla, eso
+      compite con el contenido que uno vino a leer.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Tarjetas ─────────────────────────────────────────────────────────────
+   ⚠️ `.solid-card` trae su sombra desde `globals.css` y la aplica a MUCHO más
+   que a `Card`: botones, la campana, los recuadros del checklist. Se apaga en
+   la raíz de la superficie para que no queden dos estéticas conviviendo. */
+[data-surface="papel"] .solid-card,
+[data-surface="papel"] .card-3d {
+  box-shadow: none;
+  border-color: rgb(var(--ch-line));
+}
+
+[data-surface="papel"] .app-card {
+  border-radius: 20px;
+  padding: 1rem;
+}
+
+/* ── Botones ──────────────────────────────────────────────────────────────
+   ⚠️ El brillo que cruzaba el botón (`btn-sheen`) y el crecer al pasar por
+   encima son gestos de escritorio: en un teléfono el brillo no se llega a ver
+   --se toca y ya-- y el `hover` se queda pegado después del toque, dejando el
+   botón grande hasta que tocas otra cosa. */
+[data-surface="papel"] .btn-sheen::after {
+  display: none;
+}
+
+/* ⚠️ El botón principal ya NO se repinta aquí.
+   Llegó a forzarse a tinta negra, cuando el papel iba a ser blanco y negro. La
+   dirección es blanco con el AZUL como único acento, así que el relleno azul
+   que trae `PremiumButton` es el correcto y este bloque solo lo tapaba. La
+   sombra de color se retiró en el propio componente, no hace falta anularla. */
+
+/* ── Cabecera ─────────────────────────────────────────────────────────────
+   ⚠️ Sin desenfoque y con el fondo OPACO. El `backdrop-filter` sobre papel deja
+   un velo lechoso al pasar contenido por debajo, y encima obliga a la GPU a
+   recomponer la cabecera en cada píxel de desplazamiento durante toda la
+   jornada. */
+[data-surface="papel"] .app-header {
+  background: rgb(var(--ch-void));
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border-bottom-color: rgb(var(--ch-line));
+  box-shadow: none;
+}
+
+/* La marca se repetía en las 35 pantallas, en azul y en versalitas, encima del
+   título. Quien abre la app ya sabe en qué app está. */
+[data-surface="papel"] .app-header-eyebrow {
+  display: none;
+}
+
+/* El título iba en degradado animado (`GradientText`).
+   ⚠️ **Aquí el `!important` no es pereza: es la única forma.** Ese componente
+   pinta con estilos EN LÍNEA --`backgroundImage`, `color:transparent`,
+   `WebkitTextFillColor:transparent`-- y un estilo en línea gana a cualquier
+   regla de hoja por específica que sea. Sin él, lo que se ve es el degradado
+   pintado como un RECTÁNGULO y ni una letra encima: comprobado en pantalla.
+   ⚠️ Y hay que devolver las TRES: quitar solo el fondo deja el texto
+   transparente, o sea invisible sobre el papel. */
+[data-surface="papel"] .app-header-title,
+[data-surface="papel"] .app-header-title * {
+  background: none !important;
+  color: rgb(var(--ch-ink)) !important;
+  -webkit-text-fill-color: rgb(var(--ch-ink)) !important;
+  animation: none !important;
+}
+[data-surface="papel"] .app-header-title {
+  font-size: 1.35rem;
+  letter-spacing: -0.025em;
+}
+
+[data-surface="papel"] .app-header-sub {
+  font-size: 12px;
+}
+
+/* ── Fondo ────────────────────────────────────────────────────────────────
+   ⚠️ Los meteoros y la retícula de puntos se apagan. Sobre el lienzo oscuro
+   daban profundidad; sobre papel se leen como suciedad --puntos grises y
+   rayas azules cruzando un documento-- y además son animación continua durante
+   toda la jornada. La app de la tienda se abre cincuenta veces al día. */
+[data-surface="papel"] .meteor,
+[data-surface="papel"] .dot-pattern {
+  display: none;
+}
+
+/* ── Profundidad y degradado de marca ─────────────────────────────────────
+   El rediseño de septiembre conserva la riqueza visual de la app en vez de
+   quitarla: el degradado del logotipo, la profundidad y el movimiento.
+
+   ⚠️ **La sombra es AZULADA, no gris.** Una sombra gris sobre papel cálido se
+   lee como suciedad; teñida hacia el azul de marca se lee como luz. Es el mismo
+   motivo por el que el fondo no es blanco puro.
+
+   ⚠️ **El degradado sale UNA vez por pantalla.** Si aparece en dos sitios deja
+   de marcar cuál manda, que es justo para lo que está. */
+.papel-hero {
+  background: linear-gradient(135deg, #071F47 0%, #1458BD 58%, #287DFF 100%);
+  color: #FFFFFF;
+}
+
+.papel-elev {
+  box-shadow:
+    0 1px 2px rgb(7 31 71 / 0.06),
+    0 10px 28px rgb(7 31 71 / 0.10);
+}
+
+.papel-elev-alta {
+  box-shadow:
+    0 2px 6px rgb(7 31 71 / 0.10),
+    0 18px 44px rgb(7 31 71 / 0.20);
+}
+
+/* El velo azulado que evita el blanco plano detrás de las tarjetas. */
+[data-surface="papel"] body,
+[data-surface="papel"] {
+  background-image: radial-gradient(120% 60% at 50% 0%, rgb(40 125 255 / 0.05) 0%, transparent 60%);
+}
+
+/* ⚠️ El brillo del botón se anima por CSS, así que aquí sí se puede parar.
+   El haz del borde NO: ese va por JavaScript y se decide en el componente. */
+@media (prefers-reduced-motion: reduce) {
+  [data-surface="papel"] .animate-shimmer-slide,
+  [data-surface="papel"] .animate-spin-around {
+    animation: none !important;
+  }
+}

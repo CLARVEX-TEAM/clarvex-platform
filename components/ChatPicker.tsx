@@ -360,7 +360,7 @@ export function ChatPicker({ open, onClose, onEmoji, onSticker, onGif }: Props) 
       <div className="fixed inset-0 z-40" onClick={onClose} />
 
       {/* Panel */}
-      <div className="absolute bottom-full left-0 right-0 z-50 mb-2 flex flex-col overflow-hidden rounded-3xl border border-line bg-white/95 shadow-2xl backdrop-blur-xl dark:bg-[#0f1729]/97" style={{ height: "320px" }}>
+      <div className="absolute bottom-full left-0 right-0 z-50 mb-2 flex flex-col overflow-hidden rounded-3xl border border-line bg-white/95 shadow-2xl backdrop-blur-xl/97" style={{ height: "320px" }}>
         {/* Tabs */}
         <div className="flex shrink-0 border-b border-line">
           {(["emoji", "sticker", "gif"] as Tab[]).map((t) => (
@@ -369,7 +369,7 @@ export function ChatPicker({ open, onClose, onEmoji, onSticker, onGif }: Props) 
               type="button"
               onClick={() => { setTab(t); if (t === "gif" && searchRef.current) setTimeout(() => searchRef.current?.focus(), 50); }}
               className={cn(
-                "flex-1 py-2.5 text-xs font-semibold uppercase tracking-[0.1em] transition-colors",
+                "flex-1 py-2.5 text-xs font-semibold uppercase tracking-widest transition-colors",
                 tab === t ? "border-b-2 border-volt text-volt" : "text-muted"
               )}
             >
@@ -430,7 +430,7 @@ export function ChatPicker({ open, onClose, onEmoji, onSticker, onGif }: Props) 
                   type="button"
                   onClick={() => { onSticker(s.id); onClose(); }}
                   className={cn(
-                    "flex flex-col items-center gap-1 rounded-2xl bg-gradient-to-br p-2.5 transition active:scale-95",
+                    "flex flex-col items-center gap-1 rounded-2xl bg-linear-to-br p-2.5 transition active:scale-95",
                     s.bg
                   )}
                 >
@@ -452,7 +452,7 @@ export function ChatPicker({ open, onClose, onEmoji, onSticker, onGif }: Props) 
                 value={gifQuery}
                 onChange={(e) => setGifQuery(e.target.value)}
                 placeholder="Buscar GIFs…"
-                className="w-full rounded-2xl border border-line bg-panel px-3 py-2 text-sm font-semibold text-ink outline-none focus:border-volt"
+                className="w-full rounded-2xl border border-line bg-panel px-3 py-2 text-sm font-semibold text-ink outline-hidden focus:border-volt"
               />
             </div>
             <div className="flex-1 overflow-y-auto p-2">

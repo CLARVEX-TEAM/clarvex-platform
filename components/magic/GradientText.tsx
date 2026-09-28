@@ -44,7 +44,7 @@ export function GradientText({
         // La franja de color va ANCHA (18%→82%): con la anterior (42%→52%) el
         // brillo cruzaba tan rápido que el título se veía blanco casi siempre.
         backgroundImage:
-          `linear-gradient(90deg, rgb(var(--color-ink)) 6%, ${via[0]} 30%, ${via[1]} 50%, ${via[0]} 70%, rgb(var(--color-ink)) 94%)`,
+          `linear-gradient(90deg, rgb(var(--ch-ink)) 6%, ${via[0]} 30%, ${via[1]} 50%, ${via[0]} 70%, rgb(var(--ch-ink)) 94%)`,
         backgroundSize: "220% 100%",
         // La transparencia va en estilo y NO solo en la clase `text-transparent`:
         // si quien llama pasa cualquier `text-*`, tailwind-merge se queda con esa

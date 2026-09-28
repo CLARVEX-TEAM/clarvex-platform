@@ -216,7 +216,7 @@ export function ClarvexCopilot() {
         <motion.button
           onClick={() => setIsOpen(true)}
           aria-label="Abrir Clarvex Copilot"
-          className="flex size-14 items-center justify-center rounded-full shadow-[0_8px_24px_rgba(37,99,235,0.35)] transition-shadow hover:shadow-[0_10px_32px_rgba(37,99,235,0.45)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-volt focus-visible:ring-offset-2"
+          className="flex size-14 items-center justify-center rounded-full shadow-[0_8px_24px_rgba(37,99,235,0.35)] transition-shadow hover:shadow-[0_10px_32px_rgba(37,99,235,0.45)] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-volt focus-visible:ring-offset-2"
           whileHover={{ y: -2 }}
           whileTap={{ scale: 0.95 }}
         >
@@ -228,7 +228,7 @@ export function ClarvexCopilot() {
 
       <AnimatePresence>
         {isOpen && (
-          <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm p-4 sm:items-center">
+          <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-xs p-4 sm:items-center">
             <div className="absolute inset-0" onClick={() => setIsOpen(false)} />
 
             <motion.div
@@ -363,7 +363,7 @@ export function ClarvexCopilot() {
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   placeholder="Pregúntale a Copilot..."
-                  className="flex-1 rounded-xl border border-line bg-panel px-4 py-2.5 text-sm text-white placeholder-white/40 outline-none focus:border-volt/60 focus:bg-white/10 transition-colors"
+                  className="flex-1 rounded-xl border border-line bg-panel px-4 py-2.5 text-sm text-white placeholder-white/40 outline-hidden focus:border-volt/60 focus:bg-white/10 transition-colors"
                 />
                 <button
                   type="submit"

@@ -71,7 +71,7 @@ export function PullToRefresh({ onRefresh, children }: { onRefresh: () => Promis
         className="pointer-events-none fixed inset-x-0 top-0 z-30 flex justify-center"
         style={{ height: visible ? pull : 0, opacity: visible ? 1 : 0, transition: startY.current === null ? "height 0.25s ease, opacity 0.25s ease" : undefined }}
       >
-        <div className="mt-2 grid size-9 place-items-center rounded-full bg-white/90 text-volt shadow-md dark:bg-slate-800/90">
+        <div className="mt-2 grid size-9 place-items-center rounded-full bg-white/90 text-volt shadow-md dark:bg-panel">
           {refreshing ? (
             <Loader2 size={18} className="animate-spin" />
           ) : (

@@ -45,6 +45,27 @@ model Store {
   /// sus respuestas: solo prepara la captura, abre este enlace y registra la
   /// confirmación diaria de gerencia.
   attendanceFormUrl              String?
+  /// Dirección de la tienda, tal como se escribiría en un mapa.
+  ///
+  /// ⚠️ Buscar por el NOMBRE de la tienda no sirve: «TH SAN AGUSTIN» casa con
+  /// cualquier cosa en un buscador de mapas, y una ubicación equivocada es peor
+  /// que ninguna porque parece correcta. La dirección es lo que la hace exacta.
+  address                        String?
+  /// Coordenadas de la tienda. Opcionales: sin ellas no se enseña mapa.
+  ///
+  /// ⚠️ `0, 0` no vale aunque sea una coordenada válida --cae en el golfo de
+  /// Guinea-- porque es justo lo que queda al guardar el formulario vacío. Lo
+  /// rechaza `coordenadaUtil()` en `lib/mapa-tienda.ts`.
+  latitude                       Float?
+  longitude                      Float?
+  /// El mapa YA ARMADO, en R2.
+  ///
+  /// ⚠️ Se guarda la imagen, no se arma al pintar. La ubicación de una tienda
+  /// no cambia nunca, así que esto es un archivo y no un servicio: una petición
+  /// a OpenStreetMap por tienda y para siempre, en vez de una por cada vez que
+  /// alguien abre la pantalla. Y sobre todo, no deja un hueco gris los días que
+  /// se cae la señal del centro comercial. Ver `lib/mapa-tienda.ts`.
+  mapaUrl                        String?
   /// Activa el recordatorio de checklist de energía de lunes, miércoles y
   /// viernes. Es por tienda porque no todas operan este control externo.
   energyChecklistReminderEnabled Boolean                       @default(false)

@@ -72,7 +72,7 @@ export function GreetingStep({
           onClick={onBiometricLogin}
           disabled={busy}
           aria-label="Entrar con autenticación biométrica"
-          className="mt-6 flex min-h-[3.5rem] w-full max-w-sm items-center justify-center gap-2 rounded-2xl bg-blue-600 text-[15px] font-semibold text-white shadow-[0_8px_24px_rgba(37,99,235,0.38)] transition disabled:opacity-60"
+          className="mt-6 flex min-h-14 w-full max-w-sm items-center justify-center gap-2 rounded-2xl bg-blue-600 text-[15px] font-semibold text-white shadow-[0_8px_24px_rgba(37,99,235,0.38)] transition disabled:opacity-60"
         >
           {/* La huella late mientras corre el reto WebAuthn: es el único aviso
               de que el sistema está esperando al lector. */}
@@ -94,7 +94,7 @@ export function GreetingStep({
         whileTap={{ scale: 0.97 }}
         type="button"
         onClick={onPinLogin}
-        className={`mt-4 flex min-h-[3.5rem] w-full max-w-sm items-center justify-center gap-2 rounded-2xl border-2 text-[15px] font-semibold transition ${
+        className={`mt-4 flex min-h-14 w-full max-w-sm items-center justify-center gap-2 rounded-2xl border-2 text-[15px] font-semibold transition ${
           isDark ? "border-slate-700 text-slate-200" : "border-blue-200 text-blue-700"
         }`}
       >

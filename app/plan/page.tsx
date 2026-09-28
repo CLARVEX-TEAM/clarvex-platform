@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { dashboardDateKey } from "@/lib/dashboard-kpi";
 import { motion } from "framer-motion";
-import { ClipboardList, Flame, Moon, Plus, Sparkles, SunMedium } from "lucide-react";
+import { ChevronRight, ClipboardList, Flame, Moon, Plus, Sparkles, SunMedium, X } from "lucide-react";
 import { fetchAppData, type AppData } from "@/lib/app-data";
 import { useSession } from "@/lib/use-session";
 import { money } from "@/lib/format";
@@ -49,6 +49,10 @@ export default function PlanPage() {
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [suggesting, setSuggesting] = useState(false);
+  // Crear plan nace cerrado: la pantalla se abre para VER el plan del dia,
+  // y el formulario --fecha, meta, foco, mensaje y actividades-- ocupaba
+  // mas de una pantalla por encima de el.
+  const [creando, setCreando] = useState(false);
 
   async function suggestWithAI() {
     if (!userId) {
@@ -256,11 +260,11 @@ export default function PlanPage() {
               {selectedDay === day ? (
                 <motion.span
                   layoutId="plan-day-active"
-                  className="absolute inset-0 rounded-full bg-[#2563EB] shadow-[0_6px_16px_rgba(37,99,235,0.28)]"
+                  className="absolute inset-0 rounded-full bg-volt shadow-[0_6px_16px_rgba(37,99,235,0.28)]"
                   transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
                 />
               ) : null}
-              <span className={cn("relative", selectedDay === day ? "text-white" : "text-muted hover:text-ink")}>
+              <span className={cn("relative", selectedDay === day ? "text-ink" : "text-muted hover:text-ink")}>
                 {day}
               </span>
             </motion.button>
@@ -271,19 +275,19 @@ export default function PlanPage() {
         <div className="premium-hero mb-3 rounded-[28px] p-4">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#2563EB]">Progreso del dia</p>
-              <h2 className="mt-1 text-[2.4rem] font-semibold leading-none tracking-[-0.05em] text-slate-900 dark:text-white">
+              <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-volt">Progreso del dia</p>
+              <h2 className="mt-1 text-[2.4rem] font-semibold leading-none tracking-tighter text-ink">
                 {dayProgress}%
               </h2>
-              <p className="mt-1 text-xs font-semibold text-slate-500 dark:text-slate-400">
+              <p className="mt-1 text-xs font-semibold text-muted">
                 {completed} de {totalActivities.length} actividades completadas
               </p>
             </div>
             <ProgressRing value={dayProgress} size={72} />
           </div>
-          <div className="mt-3 h-2 overflow-hidden rounded-full bg-blue-100 dark:bg-[#2a3a5c]">
+          <div className="mt-3 h-2 overflow-hidden rounded-full bg-volt/10">
             <motion.div
-              className="h-full rounded-full bg-gradient-to-r from-blue-600 to-cyan-400"
+              className="h-full rounded-full bg-linear-to-r from-blue-600 to-cyan-400"
               initial={{ width: 0 }}
               animate={{ width: `${dayProgress}%` }}
               transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
@@ -308,7 +312,7 @@ export default function PlanPage() {
               </AppButton>
               {generatedChores.length > 0 ? (
                 <div className="grid gap-2 border-t border-line pt-3">
-                  <p className="text-xs font-bold uppercase tracking-[0.1em] text-muted">Reasignar tareas operativas</p>
+                  <p className="text-xs font-bold uppercase tracking-widest text-muted">Reasignar tareas operativas</p>
                   {generatedChores.map((key) => (
                     <AppSelect
                       key={key}
@@ -331,7 +335,21 @@ export default function PlanPage() {
         ) : null}
 
         {/* ── Crear plan ── */}
-        {!isAdvisor ? (
+        {!isAdvisor && !creando ? (
+          <button
+            type="button"
+            onClick={() => setCreando(true)}
+            className="papel-elev tappable mb-3 flex min-h-14 w-full items-center gap-3 rounded-[18px] border border-line bg-card px-4 text-left transition active:scale-[0.99]"
+          >
+            <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-volt/10 text-volt">
+              <Plus size={17} />
+            </span>
+            <span className="flex-1 text-[15px] font-semibold text-ink">Crear plan</span>
+            <ChevronRight size={17} className="text-muted" />
+          </button>
+        ) : null}
+
+        {!isAdvisor && creando ? (
           <Card className="mb-3">
             <div className="mb-4 flex items-center justify-between gap-3">
               <h2 className="text-lg font-semibold">Crear plan</h2>
@@ -339,10 +357,18 @@ export default function PlanPage() {
                 type="button"
                 onClick={() => void suggestWithAI()}
                 disabled={suggesting}
-                className="flex items-center gap-1.5 rounded-full bg-volt/15 px-3 py-1.5 text-xs font-semibold text-[#2563EB] ring-1 ring-volt/40 transition active:scale-95 disabled:opacity-40"
+                className="flex items-center gap-1.5 rounded-full bg-volt/15 px-3 py-1.5 text-xs font-semibold text-volt ring-1 ring-volt/40 transition active:scale-95 disabled:opacity-40"
               >
                 <Sparkles size={13} className="text-volt animate-pulse" />
                 {suggesting ? "Pensando..." : "Sugerir con IA"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setCreando(false)}
+                aria-label="Cerrar crear plan"
+                className="tappable grid size-10 shrink-0 place-items-center rounded-xl text-muted transition hover:text-ink"
+              >
+                <X size={18} />
               </button>
             </div>
             <form className="grid gap-3" onSubmit={createPlan}>
@@ -413,7 +439,7 @@ export default function PlanPage() {
                     {!isAdvisor && plan.published === false ? <Badge tone="warn">Borrador</Badge> : null}
                     <Badge>{money(plan.dailyGoal)}</Badge>
                     {!isAdvisor ? (
-                      <DeleteButton iconOnly onClick={() => setPendingDeleteId(plan.id)} className="size-9 border border-rose-200/60 bg-rose-50/60 dark:border-rose-500/30 dark:bg-rose-500/10" aria-label="Eliminar plan" />
+                      <DeleteButton iconOnly onClick={() => setPendingDeleteId(plan.id)} className="size-9 border border-orchid/30 bg-orchid/10" aria-label="Eliminar plan" />
                     ) : null}
                   </div>
                 </div>
@@ -500,7 +526,7 @@ function AddActivity({ planId, onAdded }: { planId: string; onAdded: (activity: 
         onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); void add(); } }}
         maxLength={300}
         placeholder="Agregar actividad…"
-        className="min-h-10 min-w-0 flex-1 rounded-xl border border-line bg-panel px-3 text-sm font-semibold text-ink outline-none focus:border-volt"
+        className="min-h-10 min-w-0 flex-1 rounded-xl border border-line bg-panel px-3 text-sm font-semibold text-ink outline-hidden focus:border-volt"
       />
       <button
         type="button"

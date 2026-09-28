@@ -50,7 +50,7 @@ export default function RecuperarPage() {
   }
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center bg-slate-50 px-5 py-12 dark:bg-slate-950">
+    <main className="flex min-h-screen flex-col items-center justify-center bg-panel px-5 py-12">
       <motion.div
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
@@ -64,27 +64,27 @@ export default function RecuperarPage() {
           >
             <ClarvexIcon size={34} />
           </div>
-          <p className="text-[10px] font-semibold tracking-[0.42em] text-blue-600">CLARVEX TEAM</p>
+          <p className="text-[10px] font-semibold tracking-[0.42em] text-volt">CLARVEX TEAM</p>
         </div>
 
-        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <div className="rounded-3xl border border-line bg-white p-6 shadow-xs dark:border-line dark:bg-panel">
           {sent ? (
             <div>
               <div className="mb-3 flex items-center gap-2">
-                <MailCheck className="text-blue-600" size={18} />
-                <h1 className="text-base font-semibold text-slate-900 dark:text-slate-100">Revisa tu correo</h1>
+                <MailCheck className="text-volt" size={18} />
+                <h1 className="text-base font-semibold text-ink dark:text-slate-100">Revisa tu correo</h1>
               </div>
-              <p className="mb-4 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
+              <p className="mb-4 text-sm leading-relaxed text-muted">
                 Si el número existe y tiene un correo registrado, te llegará un enlace en unos minutos. Caduca en 30
                 minutos y sirve una sola vez.
               </p>
-              <p className="mb-5 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
+              <p className="mb-5 text-sm leading-relaxed text-muted">
                 ¿No te llegó nada? Puede que tu cuenta no tenga un correo registrado. En ese caso, tu gerente puede
                 restablecerte el PIN desde la app.
               </p>
               <Link
                 href="/login"
-                className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-700"
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-volt px-4 py-3 text-sm font-semibold text-white transition hover:bg-volt/12"
               >
                 Volver al inicio de sesión
               </Link>
@@ -92,14 +92,14 @@ export default function RecuperarPage() {
           ) : (
             <form onSubmit={submit}>
               <div className="mb-1 flex items-center gap-2">
-                <ShieldCheck className="text-blue-600" size={16} />
-                <span className="text-sm font-semibold text-blue-700 dark:text-blue-400">Restablecer el PIN</span>
+                <ShieldCheck className="text-volt" size={16} />
+                <span className="text-sm font-semibold text-volt">Restablecer el PIN</span>
               </div>
-              <p className="mb-5 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
+              <p className="mb-5 text-sm leading-relaxed text-muted">
                 Escribe tu número de empleado y te mandamos un enlace al correo registrado en tu cuenta.
               </p>
 
-              <label htmlFor="employeeNumber" className="mb-2 block text-xs font-semibold text-slate-700 dark:text-slate-300">
+              <label htmlFor="employeeNumber" className="mb-2 block text-xs font-semibold text-ink">
                 Número de empleado
               </label>
               <input
@@ -110,16 +110,16 @@ export default function RecuperarPage() {
                 autoFocus
                 value={employeeNumber}
                 onChange={(event) => setEmployeeNumber(event.target.value)}
-                className="mb-4 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-base text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
+                className="mb-4 w-full rounded-xl border border-line bg-white px-4 py-3 text-base text-ink outline-hidden transition focus:border-volt/30 focus:ring-2 focus:ring-volt/30 dark:border-line dark:bg-panel dark:text-slate-100"
                 placeholder="Ej. 2554"
               />
 
-              {error ? <p className="mb-3 text-sm font-semibold text-red-500">{error}</p> : null}
+              {error ? <p className="mb-3 text-sm font-semibold text-orchid">{error}</p> : null}
 
               <button
                 type="submit"
                 disabled={busy}
-                className="w-full rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:opacity-60"
+                className="w-full rounded-xl bg-volt px-4 py-3 text-sm font-semibold text-white transition hover:bg-volt/12 disabled:opacity-60"
               >
                 {busy ? "Enviando…" : "Enviarme el enlace"}
               </button>
@@ -130,7 +130,7 @@ export default function RecuperarPage() {
         {!sent ? (
           <Link
             href="/login"
-            className="mt-5 flex items-center justify-center gap-1.5 text-sm font-medium text-slate-500 transition hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+            className="mt-5 flex items-center justify-center gap-1.5 text-sm font-medium text-muted transition hover:text-ink dark:hover:text-muted"
           >
             <ArrowLeft size={15} />
             Volver al inicio de sesión

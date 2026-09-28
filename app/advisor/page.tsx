@@ -139,7 +139,7 @@ export default function AdvisorDashboard() {
     return (
       <div className="grid min-h-screen place-items-center px-8 text-center">
         <div>
-          <span className="mx-auto mb-3 grid size-14 place-items-center rounded-3xl bg-rose-500/10 text-2xl">📡</span>
+          <span className="mx-auto mb-3 grid size-14 place-items-center rounded-3xl bg-orchid/10 text-2xl">📡</span>
           <p className="text-base font-semibold text-ink">No se pudo cargar la información</p>
           <p className="mt-1 text-sm font-semibold text-muted">Revisa tu conexión e intenta de nuevo.</p>
           <button
@@ -161,17 +161,21 @@ export default function AdvisorDashboard() {
   if (!user || !data) {
     return (
       <>
-        <div className="sticky top-[var(--matchday-offset,0px)] z-20 h-[68px] border-b border-slate-200/60 bg-white/88 dark:border-slate-800/60 dark:bg-slate-950/95 backdrop-blur-xl" />
+        {/* ⚠️ Es un `<header>`, no un `<div>`: el servidor pinta este hueco
+            --no tiene sesion-- y el cliente pinta `HomeHeader` encima. Con
+            etiquetas distintas React no puede hidratar y suelta un error de
+            hidratacion en cada carga. */}
+        <header className="sticky top-(--matchday-offset,0px) z-20 h-[68px] border-b border-line bg-void/85 backdrop-blur-xl" />
         <AppFrame>
           <div className="animate-pulse space-y-3">
-            <div className="h-36 rounded-[28px] bg-slate-200 dark:bg-slate-800" />
+            <div className="h-36 rounded-[28px] bg-panel" />
             <div className="grid grid-cols-2 gap-3">
-              {[0, 1, 2, 3].map((i) => <div key={i} className="h-24 rounded-[28px] bg-slate-200 dark:bg-slate-800" />)}
+              {[0, 1, 2, 3].map((i) => <div key={i} className="h-24 rounded-[28px] bg-panel" />)}
             </div>
             <div className="grid grid-cols-2 gap-3">
-              {[0, 1, 2, 3].map((i) => <div key={i} className="h-16 rounded-[28px] bg-slate-200 dark:bg-slate-800" />)}
+              {[0, 1, 2, 3].map((i) => <div key={i} className="h-16 rounded-[28px] bg-panel" />)}
             </div>
-            <div className="h-28 rounded-[28px] bg-slate-200 dark:bg-slate-800" />
+            <div className="h-28 rounded-[28px] bg-panel" />
           </div>
         </AppFrame>
       </>
@@ -285,7 +289,7 @@ export default function AdvisorDashboard() {
             className="card-3d flex items-center justify-between gap-3 rounded-2xl border border-line bg-card p-3.5"
           >
             <div className="flex items-center gap-3">
-              <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-[#EEF3FF] text-base dark:bg-[#172134]">📢</span>
+              <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-volt/8 text-base">📢</span>
               <div className="min-w-0">
                 <p className="text-[13px] font-semibold text-ink">Comunicados pendientes</p>
                 <p className="mt-0.5 text-[11.5px] text-muted">
@@ -295,7 +299,7 @@ export default function AdvisorDashboard() {
             </div>
             <Link
               href="/comunicados"
-              className="shrink-0 rounded-full bg-[#2563EB] px-3.5 py-2 text-xs font-semibold text-white transition active:scale-95 dark:bg-[#6B9BFF]"
+              className="shrink-0 rounded-full bg-volt px-3.5 py-2 text-xs font-semibold text-white transition active:scale-95 dark:bg-volt"
             >
               Leer
             </Link>
@@ -313,22 +317,22 @@ export default function AdvisorDashboard() {
             de tarjetas mantiene cardAnim porque BlurFade anima `filter`, caro
             en GPU, y hay más de diez en esta pantalla. */}
         <BlurFade delay={0.1} className="mt-3">
-          <Card className="border border-white/10 bg-[#0A0A0A]/60 backdrop-blur-xl p-4">
+          <Card className="border border-line bg-card backdrop-blur-xl p-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
-                <span className="grid size-10 place-items-center rounded-2xl bg-gradient-to-br from-yellow-400 to-amber-500 text-white font-semibold text-lg shadow-lg shadow-amber-500/10">
+                <span className="grid size-10 place-items-center rounded-2xl bg-linear-to-br from-yellow-400 to-amber-500 text-white font-semibold text-lg shadow-lg shadow-amber-500/10">
                   {level}
                 </span>
                 <div>
-                  <p className="text-xs font-bold text-white">Nivel actual</p>
-                  <p className="text-[11px] text-slate-400 mt-0.5">Siguiente nivel en {nextLevelXp - xp} XP</p>
+                  <p className="text-xs font-bold text-ink">Nivel actual</p>
+                  <p className="text-[11px] text-muted mt-0.5">Siguiente nivel en {nextLevelXp - xp} XP</p>
                 </div>
               </div>
               <Badge tone="success">{xp} XP Totales</Badge>
             </div>
             
             <div className="mt-3">
-              <div className="flex justify-between text-[10px] text-slate-400 mb-1 font-semibold">
+              <div className="flex justify-between text-[10px] text-muted mb-1 font-semibold">
                 <span>Progreso de Nivel</span>
                 <span>{xpProgress}%</span>
               </div>
@@ -336,28 +340,28 @@ export default function AdvisorDashboard() {
                 <motion.div
                   initial={{ width: 0 }}
                   animate={{ width: `${xpProgress}%` }}
-                  className="h-full bg-gradient-to-r from-[#2563EB] to-emerald-400"
+                  className="h-full bg-volt"
                 />
               </div>
             </div>
 
             {/* Retos y Tareas Diarias */}
-            <div className="mt-4 pt-3.5 border-t border-white/5 space-y-2">
-              <p className="text-xs font-semibold text-white flex items-center gap-1.5">
+            <div className="mt-4 pt-3.5 border-t border-line space-y-2">
+              <p className="text-xs font-semibold text-ink flex items-center gap-1.5">
                 <span>⚡</span> Retos del Día:
               </p>
               <div className="grid grid-cols-2 gap-2 text-[11px]">
-                <div className={`rounded-xl border p-2 flex flex-col justify-between ${daily.dailySales >= daily.dailyGoal && daily.dailyGoal > 0 ? "bg-emerald-500/10 border-emerald-500/20" : "bg-white/5 border-white/5"}`}>
-                  <p className="font-bold text-white">Meta Diaria</p>
-                  <p className="text-slate-400 mt-0.5">Vender {money(daily.dailyGoal)}</p>
-                  <span className={`mt-1.5 font-bold uppercase tracking-wider text-[9px] ${daily.dailySales >= daily.dailyGoal && daily.dailyGoal > 0 ? "text-[#2563EB]" : "text-amber-500"}`}>
+                <div className={`rounded-xl border p-2 flex flex-col justify-between ${daily.dailySales >= daily.dailyGoal && daily.dailyGoal > 0 ? "bg-mint/10 border-mint/30" : "bg-white/5 border-line"}`}>
+                  <p className="font-bold text-ink">Meta Diaria</p>
+                  <p className="text-muted mt-0.5">Vender {money(daily.dailyGoal)}</p>
+                  <span className={`mt-1.5 font-bold uppercase tracking-wider text-[9px] ${daily.dailySales >= daily.dailyGoal && daily.dailyGoal > 0 ? "text-volt" : "text-ember"}`}>
                     {daily.dailySales >= daily.dailyGoal && daily.dailyGoal > 0 ? "Completado" : "Pendiente"}
                   </span>
                 </div>
-                <div className={`rounded-xl border p-2 flex flex-col justify-between ${planTotal > 0 && planDone === planTotal ? "bg-emerald-500/10 border-emerald-500/20" : "bg-white/5 border-white/5"}`}>
-                  <p className="font-bold text-white">Checklist</p>
-                  <p className="text-slate-400 mt-0.5">Plan ({planDone}/{planTotal})</p>
-                  <span className={`mt-1.5 font-bold uppercase tracking-wider text-[9px] ${planTotal > 0 && planDone === planTotal ? "text-[#2563EB]" : "text-amber-500"}`}>
+                <div className={`rounded-xl border p-2 flex flex-col justify-between ${planTotal > 0 && planDone === planTotal ? "bg-mint/10 border-mint/30" : "bg-white/5 border-line"}`}>
+                  <p className="font-bold text-ink">Checklist</p>
+                  <p className="text-muted mt-0.5">Plan ({planDone}/{planTotal})</p>
+                  <span className={`mt-1.5 font-bold uppercase tracking-wider text-[9px] ${planTotal > 0 && planDone === planTotal ? "text-volt" : "text-ember"}`}>
                     {planTotal > 0 && planDone === planTotal ? "Completado" : "Pendiente"}
                   </span>
                 </div>
@@ -420,7 +424,7 @@ export default function AdvisorDashboard() {
         <motion.div {...cardAnim(0.31)} className="mt-3">
           <Card>
             <h2 className="mb-3 text-lg font-semibold flex items-center gap-2">
-              <span className="text-[#2563EB]">🎯</span> Retos del Día
+              <span className="text-volt">🎯</span> Retos del Día
             </h2>
             <div className="space-y-3.5">
               {/* Reto 1: Meta de Ventas */}
@@ -494,12 +498,12 @@ export default function AdvisorDashboard() {
                   type="button"
                   onClick={() => void fetchSalesTips()}
                   disabled={loadingTips}
-                  className="w-full flex items-center justify-center gap-2 rounded-2xl bg-[#2563EB] px-4 py-2.5 text-sm font-semibold text-white transition active:scale-95 disabled:opacity-40"
+                  className="w-full flex items-center justify-center gap-2 rounded-2xl bg-volt px-4 py-2.5 text-sm font-semibold text-white transition active:scale-95 disabled:opacity-40"
                 >
                   <Sparkles size={16} />
                   {loadingTips ? "Analizando KPIs..." : "Consultar a mi Coach IA"}
                 </button>
-                {tipsError && <p className="mt-2 text-xs text-rose-500 font-semibold">{tipsError}</p>}
+                {tipsError && <p className="mt-2 text-xs text-orchid font-semibold">{tipsError}</p>}
               </div>
             ) : (
               <div className="space-y-4">
@@ -520,13 +524,13 @@ export default function AdvisorDashboard() {
 
                 {profile && profile.strongestKpi && (
                   <div className="grid grid-cols-2 gap-3 text-xs">
-                    <div className="rounded-xl bg-emerald-500/10 border border-emerald-500/20 p-2.5">
-                      <p className="font-bold text-emerald-600 dark:text-emerald-400 text-[10px] uppercase tracking-wider">Fuerte 🚀</p>
+                    <div className="rounded-xl bg-mint/10 border border-mint/30 p-2.5">
+                      <p className="font-bold text-mint text-[10px] uppercase tracking-wider">Fuerte 🚀</p>
                       <p className="font-semibold text-ink mt-1 text-[13px]">{profile.strongestKpi.name}</p>
                       <p className="text-muted mt-0.5 leading-relaxed text-[11px]">{profile.strongestKpi.details}</p>
                     </div>
-                    <div className="rounded-xl bg-rose-500/10 border border-rose-500/20 p-2.5">
-                      <p className="font-bold text-rose-600 dark:text-rose-400 text-[10px] uppercase tracking-wider">Mejora 🎯</p>
+                    <div className="rounded-xl bg-orchid/10 border border-orchid/30 p-2.5">
+                      <p className="font-bold text-orchid text-[10px] uppercase tracking-wider">Mejora 🎯</p>
                       <p className="font-semibold text-ink mt-1 text-[13px]">{profile.weakestKpi.name}</p>
                       <p className="text-muted mt-0.5 leading-relaxed text-[11px]">{profile.weakestKpi.details}</p>
                     </div>

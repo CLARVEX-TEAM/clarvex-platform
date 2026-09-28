@@ -193,14 +193,14 @@ export function CommandPalette({
           placeholder="Buscar sección, crear o ir a una persona…"
           // El anillo de foco se suprime desde desktop.css (.desk-palette input):
           // una clase de Tailwind no le gana en especificidad a la regla global.
-          className="h-14 min-w-0 flex-1 border-0 bg-transparent text-body text-ink outline-none placeholder:text-muted"
+          className="h-14 min-w-0 flex-1 border-0 bg-transparent text-body text-ink outline-hidden placeholder:text-muted"
         />
-        <kbd className="shrink-0 rounded border border-line px-1.5 py-0.5 text-caption font-medium text-muted">
+        <kbd className="shrink-0 rounded-sm border border-line px-1.5 py-0.5 text-caption font-medium text-muted">
           Esc
         </kbd>
       </div>
 
-      <ul id="desk-palette-list" ref={listRef} role="listbox" className="max-h-[22rem] overflow-y-auto p-2">
+      <ul id="desk-palette-list" ref={listRef} role="listbox" className="max-h-88 overflow-y-auto p-2">
         {results.length === 0 ? (
           <li className="px-3 py-10 text-center">
             <p className="text-ui font-medium text-ink">Nada coincide con “{query}”</p>

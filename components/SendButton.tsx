@@ -48,14 +48,14 @@ export function SendButton({
       {...props}
       disabled={loading || success || props.disabled}
       className={cn(
-        "tappable relative inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl px-5 text-sm font-semibold tracking-[-0.01em] focus:outline-none focus:ring-4 disabled:cursor-not-allowed",
+        "tappable relative inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl px-5 text-sm font-semibold tracking-[-0.01em] focus:outline-hidden focus:ring-4 disabled:cursor-not-allowed",
         // overflow visible para que el avión pueda "salir" del botón al despegar.
         // (sin btn-sheen: su franja blanca asomaría por el borde al no recortarse)
         "overflow-visible",
-        !success &&
-          "bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-[0_8px_30px_rgba(37,99,235,0.35)] hover:shadow-[0_12px_36px_rgba(37,99,235,0.45)] focus:ring-blue-500/20",
-        success &&
-          "bg-gradient-to-r from-emerald-600 to-emerald-500 text-white shadow-[0_8px_30px_rgba(34,197,94,0.35)] focus:ring-emerald-500/20",
+        // Azul plano: es la accion principal de su pantalla. Sin degradado
+        // ni resplandor -- ver la cabecera de este archivo.
+        !success && "bg-volt text-white shadow-[0_2px_6px_rgb(20_21_26/0.10)] hover:bg-[#1D4ED8] focus:ring-volt/30",
+        success && "bg-mint text-white focus:ring-mint/30",
         className
       )}
     >
@@ -124,7 +124,7 @@ export function SendButton({
                 {reduce && phase === "flying" ? (
                   <span className="block size-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
                 ) : (
-                  <Send size={17} className="-rotate-[18deg]" />
+                  <Send size={17} className="rotate-[-18deg]" />
                 )}
               </motion.span>
             </motion.span>
@@ -184,7 +184,7 @@ export function SendIconButton({
             : { type: "spring", stiffness: 500, damping: 28 }
         }
       >
-        <Send size={size} className="-rotate-[18deg]" />
+        <Send size={size} className="rotate-[-18deg]" />
       </motion.span>
     </motion.button>
   );

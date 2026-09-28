@@ -60,13 +60,13 @@ export default async function VerificarCredencial({ params }: { params: Promise<
       <div className="w-full max-w-sm">
         <div
           className={`overflow-hidden rounded-3xl border ${
-            dicho.tono === "bien" ? "border-mint/30" : dicho.tono === "malo" ? "border-rose-500/40" : "border-white/12"
+            dicho.tono === "bien" ? "border-mint/30" : dicho.tono === "malo" ? "border-orchid/30" : "border-white/12"
           } bg-panel`}
         >
           <div
             className={`px-5 py-3 text-center text-sm font-bold ${
               dicho.tono === "bien" ? "bg-mint/12 text-mint"
-              : dicho.tono === "malo" ? "bg-rose-500/12 text-rose-400"
+              : dicho.tono === "malo" ? "bg-orchid/12 text-orchid"
               : "bg-white/6 text-muted"
             }`}
           >

@@ -47,7 +47,7 @@ export function Confetti({ show, pieces = 90, duration = 2600 }: { show: boolean
   return (
     <AnimatePresence>
       {active ? (
-        <div className="pointer-events-none fixed inset-0 z-[60] overflow-hidden" aria-hidden>
+        <div className="pointer-events-none fixed inset-0 z-60 overflow-hidden" aria-hidden>
           {confetti.map((c) => (
             <motion.span
               key={c.id}

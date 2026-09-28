@@ -26,7 +26,7 @@ export function NotificationCard({
   imageUrl?: string | null;
 }) {
   return (
-    <GlassCard className={cn("p-3", unread && "border-volt/35 bg-volt/[0.055]")}>
+    <GlassCard className={cn("p-3", unread && "border-volt/35 bg-volt/5.5")}>
       <div className="flex items-start gap-2.5">
         {author ? <ProfileAvatar name={author.name} photoUrl={author.photoUrl} size="sm" className="size-9 rounded-full shadow-none" /> : <span className={cn("grid size-9 shrink-0 place-items-center rounded-[16px] border border-line", unread ? "bg-volt/10 text-volt" : "bg-panel text-muted")}><Bell size={16} /></span>}
         <div className="min-w-0 flex-1">
@@ -52,10 +52,10 @@ export function NotificationCard({
             texto no abre un hueco en la tarjeta. Es lo mismo que usa el
             escritorio.
 
-            `break-words` porque estos avisos traen códigos largos sin espacios
+            `wrap-break-word` porque estos avisos traen códigos largos sin espacios
             --«75030000214»-- y en 412 px se salen de la tarjeta.
           */}
-          <p className="mt-2 whitespace-pre-line break-words text-[13px] leading-5 text-muted">{body}</p>
+          <p className="mt-2 whitespace-pre-line wrap-break-word text-[13px] leading-5 text-muted">{body}</p>
           {imageUrl ? (
             <ImagenAmpliable src={imageUrl} alt="Imagen del comunicado" className="mt-2.5 block w-full overflow-hidden rounded-2xl border border-line">
               <Image src={imageUrl} alt="Imagen del comunicado" width={800} height={400} className="w-full object-cover" />

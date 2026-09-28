@@ -62,7 +62,7 @@ export function PinStep({
             <p className={`mt-4 text-center text-xs ${isDark ? "text-slate-500" : "text-slate-400"}`}>
               <Link
                 href="/recuperar"
-                className="font-semibold text-blue-600 underline-offset-2 hover:underline focus-visible:underline focus-visible:outline-none"
+                className="font-semibold text-blue-600 underline-offset-2 hover:underline focus-visible:underline focus-visible:outline-hidden"
               >
                 ¿Olvidaste tu PIN?
               </Link>

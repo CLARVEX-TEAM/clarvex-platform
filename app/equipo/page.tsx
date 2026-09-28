@@ -2,10 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, Trash2, UserPlus } from "lucide-react";
+import { CheckCircle2, ChevronRight, Trash2, UserPlus, X } from "lucide-react";
 import { getSession } from "@/lib/auth";
 import { fetchAppData } from "@/lib/app-data";
 import { AppFrame, AppHeader, Button, Card, ProfileAvatar } from "@/components/ui";
+import { SelectorChips } from "@/components/ui/SelectorChips";
 import { enContenedorNativo } from "@/lib/puente-nativo";
 import { portadaDe } from "@/lib/portada";
 
@@ -34,6 +35,9 @@ export default function TeamDatesPage() {
   const [newRole, setNewRole] = useState<"ASESOR" | "SUBGERENTE" | "GERENTE">("ASESOR");
   const [adding, setAdding] = useState(false);
   const [addedMessage, setAddedMessage] = useState("");
+  // El alta nace cerrada: /equipo se abre para consultar quien esta, no
+  // para dar de alta -- eso pasa unas pocas veces al anio.
+  const [agregando, setAgregando] = useState(false);
 
   useEffect(() => {
     getSession().then((current) => {
@@ -170,21 +174,46 @@ export default function TeamDatesPage() {
     }
   }
 
-  const inputClass = "min-h-11 rounded-2xl border border-line bg-panel px-3 text-sm font-bold text-ink outline-none focus:border-volt";
+  const inputClass = "min-h-11 rounded-2xl border border-line bg-panel px-3 text-sm font-bold text-ink outline-hidden focus:border-volt";
 
   return (
     <>
       <AppHeader title="Fechas del equipo" subtitle="Cumpleaños y aniversarios" backHref="/manager" />
       <AppFrame>
-        {error ? <Card className="mb-3 text-sm font-semibold text-rose-700">{error}</Card> : null}
+        {error ? <Card className="mb-3 text-sm font-semibold text-orchid">{error}</Card> : null}
         {addedMessage ? (
-          <Card className="mb-3 flex items-center gap-2 text-sm font-semibold text-emerald-700">
+          <Card className="mb-3 flex items-center gap-2 text-sm font-semibold text-mint">
             <CheckCircle2 size={16} className="shrink-0" />{addedMessage}
           </Card>
         ) : null}
 
+        {!agregando ? (
+          <button
+            type="button"
+            onClick={() => setAgregando(true)}
+            className="papel-elev tappable mb-3 flex min-h-14 w-full items-center gap-3 rounded-[18px] border border-line bg-card px-4 text-left transition active:scale-[0.99]"
+          >
+            <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-volt/10 text-volt">
+              <UserPlus size={17} />
+            </span>
+            <span className="flex-1 text-[15px] font-semibold text-ink">Agregar integrante</span>
+            <ChevronRight size={17} className="text-muted" />
+          </button>
+        ) : null}
+
+        {agregando ? (
         <Card className="mb-4 p-3.5">
-          <p className="mb-3 flex items-center gap-2 font-semibold text-ink"><UserPlus size={16} />Agregar integrante</p>
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <p className="flex items-center gap-2 font-semibold text-ink"><UserPlus size={16} />Agregar integrante</p>
+            <button
+              type="button"
+              onClick={() => setAgregando(false)}
+              aria-label="Cerrar alta de integrante"
+              className="tappable grid size-10 shrink-0 place-items-center rounded-xl text-muted transition hover:text-ink"
+            >
+              <X size={18} />
+            </button>
+          </div>
           <form onSubmit={(event) => void addMember(event)} className="grid grid-cols-2 gap-2">
             <label className="col-span-2 grid gap-1">
               <span className="text-xs font-bold text-muted">Nombre completo</span>
@@ -194,19 +223,25 @@ export default function TeamDatesPage() {
               <span className="text-xs font-bold text-muted">Número de empleado</span>
               <input value={newNumber} onChange={(event) => setNewNumber(event.target.value.replace(/\D/g, ""))} required inputMode="numeric" pattern="\d{1,30}" placeholder="95739" className={inputClass} />
             </label>
-            <label className="grid gap-1">
-              <span className="text-xs font-bold text-muted">Puesto</span>
-              <select value={newRole} onChange={(event) => setNewRole(event.target.value as typeof newRole)} className={inputClass}>
-                <option value="ASESOR">Asesor</option>
-                <option value="SUBGERENTE">Subgerente</option>
-                <option value="GERENTE">Gerente</option>
-              </select>
-            </label>
+            <div className="col-span-2">
+              <p className="mb-2 text-xs font-bold text-muted">Puesto</p>
+              <SelectorChips
+                ariaLabel="Puesto de la persona"
+                value={newRole}
+                onChange={setNewRole}
+                options={[
+                  { value: "ASESOR", label: "Asesor" },
+                  { value: "SUBGERENTE", label: "Subgerente" },
+                  { value: "GERENTE", label: "Gerente" }
+                ]}
+              />
+            </div>
             <Button type="submit" variant="primary" disabled={adding} className="col-span-2 mt-1 min-h-10">
               {adding ? "Agregando..." : "Agregar al equipo"}
             </Button>
           </form>
         </Card>
+        ) : null}
 
         {loading ? (
           <Card className="text-sm font-semibold text-muted">Cargando equipo...</Card>
@@ -217,8 +252,8 @@ export default function TeamDatesPage() {
                 <div className="mb-3 flex items-center gap-3">
                   <ProfileAvatar name={row.name} photoUrl={row.photoUrl} size="sm" />
                   <p className={`font-semibold ${row.active ? "text-ink" : "text-muted line-through"}`}>{row.name}</p>
-                  {!row.active ? <span className="rounded-full bg-rose-100 px-2 py-0.5 text-xs font-bold text-rose-700">Desactivado</span> : null}
-                  {row.checklistOnly ? <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-bold text-blue-700 dark:bg-blue-950/50 dark:text-blue-200">Kiosko</span> : null}
+                  {!row.active ? <span className="rounded-full bg-orchid/10 px-2 py-0.5 text-xs font-bold text-orchid">Desactivado</span> : null}
+                  {row.checklistOnly ? <span className="rounded-full bg-volt/10 px-2 py-0.5 text-xs font-bold text-volt">Kiosko</span> : null}
                   {row.id !== currentUserId ? (
                     <div className="ml-auto flex items-center gap-1.5">
                       {!row.active ? (
@@ -227,7 +262,7 @@ export default function TeamDatesPage() {
                           onClick={() => void removeMember(row)}
                           disabled={deletingId === row.id}
                           aria-label={`Eliminar definitivamente a ${row.name}`}
-                          className="grid size-8 place-items-center rounded-full bg-rose-50 text-rose-700 transition hover:bg-rose-100 disabled:opacity-50"
+                          className="grid size-8 place-items-center rounded-full bg-orchid/10 text-orchid transition hover:bg-orchid/10 disabled:opacity-50"
                         >
                           {deletingId === row.id ? "..." : <Trash2 size={14} />}
                         </button>
@@ -237,7 +272,7 @@ export default function TeamDatesPage() {
                         onClick={() => void toggleChecklistOnly(row)}
                         disabled={togglingId === row.id}
                         title="Modo kiosko: solo checklist (celular de la tienda)"
-                        className={`min-h-8 rounded-full px-3 text-xs font-bold transition ${row.checklistOnly ? "bg-blue-100 text-blue-700 hover:bg-blue-200 dark:bg-blue-950/50 dark:text-blue-200" : "bg-panel text-muted hover:text-blue-700"} disabled:opacity-50`}
+                        className={`min-h-8 rounded-full px-3 text-xs font-bold transition ${row.checklistOnly ? "bg-volt/10 text-volt hover:bg-volt/10" : "bg-panel text-muted hover:text-volt"} disabled:opacity-50`}
                       >
                         {row.checklistOnly ? "Quitar kiosko" : "Kiosko"}
                       </button>
@@ -245,7 +280,7 @@ export default function TeamDatesPage() {
                         type="button"
                         onClick={() => void toggleActive(row)}
                         disabled={togglingId === row.id}
-                        className={`min-h-8 rounded-full px-3 text-xs font-bold transition ${row.active ? "bg-rose-50 text-rose-700 hover:bg-rose-100" : "bg-emerald-50 text-emerald-700 hover:bg-emerald-100"} disabled:opacity-50`}
+                        className={`min-h-8 rounded-full px-3 text-xs font-bold transition ${row.active ? "bg-orchid/10 text-orchid hover:bg-orchid/10" : "bg-mint/10 text-mint hover:bg-mint/10"} disabled:opacity-50`}
                       >
                         {togglingId === row.id ? "..." : row.active ? "Desactivar" : "Activar"}
                       </button>
@@ -275,7 +310,7 @@ export default function TeamDatesPage() {
                   </label>
                   {/* El saldo que de verdad manda. Se muestra aquí para que no se
                       confunda con el campo de arriba, que es solo el punto de partida. */}
-                  <div className="col-span-2 rounded-lg bg-surface-2 px-3 py-2">
+                  <div className="col-span-2 rounded-lg bg-panel px-3 py-2">
                     <div className="flex items-baseline justify-between">
                       <span className="text-xs font-bold text-muted">Vacaciones disponibles hoy</span>
                       <span className="text-lg font-semibold">{row.vacationAvailable} {row.vacationAvailable === 1 ? "día" : "días"}</span>
@@ -289,7 +324,7 @@ export default function TeamDatesPage() {
                     {/* Se avisan aparte para que no parezca que el saldo "no baja":
                         un día programado todavía no se descuenta. */}
                     {row.vacationPlanned > 0 ? (
-                      <p className="mt-1 text-xs font-semibold text-amber-700 dark:text-amber-400">
+                      <p className="mt-1 text-xs font-semibold text-ember">
                         {row.vacationPlanned} {row.vacationPlanned === 1 ? "día programado" : "días programados"} en Horarios · se descuentan al pasar
                       </p>
                     ) : null}
@@ -299,7 +334,7 @@ export default function TeamDatesPage() {
                   <Button type="button" variant="primary" onClick={() => void save(row)} disabled={savingId === row.id} className="min-h-10 px-4">
                     {savingId === row.id ? "Guardando..." : "Guardar"}
                   </Button>
-                  {savedId === row.id ? <span className="flex items-center gap-1 text-sm font-semibold text-emerald-700"><CheckCircle2 size={15} />Guardado</span> : null}
+                  {savedId === row.id ? <span className="flex items-center gap-1 text-sm font-semibold text-mint"><CheckCircle2 size={15} />Guardado</span> : null}
                 </div>
                 {row.id !== currentUserId ? <PinSetter userId={row.id} name={row.name} /> : null}
                 <EmailSetter userId={row.id} name={row.name} />
@@ -355,14 +390,14 @@ function PinSetter({ userId, name }: { userId: string; name: string }) {
           inputMode="numeric"
           maxLength={4}
           placeholder="4 dígitos"
-          className="min-h-11 w-28 rounded-2xl border border-line bg-panel px-3 text-center text-sm font-bold tracking-[0.3em] text-ink outline-none focus:border-volt"
+          className="min-h-11 w-28 rounded-2xl border border-line bg-panel px-3 text-center text-sm font-bold tracking-[0.3em] text-ink outline-hidden focus:border-volt"
         />
         <Button type="button" variant="primary" onClick={() => void save()} disabled={busy || pin.length !== 4} className="min-h-10 px-4">
           {busy ? "..." : "Configurar PIN"}
         </Button>
-        {done ? <span className="flex items-center gap-1 text-sm font-semibold text-emerald-700"><CheckCircle2 size={15} />Listo</span> : null}
+        {done ? <span className="flex items-center gap-1 text-sm font-semibold text-mint"><CheckCircle2 size={15} />Listo</span> : null}
       </div>
-      {error ? <p className="mt-1 text-xs font-semibold text-rose-600">{error}</p> : null}
+      {error ? <p className="mt-1 text-xs font-semibold text-orchid">{error}</p> : null}
     </div>
   );
 }
@@ -412,14 +447,14 @@ function EmailSetter({ userId, name }: { userId: string; name: string }) {
           type="email"
           inputMode="email"
           placeholder="correo@ejemplo.com"
-          className="min-h-11 flex-1 rounded-2xl border border-line bg-panel px-3 text-sm font-bold text-ink outline-none focus:border-volt"
+          className="min-h-11 flex-1 rounded-2xl border border-line bg-panel px-3 text-sm font-bold text-ink outline-hidden focus:border-volt"
         />
         <Button type="button" variant="primary" onClick={() => void save()} disabled={busy || !email.trim()} className="min-h-10 px-4">
           {busy ? "..." : "Guardar"}
         </Button>
-        {done ? <span className="flex items-center gap-1 text-sm font-semibold text-emerald-700"><CheckCircle2 size={15} />Listo</span> : null}
+        {done ? <span className="flex items-center gap-1 text-sm font-semibold text-mint"><CheckCircle2 size={15} />Listo</span> : null}
       </div>
-      {error ? <p className="mt-1 text-xs font-semibold text-rose-600">{error}</p> : null}
+      {error ? <p className="mt-1 text-xs font-semibold text-orchid">{error}</p> : null}
     </div>
   );
 }

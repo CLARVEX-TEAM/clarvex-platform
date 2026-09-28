@@ -337,7 +337,7 @@ export default function DiagnosticoPush() {
             <span className="text-sm text-muted">{l.que}</span>
             <span
               className={`text-right text-sm font-semibold ${
-                l.bien === null ? "text-muted" : l.bien ? "text-emerald-500" : "text-red-500"
+                l.bien === null ? "text-muted" : l.bien ? "text-mint" : "text-orchid"
               }`}
             >
               {l.valor}
@@ -366,7 +366,7 @@ export default function DiagnosticoPush() {
 
       <button
         onClick={() => void probarIdentidad()}
-        className="mt-6 w-full rounded-xl bg-volt px-4 py-3 text-sm font-semibold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-volt focus-visible:ring-offset-2"
+        className="mt-6 w-full rounded-xl bg-volt px-4 py-3 text-sm font-semibold text-white focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-volt focus-visible:ring-offset-2"
       >
         Verificar identidad del dispositivo
       </button>
@@ -374,14 +374,14 @@ export default function DiagnosticoPush() {
       <div className="mt-3 grid gap-3 sm:grid-cols-2">
         <button
           onClick={() => void probarCandado()}
-          className="min-h-12 rounded-xl border border-line px-4 py-3 text-sm font-semibold text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-volt focus-visible:ring-offset-2"
+          className="min-h-12 rounded-xl border border-line px-4 py-3 text-sm font-semibold text-ink focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-volt focus-visible:ring-offset-2"
         >
           Probar candado
         </button>
 
         <button
           onClick={() => void probar()}
-          className="min-h-12 rounded-xl border border-line px-4 py-3 text-sm font-semibold text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-volt focus-visible:ring-offset-2"
+          className="min-h-12 rounded-xl border border-line px-4 py-3 text-sm font-semibold text-ink focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-volt focus-visible:ring-offset-2"
         >
           Probar notificaciones
         </button>

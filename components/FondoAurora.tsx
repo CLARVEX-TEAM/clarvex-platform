@@ -15,7 +15,7 @@
 export function FondoAurora() {
   return (
     <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
-      <div className="aurora-mancha absolute -inset-[40%]" />
+      <div className="aurora-mancha absolute inset-[-40%]" />
     </div>
   );
 }

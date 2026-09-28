@@ -24,7 +24,7 @@ export function DotPattern({ className }: { className?: string }) {
         zIndex: 0,
         pointerEvents: "none",
         backgroundImage:
-          "radial-gradient(circle at 1px 1px, rgb(var(--color-ink) / 0.10) 1px, transparent 0)",
+          "radial-gradient(circle at 1px 1px, rgb(var(--ch-ink) / 0.10) 1px, transparent 0)",
         backgroundSize: "22px 22px",
         maskImage: "radial-gradient(ellipse 80% 60% at 50% 0%, #000 35%, transparent 75%)",
         WebkitMaskImage: "radial-gradient(ellipse 80% 60% at 50% 0%, #000 35%, transparent 75%)"

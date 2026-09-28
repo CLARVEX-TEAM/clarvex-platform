@@ -42,7 +42,7 @@ export function HomeHeader({ name, role, photoUrl, storeName, lastUpdated, onLog
   }, [pathname]);
 
   return (
-    <header className="pt-safe sticky top-[var(--matchday-offset,0px)] z-20 border-b border-line bg-void/85 px-4 pb-3 backdrop-blur-xl" style={{ ["--pt-safe-base" as string]: "0.75rem" }}>
+    <header className="pt-safe sticky top-(--matchday-offset,0px) z-20 border-b border-line bg-void/85 px-4 pb-3 backdrop-blur-xl" style={{ ["--pt-safe-base" as string]: "0.75rem" }}>
       <div className="mx-auto flex max-w-md items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
           <Link href="/perfil" aria-label="Mi perfil" className="shrink-0 transition active:scale-95">
@@ -50,14 +50,14 @@ export function HomeHeader({ name, role, photoUrl, storeName, lastUpdated, onLog
               {photoSrc(photoUrl) ? (
                 <Image src={photoSrc(photoUrl)!} alt={name} fill sizes="44px" className="object-cover" unoptimized />
               ) : (
-                <span className="grid size-full place-items-center rounded-full bg-gradient-to-b from-slate-700 to-slate-900 text-sm font-semibold text-white">
+                <span className="grid size-full place-items-center rounded-full bg-linear-to-b from-slate-700 to-slate-900 text-sm font-semibold text-white">
                   {firstName.slice(0, 2).toUpperCase()}
                 </span>
               )}
             </div>
           </Link>
           <div className="min-w-0">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-muted">{timeGreeting()}</p>
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-muted">{timeGreeting()}</p>
             <h1 className="text-[1.05rem] font-semibold leading-tight tracking-[-0.02em] text-ink">
               {firstName}
             </h1>
@@ -76,7 +76,7 @@ export function HomeHeader({ name, role, photoUrl, storeName, lastUpdated, onLog
           >
             <Bell size={16} />
             {unreadCount > 0 && (
-              <span className="absolute -right-0.5 -top-0.5 grid min-w-4 place-items-center rounded-full bg-rose-500 px-1 text-[8.5px] font-semibold leading-4 text-white">
+              <span className="absolute -right-0.5 -top-0.5 grid min-w-4 place-items-center rounded-full bg-orchid px-1 text-[8.5px] font-semibold leading-4 text-white">
                 {unreadCount > 99 ? "99+" : unreadCount}
               </span>
             )}

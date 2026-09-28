@@ -7,6 +7,7 @@ import { getSession } from "@/lib/auth";
 import type { User } from "@/lib/types";
 import { AppFrame, AppHeader, Button, Card } from "@/components/ui";
 import { cn } from "@/lib/utils";
+import { SelectorChips } from "@/components/ui/SelectorChips";
 
 type Item = { id: string; key: string; section: "APERTURA" | "CIERRE"; kind: "check" | "scan"; label: string; sortOrder: number };
 const SECTIONS: { id: "APERTURA" | "CIERRE"; label: string }[] = [
@@ -117,7 +118,7 @@ export default function ChecklistConfigPage() {
     <>
       <AppHeader title="Editar checklist" subtitle="Puntos de apertura y cierre" backHref="/checklist" />
       <AppFrame>
-        {error ? <Card className="mb-3 text-sm font-semibold text-rose-700">{error}</Card> : null}
+        {error ? <Card className="mb-3 text-sm font-semibold text-orchid">{error}</Card> : null}
         {loading ? (
           <Card className="text-sm font-semibold text-muted">Cargando…</Card>
         ) : (
@@ -163,7 +164,7 @@ function ItemRow({ item, canUp, canDown, onRename, onRemove, onMove }: {
   const changed = label.trim() !== item.label && label.trim().length >= 2;
   return (
     <div className="flex items-center gap-2 py-2.5">
-      <span className={cn("grid size-7 shrink-0 place-items-center rounded-lg", item.kind === "scan" ? "bg-blue-100 text-blue-700 dark:bg-blue-950/50 dark:text-blue-200" : "bg-panel text-muted")}>
+      <span className={cn("grid size-7 shrink-0 place-items-center rounded-lg", item.kind === "scan" ? "bg-volt/10 text-volt" : "bg-panel text-muted")}>
         {item.kind === "scan" ? <FileText size={14} /> : <ListChecks size={14} />}
       </span>
       <input
@@ -171,14 +172,14 @@ function ItemRow({ item, canUp, canDown, onRename, onRemove, onMove }: {
         onChange={(event) => setLabel(event.target.value)}
         onBlur={() => { if (changed) onRename(label.trim()); }}
         maxLength={120}
-        className="min-w-0 flex-1 rounded-lg border border-transparent bg-transparent px-1 py-1 text-sm font-bold text-ink outline-none focus:border-line"
+        className="min-w-0 flex-1 rounded-lg border border-transparent bg-transparent px-1 py-1 text-sm font-bold text-ink outline-hidden focus:border-line"
       />
       {changed ? <button type="button" onClick={() => onRename(label.trim())} className="shrink-0 rounded-lg bg-volt px-2 py-1 text-[11px] font-semibold text-white">Guardar</button> : null}
       <div className="flex shrink-0 flex-col">
         <button type="button" onClick={() => onMove(-1)} disabled={!canUp} aria-label="Subir" className="text-muted disabled:opacity-30"><ChevronUp size={16} /></button>
         <button type="button" onClick={() => onMove(1)} disabled={!canDown} aria-label="Bajar" className="text-muted disabled:opacity-30"><ChevronDown size={16} /></button>
       </div>
-      <button type="button" onClick={onRemove} aria-label="Quitar" className="grid size-8 shrink-0 place-items-center rounded-full text-rose-600 transition hover:bg-rose-50"><Trash2 size={14} /></button>
+      <button type="button" onClick={onRemove} aria-label="Quitar" className="grid size-8 shrink-0 place-items-center rounded-full text-orchid transition hover:bg-orchid/10"><Trash2 size={14} /></button>
     </div>
   );
 }
@@ -198,12 +199,21 @@ function AddItem({ section, busy, onAdd }: {
           onChange={(event) => setLabel(event.target.value)}
           placeholder="Nombre del punto"
           maxLength={120}
-          className="min-h-10 min-w-0 flex-1 rounded-2xl border border-line bg-panel px-3 text-sm font-bold text-ink outline-none focus:border-volt"
+          className="min-h-10 min-w-0 flex-1 rounded-2xl border border-line bg-panel px-3 text-sm font-bold text-ink outline-hidden focus:border-volt"
         />
-        <select value={kind} onChange={(event) => setKind(event.target.value as "check" | "scan")} className="min-h-10 rounded-2xl border border-line bg-panel px-2 text-sm font-bold text-ink outline-none focus:border-volt">
-          <option value="check">Tarea</option>
-          <option value="scan">Escaneo</option>
-        </select>
+        {/* ⚠️ Sale del renglon del nombre y se pone DEBAJO. Con el campo de
+            texto, dos pastillas y el boton en la misma fila, en un telefono de
+            412 px al campo le quedaban unos 90 px: no cabia ni «Apertura». */}
+        <SelectorChips
+          ariaLabel="Tipo de punto"
+          value={kind}
+          onChange={setKind}
+          className="order-last basis-full"
+          options={[
+            { value: "check", label: "Tarea" },
+            { value: "scan", label: "Escaneo" }
+          ]}
+        />
         <Button
           type="button"
           variant="primary"

@@ -344,7 +344,7 @@ export function DesktopLock({ onUnlock }: { onUnlock: (user: User) => void }) {
               transition={{ duration: 0.34, ease: [0.22, 1, 0.36, 1] }}
               className="w-full max-w-sm"
             >
-              <div className="rounded-[28px] border border-white/10 bg-white/[0.04] p-8 text-center shadow-[0_30px_80px_rgba(0,0,0,0.5)] backdrop-blur-xl">
+              <div className="rounded-[28px] border border-white/10 bg-white/4 p-8 text-center shadow-[0_30px_80px_rgba(0,0,0,0.5)] backdrop-blur-xl">
                 <div className="mx-auto mb-4 size-[88px] overflow-hidden rounded-3xl ring-2 ring-blue-400/60 shadow-[0_0_40px_rgba(37,99,235,0.4)]">
                   <Avatar name={selected.name} photoUrl={selected.photoUrl} size={88} />
                 </div>
@@ -390,7 +390,7 @@ export function DesktopLock({ onUnlock }: { onUnlock: (user: User) => void }) {
               transition={{ duration: 0.34, ease: [0.22, 1, 0.36, 1] }}
               className="w-full max-w-sm"
             >
-              <div className="rounded-[28px] border border-white/10 bg-white/[0.04] p-8 shadow-[0_30px_80px_rgba(0,0,0,0.5)] backdrop-blur-xl">
+              <div className="rounded-[28px] border border-white/10 bg-white/4 p-8 shadow-[0_30px_80px_rgba(0,0,0,0.5)] backdrop-blur-xl">
                 <h2 className="text-2xl font-semibold">Agregar perfil</h2>
                 <p className="mt-2 text-sm text-white/50">Ingresa tu número de empleado</p>
                 <form className="mt-6 space-y-4" onSubmit={submitEmployee}>
@@ -404,7 +404,7 @@ export function DesktopLock({ onUnlock }: { onUnlock: (user: User) => void }) {
                       setError("");
                     }}
                     placeholder="ej. 81893"
-                    className="min-h-14 w-full rounded-2xl border border-white/15 bg-white/5 px-4 text-center text-xl font-semibold tracking-[0.18em] text-white outline-none transition placeholder:font-normal placeholder:tracking-normal placeholder:text-white/30 focus:border-blue-400 focus:ring-4 focus:ring-blue-500/25"
+                    className="min-h-14 w-full rounded-2xl border border-white/15 bg-white/5 px-4 text-center text-xl font-semibold tracking-[0.18em] text-white outline-hidden transition placeholder:font-normal placeholder:tracking-normal placeholder:text-white/30 focus:border-blue-400 focus:ring-4 focus:ring-blue-500/25"
                   />
                   {error ? <p className="text-sm font-semibold text-rose-400">{error}</p> : null}
                   <button

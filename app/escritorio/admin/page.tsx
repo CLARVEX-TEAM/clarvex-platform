@@ -304,7 +304,7 @@ export default function EscritorioAdmin() {
         <p role="alert" className="rounded-xl border border-danger/30 bg-danger/[0.07] px-4 py-3 text-ui text-danger">{error}</p>
       ) : null}
       {created ? (
-        <p role="status" className="flex items-start gap-2 rounded-xl border border-ok/30 bg-ok/[0.08] px-4 py-3 text-ui text-ok">
+        <p role="status" className="flex items-start gap-2 rounded-xl border border-ok/30 bg-ok/8 px-4 py-3 text-ui text-ok">
           <CheckCircle2 size={16} className="mt-0.5 shrink-0" />{created}
         </p>
       ) : null}
@@ -477,7 +477,7 @@ export default function EscritorioAdmin() {
                                             {pinLink.minutes > 0 ? ` Caduca en ${pinLink.minutes} minutos y solo sirve una vez.` : ""}
                                           </p>
                                           <div className="mt-1.5 flex items-center gap-2">
-                                            <code className="min-w-0 flex-1 truncate rounded bg-surface-3 px-2 py-1.5 text-caption text-ink">{pinLink.url}</code>
+                                            <code className="min-w-0 flex-1 truncate rounded-sm bg-surface-3 px-2 py-1.5 text-caption text-ink">{pinLink.url}</code>
                                             <button
                                               type="button"
                                               onClick={() => void copyPinLink(pinLink.url)}

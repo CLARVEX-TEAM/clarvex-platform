@@ -36,7 +36,7 @@ export function PaceCard({ sales, goal, userId }: { sales: number; goal: number;
     return (
       <Card>
         <div className="flex items-center gap-3">
-          <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-blue-50 text-volt dark:bg-[#1a2540]"><Gauge size={22} /></span>
+          <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-volt/10 text-volt"><Gauge size={22} /></span>
           <div>
             <p className="text-[11px] font-bold uppercase tracking-[0.13em] text-muted">Ritmo del día</p>
             <p className="mt-0.5 text-sm font-bold text-ink">Tu turno aún no empieza. ¡Prepárate! 💪</p>
@@ -63,7 +63,7 @@ export function PaceCard({ sales, goal, userId }: { sales: number; goal: number;
                 : `Acelera · proyectas ${pace.projectedAchievement}% de tu meta`}
           </p>
         </div>
-        <span className={`grid size-11 shrink-0 place-items-center rounded-2xl ${pace.onTrack ? "bg-emerald-50 text-emerald-600 dark:bg-[#10301f]" : "bg-amber-50 text-amber-600 dark:bg-[#2a2410]"}`}>
+        <span className={`grid size-11 shrink-0 place-items-center rounded-2xl ${pace.onTrack ? "bg-mint/10 text-mint" : "bg-ember/10 text-ember"}`}>
           {pace.onTrack ? <TrendingUp size={22} /> : <TrendingDown size={22} />}
         </span>
       </div>

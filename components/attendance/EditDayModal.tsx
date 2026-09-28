@@ -5,6 +5,7 @@ import type { AttendanceStatus } from "@/lib/attendance";
 import { dayLabel, STATUS_LABEL, type AttendanceRecord } from "@/lib/attendance-view";
 import { Button, Card } from "@/components/ui";
 import { cn } from "@/lib/utils";
+import { AppSelect } from "@/components/forms";
 
 export const EDITABLE_STATUSES: AttendanceStatus[] = ["ON_TIME", "LATE", "ABSENT", "EXCUSED", "REST", "VACATION", "PAID_DAY", "INVENTORY"];
 
@@ -49,20 +50,22 @@ export function EditDayModal({ record, name, onClose, onSaved }: { record: Atten
     }
   }
 
-  const inputClass = "min-h-11 w-full rounded-2xl border border-line bg-panel px-3 text-sm font-bold text-ink outline-none focus:border-volt";
+  const inputClass = "min-h-11 w-full rounded-2xl border border-line bg-panel px-3 text-sm font-bold text-ink outline-hidden focus:border-volt";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm p-4 sm:items-center" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-xs p-4 sm:items-center" onClick={onClose}>
       <Card className="w-full max-w-sm p-4" onClick={(event) => event.stopPropagation()}>
         <p className="text-sm font-semibold text-ink">Corregir día</p>
         <p className="mb-3 text-xs font-semibold text-muted">{name} · {dayLabel(record.date)}</p>
 
-        <label className="mb-3 grid gap-1">
-          <span className="text-xs font-bold text-muted">Estatus</span>
-          <select value={status} onChange={(event) => setStatus(event.target.value as AttendanceStatus)} className={inputClass}>
-            {EDITABLE_STATUSES.map((value) => <option key={value} value={value}>{STATUS_LABEL[value]}</option>)}
-          </select>
-        </label>
+        <div className="mb-3">
+          <AppSelect
+            label="Estatus"
+            value={status}
+            onChange={(valor) => setStatus(valor as AttendanceStatus)}
+            options={EDITABLE_STATUSES.map((value) => ({ value, label: STATUS_LABEL[value] ?? value }))}
+          />
+        </div>
 
         <div className="mb-3 grid grid-cols-2 gap-2">
           <label className="grid gap-1">
@@ -80,7 +83,7 @@ export function EditDayModal({ record, name, onClose, onSaved }: { record: Atten
           <input value={note} onChange={(event) => setNote(event.target.value)} maxLength={300} placeholder="Ej. no marcó salida en el POS" className={inputClass} />
         </label>
 
-        {error ? <p className="mb-2 text-xs font-semibold text-rose-600">{error}</p> : null}
+        {error ? <p className="mb-2 text-xs font-semibold text-orchid">{error}</p> : null}
 
         <div className="flex gap-2">
           <Button type="button" variant="ghost" onClick={onClose} className="flex-1">Cancelar</Button>

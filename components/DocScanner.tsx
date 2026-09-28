@@ -145,7 +145,7 @@ export function DocScanner({ file, onDone, onCancel, lite = false }: { file: Fil
     : "";
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-black/90 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex flex-col bg-black/90 backdrop-blur-xs">
       <div className="flex items-center justify-between px-4 pb-1 pt-3 text-white">
         <button type="button" onClick={onCancel} className="flex items-center gap-1.5 text-sm font-bold"><X size={18} />Cancelar</button>
         <p className="text-sm font-semibold">Revisa el recorte</p>
@@ -193,7 +193,7 @@ export function DocScanner({ file, onDone, onCancel, lite = false }: { file: Fil
         )}
       </div>
 
-      {error ? <p className="px-4 pb-1 text-center text-xs font-semibold text-rose-300">{error}</p> : null}
+      {error ? <p className="px-4 pb-1 text-center text-xs font-semibold text-orchid">{error}</p> : null}
 
       <div className="flex justify-center px-4 pt-1">
         <div className="inline-flex rounded-full border border-white/20 p-0.5 text-xs font-semibold">

@@ -277,7 +277,7 @@ export function CandadoHuella() {
   return (
     <div
       data-transient
-      className="candado-pantalla fixed inset-0 z-[100] flex-col items-center justify-center gap-6 bg-panel px-8"
+      className="candado-pantalla fixed inset-0 z-100 flex-col items-center justify-center gap-6 bg-panel px-8"
     >
       <span className="grid size-20 place-items-center rounded-full bg-volt/12 text-volt">
         {estado === "pidiendo" ? <Fingerprint size={36} /> : <Lock size={32} />}
@@ -288,7 +288,7 @@ export function CandadoHuella() {
         <p className="mt-1 text-sm text-muted">
           {estado === "pidiendo" ? "Esperando tu huella…" : "Confirma que eres tú para continuar"}
         </p>
-        {estado === "rechazado" && motivo && <p className="mt-2 text-xs text-rose-500">{motivo}</p>}
+        {estado === "rechazado" && motivo && <p className="mt-2 text-xs text-orchid">{motivo}</p>}
       </div>
 
       {estado !== "pidiendo" && (

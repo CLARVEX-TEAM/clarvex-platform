@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Geist } from "next/font/google";
 import "./globals.css";
+import "./papel.css";
 import { PwaRegister } from "@/components/PwaRegister";
 import { ActualizacionApp } from "@/components/ActualizacionApp";
 import { CandadoHuella } from "@/components/CandadoHuella";
@@ -113,12 +114,41 @@ window.__clarvexArranque={puente:!!c,nativo:nativo,candado:encendido};
 if(encendido)document.documentElement.dataset.candado='1';
 }catch(e){}})();`;
 
+/**
+ * Marca el documento como superficie «Papel» ANTES del primer pintado, y solo
+ * dentro de la APK.
+ *
+ * ⚠️ **Va aquí y no en cada pantalla.** Puesta solo en «Mi día», la paleta se
+ * cortaba al navegar: una pantalla en papel y la siguiente en la de antes, con
+ * la barra de abajo --que vive en este layout-- sin decidirse por ninguna. Se
+ * ve peor que no haberla cambiado.
+ *
+ * ⚠️ **Y va en un guion en línea, no en un efecto.** El color no puede decidirse
+ * después del primer pintado: se vería la app entera cambiar de fondo al
+ * cargar, que es el mismo parpadeo que ya resolvieron el tema y el candado. Y
+ * como el atributo lo pone el DOM y no React, no hay hidratación que romper.
+ *
+ * ⚠️ **Mira el AGENTE, no `window.Capacitor`.** Es la diferencia que costó el
+ * candado: el puente de Capacitor se inyecta al arrancar el documento y puede
+ * llegar DESPUÉS de este guion --por eso `CANDADO_SCRIPT`, aquí al lado, no se
+ * fía de él--. El User-Agent lo fija el WebView antes de cargar nada, así que
+ * está disponible desde la primera línea de JavaScript.
+ *
+ * ⚠️ **Prefijo, nunca la versión completa.** Cada APK escribe la suya
+ * --`ClarvexApp/1.6`, `1.8`--; buscar una exacta dejaría con la paleta vieja
+ * justo a los teléfonos sin actualizar.
+ */
+const PAPEL_SCRIPT = `(function(){try{
+if(navigator.userAgent.indexOf('ClarvexApp/')>=0){document.documentElement.dataset.surface='papel';}
+}catch(e){}})();`;
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="es" suppressHydrationWarning className={geist.variable}>
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
         <script dangerouslySetInnerHTML={{ __html: CANDADO_SCRIPT }} />
+        <script dangerouslySetInnerHTML={{ __html: PAPEL_SCRIPT }} />
       </head>
       <body>
         <ThemeProvider>

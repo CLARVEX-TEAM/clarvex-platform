@@ -52,7 +52,7 @@ function Trozos({
               title={t.url}
               className={cn(
                 "underline underline-offset-2 break-all",
-                claro ? "text-blue-700 hover:text-blue-900" : "text-blue-300 hover:text-blue-200"
+                claro ? "text-volt hover:text-volt" : "text-volt hover:text-volt"
               )}
             >
               {t.texto}
@@ -68,7 +68,7 @@ function Trozos({
             <code
               key={i}
               className={cn(
-                "rounded px-1 py-0.5 font-mono text-[0.85em]",
+                "rounded-sm px-1 py-0.5 font-mono text-[0.85em]",
                 claro ? "bg-white/20" : "bg-black/8 dark:bg-white/10"
               )}
             >

@@ -52,7 +52,7 @@ function MessageBody({ msg, isMe, onImageClick }: { msg: Message; isMe: boolean;
   const sticker = decodeStickerMsg(msg.body);
   if (sticker) {
     return (
-      <div className={cn("flex flex-col items-center gap-1 rounded-3xl bg-gradient-to-br p-4", sticker.bg)}>
+      <div className={cn("flex flex-col items-center gap-1 rounded-3xl bg-linear-to-br p-4", sticker.bg)}>
         <span className="text-5xl leading-none">{sticker.emoji}</span>
         <span className="text-xs font-semibold text-ink">{sticker.label}</span>
       </div>
@@ -82,7 +82,7 @@ function MessageBody({ msg, isMe, onImageClick }: { msg: Message; isMe: boolean;
     return <span className="text-5xl leading-none">{msg.body}</span>;
   }
   return (
-    <div className={cn("rounded-2xl px-4 py-2.5 text-sm leading-relaxed shadow-sm", isMe ? "rounded-br-sm bg-accent text-on-accent" : "rounded-bl-sm bg-panel text-ink")}>
+    <div className={cn("rounded-2xl px-4 py-2.5 text-sm leading-relaxed shadow-xs", isMe ? "rounded-br-sm bg-accent text-on-accent" : "rounded-bl-sm bg-panel text-ink")}>
       {msg.body}
     </div>
   );
@@ -306,7 +306,7 @@ export default function EscritorioChat() {
                       <ProfileAvatar name={room.other?.name ?? "?"} photoUrl={room.other?.photoUrl} size="sm" className="size-10 rounded-2xl" />
                     )}
                     {room.type === "DIRECT" && room.other?.online && (
-                      <span className="absolute -bottom-0.5 -right-0.5 size-3 rounded-full border-2 border-[rgb(var(--color-card))] bg-ok" />
+                      <span className="absolute -bottom-0.5 -right-0.5 size-3 rounded-full border-2 border-[rgb(var(--ch-card))] bg-ok" />
                     )}
                     {room.unreadCount > 0 && (
                       <span className="absolute -right-1 -top-1 grid size-4 place-items-center rounded-full bg-accent text-[9px] font-semibold text-on-accent">
@@ -386,7 +386,7 @@ export default function EscritorioChat() {
                   />
                 ) : null}
                 {roomInfo?.type === "DIRECT" && otherMember?.online && (
-                  <span className="absolute -bottom-0.5 -right-0.5 size-2.5 rounded-full border-2 border-[rgb(var(--color-card))] bg-ok" />
+                  <span className="absolute -bottom-0.5 -right-0.5 size-2.5 rounded-full border-2 border-[rgb(var(--ch-card))] bg-ok" />
                 )}
               </div>
               <div>
@@ -416,7 +416,7 @@ export default function EscritorioChat() {
                       {showDay && (
                         <div className="my-3 flex items-center gap-2">
                           <div className="h-px flex-1 bg-line/50" />
-                          <span className="rounded-full bg-panel px-3 py-1 text-[11px] font-bold text-muted shadow-sm">
+                          <span className="rounded-full bg-panel px-3 py-1 text-[11px] font-bold text-muted shadow-xs">
                             {dayLabel(msg.createdAt)}
                           </span>
                           <div className="h-px flex-1 bg-line/50" />
@@ -535,7 +535,7 @@ export default function EscritorioChat() {
                   placeholder="Escribe un mensaje…"
                   rows={1}
                   maxLength={1000}
-                  className="flex-1 resize-none rounded-2xl border border-line bg-panel px-4 py-2.5 text-sm font-semibold text-ink outline-none focus:border-accent"
+                  className="flex-1 resize-none rounded-2xl border border-line bg-panel px-4 py-2.5 text-sm font-semibold text-ink outline-hidden focus:border-accent"
                   style={{ maxHeight: "120px", overflowY: "auto" }}
                 />
                 <button
@@ -554,7 +554,7 @@ export default function EscritorioChat() {
 
       {/* Menú de acciones del mensaje */}
       {menuMsg && (
-        <div className="fixed inset-0 z-[60] grid place-items-center bg-black/40 p-4" onClick={() => setMenuMsg(null)}>
+        <div className="fixed inset-0 z-60 grid place-items-center bg-black/40 p-4" onClick={() => setMenuMsg(null)}>
           <div className="w-full max-w-xs desk-floating rounded-2xl p-2" onClick={(e) => e.stopPropagation()}>
             {!menuMsg.deleted && (
               <ReactionBar onPick={(e) => void reactToMessage(menuMsg, e)} />
@@ -597,7 +597,7 @@ export default function EscritorioChat() {
 
       {/* Visor de imagen a pantalla completa */}
       {lightbox && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/95 p-6" onClick={() => setLightbox(null)}>
+        <div className="fixed inset-0 z-70 flex items-center justify-center bg-black/95 p-6" onClick={() => setLightbox(null)}>
           <button
             type="button"
             onClick={() => setLightbox(null)}

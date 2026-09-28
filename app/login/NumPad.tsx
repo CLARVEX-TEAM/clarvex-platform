@@ -18,10 +18,10 @@ export function NumPad({ onKey }: { onKey: (k: string) => void }) {
               e.preventDefault();
               onKey(k);
             }}
-            className={`h-[4.25rem] select-none rounded-2xl text-xl font-bold transition-colors ${
+            className={`h-17 select-none rounded-2xl text-xl font-bold transition-colors ${
               k === "del"
                 ? "flex items-center justify-center text-slate-400 dark:text-slate-500"
-                : "bg-white/80 text-slate-900 shadow-sm backdrop-blur-sm dark:bg-slate-800/80 dark:text-white"
+                : "bg-white/80 text-slate-900 shadow-xs backdrop-blur-xs dark:bg-slate-800/80 dark:text-white"
             }`}
           >
             {k === "del" ? <Delete size={22} /> : k}

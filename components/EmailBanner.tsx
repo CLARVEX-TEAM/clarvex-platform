@@ -92,14 +92,14 @@ export function EmailBanner() {
   if (!visible) return null;
 
   return (
-    <div className="pointer-events-none fixed inset-x-0 z-[190] flex justify-center px-3 bottom-[calc(84px+var(--safe-bottom))] lg:bottom-6 lg:justify-end lg:px-6">
+    <div className="pointer-events-none fixed inset-x-0 z-190 flex justify-center px-3 bottom-[calc(84px+var(--safe-bottom))] lg:bottom-6 lg:justify-end lg:px-6">
       {/* `desk-adopt`: el aviso vive en el layout raíz, fuera del subárbol
           [data-surface="desk"]. Sin esta clase se pintaría con la paleta del
           móvil encima del lienzo del escritorio (ver desktop.css). */}
       <div className="desk-adopt pointer-events-auto w-full max-w-md rounded-2xl border border-line bg-panel p-4 shadow-xl">
         {done ? (
           <div className="flex items-center gap-3">
-            <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-emerald-500/15 text-emerald-600">
+            <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-volt/10 text-volt">
               <Mail size={17} />
             </span>
             <div>
@@ -110,7 +110,7 @@ export function EmailBanner() {
         ) : (
           <>
             <div className="flex items-start gap-3">
-              <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-blue-500/15 text-blue-600">
+              <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-volt/15 text-volt">
                 <Mail size={17} />
               </span>
               <div className="min-w-0 flex-1">
@@ -143,15 +143,15 @@ export function EmailBanner() {
                   onKeyDown={(event) => {
                     if (event.key === "Enter") void save();
                   }}
-                  className="mb-2 w-full rounded-xl border border-line bg-void px-3 py-2.5 text-sm text-ink outline-none transition focus:border-blue-500"
+                  className="mb-2 w-full rounded-xl border border-line bg-void px-3 py-2.5 text-sm text-ink outline-hidden transition focus:border-volt/30"
                 />
-                {error ? <p className="mb-2 text-xs font-semibold text-rose-600">{error}</p> : null}
+                {error ? <p className="mb-2 text-xs font-semibold text-orchid">{error}</p> : null}
                 <div className="flex gap-2">
                   <button
                     type="button"
                     onClick={() => void save()}
                     disabled={busy}
-                    className="flex-1 rounded-xl bg-blue-600 px-3 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:opacity-60"
+                    className="flex-1 rounded-xl bg-volt px-3 py-2.5 text-sm font-semibold text-white transition hover:bg-volt/12 disabled:opacity-60"
                   >
                     {busy ? "Guardando…" : "Guardar mi correo"}
                   </button>
@@ -169,7 +169,7 @@ export function EmailBanner() {
                 <button
                   type="button"
                   onClick={() => setOpen(true)}
-                  className="flex-1 rounded-xl bg-blue-600 px-3 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700"
+                  className="flex-1 rounded-xl bg-volt px-3 py-2.5 text-sm font-semibold text-white transition hover:bg-volt/12"
                 >
                   Agregar mi correo
                 </button>

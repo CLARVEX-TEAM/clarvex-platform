@@ -27,12 +27,12 @@
 [data-surface="desk"],
 body:has([data-surface="desk"]) .desk-adopt {
   /* Remapeo de los tokens que ya consume Tailwind */
-  --color-void: 249 250 251;   /* oklch(0.985 0.002 263) — lienzo */
-  --color-panel: 244 245 248;  /* oklch(0.970 0.004 263) — fila elevada */
-  --color-card: 255 255 255;   /* superficie de tarjeta */
-  --color-line: 224 226 230;   /* oklch(0.912 0.006 263) */
-  --color-ink: 21 25 32;       /* oklch(0.212 0.016 263) — 16.90:1 sobre lienzo */
-  --color-muted: 99 104 114;   /* oklch(0.516 0.017 263) —  5.37:1 sobre lienzo */
+  --ch-void: 249 250 251;   /* oklch(0.985 0.002 263) — lienzo */
+  --ch-panel: 244 245 248;  /* oklch(0.970 0.004 263) — fila elevada */
+  --ch-card: 255 255 255;   /* superficie de tarjeta */
+  --ch-line: 224 226 230;   /* oklch(0.912 0.006 263) */
+  --ch-ink: 21 25 32;       /* oklch(0.212 0.016 263) — 16.90:1 sobre lienzo */
+  --ch-muted: 99 104 114;   /* oklch(0.516 0.017 263) —  5.37:1 sobre lienzo */
 
   /* Superficies compartidas de globals.css, realineadas al ámbito */
   --glass-border: #E0E2E6;
@@ -64,12 +64,12 @@ body:has([data-surface="desk"]) .desk-adopt {
    solo cambia la L. */
 .dark [data-surface="desk"],
 .dark body:has([data-surface="desk"]) .desk-adopt {
-  --color-void: 11 13 17;      /* oklch(0.160 0.008 263) — lienzo */
-  --color-panel: 26 29 33;     /* oklch(0.228 0.010 263) — fila elevada */
-  --color-card: 19 21 25;      /* oklch(0.196 0.009 263) — superficie */
-  --color-line: 44 47 53;      /* oklch(0.305 0.012 263) */
-  --color-ink: 241 242 245;    /* oklch(0.962 0.004 263) — 17.38:1 sobre lienzo */
-  --color-muted: 146 150 158;  /* oklch(0.672 0.013 263) —  6.53:1 sobre lienzo */
+  --ch-void: 11 13 17;      /* oklch(0.160 0.008 263) — lienzo */
+  --ch-panel: 26 29 33;     /* oklch(0.228 0.010 263) — fila elevada */
+  --ch-card: 19 21 25;      /* oklch(0.196 0.009 263) — superficie */
+  --ch-line: 44 47 53;      /* oklch(0.305 0.012 263) */
+  --ch-ink: 241 242 245;    /* oklch(0.962 0.004 263) — 17.38:1 sobre lienzo */
+  --ch-muted: 146 150 158;  /* oklch(0.672 0.013 263) —  6.53:1 sobre lienzo */
 
   --glass-border: #2C2F35;
   --glass: rgb(19 21 25 / 0.88);
@@ -134,8 +134,8 @@ body:has([data-surface="desk"]) .desk-adopt {
 
 /* ─── Base de la superficie ────────────────────────────────────────────────── */
 [data-surface="desk"] {
-  background: rgb(var(--color-void));
-  color: rgb(var(--color-ink));
+  background: rgb(var(--ch-void));
+  color: rgb(var(--ch-ink));
   /* Cifras alineadas en columna: obligatorio en tablas de venta. */
   font-variant-numeric: tabular-nums;
 }
@@ -179,7 +179,7 @@ body:has([data-surface="desk"]) .desk-adopt {
 /* ─── Regla divisoria: separa secciones sin encerrarlas en una tarjeta ─────── */
 [data-surface="desk"] .desk-rule {
   border: 0;
-  border-top: 1px solid rgb(var(--color-line));
+  border-top: 1px solid rgb(var(--ch-line));
   margin: 0;
 }
 
@@ -188,7 +188,7 @@ body:has([data-surface="desk"]) .desk-adopt {
   transition: background-color var(--dur-fast) ease;
 }
 [data-surface="desk"] .desk-row:hover {
-  background: rgb(var(--color-panel));
+  background: rgb(var(--ch-panel));
 }
 
 /* ─── Superficie flotante (paleta de comandos, popovers) ──────────────────── */
@@ -231,8 +231,8 @@ body:has([data-surface="desk"]) .dot-pattern {
   position: absolute;
   inset: 0;
   background-image:
-    linear-gradient(to right, rgb(var(--color-ink) / 0.07) 1px, transparent 1px),
-    linear-gradient(to bottom, rgb(var(--color-ink) / 0.07) 1px, transparent 1px);
+    linear-gradient(to right, rgb(var(--ch-ink) / 0.07) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(var(--ch-ink) / 0.07) 1px, transparent 1px);
   background-size: 56px 56px;
   mask-image: radial-gradient(ellipse 95% 75% at 50% 0%, #000 12%, transparent 78%);
   -webkit-mask-image: radial-gradient(ellipse 95% 75% at 50% 0%, #000 12%, transparent 78%);
@@ -427,7 +427,7 @@ body:has([data-surface="desk"]) .dot-pattern {
   border: 1px solid rgb(var(--desk-line-strong));
   border-radius: 1rem;
   background: rgb(var(--desk-surface-3));
-  color: rgb(var(--color-ink));
+  color: rgb(var(--ch-ink));
   box-shadow: var(--desk-elev-3);
   /* Anclada al tercio superior: es donde el ojo la busca. */
   margin: 12vh auto auto;

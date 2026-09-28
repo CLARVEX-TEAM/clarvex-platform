@@ -7,6 +7,7 @@ import { Button, Card, ProfileAvatar } from "@/components/ui";
 import { useToast } from "@/components/Toast";
 import { SWAP_STATUS_LABEL, SWAP_STATUS_TONE, type SwapStatus } from "@/lib/shift-swap";
 import { cn } from "@/lib/utils";
+import { AppSelect } from "@/components/forms";
 
 type Swap = {
   id: string;
@@ -135,25 +136,27 @@ export function ShiftSwaps({ myId }: { myId: string }) {
       </div>
 
       {open ? (
-        <div className="mt-3 grid gap-2 rounded-2xl bg-black/[0.03] p-3 dark:bg-white/[0.04]">
-          <label className="grid gap-1">
-            <span className="text-xs font-bold text-muted">Con quién</span>
-            <select value={targetId} onChange={(event) => setTargetId(event.target.value)} className="min-h-11 rounded-2xl border border-line bg-panel px-3 text-sm font-bold text-ink outline-none focus:border-volt">
-              <option value="">Elige un compañero…</option>
-              {others.map((mate) => <option key={mate.id} value={mate.id}>{mate.name}</option>)}
-            </select>
-          </label>
+        <div className="mt-3 grid gap-2 rounded-2xl bg-black/3 p-3 dark:bg-white/4">
+          {/* Se elige a una PERSONA, asi que va la hoja: nombres largos que
+              una pastilla cortaria, y tantos como tenga la tienda. */}
+          <AppSelect
+            label="Con quién"
+            placeholder="Elige un compañero…"
+            value={targetId}
+            onChange={setTargetId}
+            options={others.map((mate) => ({ value: mate.id, label: mate.name }))}
+          />
           <label className="grid gap-1">
             <span className="text-xs font-bold text-muted">Mi descanso que cedo</span>
-            <input type="date" value={myDate} onChange={(event) => setMyDate(event.target.value)} className="min-h-11 rounded-2xl border border-line bg-panel px-3 text-sm font-bold text-ink outline-none focus:border-volt" />
+            <input type="date" value={myDate} onChange={(event) => setMyDate(event.target.value)} className="min-h-11 rounded-2xl border border-line bg-panel px-3 text-sm font-bold text-ink outline-hidden focus:border-volt" />
           </label>
           <label className="grid gap-1">
             <span className="text-xs font-bold text-muted">Su descanso que pido</span>
-            <input type="date" value={theirDate} onChange={(event) => setTheirDate(event.target.value)} className="min-h-11 rounded-2xl border border-line bg-panel px-3 text-sm font-bold text-ink outline-none focus:border-volt" />
+            <input type="date" value={theirDate} onChange={(event) => setTheirDate(event.target.value)} className="min-h-11 rounded-2xl border border-line bg-panel px-3 text-sm font-bold text-ink outline-hidden focus:border-volt" />
           </label>
           <label className="grid gap-1">
             <span className="text-xs font-bold text-muted">Motivo (opcional)</span>
-            <input value={reason} onChange={(event) => setReason(event.target.value)} maxLength={300} className="min-h-11 rounded-2xl border border-line bg-panel px-3 text-sm font-semibold text-ink outline-none focus:border-volt" />
+            <input value={reason} onChange={(event) => setReason(event.target.value)} maxLength={300} className="min-h-11 rounded-2xl border border-line bg-panel px-3 text-sm font-semibold text-ink outline-hidden focus:border-volt" />
           </label>
           <Button type="button" variant="primary" onClick={() => void propose()} disabled={busy === "new"}>
             {busy === "new" ? "Enviando…" : "Enviar propuesta"}
@@ -190,7 +193,7 @@ export function ShiftSwaps({ myId }: { myId: string }) {
 
                 {/* Aprobado pero el Drive aún no lo refleja: se desmarca solo al sincronizar. */}
                 {swap.status === "APROBADO" && !swap.driveUpdated && canApprove ? (
-                  <p className="mt-1.5 rounded-xl bg-amber-50 px-2.5 py-1.5 text-[11px] font-bold text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
+                  <p className="mt-1.5 rounded-xl bg-ember/10 px-2.5 py-1.5 text-[11px] font-bold text-ember">
                     ⚠️ Falta actualizarlo en el Drive de Horarios. Se marca solo al sincronizar.
                   </p>
                 ) : null}

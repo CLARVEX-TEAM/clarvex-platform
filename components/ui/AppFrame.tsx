@@ -20,7 +20,7 @@ export function AppFrame({ children }: { children: React.ReactNode }) {
       transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
       // El hueco de abajo tiene que crecer junto con la barra: si solo sube la
       // barra, tapa el último renglón de cada pantalla.
-      className="mx-auto min-h-screen max-w-md px-4 pb-[calc(6rem+var(--safe-bottom))] pt-3"
+      className="mx-auto min-h-screen max-w-md px-4 pb-[calc(5rem+var(--safe-bottom))] pt-3"
     >
       {children}
       <AppCopyright />

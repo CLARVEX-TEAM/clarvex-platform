@@ -33,7 +33,7 @@ export function DeskRail({
   const roleLabel = user.role === "GERENTE" ? "Gerente" : user.role === "SUBGERENTE" ? "Subgerente" : "";
 
   return (
-    <div className="desk-rail fixed inset-y-0 left-0 z-[var(--z-rail)] w-[var(--desk-rail)]">
+    <div className="desk-rail fixed inset-y-0 left-0 z-(--z-rail) w-(--desk-rail)">
       <nav
         aria-label="Secciones del escritorio"
         // Translúcido + desenfoque: el rail flota sobre el fondo animado y deja
@@ -77,7 +77,7 @@ export function DeskRail({
             <Terminal size={18} className="shrink-0" />
             <span className="desk-rail-label flex min-w-0 flex-1 items-center justify-between gap-2">
               <span className="truncate text-ui">Buscar</span>
-              <kbd className="shrink-0 rounded border border-line bg-card px-1.5 py-0.5 text-caption font-medium text-muted">
+              <kbd className="shrink-0 rounded-sm border border-line bg-card px-1.5 py-0.5 text-caption font-medium text-muted">
                 Ctrl K
               </kbd>
             </span>

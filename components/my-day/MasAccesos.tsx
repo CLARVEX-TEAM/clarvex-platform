@@ -22,7 +22,7 @@ export function MasAccesos({ role, kpisEnabled }: { role: string; kpisEnabled: b
 
   return (
     <section className="mt-6">
-      <h2 className="text-lg font-semibold tracking-[-0.025em] text-ink">Todo lo demás</h2>
+      <h2 className="text-lg font-semibold tracking-tight text-ink">Todo lo demás</h2>
       <div className="mt-3 grid grid-cols-2 gap-2.5">
         {accesos.map((accion) => (
           <Link

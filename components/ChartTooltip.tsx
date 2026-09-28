@@ -37,7 +37,7 @@ export function ChartTooltip({ active, payload, label, isDark, format, caption }
   return (
     <div
       className={cn(
-        "pointer-events-none max-w-[14rem] rounded-lg px-2.5 py-1.5 text-[12px] leading-none shadow-lg",
+        "pointer-events-none max-w-56 rounded-lg px-2.5 py-1.5 text-[12px] leading-none shadow-lg",
         isDark ? "bg-[#0f1729]/95 text-white ring-1 ring-white/12" : "bg-white/97 text-ink ring-1 ring-line"
       )}
     >

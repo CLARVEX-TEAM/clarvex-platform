@@ -9,6 +9,7 @@ import { fetchAppData } from "@/lib/app-data";
 import { KUDO_OPTIONS } from "@/lib/kudos";
 import type { User } from "@/lib/types";
 import { AppFrame, AppHeader, Badge, Button, Card, ProfileAvatar } from "@/components/ui";
+import { AppSelect } from "@/components/forms";
 import { Confetti } from "@/components/Confetti";
 
 type KudoItem = { id: string; emoji: string; message: string | null; from: { name: string; photoUrl?: string | null }; to: { name: string; photoUrl?: string | null }; createdAt: string };
@@ -84,9 +85,9 @@ export default function KudosPage() {
       <Confetti show={showConfetti} />
       <AppFrame>
         {topWeek ? (
-          <Card className="mb-3 border border-amber-300/40 bg-gradient-to-br from-amber-50 to-orange-50 p-3.5 dark:from-[#2a2410] dark:to-[#2a1c10]">
+          <Card className="mb-3 border border-ember/30 bg-ember/8 p-3.5 ">
             <div className="flex items-center gap-3">
-              <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-amber-100 text-amber-600 dark:bg-[#3a2e10]"><Trophy size={22} /></span>
+              <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-volt/10 text-ember"><Trophy size={22} /></span>
               <div className="min-w-0">
                 <p className="text-[11px] font-bold uppercase tracking-[0.13em] text-muted">Reconocido de la semana</p>
                 <div className="mt-0.5 flex items-center gap-2">
@@ -105,13 +106,20 @@ export default function KudosPage() {
             <h2 className="text-lg font-semibold">Reconocer a alguien</h2>
           </div>
           <div className="grid gap-3">
-            <label className="grid gap-1">
-              <span className="text-xs font-bold text-muted">¿A quién?</span>
-              <select value={toUserId} onChange={(event) => setToUserId(event.target.value)} className="min-h-12 rounded-2xl border border-line bg-panel px-3 text-sm font-bold text-ink outline-none focus:border-volt">
-                <option value="">Elige un integrante…</option>
-                {team.map((member) => <option key={member.id} value={member.id}>{member.name}</option>)}
-              </select>
-            </label>
+            {/*
+              ⚠️ Aqui NO van chips: el equipo puede ser de doce personas y doce
+              pastillas con nombres llenan la pantalla antes del mensaje. Va la
+              hoja inferior de `AppSelect`, que ademas enseña la FOTO de cada
+              quien --se esta eligiendo a una persona, y una cara se reconoce
+              mas rapido que un nombre en una lista.
+            */}
+            <AppSelect
+              label="¿A quién?"
+              placeholder="Elige un integrante…"
+              value={toUserId}
+              onChange={setToUserId}
+              options={team.map((member) => ({ value: member.id, label: member.name, photoUrl: member.photoUrl ?? null }))}
+            />
             <div className="flex flex-wrap gap-1.5">
               {KUDO_OPTIONS.map((option) => (
                 <button
@@ -131,7 +139,7 @@ export default function KudosPage() {
               maxLength={280}
               rows={2}
               placeholder="Mensaje (opcional)…"
-              className="rounded-2xl border border-line bg-panel px-3 py-2.5 text-sm font-semibold text-ink outline-none focus:border-volt"
+              className="rounded-2xl border border-line bg-panel px-3 py-2.5 text-sm font-semibold text-ink outline-hidden focus:border-volt"
             />
             <Button type="button" variant="primary" icon={<Send size={16} />} onClick={() => void send()} disabled={sending} className="w-full">
               {sending ? "Enviando…" : "Enviar reconocimiento"}

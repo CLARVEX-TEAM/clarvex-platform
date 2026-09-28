@@ -7,6 +7,7 @@ import { useSession } from "@/lib/use-session";
 import { TRAINING_CATEGORIES, TRAINING_CATEGORY_LABELS } from "@/lib/training";
 import type { User } from "@/lib/types";
 import { AppFrame, AppHeader, Badge, Card } from "@/components/ui";
+import { SelectorChips } from "@/components/ui/SelectorChips";
 import { DeleteButton } from "@/components/ActionButtons";
 import { SendButton } from "@/components/SendButton";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
@@ -122,7 +123,7 @@ export default function CapacitacionPage() {
     }
   }
 
-  const inputClass = "min-h-11 rounded-2xl border border-line bg-panel px-3 text-sm font-bold text-ink outline-none focus:border-volt";
+  const inputClass = "min-h-11 rounded-2xl border border-line bg-panel px-3 text-sm font-bold text-ink outline-hidden focus:border-volt";
 
   return (
     <>
@@ -139,13 +140,16 @@ export default function CapacitacionPage() {
                 <span className="text-xs font-bold text-muted">Título</span>
                 <input value={title} onChange={(event) => setTitle(event.target.value)} maxLength={160} placeholder="Ej. Manual de atención" className={inputClass} />
               </label>
-              <label className="grid gap-1">
-                <span className="text-xs font-bold text-muted">Categoría</span>
-                <select value={category} onChange={(event) => setCategory(event.target.value)} className={inputClass}>
-                  {TRAINING_CATEGORIES.map((value) => <option key={value} value={value}>{TRAINING_CATEGORY_LABELS[value]}</option>)}
-                </select>
-              </label>
-              <textarea value={description} onChange={(event) => setDescription(event.target.value)} maxLength={1000} rows={2} placeholder="Descripción (opcional)…" className="rounded-2xl border border-line bg-panel px-3 py-2.5 text-sm font-semibold text-ink outline-none focus:border-volt" />
+              <div>
+                <p className="mb-2 text-xs font-bold text-muted">Categoría</p>
+                <SelectorChips
+                  ariaLabel="Categoría del material"
+                  value={category}
+                  onChange={setCategory}
+                  options={TRAINING_CATEGORIES.map((value) => ({ value, label: TRAINING_CATEGORY_LABELS[value] ?? value }))}
+                />
+              </div>
+              <textarea value={description} onChange={(event) => setDescription(event.target.value)} maxLength={1000} rows={2} placeholder="Descripción (opcional)…" className="rounded-2xl border border-line bg-panel px-3 py-2.5 text-sm font-semibold text-ink outline-hidden focus:border-volt" />
               <label className="grid gap-1">
                 <span className="text-xs font-bold text-muted">Enlace (link / video / SharePoint)</span>
                 <input value={linkUrl} onChange={(event) => setLinkUrl(event.target.value)} inputMode="url" placeholder="https://…" className={inputClass} />

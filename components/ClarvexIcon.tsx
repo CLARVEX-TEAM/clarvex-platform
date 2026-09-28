@@ -15,7 +15,7 @@ export const CLARVEX_C_PATH =
  * que no correspondía a la identidad actual. La pantalla de acceso mostraba ese
  * icono viejo mientras el splash, en la misma sesión, ya mostraba el hexágono.
  *
- * `rounded` controla la forma del fondo: cuadrado redondeado (como el icono de
+ * `rounded-sm` controla la forma del fondo: cuadrado redondeado (como el icono de
  * la app en el escritorio del teléfono) o sin fondo, para colocarlo sobre una
  * superficie que ya tenga el suyo.
  */

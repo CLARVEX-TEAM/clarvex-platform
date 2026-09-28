@@ -1,168 +1,57 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { motion, useReducedMotion } from "framer-motion";
-import type { LucideIcon } from "lucide-react";
-import {
-  AlertTriangle,
-  BarChart3,
-  CheckSquare,
-  Home,
-  ListChecks,
-  MessageSquare,
-} from "lucide-react";
-import { getSession } from "@/lib/auth";
+import { useEffect, useState } from "react";
+import { BarraTelefonoApk, NAV_APK } from "@/components/ui/BarraTelefonoApk";
+import { BarraTelefonoWeb, NAV_WEB } from "@/components/ui/BarraTelefonoWeb";
 import { enContenedorNativo } from "@/lib/puente-nativo";
-import { cn } from "@/lib/utils";
-import { haptic } from "@/lib/haptics";
-
-// Exportada para que `tests/accesos-telefono.test.ts` pueda comprobar que
-// ninguna pantalla del teléfono se quede sin puerta de entrada.
-export const navItems: { href: string; label: string; icon: LucideIcon }[] = [
-  { href: "/manager", label: "Inicio", icon: Home },
-  { href: "/plan", label: "Plan", icon: CheckSquare },
-  { href: "/pendientes", label: "Pend.", icon: AlertTriangle },
-  { href: "/chat", label: "Chat", icon: MessageSquare },
-  { href: "/kpis", label: "KPIs", icon: BarChart3 },
-  { href: "/comunicados", label: "Actividad", icon: ListChecks }
-];
 
 /**
- * Cuánto se deforma la pastilla al viajar, según los saltos de pestaña.
+ * Quién pinta la barra de abajo.
  *
- * Se estira en X y adelgaza en Y para que el volumen parezca constante: es lo
- * que hace leer el movimiento como una gota y no como un rectángulo escalado.
- * El tope de 4 saltos evita que cruzar la barra entera se convierta en una
- * lámina; a partir de ahí la deformación ya no aporta información.
+ * ⚠️ **El rediseño de septiembre de 2026 es exclusivo de la APK**, por decisión
+ * del usuario: píldora flotante con cuatro destinos y una acción, elegidos
+ * midiendo la base. El navegador, el iPhone y la PWA conservan la barra de seis
+ * pestañas EXACTAMENTE como estaba.
+ *
+ * Por eso son dos archivos y no un montón de condicionales dentro de uno: con
+ * las dos barras entrelazadas, cualquier retoque al diseño nuevo se le cuela
+ * sin querer a la web, que es justo lo que esta separación impide.
  */
-function travelSquash(distance: number) {
-  const steps = Math.min(Math.abs(distance), 4);
-  return { scaleX: 1 + steps * 0.1, scaleY: 1 - steps * 0.035 };
-}
+
+// Lo que mira `tests/accesos-telefono.test.ts`: la UNIÓN de las dos barras.
+//
+// ⚠️ Tiene que ser la unión, no una de las dos. La prueba comprueba que ninguna
+// pantalla del teléfono se quede sin puerta, y una pantalla a la que solo se
+// llega desde la APK --o solo desde la web-- SÍ tiene puerta. Mirando una sola
+// lista, la prueba fallaría por pantallas que están bien, y el arreglo sería
+// agregar entradas falsas: una prueba que empuja a mentirle es peor que ninguna.
+export const navItems = [...NAV_APK, ...NAV_WEB];
 
 export function LiquidBottomNav() {
-  const [homeHref, setHomeHref] = useState("/manager");
-  // Se arranca mostrando KPIs y solo se ocultan si la sesión dice que están
-  // apagados: si la consulta falla, es preferible una pestaña de más que una
-  // barra que baila al cargar.
-  const [kpisEnabled, setKpisEnabled] = useState(true);
-  // `null` = todavía no se sabe. La barra no se pinta hasta saberlo porque el
-  // celular kiosko NO debe verla, y mostrarla un instante le abriría el paso al
-  // resto de la app. Vive en el layout, así que esta espera ocurre una vez por
-  // sesión, no en cada navegación.
-  const [kiosk, setKiosk] = useState<boolean | null>(null);
-  const pathname = usePathname();
-  const reduce = useReducedMotion();
+  /*
+   * `null` = todavía no se sabe dónde estamos.
+   *
+   * ⚠️ **No se puede decidir durante el render.** `enContenedorNativo()` mira
+   * el agente del navegador, que solo existe en el cliente: el servidor pintaría
+   * una barra y el cliente otra, y eso es un fallo de hidratación --el mismo que
+   * ya deja trazas en la consola en otra pantalla--. Se decide en un efecto y
+   * hasta entonces no se pinta nada.
+   *
+   * Esperar no cuesta: las dos barras ya esperaban a la sesión antes de
+   * aparecer, porque el celular kiosko no debe verlas.
+   *
+   * ⚠️ Y esto SÍ se puede preguntar al arrancar, al contrario que un plugin.
+   * `enContenedorNativo()` compara el prefijo `ClarvexApp/` del agente, que el
+   * WebView fija ANTES de cargar nada; `isPluginAvailable` es otra pregunta
+   * distinta y esa sí llega tarde. Confundirlas es lo que costó el candado de
+   * la huella.
+   */
+  const [enApk, setEnApk] = useState<boolean | null>(null);
 
-  useEffect(() => {
-    getSession()
-      .then((session) => {
-        setHomeHref(enContenedorNativo() ? "/mi-dia" : session?.role === "ASESOR" ? "/advisor" : "/manager");
-        setKpisEnabled(session?.kpisEnabled !== false);
-        setKiosk(session?.checklistOnly === true);
-      })
-      .catch(() => setKiosk(false));
-  }, []);
+  useEffect(() => { setEnApk(enContenedorNativo()); }, []);
 
-  const items = kpisEnabled ? navItems : navItems.filter((item) => item.href !== "/kpis");
-
-  const isActive = (item: (typeof navItems)[number]) => {
-    const href = item.href === "/manager" ? homeHref : item.href;
-    return pathname === href
-      || (item.href === "/manager" && (pathname === "/manager" || pathname === "/advisor"))
-      || (item.href === "/chat" && pathname.startsWith("/chat"));
-  };
-
-  // La distancia se lee DURANTE el render en que cambia la pestaña: el ref aún
-  // guarda la anterior, y se actualiza después en el efecto. Calcularla en el
-  // efecto llegaría tarde, con la pastilla ya en movimiento.
-  //
-  // Se recuerda la RUTA además del índice porque la lista cambia de tamaño: al
-  // resolverse la sesión de una tienda con los KPIs apagados desaparece una
-  // pestaña y todos los índices se corren uno. Sin comparar la ruta, esa
-  // reordenación se leería como un salto y la barra se estiraría sola al
-  // cargar, sin que nadie haya navegado.
-  const activeIndex = items.findIndex(isActive);
-  const previous = useRef({ index: activeIndex, href: pathname });
-  const navigated = previous.current.href !== pathname;
-  const travelled = navigated && previous.current.index >= 0 && activeIndex >= 0
-    ? activeIndex - previous.current.index
-    : 0;
-  useEffect(() => { previous.current = { index: activeIndex, href: pathname }; }, [activeIndex, pathname]);
-
-  const squash = reduce ? { scaleX: 1, scaleY: 1 } : travelSquash(travelled);
-  const spring = reduce
-    ? { duration: 0 }
-    : { type: "spring" as const, stiffness: 480, damping: 34 };
-
-  if (kiosk !== false) return null;
-
-  return (
-    // ⚠️ La separación de abajo es `0.5rem` MÁS la barrita de gestos de Android.
-    // Con `bottom-2` a secas la barra quedaba justo encima de esa línea blanca,
-    // y ahí el gesto de volver al inicio se comía los toques de la pestaña.
-    // El valor lo publica la app; en el navegador y en la PWA vale cero y esto
-    // sigue siendo `bottom-2`.
-    <nav className="pointer-events-none fixed inset-x-0 bottom-[calc(0.5rem+var(--safe-bottom))] z-30 px-3">
-      <div
-        className="liquid-glass pointer-events-auto mx-auto grid max-w-md gap-0.5 rounded-[30px] border-line/80 bg-card/90 dark:bg-panel/95 p-1.5 shadow-[0_14px_34px_rgb(15_23_42_/_0.14)] backdrop-blur-xl"
-        // El número de columnas sigue al de pestañas: con `grid-cols-6` fijo,
-        // ocultar una dejaría un hueco en la barra.
-        style={{ gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))` }}
-      >
-        {items.map((item) => {
-          const href = item.href === "/manager" ? homeHref : item.href;
-          const active = isActive(item);
-          return (
-            <Link
-              key={item.href}
-              href={href}
-              onClick={() => { if (!active) haptic("light"); }}
-              aria-current={active ? "page" : undefined}
-              className="tappable relative flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-[22px]"
-            >
-              <span className="relative grid size-9 place-items-center">
-                {active ? (
-                  // Dos capas a propósito: la de fuera VIAJA (layoutId) y la de
-                  // dentro se DEFORMA. Poner la escala en la misma capa que el
-                  // layout la haría competir con las transformaciones que
-                  // framer-motion usa para interpolar la posición.
-                  <motion.span
-                    layoutId="bottom-nav-active"
-                    aria-hidden
-                    className="absolute inset-0"
-                    transition={spring}
-                  >
-                    <motion.span
-                      // Arranca estirada en el sentido del viaje y se asienta al
-                      // llegar. Solo transform: no toca layout ni pinta filtros,
-                      // así que compone en GPU y no repinta la barra.
-                      initial={squash}
-                      animate={{ scaleX: 1, scaleY: 1 }}
-                      transition={spring}
-                      className="block size-full rounded-[16px] bg-volt/14 ring-1 ring-volt/25 shadow-[inset_0_1px_0_rgb(255_255_255_/_0.18)]"
-                    />
-                  </motion.span>
-                ) : null}
-                <motion.span
-                  animate={{ scale: active ? 1.08 : 1, y: active ? -0.5 : 0 }}
-                  transition={reduce ? { duration: 0 } : { type: "spring", stiffness: 520, damping: 26 }}
-                  className={cn("relative grid place-items-center transition-colors", active ? "icon-bold text-volt" : "text-muted")}
-                >
-                  <item.icon size={19} />
-                </motion.span>
-              </span>
-              <span className={cn("relative text-[10px] tracking-[-0.01em] transition-colors", active ? "font-semibold text-volt" : "font-bold text-muted")}>
-                {item.href === "/manager" && homeHref === "/mi-dia" ? "Hoy" : item.label}
-              </span>
-            </Link>
-          );
-        })}
-      </div>
-    </nav>
-  );
+  if (enApk === null) return null;
+  return enApk ? <BarraTelefonoApk /> : <BarraTelefonoWeb />;
 }
 
 export const BottomNav = LiquidBottomNav;

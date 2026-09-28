@@ -89,5 +89,5 @@ export function ParticleBackground({ dark = false }: { dark?: boolean }) {
     return () => { cancelAnimationFrame(raf); window.removeEventListener("resize", resize); };
   }, [dark]);
 
-  return <canvas ref={ref} className="fixed inset-0 z-[5] pointer-events-none" />;
+  return <canvas ref={ref} className="fixed inset-0 z-5 pointer-events-none" />;
 }

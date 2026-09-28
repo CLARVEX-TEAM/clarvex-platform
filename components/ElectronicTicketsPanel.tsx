@@ -22,9 +22,9 @@ import type { KpiReportItem } from "@/lib/kpi-report";
  */
 
 const STATUS_STYLE: Record<RateStatus, string> = {
-  cumple: "text-emerald-600 dark:text-emerald-400",
-  cerca: "text-amber-600 dark:text-amber-400",
-  abajo: "text-rose-600 dark:text-rose-400",
+  cumple: "text-mint",
+  cerca: "text-ember",
+  abajo: "text-orchid",
   "sin-meta": "text-ink",
   "sin-dato": "text-muted"
 };
@@ -43,7 +43,7 @@ function Track({ rate, target }: { rate: number | null; target: number | null })
   if (rate === null) return <div className="h-1.5 rounded-full bg-line/60" />;
   const width = Math.min(100, Math.max(2, rate));
   const fill =
-    status === "cumple" ? "bg-emerald-500" : status === "cerca" ? "bg-amber-500" : status === "abajo" ? "bg-rose-500" : "bg-volt";
+    status === "cumple" ? "bg-mint" : status === "cerca" ? "bg-ember" : status === "abajo" ? "bg-orchid" : "bg-volt";
   return (
     <div className="h-1.5 overflow-hidden rounded-full bg-line/60">
       <div className={`h-full rounded-full ${fill}`} style={{ width: `${width}%` }} />

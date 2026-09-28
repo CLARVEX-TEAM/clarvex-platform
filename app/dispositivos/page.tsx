@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AlertTriangle, CheckCircle2, RefreshCw, ShieldOff, Smartphone, TabletSmartphone } from "lucide-react";
-import { AppFrame, AppHeader, Button, Card } from "@/components/ui";
+import { AppFrame, AppHeader, Badge, Button } from "@/components/ui";
 import { getSession } from "@/lib/auth";
 import { haptic } from "@/lib/haptics";
 import { nativeDeviceFetch, registerNativeDevice } from "@/lib/native-device-client";
@@ -91,71 +91,96 @@ export default function DevicesPage() {
           <button type="button" onClick={() => void load()} aria-label="Actualizar dispositivos" className="tappable grid size-11 shrink-0 place-items-center rounded-full bg-panel text-ink"><RefreshCw size={17} /></button>
         </div>
 
-        {error ? <p className="mt-3 rounded-xl bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700 dark:bg-rose-950/40 dark:text-rose-200">{error}</p> : null}
+        {error ? <p className="mt-3 rounded-xl bg-orchid/10 px-3 py-2 text-sm font-semibold text-orchid">{error}</p> : null}
         {loading ? <div className="mt-4 h-40 animate-pulse rounded-2xl bg-panel" /> : null}
 
-        <div className="mt-4 space-y-3">
-          {devices.map((device) => {
-            const active = device.status === "ACTIVE";
-            const current = device.id === currentDeviceId;
-            return (
-              <Card key={device.id} className="p-4">
-                <div className="flex items-start gap-3">
-                  <span className={`grid size-11 shrink-0 place-items-center rounded-xl ${active ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300" : "bg-rose-100 text-rose-700 dark:bg-rose-950/50 dark:text-rose-300"}`}>
-                    {device.profile === "KIOSK" ? <TabletSmartphone size={20} /> : <Smartphone size={20} />}
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2"><p className="font-semibold text-ink">{device.user.name}</p>{current ? <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-semibold text-blue-700 dark:bg-blue-950/50 dark:text-blue-200">Este teléfono</span> : null}</div>
-                    <p className="mt-0.5 text-xs text-muted">{device.profile === "KIOSK" ? "Kiosco" : "Personal"} · APK {device.appVersion} ({device.appBuild})</p>
-                    <p className="mt-1 text-xs text-muted">Última conexión {new Intl.DateTimeFormat("es-MX", { dateStyle: "medium", timeStyle: "short" }).format(new Date(device.lastSeenAt))}</p>
-                    {device.procedencia ? (
-                      <p
-                        className={`mt-1 text-xs font-semibold ${
-                          device.procedencia.tono === "bien" ? "text-emerald-600 dark:text-emerald-400"
-                          : device.procedencia.tono === "malo" ? "text-rose-600 dark:text-rose-400"
-                          : "text-muted"
-                        }`}
-                      >
-                        {device.procedencia.texto}
+        {/*
+          Una tarjeta con renglones, no una por teléfono: ver la cabecera de
+          este cambio.
+        */}
+        {devices.length > 0 ? (
+          <div className="papel-elev mt-4 overflow-hidden rounded-[20px] border border-line bg-card">
+            {devices.map((device, indice) => {
+              const active = device.status === "ACTIVE";
+              const current = device.id === currentDeviceId;
+              return (
+                <div key={device.id} className={`px-4 py-3.5 ${indice > 0 ? "border-t border-line" : ""}`}>
+                  <div className="flex items-start gap-3">
+                    {/* Neutro: el estado se dice abajo, en texto y con color. */}
+                    <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-panel text-muted">
+                      {device.profile === "KIOSK" ? <TabletSmartphone size={18} /> : <Smartphone size={18} />}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="text-[15px] font-semibold text-ink">{device.user.name}</p>
+                        {current ? <Badge>este teléfono</Badge> : null}
+                      </div>
+                      <p className="mt-0.5 text-xs text-muted">
+                        {device.profile === "KIOSK" ? "Kiosco" : "Personal"} · APK {device.appVersion}
                       </p>
-                    ) : null}
-                    {/* ⚠️ Solo los PROBLEMAS. Una lista de comprobaciones en
-                        verde no demuestra nada --ya pasó con el candado de la
-                        huella-- y encima se deja de leer. */}
-                    {device.avisos?.length ? (
-                      <ul className="mt-2 space-y-1">
-                        {device.avisos.map((aviso) => (
-                          <li
-                            key={aviso.texto}
-                            className={`flex items-start gap-1.5 text-xs font-semibold ${aviso.gravedad === "alta" ? "text-rose-600 dark:text-rose-400" : "text-amber-600 dark:text-amber-400"}`}
-                          >
-                            <AlertTriangle size={13} className="mt-0.5 shrink-0" /> {aviso.texto}
-                          </li>
-                        ))}
-                      </ul>
-                    ) : null}
-                    <div className="mt-2 flex items-center gap-1.5 text-xs font-semibold">
-                      {active ? <><CheckCircle2 size={14} className="text-emerald-600" /><span className="text-emerald-700 dark:text-emerald-300">Activo</span></> : <><ShieldOff size={14} className="text-rose-600" /><span className="text-rose-700 dark:text-rose-300">Revocado</span></>}
-                      <span className="text-muted">· {device.notifications ? "avisos activos" : "sin avisos"}</span>
+                      <p className="mt-0.5 text-xs text-muted">
+                        Última conexión {new Intl.DateTimeFormat("es-MX", { dateStyle: "medium", timeStyle: "short" }).format(new Date(device.lastSeenAt))}
+                      </p>
+                      <p className="mt-1 flex items-center gap-1.5 text-xs font-semibold">
+                        {active
+                          ? <><CheckCircle2 size={13} className="text-mint" /><span className="text-mint">Activo</span></>
+                          : <><ShieldOff size={13} className="text-orchid" /><span className="text-orchid">Revocado</span></>}
+                        <span className="font-normal text-muted">· {device.notifications ? "avisos activos" : "sin avisos"}</span>
+                      </p>
+                      {device.procedencia ? (
+                        <p className={`mt-1 text-xs ${
+                          device.procedencia.tono === "bien" ? "text-mint"
+                          : device.procedencia.tono === "malo" ? "text-orchid"
+                          : "text-muted"
+                        }`}>
+                          {device.procedencia.texto}
+                        </p>
+                      ) : null}
+                      {/* ⚠️ Solo los PROBLEMAS. Una lista de comprobaciones en
+                          verde no demuestra nada --ya pasó con el candado de la
+                          huella-- y encima se deja de leer. */}
+                      {device.avisos?.length ? (
+                        <ul className="mt-1.5 space-y-1">
+                          {device.avisos.map((aviso) => (
+                            <li
+                              key={aviso.texto}
+                              className={`flex items-start gap-1.5 text-xs font-semibold ${aviso.gravedad === "alta" ? "text-orchid" : "text-ember"}`}
+                            >
+                              <AlertTriangle size={13} className="mt-0.5 shrink-0" /> {aviso.texto}
+                            </li>
+                          ))}
+                        </ul>
+                      ) : null}
                     </div>
+                    {/* Compacto y a la derecha: se usa dos veces al año. */}
+                    {!current ? (
+                      <Button
+                        className="min-h-9 shrink-0 px-3 text-xs"
+                        variant={active ? "danger" : "glass"}
+                        loading={busy === device.id}
+                        onClick={() => void update(device.id, active ? "REVOKE" : "ACTIVATE")}
+                      >
+                        {active ? "Revocar" : "Activar"}
+                      </Button>
+                    ) : null}
                   </div>
                 </div>
-                {!current ? (
-                  <Button
-                    className="mt-4 w-full"
-                    variant={active ? "danger" : "success"}
-                    loading={busy === device.id}
-                    onClick={() => void update(device.id, active ? "REVOKE" : "ACTIVATE")}
-                  >
-                    {active ? "Revocar dispositivo" : "Volver a activar"}
-                  </Button>
-                ) : null}
-              </Card>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        ) : null}
 
-        {!loading && devices.length === 0 ? <p className="py-10 text-center text-sm text-muted">Todavía no hay dispositivos vinculados.</p> : null}
+        {!loading && devices.length === 0 ? (
+          <div className="papel-elev mt-4 rounded-[20px] border border-line bg-card px-5 py-7 text-center">
+            <span className="mx-auto grid size-11 place-items-center rounded-[15px] bg-volt/10 text-volt">
+              <Smartphone size={19} />
+            </span>
+            <p className="mt-3 text-[15px] font-semibold text-ink">Sin dispositivos vinculados</p>
+            <p className="mt-1.5 text-sm leading-relaxed text-muted">
+              Cada teléfono aparece aquí la primera vez que abre la app con su sesión.
+            </p>
+          </div>
+        ) : null}
       </AppFrame>
     </>
   );

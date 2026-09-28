@@ -58,6 +58,7 @@ export const ROUTES_WITH_NAV = new Set([
   "/solicitudes",
   "/soporte",
   "/suscripcion",
+  "/todo",
   "/uniformes"
 ]);
 

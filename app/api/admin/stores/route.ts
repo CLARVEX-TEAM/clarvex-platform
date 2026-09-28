@@ -6,6 +6,7 @@ import { recordAudit } from "@/lib/audit";
 import { resolveMonterreyDate, retailWeekRange } from "@/lib/cron-time";
 import { PLACEHOLDER_EMAIL_DOMAIN } from "@/lib/email";
 import { prisma } from "@/lib/prisma";
+import { signR2Url } from "@/lib/r2";
 
 export const dynamic = "force-dynamic";
 
@@ -49,6 +50,10 @@ export async function GET() {
         billingExempt: true,
         subscriptionPaidUntil: true,
         pricePerUserMxn: true,
+        address: true,
+        latitude: true,
+        longitude: true,
+        mapaUrl: true,
         _count: { select: { users: true, dataSources: true } },
         users: {
           // Incluye inactivos para poder reactivarlos o eliminarlos desde admin.
@@ -75,6 +80,15 @@ export async function GET() {
   const totalsByStore = new Map(weekTotals.map((total) => [total.storeId, total]));
   const syncByStore = new Map(kpiSources.map((source) => [source.storeId, source]));
 
+  /*
+   * ⚠️ La URL del mapa se FIRMA, como todo lo que sale de R2 en este proyecto:
+   * el bucket es privado y la URL pública por sí sola devuelve un 403 que en la
+   * pantalla se ve como una imagen rota.
+   */
+  const mapasFirmados = new Map(
+    await Promise.all(stores.map(async (store) => [store.id, await signR2Url(store.mapaUrl)] as const))
+  );
+
   return NextResponse.json({
     stores: stores.map((store) => ({
       id: store.id,
@@ -91,6 +105,10 @@ export async function GET() {
       weekGoal: Number(totalsByStore.get(store.id)?._sum.dailyGoal ?? 0),
       lastSyncAt: syncByStore.get(store.id)?.lastSyncAt?.toISOString() ?? null,
       lastSyncStatus: syncByStore.get(store.id)?.syncLogs[0]?.status ?? null,
+      address: store.address,
+      latitude: store.latitude,
+      longitude: store.longitude,
+      mapaUrl: mapasFirmados.get(store.id) ?? null,
       commissionRules: store.commissionRules.map((rule) => ({
         id: rule.id,
         role: rule.role,

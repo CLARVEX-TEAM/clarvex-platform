@@ -141,17 +141,17 @@ export function MyDayHero({
   return (
     <section
       aria-label="Resumen de mi jornada"
-      className="relative isolate overflow-hidden rounded-[26px] bg-[#09152F] px-5 pb-4 pt-5 text-white shadow-[0_18px_40px_rgb(4_12_28_/_0.30)]"
+      className="relative isolate overflow-hidden rounded-[26px] bg-[#09152F] px-5 pb-4 pt-5 text-white shadow-[0_18px_40px_rgb(4_12_28/0.30)]"
     >
       <span aria-hidden className="absolute inset-0 -z-20 bg-[linear-gradient(150deg,#081228_0%,#12336E_58%,#2A6BF0_135%)]" />
       <span aria-hidden className="absolute -right-20 -top-24 -z-10 size-60 rounded-full bg-sky-300/20 blur-3xl" />
 
       {/* Encabezado: quién y qué hora es. Lo de menos peso, arriba y en pequeño. */}
       <div className="flex items-center justify-between gap-3">
-        <p className="truncate text-[11px] font-semibold uppercase tracking-[0.14em] text-blue-100/70">
+        <p className="truncate text-[11px] font-semibold uppercase tracking-[0.14em] text-volt/70">
           Hola, {firstName}
         </p>
-        <span className="flex shrink-0 items-center gap-2.5 text-xs font-semibold tabular-nums text-blue-50">
+        <span className="flex shrink-0 items-center gap-2.5 text-xs font-semibold tabular-nums text-volt">
           {clima ? <ClimaChip clima={clima} /> : null}
           <span className="flex items-center gap-1.5">
             <Clock3 size={14} className="text-sky-200" />
@@ -169,7 +169,7 @@ export function MyDayHero({
       <div className="mt-5 rounded-2xl bg-[#040C1C]/40 px-4 py-3.5">
         <div className="flex items-end justify-between gap-3">
           <div className="min-w-0">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-blue-100/65">Mi venta de hoy</p>
+            <p className="text-[11px] font-semibold uppercase tracking-widest text-volt/65">Mi venta de hoy</p>
             <p className="mt-1 truncate text-[2rem] font-semibold leading-none tracking-[-0.035em] tabular-nums">
               {money(performance.sales)}
             </p>
@@ -177,7 +177,7 @@ export function MyDayHero({
           {hayMeta ? (
             <div className="shrink-0 text-right">
               <p className="text-lg font-semibold leading-none tabular-nums text-sky-200">{performance.progress}%</p>
-              <p className="mt-1 text-[11px] font-medium tabular-nums text-blue-100/65">de {money(performance.goal)}</p>
+              <p className="mt-1 text-[11px] font-medium tabular-nums text-volt/65">de {money(performance.goal)}</p>
             </div>
           ) : null}
         </div>
@@ -191,24 +191,24 @@ export function MyDayHero({
           </div>
         ) : null}
 
-        <p className="mt-2.5 text-xs font-medium text-blue-100/80">{salesStatus}</p>
+        <p className="mt-2.5 text-xs font-medium text-volt/80">{salesStatus}</p>
       </div>
 
       {/* Pie: los dos conteos del día y, en pequeño, la versión instalada. */}
-      <div className="mt-3.5 flex items-center justify-between gap-3 border-t border-blue-200/12 pt-3">
+      <div className="mt-3.5 flex items-center justify-between gap-3 border-t border-volt/30 pt-3">
         <div className="flex items-center gap-4">
           <span className="flex items-center gap-1.5">
             <ReceiptText size={14} className="text-sky-200/90" />
             <span className="text-sm font-semibold tabular-nums">{performance.transactions}</span>
-            <span className="text-[11px] font-medium text-blue-100/65">tickets</span>
+            <span className="text-[11px] font-medium text-volt/65">tickets</span>
           </span>
           <span className="flex items-center gap-1.5">
             <ShoppingBag size={14} className="text-sky-200/90" />
             <span className="text-sm font-semibold tabular-nums">{performance.pieces}</span>
-            <span className="text-[11px] font-medium text-blue-100/65">prendas</span>
+            <span className="text-[11px] font-medium text-volt/65">prendas</span>
           </span>
         </div>
-        <span className="shrink-0 text-[10px] font-semibold uppercase tracking-[0.1em] text-blue-100/40">
+        <span className="shrink-0 text-[10px] font-semibold uppercase tracking-widest text-volt/40">
           v{appVersion}
         </span>
       </div>

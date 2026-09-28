@@ -193,7 +193,7 @@ export default function EscritorioAsistencia() {
       </div>
 
       {reminder ? (
-        <div className="flex items-start gap-3 rounded-xl border border-warn/35 bg-warn/[0.08] px-4 py-3">
+        <div className="flex items-start gap-3 rounded-xl border border-warn/35 bg-warn/8 px-4 py-3">
           <BellRing className="mt-0.5 shrink-0 text-warn" size={17} />
           <div className="min-w-0 flex-1">
             <p className="text-ui font-semibold text-ink">
@@ -263,7 +263,7 @@ export default function EscritorioAsistencia() {
                           onClick={() => setSelected(user.id)}
                           className={cn(
                             "flex w-full items-center gap-3 px-3 py-3 text-left transition-colors",
-                            isActive ? "bg-accent/[0.08]" : "hover:bg-panel"
+                            isActive ? "bg-accent/8" : "hover:bg-panel"
                           )}
                         >
                           <ProfileAvatar name={user.name} photoUrl={user.photoUrl} size="sm" />
@@ -386,7 +386,7 @@ function DayTable({ records, onEdit }: { records: AttendanceRecord[]; onEdit?: (
   }
   return (
     <div className="overflow-x-auto">
-      <table className="w-full min-w-[34rem] border-collapse">
+      <table className="w-full min-w-136 border-collapse">
         <thead className={deskThead}>
           <tr>
             <th className={deskTh}>Día</th>
@@ -455,7 +455,7 @@ function IncidentTable({ incidents, nameById }: { incidents: Incident[]; nameByI
   }
   return (
     <div className="overflow-x-auto">
-      <table className="w-full min-w-[30rem] border-collapse">
+      <table className="w-full min-w-120 border-collapse">
         <thead className={deskThead}>
           <tr>
             <th className={deskTh}>Colaborador</th>

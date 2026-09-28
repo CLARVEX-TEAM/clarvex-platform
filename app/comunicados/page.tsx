@@ -3,15 +3,14 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import NextImage from "next/image";
-import { ImagePlus, Megaphone, MessageCircle, Sparkles, X } from "lucide-react";
+import { Check, ChevronDown, ChevronRight, ImagePlus, Megaphone, MessageCircle, Sparkles, Trash2, X } from "lucide-react";
 import { fetchAppData, type AppData } from "@/lib/app-data";
 import { useSession } from "@/lib/use-session";
 import { ANNOUNCEMENT_REACTIONS } from "@/lib/reactions";
 import type { Announcement, AnnouncementReaction, User } from "@/lib/types";
-import { AppFrame, AppHeader, Badge, Card, NotificationCard, ProfileAvatar, ProgressBar, Skeleton } from "@/components/ui";
+import { AppFrame, AppHeader, Card, NotificationCard, ProfileAvatar, ProgressBar, Skeleton } from "@/components/ui";
 import { AppInput, AppTextarea } from "@/components/forms";
 import { SendButton, SendIconButton } from "@/components/SendButton";
-import { DeleteButton } from "@/components/ActionButtons";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { PullToRefresh } from "@/components/PullToRefresh";
 import { haptic } from "@/lib/haptics";
@@ -34,6 +33,13 @@ export default function ComunicadosPage() {
   const [deleting, setDeleting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [filter, setFilter] = useState<Filter>("todos");
+  /*
+   * ⚠️ Publicar nace CERRADO. El formulario ocupaba media pantalla sobre la
+   * lista, y esta pantalla se abre sobre todo para LEER: de los 6 usos medidos
+   * en treinta días, ninguno fue publicar. Quien publica lo hace a propósito y
+   * no le cuesta un toque; quien lee se ahorra desplazarse.
+   */
+  const [publicando, setPublicando] = useState(false);
   const [generatingAnnouncement, setGeneratingAnnouncement] = useState(false);
   const [announcementPrompt, setAnnouncementPrompt] = useState("");
   const [showAnnouncementPrompt, setShowAnnouncementPrompt] = useState(false);
@@ -260,7 +266,7 @@ export default function ComunicadosPage() {
             <button
               key={value}
               onClick={() => setFilter(value as Filter)}
-              className={`min-h-10 shrink-0 rounded-full px-3.5 text-[13px] font-semibold tracking-[-0.01em] transition active:scale-95 ${filter === value ? "bg-volt text-white shadow-[0_8px_18px_rgb(37_99_235_/_0.2)]" : "text-muted hover:text-ink"}`}
+              className={`min-h-10 shrink-0 rounded-full px-3.5 text-[13px] font-semibold tracking-[-0.01em] transition active:scale-95 ${filter === value ? "bg-volt text-white shadow-[0_8px_18px_rgb(37_99_235/0.2)]" : "text-muted hover:text-ink"}`}
             >
               {label}
             </button>
@@ -270,7 +276,7 @@ export default function ComunicadosPage() {
         {!data ? <div className="mb-3 space-y-2.5"><Skeleton className="h-28 rounded-[28px]" /><Skeleton className="h-40 rounded-[28px]" /></div> : null}
 
         {borradorPromo ? (
-          <Card className="mb-3 border-volt/40 bg-volt/[0.06] space-y-2.5">
+          <Card className="mb-3 border-volt/40 bg-volt/6 space-y-2.5">
             <div className="flex items-start gap-2.5">
               <span className="mt-0.5 grid size-9 shrink-0 place-items-center rounded-2xl bg-volt/15 text-volt">
                 <Sparkles size={17} />
@@ -303,7 +309,21 @@ export default function ComunicadosPage() {
           </Card>
         ) : null}
 
-        {session?.role !== "ASESOR" ? (
+        {session?.role !== "ASESOR" && !publicando ? (
+          <button
+            type="button"
+            onClick={() => setPublicando(true)}
+            className="papel-elev tappable mb-3 flex min-h-14 w-full items-center gap-3 rounded-[18px] border border-line bg-card px-4 text-left transition active:scale-[0.99]"
+          >
+            <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-volt/10 text-volt">
+              <Megaphone size={17} />
+            </span>
+            <span className="flex-1 text-[15px] font-semibold text-ink">Publicar comunicado</span>
+            <ChevronRight size={17} className="text-muted" />
+          </button>
+        ) : null}
+
+        {session?.role !== "ASESOR" && publicando ? (
           <Card className="mb-3 space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -313,7 +333,7 @@ export default function ComunicadosPage() {
               <button
                 type="button"
                 onClick={() => setShowAnnouncementPrompt((prev) => !prev)}
-                className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider bg-[#2563EB] text-white px-3 py-1 rounded-xl active:scale-95 transition"
+                className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider bg-volt text-white px-3 py-1 rounded-xl active:scale-95 transition"
               >
                 <Sparkles size={11} />
                 IA
@@ -321,9 +341,9 @@ export default function ComunicadosPage() {
             </div>
 
             {showAnnouncementPrompt && (
-              <div className="rounded-2xl border border-[#2563EB]/20 bg-[#2563EB]/5 p-3 space-y-2">
-                <p className="text-[11px] font-semibold text-white flex items-center gap-1">
-                  <Sparkles size={12} className="text-[#2563EB]" /> Redactar con IA:
+              <div className="rounded-2xl border border-volt/20 bg-volt/5 p-3 space-y-2">
+                <p className="text-[11px] font-semibold text-ink flex items-center gap-1">
+                  <Sparkles size={12} className="text-volt" /> Redactar con IA:
                 </p>
                 <div className="flex gap-2">
                   <input
@@ -331,13 +351,13 @@ export default function ComunicadosPage() {
                     value={announcementPrompt}
                     onChange={(e) => setAnnouncementPrompt(e.target.value)}
                     placeholder="Ej. Promoción Jeans 30% descuento este fin..."
-                    className="flex-1 min-h-9 rounded-xl border border-white/10 bg-[#0A0A0A] px-3 text-xs text-white placeholder-slate-500 outline-none focus:border-[#2563EB]"
+                    className="flex-1 min-h-9 rounded-xl border border-line bg-card px-3 text-xs text-ink placeholder:text-muted outline-hidden focus:border-volt"
                   />
                   <button
                     type="button"
                     onClick={() => void handleGenerateAnnouncement()}
                     disabled={generatingAnnouncement || !announcementPrompt.trim()}
-                    className="rounded-xl bg-[#2563EB] px-3 text-xs font-semibold text-white active:scale-95 transition disabled:opacity-50"
+                    className="rounded-xl bg-volt px-3 text-xs font-semibold text-white active:scale-95 transition disabled:opacity-50"
                   >
                     {generatingAnnouncement ? "Generando..." : "Generar"}
                   </button>
@@ -406,46 +426,76 @@ export default function ComunicadosPage() {
                         onToggle={(emoji) => void toggleReaction(item.id, emoji)}
                       />
                     ) : null}
-                    <div className="mt-3 flex items-center justify-between gap-2">
-                      <Badge>{item.readBy.length}/{advisors.length}</Badge>
-                      <span className="text-xs font-bold text-muted">lectura del equipo</span>
+                    {/*
+                      ⚠️ Antes, CADA comunicado listaba a las cinco personas del
+                      equipo con su insignia, siempre desplegado. Diez
+                      comunicados eran cincuenta renglones de «Sofía — leído»
+                      que nadie lee. Ahora es una línea con la cuenta y el
+                      detalle se despliega solo si alguien pregunta por él.
+                    */}
+                    <div className="mt-3">
+                      <div className="flex items-baseline justify-between gap-3 text-sm">
+                        <span className="text-muted">Lectura del equipo</span>
+                        <span className="font-semibold tabular-nums text-ink">
+                          {item.readBy.length} de {advisors.length}
+                        </span>
+                      </div>
+                      <ProgressBar value={readProgress} />
                     </div>
-                    <ProgressBar value={readProgress} />
-                    <div className="mt-2 grid gap-0 divide-y divide-white/[0.07] border-t border-white/[0.07]">
-                      {/* Antes solo lo veía el ASESOR. El panel de gerencia sí
-                          reclamaba "N comunicados sin confirmar lectura" y
-                          enlazaba aquí, pero aquí no había con qué confirmar:
-                          el aviso no se podía quitar nunca. */}
-                      {session ? (
-                        <button
-                          onClick={() => void toggleRead(item.id)}
-                          className="flex min-h-11 items-center justify-between py-2"
-                        >
-                          <span className="font-semibold">Mi lectura</span>
-                          <Badge tone={item.readBy.includes(session.id) ? "done" : "warn"}>
-                            {item.readBy.includes(session.id) ? "leido" : "marcar como leido"}
-                          </Badge>
-                        </button>
-                      ) : null}
 
-                      {session?.role !== "ASESOR" ? advisors.map((advisor) => {
-                        const read = item.readBy.includes(advisor.id);
-                        return (
-                          <div
-                            key={advisor.id}
-                            className="flex min-h-10 items-center justify-between py-2 text-sm"
-                          >
-                            <span className="font-semibold">{advisor.name}</span>
-                            <Badge tone={read ? "done" : "warn"}>{read ? "leido" : "pendiente"}</Badge>
-                          </div>
-                        );
-                      }) : null}
-                    </div>
+                    {/*
+                      ⚠️ «Marcar como leído» era una INSIGNIA que además se
+                      podía pulsar. Una insignia dice estado; un botón invita a
+                      tocarlo. Usar la misma forma para las dos cosas es por lo
+                      que gerencia reclamaba lecturas sin confirmar y nadie
+                      encontraba dónde confirmarlas.
+                    */}
+                    {session ? (
+                      <button
+                        type="button"
+                        onClick={() => void toggleRead(item.id)}
+                        className={`tappable mt-3 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl text-sm font-semibold transition active:scale-[0.99] ${item.readBy.includes(session.id) ? "bg-panel text-muted" : "bg-ink text-card"}`}
+                      >
+                        {item.readBy.includes(session.id) ? <Check size={17} /> : null}
+                        {item.readBy.includes(session.id) ? "Leído" : "Marcar como leído"}
+                      </button>
+                    ) : null}
+
+                    {session?.role !== "ASESOR" && advisors.length ? (
+                      <details className="group mt-2">
+                        <summary className="tappable flex min-h-11 cursor-pointer list-none items-center justify-between text-sm text-muted">
+                          Quién lo leyó
+                          <ChevronDown size={16} className="transition group-open:rotate-180" />
+                        </summary>
+                        <div className="divide-y divide-line">
+                          {advisors.map((advisor) => {
+                            const read = item.readBy.includes(advisor.id);
+                            return (
+                              <div key={advisor.id} className="flex min-h-11 items-center justify-between gap-3 py-2 text-sm">
+                                <span className={read ? "text-ink" : "text-muted"}>{advisor.name}</span>
+                                <span className={read ? "font-semibold text-mint" : "text-muted"}>
+                                  {read ? "leído" : "pendiente"}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </details>
+                    ) : null}
                     {session ? <CommentsThread announcementId={item.id} session={session} /> : null}
+                    {/* Borrar baja a icono: se usa una vez cada muchas y
+                        ocupaba un botón entero al pie de CADA comunicado. */}
                     {session?.role !== "ASESOR" ? (
-                      <DeleteButton onClick={() => setPendingDeleteId(item.id)} className="mt-2 w-full">
-                        Eliminar comunicado
-                      </DeleteButton>
+                      <div className="mt-2 flex justify-end">
+                        <button
+                          type="button"
+                          onClick={() => setPendingDeleteId(item.id)}
+                          aria-label="Eliminar comunicado"
+                          className="tappable grid size-11 place-items-center rounded-xl text-muted transition hover:text-orchid"
+                        >
+                          <Trash2 size={17} />
+                        </button>
+                      </div>
                     ) : null}
                   </>
                 }
@@ -455,10 +505,15 @@ export default function ComunicadosPage() {
           })}
           </AnimatePresence>
           {visibleAnnouncements.length === 0 ? (
-            <Card>
-              <p className="font-semibold">Sin comunicados</p>
-              <p className="mt-2 text-sm text-muted">Los avisos de gerencia apareceran aqui con estado de lectura.</p>
-            </Card>
+            <div className="papel-elev rounded-[20px] border border-line bg-card px-5 py-7 text-center">
+              <span className="mx-auto grid size-11 place-items-center rounded-[15px] bg-volt/10 text-volt">
+                <Megaphone size={19} />
+              </span>
+              <p className="mt-3 text-[15px] font-semibold text-ink">Sin comunicados</p>
+              <p className="mt-1.5 text-sm leading-relaxed text-muted">
+                Los avisos de gerencia aparecerán aquí, con quién los ha leído.
+              </p>
+            </div>
           ) : null}
         </div>
       </AppFrame>
@@ -544,7 +599,7 @@ function CommentsThread({ announcementId, session }: { announcementId: string; s
                 <ProfileAvatar name={comment.author.name} photoUrl={comment.author.photoUrl} size="sm" />
                 <div className="min-w-0 flex-1 rounded-2xl bg-panel px-3 py-2">
                   <p className="text-xs font-semibold text-ink">{comment.author.name}{comment.authorId === session.id ? " · tú" : ""}</p>
-                  <p className="mt-0.5 whitespace-pre-wrap break-words text-sm text-ink">{comment.body}</p>
+                  <p className="mt-0.5 whitespace-pre-wrap wrap-break-word text-sm text-ink">{comment.body}</p>
                 </div>
               </div>
             ))
@@ -556,7 +611,7 @@ function CommentsThread({ announcementId, session }: { announcementId: string; s
               maxLength={1000}
               rows={1}
               placeholder="Escribe un comentario…"
-              className="min-h-11 flex-1 resize-none rounded-2xl border border-line bg-panel px-3 py-2.5 text-sm font-semibold text-ink outline-none focus:border-volt"
+              className="min-h-11 flex-1 resize-none rounded-2xl border border-line bg-panel px-3 py-2.5 text-sm font-semibold text-ink outline-hidden focus:border-volt"
             />
             <SendIconButton type="submit" loading={sending} disabled={sending || !body.trim()} aria-label="Enviar comentario" />
           </form>

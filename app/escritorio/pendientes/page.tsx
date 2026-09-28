@@ -85,7 +85,7 @@ export default function EscritorioPendientes() {
   if (!data) {
     return (
       <div className="grid gap-10 xl:grid-cols-[22rem_minmax(0,1fr)]">
-        <DeskSkeleton className="h-[30rem]" />
+        <DeskSkeleton className="h-120" />
         <div className="space-y-3">
           <DeskSkeleton className="h-9 w-72" />
           {[0, 1, 2, 3].map((i) => <DeskSkeleton key={i} className="h-24" />)}
@@ -352,7 +352,7 @@ export default function EscritorioPendientes() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[var(--z-overlay)] flex items-center justify-center bg-black/55 p-4 backdrop-blur-sm"
+            className="fixed inset-0 z-(--z-overlay) flex items-center justify-center bg-black/55 p-4 backdrop-blur-xs"
             onClick={() => setShowOptModal(false)}
           >
             <motion.div

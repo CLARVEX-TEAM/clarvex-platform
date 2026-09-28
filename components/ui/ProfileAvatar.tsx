@@ -32,7 +32,7 @@ export function ProfileAvatar({
   }
 
   return (
-    <span className={cn("grid shrink-0 place-items-center bg-volt/15 font-semibold text-volt shadow-[inset_0_1px_0_rgb(255_255_255_/_0.16),0_12px_28px_rgb(0_0_0_/_0.26)] ring-1 ring-volt/25", sizes[size], className)}>
+    <span className={cn("grid shrink-0 place-items-center bg-volt/15 font-semibold text-volt shadow-[inset_0_1px_0_rgb(255_255_255/0.16),0_12px_28px_rgb(0_0_0/0.26)] ring-1 ring-volt/25", sizes[size], className)}>
       {initials}
     </span>
   );

@@ -122,7 +122,7 @@ export default function SoportePage() {
                         className={cn(
                           "shrink-0 rounded-full px-2 py-1 text-[10px] font-bold",
                           dicho.tono === "bien" ? "bg-mint/12 text-mint"
-                          : dicho.tono === "aviso" ? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
+                          : dicho.tono === "aviso" ? "bg-ember/15 text-ember"
                           : "bg-white/8 text-muted"
                         )}
                       >
@@ -139,7 +139,7 @@ export default function SoportePage() {
 
         {sent ? (
           <Card className="p-6 text-center">
-            <span className="mx-auto mb-3 grid size-14 place-items-center rounded-2xl bg-mint/12 text-mint">
+            <span className="mx-auto mb-3 grid size-14 place-items-center rounded-2xl bg-volt/10 text-volt">
               <CheckCircle2 size={28} />
             </span>
             <h2 className="text-lg font-semibold text-ink">{guardado ? "Guardado sin conexión" : "¡Mensaje enviado!"}</h2>
@@ -187,7 +187,7 @@ export default function SoportePage() {
               value={subject}
               onChange={(e) => setSubject(e.target.value.slice(0, 150))}
               placeholder="Ej. No me carga el ranking"
-              className="mb-3 min-h-11 w-full rounded-2xl border border-line bg-panel px-3.5 text-sm font-semibold text-ink outline-none transition focus:border-volt focus:ring-4 focus:ring-volt/10"
+              className="mb-3 min-h-11 w-full rounded-2xl border border-line bg-panel px-3.5 text-sm font-semibold text-ink outline-hidden transition focus:border-volt focus:ring-4 focus:ring-volt/10"
             />
 
             {/* Mensaje */}
@@ -197,7 +197,7 @@ export default function SoportePage() {
               onChange={(e) => setMessage(e.target.value.slice(0, 4000))}
               placeholder="Descríbelo con el mayor detalle posible: qué esperabas, qué pasó y en qué pantalla."
               rows={6}
-              className="w-full resize-none rounded-2xl border border-line bg-panel px-3.5 py-2.5 text-sm font-semibold text-ink outline-none transition focus:border-volt focus:ring-4 focus:ring-volt/10"
+              className="w-full resize-none rounded-2xl border border-line bg-panel px-3.5 py-2.5 text-sm font-semibold text-ink outline-hidden transition focus:border-volt focus:ring-4 focus:ring-volt/10"
             />
 
             {error && <p className="mt-2 text-xs font-semibold text-orchid">{error}</p>}

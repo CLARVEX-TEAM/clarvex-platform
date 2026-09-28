@@ -89,7 +89,7 @@ export function EmailStep({
           value={email}
           onChange={(event) => setEmail(event.target.value)}
           placeholder="tucorreo@ejemplo.com"
-          className={`mb-4 w-full rounded-xl border px-4 py-3 text-base outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 ${
+          className={`mb-4 w-full rounded-xl border px-4 py-3 text-base outline-hidden transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 ${
             isDark ? "border-slate-700 bg-slate-950 text-slate-100" : "border-slate-300 bg-white text-slate-900"
           }`}
         />

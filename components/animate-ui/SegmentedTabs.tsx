@@ -1,26 +1,26 @@
 "use client";
 
 import * as React from "react";
-import { motion, useReducedMotion } from "framer-motion";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { cn } from "@/lib/utils";
 
 /**
- * SegmentedTabs — selector de segmentos con la pastilla deslizándose de una
- * opción a otra.
+ * SegmentedTabs — selector de segmentos.
  *
- * Usa la técnica de `@animate-ui/primitives-effects-highlight`: un único
- * elemento con `layoutId` compartido, que framer-motion interpola entre
- * posiciones al cambiar de padre. El primitivo original son 640 líneas de
- * genéricos con dos modos (`parent`/`children`) y estado controlado y no
- * controlado; aquí solo hace falta el modo `parent` controlado, así que está
- * escrito directo contra los tokens del proyecto en vez de vendorizar la
- * librería entera y traducirla de React 19 a 18.
+ * ⚠️ **La pastilla NO se desliza.** Llegó a hacerlo con `layoutId` de
+ * framer-motion --la técnica de `@animate-ui/primitives-effects-highlight`--
+ * y el usuario la descartó viéndola en el teléfono.
  *
- * El `layoutId` se deriva de `useId()` para que dos selectores en la misma
- * pantalla no se roben la pastilla el uno al otro.
+ * Lo que hace ahora en el móvil es **aterrizar**: un marco que entra un poco
+ * más grande y se asienta sobre la opción elegida, mientras se desvanece el de
+ * la anterior. El movimiento está en el sitio, no en el trayecto -- que es lo
+ * que se descartó. Se eligió entre tres variantes probadas en el teléfono.
+ *
+ * ⚠️ **Solo se anima en la paleta MÓVIL.** El escritorio usa este mismo
+ * componente y su aspecto no debe cambiar, así que la animación viaja en el
+ * juego de tokens de cada superficie y no en el cuerpo del render.
  *
  * Accesible como tablist: flechas para moverse, `aria-selected` por opción.
- * Con `prefers-reduced-motion` la pastilla salta sin animar.
  */
 
 export type SegmentedTabOption<T extends string> = {
@@ -38,16 +38,18 @@ export type SegmentedTabOption<T extends string> = {
  */
 const SURFACES = {
   mobile: {
-    pill: "bg-card shadow-sm dark:bg-line",
+    pill: "border border-volt bg-card",
     active: "text-volt",
     inactive: "text-muted hover:text-ink",
-    item: "min-h-10 flex-1"
+    item: "min-h-10 flex-1",
+    aterriza: true
   },
   desk: {
     pill: "bg-accent",
     active: "text-on-accent",
     inactive: "text-muted hover:text-ink",
-    item: "min-h-9 px-5"
+    item: "min-h-9 px-5",
+    aterriza: false
   }
 } as const;
 
@@ -70,7 +72,6 @@ export function SegmentedTabs<T extends string>({
 }) {
   const tokens = SURFACES[surface];
   const reduce = useReducedMotion();
-  const layoutId = `segmented-tabs-${React.useId()}`;
 
   // Flechas: mueven la selección de forma circular, como espera un tablist.
   const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
@@ -101,28 +102,29 @@ export function SegmentedTabs<T extends string>({
             tabIndex={active ? 0 : -1}
             onClick={() => onChange(option.value)}
             className={cn(
-              // `duration-300` acompaña al muelle de la pastilla. Con la
-              // transición por defecto (150 ms) el texto de la pestaña entrante
-              // se volvía blanco antes de que la pastilla llegara debajo, y en
-              // el escritorio quedaba ilegible sobre el panel claro.
-              "relative rounded-full text-sm font-semibold transition-colors duration-300 focus:outline-none focus-visible:ring-4 focus-visible:ring-volt/30",
+              "relative rounded-full text-sm font-semibold focus:outline-hidden focus-visible:ring-4 focus-visible:ring-volt/30",
               tokens.item,
               active ? tokens.active : tokens.inactive,
               itemClassName
             )}
           >
-            {active ? (
-              <motion.span
-                layoutId={layoutId}
-                aria-hidden
-                // `layout` sin transición propia hereda la del padre; el muelle
-                // corto evita que la pastilla "nade" al cambiar de pestaña.
-                transition={
-                  reduce ? { duration: 0 } : { type: "spring", stiffness: 420, damping: 34, mass: 0.7 }
-                }
-                className={cn("absolute inset-0 rounded-full", tokens.pill)}
-              />
-            ) : null}
+            <AnimatePresence initial={false}>
+              {active ? (
+                <motion.span
+                  key="pastilla"
+                  aria-hidden
+                  initial={tokens.aterriza && !reduce ? { opacity: 0, scale: 1.12 } : { opacity: 1 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={tokens.aterriza && !reduce ? { opacity: 0, scale: 0.94 } : { opacity: 0 }}
+                  transition={
+                    tokens.aterriza && !reduce
+                      ? { type: "spring", stiffness: 520, damping: 30, mass: 0.6 }
+                      : { duration: 0 }
+                  }
+                  className={cn("absolute inset-0 rounded-full", tokens.pill)}
+                />
+              ) : null}
+            </AnimatePresence>
             <span className="relative z-10">{option.label}</span>
           </button>
         );

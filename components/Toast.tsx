@@ -20,8 +20,8 @@ export function useToast(): ToastFn {
 }
 
 const styles: Record<ToastType, { ring: string; icon: string; Icon: typeof Check }> = {
-  success: { ring: "ring-emerald-500/30", icon: "bg-emerald-500 text-white", Icon: Check },
-  error: { ring: "ring-rose-500/30", icon: "bg-rose-500 text-white", Icon: AlertTriangle },
+  success: { ring: "ring-mint/30", icon: "bg-mint text-white", Icon: Check },
+  error: { ring: "ring-orchid/30", icon: "bg-orchid text-white", Icon: AlertTriangle },
   info: { ring: "ring-volt/30", icon: "bg-volt text-white", Icon: Info }
 };
 
@@ -42,7 +42,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   return (
     <ToastContext.Provider value={push}>
       {children}
-      <div className="pointer-events-none fixed inset-x-0 top-2 z-[80] flex flex-col items-center gap-2 px-4">
+      <div className="pointer-events-none fixed inset-x-0 top-2 z-80 flex flex-col items-center gap-2 px-4">
         <AnimatePresence initial={false}>
           {toasts.map((toast) => {
             const style = styles[toast.type];
@@ -57,7 +57,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
                 transition={{ type: "spring", stiffness: 460, damping: 30 }}
                 onClick={() => remove(toast.id)}
                 className={cn(
-                  "liquid-glass pointer-events-auto flex w-full max-w-sm items-center gap-3 rounded-2xl px-3.5 py-3 text-left shadow-[0_12px_30px_rgb(15_23_42_/_0.16)] ring-1",
+                  "liquid-glass pointer-events-auto flex w-full max-w-sm items-center gap-3 rounded-2xl px-3.5 py-3 text-left shadow-[0_12px_30px_rgb(15_23_42/0.16)] ring-1",
                   style.ring
                 )}
               >

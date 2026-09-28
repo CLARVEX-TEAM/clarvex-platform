@@ -160,7 +160,7 @@ export function VisorImagen({ url, onClose }: { url: string; onClose: () => void
 
   return (
     <div
-      className="fixed inset-0 z-[70] flex items-center justify-center overflow-hidden bg-black/95"
+      className="fixed inset-0 z-70 flex items-center justify-center overflow-hidden bg-black/95"
       onClick={() => { if (escala <= 1) cerrar(); }}
       role="dialog"
       aria-modal="true"

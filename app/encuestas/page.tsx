@@ -112,7 +112,7 @@ function EncuestasContent() {
                   <h2 className="text-lg font-semibold">{survey.title}</h2>
                 </div>
                 {survey.description ? <p className="mb-2 text-sm text-muted">{survey.description}</p> : null}
-                {survey.anonymous ? <p className="mb-3 flex items-center gap-1 text-[11px] font-bold text-emerald-600"><Lock size={12} /> Respuesta anónima</p> : null}
+                {survey.anonymous ? <p className="mb-3 flex items-center gap-1 text-[11px] font-bold text-mint"><Lock size={12} /> Respuesta anónima</p> : null}
                 <div className="space-y-4">
                   {survey.questions.map((q) => (
                     <div key={q.id}>
@@ -123,13 +123,13 @@ function EncuestasContent() {
                             const active = (answers[survey.id]?.[q.id]?.rating ?? 0) >= star;
                             return (
                               <button key={star} type="button" onClick={() => setRating(survey.id, q.id, star)} aria-label={`${star} estrellas`} className="transition active:scale-90">
-                                <Star size={30} className={active ? "fill-amber-400 text-amber-400" : "text-slate-300 dark:text-slate-600"} />
+                                <Star size={30} className={active ? "fill-amber-400 text-ember" : "text-muted"} />
                               </button>
                             );
                           })}
                         </div>
                       ) : (
-                        <textarea value={answers[survey.id]?.[q.id]?.text ?? ""} onChange={(e) => setText(survey.id, q.id, e.target.value)} maxLength={500} rows={2} placeholder="Escribe tu respuesta (opcional)…" className="w-full rounded-2xl border border-line bg-panel px-3 py-2.5 text-sm font-semibold text-ink outline-none focus:border-volt" />
+                        <textarea value={answers[survey.id]?.[q.id]?.text ?? ""} onChange={(e) => setText(survey.id, q.id, e.target.value)} maxLength={500} rows={2} placeholder="Escribe tu respuesta (opcional)…" className="w-full rounded-2xl border border-line bg-panel px-3 py-2.5 text-sm font-semibold text-ink outline-hidden focus:border-volt" />
                       )}
                     </div>
                   ))}
@@ -142,7 +142,7 @@ function EncuestasContent() {
 
             {done.length > 0 ? (
               <div className="pt-1">
-                <p className="mb-2 px-1 text-xs font-bold uppercase tracking-[0.1em] text-muted">Anteriores</p>
+                <p className="mb-2 px-1 text-xs font-bold uppercase tracking-widest text-muted">Anteriores</p>
                 <div className="space-y-2.5">
                   {done.map((survey) => (
                     <Card key={survey.id} className="flex items-center justify-between gap-3 p-3.5">

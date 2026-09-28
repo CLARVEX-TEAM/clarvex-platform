@@ -6,10 +6,10 @@ import type { TrendPoint } from "@/lib/trend";
 import { Card } from "@/components/ui";
 
 const tooltipStyle = {
-  background: "rgb(var(--color-card))",
-  border: "1px solid rgb(var(--color-line))",
+  background: "rgb(var(--ch-card))",
+  border: "1px solid rgb(var(--ch-line))",
   borderRadius: 10,
-  color: "rgb(var(--color-ink))",
+  color: "rgb(var(--ch-ink))",
   fontSize: 12,
   boxShadow: "0 4px 14px rgb(20 21 26 / 0.1)"
 };
@@ -33,8 +33,8 @@ export function SalesTrendCard({ points, title = "Tendencia de venta" }: { point
                   <stop offset="100%" stopColor="#2563EB" stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <CartesianGrid stroke="rgb(var(--color-line))" vertical={false} />
-              <XAxis dataKey="label" tick={{ fill: "rgb(var(--color-muted))", fontSize: 10 }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
+              <CartesianGrid stroke="rgb(var(--ch-line))" vertical={false} />
+              <XAxis dataKey="label" tick={{ fill: "rgb(var(--ch-muted))", fontSize: 10 }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
               <Tooltip
                 cursor={false}
                 contentStyle={tooltipStyle}
@@ -45,7 +45,7 @@ export function SalesTrendCard({ points, title = "Tendencia de venta" }: { point
                 }}
               />
               <Area type="monotone" dataKey="sales" stroke="#2563EB" fill="url(#trendFill)" strokeWidth={2.2} animationDuration={700} />
-              <Line type="monotone" dataKey="goal" stroke="rgb(var(--color-muted))" strokeDasharray="4 3" strokeWidth={1.5} dot={false} animationDuration={700} />
+              <Line type="monotone" dataKey="goal" stroke="rgb(var(--ch-muted))" strokeDasharray="4 3" strokeWidth={1.5} dot={false} animationDuration={700} />
             </ComposedChart>
           </ResponsiveContainer>
         </div>

@@ -37,8 +37,8 @@ export function AppInput({
         className={cn(
           "pointer-events-none absolute left-4 transition-all duration-150 ease-out",
           lifted
-            ? "top-2 text-[10px] font-bold uppercase tracking-[0.1em] text-muted"
-            : "top-[18px] text-[14px] font-normal text-slate-400 dark:text-slate-500"
+            ? "top-2 text-[10px] font-bold uppercase tracking-widest text-muted"
+            : "top-[18px] text-[14px] font-normal text-muted"
         )}
       >
         {label}
@@ -49,10 +49,10 @@ export function AppInput({
         onFocus={(e) => { setFocused(true); props.onFocus?.(e); }}
         onBlur={(e) => { setFocused(false); props.onBlur?.(e); }}
         className={cn(
-          "min-h-14 w-full rounded-2xl border bg-slate-50 dark:bg-slate-800/50 px-4 pb-2.5 pt-6 text-sm font-semibold text-ink outline-none transition",
+          "min-h-14 w-full rounded-2xl border bg-panel px-4 pb-2.5 pt-6 text-sm font-semibold text-ink outline-hidden transition",
           focused
-            ? "border-blue-500 dark:border-blue-400 ring-4 ring-blue-500/10 dark:ring-blue-400/10"
-            : "border-slate-200 dark:border-slate-700/60 hover:border-slate-300 dark:hover:border-slate-600",
+            ? "border-volt/30 ring-4 ring-volt/30"
+            : "border-line hover:border-line dark:hover:border-line",
           props.className
         )}
       />
@@ -87,8 +87,8 @@ export function AppTextarea({
         className={cn(
           "pointer-events-none absolute left-4 transition-all duration-150 ease-out",
           lifted
-            ? "top-2 text-[10px] font-bold uppercase tracking-[0.1em] text-muted"
-            : "top-[18px] text-[14px] font-normal text-slate-400 dark:text-slate-500"
+            ? "top-2 text-[10px] font-bold uppercase tracking-widest text-muted"
+            : "top-[18px] text-[14px] font-normal text-muted"
         )}
       >
         {label}
@@ -101,10 +101,10 @@ export function AppTextarea({
         onBlur={(e) => { setFocused(false); props.onBlur?.(e); }}
         onInput={(e) => { autoResize(); props.onInput?.(e); }}
         className={cn(
-          "min-h-[80px] w-full resize-none rounded-2xl border bg-slate-50 dark:bg-slate-800/50 px-4 pb-3 pt-6 text-sm font-semibold text-ink outline-none transition",
+          "min-h-[80px] w-full resize-none rounded-2xl border bg-panel px-4 pb-3 pt-6 text-sm font-semibold text-ink outline-hidden transition",
           focused
-            ? "border-blue-500 dark:border-blue-400 ring-4 ring-blue-500/10 dark:ring-blue-400/10"
-            : "border-slate-200 dark:border-slate-700/60 hover:border-slate-300 dark:hover:border-slate-600",
+            ? "border-volt/30 ring-4 ring-volt/30"
+            : "border-line hover:border-line dark:hover:border-line",
           props.className
         )}
       />
@@ -121,6 +121,7 @@ export function AppSelect({
   options,
   placeholder = "Seleccionar",
   wrapperClassName,
+  renderTrigger,
 }: {
   label: string;
   value: string;
@@ -128,6 +129,17 @@ export function AppSelect({
   options: SelectOption[];
   placeholder?: string;
   wrapperClassName?: string;
+  /**
+   * Sustituye el campo de alto completo por el control que se le pase, sin
+   * tocar la hoja.
+   *
+   * ⚠️ Existe porque en `/admin` el puesto va DENTRO del renglón de cada
+   * persona, junto a sus otros botones: el campo normal mide 56 px de alto y
+   * ocupa todo el ancho, así que con dieciocho personas la lista se volvía
+   * impracticable. Lo que hacía falta ahí no era otro selector, sino la misma
+   * hoja abierta desde un botón pequeño.
+   */
+  renderTrigger?: (estado: { abrir: () => void; abierto: boolean; elegida: SelectOption | undefined }) => React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -150,19 +162,19 @@ export function AppSelect({
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
             onClick={() => setOpen(false)}
-            className="fixed inset-0 z-[999] bg-black/60 backdrop-blur-sm"
+            className="fixed inset-0 z-999 bg-black/60 backdrop-blur-xs"
           />
           <motion.div
             initial={{ y: "100%" }}
             animate={{ y: 0 }}
             exit={{ y: "100%" }}
             transition={{ type: "spring", damping: 30, stiffness: 380 }}
-            className="fixed inset-x-0 bottom-0 z-[1000] rounded-t-[32px] bg-white dark:bg-[#1a2540] pb-10 shadow-2xl"
+            className="fixed inset-x-0 bottom-0 z-1000 rounded-t-[32px] bg-card pb-10 shadow-2xl"
           >
             <div className="flex justify-center pt-3 pb-1">
-              <div className="h-1 w-10 rounded-full bg-slate-200 dark:bg-slate-700" />
+              <div className="h-1 w-10 rounded-full bg-panel" />
             </div>
-            <p className="px-5 py-3 text-[11px] font-bold uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
+            <p className="px-5 py-3 text-[11px] font-bold uppercase tracking-[0.14em] text-muted">
               {label}
             </p>
             <div className="max-h-[55vh] overflow-y-auto px-3">
@@ -174,7 +186,7 @@ export function AppSelect({
                     onChange(opt.value);
                     setOpen(false);
                   }}
-                  className="flex min-h-[56px] w-full items-center gap-3 rounded-2xl px-3 text-left transition hover:bg-slate-50 dark:hover:bg-slate-800/60 active:scale-[0.99]"
+                  className="flex min-h-[56px] w-full items-center gap-3 rounded-2xl px-3 text-left transition hover:bg-panel dark:hover:bg-panel active:scale-[0.99]"
                 >
                   {opt.photoUrl !== undefined ? (
                     <AvatarSmall name={opt.label} photoUrl={opt.photoUrl} size={44} />
@@ -182,15 +194,15 @@ export function AppSelect({
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-semibold text-ink">{opt.label}</p>
                     {opt.description ? (
-                      <p className="text-xs text-slate-400 dark:text-slate-500">{opt.description}</p>
+                      <p className="text-xs text-muted">{opt.description}</p>
                     ) : null}
                   </div>
                   {value === opt.value ? (
-                    <span className="grid size-6 shrink-0 place-items-center rounded-full bg-blue-500 text-white">
+                    <span className="grid size-6 shrink-0 place-items-center rounded-full bg-volt text-white">
                       <Check size={13} />
                     </span>
                   ) : (
-                    <span className="size-6 shrink-0 rounded-full border-2 border-slate-200 dark:border-slate-700" />
+                    <span className="size-6 shrink-0 rounded-full border-2 border-line" />
                   )}
                 </button>
               ))}
@@ -201,6 +213,17 @@ export function AppSelect({
     </AnimatePresence>
   );
 
+  if (renderTrigger) {
+    return (
+      <>
+        {renderTrigger({ abrir: () => setOpen(true), abierto: open, elegida: selected })}
+        {mounted && typeof document !== "undefined"
+          ? createPortal(modalContent, document.body)
+          : null}
+      </>
+    );
+  }
+
   return (
     <>
       <div className={cn("relative", wrapperClassName)}>
@@ -208,24 +231,24 @@ export function AppSelect({
           type="button"
           onClick={() => setOpen(true)}
           className={cn(
-            "flex min-h-14 w-full items-center gap-3 rounded-2xl border bg-slate-50 dark:bg-slate-800/50 px-4 text-left transition",
+            "flex min-h-14 w-full items-center gap-3 rounded-2xl border bg-panel px-4 text-left transition",
             open
-              ? "border-blue-500 dark:border-blue-400 ring-4 ring-blue-500/10 dark:ring-blue-400/10"
-              : "border-slate-200 dark:border-slate-700/60 hover:border-slate-300 dark:hover:border-slate-600"
+              ? "border-volt/30 ring-4 ring-volt/30"
+              : "border-line hover:border-line dark:hover:border-line"
           )}
         >
           {hasPhoto && selected ? (
             <AvatarSmall name={selected.label} photoUrl={selected.photoUrl} size={32} />
           ) : null}
           <div className="min-w-0 flex-1">
-            <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-muted">{label}</p>
-            <p className={cn("truncate text-sm font-semibold", selected ? "text-ink" : "text-slate-400 dark:text-slate-500")}>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-muted">{label}</p>
+            <p className={cn("truncate text-sm font-semibold", selected ? "text-ink" : "text-muted")}>
               {selected?.label ?? placeholder}
             </p>
           </div>
           <ChevronDown
             size={16}
-            className={cn("shrink-0 text-slate-400 transition-transform duration-200", open && "rotate-180")}
+            className={cn("shrink-0 text-muted transition-transform duration-200", open && "rotate-180")}
           />
         </button>
       </div>
@@ -273,14 +296,14 @@ export function AppChipInput({
   return (
     <div
       className={cn(
-        "rounded-2xl border bg-slate-50 dark:bg-slate-800/50 px-4 py-3 transition",
+        "rounded-2xl border bg-panel px-4 py-3 transition",
         focused
-          ? "border-blue-500 dark:border-blue-400 ring-4 ring-blue-500/10 dark:ring-blue-400/10"
-          : "border-slate-200 dark:border-slate-700/60",
+          ? "border-volt/30 ring-4 ring-volt/30"
+          : "border-line",
         wrapperClassName
       )}
     >
-      <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.1em] text-muted">{label}</p>
+      <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-muted">{label}</p>
       {chips.length > 0 && (
         <div className="mb-2.5 flex flex-wrap gap-1.5">
           <AnimatePresence>
@@ -291,13 +314,13 @@ export function AppChipInput({
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.8 }}
                 transition={{ duration: 0.15 }}
-                className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 dark:bg-blue-950/50 px-2.5 py-1 text-[12px] font-bold text-blue-700 dark:text-blue-300 ring-1 ring-blue-200 dark:ring-blue-800/60"
+                className="inline-flex items-center gap-1.5 rounded-full bg-volt/10 px-2.5 py-1 text-[12px] font-bold text-volt ring-1 ring-volt/30"
               >
                 {chip}
                 <button
                   type="button"
                   onClick={() => removeChip(i)}
-                  className="grid size-3.5 place-items-center rounded-full bg-blue-200 dark:bg-blue-800/80 text-blue-700 dark:text-blue-300 transition hover:bg-blue-300 dark:hover:bg-blue-700"
+                  className="grid size-3.5 place-items-center rounded-full bg-volt/10 text-volt transition hover:bg-volt dark:hover:bg-volt/12"
                 >
                   <X size={9} />
                 </button>
@@ -314,13 +337,13 @@ export function AppChipInput({
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
           placeholder={chips.length === 0 ? "Escribe y presiona Enter..." : "Agregar actividad..."}
-          className="min-h-8 flex-1 bg-transparent text-sm font-semibold text-ink outline-none placeholder:font-normal placeholder:text-slate-400 dark:placeholder:text-slate-500"
+          className="min-h-8 flex-1 bg-transparent text-sm font-semibold text-ink outline-hidden placeholder:font-normal placeholder:text-muted dark:placeholder:text-muted"
         />
         {inputValue.trim() ? (
           <button
             type="button"
             onClick={addChip}
-            className="grid size-7 shrink-0 place-items-center rounded-full bg-blue-500 text-white shadow-sm transition hover:bg-blue-600 active:scale-95"
+            className="grid size-7 shrink-0 place-items-center rounded-full bg-volt text-white shadow-xs transition hover:bg-volt active:scale-95"
           >
             <Plus size={14} />
           </button>
@@ -382,14 +405,14 @@ export function AppDatePicker({
       <button
         type="button"
         onClick={openPicker}
-        className="flex min-h-14 w-full items-center gap-3 rounded-2xl border border-slate-200 dark:border-slate-700/60 bg-slate-50 dark:bg-slate-800/50 px-4 text-left transition hover:border-slate-300 dark:hover:border-slate-600"
+        className="flex min-h-14 w-full items-center gap-3 rounded-2xl border border-line bg-panel px-4 text-left transition hover:border-line dark:hover:border-line"
       >
-        <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-blue-50 dark:bg-blue-950/40 text-blue-500">
+        <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-volt/10 text-volt">
           <CalendarDays size={17} />
         </span>
         <div className="flex-1">
-          <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-muted">{label}</p>
-          <p className={cn("text-sm font-semibold", formatted ? "text-ink" : "text-slate-400 dark:text-slate-500")}>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-muted">{label}</p>
+          <p className={cn("text-sm font-semibold", formatted ? "text-ink" : "text-muted")}>
             {formatted || "Seleccionar fecha"}
           </p>
         </div>
@@ -442,21 +465,20 @@ export function AppButton({
 }) {
   return (
     <motion.button
-      whileTap={{ scale: 0.95 }}
-      whileHover={{ y: -1 }}
+      whileTap={{ scale: 0.97 }}
       transition={{ type: "spring", stiffness: 520, damping: 30, mass: 0.6 }}
       {...props}
       disabled={loading || success || props.disabled}
       className={cn(
-        "tappable relative inline-flex min-h-12 items-center justify-center gap-2 overflow-hidden rounded-2xl px-5 text-sm font-semibold tracking-[-0.01em] focus:outline-none focus:ring-4 disabled:cursor-not-allowed disabled:opacity-55",
-        variant === "primary" && !success &&
-          "btn-sheen bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-[0_8px_30px_rgba(37,99,235,0.35)] hover:shadow-[0_12px_36px_rgba(37,99,235,0.45)] focus:ring-blue-500/20",
-        variant === "primary" && success &&
-          "bg-gradient-to-r from-emerald-600 to-emerald-500 text-white shadow-[0_8px_30px_rgba(34,197,94,0.35)] focus:ring-emerald-500/20",
+        "tappable relative inline-flex min-h-12 items-center justify-center gap-2 overflow-hidden rounded-2xl px-5 text-sm font-semibold tracking-[-0.01em] focus:outline-hidden focus:ring-4 disabled:cursor-not-allowed disabled:opacity-55",
+        variant === "primary" && !success && "bg-volt text-white shadow-[0_2px_6px_rgb(20_21_26/0.10)] hover:bg-[#1D4ED8] focus:ring-volt/30",
+        variant === "primary" && success && "bg-mint text-white focus:ring-mint/30",
+        // Secundario = contorno azul, no un borde gris de 2 px: asi se lee como
+        // una accion y no como el marco de un campo.
         variant === "secondary" &&
-          "border-2 border-slate-200 dark:border-slate-700 bg-transparent text-ink hover:border-blue-300 dark:hover:border-blue-700 focus:ring-blue-500/10",
+          "border border-volt/35 bg-card text-volt hover:bg-volt/6 focus:ring-volt/30",
         variant === "danger" &&
-          "border border-rose-300/60 dark:border-rose-500/30 bg-rose-500/10 text-rose-600 dark:text-rose-400 hover:bg-rose-500/15 focus:ring-rose-500/20",
+          "border border-orchid/30 bg-orchid/10 text-orchid hover:bg-orchid/15 focus:ring-orchid/30",
         className
       )}
     >
@@ -506,7 +528,7 @@ function AvatarSmall({ name, photoUrl, size = 36 }: { name: string; photoUrl?: s
   }
   return (
     <span
-      className="grid shrink-0 place-items-center rounded-full bg-blue-100 dark:bg-blue-950/50 font-semibold text-blue-600 dark:text-blue-400"
+      className="grid shrink-0 place-items-center rounded-full bg-volt/10 font-semibold text-volt"
       style={{ width: size, height: size, fontSize: Math.round(size * 0.32) }}
     >
       {name.slice(0, 2).toUpperCase()}

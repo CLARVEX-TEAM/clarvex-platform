@@ -1,13 +1,16 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { CalendarClock, CalendarDays, ChevronLeft, ChevronRight, Clock3 } from "lucide-react";
+import { CalendarClock, ChevronDown, ChevronLeft, ChevronRight, Clock3 } from "lucide-react";
 import { useSession } from "@/lib/use-session";
 import { addWeeks, dateKey, startOfWeek } from "@/lib/schedule-week";
 import { SHIFT_TYPE_LABELS } from "@/lib/shift-requests";
 import type { Role, User } from "@/lib/types";
-import { AppFrame, AppHeader, Badge, Button, Card, ProfileAvatar, Skeleton } from "@/components/ui";
+import { AppFrame, AppHeader, Badge, Card, ProfileAvatar, Skeleton } from "@/components/ui";
+import { SegmentedTabs } from "@/components/animate-ui/SegmentedTabs";
 import { PullToRefresh } from "@/components/PullToRefresh";
+import { AppSelect } from "@/components/forms";
+import { TiraSemana } from "@/components/horarios/TiraSemana";
 
 type ScheduleStatus = "WORKING" | "OFF" | "VACATION" | "PAID_DAY" | "INVENTORY" | "TERMINATED" | "UNKNOWN";
 type ScheduleItem = {
@@ -24,22 +27,33 @@ type ScheduleItem = {
   endTime: string | null;
   zone: string | null;
 };
+/** Quién más entra ese día. Ver el comentario del campo en la API. */
+type Companero = {
+  date: string;
+  userId: string;
+  userName: string;
+  photoUrl: string | null;
+  startTime: string | null;
+  endTime: string | null;
+};
 type ScheduleResponse = {
   weekStart: string;
   weekEnd: string;
   availableWeeks: string[];
   schedules: ScheduleItem[];
+  companeros?: Companero[];
+  tienda?: { nombre: string | null; direccion: string | null; mapaUrl: string | null };
 };
 
 const dayNames = ["Domingo", "Lunes", "Martes", "Miercoles", "Jueves", "Viernes", "Sabado"];
 const statusConfig: Record<ScheduleStatus, { label: string; tone: "success" | "default" | "warn" | "danger" | "info"; className: string }> = {
-  WORKING: { label: "Laborando", tone: "success", className: "bg-emerald-50 text-emerald-700" },
-  OFF: { label: "Descanso", tone: "default", className: "bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300" },
-  VACATION: { label: "Vacaciones", tone: "info", className: "bg-sky-50 dark:bg-sky-950/50 text-sky-700 dark:text-sky-400" },
-  PAID_DAY: { label: "Pago dia", tone: "warn", className: "bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-400" },
-  INVENTORY: { label: "Conteo", tone: "warn", className: "bg-violet-50 dark:bg-violet-950/50 text-violet-700 dark:text-violet-400" },
-  TERMINATED: { label: "Baja", tone: "danger", className: "bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-400" },
-  UNKNOWN: { label: "Sin horario", tone: "default", className: "bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400" }
+  WORKING: { label: "Laborando", tone: "success", className: "bg-mint/10 text-mint" },
+  OFF: { label: "Descanso", tone: "default", className: "bg-panel text-muted" },
+  VACATION: { label: "Vacaciones", tone: "info", className: "bg-sky/10 text-sky" },
+  PAID_DAY: { label: "Pago dia", tone: "warn", className: "bg-ember/10 text-ember" },
+  INVENTORY: { label: "Conteo", tone: "warn", className: "bg-purple/10 text-purple" },
+  TERMINATED: { label: "Baja", tone: "danger", className: "bg-orchid/10 text-orchid" },
+  UNKNOWN: { label: "Sin horario", tone: "default", className: "bg-panel text-muted" }
 };
 
 export default function HorariosPage() {
@@ -70,6 +84,15 @@ export default function HorariosPage() {
     const controller = new AbortController();
     const params = new URLSearchParams({ weekStart });
     if (session.role === "ASESOR" || view === "mine") params.set("userId", session.id);
+    /*
+     * ⚠️ `companeros=1` lo pide SOLO esta pantalla, y solo en la vista propia.
+     *
+     * Es la única excepción a la regla de que un asesor ve únicamente sus
+     * horarios, y está acotada a propósito: contesta «¿con quién me toca?» y
+     * nada más -- nombre, foto y horas del día. En la vista de equipo sobra,
+     * porque ahí ya se ven todos.
+     */
+    if (view === "mine") params.set("companeros", "1");
     setLoading(true);
     setError("");
     fetch(`/api/schedules?${params}`, { cache: "no-store", signal: controller.signal })
@@ -102,10 +125,49 @@ export default function HorariosPage() {
     paid: payload?.schedules.filter((item) => item.status === "PAID_DAY").length ?? 0
   }), [payload]);
 
+  /*
+   * El mes que se enseña es el del día CENTRAL, no el del primero.
+   *
+   * ⚠️ Una semana puede caer a caballo entre dos meses --la del 27 de
+   * septiembre termina el 3 de octubre-- y tomando el primer día diría
+   * «Septiembre» aunque la semana fuera casi toda de octubre.
+   *
+   * ⚠️ Y el central es el ÍNDICE 3, no el jueves. El jueves es la regla de ISO
+   * y vale para semanas que empiezan en lunes; estas empiezan en DOMINGO, así
+   * que ahí el jueves es el quinto día. Con la semana del 27 de septiembre
+   * --cuatro días de septiembre y tres de octubre-- el jueves daba «Octubre»
+   * para una semana mayoritariamente de septiembre. El índice 3 es el centro
+   * real de siete días, así que siempre cae del lado que tiene más.
+   */
+  const diaCentral = new Date(new Date(`${weekStart}T00:00:00Z`).getTime() + 3 * 86_400_000);
+  const mesDeLaSemana = diaCentral.toLocaleDateString("es-MX", { month: "long", timeZone: "UTC" })
+    .replace(/^./, (letra) => letra.toUpperCase());
+  const anioDeLaSemana = diaCentral.getUTCFullYear();
+
   const currentWeek = dateKey(startOfWeek(new Date()));
-  const previousWeek = dateKey(addWeeks(new Date(`${currentWeek}T00:00:00Z`), -1));
-  const nextWeek = dateKey(addWeeks(new Date(`${currentWeek}T00:00:00Z`), 1));
   const today = localDateKey(new Date());
+
+  /*
+   * El día que se está mirando. Arranca en hoy si hoy cae dentro de la semana
+   * abierta, y si no en su primer día -- al cambiar de semana con las flechas,
+   * quedarse en un día que ya no existe dejaría el detalle vacío.
+   */
+  const [diaElegido, setDiaElegido] = useState<string | null>(null);
+  const diaVisible = diaElegido && days.some((d) => d.key === diaElegido)
+    ? diaElegido
+    : (days.some((d) => d.key === today) ? today : days[0]?.key ?? today);
+  const detalle = days.find((d) => d.key === diaVisible) ?? null;
+
+  /*
+   * Con quién me toca el día que estoy mirando.
+   *
+   * ⚠️ Solo si YO entro ese día. Si descanso, los demás no son «compañeros de
+   * turno»: es simplemente quién trabaja, y eso ya no es la pregunta.
+   */
+  const entroEseDia = Boolean(detalle?.schedules.some((item) => item.status === "WORKING"));
+  const companerosDelDia = entroEseDia
+    ? (payload?.companeros ?? []).filter((persona) => persona.date === diaVisible)
+    : [];
   const rangeLabel = formatWeekRange(weekStart);
 
   function moveWeek(amount: number) {
@@ -117,69 +179,192 @@ export default function HorariosPage() {
       <AppHeader title="Horarios" subtitle={isManager && view === "team" ? "Agenda semanal del equipo." : "Tu agenda semanal."} backHref={isManager ? "/manager" : "/advisor"} />
       <PullToRefresh onRefresh={() => { setRefreshTick((t) => t + 1); return new Promise((r) => setTimeout(r, 700)); }}>
       <AppFrame>
+        {/*
+          ⚠️ Era una CUARTA forma de pestaña escrita a mano en esta app. Ahora
+          usa `SegmentedTabs`, el mismo control que el Semana/Mes de KPIs y el
+          Día a día/Incidencias de Asistencia.
+        */}
         {isManager ? (
-          <div className="mb-3 flex rounded-full bg-slate-100 dark:bg-slate-800 p-1" role="group" aria-label="Vista de horarios">
-            <button type="button" onClick={() => setView("mine")} className={`min-h-10 flex-1 rounded-full text-sm font-semibold transition ${view === "mine" ? "bg-white dark:bg-slate-600 text-volt shadow-sm" : "text-muted"}`}>Mi horario</button>
-            <button type="button" onClick={() => setView("team")} className={`min-h-10 flex-1 rounded-full text-sm font-semibold transition ${view === "team" ? "bg-white dark:bg-slate-600 text-volt shadow-sm" : "text-muted"}`}>Equipo</button>
-          </div>
+          <SegmentedTabs
+            ariaLabel="Vista de horarios"
+            className="mb-3"
+            value={view}
+            onChange={setView}
+            options={[
+              { value: "mine", label: "Mi agenda" },
+              { value: "team", label: "El equipo" }
+            ]}
+          />
         ) : null}
 
-        <Card className="mb-3 p-3.5">
-          <div className="flex items-center justify-between gap-3">
-            <button type="button" onClick={() => moveWeek(-1)} className="grid size-11 shrink-0 place-items-center rounded-full bg-slate-100 dark:bg-slate-800 text-ink transition active:scale-95" aria-label="Semana anterior"><ChevronLeft size={20} /></button>
-            <div className="min-w-0 text-center">
-              <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-volt">{isManager && view === "team" ? "Semana del equipo" : "Mi semana"}</p>
-              <h2 className="mt-0.5 text-lg font-semibold tracking-[-0.03em] text-ink">Semana {isoWeekNumber(new Date(`${weekStart}T00:00:00Z`))}</h2>
-              <p className="text-xs font-semibold text-muted">{rangeLabel}</p>
+        {/*
+          ⚠️ Una semana es una FORMA, y apilada en vertical la forma desaparece.
+          Aquí va entera en una franja: el año y el mes de contexto, y debajo
+          los siete días, con el elegido levantado como una tarjeta blanca --el
+          único elemento claro de la franja, así que se ve cuál estás mirando
+          sin ninguna etiqueta que lo diga.
+
+          ⚠️ El degradado es `.papel-hero`, el mismo de Conteos, Checklist,
+          Uniformes y Mi día: sale del logo, así que si cambia la marca cambian
+          todos a la vez y no hay un azul suelto que se quede viejo.
+        */}
+        <section className="papel-hero papel-elev-alta relative overflow-hidden rounded-[26px] px-4 pb-5 pt-5">
+          <svg
+            aria-hidden
+            viewBox="0 0 512 512"
+            className="pointer-events-none absolute -right-12 -top-14 size-56 opacity-[0.07]"
+          >
+            <path fill="#FFFFFF" d="M108 171 256 86 403 171 210 283v-57l93-53-47-27-95 55v111l95 56 48-28v-57l99 58-147 85-148-84V171Z" />
+          </svg>
+
+          <div className="relative flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-[13px] font-semibold opacity-75">{anioDeLaSemana}</p>
+              <h2 className="text-[26px] font-semibold leading-tight tracking-[-0.02em]">{mesDeLaSemana}</h2>
+              <p className="mt-0.5 text-xs opacity-75">Semana {isoWeekNumber(new Date(`${weekStart}T00:00:00Z`))} · {rangeLabel}</p>
             </div>
-            <button type="button" onClick={() => moveWeek(1)} className="grid size-11 shrink-0 place-items-center rounded-full bg-slate-100 text-ink transition active:scale-95" aria-label="Semana siguiente"><ChevronRight size={20} /></button>
+            <div className="flex shrink-0 items-center">
+              <button
+                type="button"
+                aria-label="Semana anterior"
+                onClick={() => moveWeek(-1)}
+                className="tappable grid size-10 place-items-center rounded-full text-white/80 transition hover:bg-white/15 hover:text-white active:scale-95"
+              >
+                <ChevronLeft size={19} />
+              </button>
+              <button
+                type="button"
+                aria-label="Semana siguiente"
+                onClick={() => moveWeek(1)}
+                className="tappable grid size-10 place-items-center rounded-full text-white/80 transition hover:bg-white/15 hover:text-white active:scale-95"
+              >
+                <ChevronRight size={19} />
+              </button>
+            </div>
           </div>
-          <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
-            <Button variant={weekStart === currentWeek ? "primary" : "ghost"} className="min-h-9 shrink-0 px-3 text-xs" onClick={() => setWeekStart(currentWeek)}>Actual</Button>
-            <Button variant={weekStart === previousWeek ? "primary" : "ghost"} className="min-h-9 shrink-0 px-3 text-xs" onClick={() => setWeekStart(previousWeek)}>Anterior</Button>
-            <Button variant={weekStart === nextWeek ? "primary" : "ghost"} className="min-h-9 shrink-0 px-3 text-xs" onClick={() => setWeekStart(nextWeek)}>Siguiente</Button>
-            <select aria-label="Semanas disponibles" value={weekStart} onChange={(event) => setWeekStart(event.target.value)} className="min-h-9 shrink-0 rounded-full border-0 bg-slate-100 dark:bg-slate-800 px-3 text-xs font-semibold text-ink outline-none focus:ring-4 focus:ring-volt/20">
-              {Array.from(new Set([weekStart, currentWeek, ...(payload?.availableWeeks ?? [])])).sort().reverse().map((week) => <option key={week} value={week}>{formatWeekRange(week)}</option>)}
-            </select>
+
+          <TiraSemana
+            className="relative mt-4"
+            sobreDegradado
+            dias={days.map((day) => ({
+              name: day.name,
+              key: day.key,
+              date: day.date,
+              trabajan: day.schedules.filter((item) => item.status === "WORKING").length,
+              total: day.schedules.length
+            }))}
+            hoy={today}
+            elegido={diaVisible}
+            onElegir={setDiaElegido}
+            equipo={Boolean(isManager && view === "team")}
+          />
+        </section>
+
+        {error ? <Card className="mb-3 border-orchid/30 bg-orchid/10 text-sm font-semibold text-orchid">{error}</Card> : null}
+
+        {loading ? (
+          <div className="space-y-3">
+            <Skeleton className="h-24 rounded-[20px]" />
+            <Skeleton className="h-36 rounded-[20px]" />
           </div>
-        </Card>
+        ) : (
+          <>
+            {/*
+              El detalle del día que se toca. Antes estaban los siete abiertos a
+              la vez, y eso era lo que obligaba a desplazarse.
 
-        <div className="mb-3 grid grid-cols-4 gap-2">
-          <Summary label="Laborando" value={summary.working} className="text-emerald-700" />
-          <Summary label="Descansos" value={summary.off} className="text-slate-700 dark:text-slate-300" />
-          <Summary label="Vacaciones" value={summary.vacation} className="text-sky-700" />
-          <Summary label="Pago dia" value={summary.paid} className="text-amber-700" />
-        </div>
+              ⚠️ Sube POR ENCIMA del degradado con margen negativo, como en la
+              referencia: así la franja y la ficha se leen como una sola pieza y
+              no como dos tarjetas sueltas. El `z-10` es obligatorio -- sin él el
+              degradado, que va después en el árbol, la tapa.
+            */}
+            {detalle ? (
+              <div className="papel-elev relative z-10 -mt-4 overflow-hidden rounded-[22px] border border-line bg-card px-4 pb-4 pt-4">
+                <div className="flex items-baseline justify-between gap-3">
+                  <h3 className="text-[15px] font-semibold text-ink">
+                    {detalle.name}{detalle.key === today ? " · hoy" : ""}
+                  </h3>
+                  <p className="text-[11px] text-muted">{formatLongDate(detalle.date)}</p>
+                </div>
 
-        {error ? <Card className="mb-3 border-rose-200 bg-rose-50 text-sm font-semibold text-rose-700">{error}</Card> : null}
-        {loading ? <div className="space-y-2.5">{[0, 1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-20 rounded-[28px]" />)}</div> : (
-          <div className="space-y-2.5" aria-label="Agenda semanal">
-            {days.map((day) => {
-              const current = day.key === today;
-              return (
-                <Card key={day.key} className={`p-3 ${current ? "ring-2 ring-volt/30" : ""}`}>
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                      <span className={`grid size-10 place-items-center rounded-2xl text-sm font-semibold ${current ? "bg-volt text-white" : "bg-blue-50 text-volt"}`}>{day.date.getUTCDate()}</span>
-                      <div><h3 className="font-semibold text-ink">{day.name}</h3><p className="text-[11px] text-muted">{formatLongDate(day.date)}{current ? " · Hoy" : ""}</p></div>
-                    </div>
-                    <CalendarDays size={18} className={current ? "text-volt" : "text-muted"} />
-                  </div>
-                  <div className="mt-2.5 border-t border-line pt-2.5">
-                    {day.schedules.map((item) => <ScheduleRow key={item.id} item={item} showUser={Boolean(isManager && view === "team")} />)}
-                    {shiftRequests.filter((request) => request.date === day.key).map((request, index) => (
-                      <div key={index} className="mt-1 flex items-center gap-1.5 text-[11px] font-bold">
-                        <CalendarClock size={12} className={request.status === "APROBADO" ? "text-emerald-600" : "text-amber-600"} />
-                        <span className={request.status === "APROBADO" ? "text-emerald-700" : "text-amber-700"}>
-                          {SHIFT_TYPE_LABELS[request.type] ?? request.type} {request.status === "APROBADO" ? "aprobado" : "(pendiente)"}{isManager && view === "team" ? ` · ${request.requester.name}` : ""}
-                        </span>
+                <div className="mt-2">
+                  {detalle.schedules.length === 0 ? (
+                    <p className="py-2 text-sm text-muted">Sin horario para este día.</p>
+                  ) : (
+                    detalle.schedules.map((item) => (
+                      <ScheduleRow key={item.id} item={item} showUser={Boolean(isManager && view === "team")} />
+                    ))
+                  )}
+
+                  {/*
+                    ⚠️ Solo en los días en que YO entro. Quién descansa el
+                    martes no es «con quién me toca»: es la vida privada de
+                    alguien, y esta pantalla no tiene por qué contarla.
+                  */}
+                  {view === "mine" && companerosDelDia.length > 0 ? (
+                    <div className="mt-3 border-t border-line pt-3">
+                      <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-muted">Te toca con</p>
+                      <div className="mt-2 space-y-2">
+                        {companerosDelDia.map((persona) => (
+                          <div key={persona.userId} className="flex items-center gap-2.5">
+                            <ProfileAvatar name={persona.userName} photoUrl={persona.photoUrl} size="sm" className="size-8 rounded-full shadow-none" />
+                            <p className="min-w-0 flex-1 truncate text-sm font-semibold text-ink">{persona.userName}</p>
+                            {persona.startTime ? (
+                              <p className="shrink-0 text-xs tabular-nums text-muted">
+                                {persona.startTime}{persona.endTime ? ` - ${persona.endTime}` : ""}
+                              </p>
+                            ) : null}
+                          </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
-                </Card>
-              );
-            })}
-          </div>
+                    </div>
+                  ) : null}
+
+                  {/*
+                    Dónde es.
+
+                    ⚠️ Solo en los días en que SE ENTRA. En un descanso, el
+                    mapa de la tienda no es información: es un recordatorio del
+                    trabajo en el día libre de alguien.
+
+                    ⚠️ Y solo si hay mapa GENERADO. Sin coordenadas capturadas
+                    no se enseña un hueco ni un «sin ubicación»: simplemente no
+                    aparece la sección, porque no falta nada que la persona
+                    pueda hacer.
+                  */}
+                  {entroEseDia && payload?.tienda?.mapaUrl ? (
+                    <div className="mt-3 border-t border-line pt-3">
+                      <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-muted">Dónde es</p>
+                      {/* ⚠️ `<img>` y no `NextImage`: la URL viene FIRMADA, del host
+                          `*.r2.cloudflarestorage.com`, que no está en
+                          `images.remotePatterns` -- y `NextImage` lo valida
+                          incluso con `unoptimized`, así que no cargaría. Es el
+                          mismo patrón que usan el chat y la credencial. */}
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={payload.tienda.mapaUrl}
+                        alt={`Mapa de ${payload.tienda.nombre ?? "la tienda"}`}
+                        loading="lazy"
+                        className="mt-2 h-28 w-full rounded-[14px] border border-line object-cover"
+                      />
+                      {payload.tienda.direccion ? (
+                        <p className="mt-2 text-xs leading-relaxed text-muted">{payload.tienda.direccion}</p>
+                      ) : null}
+                    </div>
+                  ) : null}
+
+                  {shiftRequests.filter((request) => request.date === detalle.key).map((request, index) => (
+                    <div key={index} className="mt-1 flex items-center gap-1.5 text-[11px] font-semibold">
+                      <CalendarClock size={12} className={request.status === "APROBADO" ? "text-mint" : "text-ember"} />
+                      <span className={request.status === "APROBADO" ? "text-mint" : "text-ember"}>
+                        {SHIFT_TYPE_LABELS[request.type] ?? request.type} {request.status === "APROBADO" ? "aprobado" : "(pendiente)"}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+          </>
         )}
       </AppFrame>
       </PullToRefresh>
@@ -189,11 +374,57 @@ export default function HorariosPage() {
 
 function ScheduleRow({ item, showUser }: { item: ScheduleItem; showUser: boolean }) {
   const config = statusConfig[item.status];
-  return <div className="flex min-h-11 items-center justify-between gap-3 py-1.5"><div className="flex min-w-0 items-center gap-2.5">{showUser ? <ProfileAvatar name={item.userName} photoUrl={item.photoUrl} size="sm" className="size-9 rounded-full shadow-none" /> : null}<div className="min-w-0"><p className="truncate text-sm font-semibold text-ink">{showUser ? item.userName : config.label}</p><p className="mt-0.5 flex items-center gap-1.5 text-[11px] text-muted">{item.startTime ? <><Clock3 size={12} />{item.startTime}{item.endTime ? ` - ${item.endTime}` : ""}</> : item.statusRaw ?? config.label}{showUser && item.zone ? ` · ${item.zone}` : ""}</p></div></div><Badge tone={config.tone}>{config.label}</Badge></div>;
+  const horas = item.startTime
+    ? `${item.startTime}${item.endTime ? ` - ${item.endTime}` : ""}`
+    : null;
+
+  /*
+   * ⚠️ El estado se dice UNA vez.
+   *
+   * Antes el título usaba `config.label` y la insignia también, así que en «Mi
+   * agenda» cada renglón repetía «Laborando» dos veces -- y los días sin
+   * horario lo decían TRES, porque el subtítulo también cae en `config.label`
+   * cuando no hay horas ni `statusRaw`.
+   *
+   * En mi agenda el dato que se busca son las HORAS, así que van arriba y el
+   * estado queda en la insignia. Sin horas, el estado sube al título y la
+   * insignia se retira: repetirla sería decir lo mismo dos veces otra vez.
+   */
+  const titulo = showUser ? item.userName : (horas ?? config.label);
+  const secundario = showUser
+    ? [horas ?? item.statusRaw ?? config.label, item.zone].filter(Boolean).join(" · ")
+    : null;
+  const conInsignia = showUser || horas !== null;
+
+  return (
+    <div className="flex min-h-11 items-center justify-between gap-3 py-1.5">
+      <div className="flex min-w-0 items-center gap-2.5">
+        {showUser ? (
+          <ProfileAvatar name={item.userName} photoUrl={item.photoUrl} size="sm" className="size-9 rounded-full shadow-none" />
+        ) : null}
+        <div className="min-w-0">
+          <p className="truncate text-sm font-semibold text-ink">{titulo}</p>
+          {secundario ? (
+            <p className="mt-0.5 flex items-center gap-1.5 text-[11px] text-muted">
+              {horas ? <Clock3 size={12} /> : null}
+              {secundario}
+            </p>
+          ) : null}
+        </div>
+      </div>
+      {conInsignia ? <Badge tone={config.tone}>{config.label}</Badge> : null}
+    </div>
+  );
 }
 
-function Summary({ label, value, className }: { label: string; value: number; className: string }) {
-  return <div className="rounded-2xl bg-white dark:bg-slate-800 px-2 py-2.5 text-center shadow-sm dark:shadow-none"><p className={`text-xl font-semibold ${className}`}>{value}</p><p className="mt-0.5 truncate text-[9px] font-bold text-muted">{label}</p></div>;
+/** Una cifra del resumen, sin caja: es el pie de foto de la semana. */
+function Cifra({ label, value, tono }: { label: string; value: number; tono: string }) {
+  return (
+    <div>
+      <div className={`text-[22px] font-semibold tabular-nums tracking-[-0.02em] ${tono}`}>{value}</div>
+      <div className="mt-0.5 text-xs text-muted">{label}</div>
+    </div>
+  );
 }
 
 function formatWeekRange(value: string) {

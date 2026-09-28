@@ -67,7 +67,7 @@ function MessageBody({
     return (
       <div className={cn(
         "flex items-center gap-1.5 rounded-2xl border border-dashed px-3.5 py-2 text-sm italic",
-        isMe ? "border-white/40 text-white/80" : "border-line text-muted"
+        isMe ? "border-white/40 text-muted" : "border-line text-muted"
       )}>
         <Trash2 size={13} /> Se eliminó este mensaje
       </div>
@@ -77,7 +77,7 @@ function MessageBody({
   const sticker = decodeStickerMsg(msg.body);
   if (sticker) {
     return (
-      <div className={cn("flex flex-col items-center gap-1 rounded-3xl bg-gradient-to-br p-4", sticker.bg)}>
+      <div className={cn("flex flex-col items-center gap-1 rounded-3xl bg-linear-to-br p-4", sticker.bg)}>
         <span className="text-5xl leading-none">{sticker.emoji}</span>
         <span className="text-xs font-semibold text-ink">{sticker.label}</span>
       </div>
@@ -140,12 +140,12 @@ function MessageBody({
         "border backdrop-blur-xl",
         isMe
           ? "border-white/25 bg-volt/85 text-white dark:border-sky-200/25 dark:bg-volt/45"
-          : "border-black/[0.06] bg-white/70 text-ink dark:border-white/10 dark:bg-white/[0.08]"
+          : "border-black/6 bg-white/70 text-ink dark:border-line dark:bg-white/8"
       )}
     >
       <CuerpoConFormato body={msg.body} gente={gente} yo={yo} claro={isMe} />
       {msg.editedAt && (
-        <span className={cn("ml-1.5 text-[10px] font-semibold", isMe ? "text-white/60" : "text-muted")}>
+        <span className={cn("ml-1.5 text-[10px] font-semibold", isMe ? "text-muted" : "text-muted")}>
           editado
         </span>
       )}
@@ -488,7 +488,7 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
      * necesita algo detras que dejar ver. Sobre blanco plano el desenfoque no
      * se nota y la burbuja parece gris sucio.
      */
-    <div className="fixed inset-x-0 bottom-0 top-[var(--aviso-alto,0px)] z-30 flex flex-col overflow-hidden bg-[#f6f7fb] dark:bg-[#080a10]">
+    <div className="fixed inset-x-0 bottom-0 top-(--aviso-alto,0px) z-30 flex flex-col overflow-hidden bg-void">
       <FondoAurora />
       <CabeceraChat
         titulo={title}
@@ -503,14 +503,14 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
       {/* Buscar dentro de la conversación */}
       {searchOpen && (
         <div className="border-b border-line bg-panel/60 px-4 py-2.5">
-          <div className="mx-auto flex max-w-md items-center gap-2 rounded-2xl border border-line bg-white px-3 py-2 dark:bg-[#0f1729]">
+          <div className="mx-auto flex max-w-md items-center gap-2 rounded-2xl border border-line bg-white px-3 py-2 dark:bg-card">
             <Search size={15} className="shrink-0 text-muted" />
             <input
               autoFocus
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Buscar en esta conversación…"
-              className="min-w-0 flex-1 bg-transparent text-sm font-semibold text-ink outline-none"
+              className="min-w-0 flex-1 bg-transparent text-sm font-semibold text-ink outline-hidden"
             />
             {query && (
               <button type="button" onClick={() => setQuery("")} className="shrink-0 text-muted">
@@ -534,7 +534,7 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
                       setSearchOpen(false);
                       setTimeout(() => scrollToMessage(h.id), 60);
                     }}
-                    className="flex w-full flex-col gap-0.5 rounded-2xl bg-white px-3 py-2 text-left transition active:bg-volt/8 dark:bg-[#0f1729]"
+                    className="flex w-full flex-col gap-0.5 rounded-2xl bg-white px-3 py-2 text-left transition active:bg-volt/8 dark:bg-card"
                   >
                     <span className="text-[11px] font-bold text-volt">{h.senderName}</span>
                     <span className="line-clamp-2 text-xs text-ink">{h.body}</span>
@@ -551,11 +551,11 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
         <button
           type="button"
           onClick={() => document.getElementById(`msg-${fijado.id}`)?.scrollIntoView({ behavior: "smooth", block: "center" })}
-          className="flex w-full items-center gap-2 border-b border-line bg-amber-50 px-4 py-2 text-left dark:bg-amber-400/10"
+          className="flex w-full items-center gap-2 border-b border-line bg-ember/10 px-4 py-2 text-left"
         >
-          <Pin size={14} className="shrink-0 text-amber-600 dark:text-amber-400" />
+          <Pin size={14} className="shrink-0 text-ember" />
           <div className="min-w-0 flex-1">
-            <p className="text-[10px] font-bold uppercase tracking-wide text-amber-700 dark:text-amber-400">Fijado</p>
+            <p className="text-[10px] font-bold uppercase tracking-wide text-ember">Fijado</p>
             <p className="truncate text-xs font-semibold text-ink">{chatPreview(fijado.body, fijado.deleted)}</p>
           </div>
         </button>
@@ -576,7 +576,7 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
           <div className="flex flex-col items-center gap-2 py-12 text-center">
             <span className="grid size-14 place-items-center rounded-3xl bg-volt/10 text-2xl">👋</span>
             <p className="text-sm font-bold text-ink">Todavía no hay mensajes</p>
-            <p className="max-w-[15rem] text-xs text-muted">
+            <p className="max-w-60 text-xs text-muted">
               Escribe abajo. Con <span className="font-bold text-volt">@</span> avisas a alguien en concreto.
             </p>
           </div>
@@ -603,7 +603,7 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
                 {showDay && (
                   <div className="my-3 flex items-center gap-2">
                     <div className="h-px flex-1 bg-line/50" />
-                    <span className="rounded-full bg-panel px-3 py-1 text-[11px] font-bold text-muted shadow-sm">
+                    <span className="rounded-full bg-panel px-3 py-1 text-[11px] font-bold text-muted shadow-xs">
                       {dayLabel(msg.createdAt)}
                     </span>
                     <div className="h-px flex-1 bg-line/50" />
@@ -701,7 +701,7 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
 
       {/* Input */}
       <div
-        className="relative z-[1] shrink-0 border-t border-line/50 bg-white/55 px-3 pt-3 backdrop-blur-2xl dark:bg-white/[0.05]"
+        className="relative z-1 shrink-0 border-t border-line/50 bg-white/55 px-3 pt-3 backdrop-blur-2xl dark:bg-white/5"
         style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
       >
         {/* Picker */}
@@ -741,7 +741,7 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
           );
           if (sugeridos.length === 0) return null;
           return (
-            <div className="mx-auto mb-2 max-w-md overflow-hidden rounded-2xl border border-line bg-white shadow-lg dark:bg-[#0f1729]">
+            <div className="mx-auto mb-2 max-w-md overflow-hidden rounded-2xl border border-line bg-white shadow-lg dark:bg-card">
               {sugeridos.map((p) => (
                 <button
                   key={p.userId}
@@ -805,7 +805,7 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
             placeholder="Escribe un mensaje…"
             rows={1}
             maxLength={1000}
-            className="flex-1 resize-none rounded-2xl border border-line bg-panel px-3.5 py-2.5 text-sm font-semibold text-ink outline-none focus:border-volt"
+            className="flex-1 resize-none rounded-2xl border border-line bg-panel px-3.5 py-2.5 text-sm font-semibold text-ink outline-hidden focus:border-volt"
             style={{ maxHeight: "120px", overflowY: "auto" }}
           />
           <button
@@ -821,9 +821,9 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
 
       {/* Menú de acciones del mensaje */}
       {menuMsg && (
-        <div className="fixed inset-0 z-[60] flex items-end bg-black/40" onClick={() => setMenuMsg(null)}>
+        <div className="fixed inset-0 z-60 flex items-end bg-black/40" onClick={() => setMenuMsg(null)}>
           <div
-            className="w-full rounded-t-3xl bg-white p-2 pb-6 shadow-2xl dark:bg-[#0f1729]"
+            className="w-full rounded-t-3xl bg-white p-2 pb-6 shadow-2xl dark:bg-card"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mx-auto mb-2 mt-1 h-1 w-10 rounded-full bg-line" />
@@ -855,15 +855,15 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
                 className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-bold text-ink transition active:bg-volt/8"
               >
                 {menuMsg.pinnedAt
-                  ? <><PinOff size={18} className="text-amber-600" /> Soltar</>
-                  : <><Pin size={18} className="text-amber-600" /> Fijar arriba</>}
+                  ? <><PinOff size={18} className="text-ember" /> Soltar</>
+                  : <><Pin size={18} className="text-ember" /> Fijar arriba</>}
               </button>
             )}
             {!menuMsg.deleted && (menuMsg.senderId === session?.id || isManager) && (
               <button
                 type="button"
                 onClick={() => void deleteMessage(menuMsg, "all")}
-                className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-bold text-red-500 transition active:bg-red-500/10"
+                className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-bold text-orchid transition active:bg-orchid/10"
               >
                 <Trash2 size={18} /> Eliminar para todos
               </button>
@@ -895,7 +895,7 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
           type="button"
           onClick={() => bottomRef.current?.scrollIntoView({ behavior: "smooth" })}
           aria-label="Ir al último mensaje"
-          className="absolute bottom-24 right-4 z-20 grid size-11 place-items-center rounded-full border border-line bg-white text-volt shadow-lg transition active:scale-95 dark:bg-[#0f1729]"
+          className="absolute bottom-24 right-4 z-20 grid size-11 place-items-center rounded-full border border-line bg-white text-volt shadow-lg transition active:scale-95 dark:bg-card"
         >
           <ChevronDown size={20} />
         </button>
@@ -903,8 +903,8 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
 
       {/* Corregir un mensaje propio */}
       {editing && (
-        <div className="fixed inset-0 z-[65] flex items-end bg-black/40" onClick={() => setEditing(null)}>
-          <div className="w-full rounded-t-3xl bg-white p-4 pb-6 shadow-2xl dark:bg-[#0f1729]" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 z-65 flex items-end bg-black/40" onClick={() => setEditing(null)}>
+          <div className="w-full rounded-t-3xl bg-white p-4 pb-6 shadow-2xl dark:bg-card" onClick={(e) => e.stopPropagation()}>
             <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-line" />
             <p className="mb-2 text-sm font-bold text-ink">Corregir mensaje</p>
             <textarea
@@ -913,7 +913,7 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
               onChange={(e) => setEditing({ ...editing, body: e.target.value })}
               rows={3}
               maxLength={1000}
-              className="w-full resize-none rounded-2xl border border-line bg-panel px-3.5 py-2.5 text-sm font-semibold text-ink outline-none focus:border-volt"
+              className="w-full resize-none rounded-2xl border border-line bg-panel px-3.5 py-2.5 text-sm font-semibold text-ink outline-hidden focus:border-volt"
             />
             {/* Se avisa aqui de que va a quedar marcado: enterarse despues es peor. */}
             <p className="mt-1.5 text-[11px] text-muted">Quedará marcado como editado.</p>

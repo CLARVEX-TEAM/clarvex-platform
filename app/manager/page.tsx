@@ -87,7 +87,7 @@ export default function ManagerDashboard() {
       <>
         <div className="grid min-h-screen place-items-center px-8 text-center">
           <div>
-            <span className="mx-auto mb-3 grid size-14 place-items-center rounded-3xl bg-rose-500/10 text-2xl">📡</span>
+            <span className="mx-auto mb-3 grid size-14 place-items-center rounded-3xl bg-orchid/10 text-2xl">📡</span>
             <p className="text-base font-semibold text-ink">No se pudo cargar la información</p>
             <p className="mt-1 text-sm font-semibold text-muted">Revisa tu conexión e intenta de nuevo.</p>
             <button
@@ -107,16 +107,20 @@ export default function ManagerDashboard() {
     return (
       <>
         <DesktopAutoRedirect />
-        <div className="pt-safe sticky top-[var(--matchday-offset,0px)] z-20 h-[68px] border-b border-slate-200/60 bg-white/88 dark:border-slate-800/60 dark:bg-slate-950/95 backdrop-blur-xl" />
+        {/* ⚠️ Es un `<header>`, no un `<div>`: el servidor pinta este hueco
+            --no tiene sesion-- y el cliente pinta `HomeHeader` encima. Con
+            etiquetas distintas React no puede hidratar y suelta un error de
+            hidratacion en cada carga. */}
+        <header className="pt-safe sticky top-(--matchday-offset,0px) z-20 h-[68px] border-b border-line bg-void/85 backdrop-blur-xl" />
         <AppFrame>
           <div className="animate-pulse space-y-3">
-            <div className="h-36 rounded-[28px] bg-slate-200 dark:bg-slate-800" />
+            <div className="h-36 rounded-[28px] bg-panel" />
             <div className="grid grid-cols-2 gap-3">
-              {[0, 1, 2, 3].map((i) => <div key={i} className="h-24 rounded-[28px] bg-slate-200 dark:bg-slate-800" />)}
+              {[0, 1, 2, 3].map((i) => <div key={i} className="h-24 rounded-[28px] bg-panel" />)}
             </div>
-            <div className="h-28 rounded-[28px] bg-slate-200 dark:bg-slate-800" />
+            <div className="h-28 rounded-[28px] bg-panel" />
             <div className="grid grid-cols-2 gap-3">
-              {[0, 1, 2, 3].map((i) => <div key={i} className="h-16 rounded-[28px] bg-slate-200 dark:bg-slate-800" />)}
+              {[0, 1, 2, 3].map((i) => <div key={i} className="h-16 rounded-[28px] bg-panel" />)}
             </div>
           </div>
         </AppFrame>
@@ -227,7 +231,7 @@ export default function ManagerDashboard() {
             className="card-3d flex items-center justify-between gap-3 rounded-2xl border border-line bg-card p-3.5"
           >
             <div className="flex items-center gap-3">
-              <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-[#EEF3FF] text-[#2563EB] dark:bg-[#172134] dark:text-[#6B9BFF]">
+              <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-volt/8 text-volt">
                 <Megaphone size={17} />
               </span>
               <div className="min-w-0">
@@ -239,7 +243,7 @@ export default function ManagerDashboard() {
             </div>
             <Link
               href="/comunicados"
-              className="shrink-0 rounded-full bg-[#2563EB] px-3.5 py-2 text-xs font-semibold text-white transition active:scale-95 dark:bg-[#6B9BFF]"
+              className="shrink-0 rounded-full bg-volt px-3.5 py-2 text-xs font-semibold text-white transition active:scale-95 dark:bg-volt"
             >
               Leer
             </Link>
@@ -284,7 +288,7 @@ export default function ManagerDashboard() {
           <motion.div {...cardAnim(0.2)} className="mt-3">
             <Link
               href="/equipo"
-              className="flex items-center gap-3 rounded-[28px] border border-volt/30 bg-gradient-to-br from-blue-50 to-indigo-50 p-4 transition active:scale-[0.98] dark:from-[#101c3a] dark:to-[#141233]"
+              className="flex items-center gap-3 rounded-[28px] border border-volt/30 bg-volt/8 p-4 transition active:scale-[0.98]"
             >
               <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-volt/15 text-volt"><UsersRound size={22} /></span>
               <div className="min-w-0 flex-1">
@@ -352,7 +356,7 @@ export default function ManagerDashboard() {
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-[13.5px] font-medium tracking-[-0.01em] text-ink">
                           {advisor.name}
-                          {!resting && streak.current >= 2 ? <span className="ml-1.5 text-[11px] font-semibold text-orange-500">🔥{streak.current}</span> : null}
+                          {!resting && streak.current >= 2 ? <span className="ml-1.5 text-[11px] font-semibold text-ember">🔥{streak.current}</span> : null}
                         </p>
                         <p className="text-[11px] text-muted">
                           {resting ? restText : `${money(kpi?.dailySales ?? 0)} · meta ${money(kpi?.dailyGoal ?? 0)}`}
@@ -373,7 +377,7 @@ export default function ManagerDashboard() {
           <motion.div {...cardAnim(0.54)} className="mt-3">
             <Card>
               <div className="mb-3 flex items-center gap-2">
-                <Cake className="text-pink-500" size={18} />
+                <Cake className="text-purple" size={18} />
                 <h2 className="text-[15px] font-semibold">Próximos festejos</h2>
               </div>
               <div className="divide-y divide-white/[0.07]">

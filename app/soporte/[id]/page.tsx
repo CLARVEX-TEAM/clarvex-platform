@@ -108,7 +108,7 @@ export default function CasoPage() {
       <AppHeader title="Caso de soporte" subtitle={caso?.folio ?? "Cargando…"} backHref="/soporte" />
       <AppFrame>
         {error && !caso ? (
-          <Card className="px-5 py-6 text-center text-sm font-semibold text-rose-600 dark:text-rose-400">{error}</Card>
+          <Card className="px-5 py-6 text-center text-sm font-semibold text-orchid">{error}</Card>
         ) : !caso || !dicho ? (
           <Card className="grid h-56 place-items-center">
             <RefreshCw size={20} className="animate-spin text-muted" />
@@ -122,7 +122,7 @@ export default function CasoPage() {
                   className={cn(
                     "shrink-0 rounded-full px-2.5 py-1 text-[10px] font-bold",
                     dicho.tono === "bien" ? "bg-mint/12 text-mint"
-                    : dicho.tono === "aviso" ? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
+                    : dicho.tono === "aviso" ? "bg-ember/15 text-ember"
                     : "bg-white/8 text-muted"
                   )}
                 >
@@ -153,7 +153,7 @@ export default function CasoPage() {
                       m.mio ? "self-end bg-volt text-white" : "self-start bg-panel text-ink ring-1 ring-line"
                     )}
                   >
-                    <p className="whitespace-pre-wrap break-words">{m.texto}</p>
+                    <p className="whitespace-pre-wrap wrap-break-word">{m.texto}</p>
                     {m.fecha ? (
                       <p className={cn("mt-1 text-[10px]", m.mio ? "text-white/70" : "text-muted")}>
                         {new Intl.DateTimeFormat("es-MX", { dateStyle: "short", timeStyle: "short" }).format(new Date(m.fecha))}
@@ -171,9 +171,9 @@ export default function CasoPage() {
                   onChange={(e) => setTexto(e.target.value.slice(0, 4000))}
                   placeholder="Escribe tu respuesta…"
                   rows={3}
-                  className="w-full resize-none rounded-2xl border border-line bg-panel px-3.5 py-2.5 text-sm font-semibold text-ink outline-none transition focus:border-volt focus:ring-4 focus:ring-volt/10"
+                  className="w-full resize-none rounded-2xl border border-line bg-panel px-3.5 py-2.5 text-sm font-semibold text-ink outline-hidden transition focus:border-volt focus:ring-4 focus:ring-volt/10"
                 />
-                {error ? <p className="mt-2 text-xs font-semibold text-rose-600 dark:text-rose-400">{error}</p> : null}
+                {error ? <p className="mt-2 text-xs font-semibold text-orchid">{error}</p> : null}
                 <button
                   type="button"
                   onClick={() => void responder()}

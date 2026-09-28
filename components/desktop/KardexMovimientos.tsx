@@ -123,7 +123,7 @@ export function KardexMovimientos({
       ) : null}
 
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[42rem]">
+        <table className="w-full min-w-2xl">
           <thead className={deskThead}>
             <tr>
               <th className={cn(deskTh, "w-8")}>
@@ -178,7 +178,7 @@ export function KardexMovimientos({
         <BarraSuma resumen={resumen} desconocidos={desconocidos} onLimpiar={limpiar} />
       ) : (
         <p className="text-caption text-muted">
-          Marca las filas que quieras sumar. Con <kbd className="rounded border border-line px-1">Shift</kbd> se
+          Marca las filas que quieras sumar. Con <kbd className="rounded-sm border border-line px-1">Shift</kbd> se
           marca un tramo entero.
         </p>
       )}
@@ -205,7 +205,7 @@ function BarraSuma({
 }) {
   const soloSalidas = resumen.entradas === 0 && resumen.salidas > 0;
   return (
-    <div className="sticky bottom-3 rounded-xl border border-accent/40 bg-card/95 px-4 py-3 backdrop-blur">
+    <div className="sticky bottom-3 rounded-xl border border-accent/40 bg-card/95 px-4 py-3 backdrop-blur-sm">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="flex items-center gap-1.5 text-ui text-ink">
           <Sigma size={14} className="text-accent" aria-hidden />
@@ -322,7 +322,7 @@ function Casilla({ marcada, onChange, etiqueta }: { marcada: boolean; onChange: 
         onChange();
       }}
       className={cn(
-        "flex h-4 w-4 cursor-pointer items-center justify-center rounded border transition-colors",
+        "flex h-4 w-4 cursor-pointer items-center justify-center rounded-sm border transition-colors",
         marcada ? "border-accent bg-accent text-on-accent" : "border-line"
       )}
     >

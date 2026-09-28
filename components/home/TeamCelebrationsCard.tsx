@@ -16,7 +16,7 @@ export function TeamCelebrationsCard({ members, manageHref }: { members: TeamMem
     <Card className="p-3.5">
       <div className="mb-3 flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <Cake className="text-pink-500" size={17} />
+          <Cake className="text-purple" size={17} />
           <h2 className="text-[15px] font-semibold">Cumpleaños del equipo</h2>
         </div>
         {manageHref ? (

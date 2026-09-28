@@ -23,21 +23,33 @@ export function PremiumButton({
   icon?: React.ReactNode;
   variant?: "primary" | "glass" | "ghost" | "success" | "danger";
 }) {
-  const solid = variant === "primary" || variant === "success" || variant === "danger";
+  /*
+   * ⚠️ **Un solo botón azul por pantalla.** `primary` es la acción principal y
+   * es el único con relleno; todo lo demás va de CONTORNO --fondo de la
+   * tarjeta, borde y texto azules--. Antes cada botón era una pastilla azul
+   * rellena, con sombra de color, un brillo animado y un rebote al pasar por
+   * encima: con tres o cuatro en la misma pantalla ninguno destacaba, que es
+   * justo lo contrario de para lo que sirve un botón principal.
+   *
+   * ⚠️ Fuera el `btn-sheen` y las sombras de colorcito. El brillo recorría el
+   * botón solo, sin que nadie lo tocara, y la sombra azul teñía el papel
+   * blanco que hay debajo.
+   */
   return (
     <motion.button
       {...props}
-      whileTap={{ scale: 0.95 }}
-      whileHover={{ scale: 1.02, y: -1 }}
+      // Se conserva la respuesta al TOQUE --dice que el botón recibió el dedo,
+      // que en un teléfono es información-- y se retira el rebote del hover,
+      // que en un teléfono no lo ve nadie.
+      whileTap={{ scale: 0.97 }}
       transition={tactileSpring}
       className={cn(
-        "tappable relative inline-flex min-h-12 items-center justify-center gap-2 overflow-hidden rounded-full px-4 text-sm font-semibold tracking-[-0.01em] focus:outline-none focus-visible:ring-4 focus-visible:ring-volt/40 disabled:cursor-not-allowed disabled:opacity-55",
-        solid && "btn-sheen",
-        variant === "primary" && "bg-volt text-white shadow-[0_8px_20px_rgb(37_99_235_/_0.22)] hover:bg-[#1D4ED8]",
-        variant === "success" && "bg-success text-white shadow-[0_8px_20px_rgb(34_197_94_/_0.24)]",
-        variant === "danger" && "bg-orchid text-white shadow-[0_8px_20px_rgb(239_68_68_/_0.22)] hover:bg-[#DC2626]",
-        variant === "glass" && "solid-card text-ink hover:text-volt",
-        variant === "ghost" && "bg-panel text-ink hover:bg-line/60",
+        "app-btn tappable relative inline-flex min-h-12 items-center justify-center gap-2 overflow-hidden rounded-full border px-4 text-sm font-semibold tracking-[-0.01em] focus:outline-hidden focus-visible:ring-4 focus-visible:ring-volt/40 disabled:cursor-not-allowed disabled:opacity-55",
+        variant === "primary" && "app-btn-primary border-volt bg-volt text-white hover:bg-[#1D4ED8]",
+        variant === "success" && "border-mint bg-mint text-white",
+        variant === "danger" && "border-orchid/40 bg-card text-orchid hover:bg-orchid/6",
+        variant === "glass" && "border-volt/35 bg-card text-volt hover:bg-volt/6",
+        variant === "ghost" && "border-line bg-card text-ink hover:border-volt/40 hover:text-volt",
         className
       )}
       disabled={loading || success || disabled}

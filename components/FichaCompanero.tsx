@@ -37,7 +37,7 @@ export function FichaCompanero({
 
   return (
     <div
-      className="fixed inset-0 z-[65] flex items-end justify-center bg-black/30 backdrop-blur-[2px] sm:items-center"
+      className="fixed inset-0 z-65 flex items-end justify-center bg-black/30 backdrop-blur-[2px] sm:items-center"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
@@ -48,7 +48,7 @@ export function FichaCompanero({
          * Una sola tarjeta con las filas dentro, no cajas sueltas: agrupar es
          * lo que hace que se lea como una ficha y no como dos avisos.
          */
-        className="w-full max-w-sm rounded-t-[28px] bg-white px-5 pb-9 pt-3 shadow-2xl dark:bg-[#1C1C1E] sm:rounded-[28px] sm:pb-6"
+        className="w-full max-w-sm rounded-t-[28px] bg-card px-5 pb-9 pt-3 shadow-2xl sm:rounded-[28px] sm:pb-6"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mx-auto mb-6 h-1 w-9 rounded-full bg-line sm:hidden" />
@@ -66,7 +66,7 @@ export function FichaCompanero({
             </p>
             <p className="text-[13px] text-muted">
               {puestoLegible(persona.role)}
-              {persona.online && <span className="text-green-600 dark:text-green-400"> · En línea</span>}
+              {persona.online && <span className="text-mint"> · En línea</span>}
             </p>
           </div>
         </div>

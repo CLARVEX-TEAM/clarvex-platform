@@ -154,7 +154,7 @@ export default function ProfilePage() {
     <>
       <AppHeader title="Mi perfil" subtitle="Tu identidad dentro de CLARVEX Team." backHref={user?.role === "ASESOR" ? "/advisor" : "/manager"} />
       <AppFrame>
-        {loading ? <Card className="text-sm font-semibold text-muted">Cargando perfil...</Card> : !user ? <Card className="text-sm font-semibold text-rose-700">No fue posible cargar tu perfil.</Card> : (
+        {loading ? <Card className="text-sm font-semibold text-muted">Cargando perfil...</Card> : !user ? <Card className="text-sm font-semibold text-orchid">No fue posible cargar tu perfil.</Card> : (
           <>
             <section className="mb-3 flex flex-col items-center px-4 py-5 text-center">
               <div className="relative">
@@ -172,17 +172,17 @@ export default function ProfilePage() {
 
             <Card className="mb-3 p-3.5">
               <div className="flex items-center gap-3">
-                <span className="grid size-10 place-items-center rounded-2xl bg-pink-50 dark:bg-[#2a1a2a] text-pink-500"><Cake size={19} /></span>
+                <span className="grid size-10 place-items-center rounded-2xl bg-volt/10 text-volt"><Cake size={19} /></span>
                 <div><h2 className="font-semibold text-ink">Datos personales</h2><p className="text-xs text-muted">Para felicitarte en tu día 🎂</p></div>
               </div>
               <div className="mt-4 grid gap-3">
                 <label className="grid gap-1">
                   <span className="text-xs font-bold text-muted">Cumpleaños</span>
-                  <input type="date" value={birthDate} onChange={(event) => setBirthDate(event.target.value)} className="min-h-11 rounded-2xl border border-line bg-panel px-3 text-sm font-bold text-ink outline-none focus:border-volt" />
+                  <input type="date" value={birthDate} onChange={(event) => setBirthDate(event.target.value)} className="min-h-11 rounded-2xl border border-line bg-panel px-3 text-sm font-bold text-ink outline-hidden focus:border-volt" />
                 </label>
                 <label className="grid gap-1">
                   <span className="text-xs font-bold text-muted">Fecha de ingreso</span>
-                  <input type="date" value={hireDate} onChange={(event) => setHireDate(event.target.value)} className="min-h-11 rounded-2xl border border-line bg-panel px-3 text-sm font-bold text-ink outline-none focus:border-volt" />
+                  <input type="date" value={hireDate} onChange={(event) => setHireDate(event.target.value)} className="min-h-11 rounded-2xl border border-line bg-panel px-3 text-sm font-bold text-ink outline-hidden focus:border-volt" />
                 </label>
                 <label className="grid gap-1">
                   <span className="text-xs font-bold text-muted">Correo</span>
@@ -193,7 +193,7 @@ export default function ProfilePage() {
                     value={email}
                     onChange={(event) => setEmail(event.target.value)}
                     placeholder="tucorreo@ejemplo.com"
-                    className="min-h-11 rounded-2xl border border-line bg-panel px-3 text-sm font-bold text-ink outline-none focus:border-volt"
+                    className="min-h-11 rounded-2xl border border-line bg-panel px-3 text-sm font-bold text-ink outline-hidden focus:border-volt"
                   />
                   <span className="text-[11px] text-muted">
                     {email
@@ -208,7 +208,7 @@ export default function ProfilePage() {
             <Card className="mb-3 p-3.5">
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
-                  <span className="grid size-10 place-items-center rounded-2xl bg-slate-100 dark:bg-[#1a2540] text-muted">
+                  <span className="grid size-10 place-items-center rounded-2xl bg-panel text-muted">
                     {isDark ? <Moon size={19} /> : <Sun size={19} />}
                   </span>
                   <div>
@@ -222,7 +222,7 @@ export default function ProfilePage() {
                       key={t}
                       type="button"
                       onClick={() => setTheme(t)}
-                      className={`rounded-xl px-3 py-1.5 text-[11px] font-semibold transition ${theme === t ? "bg-volt text-white shadow-sm" : "bg-slate-100 dark:bg-[#1a2540] text-muted"}`}
+                      className={`rounded-xl px-3 py-1.5 text-[11px] font-semibold transition ${theme === t ? "bg-volt text-white shadow-xs" : "bg-panel dark:bg-panel text-muted"}`}
                     >
                       {t === "light" ? "Claro" : t === "dark" ? "Oscuro" : "Auto"}
                     </button>
@@ -232,7 +232,7 @@ export default function ProfilePage() {
             </Card>
 
             <Card className="mb-3 p-3.5">
-              <div className="flex items-center gap-3"><span className="grid size-10 place-items-center rounded-2xl bg-blue-50 dark:bg-[#1a2540] text-volt"><ImageUp size={19} /></span><div><h2 className="font-semibold text-ink">Foto de perfil</h2><p className="text-xs text-muted">JPG, PNG o WEBP. Maximo 5 MB.</p></div></div>
+              <div className="flex items-center gap-3"><span className="grid size-10 place-items-center rounded-2xl bg-volt/10 text-volt"><ImageUp size={19} /></span><div><h2 className="font-semibold text-ink">Foto de perfil</h2><p className="text-xs text-muted">JPG, PNG o WEBP. Maximo 5 MB.</p></div></div>
               <input ref={inputRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={selectPhoto} className="sr-only" />
               {/* Sin botón de guardar: al elegir la imagen se sube sola. */}
               <div className="mt-4">
@@ -244,12 +244,12 @@ export default function ProfilePage() {
 
             <Card className="mb-3 p-3.5">
               <div className="flex items-center gap-3">
-                <span className="grid size-10 place-items-center rounded-2xl bg-violet-50 dark:bg-[#1a2540] text-purple"><Fingerprint size={19} /></span>
+                <span className="grid size-10 place-items-center rounded-2xl bg-volt/10 text-volt"><Fingerprint size={19} /></span>
                 <div><h2 className="font-semibold text-ink">Acceso biometrico</h2><p className="text-xs text-muted">Face ID o huella dactilar para entrar sin PIN.</p></div>
               </div>
               {user.biometricEnabled ? (
-                <div className="mt-4 flex items-center justify-between rounded-2xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/30 px-4 py-3">
-                  <span className="text-sm font-semibold text-emerald-700 dark:text-emerald-400">Face ID / Huella activos</span>
+                <div className="mt-4 flex items-center justify-between rounded-2xl border border-mint/30 bg-mint/10 px-4 py-3">
+                  <span className="text-sm font-semibold text-mint">Face ID / Huella activos</span>
                   <Badge tone="done">activo</Badge>
                 </div>
               ) : (
@@ -318,5 +318,5 @@ export default function ProfilePage() {
 }
 
 function ProfileField({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
-  return <div className="flex items-center gap-3 py-3 first:pt-0 last:pb-0"><span className="grid size-9 place-items-center rounded-2xl bg-slate-100 dark:bg-slate-700 text-muted">{icon}</span><div><p className="text-xs font-semibold text-muted">{label}</p><p className="font-semibold text-ink">{value}</p></div></div>;
+  return <div className="flex items-center gap-3 py-3 first:pt-0 last:pb-0"><span className="grid size-9 place-items-center rounded-2xl bg-panel text-muted">{icon}</span><div><p className="text-xs font-semibold text-muted">{label}</p><p className="font-semibold text-ink">{value}</p></div></div>;
 }

@@ -11,7 +11,7 @@ export function GlassCard({ children, className = "", ...props }: Omit<HTMLMotio
   return (
     <motion.section
       {...props}
-      className={cn("solid-card rounded-[28px] p-3.5 shadow-glass", className)}
+      className={cn("app-card solid-card rounded-[28px] p-3.5 shadow-glass", className)}
     >
       {children}
     </motion.section>

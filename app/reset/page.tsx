@@ -48,11 +48,11 @@ export default function ResetPage() {
   }, []);
 
   return (
-    <main className="grid min-h-screen place-items-center bg-[#0f1729] px-8 text-center">
+    <main className="grid min-h-screen place-items-center bg-card px-8 text-center">
       <div>
         <div className="mx-auto mb-5 size-10 animate-spin rounded-full border-2 border-white/20 border-t-white" />
-        <p className="text-base font-semibold text-white">{status}</p>
-        <p className="mt-2 text-sm text-white/60">CLARVEX Team</p>
+        <p className="text-base font-semibold text-ink">{status}</p>
+        <p className="mt-2 text-sm text-muted">CLARVEX Team</p>
       </div>
     </main>
   );

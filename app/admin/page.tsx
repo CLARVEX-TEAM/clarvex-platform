@@ -6,6 +6,7 @@ import { Building2, CheckCircle2, ChevronDown, KeyRound, Percent, Plus, ScrollTe
 import { getSession } from "@/lib/auth";
 import { money } from "@/lib/format";
 import { AppFrame, AppHeader, Button, Card } from "@/components/ui";
+import { AppSelect } from "@/components/forms";
 import { enContenedorNativo } from "@/lib/puente-nativo";
 import { portadaDe } from "@/lib/portada";
 
@@ -53,6 +54,10 @@ type StoreRow = {
   lastSyncAt: string | null;
   lastSyncStatus: "SUCCESS" | "ERROR" | "RUNNING" | null;
   commissionRules: CommissionRuleRow[];
+  address: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  mapaUrl: string | null;
 };
 
 function syncBadge(store: StoreRow): { label: string; ok: boolean } {
@@ -95,6 +100,19 @@ export default function AdminPage() {
   const [paidUntil, setPaidUntil] = useState("");
   const [priceMxn, setPriceMxn] = useState("");
   const [savingBilling, setSavingBilling] = useState(false);
+  const [address, setAddress] = useState("");
+  const [lat, setLat] = useState("");
+  const [lng, setLng] = useState("");
+  const [savingUbicacion, setSavingUbicacion] = useState(false);
+  /*
+   * ⚠️ Un aviso APARTE del error.
+   *
+   * Que OpenStreetMap no responda no es un fallo del guardado: la dirección y
+   * las coordenadas quedan guardadas igual, y lo único que falta es el dibujo.
+   * Mezclarlo con `error` haría creer que no se guardó nada y llevaría a
+   * capturarlo otra vez.
+   */
+  const [avisoMapa, setAvisoMapa] = useState("");
   const [showAudit, setShowAudit] = useState(false);
   const [auditEntries, setAuditEntries] = useState<AuditEntry[] | null>(null);
   const [savingRoleId, setSavingRoleId] = useState<string | null>(null);
@@ -182,8 +200,41 @@ export default function AdminPage() {
     setBillingExempt(store.billingExempt);
     setPaidUntil(store.subscriptionPaidUntil ?? "");
     setPriceMxn(store.pricePerUserMxn !== null ? String(store.pricePerUserMxn) : "");
+    setAddress(store.address ?? "");
+    setLat(store.latitude !== null ? String(store.latitude) : "");
+    setLng(store.longitude !== null ? String(store.longitude) : "");
+    setAvisoMapa("");
     setSavedStoreId(null);
     setExpandedStoreId(store.id);
+  }
+
+  async function saveUbicacion(store: StoreRow) {
+    setSavingUbicacion(true);
+    setError("");
+    setAvisoMapa("");
+    setSavedStoreId(null);
+    try {
+      const response = await fetch(`/api/admin/stores/${store.id}/ubicacion`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          address: address.trim() || null,
+          // Vacío es `null`, no cero: un cero se guardaría como una coordenada
+          // del golfo de Guinea, que es válida y está mal.
+          latitude: lat.trim() ? Number(lat) : null,
+          longitude: lng.trim() ? Number(lng) : null
+        })
+      });
+      const payload = await response.json() as { error?: string; avisoMapa?: string | null };
+      if (!response.ok) throw new Error(payload.error ?? "No se pudo guardar la ubicación.");
+      if (payload.avisoMapa) setAvisoMapa(payload.avisoMapa);
+      setSavedStoreId(store.id);
+      await loadStores();
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : "No se pudo guardar la ubicación.");
+    } finally {
+      setSavingUbicacion(false);
+    }
   }
 
   async function changeRole(store: StoreRow, userId: string, role: "GERENTE" | "SUBGERENTE" | "ASESOR") {
@@ -306,15 +357,15 @@ export default function AdminPage() {
     }
   }
 
-  const inputClass = "min-h-11 rounded-2xl border border-line bg-panel px-3 text-sm font-bold text-ink outline-none focus:border-volt";
+  const inputClass = "min-h-11 rounded-2xl border border-line bg-panel px-3 text-sm font-bold text-ink outline-hidden focus:border-volt";
 
   return (
     <>
       <AppHeader title="Administración" subtitle="Tiendas de la plataforma" backHref="/manager" />
       <AppFrame>
-        {error ? <Card className="mb-3 text-sm font-semibold text-rose-700">{error}</Card> : null}
+        {error ? <Card className="mb-3 text-sm font-semibold text-orchid">{error}</Card> : null}
         {created ? (
-          <Card className="mb-3 flex items-center gap-2 text-sm font-semibold text-emerald-700">
+          <Card className="mb-3 flex items-center gap-2 text-sm font-semibold text-mint">
             <CheckCircle2 size={16} className="shrink-0" />{created}
           </Card>
         ) : null}
@@ -397,16 +448,38 @@ export default function AdminPage() {
                             <p className="font-mono text-[10px] font-semibold text-muted">#{member.employeeNumber}{member.active ? "" : " · desactivado"}</p>
                           </div>
                           <div className="flex shrink-0 items-center gap-1.5">
-                            <select
+                            {/*
+                              ⚠️ Aqui NO van chips: son tres por persona y el
+                              renglon ya lleva nombre, numero y tres botones.
+                              Con dieciocho personas la lista se vuelve un muro
+                              de pastillas. Va la misma hoja inferior del resto
+                              de la app, abierta desde un boton pequenio que
+                              enseña el puesto actual -- que ademas es lo
+                              correcto para algo que se cambia dos veces al
+                              anio y le toca los permisos a una persona.
+                            */}
+                            <AppSelect
+                              label="Puesto"
                               value={member.role}
-                              disabled={savingRoleId === member.id || !member.active}
-                              onChange={(event) => void changeRole(store, member.id, event.target.value as "GERENTE" | "SUBGERENTE" | "ASESOR")}
-                              className="min-h-9 rounded-xl border border-line bg-panel px-2 text-xs font-bold text-ink outline-none focus:border-volt disabled:opacity-40"
-                            >
-                              <option value="GERENTE">Gerente</option>
-                              <option value="SUBGERENTE">Subgerente</option>
-                              <option value="ASESOR">Asesor</option>
-                            </select>
+                              onChange={(valor) => void changeRole(store, member.id, valor as "GERENTE" | "SUBGERENTE" | "ASESOR")}
+                              options={[
+                                { value: "GERENTE", label: "Gerente" },
+                                { value: "SUBGERENTE", label: "Subgerente" },
+                                { value: "ASESOR", label: "Asesor" }
+                              ]}
+                              renderTrigger={({ abrir, elegida }) => (
+                                <button
+                                  type="button"
+                                  onClick={abrir}
+                                  disabled={savingRoleId === member.id || !member.active}
+                                  aria-label={`Puesto de ${member.name}: ${elegida?.label ?? member.role}`}
+                                  className="tappable flex min-h-9 shrink-0 items-center gap-1 rounded-xl border border-line bg-panel px-2.5 text-xs font-bold text-ink transition hover:border-volt disabled:opacity-40"
+                                >
+                                  {elegida?.label ?? member.role}
+                                  <ChevronDown size={13} className="text-muted" />
+                                </button>
+                              )}
+                            />
                             {member.active ? (
                               <button
                                 type="button"
@@ -424,7 +497,7 @@ export default function AdminPage() {
                                 onClick={() => void deleteMember(store, member.id, member.name)}
                                 disabled={deletingUserId === member.id}
                                 aria-label={`Eliminar definitivamente a ${member.name}`}
-                                className="grid size-9 place-items-center rounded-xl bg-rose-50 text-rose-700 transition hover:bg-rose-100 disabled:opacity-40 dark:bg-rose-950/40"
+                                className="grid size-9 place-items-center rounded-xl bg-orchid/10 text-orchid transition hover:bg-orchid/10 disabled:opacity-40"
                               >
                                 {deletingUserId === member.id ? "..." : <Trash2 size={14} />}
                               </button>
@@ -453,6 +526,63 @@ export default function AdminPage() {
                       ))}
                     </div>
 
+                    {/*
+                      ⚠️ La DIRECCIÓN es lo que hace exacta la ubicación; el
+                      nombre de la tienda no sirve para buscarla --«TH SAN
+                      AGUSTIN» casa con cualquier cosa en un mapa--. Las
+                      coordenadas son las que dibujan el mapa, y se capturan a
+                      mano porque no hay servicio de geocodificación: se sacan
+                      de cualquier mapa, botón derecho sobre el local.
+                    */}
+                    <p className="mb-2 border-t border-line pt-3 text-xs font-bold text-muted">Ubicación</p>
+                    <input
+                      value={address}
+                      onChange={(event) => setAddress(event.target.value)}
+                      maxLength={240}
+                      placeholder="Calle, número, centro comercial, ciudad"
+                      aria-label="Dirección de la tienda"
+                      className="mb-2 min-h-9 w-full rounded-xl border border-line bg-panel px-2 text-xs font-semibold text-ink outline-hidden focus:border-volt"
+                    />
+                    <div className="mb-2 flex items-center gap-2">
+                      <input
+                        value={lat}
+                        onChange={(event) => setLat(event.target.value)}
+                        inputMode="decimal"
+                        placeholder="Latitud"
+                        aria-label="Latitud"
+                        className="min-h-9 min-w-0 flex-1 rounded-xl border border-line bg-panel px-2 text-xs font-semibold text-ink outline-hidden focus:border-volt"
+                      />
+                      <input
+                        value={lng}
+                        onChange={(event) => setLng(event.target.value)}
+                        inputMode="decimal"
+                        placeholder="Longitud"
+                        aria-label="Longitud"
+                        className="min-h-9 min-w-0 flex-1 rounded-xl border border-line bg-panel px-2 text-xs font-semibold text-ink outline-hidden focus:border-volt"
+                      />
+                      <Button type="button" variant="primary" onClick={() => void saveUbicacion(store)} disabled={savingUbicacion} className="min-h-9 shrink-0 px-3 text-xs">
+                        {savingUbicacion ? "..." : "Guardar"}
+                      </Button>
+                    </div>
+                    {/* El mapa ya armado, para comprobar de un vistazo que
+                        apunta a la tienda y no a la calle de al lado. */}
+                    {store.mapaUrl ? (
+                      // `<img>` y no `NextImage`: la URL viene firmada, de un
+                      // host que no esta en `images.remotePatterns`.
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={store.mapaUrl}
+                        alt={`Mapa de ${store.name}`}
+                        loading="lazy"
+                        className="mb-2 h-24 w-full rounded-xl border border-line object-cover"
+                      />
+                    ) : null}
+                    {avisoMapa ? (
+                      <p className="mb-2 rounded-xl bg-ember/10 px-2.5 py-1.5 text-[11px] font-semibold text-ember">
+                        {avisoMapa}
+                      </p>
+                    ) : null}
+
                     <p className="mb-2 border-t border-line pt-3 text-xs font-bold text-muted">Suscripción</p>
                     <div className="mb-2 flex items-center gap-2">
                       <button
@@ -468,7 +598,7 @@ export default function AdminPage() {
                         onChange={(event) => setPaidUntil(event.target.value)}
                         disabled={billingExempt}
                         aria-label="Pagado hasta"
-                        className="min-h-9 flex-1 rounded-xl border border-line bg-panel px-2 text-xs font-bold text-ink outline-none focus:border-volt disabled:opacity-40"
+                        className="min-h-9 flex-1 rounded-xl border border-line bg-panel px-2 text-xs font-bold text-ink outline-hidden focus:border-volt disabled:opacity-40"
                       />
                       <Button type="button" variant="primary" onClick={() => void saveBilling(store)} disabled={savingBilling} className="min-h-9 px-3 text-xs">
                         {savingBilling ? "..." : "Guardar"}
@@ -482,7 +612,7 @@ export default function AdminPage() {
                         onChange={(event) => setPriceMxn(event.target.value.replace(/[^\d.]/g, ""))}
                         placeholder="80 (default)"
                         aria-label="Precio por usuario en pesos"
-                        className="min-h-9 w-28 rounded-xl border border-line bg-panel px-2 text-xs font-bold text-ink outline-none focus:border-volt"
+                        className="min-h-9 w-28 rounded-xl border border-line bg-panel px-2 text-xs font-bold text-ink outline-hidden focus:border-volt"
                       />
                       <span className="text-[11px] text-muted">× {store.activeUsers} activos = ${((Number(priceMxn) || 80) * store.activeUsers).toLocaleString("es-MX")} / mes</span>
                     </div>
@@ -503,7 +633,7 @@ export default function AdminPage() {
                                   value={draft[`${role}:${min}`] ?? ""}
                                   onChange={(event) => setDraft((current) => ({ ...current, [`${role}:${min}`]: event.target.value.replace(/[^\d.]/g, "") }))}
                                   inputMode="decimal"
-                                  className="min-h-10 w-full min-w-0 rounded-xl border border-line bg-panel px-1 text-center text-sm font-bold text-ink outline-none focus:border-volt"
+                                  className="min-h-10 w-full min-w-0 rounded-xl border border-line bg-panel px-1 text-center text-sm font-bold text-ink outline-hidden focus:border-volt"
                                 />
                               </label>
                             ))}
@@ -515,7 +645,7 @@ export default function AdminPage() {
                       <Button type="button" variant="primary" onClick={() => void saveCommissions(store)} disabled={savingCommissions} className="min-h-10 px-4">
                         {savingCommissions ? "Guardando..." : "Guardar comisiones"}
                       </Button>
-                      {savedStoreId === store.id ? <span className="flex items-center gap-1 text-sm font-semibold text-emerald-700"><CheckCircle2 size={15} />Guardado</span> : null}
+                      {savedStoreId === store.id ? <span className="flex items-center gap-1 text-sm font-semibold text-mint"><CheckCircle2 size={15} />Guardado</span> : null}
                     </div>
                   </div>
                 ) : null}

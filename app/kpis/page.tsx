@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, LabelList, Line, LineChart, ResponsiveContainer, Tooltip, XAxis } from "recharts";
 import { barCursor, ChartTooltip, lineCursor, shortName } from "@/components/ChartTooltip";
-import { Calculator, CalendarDays, Download, Receipt, Settings2, ShoppingBag, Sparkles, Target, TrendingUp, Trophy, UsersRound, X } from "lucide-react";
+import { Calculator, ChevronDown, Download, Receipt, Settings2, ShoppingBag, Sparkles, Target, TrendingUp, Trophy, UsersRound, X } from "lucide-react";
 import { useSession } from "@/lib/use-session";
 import { computeNextBracketGap, formatCommissionLevel, resolveCommissionMinimum } from "@/lib/commission";
 import { money } from "@/lib/format";
@@ -17,6 +17,8 @@ import { ElectronicTicketsPanel } from "@/components/ElectronicTicketsPanel";
 import { targetValue } from "@/lib/electronic-tickets";
 import { useKpiDerived, useKpiReceipts, useKpiReport, useKpiTargets } from "@/lib/use-kpis";
 import { achievementTone, AppFrame, AppHeader, Badge, Card, EmptyState, ProfileAvatar, ProgressBar, ProgressRing, Skeleton, StatCard } from "@/components/ui";
+import { TabsLinea } from "@/components/ui/TabsLinea";
+import { AppSelect } from "@/components/forms";
 import { KpiHistoryView } from "@/components/KpiHistory";
 import { PullToRefresh } from "@/components/PullToRefresh";
 import { useTheme } from "@/components/ThemeProvider";
@@ -106,39 +108,56 @@ export default function KpisPage() {
       <AppHeader title="KPIs" subtitle={isAdvisor ? "Tus indicadores por periodo." : "Venta, metas y ranking del equipo."} backHref={isAdvisor ? "/advisor" : "/manager"} />
       <PullToRefresh onRefresh={() => { setRefreshTick((t) => t + 1); return new Promise((r) => setTimeout(r, 700)); }}>
       <AppFrame>
-        <PeriodSelector period={period} setPeriod={(next) => { if (next !== period) { setSlideDir(next === "month" ? 1 : -1); setPeriod(next); } }} selectedDate={selectedDate} setSelectedDate={(date) => { setSlideDir(0); setSelectedDate(date); }} rangeLabel={rangeLabel} availableWeeks={report?.availableWeeks ?? []} availableRetailMonths={report?.availableRetailMonths ?? []} />
+        <PeriodSelector period={period} setPeriod={(next) => { if (next !== period) { setSlideDir(next === "month" ? 1 : -1); setPeriod(next); } }} selectedDate={selectedDate} setSelectedDate={(date) => { setSlideDir(0); setSelectedDate(date); }} availableWeeks={report?.availableWeeks ?? []} availableRetailMonths={report?.availableRetailMonths ?? []} />
 
         {isAdvisor && report ? <Card className="mb-3 p-3"><p className="text-sm font-semibold text-ink">{report.workedDays ? "Calculado sobre tus dias laborados" : "Sin dias laborados en este periodo"}</p><p className="mt-1 text-xs font-semibold text-muted">Dias laborados: {report.workedDays ?? 0}</p></Card> : null}
 
+        {/*
+          ⚠️ Eran dos botones del ancho ENTERO, del mismo peso que el contenido.
+          Exportar y pedir el reporte de IA son cosas que se hacen una vez al
+          cierre; los numeros se miran todos los dias. Bajan a chips y se van al
+          final del renglon, sin dejar de estar a un toque.
+
+          ⚠️ Y el comentario va AQUI, no dentro del parentesis del ternario:
+          ahi dentro se espera una EXPRESION, y un comentario de JSX no lo es.
+          Rompe el archivo entero con un error que ademas senala otra linea.
+        */}
         {isManager && report ? (
-          <div className="mb-3 flex gap-2">
+          <div className="mb-3 flex justify-end gap-2">
             <a
               href={`/api/reports/kpis?start=${report.startDate}&end=${report.endDate}&period=${period}&label=${encodeURIComponent(rangeLabel)}${report.weekNumber ? `&week=${report.weekNumber}` : ""}`}
-              className="flex-1 flex min-h-11 items-center justify-center gap-2 rounded-2xl border border-line bg-panel text-sm font-semibold text-ink/70 transition hover:border-volt active:scale-95"
+              className="tappable flex min-h-9 items-center gap-1.5 rounded-full border border-line px-3 text-xs font-semibold text-muted transition hover:border-volt/40 hover:text-ink"
             >
-              <Download size={16} /> Exportar (Excel)
+              <Download size={14} /> Excel
             </a>
             <button
               onClick={() => void fetchIaReport()}
               disabled={loadingIaReport}
-              className="flex-1 flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-[#2563EB] text-sm font-semibold text-white transition active:scale-95 disabled:opacity-50 dark:bg-[#6B9BFF]"
+              className="tappable flex min-h-9 items-center gap-1.5 rounded-full border border-volt/35 px-3 text-xs font-semibold text-volt transition hover:bg-volt/6 disabled:opacity-50"
             >
-              <Sparkles size={16} />
+              <Sparkles size={14} />
               {loadingIaReport ? "Generando..." : "Reporte IA"}
             </button>
           </div>
         ) : null}
 
-        <div className="no-scrollbar tab-glass-shell -mx-1 mb-3 flex gap-1 overflow-x-auto overflow-y-hidden p-1">
-          {tabs.map((tab) => (
-            <motion.button key={tab.id} onClick={() => { setSlideDir(0); setActiveTab(tab.id); }} whileTap={{ scale: 0.96 }} className={`relative min-h-10 shrink-0 rounded-full px-3.5 text-[13px] font-semibold transition ${activeTab === tab.id ? "text-white" : "text-muted hover:text-ink"}`}>
-              {activeTab === tab.id ? <motion.span layoutId="kpi-tab-active" className="absolute inset-0 rounded-full bg-volt shadow-[0_8px_18px_rgb(37_99_235_/_0.2)]" transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }} /> : null}
-              <span className="relative">{tab.label}</span>
-            </motion.button>
-          ))}
-        </div>
+        {/*
+          ⚠️ Pestanias de SUBRAYADO, no piladoras -- y sin piladora deslizante.
+          Eran seis en 412 px, asi que la tira se desplaza siempre; una piladora
+          cortada por el borde parece rota (en el telefono la ultima salia como
+          «Hi…»), mientras que una palabra cortada se lee como «hay mas a la
+          derecha». Y sobre todo: dejan de ser identicas al Semana/Mes de
+          arriba, que hace otra cosa.
+        */}
+        <TabsLinea
+          ariaLabel="Vista de KPIs"
+          className="mb-3"
+          value={activeTab}
+          onChange={(id) => { setSlideDir(0); setActiveTab(id); }}
+          options={tabs.map((tab) => ({ value: tab.id, label: tab.label }))}
+        />
 
-        {error ? <Card className="mb-3 bg-rose-50 text-sm font-semibold text-rose-700">{error}</Card> : null}
+        {error ? <Card className="mb-3 bg-orchid/10 text-sm font-semibold text-orchid">{error}</Card> : null}
         {loading ? <div className="space-y-3"><Skeleton className="h-32 rounded-[28px]" /><div className="grid grid-cols-2 gap-3">{[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-28 rounded-[28px]" />)}</div></div> : activeKpi ? (
           <AnimatePresence mode="wait">
             <motion.div key={`${activeTab}-${period}-${selectedDate}`} initial={{ opacity: 0, x: slideDir * 30, y: slideDir === 0 ? 8 : 0 }} animate={{ opacity: 1, x: 0, y: 0 }} exit={{ opacity: 0, x: slideDir * -22 }} transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}>
@@ -185,56 +204,56 @@ export default function KpisPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm p-4"
+            className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-xs p-4"
           >
             <motion.div
               initial={{ y: "100%" }}
               animate={{ y: 0 }}
               exit={{ y: "100%" }}
               transition={{ type: "spring", damping: 25, stiffness: 220 }}
-              className="w-full max-w-lg rounded-t-[32px] bg-[#0A0A0A] border border-white/10 p-6 space-y-4 max-h-[85vh] overflow-y-auto no-scrollbar shadow-2xl"
+              className="w-full max-w-lg rounded-t-[32px] bg-card border border-line p-6 space-y-4 max-h-[85vh] overflow-y-auto no-scrollbar shadow-2xl"
             >
-              <div className="flex items-center justify-between border-b border-white/5 pb-3">
+              <div className="flex items-center justify-between border-b border-line pb-3">
                 <div className="flex items-center gap-2">
-                  <Sparkles className="text-[#2563EB]" size={20} />
-                  <h3 className="text-sm font-semibold text-white">{iaReport.title}</h3>
+                  <Sparkles className="text-volt" size={20} />
+                  <h3 className="text-sm font-semibold text-ink">{iaReport.title}</h3>
                 </div>
                 <button
                   onClick={() => setShowIaReportModal(false)}
-                  className="rounded-full bg-white/5 p-1.5 text-slate-400 hover:text-white transition"
+                  className="rounded-full bg-white/5 p-1.5 text-muted hover:text-ink transition"
                 >
                   <X size={18} />
                 </button>
               </div>
 
-              <div className="space-y-4 text-xs text-slate-300 leading-relaxed">
+              <div className="space-y-4 text-xs text-muted leading-relaxed">
                 <div>
-                  <h4 className="font-bold text-[#2563EB] uppercase tracking-wider text-[10px]">Resumen Ejecutivo</h4>
-                  <p className="mt-1 bg-white/[0.02] border border-white/5 rounded-xl p-3 text-slate-200 italic">{iaReport.executiveSummary}</p>
+                  <h4 className="font-bold text-volt uppercase tracking-wider text-[10px]">Resumen Ejecutivo</h4>
+                  <p className="mt-1 bg-white/2 border border-line rounded-xl p-3 text-muted italic">{iaReport.executiveSummary}</p>
                 </div>
 
                 <div>
-                  <h4 className="font-bold text-white uppercase tracking-wider text-[10px]">Análisis de Desempeño</h4>
+                  <h4 className="font-bold text-ink uppercase tracking-wider text-[10px]">Análisis de Desempeño</h4>
                   <p className="mt-1">{iaReport.performanceAnalysis}</p>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="rounded-xl bg-emerald-500/5 border border-emerald-500/10 p-3">
-                    <span className="font-bold text-emerald-400">Fortalezas:</span>
-                    <ul className="list-disc list-inside mt-1.5 space-y-1 text-slate-300 text-[11px]">
+                  <div className="rounded-xl bg-mint/5 border border-mint/30 p-3">
+                    <span className="font-bold text-mint">Fortalezas:</span>
+                    <ul className="list-disc list-inside mt-1.5 space-y-1 text-muted text-[11px]">
                       {iaReport.strengths.map((s: string, idx: number) => <li key={idx}>{s}</li>)}
                     </ul>
                   </div>
-                  <div className="rounded-xl bg-rose-500/5 border border-rose-500/10 p-3">
-                    <span className="font-bold text-rose-400">Oportunidades:</span>
-                    <ul className="list-disc list-inside mt-1.5 space-y-1 text-slate-300 text-[11px]">
+                  <div className="rounded-xl bg-orchid/5 border border-orchid/30 p-3">
+                    <span className="font-bold text-orchid">Oportunidades:</span>
+                    <ul className="list-disc list-inside mt-1.5 space-y-1 text-muted text-[11px]">
                       {iaReport.weaknesses.map((w: string, idx: number) => <li key={idx}>{w}</li>)}
                     </ul>
                   </div>
                 </div>
 
-                <div className="rounded-xl bg-blue-500/5 border border-blue-500/10 p-3.5 space-y-1.5">
-                  <span className="font-bold text-blue-400">Recomendaciones Estratégicas:</span>
+                <div className="rounded-xl bg-volt/5 border border-volt/30 p-3.5 space-y-1.5">
+                  <span className="font-bold text-volt">Recomendaciones Estratégicas:</span>
                   <ul className="list-decimal list-inside space-y-1">
                     {iaReport.strategicRecommendations.map((r: string, idx: number) => <li key={idx}>{r}</li>)}
                   </ul>
@@ -248,19 +267,85 @@ export default function KpisPage() {
   );
 }
 
-function PeriodSelector({ period, setPeriod, selectedDate, setSelectedDate, rangeLabel, availableWeeks, availableRetailMonths }: { period: KpiPeriod; setPeriod: (period: KpiPeriod) => void; selectedDate: string; setSelectedDate: (date: string) => void; rangeLabel: string; availableWeeks: Array<{ weekNumber: number; weekStart: string; weekEnd: string }>; availableRetailMonths: Array<{ label: string; start: string; end: string }> }) {
+/**
+ * «17 ago - 23 ago» para el pie de cada opcion del periodo.
+ *
+ * ⚠️ Las fechas se parten a mano y se construyen en UTC. Un `new Date("2026-08-17")`
+ * se interpreta como medianoche UTC y se PINTA en la zona del telefono, que en
+ * Monterrey va seis horas por detras: el 17 se enseñaria como 16. Es el mismo
+ * corrimiento de un dia que ya costo caro en el margen DTO.
+ */
+function rangoCorto(inicio: string, fin: string) {
+  const comoTexto = (iso: string) => {
+    const [anio, mes, dia] = iso.slice(0, 10).split("-").map(Number);
+    return new Date(Date.UTC(anio ?? 1970, (mes ?? 1) - 1, dia ?? 1))
+      .toLocaleDateString("es-MX", { day: "numeric", month: "short", timeZone: "UTC" });
+  };
+  return `${comoTexto(inicio)} - ${comoTexto(fin)}`;
+}
+
+function PeriodSelector({ period, setPeriod, selectedDate, setSelectedDate, availableWeeks, availableRetailMonths }: { period: KpiPeriod; setPeriod: (period: KpiPeriod) => void; selectedDate: string; setSelectedDate: (date: string) => void; availableWeeks: Array<{ weekNumber: number; weekStart: string; weekEnd: string }>; availableRetailMonths: Array<{ label: string; start: string; end: string }> }) {
+  // El mes que contiene la fecha elegida; si ninguno la contiene, el ultimo.
+  const mesActivo = availableRetailMonths.find((month) => selectedDate >= month.start && selectedDate <= month.end)?.start
+    ?? availableRetailMonths.at(-1)?.start
+    ?? selectedDate;
+  const opcionesPeriodo = period === "week"
+    ? availableWeeks.map((week) => ({
+        value: week.weekStart,
+        label: `Semana ${week.weekNumber}`,
+        description: rangoCorto(week.weekStart, week.weekEnd)
+      }))
+    : availableRetailMonths.map((month) => ({
+        value: month.start,
+        label: month.label,
+        description: rangoCorto(month.start, month.end)
+      }));
+  const elegido = opcionesPeriodo.find((o) => o.value === (period === "week" ? selectedDate : mesActivo));
+
   return (
     <Card className="mb-3 p-3">
-      <SegmentedTabs
-        ariaLabel="Periodo de KPIs"
-        value={period}
-        onChange={setPeriod}
-        options={PERIOD_TABS}
-      />
-      <div className="mt-3 flex items-center gap-3">
-        <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-volt/10 text-volt"><CalendarDays size={18} /></span>
-        <div className="min-w-0 flex-1"><p className="text-[11px] font-bold text-muted">Periodo seleccionado</p><p className="truncate text-sm font-semibold text-ink">{rangeLabel}</p></div>
-        {period === "week" ? <select aria-label="Seleccionar semana RDV" value={selectedDate} onChange={(event) => setSelectedDate(event.target.value)} className="min-h-10 w-[8.3rem] rounded-xl bg-panel px-2 text-xs font-bold text-ink outline-none focus:ring-4 focus:ring-volt/20">{availableWeeks.map((week) => <option key={`${week.weekNumber}-${week.weekStart}`} value={week.weekStart}>Semana {week.weekNumber}</option>)}</select> : <select aria-label="Seleccionar mes retail" value={availableRetailMonths.find((month) => selectedDate >= month.start && selectedDate <= month.end)?.start ?? availableRetailMonths.at(-1)?.start ?? selectedDate} onChange={(event) => setSelectedDate(event.target.value)} className="min-h-10 w-[8.3rem] rounded-xl bg-panel px-2 text-xs font-bold text-ink outline-none focus:ring-4 focus:ring-volt/20">{availableRetailMonths.map((month) => <option key={month.start} value={month.start}>{month.label}</option>)}</select>}
+      {/*
+        ⚠️ El periodo es el TITULO, y el titulo es el control. Antes habia un
+        campo aparte rotulado «PERIODO» con el mes dentro, debajo del
+        Semana/Mes: dos bloques para decir una sola cosa. Ahora se toca el
+        propio «Agosto 2026» y se abre la misma hoja.
+      */}
+      <div className="flex items-start justify-between gap-3">
+        <AppSelect
+          label="Periodo"
+          value={period === "week" ? selectedDate : mesActivo}
+          onChange={setSelectedDate}
+          options={opcionesPeriodo}
+          renderTrigger={({ abrir }) => (
+            <button
+              type="button"
+              onClick={abrir}
+              className="tappable min-w-0 text-left"
+              aria-label="Cambiar periodo"
+            >
+              <span className="flex items-center gap-1.5">
+                <span className="truncate text-[19px] font-semibold tracking-[-0.02em] text-ink">
+                  {elegido?.label ?? "Periodo"}
+                </span>
+                <ChevronDown size={17} className="shrink-0 text-muted" />
+              </span>
+              {/* El rango de fechas se conserva: es lo que de verdad dice
+                  cuanto abarca «Semana 34», que por si solo no dice nada. */}
+              <span className="mt-0.5 block truncate text-xs text-muted">
+                {elegido?.description ?? ""}
+              </span>
+            </button>
+          )}
+        />
+        {/* Compacto y a la derecha: cambia la UNIDAD, no la vista. */}
+        <SegmentedTabs
+          ariaLabel="Unidad del periodo"
+          value={period}
+          onChange={setPeriod}
+          options={PERIOD_TABS}
+          className="shrink-0"
+          itemClassName="px-3"
+        />
       </div>
     </Card>
   );
@@ -329,7 +414,7 @@ function ResumenView({ activeKpi, team, progress, periodLabel, hasDiscountSource
       </Card>
 
       {salesProjection ? (
-        <Card className="mb-3 border border-emerald-400/30 bg-gradient-to-br from-emerald-50 to-blue-50 p-3.5 dark:from-[#0f2a1e] dark:to-[#11203f]">
+        <Card className="mb-3 border border-mint/30 bg-mint/8 p-3.5 ">
           <div className="flex items-start justify-between gap-4">
             <div>
               <p className="text-[11px] font-bold uppercase tracking-[0.13em] text-muted">Proyección de cierre de mes</p>
@@ -360,6 +445,25 @@ function MetricCard({ metric, value, raw, target, detail, sparkData, trafficLigh
   if (!config || !accent) return null;
   const { label, Icon } = config;
 
+  /*
+   * ⚠️ El color por metrica se IGNORA aqui a proposito.
+   *
+   * `METRIC_ACCENT` le da a cada una un tono distinto --UPT azul, AUR cian,
+   * EPT morado, conversion ambar, margen rojo, cumplimiento verde-- y ninguno
+   * significa nada: UPT no es azul por un motivo. Seis tarjetas, seis colores,
+   * y el unico color que SI dice algo --el punto del semaforo y el porcentaje
+   * de alcance-- se perdia entre ellos.
+   *
+   * ⚠️ Y se anula AQUI, no en `METRIC_ACCENT`, porque ese mapa lo comparte
+   * `app/escritorio/kpis`, que es la web y no debe cambiar de aspecto.
+   *
+   * Se usa `accent`/`bg-accent` y no `volt` por la razon que explica el propio
+   * mapa: dentro del escritorio resuelve al acento aclarado, y fuera cae en
+   * #2563EB, que es el mismo azul.
+   */
+  const chipAzul = "bg-accent/10 text-accent";
+  const chispaAzul = "#2563EB";
+
   // Semáforo vs meta configurada: única señal de color de estado en la tarjeta.
   const dotClass = {
     green: "bg-success",
@@ -375,7 +479,7 @@ function MetricCard({ metric, value, raw, target, detail, sparkData, trafficLigh
     <div className="solid-card relative min-h-[118px] overflow-hidden rounded-[28px] p-3.5">
       <span className={cn("absolute right-3 top-3 size-2.5 rounded-full", dotClass)} />
 
-      <span className={cn("inline-grid size-8 place-items-center rounded-[14px]", accent.chip)}>
+      <span className={cn("inline-grid size-8 place-items-center rounded-[14px]", chipAzul)}>
         <Icon size={15} />
       </span>
 
@@ -397,7 +501,7 @@ function MetricCard({ metric, value, raw, target, detail, sparkData, trafficLigh
         <div className="pointer-events-none absolute bottom-0 right-0 h-10 w-20 opacity-60">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={sparkData} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
-              <Line type="monotone" dataKey="v" stroke={accent.spark} strokeWidth={1.5} dot={false} animationDuration={600} />
+              <Line type="monotone" dataKey="v" stroke={chispaAzul} strokeWidth={1.5} dot={false} animationDuration={600} />
             </LineChart>
           </ResponsiveContainer>
         </div>
@@ -450,17 +554,17 @@ function TargetSheet({ targets, period, onClose, onSave }: { targets: KpiTarget[
     : (["upt", "aur", "ept", "conversion", "achievement", "ticketElectronicoTienda", "ticketElectronicoAsesor"] as const);
 
   return (
-    <div className="fixed inset-0 z-40 flex items-end justify-center bg-black/50 p-4 backdrop-blur-sm">
+    <div className="fixed inset-0 z-40 flex items-end justify-center bg-black/50 p-4 backdrop-blur-xs">
       <motion.div
         initial={{ y: "100%", opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         exit={{ y: "100%", opacity: 0 }}
         transition={{ type: "spring", damping: 30, stiffness: 380 }}
-        className="w-full max-w-lg rounded-t-3xl bg-card dark:bg-panel p-6 shadow-2xl"
+        className="w-full max-w-lg rounded-t-3xl bg-card p-6 shadow-2xl"
       >
         <div className="mb-5 flex items-center justify-between">
           <h2 className="text-lg font-semibold text-ink">Metas KPI — {period === "SEMANA" ? "Semana" : "Mes"}</h2>
-          <button onClick={onClose} className="grid size-9 place-items-center rounded-full bg-panel dark:bg-line/60 text-ink">
+          <button onClick={onClose} className="grid size-9 place-items-center rounded-full bg-panel dark:bg-line text-ink">
             <X size={16} />
           </button>
         </div>
@@ -469,7 +573,7 @@ function TargetSheet({ targets, period, onClose, onSave }: { targets: KpiTarget[
             const config = METRIC_CONFIG[metric];
             return (
               <div key={metric}>
-                <label className="text-[11px] font-bold uppercase tracking-[0.1em] text-muted">{config?.targetLabel}</label>
+                <label className="text-[11px] font-bold uppercase tracking-widest text-muted">{config?.targetLabel}</label>
                 <input
                   type="number"
                   min="0"
@@ -477,14 +581,14 @@ function TargetSheet({ targets, period, onClose, onSave }: { targets: KpiTarget[
                   value={form[metric]}
                   onChange={(e) => setForm((prev) => ({ ...prev, [metric]: e.target.value }))}
                   placeholder={metric === "upt" ? "Ej: 1.5" : metric === "conversion" ? "Ej: 25" : "Ej: 50000"}
-                  className="mt-1 min-h-11 w-full rounded-2xl border border-line bg-panel px-4 text-sm font-bold text-ink outline-none focus:border-volt focus:ring-4 focus:ring-volt/15"
+                  className="mt-1 min-h-11 w-full rounded-2xl border border-line bg-panel px-4 text-sm font-bold text-ink outline-hidden focus:border-volt focus:ring-4 focus:ring-volt/15"
                 />
               </div>
             );
           })}
         </div>
         {status ? (
-          <p className={cn("mt-3 text-sm font-semibold", status.includes("guardadas") ? "text-emerald-600 dark:text-emerald-400" : "text-muted")}>
+          <p className={cn("mt-3 text-sm font-semibold", status.includes("guardadas") ? "text-mint" : "text-muted")}>
             {status}
           </p>
         ) : null}
@@ -492,7 +596,7 @@ function TargetSheet({ targets, period, onClose, onSave }: { targets: KpiTarget[
           type="button"
           onClick={() => void handleSave()}
           disabled={saving}
-          className="mt-4 min-h-12 w-full rounded-2xl bg-volt text-sm font-semibold text-white shadow-[0_8px_20px_rgb(37_99_235_/_0.22)] transition hover:bg-[#1D4ED8] active:scale-95 disabled:opacity-60"
+          className="mt-4 min-h-12 w-full rounded-2xl bg-volt text-sm font-semibold text-white shadow-[0_8px_20px_rgb(37_99_235/0.22)] transition hover:bg-volt/85 active:scale-95 disabled:opacity-60"
         >
           {saving ? "Guardando..." : "Guardar metas"}
         </button>
@@ -520,9 +624,9 @@ function ComisionView({ activeKpi, rules, simulatedSales, setSimulatedSales, act
     : null;
   return <>{bracketGap ? (
     bracketGap.atTop ? (
-      <Card className="mb-3 border border-amber-400/40 bg-gradient-to-br from-amber-50 to-orange-50 p-3.5 dark:from-[#2a2110] dark:to-[#241a0d]">
+      <Card className="mb-3 border border-ember/30 bg-ember/8 p-3.5 ">
         <div className="flex items-center gap-3">
-          <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-amber-400/15 text-2xl">🏆</span>
+          <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-volt/10 text-2xl">🏆</span>
           <div>
             <h2 className="text-lg font-semibold leading-tight text-ink">¡Nivel máximo de comisión!</h2>
             <p className="mt-0.5 text-sm font-semibold text-muted">Ya ganas el {bracketGap.currentPercent}% — mantén el ritmo.</p>
@@ -530,7 +634,7 @@ function ComisionView({ activeKpi, rules, simulatedSales, setSimulatedSales, act
         </div>
       </Card>
     ) : (
-      <Card className="mb-3 border border-volt/25 bg-gradient-to-br from-blue-50 to-indigo-50 p-3.5 dark:from-[#101c3a] dark:to-[#141233]">
+      <Card className="mb-3 border border-volt/25 bg-volt/8 p-3.5 ">
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-[11px] font-bold uppercase tracking-[0.13em] text-muted">Te faltan</p>
@@ -542,7 +646,7 @@ function ComisionView({ activeKpi, rules, simulatedSales, setSimulatedSales, act
         {bracketGap.extraCommission > 0 ? <div className="mt-2.5"><Mini label="Comisión extra estimada" value={`+${money(bracketGap.extraCommission)}`} /></div> : null}
       </Card>
     )
-  ) : null}{projection ?<Card className="mb-3 border border-emerald-400/30 bg-gradient-to-br from-emerald-50 to-blue-50 p-3.5 dark:from-[#0f2a1e] dark:to-[#11203f]"><div className="flex items-start justify-between gap-4"><div><p className="text-[11px] font-bold uppercase tracking-[0.13em] text-muted">Proyección de cierre de mes</p><h2 className="mt-1 text-[2rem] font-semibold leading-none text-ink">{money(projection.projectedCommission)}</h2><p className="mt-1.5 text-sm text-muted">Al ritmo de tus semanas con datos 💰</p></div><span className="grid size-12 place-items-center rounded-2xl bg-success/10 text-success"><TrendingUp size={25} /></span></div><div className="mt-2.5 grid grid-cols-3 gap-2"><Mini label="Venta proy." value={money(projection.projectedSales)} /><Mini label="Nivel actual" value={projection.levelLabel} /><Mini label="Semanas" value={`${formatWeeksElapsed(projection.weeksElapsed)}/${projection.totalWeeks}`} /></div></Card> : null}<Card className="premium-hero mb-3 p-3.5"><div className="flex items-start justify-between gap-4"><div><p className="text-[11px] font-bold uppercase tracking-[0.13em] text-muted">Comision estimada {periodLabel}</p><h2 className="mt-1 text-[2.1rem] font-semibold leading-none text-ink">{hasMinimum ? money(simulatedCommission) : "—"}</h2><p className={`mt-1 text-sm ${activeRule ? "text-muted" : "font-semibold text-rose-700"}`}>{activeRule ? `${formatCommissionLevel(activeRule)} por nivel actual` : missingRuleMessage}</p></div><span className="grid size-12 place-items-center rounded-2xl bg-purple/10 text-purple"><Trophy size={25} /></span></div><div className="mt-2.5 grid grid-cols-2 gap-2"><Mini label={activeRule?.payoutType === "FIXED" ? "Importe del nivel" : "Porcentaje"} value={hasMinimum ? formatCommissionLevel(activeRule) : "—"} /><Mini label="Alcance vs mínimo" value={hasMinimum ? `${Math.round(simulatedAchievement)}%` : "—"} /></div></Card><Card className="mb-3 p-3.5"><div className="mb-2.5 flex items-center gap-2"><Calculator className="text-volt" size={18} /><h2 className="text-lg font-semibold">Simulador {periodLabel}</h2></div><input value={simulatedSales} onChange={(event) => setSimulatedSales(event.target.value.replace(/[^\d.]/g, ""))} inputMode="decimal" placeholder={String(Math.round(activeKpi.sales))} aria-label={`Venta simulada ${periodLabel}`} className="min-h-14 w-full rounded-2xl border border-line bg-panel px-4 text-xl font-semibold text-ink outline-none focus:border-volt focus:ring-4 focus:ring-volt/15" /></Card><Card className="p-3.5"><div className="mb-2.5 flex items-center justify-between"><h2 className="text-lg font-semibold">Escalera de niveles</h2><Badge>{commissionRole}</Badge></div>{rules.filter((rule) => rule.active && rule.role === commissionRole).map((rule) => <div key={rule.id} className="flex items-center justify-between border-t border-line py-2.5 first:border-0"><div><p className="font-semibold">{rule.minAchievement}% a {rule.maxAchievement ?? "mas"}%</p><p className="text-xs text-muted">Regla por cumplimiento</p></div><Badge tone={rule.id === activeRule?.id ? "success" : "default"}>{formatCommissionLevel(rule)}</Badge></div>)}</Card></>;
+  ) : null}{projection ?<Card className="mb-3 border border-mint/30 bg-mint/8 p-3.5 "><div className="flex items-start justify-between gap-4"><div><p className="text-[11px] font-bold uppercase tracking-[0.13em] text-muted">Proyección de cierre de mes</p><h2 className="mt-1 text-[2rem] font-semibold leading-none text-ink">{money(projection.projectedCommission)}</h2><p className="mt-1.5 text-sm text-muted">Al ritmo de tus semanas con datos 💰</p></div><span className="grid size-12 place-items-center rounded-2xl bg-success/10 text-success"><TrendingUp size={25} /></span></div><div className="mt-2.5 grid grid-cols-3 gap-2"><Mini label="Venta proy." value={money(projection.projectedSales)} /><Mini label="Nivel actual" value={projection.levelLabel} /><Mini label="Semanas" value={`${formatWeeksElapsed(projection.weeksElapsed)}/${projection.totalWeeks}`} /></div></Card> : null}<Card className="premium-hero mb-3 p-3.5"><div className="flex items-start justify-between gap-4"><div><p className="text-[11px] font-bold uppercase tracking-[0.13em] text-muted">Comision estimada {periodLabel}</p><h2 className="mt-1 text-[2.1rem] font-semibold leading-none text-ink">{hasMinimum ? money(simulatedCommission) : "—"}</h2><p className={`mt-1 text-sm ${activeRule ? "text-muted" : "font-semibold text-orchid"}`}>{activeRule ? `${formatCommissionLevel(activeRule)} por nivel actual` : missingRuleMessage}</p></div><span className="grid size-12 place-items-center rounded-2xl bg-purple/10 text-purple"><Trophy size={25} /></span></div><div className="mt-2.5 grid grid-cols-2 gap-2"><Mini label={activeRule?.payoutType === "FIXED" ? "Importe del nivel" : "Porcentaje"} value={hasMinimum ? formatCommissionLevel(activeRule) : "—"} /><Mini label="Alcance vs mínimo" value={hasMinimum ? `${Math.round(simulatedAchievement)}%` : "—"} /></div></Card><Card className="mb-3 p-3.5"><div className="mb-2.5 flex items-center gap-2"><Calculator className="text-volt" size={18} /><h2 className="text-lg font-semibold">Simulador {periodLabel}</h2></div><input value={simulatedSales} onChange={(event) => setSimulatedSales(event.target.value.replace(/[^\d.]/g, ""))} inputMode="decimal" placeholder={String(Math.round(activeKpi.sales))} aria-label={`Venta simulada ${periodLabel}`} className="min-h-14 w-full rounded-2xl border border-line bg-panel px-4 text-xl font-semibold text-ink outline-hidden focus:border-volt focus:ring-4 focus:ring-volt/15" /></Card><Card className="p-3.5"><div className="mb-2.5 flex items-center justify-between"><h2 className="text-lg font-semibold">Escalera de niveles</h2><Badge>{commissionRole}</Badge></div>{rules.filter((rule) => rule.active && rule.role === commissionRole).map((rule) => <div key={rule.id} className="flex items-center justify-between border-t border-line py-2.5 first:border-0"><div><p className="font-semibold">{rule.minAchievement}% a {rule.maxAchievement ?? "mas"}%</p><p className="text-xs text-muted">Regla por cumplimiento</p></div><Badge tone={rule.id === activeRule?.id ? "success" : "default"}>{formatCommissionLevel(rule)}</Badge></div>)}</Card></>;
 }
 
 type RankMetricId = "venta" | "conversion" | "upt" | "ept";
@@ -639,7 +743,7 @@ function ReciboView({ receipts, loading, isManager }: { receipts: ReceiptMonth[]
           <ReceiptBody line={month.main} highlight />
           {isManager && month.team.length > 0 ? (
             <div className="mt-3 border-t border-line pt-3">
-              <p className="mb-2 text-xs font-bold uppercase tracking-[0.1em] text-muted">Por asesor</p>
+              <p className="mb-2 text-xs font-bold uppercase tracking-widest text-muted">Por asesor</p>
               <div className="space-y-2.5">
                 {month.team.map((line) => (
                   <div key={line.name} className="rounded-2xl bg-panel p-3">
@@ -678,7 +782,7 @@ function ReceiptBody({ line, highlight }: { line: ReceiptLine; highlight?: boole
         <ReceiptRow label="Alcance" value={`${line.achievement.toFixed(1)}%`} />
         <ReceiptRow label="Nivel" value={line.percent > 0 ? `${line.percent}%` : "—"} />
       </div>
-      <div className={cn("mt-2.5 flex items-center justify-between rounded-2xl px-3 py-2.5", highlight ? "bg-volt/10 ring-1 ring-volt/30" : "bg-white/[0.04]")}>
+      <div className={cn("mt-2.5 flex items-center justify-between rounded-2xl px-3 py-2.5", highlight ? "bg-volt/10 ring-1 ring-volt/30" : "bg-white/4")}>
         <span className="text-sm font-semibold text-muted">Comisión</span>
         <span className="text-lg font-semibold text-ink">{money(line.commission)}</span>
       </div>
@@ -690,4 +794,4 @@ function ReceiptRow({ label, value, strong }: { label: string; value: string; st
   return <div className="flex items-center justify-between"><span className="text-muted">{label}</span><span className={cn("font-semibold", strong ? "text-ink" : "text-ink")}>{value}</span></div>;
 }
 
-function Mini({ label, value }: { label: string; value: string }) { return <div className="px-2"><p className="text-[11px] font-bold uppercase tracking-[0.1em] text-muted">{label}</p><p className="mt-1 font-semibold text-ink">{value}</p></div>; }
+function Mini({ label, value }: { label: string; value: string }) { return <div className="px-2"><p className="text-[11px] font-bold uppercase tracking-widest text-muted">{label}</p><p className="mt-1 font-semibold text-ink">{value}</p></div>; }

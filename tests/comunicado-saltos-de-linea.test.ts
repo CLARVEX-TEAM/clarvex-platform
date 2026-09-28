@@ -28,12 +28,23 @@ function sinComentarios(fuente: string): string {
 /** `pre-line` y `pre-wrap` conservan los saltos; lo demás los colapsa. */
 const CONSERVA_SALTOS = /whitespace-pre-(line|wrap)/;
 
+/**
+ * Que una palabra larguísima se parta en vez de desbordar.
+ *
+ * ⚠️ Se aceptan los DOS nombres a propósito: Tailwind v4 renombró
+ * `break-words` a `wrap-break-word` y el migrador reescribió el componente. La
+ * prueba exigía el nombre viejo, así que se puso en rojo sobre un componente
+ * CORRECTO. Lo que hay que fijar es la propiedad CSS que se consigue, no cómo
+ * la llame la versión de Tailwind que toque.
+ */
+const PARTE_PALABRAS = /(break-words|wrap-break-word)/;
+
 test("la tarjeta del telefono conserva los saltos de linea del comunicado", () => {
   const fuente = sinComentarios(readFileSync("components/ui/NotificationCard.tsx", "utf8"));
   const parrafo = fuente.split("\n").find((l) => l.includes("{body}"));
   assert.ok(parrafo, "no encontré dónde se pinta el cuerpo");
   assert.match(parrafo, CONSERVA_SALTOS, "sin esto el comunicado se lee como un muro");
-  assert.match(parrafo, /break-words/, "los códigos largos sin espacios se salen en 412 px");
+  assert.match(parrafo, PARTE_PALABRAS, "los códigos largos sin espacios se salen en 412 px");
 });
 
 test("el escritorio y el telefono pintan el MISMO texto igual", () => {

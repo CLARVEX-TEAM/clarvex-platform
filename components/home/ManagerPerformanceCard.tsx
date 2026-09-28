@@ -104,7 +104,7 @@ export function ManagerPerformanceCard({ role, dailySales, dailyGoal, monthlySal
                     {commission.payoutType === "FIXED" ? " · importe fijo del nivel" : <> · tasa {commission.percent}%</>}</>}
           </p>
         </div>
-        <span className="shrink-0 text-lg font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">
+        <span className="shrink-0 text-lg font-semibold tabular-nums text-mint">
           {commission ? money(commission.amount) : "—"}
         </span>
       </div>

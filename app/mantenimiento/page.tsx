@@ -15,7 +15,7 @@ export const metadata = {
 export default function MaintenancePage() {
   return (
     <main className="mx-auto grid min-h-screen max-w-md place-items-center px-4">
-      <div className="w-full rounded-[24px] border border-white/10 bg-white/5 p-6 text-center backdrop-blur">
+      <div className="w-full rounded-[24px] border border-white/10 bg-white/5 p-6 text-center backdrop-blur-sm">
         <span className="mx-auto grid size-14 place-items-center rounded-[20px] bg-ember/10 text-ember">
           <Database size={26} />
         </span>

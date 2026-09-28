@@ -223,7 +223,7 @@ export default function EscritorioComunicados() {
                           type="button"
                           onClick={removeImage}
                           aria-label="Quitar imagen"
-                          className="absolute right-2 top-2 grid size-8 place-items-center rounded-lg bg-black/55 text-white backdrop-blur"
+                          className="absolute right-2 top-2 grid size-8 place-items-center rounded-lg bg-black/55 text-white backdrop-blur-sm"
                         >
                           <X size={15} />
                         </button>

@@ -211,7 +211,7 @@ export function ScannerOverlay({ onScan, onClose }: { onScan: (number: number) =
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[85] flex flex-col bg-black"
+      className="fixed inset-0 z-85 flex flex-col bg-black"
       onClick={onClose}
     >
       {/* `env(safe-area-inset-top)` vale CERO dentro del WebView de Android: el
@@ -238,7 +238,7 @@ export function ScannerOverlay({ onScan, onClose }: { onScan: (number: number) =
           {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
           <video ref={videoRef} playsInline muted className="absolute inset-0 size-full object-cover" />
           {/* Marco guía */}
-          <div className="pointer-events-none absolute left-1/2 top-1/2 size-56 -translate-x-1/2 -translate-y-1/2 rounded-3xl border-[3px] border-white/80 shadow-[0_0_0_9999px_rgb(0_0_0_/_0.45)]" />
+          <div className="pointer-events-none absolute left-1/2 top-1/2 size-56 -translate-x-1/2 -translate-y-1/2 rounded-3xl border-[3px] border-white/80 shadow-[0_0_0_9999px_rgb(0_0_0/0.45)]" />
           <p className="pointer-events-none absolute inset-x-0 bottom-10 text-center text-xs font-bold text-white/80">Acerca la cámara al código pegado en el mueble</p>
           {/* Para saber POR QUÉ falla cuando falle: los dos decodificadores
               abren la cámara igual y desde fuera no se distinguen. */}

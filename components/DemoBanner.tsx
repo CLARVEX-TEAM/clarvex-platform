@@ -36,7 +36,7 @@ export function DemoBanner() {
   }
 
   return (
-    <div className="fixed left-1/2 z-[200] flex -translate-x-1/2 items-center gap-2 rounded-full border border-amber-400/50 bg-amber-400/95 px-3 py-1.5 text-[12px] font-semibold text-black shadow-lg backdrop-blur bottom-[calc(76px+env(safe-area-inset-bottom))]">
+    <div className="fixed left-1/2 z-200 flex -translate-x-1/2 items-center gap-2 rounded-full border border-ember/30 bg-ember/95 px-3 py-1.5 text-[12px] font-semibold text-black shadow-lg backdrop-blur-sm bottom-[calc(76px+env(safe-area-inset-bottom))]">
       <span>🎬 Modo demo</span>
       <button
         type="button"

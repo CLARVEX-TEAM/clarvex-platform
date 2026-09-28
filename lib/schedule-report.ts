@@ -58,3 +58,54 @@ function recordQuality(schedule: ScheduleRecord) {
 function dayName(date: Date) {
   return ["Dom", "Lun", "Mar", "Mie", "Jue", "Vie", "Sab"][date.getUTCDay()];
 }
+
+/**
+ * Quién más entra ese día — «¿con quién me toca?».
+ *
+ * ⚠️ Esta función decide sobre una FRONTERA DE ROLES. `CLAUDE.md` dice que un
+ * asesor ve sus propios horarios y solo gerencia ve los del equipo; esto es la
+ * única excepción, y está acotada a contestar esa pregunta y nada más. Vive
+ * aquí, separada de Prisma, para que se pueda probar de verdad: `lib/prisma`
+ * lanza fuera de la configuración de integración, así que una regla escrita
+ * dentro del handler no se puede cubrir. Es la misma razón por la que
+ * `lib/attendance-roll-call-plan.ts` existe aparte.
+ *
+ * Tres reglas, y las tres importan:
+ *
+ *   1. Solo quien TRABAJA. Quién descansa o está de vacaciones no es un
+ *      compañero de turno: es información privada de esa persona.
+ *   2. Uno mismo NUNCA sale en su propia lista.
+ *   3. Se devuelve el MÍNIMO -- nombre, foto y horas. Sin estado crudo, sin
+ *      zona, sin id de horario: con eso no se reconstruye el historial de
+ *      nadie.
+ */
+export type CompaneroDeTurno = {
+  date: string;
+  userId: string;
+  userName: string;
+  photoUrl: string | null;
+  startTime: string | null;
+  endTime: string | null;
+};
+
+export function companerosDeTurno(
+  filas: ReadonlyArray<{
+    date: string;
+    status: string;
+    startTime: string | null;
+    endTime: string | null;
+    user: { id: string; name: string; photoUrl: string | null };
+  }>,
+  miUserId: string
+): CompaneroDeTurno[] {
+  return filas
+    .filter((fila) => fila.status === "WORKING" && fila.user.id !== miUserId)
+    .map((fila) => ({
+      date: fila.date,
+      userId: fila.user.id,
+      userName: fila.user.name,
+      photoUrl: fila.user.photoUrl,
+      startTime: fila.startTime,
+      endTime: fila.endTime
+    }));
+}

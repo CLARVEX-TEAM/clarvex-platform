@@ -162,7 +162,7 @@ export default function EscritorioPerfil() {
                 type="button"
                 onClick={() => inputRef.current?.click()}
                 aria-label="Cambiar foto de perfil"
-                className="absolute -bottom-1 -right-1 grid size-9 place-items-center rounded-xl bg-accent text-on-accent ring-4 ring-[rgb(var(--color-card))]"
+                className="absolute -bottom-1 -right-1 grid size-9 place-items-center rounded-xl bg-accent text-on-accent ring-4 ring-[rgb(var(--ch-card))]"
               >
                 <Camera size={16} />
               </button>
@@ -241,7 +241,7 @@ export default function EscritorioPerfil() {
           <DeskSection title="Acceso biométrico" hint="Face ID o huella para entrar sin escribir el PIN.">
             <DeskPanel>
               {user.biometricEnabled ? (
-                <div className="flex items-center justify-between gap-3 rounded-xl border border-ok/30 bg-ok/[0.08] px-4 py-3">
+                <div className="flex items-center justify-between gap-3 rounded-xl border border-ok/30 bg-ok/8 px-4 py-3">
                   <span className="flex items-center gap-2 text-ui font-medium text-ok">
                     <Fingerprint size={16} /> Face ID / Huella activos
                   </span>

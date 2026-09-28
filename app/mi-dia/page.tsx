@@ -24,7 +24,7 @@ import {
 import { AppFrame, AppHeader, Button, Card, ProgressBar } from "@/components/ui";
 import { ClimaIntro } from "@/components/my-day/ClimaIntro";
 import { MasAccesos } from "@/components/my-day/MasAccesos";
-import { MyDayHero } from "@/components/my-day/MyDayHero";
+import { ResumenDelDia } from "@/components/my-day/ResumenDelDia";
 import type { Clima } from "@/lib/clima";
 import { getSession } from "@/lib/auth";
 import { compressImage } from "@/lib/image-compress";
@@ -34,6 +34,7 @@ import { attendanceLabel, correctionStatusLabel } from "@/lib/my-day";
 import { SinRed, nativeDeviceFetch, registerNativeDevice } from "@/lib/native-device-client";
 import { encolar } from "@/lib/cola-envio";
 import { calendarioClarvexNativo, enContenedorNativo } from "@/lib/puente-nativo";
+import { AppSelect } from "@/components/forms";
 
 type Correction = {
   id: string;
@@ -376,6 +377,11 @@ export default function MyDayPage() {
   const calendarAvailable = Boolean(data.shift?.start && data.shift.end && calendarioClarvexNativo());
 
   return (
+    /*
+      La paleta ya NO se declara aquí: la marca `app/layout.tsx` en el `<html>`
+      para toda la APK. Acotada a esta pantalla se cortaba al navegar --una en
+      papel y la siguiente en la de antes--, que se ve peor que no cambiarla.
+    */
     <>
       <AppHeader
         title="Mi día"
@@ -386,17 +392,17 @@ export default function MyDayPage() {
       />
       <AppFrame>
         {offline ? (
-          <div className="mb-3 flex items-center gap-2 rounded-xl bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
+          <div className="mb-3 flex items-center gap-2 rounded-xl bg-ember/10 px-3 py-2 text-xs font-semibold text-ember">
             <WifiOff size={15} /> Mostrando la última jornada guardada.
           </div>
         ) : null}
         {error ? (
-          <div className="mb-3 flex items-start gap-2 rounded-xl bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700 dark:bg-rose-950/40 dark:text-rose-200">
+          <div className="mb-3 flex items-start gap-2 rounded-xl bg-orchid/10 px-3 py-2 text-xs font-semibold text-orchid">
             <AlertCircle size={15} className="mt-0.5 shrink-0" /> {error}
           </div>
         ) : null}
         {aviso ? (
-          <div className="mb-3 flex items-start gap-2 rounded-xl bg-sky-50 px-3 py-2 text-xs font-semibold text-sky-700 dark:bg-sky-950/40 dark:text-sky-200">
+          <div className="mb-3 flex items-start gap-2 rounded-xl bg-sky-50 px-3 py-2 text-xs font-semibold text-sky">
             <CloudUpload size={15} className="mt-0.5 shrink-0" /> {aviso}
           </div>
         ) : null}
@@ -407,11 +413,13 @@ export default function MyDayPage() {
           clima no llegó no se nota nada.
         */}
         <div className="relative">
-          <MyDayHero
-            firstName={firstName}
+          <ResumenDelDia
+            nombre={firstName}
             appVersion={data.device.appVersion}
             shift={data.shift}
+            attendance={data.attendance}
             performance={data.performance}
+            uniform={data.uniform}
             clima={clima}
           />
           {clima && introPendiente ? (
@@ -419,19 +427,24 @@ export default function MyDayPage() {
           ) : null}
         </div>
 
-        <Link href={nextAction.href} className="tappable mt-3 flex min-h-20 items-center gap-3 rounded-2xl bg-blue-50 px-4 py-3 text-blue-950 dark:bg-blue-950/35 dark:text-blue-100">
-          <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-blue-600 text-white"><Target size={19} /></span>
+        {/*
+          UNA sola accion principal, y en el extremo del NEUTRO --tinta sobre
+          papel, papel sobre tinta en oscuro--, no en azul. Es la misma regla
+          que el boton de la barra de abajo: con varias cosas gritando a la vez,
+          ninguna destaca.
+        */}
+        <Link href={nextAction.href} className="tappable mt-6 flex min-h-16 items-center gap-3 rounded-2xl bg-ink px-4 py-3 text-card">
           <span className="min-w-0 flex-1">
-            <span className="block text-xs font-semibold text-blue-700 dark:text-blue-300">{nextAction.detail}</span>
-            <span className="mt-0.5 block truncate text-sm font-semibold">{nextAction.label}</span>
+            <span className="block text-xs opacity-70">{nextAction.detail}</span>
+            <span className="mt-0.5 block truncate text-[15px] font-semibold">{nextAction.label}</span>
           </span>
-          <ChevronRight size={18} />
+          <ChevronRight size={18} className="shrink-0 opacity-70" />
         </Link>
 
         <section id="mi-dia-jornada" className="mt-6 scroll-mt-24">
           <div className="flex items-end justify-between">
             <div>
-              <h2 className="text-lg font-semibold tracking-[-0.025em] text-ink">Jornada</h2>
+              <h2 className="text-lg font-semibold tracking-tight text-ink">Jornada</h2>
               <p className="text-xs text-muted">Horario, uniforme y asistencia</p>
             </div>
             {calendarAvailable ? (
@@ -440,7 +453,7 @@ export default function MyDayPage() {
               </button>
             ) : null}
           </div>
-          <div className="mt-3 divide-y divide-line rounded-2xl bg-card px-4 shadow-[0_8px_22px_rgb(20_21_26_/_0.07)]">
+          <div className="mt-3 divide-y divide-line rounded-2xl bg-card px-4 shadow-[0_8px_22px_rgb(20_21_26/0.07)]">
             <div id="mi-dia-asistencia" className="flex min-h-16 scroll-mt-24 items-center gap-3 py-3">
               <Clock3 size={19} className="shrink-0 text-volt" />
               <div className="min-w-0 flex-1"><p className="text-xs text-muted">Turno</p><p className="text-sm font-semibold text-ink">{data.shift?.summary ?? "Sin horario"}</p></div>
@@ -459,12 +472,33 @@ export default function MyDayPage() {
         </section>
 
         {showCorrection ? (
-          <form onSubmit={submitCorrection} className="mt-3 rounded-2xl bg-card p-4 shadow-[0_8px_22px_rgb(20_21_26_/_0.07)]">
+          <form onSubmit={submitCorrection} className="mt-3 rounded-2xl bg-card p-4 shadow-[0_8px_22px_rgb(20_21_26/0.07)]">
             <h3 className="text-base font-semibold text-ink">Solicitar corrección</h3>
             <p className="mt-1 text-xs leading-5 text-muted">Gerencia revisará el cambio antes de modificar tu asistencia.</p>
             <div className="mt-4 grid grid-cols-2 gap-3">
               <label className="col-span-2 text-xs font-semibold text-muted">Fecha<input type="date" required value={draft.date} onChange={(event) => setDraft((current) => ({ ...current, date: event.target.value }))} className="mt-1 min-h-12 w-full rounded-xl border border-line bg-panel px-3 text-sm text-ink" /></label>
-              <label className="col-span-2 text-xs font-semibold text-muted">Estado<select value={draft.requestedStatus} onChange={(event) => setDraft((current) => ({ ...current, requestedStatus: event.target.value }))} className="mt-1 min-h-12 w-full rounded-xl border border-line bg-panel px-3 text-sm text-ink"><option value="ON_TIME">A tiempo</option><option value="LATE">Retardo</option><option value="ABSENT">Ausencia</option><option value="EXCUSED">Justificada</option><option value="REST">Descanso</option><option value="VACATION">Vacaciones</option><option value="PAID_DAY">Pago de día</option><option value="INVENTORY">Inventario</option></select></label>
+              {/*
+                Ocho estados: demasiados para pastillas --serian cuatro
+                renglones dentro de un formulario que ya tiene seis campos--,
+                asi que va la hoja inferior.
+              */}
+              <div className="col-span-2">
+                <AppSelect
+                  label="Estado"
+                  value={draft.requestedStatus}
+                  onChange={(valor) => setDraft((current) => ({ ...current, requestedStatus: valor }))}
+                  options={[
+                    { value: "ON_TIME", label: "A tiempo" },
+                    { value: "LATE", label: "Retardo" },
+                    { value: "ABSENT", label: "Ausencia" },
+                    { value: "EXCUSED", label: "Justificada" },
+                    { value: "REST", label: "Descanso" },
+                    { value: "VACATION", label: "Vacaciones" },
+                    { value: "PAID_DAY", label: "Pago de día" },
+                    { value: "INVENTORY", label: "Inventario" }
+                  ]}
+                />
+              </div>
               <label className="text-xs font-semibold text-muted">Entrada<input type="time" value={draft.requestedArrivedAt} onChange={(event) => setDraft((current) => ({ ...current, requestedArrivedAt: event.target.value }))} className="mt-1 min-h-12 w-full rounded-xl border border-line bg-panel px-3 text-sm text-ink" /></label>
               <label className="text-xs font-semibold text-muted">Salida<input type="time" value={draft.requestedLeftAt} onChange={(event) => setDraft((current) => ({ ...current, requestedLeftAt: event.target.value }))} className="mt-1 min-h-12 w-full rounded-xl border border-line bg-panel px-3 text-sm text-ink" /></label>
               <label className="col-span-2 text-xs font-semibold text-muted">Motivo<textarea required minLength={8} maxLength={500} value={draft.reason} onChange={(event) => setDraft((current) => ({ ...current, reason: event.target.value }))} placeholder="Explica qué dato debe corregirse" className="mt-1 min-h-24 w-full resize-none rounded-xl border border-line bg-panel px-3 py-3 text-sm text-ink" /></label>
@@ -476,13 +510,13 @@ export default function MyDayPage() {
 
         <section className="mt-6">
           <div className="flex items-end justify-between">
-            <div><h2 className="text-lg font-semibold tracking-[-0.025em] text-ink">Plan de hoy</h2><p className="text-xs text-muted">{openTasks.length ? `${openTasks.length} por completar` : "Todo en orden"}</p></div>
+            <div><h2 className="text-lg font-semibold tracking-tight text-ink">Plan de hoy</h2><p className="text-xs text-muted">{openTasks.length ? `${openTasks.length} por completar` : "Todo en orden"}</p></div>
             <Link href="/plan" className="min-h-11 px-2 py-3 text-xs font-semibold text-volt">Ver plan</Link>
           </div>
           <div className="mt-2 divide-y divide-line">
             {data.plan?.tasks.length ? data.plan.tasks.slice(0, 5).map((task) => (
               <Link key={task.id} href="/plan" className="tappable flex min-h-14 items-center gap-3 py-2">
-                <span className={`grid size-7 shrink-0 place-items-center rounded-full ${task.completed ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300" : "bg-panel text-muted"}`}>{task.completed ? <Check size={15} /> : <span className="size-2 rounded-full bg-current" />}</span>
+                <span className={`grid size-7 shrink-0 place-items-center rounded-full ${task.completed ? "bg-mint/10 text-mint" : "bg-panel text-muted"}`}>{task.completed ? <Check size={15} /> : <span className="size-2 rounded-full bg-current" />}</span>
                 <span className={`text-sm font-semibold ${task.completed ? "text-muted line-through" : "text-ink"}`}>{task.title}</span>
               </Link>
             )) : <p className="py-4 text-sm text-muted">No tienes tareas publicadas para hoy.</p>}
@@ -490,16 +524,16 @@ export default function MyDayPage() {
         </section>
 
         {ownCorrections.length ? (
-          <section className="mt-6"><h2 className="text-lg font-semibold tracking-[-0.025em] text-ink">Mis correcciones</h2><div className="mt-2 divide-y divide-line">{ownCorrections.slice(0, 3).map((item) => <div key={item.id} className="flex min-h-14 items-center justify-between gap-3 py-2"><div><p className="text-sm font-semibold text-ink">{item.date}</p><p className="text-xs text-muted">{item.reason}</p></div><span className="shrink-0 rounded-full bg-panel px-2.5 py-1 text-xs font-semibold text-ink">{correctionStatusLabel(item.status)}</span></div>)}</div></section>
+          <section className="mt-6"><h2 className="text-lg font-semibold tracking-tight text-ink">Mis correcciones</h2><div className="mt-2 divide-y divide-line">{ownCorrections.slice(0, 3).map((item) => <div key={item.id} className="flex min-h-14 items-center justify-between gap-3 py-2"><div><p className="text-sm font-semibold text-ink">{item.date}</p><p className="text-xs text-muted">{item.reason}</p></div><span className="shrink-0 rounded-full bg-panel px-2.5 py-1 text-xs font-semibold text-ink">{correctionStatusLabel(item.status)}</span></div>)}</div></section>
         ) : null}
 
         {reviewCorrections.length ? (
           <section id="mi-dia-correcciones" className="mt-6 scroll-mt-24">
-            <h2 className="text-lg font-semibold tracking-[-0.025em] text-ink">Por revisar</h2>
+            <h2 className="text-lg font-semibold tracking-tight text-ink">Por revisar</h2>
             <p className="text-xs text-muted">Solicitudes de asistencia del equipo</p>
             <div className="mt-3 space-y-3">
               {reviewCorrections.map((item) => (
-                <div key={item.id} className="rounded-2xl bg-card p-4 shadow-[0_8px_22px_rgb(20_21_26_/_0.07)]">
+                <div key={item.id} className="rounded-2xl bg-card p-4 shadow-[0_8px_22px_rgb(20_21_26/0.07)]">
                   <div className="flex justify-between gap-3">
                     <div>
                       <p className="text-sm font-semibold text-ink">{item.userName}</p>
@@ -530,7 +564,7 @@ export default function MyDayPage() {
         {data.kudos && data.kudos.recibidosMes > 0 ? (
           <Link href="/kudos" className="tappable mt-6 block">
             <Card className="flex items-start gap-3 p-4">
-              <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-mint/12 text-2xl" aria-hidden="true">
+              <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-volt/10 text-2xl" aria-hidden="true">
                 {data.kudos.ultimo?.emoji ?? "\u2b50"}
               </span>
               <div className="min-w-0 flex-1">
@@ -553,7 +587,7 @@ export default function MyDayPage() {
         ) : null}
 
         <section className="mt-6">
-          <h2 className="text-lg font-semibold tracking-[-0.025em] text-ink">Accesos rápidos</h2>
+          <h2 className="text-lg font-semibold tracking-tight text-ink">Accesos rápidos</h2>
           <div className="mt-3 grid grid-cols-2 gap-2">
             <Quick href="/horarios" icon={<Clock3 size={18} />} label="Horarios" detail={data.shift?.summary ?? "Consultar"} />
             <Quick href="/pendientes" icon={<ClipboardCheck size={18} />} label="Pendientes" detail={`${data.counts.openPendings} abiertos`} />
@@ -578,7 +612,7 @@ export default function MyDayPage() {
 
 function Quick({ href, icon, label, detail }: { href: string; icon: React.ReactNode; label: string; detail: string }) {
   return (
-    <Link href={href} className="tappable flex min-h-20 items-center gap-3 rounded-2xl bg-card px-3 shadow-[0_6px_18px_rgb(20_21_26_/_0.06)]">
+    <Link href={href} className="tappable flex min-h-20 items-center gap-3 rounded-2xl bg-card px-3 shadow-[0_6px_18px_rgb(20_21_26/0.06)]">
       <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-panel text-volt">{icon}</span>
       <span className="min-w-0"><span className="block text-sm font-semibold text-ink">{label}</span><span className="block truncate text-xs text-muted">{detail}</span></span>
     </Link>

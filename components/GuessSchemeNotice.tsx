@@ -96,9 +96,9 @@ export function GuessSchemeNotice() {
       // `desk-adopt` es obligatoria: esto se monta en el layout raíz, fuera del
       // subárbol [data-surface="desk"], así que sin ella se pintaría con la
       // paleta del móvil sobre el lienzo oscuro del escritorio.
-      className="desk-adopt pointer-events-none fixed inset-x-0 top-0 z-[70] px-3 pt-[max(0.5rem,env(safe-area-inset-top))]"
+      className="desk-adopt pointer-events-none fixed inset-x-0 top-0 z-70 px-3 pt-[max(0.5rem,env(safe-area-inset-top))]"
     >
-      <div className="mx-auto flex max-w-3xl items-center gap-3 rounded-2xl border border-ember/30 bg-gradient-to-r from-ember/[0.16] to-ember/[0.06] px-3.5 py-2.5 shadow-[0_8px_24px_rgb(15_23_42_/_0.14)] backdrop-blur-md">
+      <div className="mx-auto flex max-w-3xl items-center gap-3 rounded-2xl border border-ember/30 bg-linear-to-r from-ember/16 to-ember/6 px-3.5 py-2.5 shadow-[0_8px_24px_rgb(15_23_42/0.14)] backdrop-blur-md">
         <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-ember/15 text-ember">
           <Wrench size={17} />
         </span>

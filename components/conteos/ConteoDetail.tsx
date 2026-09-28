@@ -175,14 +175,14 @@ export function ConteoDetailView({ countId: id, desktop = false }: { countId: st
                 <p className="mt-2 border-t border-line pt-2 text-xs font-semibold text-ink">
                   Total: {totalPieces.toLocaleString("es-MX")} piezas
                   {count.theoretical !== null && (
-                    <span className={`ml-2 ${totalPieces - count.theoretical === 0 ? "text-emerald-500" : "text-rose-500"}`}>
+                    <span className={`ml-2 ${totalPieces - count.theoretical === 0 ? "text-mint" : "text-orchid"}`}>
                       ({totalPieces - count.theoretical >= 0 ? "+" : ""}{(totalPieces - count.theoretical).toLocaleString("es-MX")} vs Kardex {count.theoretical.toLocaleString("es-MX")})
                     </span>
                   )}
                 </p>
               )}
               {(progress.PISO.discrepancies + progress.BODEGA.discrepancies) > 0 && (
-                <p className="mt-1.5 flex items-center gap-1 text-[11px] font-bold text-amber-600">
+                <p className="mt-1.5 flex items-center gap-1 text-[11px] font-bold text-ember">
                   <AlertTriangle size={12} /> {progress.PISO.discrepancies + progress.BODEGA.discrepancies} marbete(s) con diferencia esperan 3er conteo
                 </p>
               )}
@@ -190,13 +190,13 @@ export function ConteoDetailView({ countId: id, desktop = false }: { countId: st
 
             {/* Zona + escáner */}
             <div className="mb-3 flex items-center gap-1.5">
-              <div className="flex min-w-0 flex-1 rounded-full bg-slate-100 p-1 dark:bg-[#1a2540]">
+              <div className="flex min-w-0 flex-1 rounded-full bg-panel p-1">
                 {(["PISO", "BODEGA"] as const).map((z) => (
                   <button
                     key={z}
                     type="button"
                     onClick={() => setZone(z)}
-                    className={`min-h-10 flex-1 rounded-full text-sm font-semibold transition ${zone === z ? "bg-white text-ink shadow dark:bg-slate-700" : "text-muted"}`}
+                    className={`min-h-10 flex-1 rounded-full text-sm font-semibold transition ${zone === z ? "bg-white text-ink shadow-sm dark:bg-panel" : "text-muted"}`}
                   >
                     {z === "PISO" ? "Piso de venta" : "Bodega"}
                   </button>
@@ -207,7 +207,7 @@ export function ConteoDetailView({ countId: id, desktop = false }: { countId: st
                   type="button"
                   onClick={() => setScanning(true)}
                   aria-label="Escanear marbete"
-                  className="grid size-11 shrink-0 place-items-center rounded-full bg-volt text-white shadow-[0_6px_16px_rgb(37_99_235_/_0.3)] transition active:scale-95"
+                  className="grid size-11 shrink-0 place-items-center rounded-full bg-volt text-white shadow-[0_6px_16px_rgb(37_99_235/0.3)] transition active:scale-95"
                 >
                   <ScanLine size={19} />
                 </button>
@@ -244,9 +244,9 @@ export function ConteoDetailView({ countId: id, desktop = false }: { countId: st
                         counter
                           ? "border-volt/60 bg-volt/10 ring-2 ring-volt/30"
                           : needsRecount
-                            ? "border-amber-400/60 bg-amber-500/10"
+                            ? "border-ember/30 bg-ember/10"
                             : resolved
-                              ? "border-emerald-400/40 bg-emerald-500/10"
+                              ? "border-mint/30 bg-mint/10"
                               : "border-line bg-panel"
                       }`}
                     >
@@ -260,13 +260,13 @@ export function ConteoDetailView({ countId: id, desktop = false }: { countId: st
                         <span
                           title={`${countsDone}° conteo`}
                           className={`absolute left-1 top-1 grid size-4 place-items-center rounded-full text-[9px] font-semibold leading-none text-white ${
-                            countsDone >= 3 ? "bg-purple-500" : countsDone === 2 ? "bg-amber-500" : "bg-slate-500"
+                            countsDone >= 3 ? "bg-purple" : countsDone === 2 ? "bg-ember" : "bg-muted"
                           }`}
                         >
                           {countsDone}
                         </span>
                       ) : null}
-                      <span className={`text-sm font-semibold ${resolved ? "text-emerald-600 dark:text-emerald-400" : "text-ink"}`}>{tag.number}</span>
+                      <span className={`text-sm font-semibold ${resolved ? "text-mint" : "text-ink"}`}>{tag.number}</span>
                       <span className="text-[10px] font-bold text-muted">
                         {needsRecount ? "⚠ recontar" : manager ? (real !== null ? `${real} pzas` : "—") : myOwn !== null ? `${myOwn} pzas` : resolved ? "✓" : "—"}
                       </span>
@@ -351,7 +351,7 @@ function LivePresence({ present }: { present: Array<{ userId: string; userName: 
               animate={{ opacity: 1, x: 0, scale: 1 }}
               exit={{ opacity: 0, x: 24, scale: 0.9 }}
               transition={{ type: "spring", stiffness: 380, damping: 30 }}
-              className="flex items-center gap-2.5 rounded-full border border-line bg-card/95 py-1.5 pl-1.5 pr-3.5 shadow-[0_8px_24px_rgb(15_23_42_/_0.14)] backdrop-blur-xl"
+              className="flex items-center gap-2.5 rounded-full border border-line bg-card/95 py-1.5 pl-1.5 pr-3.5 shadow-[0_8px_24px_rgb(15_23_42/0.14)] backdrop-blur-xl"
             >
               <span className="grid size-8 shrink-0 place-items-center rounded-full bg-volt text-xs font-semibold text-white">
                 {first.slice(0, 2).toUpperCase()}
@@ -360,8 +360,8 @@ function LivePresence({ present }: { present: Array<{ userId: string; userName: 
                 <span className="font-semibold">{first}</span> está contando el <span className="font-semibold text-volt">marbete {person.tagNumber}</span>
               </span>
               <span className="relative flex size-2.5">
-                <span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-400/70" />
-                <span className="relative inline-flex size-2.5 rounded-full bg-emerald-500" />
+                <span className="absolute inline-flex size-full animate-ping rounded-full bg-mint/70" />
+                <span className="relative inline-flex size-2.5 rounded-full bg-mint" />
               </span>
             </motion.div>
           );
@@ -398,7 +398,7 @@ function CaptureSheet({ countId, tag, entry, isOpen, onClose, onSaved }: {
    * ⚠️ La hoja se monta en `document.body`, NO donde vive el componente.
    *
    * `AppFrame` es un `motion.main` animado: su `transform` crea un *containing
-   * block* y un contexto de apilamiento, así que `fixed inset-0 z-[80]` quedaba
+   * block* y un contexto de apilamiento, así que `fixed inset-0 z-80` quedaba
    * encerrado dentro de él. La barra inferior vive FUERA de `AppFrame` con
    * `z-30`, y por estar fuera se pintaba ENCIMA de la hoja por mucho z-index
    * que esta declarara: el botón de guardar quedaba debajo de la barra y el
@@ -457,7 +457,7 @@ function CaptureSheet({ countId, tag, entry, isOpen, onClose, onSaved }: {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[80] flex items-end justify-center bg-black/50 p-3 backdrop-blur-sm"
+      className="fixed inset-0 z-80 flex items-end justify-center bg-black/50 p-3 backdrop-blur-xs"
       // El teclado tapaba el botón de guardar: la hoja se levanta por encima de
       // él. En iOS es obligatorio — ahí el teclado NO encoge el viewport.
       style={{ paddingBottom: keyboardInset + 12 }}
@@ -478,14 +478,14 @@ function CaptureSheet({ countId, tag, entry, isOpen, onClose, onSaved }: {
             <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">{tag.zone === "PISO" ? "Piso de venta" : "Bodega"}</p>
             <p className="text-xl font-semibold text-ink">Marbete {tag.number}{tag.label ? ` · ${tag.label}` : ""}</p>
           </div>
-          <button type="button" onClick={onClose} aria-label="Cerrar" className="grid size-9 place-items-center rounded-full bg-slate-500/10 text-muted"><X size={16} /></button>
+          <button type="button" onClick={onClose} aria-label="Cerrar" className="grid size-9 place-items-center rounded-full bg-muted/10 text-muted"><X size={16} /></button>
         </div>
 
         {entry !== null && slotFilled(entry, 1) && (
           // Conteo ciego: cada conteo muestra sus piezas SOLO a quien lo capturó
           // (y a gerencia). El de otra persona sale como "oculto" con su nombre,
           // para que el asesor vea SU propio conteo pero no copie el ajeno.
-          <div className="mt-2 rounded-2xl bg-slate-500/10 px-3 py-2 text-xs font-semibold text-muted">
+          <div className="mt-2 rounded-2xl bg-muted/10 px-3 py-2 text-xs font-semibold text-muted">
             1er conteo: {entry.count1 !== null ? <b className="text-ink">{entry.count1} pzas</b> : <span className="opacity-70">oculto</span>} · {entry.count1ByName}
             {slotFilled(entry, 2) && <> — 2do: {entry.count2 !== null ? <b className="text-ink">{entry.count2} pzas</b> : <span className="opacity-70">oculto</span>} · {entry.count2ByName}</>}
             {slotFilled(entry, 3) && <> — 3ro: {entry.count3 !== null ? <b className="text-ink">{entry.count3} pzas</b> : <span className="opacity-70">oculto</span>} · {entry.count3ByName}</>}
@@ -502,7 +502,7 @@ function CaptureSheet({ countId, tag, entry, isOpen, onClose, onSaved }: {
                     type="button"
                     onClick={() => setSlot(s)}
                     disabled={(s === 2 && !slotFilled(entry, 1)) || (s === 3 && !slotFilled(entry, 2))}
-                    className={`flex-1 rounded-full px-2 py-1.5 text-[11px] font-semibold transition disabled:opacity-35 ${slot === s ? "bg-volt text-white" : "bg-slate-500/10 text-muted"}`}
+                    className={`flex-1 rounded-full px-2 py-1.5 text-[11px] font-semibold transition disabled:opacity-35 ${slot === s ? "bg-volt text-white" : "bg-muted/10 text-muted"}`}
                   >
                     {s === 1 ? "Corregir 1er" : s === 2 ? "2do conteo" : "3er conteo"}
                   </button>
@@ -525,9 +525,9 @@ function CaptureSheet({ countId, tag, entry, isOpen, onClose, onSaved }: {
               enterKeyHint="done"
               placeholder="0"
               aria-label={`Piezas del marbete ${tag.number}`}
-              className="mt-3 min-h-16 w-full rounded-2xl border border-line bg-blue-50 px-4 text-center text-3xl font-semibold tabular-nums text-ink outline-none focus:border-volt dark:bg-[#1a2540]"
+              className="mt-3 min-h-16 w-full rounded-2xl border border-line bg-volt/10 px-4 text-center text-3xl font-semibold tabular-nums text-ink outline-hidden focus:border-volt"
             />
-            {error && <p className="mt-1.5 text-xs font-semibold text-red-500">{error}</p>}
+            {error && <p className="mt-1.5 text-xs font-semibold text-orchid">{error}</p>}
             <button
               type="button"
               onClick={() => void save()}
@@ -644,14 +644,14 @@ function ManagerPanel({ countId, count, isOpen, canDelete, onChanged, onToggleSt
                 placeholder="Piezas según sistema"
                 aria-label="Inventario Kardex"
                 disabled={!isOpen}
-                className="min-w-0 flex-1 rounded-2xl border border-line bg-panel px-3 py-2 text-sm font-semibold tabular-nums text-ink outline-none focus:border-volt disabled:opacity-60"
+                className="min-w-0 flex-1 rounded-2xl border border-line bg-panel px-3 py-2 text-sm font-semibold tabular-nums text-ink outline-hidden focus:border-volt disabled:opacity-60"
               />
               {isOpen && (
                 <button
                   type="button"
                   onClick={() => void saveKardex()}
                   disabled={busy}
-                  className={`shrink-0 rounded-2xl px-4 text-sm font-semibold transition active:scale-95 disabled:opacity-50 ${kardexSaved ? "bg-emerald-500/15 text-emerald-600" : "bg-volt text-white"}`}
+                  className={`shrink-0 rounded-2xl px-4 text-sm font-semibold transition active:scale-95 disabled:opacity-50 ${kardexSaved ? "bg-mint text-mint" : "bg-volt text-white"}`}
                 >
                   {kardexSaved ? "✓" : "Guardar"}
                 </button>
@@ -670,14 +670,14 @@ function ManagerPanel({ countId, count, isOpen, canDelete, onChanged, onToggleSt
             <span className="min-w-0 flex-1 truncate font-semibold text-ink">{item.concept}</span>
             <span className="font-semibold tabular-nums text-ink">{item.pieces}</span>
             {isOpen && (
-              <button type="button" onClick={() => void removeNoUpc(item.id)} aria-label="Quitar" className="grid size-7 place-items-center rounded-full bg-red-500/10 text-red-500"><Trash2 size={13} /></button>
+              <button type="button" onClick={() => void removeNoUpc(item.id)} aria-label="Quitar" className="grid size-7 place-items-center rounded-full bg-orchid text-orchid"><Trash2 size={13} /></button>
             )}
           </div>
         ))}
         {isOpen && (
           <div className="mt-2 flex gap-1.5">
-            <input value={concept} onChange={(e) => setConcept(e.target.value)} placeholder="Concepto" className="min-w-0 flex-1 rounded-2xl border border-line bg-panel px-3 py-2 text-sm font-semibold text-ink outline-none focus:border-volt" />
-            <input value={pieces} onChange={(e) => setPieces(e.target.value.replace(/\D/g, "").slice(0, 5))} inputMode="numeric" placeholder="Pzas" className="w-20 rounded-2xl border border-line bg-panel px-3 py-2 text-center text-sm font-semibold text-ink outline-none focus:border-volt" />
+            <input value={concept} onChange={(e) => setConcept(e.target.value)} placeholder="Concepto" className="min-w-0 flex-1 rounded-2xl border border-line bg-panel px-3 py-2 text-sm font-semibold text-ink outline-hidden focus:border-volt" />
+            <input value={pieces} onChange={(e) => setPieces(e.target.value.replace(/\D/g, "").slice(0, 5))} inputMode="numeric" placeholder="Pzas" className="w-20 rounded-2xl border border-line bg-panel px-3 py-2 text-center text-sm font-semibold text-ink outline-hidden focus:border-volt" />
             <button type="button" onClick={() => void addNoUpc()} disabled={busy} aria-label="Agregar" className="grid size-10 shrink-0 place-items-center rounded-2xl bg-volt text-white transition active:scale-95 disabled:opacity-50"><Plus size={16} /></button>
           </div>
         )}
@@ -687,14 +687,14 @@ function ManagerPanel({ countId, count, isOpen, canDelete, onChanged, onToggleSt
       <div className="mt-3 flex items-center gap-1.5 border-t border-line pt-3">
         <a
           href={`/api/conteos/${countId}/export`}
-          className="flex flex-1 items-center justify-center gap-1.5 rounded-full bg-blue-500/10 px-3 py-2 text-xs font-semibold text-blue-600 transition active:scale-95 dark:text-blue-400"
+          className="flex flex-1 items-center justify-center gap-1.5 rounded-full bg-volt px-3 py-2 text-xs font-semibold text-volt transition active:scale-95"
         >
           <Download size={14} /> Mesa de control (Excel)
         </a>
         <button
           type="button"
           onClick={() => void onToggleStatus()}
-          className={`flex flex-1 items-center justify-center gap-1.5 rounded-full px-3 py-2 text-xs font-semibold transition active:scale-95 ${isOpen ? "bg-slate-500/15 text-muted" : "bg-emerald-500/15 text-emerald-600"}`}
+          className={`flex flex-1 items-center justify-center gap-1.5 rounded-full px-3 py-2 text-xs font-semibold transition active:scale-95 ${isOpen ? "bg-muted/15 text-muted" : "bg-mint text-mint"}`}
         >
           {isOpen ? <><Lock size={14} /> Cerrar conteo</> : <><LockOpen size={14} /> Reabrir</>}
         </button>
@@ -707,7 +707,7 @@ function ManagerPanel({ countId, count, isOpen, canDelete, onChanged, onToggleSt
           onClick={() => {
             if (confirm("¿Eliminar este conteo con TODAS sus capturas? Esta acción no se puede deshacer.")) void onDelete();
           }}
-          className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-full bg-red-500/10 px-3 py-2 text-xs font-semibold text-red-500 transition active:scale-95"
+          className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-full bg-orchid px-3 py-2 text-xs font-semibold text-orchid transition active:scale-95"
         >
           <Trash2 size={14} /> Eliminar conteo (admin)
         </button>
@@ -778,7 +778,7 @@ function AddBodegaTag({ countId, suggested, disabled, onAdded }: { countId: stri
     <Card className="mb-3 p-3.5">
       <div className="flex items-center justify-between">
         <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">Marbetes de bodega</p>
-        <button type="button" onClick={() => { setOpen(false); setError(""); setDone(""); }} aria-label="Cerrar" className="grid size-8 place-items-center rounded-full bg-slate-500/10 text-muted"><X size={14} /></button>
+        <button type="button" onClick={() => { setOpen(false); setError(""); setDone(""); }} aria-label="Cerrar" className="grid size-8 place-items-center rounded-full bg-muted/10 text-muted"><X size={14} /></button>
       </div>
 
       {/* Apagados: se habilitan tocandolos. Reusarlos es mejor que estrenar un
@@ -832,14 +832,14 @@ function AddBodegaTag({ countId, suggested, disabled, onAdded }: { countId: stri
             inputMode="numeric"
             placeholder={suggested === null ? "N.º" : String(suggested)}
             aria-label="Numero del marbete"
-            className="w-20 shrink-0 rounded-2xl border border-line bg-panel px-2 py-2 text-center text-sm font-semibold tabular-nums text-ink outline-none focus:border-volt"
+            className="w-20 shrink-0 rounded-2xl border border-line bg-panel px-2 py-2 text-center text-sm font-semibold tabular-nums text-ink outline-hidden focus:border-volt"
           />
           <input
             value={label}
             onChange={(event) => setLabel(event.target.value.slice(0, 60))}
             placeholder="Donde esta (opcional)"
             aria-label="Etiqueta del marbete"
-            className="min-w-0 flex-1 rounded-2xl border border-line bg-panel px-3 py-2 text-sm font-semibold text-ink outline-none focus:border-volt"
+            className="min-w-0 flex-1 rounded-2xl border border-line bg-panel px-3 py-2 text-sm font-semibold text-ink outline-hidden focus:border-volt"
           />
           <button
             type="button"
@@ -857,8 +857,8 @@ function AddBodegaTag({ countId, suggested, disabled, onAdded }: { countId: stri
         </p>
       </div>
 
-      {error ? <p className="mt-2 text-xs font-semibold text-red-500">{error}</p> : null}
-      {done && !error ? <p className="mt-2 text-xs font-semibold text-emerald-600 dark:text-emerald-400">{done}</p> : null}
+      {error ? <p className="mt-2 text-xs font-semibold text-orchid">{error}</p> : null}
+      {done && !error ? <p className="mt-2 text-xs font-semibold text-mint">{done}</p> : null}
     </Card>
   );
 }

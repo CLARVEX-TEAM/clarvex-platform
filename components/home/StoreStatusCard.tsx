@@ -14,10 +14,10 @@ interface StoreStatusCardProps {
 export function StoreStatusCard({ storeProgress, conversion, planProgress, delay = 0.24 }: StoreStatusCardProps) {
   // Mismos umbrales que achievementTone: ≥100% en meta, 90–99% en ritmo, <90% en seguimiento.
   const status = storeProgress >= 100
-    ? { label: "En meta", text: "text-green-600 dark:text-green-500", bg: "bg-green-50 dark:bg-green-950/40", dot: "bg-green-500" }
+    ? { label: "En meta", text: "text-mint", bg: "bg-mint/10", dot: "bg-mint" }
     : storeProgress >= 90
-      ? { label: "En ritmo", text: "text-amber-600 dark:text-amber-400", bg: "bg-amber-50 dark:bg-amber-950/40", dot: "bg-amber-400" }
-      : { label: "En seguimiento", text: "text-rose-500 dark:text-rose-400", bg: "bg-rose-50 dark:bg-rose-950/40", dot: "animate-pulse bg-rose-400" };
+      ? { label: "En ritmo", text: "text-ember", bg: "bg-ember/10", dot: "bg-ember" }
+      : { label: "En seguimiento", text: "text-orchid", bg: "bg-orchid/10", dot: "animate-pulse bg-orchid" };
 
   return (
     <motion.div

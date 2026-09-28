@@ -12,6 +12,7 @@ import {
   CreditCard,
   GraduationCap,
   HeartHandshake,
+  MessageSquare,
   PackageSearch,
   Shirt,
   Users
@@ -48,6 +49,7 @@ export const ACCESOS_GERENCIA: AccesoTelefono[] = [
   { href: "/plan", icon: CheckSquare, label: "Crear plan del día" },
   { href: "/pendientes", icon: ClipboardList, label: "Crear pendiente" },
   { href: "/bitacora", icon: BookOpen, label: "Bitácora" },
+  { href: "/chat", icon: MessageSquare, label: "Chat del equipo" },
   { href: "/horarios", icon: CalendarDays, label: "Horarios" },
   { href: "/kudos", icon: HeartHandshake, label: "Reconocer" },
   { href: "/credencial", icon: BadgeCheck, label: "Mi credencial" },
@@ -71,6 +73,7 @@ export const ACCESOS_ASESOR: AccesoTelefono[] = [
   { href: "/horarios", icon: CalendarDays, label: "Mis horarios" },
   { href: "/pendientes", icon: ClipboardList, label: "Pendientes" },
   { href: "/kpis", icon: BarChart3, label: "Mis KPIs" },
+  { href: "/chat", icon: MessageSquare, label: "Chat del equipo" },
   { href: "/kudos", icon: HeartHandshake, label: "Reconocer" },
   { href: "/credencial", icon: BadgeCheck, label: "Mi credencial" },
   { href: "/asistencia", icon: Clock, label: "Mi asistencia" },

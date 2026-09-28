@@ -63,7 +63,7 @@ export default function ImprimirMarbetesPage() {
       ) : (
         <div className="flex flex-wrap gap-3 print:gap-2">
           {visible.map((tag) => (
-            <div key={tag.id} className="flex flex-col items-center rounded border border-dashed border-slate-300 p-1.5" style={{ breakInside: "avoid" }}>
+            <div key={tag.id} className="flex flex-col items-center rounded-sm border border-dashed border-slate-300 p-1.5" style={{ breakInside: "avoid" }}>
               <div style={{ width: sizePx, height: sizePx }} dangerouslySetInnerHTML={{ __html: tag.svg }} />
               <span className="mt-0.5 text-[10px] font-semibold leading-none">
                 {tag.zone === "PISO" ? "P" : "B"}-{tag.number}

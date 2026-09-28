@@ -123,7 +123,7 @@ export function WhatsNewModal() {
     <AnimatePresence>
       {open ? (
         <motion.div
-          className="fixed inset-0 z-[60] flex items-end justify-center bg-slate-950/70 p-0 backdrop-blur-sm sm:items-center sm:p-6"
+          className="fixed inset-0 z-60 flex items-end justify-center bg-panel p-0 backdrop-blur-xs sm:items-center sm:p-6"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -145,7 +145,7 @@ export function WhatsNewModal() {
                 <p className="mb-1 text-[11px] font-bold uppercase tracking-[0.16em] text-volt">
                   Una nueva etapa
                 </p>
-                <h2 id="whatsnew-title" className="text-xl font-semibold tracking-[-0.025em] text-ink sm:text-2xl">
+                <h2 id="whatsnew-title" className="text-xl font-semibold tracking-tight text-ink sm:text-2xl">
                   Clarvex vuelve con captura propia
                 </h2>
               </div>
@@ -153,13 +153,13 @@ export function WhatsNewModal() {
                 type="button"
                 onClick={dismiss}
                 aria-label="Cerrar anuncio"
-                className="-mr-1.5 -mt-1 grid size-10 shrink-0 place-items-center rounded-full text-muted transition hover:bg-line/60 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-volt"
+                className="-mr-1.5 -mt-1 grid size-10 shrink-0 place-items-center rounded-full text-muted transition hover:bg-line/60 hover:text-ink focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-volt"
               >
                 <X size={19} />
               </button>
             </div>
 
-            <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5 sm:px-7 sm:py-6 [scrollbar-width:thin]">
+            <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5 sm:px-7 sm:py-6 scrollbar-thin">
               <p id="whatsnew-description" className="max-w-2xl text-[14px] leading-6 text-muted sm:text-[15px]">
                 Durante estos días construimos una base propia para que la operación de cada tienda ya no dependa de enlaces de Excel externos.
               </p>
@@ -219,7 +219,7 @@ export function WhatsNewModal() {
                 <button
                   type="button"
                   onClick={dismiss}
-                  className="min-h-11 rounded-xl px-4 text-sm font-semibold text-muted transition hover:bg-line/50 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-volt"
+                  className="min-h-11 rounded-xl px-4 text-sm font-semibold text-muted transition hover:bg-line/50 hover:text-ink focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-volt"
                 >
                   Continuar en Clarvex
                 </button>
@@ -228,7 +228,7 @@ export function WhatsNewModal() {
                 type="button"
                 autoFocus
                 onClick={captureAccess ? openCapture : dismiss}
-                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-volt px-5 text-sm font-semibold text-white transition hover:bg-[#1D4ED8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-volt focus-visible:ring-offset-2 active:scale-[0.99]"
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-volt px-5 text-sm font-semibold text-white transition hover:bg-[#1D4ED8] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-volt focus-visible:ring-offset-2 active:scale-[0.99]"
               >
                 {captureAccess ? "Conocer la nueva captura" : "Entrar a Clarvex"}
                 {captureAccess ? <ArrowUpRight size={17} /> : null}

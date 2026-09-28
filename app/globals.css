@@ -1,6 +1,93 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss';
+
+@custom-variant dark (&:is(.dark *));
+
+@theme {
+  --color-void: rgb(var(--ch-void));
+  --color-panel: rgb(var(--ch-panel));
+  --color-card: rgb(var(--ch-card));
+  --color-line: rgb(var(--ch-line));
+  --color-ink: rgb(var(--ch-ink));
+  --color-muted: rgb(var(--ch-muted));
+  --color-volt: rgb(var(--ch-volt, 37 99 235));
+  --color-mint: #22c55e;
+  --color-ember: #f59e0b;
+  --color-orchid: #ef4444;
+  --color-purple: #4f46e5;
+  --color-sky: #0ea5e9;
+  --color-success: #22c55e;
+  --color-background: rgb(var(--ch-void));
+  --color-foreground: rgb(var(--ch-ink));
+  --color-card-foreground: rgb(var(--ch-ink));
+  --color-popover: rgb(var(--ch-card));
+  --color-popover-foreground: rgb(var(--ch-ink));
+  --color-primary: rgb(var(--ch-ink));
+  --color-primary-foreground: rgb(var(--ch-card));
+  --color-secondary: rgb(var(--ch-panel));
+  --color-secondary-foreground: rgb(var(--ch-ink));
+  --color-muted-foreground: rgb(var(--ch-muted));
+  --color-destructive: #ef4444;
+  --color-destructive-foreground: #ffffff;
+  --color-border: rgb(var(--ch-line));
+  --color-input: rgb(var(--ch-line));
+  --color-ring: rgb(var(--ch-volt, 37 99 235));
+  --color-accent: rgb(var(--desk-accent, 37 99 235));
+  --color-accent-hi: rgb(var(--desk-accent-hover, 29 78 216));
+  --color-accent-quiet: rgb(var(--desk-accent-quiet, 239 246 255));
+  --color-on-accent: rgb(var(--desk-on-accent, 255 255 255));
+  --color-ink-2: rgb(var(--desk-ink-2, 131 132 140));
+  --color-line-strong: rgb(var(--desk-line-strong, 209 213 219));
+  --color-surface-3: rgb(var(--desk-surface-3, 255 255 255));
+  --color-ok: rgb(var(--desk-success, 34 197 94));
+  --color-warn: rgb(var(--desk-warn, 245 158 11));
+  --color-danger: rgb(var(--desk-danger, 239 68 68));
+
+  --shadow-glow:
+    0 0 0 1px rgb(37 99 235 / 0.16), 0 12px 30px rgb(37 99 235 / 0.13);
+  --shadow-glass: 0 10px 30px rgb(15 23 42 / 0.08);
+  --shadow-e1: var(--desk-elev-1, 0 1px 2px rgb(16 20 27 / 0.06));
+  --shadow-e2: var(--desk-elev-2, 0 4px 12px rgb(16 20 27 / 0.08));
+  --shadow-e3: var(--desk-elev-3, 0 16px 40px rgb(16 20 27 / 0.14));
+
+  --text-caption: 0.75rem;
+  --text-caption--line-height: 1rem;
+  --text-ui: 0.875rem;
+  --text-ui--line-height: 1.25rem;
+  --text-lead: 1.125rem;
+  --text-lead--line-height: 1.6rem;
+  --text-h3: 1.25rem;
+  --text-h3--line-height: 1.75rem;
+  --text-h3--letter-spacing: -0.01em;
+  --text-h2: 1.5rem;
+  --text-h2--line-height: 2rem;
+  --text-h2--letter-spacing: -0.02em;
+  --text-h1: 1.875rem;
+  --text-h1--line-height: 2.25rem;
+  --text-h1--letter-spacing: -0.025em;
+  --text-metric: 2.75rem;
+  --text-metric--line-height: 1;
+  --text-metric--letter-spacing: -0.03em;
+
+  --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/*
+  The default border color has changed to `currentcolor` in Tailwind CSS v4,
+  so we've added these compatibility styles to make sure everything still
+  looks the same as it did with Tailwind CSS v3.
+
+  If we ever want to remove these styles, we need to add an explicit border
+  color utility to any element that depends on these defaults.
+*/
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-gray-200, currentcolor);
+  }
+}
 
 :root {
   color-scheme: light;
@@ -11,12 +98,12 @@
   --glass-border: #ECECEF;
   --primary: #2563EB;
   /* Design tokens — RGB channels para soportar opacidad con Tailwind */
-  --color-void: 250 250 251;
-  --color-panel: 245 245 247;
-  --color-card: 255 255 255;
-  --color-line: 236 236 239;
-  --color-ink: 23 24 28;
-  --color-muted: 131 132 140;
+  --ch-void: 250 250 251;
+  --ch-panel: 245 245 247;
+  --ch-card: 255 255 255;
+  --ch-line: 236 236 239;
+  --ch-ink: 23 24 28;
+  --ch-muted: 131 132 140;
 
   /* Cuánto ocupan las barras del sistema. Ver el bloque de `.pt-safe`. */
   --safe-top: env(safe-area-inset-top, 0px);
@@ -32,12 +119,12 @@
   --glass: rgb(20 21 25 / 0.86);
   --glass-border: #23242A;
   --primary: #6B9BFF;
-  --color-void: 11 12 15;
-  --color-panel: 20 21 25;
-  --color-card: 20 21 25;
-  --color-line: 35 36 42;
-  --color-ink: 242 243 245;
-  --color-muted: 133 134 143;
+  --ch-void: 11 12 15;
+  --ch-panel: 20 21 25;
+  --ch-card: 20 21 25;
+  --ch-line: 35 36 42;
+  --ch-ink: 242 243 245;
+  --ch-muted: 133 134 143;
 }
 
 * {
@@ -92,7 +179,7 @@ body {
   overflow-x: hidden;
   overscroll-behavior-y: none;
   background: var(--bg);
-  color: rgb(var(--color-ink));
+  color: rgb(var(--ch-ink));
   font-family: var(--font-geist), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   font-feature-settings: "tnum";
   text-rendering: geometricPrecision;
@@ -103,9 +190,28 @@ body {
    el fondo de la app lo llevan ahora los meteoritos, y dos sistemas animados
    de forma continua competían por GPU en teléfonos de gama media. */
 
-body > * {
-  position: relative;
-  z-index: 1;
+/*
+  Sube el contenido por encima del fondo animado (`.meteors`, `.dot-pattern`,
+  que van en z-index 0).
+
+  ⚠️ **Va dentro de `@layer base` desde la migración a Tailwind v4, y no es un
+  detalle de estilo: sin esa capa ROMPE la app entera.**
+
+  En la v3 las utilidades y el CSS suelto competían por especificidad, y `.fixed`
+  (0-1-0) le ganaba a `body > *` (0-0-2). En la v4 las utilidades viven en una
+  CAPA, y el CSS SIN capa le gana a cualquier capa por encima de la
+  especificidad. Resultado: esta regla pisaba `position: fixed` en todo lo que
+  cuelga del `body`, o sea **la barra de abajo, el aviso de demo y la pantalla
+  de bienvenida**, que pasaron a ocupar sitio en el flujo en vez de flotar.
+
+  Se vio en un teléfono: el splash empujando la página hacia abajo. No dio ni
+  un error, ni en el build ni en las pruebas.
+*/
+@layer base {
+  body > * {
+    position: relative;
+    z-index: 1;
+  }
 }
 
 [class*="border-white/"] {
@@ -245,7 +351,7 @@ svg.lucide {
   overflow: hidden;
   isolation: isolate;
   border: 1px solid var(--glass-border);
-  background: rgb(var(--color-card));
+  background: rgb(var(--ch-card));
   transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
 }
 
@@ -270,24 +376,35 @@ svg.lucide {
   outline: none !important;
 }
 
-.solid-card > * {
-  position: relative;
-  z-index: 1;
+/*
+  ⚠️ En `@layer base` por lo mismo que `body > *`: en Tailwind v4 el CSS SIN capa
+  le gana a las utilidades, así que un hijo de una tarjeta con `absolute` --una
+  insignia en una esquina, por ejemplo-- se quedaría en `relative` y aparecería
+  en el flujo. En la v3 ganaba la utilidad por especificidad; la capa devuelve
+  ese orden.
+*/
+@layer base {
+  .solid-card > * {
+    position: relative;
+    z-index: 1;
+  }
 }
 
 /* Hover neutro y sutil solo en cards interactivas (links/botones). */
 a.solid-card:hover,
 button.solid-card:hover {
-  border-color: rgb(var(--color-muted) / 0.5);
+  border-color: rgb(var(--ch-muted) / 0.5);
 }
 
-.liquid-glass > * {
-  position: relative;
-  z-index: 1;
+@layer base {
+  .liquid-glass > * {
+    position: relative;
+    z-index: 1;
+  }
 }
 
 .liquid-glass:hover {
-  border-color: rgb(var(--color-muted) / 0.5);
+  border-color: rgb(var(--ch-muted) / 0.5);
 }
 
 .liquid-glass:active {
@@ -300,20 +417,20 @@ button.solid-card:hover {
   position: relative;
   overflow: hidden;
   border-color: var(--glass-border);
-  background: rgb(var(--color-card));
+  background: rgb(var(--ch-card));
   box-shadow: 0 1px 2px rgb(20 21 26 / 0.04), 0 1px 3px rgb(20 21 26 / 0.03);
 }
 
 .dark .premium-hero,
 .dark .manager-sales-hero {
-  background: rgb(var(--color-card)) !important;
+  background: rgb(var(--ch-card)) !important;
   border-color: var(--glass-border) !important;
   box-shadow: 0 1px 2px rgb(0 0 0 / 0.4) !important;
 }
 
 .dark .premium-hero h2,
 .dark .manager-sales-hero h2 {
-  color: rgb(var(--color-ink));
+  color: rgb(var(--ch-ink));
 }
 
 .tab-glass-shell {
@@ -552,3 +669,115 @@ html:not(.dark) .aurora-mancha { opacity: 0.5; }
     animation: none;
   }
 }
+
+/* ──────────────────────────────────────────────────────────────────────────
+   Superficie «Papel» — la paleta de «Mi día»
+   ──────────────────────────────────────────────────────────────────────────
+
+   El usuario eligió esta paleta el 26 de septiembre de 2026 entre tres, con la
+   misma pantalla pintada en las tres para que decidiera el color y no la
+   composición.
+
+   ⚠️ Va ACOTADA a un subárbol, no aplicada a toda la app. Cambiar los tokens
+   globales repintaría cuarenta pantallas que nadie ha revisado; así lo que se
+   ve es exactamente lo que se aprobó, y extenderlo después es mover este
+   atributo a un elemento de más arriba.
+
+   ⚠️ Pinta su PROPIO fondo. El del documento sale de `--bg` en `body`, que está
+   por encima de este subárbol: sin esta línea los tokens cambiarían el texto y
+   las tarjetas sobre el lienzo antiguo, que es peor que no cambiar nada.
+
+   Es el mismo mecanismo que `[data-surface="desk"]` usa para el escritorio.
+   ────────────────────────────────────────────────────────────────────────── */
+[data-surface="papel"] {
+  /* ⚠️ `--bg` también. El fondo de la página sale de esta variable en `body`,
+     no de los tokens: sin ella los textos y las tarjetas cambian de paleta
+     sobre el lienzo antiguo, que se ve peor que no cambiar nada. */
+  --bg: #F7F5F0;
+  /* ⚠️ `--glass-border` también, y es fácil olvidarla: es la que usa
+     `.solid-card` para su borde, así que sin ella TODAS las tarjetas se quedan
+     con la línea gris fría de la paleta anterior sobre papel cálido. Se nota
+     poco de una en una y mucho en una lista de doce. */
+  --glass-border: #E3DFD6;
+  --surface: rgb(255 255 255 / 0.96);
+  --glass: rgb(255 255 255 / 0.86);
+  --primary: #2740C8;
+  --ch-void: 247 245 240;
+  --ch-panel: 240 238 232;
+  --ch-card: 255 255 255;
+  --ch-line: 227 223 214;
+  --ch-ink: 21 23 28;
+  --ch-muted: 107 111 122;
+  --ch-volt: 39 64 200;
+  background: rgb(var(--ch-void));
+}
+
+/* ⚠️ De noche el papel se convierte en la TINTA: el fondo es el mismo
+   #15171C que el texto usaba de día. Y el azul sube de #2740C8 a #6E8BFF --el
+   mismo tono, levantado--: bajándolo tal cual, sobre este fondo queda casi
+   invisible y los enlaces dejan de parecer enlaces. */
+.dark [data-surface="papel"],
+[data-surface="papel"].dark {
+  /* Las dos formas a propósito: el atributo puede estar en el `<html>` --que es
+     el mismo elemento que lleva `.dark`, y ahí el selector de descendencia no
+     casa-- o en un subárbol, si algún día se acota otra vez. */
+  --ch-void: 21 23 28;
+  --ch-panel: 29 32 41;
+  --ch-card: 35 38 47;
+  --ch-line: 38 42 53;
+  --ch-ink: 242 241 237;
+  --ch-muted: 155 159 172;
+  --bg: #15171C;
+  --glass-border: #262A35;
+  --surface: rgb(35 38 47 / 0.96);
+  --glass: rgb(35 38 47 / 0.86);
+  --primary: #6E8BFF;
+  --ch-volt: 110 139 255;
+}
+/*
+  ---break---
+*/
+@theme inline {
+  --animate-shimmer-slide: shimmer-slide var(--speed) ease-in-out infinite alternate;
+  --animate-spin-around: spin-around calc(var(--speed) * 2) infinite linear;
+  @keyframes shimmer-slide {
+  to {
+    transform: translate(calc(100cqw - 100%), 0);
+    }
+  }
+  @keyframes spin-around {
+  0% {
+    transform: translateZ(0) rotate(0);
+    }
+  15%, 35% {
+    transform: translateZ(0) rotate(90deg);
+    }
+  65%, 85% {
+    transform: translateZ(0) rotate(270deg);
+    }
+  100% {
+    transform: translateZ(0) rotate(360deg);
+    }
+  }
+  --animate-shine: shine var(--duration) infinite linear;
+  --animate-background-position-spin: background-position-spin 3000ms infinite alternate
+;
+  @keyframes shine {
+  0% {
+    background-position: 0% 0%;
+    }
+  50% {
+    background-position: 100% 100%;
+    }
+  to {
+    background-position: 0% 0%;
+    }
+  }
+  @keyframes background-position-spin {
+  0% {
+    background-position: top center;
+    }
+  100% {
+    background-position: bottom center;
+    }
+  }}

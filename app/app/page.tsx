@@ -146,11 +146,11 @@ export default function DescargarApp() {
               <li key={persona.id} className="flex items-center justify-between gap-3 py-2.5">
                 <span className="min-w-0 flex-1 truncate text-sm text-ink">{persona.nombre}</span>
                 {persona.alDia ? (
-                  <span className="flex items-center gap-1 text-xs font-semibold text-emerald-500">
+                  <span className="flex items-center gap-1 text-xs font-semibold text-mint">
                     <Check size={14} /> {persona.appVersion}
                   </span>
                 ) : persona.appVersion ? (
-                  <span className="text-xs font-semibold text-amber-500">{persona.appVersion}</span>
+                  <span className="text-xs font-semibold text-ember">{persona.appVersion}</span>
                 ) : persona.aparatos > 0 ? (
                   // Registró su aparato antes de que se guardara la versión.
                   <span className="text-xs text-muted">sin saber</span>

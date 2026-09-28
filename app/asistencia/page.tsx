@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { BellRing, CalendarX2, ChevronLeft, ChevronRight, Clock, PartyPopper, Sun } from "lucide-react";
+import { BellRing, ChevronLeft, ChevronRight } from "lucide-react";
 import { getSession } from "@/lib/auth";
 import type { AttendanceStatus } from "@/lib/attendance";
 import type { User } from "@/lib/types";
@@ -27,6 +27,7 @@ import {
 import { formatBalance } from "@/lib/hours-balance";
 import { EditDayModal } from "@/components/attendance/EditDayModal";
 import { AppFrame, AppHeader, Button, Card, ProfileAvatar } from "@/components/ui";
+import { SegmentedTabs } from "@/components/animate-ui/SegmentedTabs";
 import { cn } from "@/lib/utils";
 
 // balanceMinutes: saldo acumulado REAL (inicial del Excel + todo lo registrado),
@@ -213,9 +214,9 @@ export default function AsistenciaPage() {
         {/* Recordatorio de entrega: el mismo que llega por push. Se puede
             confirmar aquí para que deje de avisar por ese cierre. */}
         {reminder && (
-          <Card className="mb-3 border border-amber-500/30 bg-amber-500/[0.07] p-3.5">
+          <Card className="mb-3 border border-ember/30 bg-ember/[0.07] p-3.5">
             <div className="flex items-start gap-2.5">
-              <BellRing className="mt-0.5 shrink-0 text-amber-600 dark:text-amber-400" size={18} />
+              <BellRing className="mt-0.5 shrink-0 text-ember" size={18} />
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-semibold text-ink">
                   {reminder.kind === "QUINCENA" ? "Cierre de quincena" : "Cierre del mes retail"}
@@ -228,47 +229,65 @@ export default function AsistenciaPage() {
                 >
                   {confirming ? "Guardando…" : "Ya lo subí a Blitz"}
                 </Button>
-                {confirmError && <p className="mt-1.5 text-xs font-semibold text-rose-600 dark:text-rose-400">{confirmError}</p>}
+                {confirmError && <p className="mt-1.5 text-xs font-semibold text-orchid">{confirmError}</p>}
               </div>
             </div>
           </Card>
         )}
 
         {/* Selector de mes */}
-        <Card className="mb-3 flex items-center justify-between p-3">
-          <button type="button" aria-label="Mes anterior" onClick={() => setMonth((m) => shiftMonth(m, -1))} className="grid size-9 place-items-center rounded-full text-muted transition active:scale-95">
-            <ChevronLeft size={18} />
+        {/*
+          ⚠️ El mes era una TARJETA entera para un renglon con dos flechas, con
+          el mismo peso que el contenido. Ahora es el titulo de la pantalla,
+          como el periodo en KPIs, y las flechas quedan a su lado.
+        */}
+        <div className="mb-4 flex items-center gap-1 px-1">
+          <h2 className="flex-1 text-[19px] font-semibold tracking-[-0.02em] text-ink">{monthTitle(month)}</h2>
+          <button type="button" aria-label="Mes anterior" onClick={() => setMonth((m) => shiftMonth(m, -1))} className="tappable grid size-10 place-items-center rounded-full text-muted transition hover:text-ink active:scale-95">
+            <ChevronLeft size={19} />
           </button>
-          <p className="text-sm font-semibold text-ink">{monthTitle(month)}</p>
-          <button type="button" aria-label="Mes siguiente" onClick={() => setMonth((m) => shiftMonth(m, 1))} className="grid size-9 place-items-center rounded-full text-muted transition active:scale-95">
-            <ChevronRight size={18} />
+          <button type="button" aria-label="Mes siguiente" onClick={() => setMonth((m) => shiftMonth(m, 1))} className="tappable grid size-10 place-items-center rounded-full text-muted transition hover:text-ink active:scale-95">
+            <ChevronRight size={19} />
           </button>
-        </Card>
-
-        {/* Lo que se reporta a nómina */}
-        <div className="mb-3 grid grid-cols-4 gap-2">
-          <SummaryTile icon={<CalendarX2 size={15} />} label="Faltas" value={totals.absences} tone="text-rose-600 dark:text-rose-400" />
-          <SummaryTile icon={<Clock size={15} />} label="Retardos" value={totals.lates} tone="text-amber-600 dark:text-amber-400" />
-          <SummaryTile icon={<Sun size={15} />} label="Domingos" value={totals.sundaysWorked} tone="text-blue-600 dark:text-blue-400" />
-          <SummaryTile icon={<PartyPopper size={15} />} label="Festivos" value={totals.holidaysWorked} tone="text-violet-600 dark:text-violet-400" />
         </div>
 
-        {/* Pestañas: el día a día, o la lista lista para capturar en Blitz. */}
-        <div className="mb-3 grid grid-cols-2 gap-1 rounded-2xl bg-black/[0.04] p-1 dark:bg-white/[0.06]">
-          {(["dias", "incidencias"] as const).map((value) => (
-            <button
-              key={value}
-              type="button"
-              onClick={() => setTab(value)}
-              className={cn(
-                "rounded-xl py-2 text-xs font-semibold transition",
-                tab === value ? "bg-panel text-ink shadow-sm" : "text-muted"
-              )}
-            >
-              {value === "dias" ? "Día a día" : "Incidencias"}
-            </button>
-          ))}
+        {/*
+          Lo que se reporta a nomina.
+
+          ⚠️ Eran CUATRO tarjetas con icono, cada una de un color --rojo, ambar,
+          azul, morado-- y a 95 px en un telefono. Con los cuatro coloreados,
+          ninguno destacaba: el rojo de una falta pesaba lo mismo que el morado
+          de un festivo, que no es un aviso sino una cuenta.
+
+          ⚠️ Ahora el color se reserva a lo que CUESTA DINERO --faltas y
+          retardos-- y solo cuando hay algo que contar. Un cero en faltas es una
+          buena noticia y no necesita gritar en rojo.
+        */}
+        <div className="mb-4 flex flex-wrap items-start gap-x-7 gap-y-3 px-1">
+          <CifraNomina label="Faltas" value={totals.absences} tono={totals.absences > 0 ? "text-orchid" : "text-ink"} />
+          <CifraNomina label="Retardos" value={totals.lates} tono={totals.lates > 0 ? "text-ember" : "text-ink"} />
+          <CifraNomina label="Domingos" value={totals.sundaysWorked} tono="text-ink" />
+          <CifraNomina label="Festivos" value={totals.holidaysWorked} tono="text-ink" />
         </div>
+
+        {/*
+          Pestanias: el dia a dia, o la lista lista para capturar en Blitz.
+
+          ⚠️ Estaban escritas a mano, y eran una TERCERA forma de pestania en la
+          misma app. Ahora usan `SegmentedTabs`, el mismo control que el
+          Semana/Mes de KPIs -- y con razon: las dos cosas eligen entre dos
+          formas de ver lo mismo.
+        */}
+        <SegmentedTabs
+          ariaLabel="Vista de asistencia"
+          className="mb-3"
+          value={tab}
+          onChange={setTab}
+          options={[
+            { value: "dias", label: "Día a día" },
+            { value: "incidencias", label: "Incidencias" }
+          ]}
+        />
 
         {loading && records.length === 0 ? (
           <Card className="text-sm font-semibold text-muted">Cargando asistencia…</Card>
@@ -293,28 +312,48 @@ export default function AsistenciaPage() {
                   >
                     <ProfileAvatar name={user.name} photoUrl={user.photoUrl} size="sm" />
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-bold text-ink">{user.name}</p>
-                      <p className="text-xs text-muted">
-                        {userTotals?.absences ?? 0} faltas · {userTotals?.lates ?? 0} retardos
-                        {userTotals?.sundaysWorked ? ` · ${userTotals.sundaysWorked} domingos` : ""}
-                      </p>
-                      <p className="text-[11px] font-bold text-muted">
-                        Horas del mes:{" "}
-                        <span className={cn(balanceFor(user.id) < 0 ? "text-rose-600 dark:text-rose-400" : "text-emerald-600 dark:text-emerald-400")}>
-                          {formatBalance(balanceFor(user.id))}
-                        </span>
-                        {" · Acumulado: "}
-                        <span className="text-ink/70">{formatBalance(user.balanceMinutes)}</span>
-                      </p>
-                      {/* De dónde sale ese acumulado. Sin esto hay que
+                      <p className="truncate text-[15px] font-semibold text-ink">{user.name}</p>
+                      {/*
+                        ⚠️ Este renglón aparece SOLO si hay algo que contar.
+                        Antes decía «0 faltas · 0 retardos» en todas las
+                        personas: cinco renglones diciendo que no pasó nada, con
+                        el mismo peso que el de quien sí faltó. Es la misma
+                        regla del pase de lista por Telegram, que manda «sin
+                        novedad» y solo nombra la excepción.
+                      */}
+                      {novedades(userTotals, balanceFor(user.id)).length ? (
+                        <p className="mt-0.5 flex flex-wrap items-center gap-x-2 text-xs">
+                          {novedades(userTotals, balanceFor(user.id)).map((n) => (
+                            <span key={n.texto} className={n.tono}>{n.texto}</span>
+                          ))}
+                        </p>
+                      ) : (
+                        <p className="mt-0.5 text-xs text-muted">Sin novedad</p>
+                      )}
+                      {/* De dónde sale el acumulado. Sin esto hay que
                           reconstruirlo día por día para explicarlo. */}
                       {user.balanceSince ? (
-                        <p className="text-[10px] font-semibold text-muted">
+                        <p className="mt-0.5 text-[11px] text-muted">
                           {formatBalance(user.balanceAdjustment)} de ajuste
                           {user.balanceEarned > 0 ? ` · +${formatBalance(user.balanceEarned).replace("+", "")} ganadas` : ""}
                           {user.balanceSpent > 0 ? ` · −${formatBalance(user.balanceSpent).replace("+", "")} usadas` : ""}
                         </p>
                       ) : null}
+                    </div>
+                    {/*
+                      ⚠️ El acumulado se va a la DERECHA y en cifras tabulares,
+                      para que los cinco formen una columna que se lee de arriba
+                      abajo. Metido en la frase «Horas del mes: … · Acumulado:
+                      …» había que leer persona por persona para compararlos.
+                    */}
+                    <div className="shrink-0 text-right">
+                      <p className={cn(
+                        "text-sm font-semibold tabular-nums",
+                        user.balanceMinutes < 0 ? "text-orchid" : "text-ink"
+                      )}>
+                        {formatBalance(user.balanceMinutes)}
+                      </p>
+                      <p className="text-[10px] text-muted">acumulado</p>
                     </div>
                     <ChevronRight size={16} className={cn("shrink-0 text-muted transition-transform", open && "rotate-90")} />
                   </button>
@@ -333,7 +372,7 @@ export default function AsistenciaPage() {
                 <p className="text-xs font-bold text-muted">Horas de este mes</p>
                 <p className={cn(
                   "text-2xl font-semibold",
-                  balanceFor(soloUser) < 0 ? "text-rose-600 dark:text-rose-400" : "text-emerald-600 dark:text-emerald-400"
+                  balanceFor(soloUser) < 0 ? "text-orchid" : "text-mint"
                 )}>
                   {formatBalance(balanceFor(soloUser))}
                 </p>
@@ -354,7 +393,7 @@ export default function AsistenciaPage() {
         {/* Incidencias: lo que se teclea en Blitz */}
         {tab === "incidencias" ? (
           <>
-            <div className="mb-3 grid grid-cols-3 gap-1 rounded-2xl bg-black/[0.04] p-1 dark:bg-white/[0.06]">
+            <div className="mb-3 grid grid-cols-3 gap-1 rounded-2xl bg-black/4 p-1 dark:bg-white/6">
               {([1, 2, "mes"] as const).map((value) => (
                 <button
                   key={String(value)}
@@ -362,7 +401,7 @@ export default function AsistenciaPage() {
                   onClick={() => setPeriod(value)}
                   className={cn(
                     "rounded-xl py-1.5 text-[11px] font-semibold transition",
-                    period === value ? "bg-panel text-ink shadow-sm" : "text-muted"
+                    period === value ? "bg-panel text-ink shadow-xs" : "text-muted"
                   )}
                 >
                   {value === 1 ? "1ª quincena" : value === 2 ? "2ª quincena" : "Mes completo"}
@@ -390,13 +429,38 @@ export default function AsistenciaPage() {
   );
 }
 
-function SummaryTile({ icon, label, value, tone }: { icon: React.ReactNode; label: string; value: number; tone: string }) {
+/**
+ * Lo que se sale de lo normal en el mes de una persona.
+ *
+ * ⚠️ Un cero NO es una novedad. Devolver «0 faltas» obliga a leer los cinco
+ * renglones para encontrar el que importa, que es justo lo que esta pantalla
+ * hacia. Solo entra lo que tiene algo que contar, y con el color puesto donde
+ * cuesta dinero: faltas y retardos.
+ */
+function novedades(
+  totales: { absences: number; lates: number; sundaysWorked: number } | undefined,
+  horasGanadas: number
+): Array<{ texto: string; tono: string }> {
+  const salida: Array<{ texto: string; tono: string }> = [];
+  const faltas = totales?.absences ?? 0;
+  const retardos = totales?.lates ?? 0;
+  const domingos = totales?.sundaysWorked ?? 0;
+  if (faltas > 0) salida.push({ texto: `${faltas} ${faltas === 1 ? "falta" : "faltas"}`, tono: "font-semibold text-orchid" });
+  if (retardos > 0) salida.push({ texto: `${retardos} ${retardos === 1 ? "retardo" : "retardos"}`, tono: "font-semibold text-ember" });
+  if (domingos > 0) salida.push({ texto: `${domingos} ${domingos === 1 ? "domingo" : "domingos"}`, tono: "text-muted" });
+  // Las ganadas casi siempre son cero por el suelo de `balanceFor`; cuando no,
+  // es buena noticia y merece decirse.
+  if (horasGanadas > 0) salida.push({ texto: `+${formatBalance(horasGanadas).replace("+", "")} ganadas`, tono: "text-mint" });
+  return salida;
+}
+
+/** Una cifra de nomina, sin caja: es un pie de foto del mes. */
+function CifraNomina({ label, value, tono }: { label: string; value: number; tono: string }) {
   return (
-    <Card className="p-3 text-center">
-      <span className={cn("mx-auto grid size-8 place-items-center", tone)}>{icon}</span>
-      <p className={cn("mt-1 text-xl font-semibold", tone)}>{value}</p>
-      <p className="text-[11px] font-bold text-muted">{label}</p>
-    </Card>
+    <div>
+      <div className={cn("text-[22px] font-semibold tabular-nums tracking-[-0.02em]", tono)}>{value}</div>
+      <div className="mt-0.5 text-xs text-muted">{label}</div>
+    </div>
   );
 }
 
@@ -437,7 +501,7 @@ function DayList({ records, onEdit }: { records: AttendanceRecord[]; onEdit?: (r
     return <p className="px-4 py-3 text-xs font-semibold text-muted">Sin registros este mes.</p>;
   }
   return (
-    <div className="divide-y divide-line/50 bg-black/[0.02] dark:bg-white/[0.02]">
+    <div className="divide-y divide-line/50 bg-black/2 dark:bg-white/2">
       {records.map((record) => {
         const movements = hoursMovements(record);
         const body = (
@@ -445,7 +509,7 @@ function DayList({ records, onEdit }: { records: AttendanceRecord[]; onEdit?: (r
             <div className="flex items-center gap-3">
               <p className="w-14 shrink-0 text-xs font-bold text-muted">
                 {dayLabel(record.date)}
-                {isSunday(record.date) ? <span className="ml-1 text-blue-500">•</span> : null}
+                {isSunday(record.date) ? <span className="ml-1 text-volt">•</span> : null}
               </p>
               {dayBadges(record).map((badge) => (
                 <span key={badge.label} className={cn("rounded-full px-2 py-0.5 text-[11px] font-semibold", badge.tone)}>
@@ -457,7 +521,7 @@ function DayList({ records, onEdit }: { records: AttendanceRecord[]; onEdit?: (r
                   <p className="text-xs font-bold text-ink">
                     {record.arrivedAt}
                     {record.leftAt ? <span className="text-muted"> – {record.leftAt}</span> : null}
-                    {record.minutesLate > 0 ? <span className="ml-1 text-amber-600 dark:text-amber-400">+{record.minutesLate}′</span> : null}
+                    {record.minutesLate > 0 ? <span className="ml-1 text-ember">+{record.minutesLate}′</span> : null}
                   </p>
                 ) : null}
                 {/* Antes decía «corregido» cuando `source` era MANUAL. Tenía
@@ -471,8 +535,8 @@ function DayList({ records, onEdit }: { records: AttendanceRecord[]; onEdit?: (r
             </div>
             {/* Por qué se movió el banco de horas ese día. */}
             {movements.map((movement, index) => (
-              <div key={index} className="mt-1 flex items-center gap-2 pl-[4.25rem] text-[11px] font-semibold">
-                <span className={cn("tabular-nums", movement.minutes < 0 ? "text-rose-600 dark:text-rose-400" : "text-emerald-600 dark:text-emerald-400")}>
+              <div key={index} className="mt-1 flex items-center gap-2 pl-17 text-[11px] font-semibold">
+                <span className={cn("tabular-nums", movement.minutes < 0 ? "text-orchid" : "text-mint")}>
                   {formatBalance(movement.minutes)}
                 </span>
                 <span className="text-muted">{movement.text}</span>

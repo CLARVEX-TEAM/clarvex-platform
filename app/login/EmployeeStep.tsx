@@ -75,7 +75,7 @@ export function EmployeeStep({
             autoComplete="username"
             autoFocus
             placeholder="ej. 81893"
-            className={`min-h-14 w-full rounded-2xl border px-4 text-center text-xl font-semibold tracking-[0.18em] outline-none shadow-inner transition placeholder:font-normal placeholder:tracking-normal placeholder:text-slate-300 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/15 ${
+            className={`min-h-14 w-full rounded-2xl border px-4 text-center text-xl font-semibold tracking-[0.18em] outline-hidden shadow-inner transition placeholder:font-normal placeholder:tracking-normal placeholder:text-slate-300 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/15 ${
               isDark
                 ? "border-slate-700 bg-slate-800 text-white"
                 : "border-slate-200 bg-slate-50 text-slate-900"

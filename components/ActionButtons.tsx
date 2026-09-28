@@ -62,11 +62,11 @@ export function DeleteButton({
       {...props}
       disabled={loading || props.disabled}
       className={cn(
-        "tappable group rounded-xl font-semibold tracking-[-0.01em] focus:outline-none focus:ring-4 focus:ring-rose-500/20 disabled:cursor-not-allowed disabled:opacity-55",
+        "tappable group rounded-xl font-semibold tracking-[-0.01em] focus:outline-hidden focus:ring-4 focus:ring-orchid/30 disabled:cursor-not-allowed disabled:opacity-55",
         iconOnly ? "grid place-items-center" : "inline-flex min-h-10 items-center justify-center gap-1.5 px-3 text-sm",
-        variant === "soft" && "border border-rose-200/60 bg-rose-50/60 text-rose-600 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-400",
-        variant === "solid" && "bg-rose-500 text-white shadow-[0_8px_20px_rgb(244_63_94_/_0.28)] hover:bg-rose-600",
-        variant === "ghost" && "text-rose-600 dark:text-rose-400 hover:bg-rose-50/60 dark:hover:bg-rose-500/10",
+        variant === "soft" && "border border-orchid/30 bg-orchid/10 text-orchid",
+        variant === "solid" && "bg-orchid text-white shadow-[0_8px_20px_rgb(244_63_94/0.28)] hover:bg-orchid",
+        variant === "ghost" && "text-orchid hover:bg-orchid/10 dark:hover:bg-orchid/10",
         className
       )}
     >
@@ -125,16 +125,15 @@ export function SaveButton({
 
   return (
     <motion.button
-      whileTap={{ scale: 0.95 }}
-      whileHover={{ y: -1 }}
+      whileTap={{ scale: 0.97 }}
       onTap={() => haptic("light")}
       transition={{ type: "spring", stiffness: 520, damping: 30, mass: 0.6 }}
       {...props}
       disabled={loading || success || props.disabled}
       className={cn(
-        "tappable relative inline-flex min-h-12 items-center justify-center gap-2 overflow-hidden rounded-2xl px-5 text-sm font-semibold tracking-[-0.01em] focus:outline-none focus:ring-4 disabled:cursor-not-allowed disabled:opacity-55",
-        !success && "btn-sheen bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-[0_8px_30px_rgba(37,99,235,0.35)] focus:ring-blue-500/20",
-        success && "bg-gradient-to-r from-emerald-600 to-emerald-500 text-white shadow-[0_8px_30px_rgba(34,197,94,0.35)] focus:ring-emerald-500/20",
+        "tappable relative inline-flex min-h-12 items-center justify-center gap-2 overflow-hidden rounded-2xl px-5 text-sm font-semibold tracking-[-0.01em] focus:outline-hidden focus:ring-4 disabled:cursor-not-allowed disabled:opacity-55",
+        !success && "bg-volt text-white shadow-[0_2px_6px_rgb(20_21_26/0.10)] hover:bg-[#1D4ED8] focus:ring-volt/30",
+        success && "bg-mint text-white focus:ring-mint/30",
         className
       )}
     >

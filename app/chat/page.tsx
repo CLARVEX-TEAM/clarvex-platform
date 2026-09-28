@@ -120,7 +120,7 @@ export default function ChatPage() {
                         <ProfileAvatar name={room.other?.name ?? "?"} photoUrl={room.other?.photoUrl} size="md" />
                       )}
                       {room.type === "DIRECT" && room.other?.online && (
-                        <span className="absolute -bottom-0.5 -right-0.5 size-3.5 rounded-full border-2 border-white bg-green-500 dark:border-[#0f1729]" />
+                        <span className="absolute -bottom-0.5 -right-0.5 size-3.5 rounded-full border-2 border-card bg-mint" />
                       )}
                       {room.unreadCount > 0 && (
                         <span className="absolute -right-1 -top-1 grid size-5 place-items-center rounded-full bg-volt text-[10px] font-semibold text-white">

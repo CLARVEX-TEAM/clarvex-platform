@@ -21,11 +21,11 @@ export function AchievementsCard({ achievements }: { achievements: Achievement[]
             key={a.id}
             className={`flex items-center gap-2.5 rounded-2xl border p-2.5 transition ${
               a.unlocked
-                ? "border-volt/30 bg-volt/[0.06]"
+                ? "border-volt/30 bg-volt/6"
                 : "border-line bg-panel opacity-60"
             }`}
           >
-            <span className={`grid size-9 shrink-0 place-items-center rounded-xl text-lg ${a.unlocked ? "bg-volt/15" : "bg-slate-200/60 grayscale dark:bg-slate-700/60"}`}>
+            <span className={`grid size-9 shrink-0 place-items-center rounded-xl text-lg ${a.unlocked ? "bg-volt/15" : "bg-panel grayscale"}`}>
               {a.unlocked ? a.emoji : "🔒"}
             </span>
             <div className="min-w-0">

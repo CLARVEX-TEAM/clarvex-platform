@@ -251,7 +251,7 @@ export function ConteoDiarioView({ section = "DAMA", desktop = false }: { sectio
   return (
     <div className={desktop ? "mx-auto max-w-2xl space-y-4" : "space-y-4"}>
       {error ? (
-        <Card className="border-rose-200 bg-rose-50 p-3 text-sm font-semibold text-rose-700">{error}</Card>
+        <Card className="border-orchid/30 bg-orchid/10 p-3 text-sm font-semibold text-orchid">{error}</Card>
       ) : null}
 
       <Card className="p-4">
@@ -393,7 +393,7 @@ function CopyCount({ rows }: { rows: DailyRow[] }) {
         onClick={copy}
         className="flex w-full items-center justify-center gap-2 rounded-xl border border-line px-4 py-3 text-sm font-bold text-ink"
       >
-        {copied ? <CheckCircle2 size={16} className="text-emerald-600" /> : <Copy size={16} />}
+        {copied ? <CheckCircle2 size={16} className="text-mint" /> : <Copy size={16} />}
         {copied ? `Copiado · ${positions} marbetes` : "Copiar conteo"}
       </button>
       <p className="text-center text-xs text-muted">
@@ -428,7 +428,7 @@ function SummaryBar({ summary }: { summary: DailySummary }) {
       </div>
       <div>
         <p className="text-xs font-bold uppercase text-muted">Sin explicar</p>
-        <p className={`text-lg font-black ${summary.unexplained > 0 ? "text-rose-600" : "text-emerald-600"}`}>
+        <p className={`text-lg font-black ${summary.unexplained > 0 ? "text-orchid" : "text-mint"}`}>
           {summary.unexplained}
         </p>
       </div>
@@ -441,7 +441,7 @@ function SummaryBar({ summary }: { summary: DailySummary }) {
         </p>
       ) : null}
       {summary.toReview > 0 ? (
-        <p className="col-span-3 text-xs font-semibold text-amber-700">
+        <p className="col-span-3 text-xs font-semibold text-ember">
           {summary.toReview} justificación(es) por revisar.
         </p>
       ) : null}
@@ -494,7 +494,7 @@ function RowCard({
         {/* Qué conteo falta. Es lo que la persona necesita saber de un vistazo
             cuando va pasando marbete por marbete con la lista en la mano. */}
         {row.needsRecount ? (
-          <p className="mt-0.5 text-xs font-semibold text-amber-700">
+          <p className="mt-0.5 text-xs font-semibold text-ember">
             1º {row.count1} y 2º {row.count2} no coinciden · falta el 3º
           </p>
         ) : pendingSlot !== null && row.count1 !== null ? (
@@ -504,10 +504,10 @@ function RowCard({
           <p
             className={`mt-0.5 text-xs font-semibold ${
               check.status === "OK"
-                ? "text-emerald-700"
+                ? "text-mint"
                 : check.status === "PENDING"
-                  ? "text-rose-700"
-                  : "text-amber-700"
+                  ? "text-orchid"
+                  : "text-ember"
             }`}
           >
             {check.detail}
@@ -517,7 +517,7 @@ function RowCard({
       <div className="shrink-0 text-right">
         <p
           className={`text-base font-black ${
-            movement === null ? "text-muted" : movement < 0 ? "text-rose-600" : movement > 0 ? "text-emerald-600" : "text-muted"
+            movement === null ? "text-muted" : movement < 0 ? "text-orchid" : movement > 0 ? "text-mint" : "text-muted"
           }`}
         >
           {movement === null ? "—" : movement > 0 ? `+${movement}` : movement}
@@ -576,7 +576,7 @@ function CaptureSheet({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[80] flex items-end bg-black/40"
+      className="fixed inset-0 z-80 flex items-end bg-black/40"
       onClick={onClose}
     >
       <motion.div
@@ -632,7 +632,7 @@ function CaptureSheet({
         </div>
 
         {row.needsRecount ? (
-          <p className="mb-2 flex items-start gap-1.5 text-xs font-semibold text-amber-700">
+          <p className="mb-2 flex items-start gap-1.5 text-xs font-semibold text-ember">
             <AlertTriangle size={14} className="mt-px shrink-0" />
             El 1º y el 2º no coincidieron. El 3º decide.
           </p>
@@ -654,7 +654,7 @@ function CaptureSheet({
         {dropped ? (
           <div className="mt-4 space-y-2">
             <p className="flex items-center gap-1.5 text-sm font-bold text-ink">
-              <AlertTriangle size={16} className="text-amber-600" />
+              <AlertTriangle size={16} className="text-ember" />
               Bajó {-movement} pieza(s). ¿Por qué?
             </p>
             <div className="grid gap-1.5">
@@ -682,7 +682,7 @@ function CaptureSheet({
             {preview.status !== "NONE" ? (
               <p
                 className={`flex items-start gap-1.5 text-xs font-semibold ${
-                  preview.status === "OK" ? "text-emerald-700" : preview.status === "PENDING" ? "text-rose-700" : "text-amber-700"
+                  preview.status === "OK" ? "text-mint" : preview.status === "PENDING" ? "text-orchid" : "text-ember"
                 }`}
               >
                 {preview.status === "OK" ? <CheckCircle2 size={14} className="mt-px shrink-0" /> : <HelpCircle size={14} className="mt-px shrink-0" />}
@@ -737,7 +737,7 @@ function CaptureSheet({
                   onRemove();
                 }
               }}
-              className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-line px-4 py-2.5 text-sm font-bold text-rose-600 disabled:opacity-50"
+              className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-line px-4 py-2.5 text-sm font-bold text-orchid disabled:opacity-50"
             >
               <X size={16} />
               Quitar de la sección
