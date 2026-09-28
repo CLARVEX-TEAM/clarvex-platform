@@ -413,21 +413,26 @@ export default function MyDayPage() {
           El recuadro se pinta SIEMPRE y la bienvenida del clima se le monta
           encima: así no hay salto de altura al pasar de una al otro, y si el
           clima no llegó no se nota nada.
+
+          ⚠️ Va DENTRO, como hijo de la tarjeta del degradado, y no envuelto
+          aquí en un `relative`: así tapaba también el saludo y el clima
+          pequeño, y el bloque azul salía mucho más alto que cualquier recuadro
+          de la pantalla.
         */}
-        <div className="relative">
-          <ResumenDelDia
-            nombre={firstName}
-            appVersion={data.device.appVersion}
-            shift={data.shift}
-            attendance={data.attendance}
-            performance={data.performance}
-            uniform={data.uniform}
-            clima={clima}
-          />
-          {clima && introPendiente ? (
-            <ClimaIntro clima={clima} ciudad={ciudad} onTerminar={() => setIntroPendiente(false)} />
-          ) : null}
-        </div>
+        <ResumenDelDia
+          nombre={firstName}
+          appVersion={data.device.appVersion}
+          shift={data.shift}
+          attendance={data.attendance}
+          performance={data.performance}
+          uniform={data.uniform}
+          clima={clima}
+          intro={
+            clima && introPendiente ? (
+              <ClimaIntro clima={clima} ciudad={ciudad} onTerminar={() => setIntroPendiente(false)} />
+            ) : null
+          }
+        />
 
         {/*
           UNA sola accion principal, y en el extremo del NEUTRO --tinta sobre

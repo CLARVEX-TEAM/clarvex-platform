@@ -781,3 +781,107 @@ html:not(.dark) .aurora-mancha { opacity: 0.5; }
     background-position: bottom center;
     }
   }}
+/* ---------------------------------------------------------------------------
+   El clima de «Mi día».
+
+   ⚠️ Todo se mueve en TRANSFORM y OPACITY, nunca en `top`, `left` ni `height`.
+   Esas dos las compone la GPU sin volver a calcular el diseño de la página; las
+   otras obligan al navegador a rehacerlo en cada cuadro, y en el teléfono de la
+   tienda --que no es el de nadie que programe esto-- se nota como tirones justo
+   en el primer segundo de la app.
+
+   ⚠️ Y son animaciones de ADORNO, así que se apagan enteras con
+   prefers-reduced-motion. La entrada del clima ni siquiera se monta en ese
+   caso, pero el dibujo pequeño sí, y quien pidió menos movimiento no quiere
+   una nube desplazándose en su pantalla para siempre.
+--------------------------------------------------------------------------- */
+
+@keyframes clima-girar {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes clima-latir {
+  0%, 100% { transform: scale(1); opacity: 0.95; }
+  50%      { transform: scale(1.06); opacity: 1; }
+}
+
+/* La nube entra por la izquierda, cruza y sale: el ciclo empieza y acaba fuera
+   del recuadro, así que nunca se la ve aparecer ni desaparecer de golpe. */
+@keyframes clima-derivar {
+  from { transform: translateX(-30%); }
+  to   { transform: translateX(130%); }
+}
+
+@keyframes clima-gota {
+  0%   { transform: translateY(-14%); opacity: 0; }
+  12%  { opacity: 1; }
+  80%  { opacity: 1; }
+  100% { transform: translateY(150%); opacity: 0; }
+}
+
+@keyframes clima-copo {
+  0%   { transform: translate(0, -14%); opacity: 0; }
+  15%  { opacity: 1; }
+  50%  { transform: translate(9px, 60%); }
+  85%  { opacity: 1; }
+  100% { transform: translate(0, 150%); opacity: 0; }
+}
+
+/* El relámpago está APAGADO casi todo el ciclo: son dos destellos muy cortos y
+   luego nada. Un parpadeo regular se lee como una imagen rota. */
+@keyframes clima-destello {
+  0%, 88%, 100% { opacity: 0; }
+  90%           { opacity: 0.9; }
+  92%           { opacity: 0.15; }
+  94%           { opacity: 0.75; }
+  97%           { opacity: 0; }
+}
+
+@keyframes clima-banda {
+  0%, 100% { transform: translateX(-8%); opacity: 0.35; }
+  50%      { transform: translateX(8%); opacity: 0.6; }
+}
+
+@keyframes clima-brillar {
+  0%, 100% { opacity: 0.25; }
+  50%      { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [class*="clima-anim"] { animation: none !important; }
+}
+
+/* ---------------------------------------------------------------------------
+   El color del icono PEQUEÑO del clima.
+
+   ⚠️ Va aquí y no como un hex dentro del componente porque NINGÚN color sirve
+   para los dos fondos. Medido contra el papel (#F7F5F0) y su noche (#15171C):
+
+     #BAE6FD --lo que estaba puesto--   1.22 sobre crema : invisible
+     #F59E0B --el ámbar del proyecto--  1.97 sobre crema : tampoco se ve
+     #B45309 / #FBBF24                  4.61 y 10.74     : se ven los dos
+
+   El sol pintado de azul clarísimo se veía perfecto sobre el degradado azul
+   marino de la entrada y desaparecía al quedarse sobre el papel, que es donde
+   vive. Un color por tema, como el resto de la paleta.
+--------------------------------------------------------------------------- */
+
+:root {
+  --clima-sol: #B45309;
+  --clima-luna: #4F46E5;
+  --clima-lluvia: #0369A1;
+  --clima-nieve: #0369A1;
+  --clima-nubes: #64748B;
+  --clima-niebla: #64748B;
+  --clima-tormenta: #7C3AED;
+}
+
+.dark {
+  --clima-sol: #FBBF24;
+  --clima-luna: #A5B4FC;
+  --clima-lluvia: #7DD3FC;
+  --clima-nieve: #7DD3FC;
+  --clima-nubes: #94A3B8;
+  --clima-niebla: #94A3B8;
+  --clima-tormenta: #C4B5FD;
+}

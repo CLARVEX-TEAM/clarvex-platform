@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { ChevronRight, Shirt } from "lucide-react";
 import { ShineBorder } from "@/components/externos/shine-border";
@@ -126,7 +127,8 @@ export function ResumenDelDia({
   attendance,
   performance,
   uniform,
-  clima
+  clima,
+  intro
 }: {
   nombre: string;
   appVersion: string;
@@ -135,6 +137,15 @@ export function ResumenDelDia({
   performance: Rendimiento;
   uniform: Uniforme;
   clima?: Clima | null;
+  /**
+   * La bienvenida del clima, que se pinta DENTRO de la tarjeta del degradado.
+   *
+   * ⚠️ Entra como hijo y no se monta desde fuera a proposito: superpuesta al
+   * contenedor de la pantalla se estiraba tambien sobre el saludo, y salia un
+   * bloque azul que no correspondia a ningun recuadro. Aqui hereda el tamano y
+   * las esquinas exactas de la tarjeta que tapa.
+   */
+  intro?: ReactNode;
 }) {
   /*
    * ⚠️ `null` hasta que el efecto corra, y no `new Date()` en el estado
@@ -194,6 +205,7 @@ export function ResumenDelDia({
           <path fill="#FFFFFF" d="M108 171 256 86 403 171 210 283v-57l93-53-47-27-95 55v111l95 56 48-28v-57l99 58-147 85-148-84V171Z" />
         </svg>
         <ShineBorder borderWidth={2} duration={13} shineColor={["#FFFFFF", "#8BB8FF", "#FFFFFF"]} />
+        {intro}
         <div className="relative">
         {momento === null ? (
           /*
