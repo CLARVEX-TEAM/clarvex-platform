@@ -31,7 +31,7 @@ export async function GET(request: Request) {
    */
   const mesRetail = retailMonthBoundsFor(day);
 
-  const [user, store, shift, attendance, kpi, plan, pendings, announcements, uniformRows, corrections, unreadNotifications, pendingCorrections, kudos] = await Promise.all([
+  const [user, store, shift, turnoManana, attendance, kpi, plan, pendings, announcements, uniformRows, corrections, unreadNotifications, pendingCorrections, kudos] = await Promise.all([
     prisma.user.findFirst({
       where: { id: session.userId, storeId: session.storeId, active: true },
       select: { id: true, name: true, role: true, photoUrl: true, uniformVariant: true }
@@ -40,6 +40,15 @@ export async function GET(request: Request) {
     prisma.schedule.findUnique({
       where: { userId_date: { userId: session.userId, date: day } },
       select: { status: true, startTime: true, endTime: true, zone: true }
+    }),
+    /*
+     * El turno de MAÑANA. Es otra consulta, pero por el mismo índice único que
+     * la de arriba, así que no cuesta nada -- y contesta la pregunta que se
+     * hace al final del día: ¿entro mañana, y a qué hora?
+     */
+    prisma.schedule.findUnique({
+      where: { userId_date: { userId: session.userId, date: new Date(day.getTime() + 86_400_000) } },
+      select: { status: true, startTime: true, endTime: true }
     }),
     prisma.attendance.findUnique({
       where: { userId_date: { userId: session.userId, date: day } },
@@ -119,6 +128,27 @@ export async function GET(request: Request) {
     device: { installationId: device.installationId, profile: device.profile, appVersion: device.appVersion },
     shift: shiftPayload ? { ...shiftPayload, summary: shiftSummary(shiftPayload) } : null,
     uniform,
+    /*
+     * Mañana: si entra o descansa, a qué hora, y qué ropa toca.
+     *
+     * ⚠️ El uniforme sale de las filas que YA se trajeron --la consulta pide la
+     * semana entera y se queda con la de hoy--, así que no cuesta una consulta
+     * más. El turno sí es otra, pero por el mismo índice único.
+     *
+     * ⚠️ Y `null` cuando no hay horario cargado, que NO es lo mismo que
+     * descansar: decir «descansas» sobre un horario que nadie ha capturado
+     * mandaría a alguien a su casa un día que le tocaba entrar.
+     */
+    manana: {
+      diaSemana: new Date(day.getTime() + 86_400_000).getUTCDay(),
+      turno: turnoManana
+        ? { status: turnoManana.status, start: turnoManana.startTime, end: turnoManana.endTime }
+        : null,
+      uniforme: (() => {
+        const fila = uniforms.find((row) => row.weekday === new Date(day.getTime() + 86_400_000).getUTCDay());
+        return fila ? outfitFor(fila, user.uniformVariant as UniformVariant | null) : null;
+      })()
+    },
     attendance,
     performance: {
       sales,

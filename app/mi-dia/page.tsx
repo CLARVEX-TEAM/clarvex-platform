@@ -23,7 +23,7 @@ import {
 } from "lucide-react";
 import { AppFrame, AppHeader, Button, Card, ProgressBar } from "@/components/ui";
 import { ClimaIntro } from "@/components/my-day/ClimaIntro";
-import { MasAccesos } from "@/components/my-day/MasAccesos";
+import { Manana, type MananaDatos } from "@/components/my-day/Manana";
 import { ResumenDelDia } from "@/components/my-day/ResumenDelDia";
 import type { Clima } from "@/lib/clima";
 import { getSession } from "@/lib/auth";
@@ -58,6 +58,8 @@ type MyDay = {
   device: { installationId: string; profile: string; appVersion: string };
   shift: { status: string; start: string | null; end: string | null; zone: string | null; summary: string } | null;
   uniform: { top: string; bottom: string; note: string | null } | null;
+  /** Lo de mañana: ver `components/my-day/Manana.tsx`. */
+  manana?: MananaDatos | null;
   attendance: {
     status: "ON_TIME" | "LATE" | "ABSENT" | "EXCUSED" | "REST" | "VACATION" | "PAID_DAY" | "INVENTORY";
     expectedAt: string | null;
@@ -604,7 +606,13 @@ export default function MyDayPage() {
           ellas se fue `QuickActions`, que era su única puerta.
           Lo cubre `tests/accesos-telefono.test.ts`.
         */}
-        <MasAccesos role={data.user.role} kpisEnabled={kpisEnabled} />
+        {/*
+          ⚠️ Aquí estaba «Todo lo demás», la rejilla de trece enlaces. Era la
+          MISMA lista que la pestaña «Todo» de la barra inferior, y se llevaba
+          media pantalla al final de la única que se abre a diario. Ver la
+          cabecera de `Manana`.
+        */}
+        <Manana datos={data.manana} />
       </AppFrame>
     </>
   );
