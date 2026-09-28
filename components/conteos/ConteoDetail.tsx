@@ -651,7 +651,7 @@ function ManagerPanel({ countId, count, isOpen, canDelete, onChanged, onToggleSt
                   type="button"
                   onClick={() => void saveKardex()}
                   disabled={busy}
-                  className={`shrink-0 rounded-2xl px-4 text-sm font-semibold transition active:scale-95 disabled:opacity-50 ${kardexSaved ? "bg-mint text-mint" : "bg-volt text-white"}`}
+                  className={`shrink-0 rounded-2xl px-4 text-sm font-semibold transition active:scale-95 disabled:opacity-50 ${kardexSaved ? "bg-mint text-white" : "bg-volt text-white"}`}
                 >
                   {kardexSaved ? "✓" : "Guardar"}
                 </button>
@@ -670,7 +670,7 @@ function ManagerPanel({ countId, count, isOpen, canDelete, onChanged, onToggleSt
             <span className="min-w-0 flex-1 truncate font-semibold text-ink">{item.concept}</span>
             <span className="font-semibold tabular-nums text-ink">{item.pieces}</span>
             {isOpen && (
-              <button type="button" onClick={() => void removeNoUpc(item.id)} aria-label="Quitar" className="grid size-7 place-items-center rounded-full bg-orchid text-orchid"><Trash2 size={13} /></button>
+              <button type="button" onClick={() => void removeNoUpc(item.id)} aria-label="Quitar" className="grid size-7 place-items-center rounded-full bg-orchid/12 text-orchid"><Trash2 size={13} /></button>
             )}
           </div>
         ))}
@@ -687,14 +687,14 @@ function ManagerPanel({ countId, count, isOpen, canDelete, onChanged, onToggleSt
       <div className="mt-3 flex items-center gap-1.5 border-t border-line pt-3">
         <a
           href={`/api/conteos/${countId}/export`}
-          className="flex flex-1 items-center justify-center gap-1.5 rounded-full bg-volt px-3 py-2 text-xs font-semibold text-volt transition active:scale-95"
+          className="flex flex-1 items-center justify-center gap-1.5 rounded-full border border-volt/35 bg-card px-3 py-2 text-xs font-semibold text-volt transition active:scale-95"
         >
           <Download size={14} /> Mesa de control (Excel)
         </a>
         <button
           type="button"
           onClick={() => void onToggleStatus()}
-          className={`flex flex-1 items-center justify-center gap-1.5 rounded-full px-3 py-2 text-xs font-semibold transition active:scale-95 ${isOpen ? "bg-muted/15 text-muted" : "bg-mint text-mint"}`}
+          className={`flex flex-1 items-center justify-center gap-1.5 rounded-full px-3 py-2 text-xs font-semibold transition active:scale-95 ${isOpen ? "bg-muted/15 text-muted" : "border border-mint/40 bg-card text-mint"}`}
         >
           {isOpen ? <><Lock size={14} /> Cerrar conteo</> : <><LockOpen size={14} /> Reabrir</>}
         </button>
@@ -707,7 +707,7 @@ function ManagerPanel({ countId, count, isOpen, canDelete, onChanged, onToggleSt
           onClick={() => {
             if (confirm("¿Eliminar este conteo con TODAS sus capturas? Esta acción no se puede deshacer.")) void onDelete();
           }}
-          className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-full bg-orchid px-3 py-2 text-xs font-semibold text-orchid transition active:scale-95"
+          className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-full border border-orchid/40 bg-card px-3 py-2 text-xs font-semibold text-orchid transition active:scale-95"
         >
           <Trash2 size={14} /> Eliminar conteo (admin)
         </button>

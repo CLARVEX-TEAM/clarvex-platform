@@ -404,7 +404,7 @@ export default function MyDayPage() {
           </div>
         ) : null}
         {aviso ? (
-          <div className="mb-3 flex items-start gap-2 rounded-xl bg-sky-50 px-3 py-2 text-xs font-semibold text-sky">
+          <div className="mb-3 flex items-start gap-2 rounded-xl bg-sky/10 px-3 py-2 text-xs font-semibold text-sky">
             <CloudUpload size={15} className="mt-0.5 shrink-0" /> {aviso}
           </div>
         ) : null}
