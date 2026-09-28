@@ -44,17 +44,6 @@ const PUBLICAS = new Set([
   "terminos",
   "uso-aceptable",
   /*
-   * ⚠️ Maqueta de diseño, sin sesión y sin datos reales: todo lo que enseña
-   * --nombres, tienda, cifras-- está inventado en el propio archivo. Entró en
-   * el PR 131 sin pasar por el matcher, así que YA es pública; esto solo deja
-   * escrita esa decisión en vez de que quede por descuido.
-   *
-   * Si alguna vez llega a leer datos de verdad, tiene que salir de esta lista y
-   * entrar al matcher Y a una lista de permitidas -- solo al matcher redirige,
-   * que es el fallo que costó la credencial.
-   */
-  "concepto",
-  /*
    * La pagina de producto. Es publica A PROPOSITO y esa es toda su razon de
    * ser: quien llega de fuera tiene que ver que hace Clarvex Team sin pedir
    * cuenta a nadie.
