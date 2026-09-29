@@ -1,0 +1,17 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "broken-image",
+        "value": "*",
+        "files": [
+          "app/escritorio/admin/page.tsx"
+        ],
+        "createdAt": "2026-09-29T01:00:59.464Z",
+        "reason": "El src es store.mapaUrl, una URL firmada de R2 que el servidor genera al guardar la ubicacion, y el <img> solo se pinta cuando existe. No es un placeholder: es el mapa ya armado, y va con <img> y no con NextImage porque la firma caduca y no puede pasar por el optimizador. Mismo patron que app/admin/page.tsx."
+      }
+    ]
+  }
+}

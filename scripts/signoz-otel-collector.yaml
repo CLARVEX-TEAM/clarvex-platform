@@ -1,0 +1,128 @@
+# Colector de OpenTelemetry -> SigNoz Cloud.
+#
+# Copia versionada de /home/ubuntu/stack/otel-collector.yaml. El contenedor lo
+# declara el compose del stack; esto es solo su configuracion.
+#
+# ⚠️ AQUI NO VA NINGUNA CLAVE. La de ingesta entra por `${SIGNOZ_INGESTION_KEY}`
+# desde el .env del stack, igual que `SLACK_ALERT_WEBHOOK`. Este archivo se
+# commitea al repositorio: una clave escrita aqui queda en GitHub para siempre,
+# y rotarla no borra el historico.
+#
+# Por que un colector y no exportar directo desde la app:
+#
+#   - Las metricas de la MAQUINA y de los 10 contenedores no las puede mandar la
+#     app: no las conoce.
+#   - Los logs de cron son archivos en disco. Nadie mas los va a leer.
+#   - Y la clave vive en un solo sitio, no repartida por cada proceso.
+
+receivers:
+  # Lo que manden la app y cualquier otro proceso del servidor.
+  otlp:
+    protocols:
+      grpc:
+        # ⚠️ Solo loopback. Publicarlo en 0.0.0.0 abriria un sumidero de
+        # telemetria sin autenticar a cualquiera que alcance el puerto; el grupo
+        # de seguridad no lo abre hoy, pero eso es una regla de red y esto es la
+        # guarda del propio proceso. Misma decision que los puertos de Adminer.
+        endpoint: 127.0.0.1:4317
+      http:
+        endpoint: 127.0.0.1:4318
+
+  # La maquina: CPU, memoria, disco, red. Es lo que hoy solo se ve entrando por
+  # ssh, y lo que avisaria de que el disco se esta llenando ANTES de que
+  # Postgres deje de escribir --que es el fallo que de verdad para la tienda--.
+  hostmetrics:
+    collection_interval: 60s
+    root_path: /hostfs
+    scrapers:
+      cpu:
+      memory:
+      load:
+      filesystem:
+      network:
+      paging:
+
+  # Los 31 archivos de log de cron que hoy no mira nadie. Es la razon principal
+  # por la que esto existe: tres crons fallaron 24 dias en silencio escribiendo
+  # el error correcto en un archivo que nadie abre.
+  #
+  # ⚠️ Estos archivos NO tienen saltos de linea ni marcas de tiempo: son la
+  # salida cruda de `curl`, un muro de JSON pegado. Tal cual, cada archivo
+  # entero llega como UNA sola entrada gigante y no se puede filtrar por fecha
+  # ni alertar sobre un fallo concreto. Hay que arreglar el wrapper
+  # `cron-authenticated-post.sh` para que escriba una linea con hora por
+  # ejecucion; hasta entonces esto sirve para ver QUE hay, no para vigilarlo.
+  filelog:
+    include: [/hostlogs/*.log]
+    start_at: end
+    include_file_name: true
+    operators:
+      # El nombre del archivo ES el nombre del cron. Sin esto, 31 archivos
+      # distintos llegan indistinguibles y el panel no sirve para nada.
+      - type: regex_parser
+        parse_from: attributes["log.file.name"]
+        regex: '^(?P<cron>.+)\.log$'
+        on_error: send
+
+processors:
+  # ⚠️ Obligatorio, no una optimizacion. Sin agrupar, cada metrica sale en su
+  # propia peticion HTTPS y una maquina de 3.7 GB con swap ya tocado se pone a
+  # pagar un handshake TLS por dato.
+  batch:
+    timeout: 10s
+    send_batch_size: 1024
+
+  # ⚠️ Tope duro de memoria. El colector NO puede ser lo que tumbe la app: con
+  # 2.2 GB disponibles y 930 MB de swap ya en uso, un colector que crece sin
+  # freno se lleva por delante a Postgres o al build. Al pasarse, TIRA
+  # telemetria --que es exactamente lo correcto: se pierde una metrica, no la
+  # tienda--.
+  memory_limiter:
+    check_interval: 5s
+    limit_mib: 200
+    spike_limit_mib: 50
+
+  resourcedetection:
+    detectors: [env, system]
+    system:
+      hostname_sources: [os]
+
+exporters:
+  otlp:
+    # De la cuenta de SigNoz Cloud; cambia segun la region.
+    endpoint: ${env:SIGNOZ_ENDPOINT}
+    tls:
+      insecure: false
+    headers:
+      signoz-ingestion-key: ${env:SIGNOZ_INGESTION_KEY}
+    # Si SigNoz no contesta, se reintenta y se encola en MEMORIA, acotada. No en
+    # disco: el disco va al 69 % y una cola sin tope ahi es como se llena.
+    retry_on_failure:
+      enabled: true
+      initial_interval: 5s
+      max_interval: 60s
+      max_elapsed_time: 300s
+    sending_queue:
+      enabled: true
+      queue_size: 200
+
+service:
+  # ⚠️ El propio colector escribe a su log de Docker, no a SigNoz: si se lo
+  # mandara a si mismo, un fallo de envio generaria un log que tampoco se puede
+  # enviar. Se mira con `docker logs otel-collector`.
+  telemetry:
+    logs:
+      level: warn
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, resourcedetection, batch]
+      exporters: [otlp]
+    metrics:
+      receivers: [otlp, hostmetrics]
+      processors: [memory_limiter, resourcedetection, batch]
+      exporters: [otlp]
+    logs:
+      receivers: [otlp, filelog]
+      processors: [memory_limiter, resourcedetection, batch]
+      exporters: [otlp]

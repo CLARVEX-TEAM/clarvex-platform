@@ -55,6 +55,11 @@ type StoreRow = {
   lastSyncAt: string | null;
   lastSyncStatus: "SUCCESS" | "ERROR" | "RUNNING" | null;
   commissionRules: CommissionRuleRow[];
+  address: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  /** El mapa ya armado. Llega firmado: el bucket de R2 es privado. */
+  mapaUrl: string | null;
 };
 
 function syncBadge(store: StoreRow): { label: string; ok: boolean } {
@@ -97,6 +102,18 @@ export default function EscritorioAdmin() {
   const [paidUntil, setPaidUntil] = useState("");
   const [priceMxn, setPriceMxn] = useState("");
   const [savingBilling, setSavingBilling] = useState(false);
+  const [address, setAddress] = useState("");
+  const [lat, setLat] = useState("");
+  const [lng, setLng] = useState("");
+  const [savingUbicacion, setSavingUbicacion] = useState(false);
+  /**
+   * ⚠️ El aviso del mapa va SEPARADO del error.
+   *
+   * Que OpenStreetMap no conteste no significa que la dirección no se haya
+   * guardado: se guarda igual y solo se queda sin imagen. Metiéndolo en `error`
+   * parecería que no se guardó nada y alguien volvería a teclearlo todo.
+   */
+  const [avisoMapa, setAvisoMapa] = useState("");
   const [showAudit, setShowAudit] = useState(false);
   const [auditEntries, setAuditEntries] = useState<AuditEntry[] | null>(null);
   const [savingRoleId, setSavingRoleId] = useState<string | null>(null);
@@ -177,8 +194,39 @@ export default function EscritorioAdmin() {
     setBillingExempt(store.billingExempt);
     setPaidUntil(store.subscriptionPaidUntil ?? "");
     setPriceMxn(store.pricePerUserMxn !== null ? String(store.pricePerUserMxn) : "");
+    setAddress(store.address ?? "");
+    setLat(store.latitude !== null ? String(store.latitude) : "");
+    setLng(store.longitude !== null ? String(store.longitude) : "");
+    setAvisoMapa("");
     setSavedStoreId(null);
     setExpandedStoreId(store.id);
+  }
+
+  async function saveUbicacion(store: StoreRow) {
+    setSavingUbicacion(true);
+    setError("");
+    setAvisoMapa("");
+    try {
+      const response = await fetch(`/api/admin/stores/${store.id}/ubicacion`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          address: address.trim() || null,
+          // Vacío es `null`, no cero: un cero se guardaría como una coordenada
+          // del golfo de Guinea, que es válida y está mal.
+          latitude: lat.trim() ? Number(lat) : null,
+          longitude: lng.trim() ? Number(lng) : null
+        })
+      });
+      const payload = await response.json() as { error?: string; avisoMapa?: string | null };
+      if (!response.ok) throw new Error(payload.error ?? "No se pudo guardar la ubicación.");
+      if (payload.avisoMapa) setAvisoMapa(payload.avisoMapa);
+      await loadStores();
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : "No se pudo guardar la ubicación.");
+    } finally {
+      setSavingUbicacion(false);
+    }
   }
 
   async function changeRole(store: StoreRow, userId: string, role: "GERENTE" | "SUBGERENTE" | "ASESOR") {
@@ -492,6 +540,82 @@ export default function EscritorioAdmin() {
                                   ))}
                                 </ul>
                               )}
+                            </section>
+
+                            {/*
+                              Ubicación de la tienda: lo que dibuja el mapa de
+                              Horarios.
+
+                              ⚠️ La DIRECCIÓN es lo que la hace exacta; el
+                              nombre de la tienda no sirve para buscarla --«TH
+                              SAN AGUSTIN» casa con cualquier cosa en un mapa--.
+                              Las coordenadas se capturan a mano porque no hay
+                              servicio de geocodificación: salen de cualquier
+                              mapa, botón derecho sobre el local.
+
+                              ⚠️ Y vive AQUÍ además de en `/admin` porque esta
+                              es la pantalla de escritorio, que es donde se
+                              administra de verdad. Estaba solo en la otra, y
+                              desde aquí no había forma de llegar: el campo
+                              existía y nadie podía usarlo.
+                            */}
+                            <section>
+                              <h4 className="text-caption font-medium text-muted">Ubicación</h4>
+                              <input
+                                value={address}
+                                onChange={(event) => setAddress(event.target.value)}
+                                maxLength={240}
+                                placeholder="Calle, número, centro comercial, ciudad"
+                                aria-label="Dirección de la tienda"
+                                className="mt-2 min-h-9 w-full rounded-lg border border-line bg-panel px-3 text-caption text-ink outline-hidden focus:border-accent"
+                              />
+                              <div className="mt-2 flex flex-wrap items-center gap-2">
+                                <input
+                                  value={lat}
+                                  onChange={(event) => setLat(event.target.value)}
+                                  inputMode="decimal"
+                                  placeholder="Latitud"
+                                  aria-label="Latitud"
+                                  className="min-h-9 w-32 rounded-lg border border-line bg-panel px-3 text-caption text-ink outline-hidden focus:border-accent"
+                                />
+                                <input
+                                  value={lng}
+                                  onChange={(event) => setLng(event.target.value)}
+                                  inputMode="decimal"
+                                  placeholder="Longitud"
+                                  aria-label="Longitud"
+                                  className="min-h-9 w-32 rounded-lg border border-line bg-panel px-3 text-caption text-ink outline-hidden focus:border-accent"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => void saveUbicacion(store)}
+                                  disabled={savingUbicacion}
+                                  className="min-h-9 rounded-lg bg-accent px-3 text-caption font-medium text-white transition-colors disabled:opacity-60"
+                                >
+                                  {savingUbicacion ? "Guardando..." : "Guardar ubicación"}
+                                </button>
+                              </div>
+                              <p className="mt-1.5 text-caption text-muted">
+                                Las coordenadas salen de cualquier mapa: botón derecho sobre el local. La longitud
+                                aquí va negativa.
+                              </p>
+                              {avisoMapa ? (
+                                <p className="mt-2 rounded-lg border border-warn/40 bg-warn/10 px-3 py-2 text-caption text-warn">
+                                  {avisoMapa}
+                                </p>
+                              ) : null}
+                              {/* El mapa ya armado, para comprobar de un vistazo que apunta a
+                                  la tienda y no a la calle de al lado. */}
+                              {store.mapaUrl ? (
+                                // `<img>` y no `NextImage`: la URL viene firmada y caduca, así
+                                // que no puede pasar por el optimizador.
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img
+                                  src={store.mapaUrl}
+                                  alt={`Mapa de ${store.name}`}
+                                  className="mt-2 h-28 w-full rounded-lg border border-line object-cover"
+                                />
+                              ) : null}
                             </section>
 
                             {/* Suscripción */}
