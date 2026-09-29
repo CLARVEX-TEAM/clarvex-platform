@@ -126,42 +126,66 @@ export default function UniformesPage() {
           logo cambia esto.
         */}
         {mine ? (
-          <section className="papel-hero papel-elev-alta relative mb-3 overflow-hidden rounded-[26px]">
-            <svg
-              aria-hidden
-              viewBox="0 0 512 512"
-              className="pointer-events-none absolute -right-10 -top-12 size-56 opacity-[0.07]"
-            >
-              <path fill="#FFFFFF" d="M108 171 256 86 403 171 210 283v-57l93-53-47-27-95 55v111l95 56 48-28v-57l99 58-147 85-148-84V171Z" />
-            </svg>
-            <ShineBorder borderWidth={2} duration={13} shineColor={["#FFFFFF", "#8BB8FF", "#FFFFFF"]} />
-            <div className="relative px-6 pb-6 pt-6">
-              <p className="text-xs font-semibold uppercase tracking-[0.09em] opacity-80">
-                Hoy · {WEEKDAY_LABEL[today]}
-              </p>
-              <div className="mt-3 grid gap-2">
-                <p className="flex items-center gap-2.5 text-[21px] font-semibold leading-tight tracking-[-0.02em]">
-                  <Swatch garment={mine.top} claro /> {mine.top}
-                </p>
-                <p className="flex items-center gap-2.5 text-[21px] font-semibold leading-tight tracking-[-0.02em]">
-                  <Swatch garment={mine.bottom} claro /> {mine.bottom}
-                </p>
-              </div>
-              {mine.note ? <p className="mt-3 text-[13px] opacity-90">{mine.note}</p> : null}
-              {/*
-                ⚠️ El aviso de variante sin asignar se queda DENTRO del bloque,
-                pegado a la ropa que está enseñando: dice que lo de arriba puede
-                no ser lo tuyo. Suelto en la pantalla no se sabría a qué se
-                refiere.
-              */}
-              {!myVariant ? (
-                <p className="mt-3 rounded-xl bg-white/15 px-3 py-2 text-[12px] leading-relaxed">
-                  Gerencia aún no te asignó variante de uniforme. Arriba va la de
-                  mujer, solo como referencia.
-                </p>
-              ) : null}
+          <>
+            {/* ⚠️ Solo la APK pinta el bloque de degradado; fuera de ella va la tarjeta de antes. */}
+            <div className="solo-papel">
+              <section className="papel-hero papel-elev-alta relative mb-3 overflow-hidden rounded-[26px]">
+                <svg
+                  aria-hidden
+                  viewBox="0 0 512 512"
+                  className="pointer-events-none absolute -right-10 -top-12 size-56 opacity-[0.07]"
+                >
+                  <path fill="#FFFFFF" d="M108 171 256 86 403 171 210 283v-57l93-53-47-27-95 55v111l95 56 48-28v-57l99 58-147 85-148-84V171Z" />
+                </svg>
+                <ShineBorder borderWidth={2} duration={13} shineColor={["#FFFFFF", "#8BB8FF", "#FFFFFF"]} />
+                <div className="relative px-6 pb-6 pt-6">
+                  <p className="text-xs font-semibold uppercase tracking-[0.09em] opacity-80">
+                    Hoy · {WEEKDAY_LABEL[today]}
+                  </p>
+                  <div className="mt-3 grid gap-2">
+                    <p className="flex items-center gap-2.5 text-[21px] font-semibold leading-tight tracking-[-0.02em]">
+                      <Swatch garment={mine.top} claro /> {mine.top}
+                    </p>
+                    <p className="flex items-center gap-2.5 text-[21px] font-semibold leading-tight tracking-[-0.02em]">
+                      <Swatch garment={mine.bottom} claro /> {mine.bottom}
+                    </p>
+                  </div>
+                  {mine.note ? <p className="mt-3 text-[13px] opacity-90">{mine.note}</p> : null}
+                  {/*
+                    ⚠️ El aviso de variante sin asignar se queda DENTRO del bloque,
+                    pegado a la ropa que está enseñando: dice que lo de arriba puede
+                    no ser lo tuyo. Suelto en la pantalla no se sabría a qué se
+                    refiere.
+                  */}
+                  {!myVariant ? (
+                    <p className="mt-3 rounded-xl bg-white/15 px-3 py-2 text-[12px] leading-relaxed">
+                      Gerencia aún no te asignó variante de uniforme. Arriba va la de
+                      mujer, solo como referencia.
+                    </p>
+                  ) : null}
+                </div>
+              </section>
             </div>
-          </section>
+            <div className="fuera-de-papel">
+              <Card className="mb-3 p-4">
+                <p className="text-xs font-bold text-muted">Hoy · {WEEKDAY_LABEL[today]}</p>
+                <div className="mt-2 grid gap-1.5">
+                  <p className="flex items-center gap-2 text-base font-semibold text-ink">
+                    <Swatch garment={mine.top} /> {mine.top}
+                  </p>
+                  <p className="flex items-center gap-2 text-base font-semibold text-ink">
+                    <Swatch garment={mine.bottom} /> {mine.bottom}
+                  </p>
+                </div>
+                {mine.note ? <p className="mt-2 text-[11px] font-semibold text-amber-700 dark:text-amber-300">{mine.note}</p> : null}
+                {!myVariant ? (
+                  <p className="mt-2 rounded-xl bg-amber-50 px-2.5 py-1.5 text-[11px] font-bold text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
+                    Gerencia aún no te asignó variante de uniforme. Se te muestra la de mujer como referencia.
+                  </p>
+                ) : null}
+              </Card>
+            </div>
+          </>
         ) : null}
 
         {/* La semana completa */}
@@ -184,11 +208,12 @@ export default function UniformesPage() {
               const isToday = day.weekday === today;
               return (
                 /*
-                  ⚠️ Hoy se marca, pero sin fondo de color: el bloque de arriba
-                  ya lo dice en grande, y dos cosas gritando «hoy» en la misma
-                  pantalla se restan la una a la otra.
+                  ⚠️ En la APK hoy se marca sin fondo de color: el bloque de
+                  arriba ya lo dice en grande, y dos cosas gritando «hoy» en la
+                  misma pantalla se restan la una a la otra. Fuera de la APK se
+                  conserva el fondo de antes del rediseño.
                 */
-                <div key={day.weekday} className="py-2.5">
+                <div key={day.weekday} className={cn("py-2.5", isToday && "rounded-xl bg-volt/[0.07] px-2 in-data-[surface=papel]:rounded-none in-data-[surface=papel]:bg-transparent in-data-[surface=papel]:px-0")}>
                   <p className={cn("text-xs font-semibold", isToday ? "text-volt" : "text-muted")}>
                     {WEEKDAY_LABEL[day.weekday]}{isToday ? " · hoy" : ""}
                   </p>
