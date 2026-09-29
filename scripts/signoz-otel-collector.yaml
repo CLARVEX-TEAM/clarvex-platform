@@ -19,14 +19,19 @@ receivers:
   # Lo que manden la app y cualquier otro proceso del servidor.
   otlp:
     protocols:
+      # ⚠️ 0.0.0.0 aqui NO es «abierto a internet», y ponerlo en 127.0.0.1 fue
+      # un fallo que costo una vuelta: esto se ejecuta DENTRO del contenedor, y
+      # Docker no entrega el puerto por su loopback sino por su interfaz de red.
+      # Atado a 127.0.0.1 el colector escuchaba donde no llegaba nadie --el
+      # `curl` de prueba devolvia 000-- y parecia que el contenedor estaba roto.
+      #
+      # Quien limita el alcance es el MAPEO del compose, `127.0.0.1:4318:4318`,
+      # que solo lo publica en el loopback de la maquina. Dentro de la red de
+      # Docker lo alcanzan los otros contenedores, que son todos nuestros.
       grpc:
-        # ⚠️ Solo loopback. Publicarlo en 0.0.0.0 abriria un sumidero de
-        # telemetria sin autenticar a cualquiera que alcance el puerto; el grupo
-        # de seguridad no lo abre hoy, pero eso es una regla de red y esto es la
-        # guarda del propio proceso. Misma decision que los puertos de Adminer.
-        endpoint: 127.0.0.1:4317
+        endpoint: 0.0.0.0:4317
       http:
-        endpoint: 127.0.0.1:4318
+        endpoint: 0.0.0.0:4318
 
   # La maquina: CPU, memoria, disco, red. Es lo que hoy solo se ve entrando por
   # ssh, y lo que avisaria de que el disco se esta llenando ANTES de que
@@ -63,6 +68,53 @@ receivers:
         parse_from: attributes["log.file.name"]
         regex: '^(?P<cron>.+)\.log$'
         on_error: send
+      # ⚠️ Y el cuerpo se PARSEA como JSON, si lo es. Sin esto, `http`, `ok` y
+      # `ms` viven dentro de una cadena y no se puede filtrar «dame los crons
+      # que fallaron» -- que es justo la pregunta por la que esto existe. Con
+      # `on_error: send` las lineas que no sean JSON --las de los dos crons que
+      # no pasan por el wrapper-- entran igual, como texto.
+      - type: json_parser
+        parse_from: body
+        on_error: send
+
+  # El TRAFICO real: los logs de acceso del proxy. Traen metodo, estado, host,
+  # ruta, bytes y agente de cada peticion que entra a team.clarvex.tech.
+  #
+  # ⚠️ SE REDACTA ANTES DE SALIR, y no es teorico: esta app pone tokens EN LA
+  # URL --`/api/app/apk?t=...` para bajar el APK, `/v/<token>` para verificar
+  # una credencial--. Mandarlos a un tercero seria entregar enlaces que por si
+  # solos autorizan. Hoy no hay ninguno en la ventana retenida del log; da
+  # igual, el dia que alguien actualice la APK lo habria.
+  #
+  # ⚠️ Y la IP del cliente se recorta a su red. Esta app maneja datos de
+  # empleados y ya decidio `sendDefaultPii: false` para Sentry; mandar la IP
+  # entera a otro SaaS contradiria esa decision sin que nadie la revisara. Con
+  # la red se sigue viendo quien machaca el servidor --los sondeos buscando
+  # `.env` y `.git/config` estan ahi ahora mismo-- sin senalar a una persona.
+  filelog/proxy:
+    include: [/hostproxy/proxy-host-*_access.log]
+    start_at: end
+    include_file_name: true
+    operators:
+      - type: regex_parser
+        regex: '^\[(?P<cuando>[^\]]+)\] - (?P<estado>\d+) \d+ - (?P<metodo>\w+) (?P<esquema>\w+) (?P<host>\S+) "(?P<ruta_cruda>[^"]*)" \[Client (?P<ip_cruda>[^\]]+)\] \[Length (?P<bytes>\d+)\]'
+        on_error: send
+      # Fuera la query entera: ahi es donde viajan los tokens.
+      - type: regex_parser
+        parse_from: attributes.ruta_cruda
+        regex: '^(?P<ruta>[^?]*)'
+        on_error: send
+      - type: remove
+        field: attributes.ruta_cruda
+        on_error: send
+      # La IP, a su red.
+      - type: regex_parser
+        parse_from: attributes.ip_cruda
+        regex: '^(?P<red>\d+\.\d+\.\d+)\.'
+        on_error: send
+      - type: remove
+        field: attributes.ip_cruda
+        on_error: send
 
 processors:
   # ⚠️ Obligatorio, no una optimizacion. Sin agrupar, cada metrica sale en su
@@ -90,7 +142,7 @@ processors:
 exporters:
   otlp:
     # De la cuenta de SigNoz Cloud; cambia segun la region.
-    endpoint: ${env:SIGNOZ_ENDPOINT}
+    endpoint: ${env:SIGNOZ_ENDPOINT}   # ingest.us2.signoz.cloud:443
     tls:
       insecure: false
     headers:
@@ -123,6 +175,6 @@ service:
       processors: [memory_limiter, resourcedetection, batch]
       exporters: [otlp]
     logs:
-      receivers: [otlp, filelog]
+      receivers: [otlp, filelog, filelog/proxy]
       processors: [memory_limiter, resourcedetection, batch]
       exporters: [otlp]

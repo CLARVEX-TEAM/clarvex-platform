@@ -1,0 +1,1209 @@
+{
+  "title": "Clarvex · Servidor, tráfico y crons",
+  "description": "Lo que de verdad para la tienda, en un sitio. El orden no es estético: arriba lo que la deja sin capturar (disco, memoria), en medio lo que entra por la puerta, y abajo los crons — que llevan tres fallos históricos de semanas en silencio.",
+  "tags": [
+    "clarvex",
+    "infra",
+    "crons",
+    "trafico"
+  ],
+  "layout": [
+    {
+      "i": "c00b90e0-0db5-4dac-9680-053607fa15f5",
+      "x": 0,
+      "y": 0,
+      "w": 6,
+      "h": 4,
+      "moved": false,
+      "static": false
+    },
+    {
+      "i": "d51433df-4279-4c09-a4fa-c817b837b7ea",
+      "x": 6,
+      "y": 0,
+      "w": 6,
+      "h": 4,
+      "moved": false,
+      "static": false
+    },
+    {
+      "i": "5e145645-20f1-4f94-8abe-951377bd694d",
+      "x": 0,
+      "y": 4,
+      "w": 6,
+      "h": 4,
+      "moved": false,
+      "static": false
+    },
+    {
+      "i": "b27f87ea-ae32-4ebb-8a2e-e2f4f0506039",
+      "x": 6,
+      "y": 4,
+      "w": 6,
+      "h": 4,
+      "moved": false,
+      "static": false
+    },
+    {
+      "i": "6b008205-5b16-4ff9-b191-4b3dcc04f496",
+      "x": 0,
+      "y": 8,
+      "w": 8,
+      "h": 4,
+      "moved": false,
+      "static": false
+    },
+    {
+      "i": "fcb30f46-aa15-4cac-b0f6-b0d204cdfd32",
+      "x": 8,
+      "y": 8,
+      "w": 4,
+      "h": 4,
+      "moved": false,
+      "static": false
+    },
+    {
+      "i": "c45dd3d9-86ab-47f5-80b2-a165874a74fa",
+      "x": 0,
+      "y": 12,
+      "w": 6,
+      "h": 4,
+      "moved": false,
+      "static": false
+    },
+    {
+      "i": "b72318a1-f5eb-4eb7-a25c-f0fb42cde8b3",
+      "x": 6,
+      "y": 12,
+      "w": 6,
+      "h": 4,
+      "moved": false,
+      "static": false
+    },
+    {
+      "i": "cd295ab6-a009-4c56-b8c7-a8ef85561bd4",
+      "x": 0,
+      "y": 16,
+      "w": 12,
+      "h": 4,
+      "moved": false,
+      "static": false
+    },
+    {
+      "i": "bfc97fb8-9e87-47e7-bc35-94b436dc1407",
+      "x": 0,
+      "y": 20,
+      "w": 6,
+      "h": 4,
+      "moved": false,
+      "static": false
+    },
+    {
+      "i": "959a037c-4bf9-4ab0-a5e6-43aa38b12b36",
+      "x": 6,
+      "y": 20,
+      "w": 6,
+      "h": 4,
+      "moved": false,
+      "static": false
+    },
+    {
+      "i": "cdbb8150-4c0a-4300-b30c-8ee271a156a8",
+      "x": 0,
+      "y": 24,
+      "w": 12,
+      "h": 4,
+      "moved": false,
+      "static": false
+    }
+  ],
+  "widgets": [
+    {
+      "id": "c00b90e0-0db5-4dac-9680-053607fa15f5",
+      "title": "Disco usado",
+      "description": "Con el disco lleno Postgres deja de escribir y la tienda no puede capturar. Es el fallo mas caro de esta maquina.",
+      "isStacked": false,
+      "nullZeroValues": "zero",
+      "opacity": "1",
+      "panelTypes": "graph",
+      "query": {
+        "queryType": "builder",
+        "promql": [
+          {
+            "name": "A",
+            "query": "",
+            "legend": "",
+            "disabled": false
+          }
+        ],
+        "clickhouse_sql": [
+          {
+            "name": "A",
+            "legend": "",
+            "disabled": false,
+            "query": ""
+          }
+        ],
+        "id": "d34b7c90-efb2-4c14-a1e6-b1a1aa9bf34f",
+        "builder": {
+          "queryData": [
+            {
+              "dataSource": "metrics",
+              "queryName": "A",
+              "aggregateOperator": "avg",
+              "aggregateAttribute": {
+                "key": "system_filesystem_usage",
+                "dataType": "float64",
+                "type": "Gauge",
+                "isColumn": true
+              },
+              "timeAggregation": "avg",
+              "spaceAggregation": "sum",
+              "functions": [],
+              "filters": {
+                "items": [
+                  {
+                    "id": "99689f23",
+                    "key": {
+                      "key": "mountpoint",
+                      "dataType": "string",
+                      "type": "tag",
+                      "isColumn": false
+                    },
+                    "op": "=",
+                    "value": "/hostfs"
+                  }
+                ],
+                "op": "AND"
+              },
+              "expression": "A",
+              "disabled": false,
+              "stepInterval": 60,
+              "having": [],
+              "limit": null,
+              "orderBy": [],
+              "groupBy": [
+                {
+                  "key": "state",
+                  "dataType": "string",
+                  "type": "tag",
+                  "isColumn": false
+                }
+              ],
+              "legend": "{{state}}",
+              "reduceTo": "last"
+            }
+          ],
+          "queryFormulas": []
+        }
+      },
+      "timePreferance": "GLOBAL_TIME",
+      "softMax": null,
+      "softMin": null,
+      "selectedLogFields": [],
+      "selectedTracesFields": [],
+      "yAxisUnit": "bytes",
+      "thresholds": [],
+      "fillSpans": false
+    },
+    {
+      "id": "d51433df-4279-4c09-a4fa-c817b837b7ea",
+      "title": "Memoria",
+      "description": "3.7 GB en total. Cuando lo disponible baja, el build de Next se va a swap y tarda minutos de mas.",
+      "isStacked": false,
+      "nullZeroValues": "zero",
+      "opacity": "1",
+      "panelTypes": "graph",
+      "query": {
+        "queryType": "builder",
+        "promql": [
+          {
+            "name": "A",
+            "query": "",
+            "legend": "",
+            "disabled": false
+          }
+        ],
+        "clickhouse_sql": [
+          {
+            "name": "A",
+            "legend": "",
+            "disabled": false,
+            "query": ""
+          }
+        ],
+        "id": "c4a4baeb-f951-4933-a6b6-34d7a167f252",
+        "builder": {
+          "queryData": [
+            {
+              "dataSource": "metrics",
+              "queryName": "A",
+              "aggregateOperator": "avg",
+              "aggregateAttribute": {
+                "key": "system_memory_usage",
+                "dataType": "float64",
+                "type": "Gauge",
+                "isColumn": true
+              },
+              "timeAggregation": "avg",
+              "spaceAggregation": "sum",
+              "functions": [],
+              "filters": {
+                "items": [],
+                "op": "AND"
+              },
+              "expression": "A",
+              "disabled": false,
+              "stepInterval": 60,
+              "having": [],
+              "limit": null,
+              "orderBy": [],
+              "groupBy": [
+                {
+                  "key": "state",
+                  "dataType": "string",
+                  "type": "tag",
+                  "isColumn": false
+                }
+              ],
+              "legend": "{{state}}",
+              "reduceTo": "last"
+            }
+          ],
+          "queryFormulas": []
+        }
+      },
+      "timePreferance": "GLOBAL_TIME",
+      "softMax": null,
+      "softMin": null,
+      "selectedLogFields": [],
+      "selectedTracesFields": [],
+      "yAxisUnit": "bytes",
+      "thresholds": [],
+      "fillSpans": false
+    },
+    {
+      "id": "5e145645-20f1-4f94-8abe-951377bd694d",
+      "title": "CPU",
+      "description": "Por estado. Un `iowait` alto suele ser el disco, no la CPU.",
+      "isStacked": false,
+      "nullZeroValues": "zero",
+      "opacity": "1",
+      "panelTypes": "graph",
+      "query": {
+        "queryType": "builder",
+        "promql": [
+          {
+            "name": "A",
+            "query": "",
+            "legend": "",
+            "disabled": false
+          }
+        ],
+        "clickhouse_sql": [
+          {
+            "name": "A",
+            "legend": "",
+            "disabled": false,
+            "query": ""
+          }
+        ],
+        "id": "596351e8-c690-43ca-aea7-b8acd7894cfd",
+        "builder": {
+          "queryData": [
+            {
+              "dataSource": "metrics",
+              "queryName": "A",
+              "aggregateOperator": "avg",
+              "aggregateAttribute": {
+                "key": "system_cpu_utilization",
+                "dataType": "float64",
+                "type": "Gauge",
+                "isColumn": true
+              },
+              "timeAggregation": "avg",
+              "spaceAggregation": "sum",
+              "functions": [],
+              "filters": {
+                "items": [],
+                "op": "AND"
+              },
+              "expression": "A",
+              "disabled": false,
+              "stepInterval": 60,
+              "having": [],
+              "limit": null,
+              "orderBy": [],
+              "groupBy": [
+                {
+                  "key": "state",
+                  "dataType": "string",
+                  "type": "tag",
+                  "isColumn": false
+                }
+              ],
+              "legend": "{{state}}",
+              "reduceTo": "last"
+            }
+          ],
+          "queryFormulas": []
+        }
+      },
+      "timePreferance": "GLOBAL_TIME",
+      "softMax": null,
+      "softMin": null,
+      "selectedLogFields": [],
+      "selectedTracesFields": [],
+      "yAxisUnit": "percentunit",
+      "thresholds": [],
+      "fillSpans": false
+    },
+    {
+      "id": "b27f87ea-ae32-4ebb-8a2e-e2f4f0506039",
+      "title": "Swap en uso",
+      "description": "Ya hay swap tocado en reposo. Si sube mucho, algo se esta comiendo la RAM.",
+      "isStacked": false,
+      "nullZeroValues": "zero",
+      "opacity": "1",
+      "panelTypes": "graph",
+      "query": {
+        "queryType": "builder",
+        "promql": [
+          {
+            "name": "A",
+            "query": "",
+            "legend": "",
+            "disabled": false
+          }
+        ],
+        "clickhouse_sql": [
+          {
+            "name": "A",
+            "legend": "",
+            "disabled": false,
+            "query": ""
+          }
+        ],
+        "id": "34cc21d6-c6ae-43f5-9573-c3aee98587f2",
+        "builder": {
+          "queryData": [
+            {
+              "dataSource": "metrics",
+              "queryName": "A",
+              "aggregateOperator": "avg",
+              "aggregateAttribute": {
+                "key": "system_paging_usage",
+                "dataType": "float64",
+                "type": "Gauge",
+                "isColumn": true
+              },
+              "timeAggregation": "avg",
+              "spaceAggregation": "sum",
+              "functions": [],
+              "filters": {
+                "items": [],
+                "op": "AND"
+              },
+              "expression": "A",
+              "disabled": false,
+              "stepInterval": 60,
+              "having": [],
+              "limit": null,
+              "orderBy": [],
+              "groupBy": [
+                {
+                  "key": "state",
+                  "dataType": "string",
+                  "type": "tag",
+                  "isColumn": false
+                }
+              ],
+              "legend": "{{state}}",
+              "reduceTo": "last"
+            }
+          ],
+          "queryFormulas": []
+        }
+      },
+      "timePreferance": "GLOBAL_TIME",
+      "softMax": null,
+      "softMin": null,
+      "selectedLogFields": [],
+      "selectedTracesFields": [],
+      "yAxisUnit": "bytes",
+      "thresholds": [],
+      "fillSpans": false
+    },
+    {
+      "id": "6b008205-5b16-4ff9-b191-4b3dcc04f496",
+      "title": "Peticiones",
+      "description": "Todo lo que entra por el proxy a team.clarvex.tech.",
+      "isStacked": false,
+      "nullZeroValues": "zero",
+      "opacity": "1",
+      "panelTypes": "graph",
+      "query": {
+        "queryType": "builder",
+        "promql": [
+          {
+            "name": "A",
+            "query": "",
+            "legend": "",
+            "disabled": false
+          }
+        ],
+        "clickhouse_sql": [
+          {
+            "name": "A",
+            "legend": "",
+            "disabled": false,
+            "query": ""
+          }
+        ],
+        "id": "98c9be57-10b3-4b3f-9e33-8a8c0e526875",
+        "builder": {
+          "queryData": [
+            {
+              "dataSource": "logs",
+              "queryName": "A",
+              "aggregateOperator": "count",
+              "aggregateAttribute": {
+                "key": "",
+                "dataType": "",
+                "type": "",
+                "isColumn": true
+              },
+              "timeAggregation": "count",
+              "spaceAggregation": "sum",
+              "functions": [],
+              "filters": {
+                "items": [
+                  {
+                    "id": "6a9a94bd",
+                    "key": {
+                      "key": "log_file_name",
+                      "dataType": "string",
+                      "type": "tag",
+                      "isColumn": false
+                    },
+                    "op": "contains",
+                    "value": "_access.log"
+                  }
+                ],
+                "op": "AND"
+              },
+              "expression": "A",
+              "disabled": false,
+              "stepInterval": 60,
+              "having": [],
+              "limit": null,
+              "orderBy": [],
+              "groupBy": [],
+              "legend": "peticiones",
+              "reduceTo": "sum"
+            }
+          ],
+          "queryFormulas": []
+        }
+      },
+      "timePreferance": "GLOBAL_TIME",
+      "softMax": null,
+      "softMin": null,
+      "selectedLogFields": [],
+      "selectedTracesFields": [],
+      "yAxisUnit": "none",
+      "thresholds": [],
+      "fillSpans": false
+    },
+    {
+      "id": "fcb30f46-aa15-4cac-b0f6-b0d204cdfd32",
+      "title": "Errores 5xx",
+      "description": "Fallos del servidor. Cualquier cosa por encima de cero merece una mirada.",
+      "isStacked": false,
+      "nullZeroValues": "zero",
+      "opacity": "1",
+      "panelTypes": "value",
+      "query": {
+        "queryType": "builder",
+        "promql": [
+          {
+            "name": "A",
+            "query": "",
+            "legend": "",
+            "disabled": false
+          }
+        ],
+        "clickhouse_sql": [
+          {
+            "name": "A",
+            "legend": "",
+            "disabled": false,
+            "query": ""
+          }
+        ],
+        "id": "2c69f327-132d-4874-8125-8a252cf4ca24",
+        "builder": {
+          "queryData": [
+            {
+              "dataSource": "logs",
+              "queryName": "A",
+              "aggregateOperator": "count",
+              "aggregateAttribute": {
+                "key": "",
+                "dataType": "",
+                "type": "",
+                "isColumn": true
+              },
+              "timeAggregation": "count",
+              "spaceAggregation": "sum",
+              "functions": [],
+              "filters": {
+                "items": [
+                  {
+                    "id": "6a9a94bd",
+                    "key": {
+                      "key": "log_file_name",
+                      "dataType": "string",
+                      "type": "tag",
+                      "isColumn": false
+                    },
+                    "op": "contains",
+                    "value": "_access.log"
+                  },
+                  {
+                    "id": "3914d4df",
+                    "key": {
+                      "key": "estado",
+                      "dataType": "string",
+                      "type": "tag",
+                      "isColumn": false
+                    },
+                    "op": ">=",
+                    "value": "500"
+                  }
+                ],
+                "op": "AND"
+              },
+              "expression": "A",
+              "disabled": false,
+              "stepInterval": 60,
+              "having": [],
+              "limit": null,
+              "orderBy": [],
+              "groupBy": [],
+              "legend": "",
+              "reduceTo": "sum"
+            }
+          ],
+          "queryFormulas": []
+        }
+      },
+      "timePreferance": "GLOBAL_TIME",
+      "softMax": null,
+      "softMin": null,
+      "selectedLogFields": [],
+      "selectedTracesFields": [],
+      "yAxisUnit": "none",
+      "thresholds": [
+        {
+          "index": "33d73303",
+          "keyIndex": 0,
+          "moveThreshold": 0,
+          "selectedGraph": "value",
+          "thresholdColor": "#F59E0B",
+          "thresholdFormat": "Text",
+          "thresholdOperator": ">=",
+          "thresholdUnit": "none",
+          "thresholdValue": 1,
+          "thresholdLabel": "revisar"
+        },
+        {
+          "index": "54a7a9e6",
+          "keyIndex": 0,
+          "moveThreshold": 0,
+          "selectedGraph": "value",
+          "thresholdColor": "#EF4444",
+          "thresholdFormat": "Text",
+          "thresholdOperator": ">=",
+          "thresholdUnit": "none",
+          "thresholdValue": 20,
+          "thresholdLabel": "grave"
+        }
+      ],
+      "fillSpans": false
+    },
+    {
+      "id": "c45dd3d9-86ab-47f5-80b2-a165874a74fa",
+      "title": "Por codigo de estado",
+      "description": "Un pico de 4xx suele ser un escaner; uno de 5xx somos nosotros.",
+      "isStacked": false,
+      "nullZeroValues": "zero",
+      "opacity": "1",
+      "panelTypes": "graph",
+      "query": {
+        "queryType": "builder",
+        "promql": [
+          {
+            "name": "A",
+            "query": "",
+            "legend": "",
+            "disabled": false
+          }
+        ],
+        "clickhouse_sql": [
+          {
+            "name": "A",
+            "legend": "",
+            "disabled": false,
+            "query": ""
+          }
+        ],
+        "id": "fcd82c81-ef88-460e-ae9e-5f483cc23522",
+        "builder": {
+          "queryData": [
+            {
+              "dataSource": "logs",
+              "queryName": "A",
+              "aggregateOperator": "count",
+              "aggregateAttribute": {
+                "key": "",
+                "dataType": "",
+                "type": "",
+                "isColumn": true
+              },
+              "timeAggregation": "count",
+              "spaceAggregation": "sum",
+              "functions": [],
+              "filters": {
+                "items": [
+                  {
+                    "id": "6a9a94bd",
+                    "key": {
+                      "key": "log_file_name",
+                      "dataType": "string",
+                      "type": "tag",
+                      "isColumn": false
+                    },
+                    "op": "contains",
+                    "value": "_access.log"
+                  }
+                ],
+                "op": "AND"
+              },
+              "expression": "A",
+              "disabled": false,
+              "stepInterval": 60,
+              "having": [],
+              "limit": null,
+              "orderBy": [],
+              "groupBy": [
+                {
+                  "key": "estado",
+                  "dataType": "string",
+                  "type": "tag",
+                  "isColumn": false
+                }
+              ],
+              "legend": "{{estado}}",
+              "reduceTo": "sum"
+            }
+          ],
+          "queryFormulas": []
+        }
+      },
+      "timePreferance": "GLOBAL_TIME",
+      "softMax": null,
+      "softMin": null,
+      "selectedLogFields": [],
+      "selectedTracesFields": [],
+      "yAxisUnit": "none",
+      "thresholds": [],
+      "fillSpans": false
+    },
+    {
+      "id": "b72318a1-f5eb-4eb7-a25c-f0fb42cde8b3",
+      "title": "Rutas mas pedidas",
+      "description": "La query va recortada a proposito: esta app pone tokens en la URL.",
+      "isStacked": false,
+      "nullZeroValues": "zero",
+      "opacity": "1",
+      "panelTypes": "table",
+      "query": {
+        "queryType": "builder",
+        "promql": [
+          {
+            "name": "A",
+            "query": "",
+            "legend": "",
+            "disabled": false
+          }
+        ],
+        "clickhouse_sql": [
+          {
+            "name": "A",
+            "legend": "",
+            "disabled": false,
+            "query": ""
+          }
+        ],
+        "id": "fa678e66-b830-4add-a32b-f61c684c5612",
+        "builder": {
+          "queryData": [
+            {
+              "dataSource": "logs",
+              "queryName": "A",
+              "aggregateOperator": "count",
+              "aggregateAttribute": {
+                "key": "",
+                "dataType": "",
+                "type": "",
+                "isColumn": true
+              },
+              "timeAggregation": "count",
+              "spaceAggregation": "sum",
+              "functions": [],
+              "filters": {
+                "items": [
+                  {
+                    "id": "6a9a94bd",
+                    "key": {
+                      "key": "log_file_name",
+                      "dataType": "string",
+                      "type": "tag",
+                      "isColumn": false
+                    },
+                    "op": "contains",
+                    "value": "_access.log"
+                  }
+                ],
+                "op": "AND"
+              },
+              "expression": "A",
+              "disabled": false,
+              "stepInterval": 60,
+              "having": [],
+              "limit": 15,
+              "orderBy": [
+                {
+                  "columnName": "#SIGNOZ_VALUE",
+                  "order": "desc"
+                }
+              ],
+              "groupBy": [
+                {
+                  "key": "ruta",
+                  "dataType": "string",
+                  "type": "tag",
+                  "isColumn": false
+                }
+              ],
+              "legend": "",
+              "reduceTo": "sum"
+            }
+          ],
+          "queryFormulas": []
+        }
+      },
+      "timePreferance": "GLOBAL_TIME",
+      "softMax": null,
+      "softMin": null,
+      "selectedLogFields": [],
+      "selectedTracesFields": [],
+      "yAxisUnit": "none",
+      "thresholds": [],
+      "fillSpans": false
+    },
+    {
+      "id": "cd295ab6-a009-4c56-b8c7-a8ef85561bd4",
+      "title": "Sondeos buscando secretos",
+      "description": "Peticiones a rutas tipo .env o .git. Ya estaban ocurriendo antes de montar esto; no encontraron nada.",
+      "isStacked": false,
+      "nullZeroValues": "zero",
+      "opacity": "1",
+      "panelTypes": "table",
+      "query": {
+        "queryType": "builder",
+        "promql": [
+          {
+            "name": "A",
+            "query": "",
+            "legend": "",
+            "disabled": false
+          }
+        ],
+        "clickhouse_sql": [
+          {
+            "name": "A",
+            "legend": "",
+            "disabled": false,
+            "query": ""
+          }
+        ],
+        "id": "8dbaa2d2-c90f-4c3f-a669-d5a591b23ff5",
+        "builder": {
+          "queryData": [
+            {
+              "dataSource": "logs",
+              "queryName": "A",
+              "aggregateOperator": "count",
+              "aggregateAttribute": {
+                "key": "",
+                "dataType": "",
+                "type": "",
+                "isColumn": true
+              },
+              "timeAggregation": "count",
+              "spaceAggregation": "sum",
+              "functions": [],
+              "filters": {
+                "items": [
+                  {
+                    "id": "6a9a94bd",
+                    "key": {
+                      "key": "log_file_name",
+                      "dataType": "string",
+                      "type": "tag",
+                      "isColumn": false
+                    },
+                    "op": "contains",
+                    "value": "_access.log"
+                  },
+                  {
+                    "id": "9a28b847",
+                    "key": {
+                      "key": "ruta",
+                      "dataType": "string",
+                      "type": "tag",
+                      "isColumn": false
+                    },
+                    "op": "contains",
+                    "value": "env"
+                  }
+                ],
+                "op": "AND"
+              },
+              "expression": "A",
+              "disabled": false,
+              "stepInterval": 60,
+              "having": [],
+              "limit": 20,
+              "orderBy": [
+                {
+                  "columnName": "#SIGNOZ_VALUE",
+                  "order": "desc"
+                }
+              ],
+              "groupBy": [
+                {
+                  "key": "ruta",
+                  "dataType": "string",
+                  "type": "tag",
+                  "isColumn": false
+                },
+                {
+                  "key": "red",
+                  "dataType": "string",
+                  "type": "tag",
+                  "isColumn": false
+                }
+              ],
+              "legend": "",
+              "reduceTo": "sum"
+            }
+          ],
+          "queryFormulas": []
+        }
+      },
+      "timePreferance": "GLOBAL_TIME",
+      "softMax": null,
+      "softMin": null,
+      "selectedLogFields": [],
+      "selectedTracesFields": [],
+      "yAxisUnit": "none",
+      "thresholds": [],
+      "fillSpans": false
+    },
+    {
+      "id": "bfc97fb8-9e87-47e7-bc35-94b436dc1407",
+      "title": "Crons que FALLARON",
+      "description": "Tres estuvieron rotos 24 dias sin que nadie se enterara. Si aqui hay algo, arreglalo hoy.",
+      "isStacked": false,
+      "nullZeroValues": "zero",
+      "opacity": "1",
+      "panelTypes": "table",
+      "query": {
+        "queryType": "builder",
+        "promql": [
+          {
+            "name": "A",
+            "query": "",
+            "legend": "",
+            "disabled": false
+          }
+        ],
+        "clickhouse_sql": [
+          {
+            "name": "A",
+            "legend": "",
+            "disabled": false,
+            "query": ""
+          }
+        ],
+        "id": "db6364a3-012c-4920-9b0e-62772c5168c5",
+        "builder": {
+          "queryData": [
+            {
+              "dataSource": "logs",
+              "queryName": "A",
+              "aggregateOperator": "count",
+              "aggregateAttribute": {
+                "key": "",
+                "dataType": "",
+                "type": "",
+                "isColumn": true
+              },
+              "timeAggregation": "count",
+              "spaceAggregation": "sum",
+              "functions": [],
+              "filters": {
+                "items": [
+                  {
+                    "id": "8ccb4838",
+                    "key": {
+                      "key": "ok",
+                      "dataType": "bool",
+                      "type": "tag",
+                      "isColumn": false
+                    },
+                    "op": "=",
+                    "value": "false"
+                  }
+                ],
+                "op": "AND"
+              },
+              "expression": "A",
+              "disabled": false,
+              "stepInterval": 60,
+              "having": [],
+              "limit": 20,
+              "orderBy": [
+                {
+                  "columnName": "#SIGNOZ_VALUE",
+                  "order": "desc"
+                }
+              ],
+              "groupBy": [
+                {
+                  "key": "cron",
+                  "dataType": "string",
+                  "type": "tag",
+                  "isColumn": false
+                },
+                {
+                  "key": "http",
+                  "dataType": "string",
+                  "type": "tag",
+                  "isColumn": false
+                }
+              ],
+              "legend": "",
+              "reduceTo": "sum"
+            }
+          ],
+          "queryFormulas": []
+        }
+      },
+      "timePreferance": "GLOBAL_TIME",
+      "softMax": null,
+      "softMin": null,
+      "selectedLogFields": [],
+      "selectedTracesFields": [],
+      "yAxisUnit": "none",
+      "thresholds": [],
+      "fillSpans": false
+    },
+    {
+      "id": "959a037c-4bf9-4ab0-a5e6-43aa38b12b36",
+      "title": "Ejecuciones por cron",
+      "description": "Un cron que deja de aparecer es un cron que dejo de correr, y eso no da ningun error.",
+      "isStacked": false,
+      "nullZeroValues": "zero",
+      "opacity": "1",
+      "panelTypes": "table",
+      "query": {
+        "queryType": "builder",
+        "promql": [
+          {
+            "name": "A",
+            "query": "",
+            "legend": "",
+            "disabled": false
+          }
+        ],
+        "clickhouse_sql": [
+          {
+            "name": "A",
+            "legend": "",
+            "disabled": false,
+            "query": ""
+          }
+        ],
+        "id": "7db20a41-5853-4ff8-b6f0-9c290b16a1ab",
+        "builder": {
+          "queryData": [
+            {
+              "dataSource": "logs",
+              "queryName": "A",
+              "aggregateOperator": "count",
+              "aggregateAttribute": {
+                "key": "",
+                "dataType": "",
+                "type": "",
+                "isColumn": true
+              },
+              "timeAggregation": "count",
+              "spaceAggregation": "sum",
+              "functions": [],
+              "filters": {
+                "items": [
+                  {
+                    "id": "1b907bf5",
+                    "key": {
+                      "key": "cron",
+                      "dataType": "string",
+                      "type": "tag",
+                      "isColumn": false
+                    },
+                    "op": "exists",
+                    "value": ""
+                  }
+                ],
+                "op": "AND"
+              },
+              "expression": "A",
+              "disabled": false,
+              "stepInterval": 60,
+              "having": [],
+              "limit": 30,
+              "orderBy": [
+                {
+                  "columnName": "#SIGNOZ_VALUE",
+                  "order": "desc"
+                }
+              ],
+              "groupBy": [
+                {
+                  "key": "cron",
+                  "dataType": "string",
+                  "type": "tag",
+                  "isColumn": false
+                }
+              ],
+              "legend": "",
+              "reduceTo": "sum"
+            }
+          ],
+          "queryFormulas": []
+        }
+      },
+      "timePreferance": "GLOBAL_TIME",
+      "softMax": null,
+      "softMin": null,
+      "selectedLogFields": [],
+      "selectedTracesFields": [],
+      "yAxisUnit": "none",
+      "thresholds": [],
+      "fillSpans": false
+    },
+    {
+      "id": "cdbb8150-4c0a-4300-b30c-8ee271a156a8",
+      "title": "Cuanto tardan los crons",
+      "description": "Uno que se alarga de golpe suele ser la base, no el cron.",
+      "isStacked": false,
+      "nullZeroValues": "zero",
+      "opacity": "1",
+      "panelTypes": "graph",
+      "query": {
+        "queryType": "builder",
+        "promql": [
+          {
+            "name": "A",
+            "query": "",
+            "legend": "",
+            "disabled": false
+          }
+        ],
+        "clickhouse_sql": [
+          {
+            "name": "A",
+            "legend": "",
+            "disabled": false,
+            "query": ""
+          }
+        ],
+        "id": "7afae183-8c68-4549-a64d-55d3a4ddd82b",
+        "builder": {
+          "queryData": [
+            {
+              "dataSource": "logs",
+              "queryName": "A",
+              "aggregateOperator": "avg",
+              "aggregateAttribute": {
+                "key": "ms",
+                "dataType": "float64",
+                "type": "tag",
+                "isColumn": false
+              },
+              "timeAggregation": "avg",
+              "spaceAggregation": "sum",
+              "functions": [],
+              "filters": {
+                "items": [
+                  {
+                    "id": "1b907bf5",
+                    "key": {
+                      "key": "cron",
+                      "dataType": "string",
+                      "type": "tag",
+                      "isColumn": false
+                    },
+                    "op": "exists",
+                    "value": ""
+                  }
+                ],
+                "op": "AND"
+              },
+              "expression": "A",
+              "disabled": false,
+              "stepInterval": 60,
+              "having": [],
+              "limit": null,
+              "orderBy": [],
+              "groupBy": [
+                {
+                  "key": "cron",
+                  "dataType": "string",
+                  "type": "tag",
+                  "isColumn": false
+                }
+              ],
+              "legend": "{{cron}}",
+              "reduceTo": "sum"
+            }
+          ],
+          "queryFormulas": []
+        }
+      },
+      "timePreferance": "GLOBAL_TIME",
+      "softMax": null,
+      "softMin": null,
+      "selectedLogFields": [],
+      "selectedTracesFields": [],
+      "yAxisUnit": "ms",
+      "thresholds": [],
+      "fillSpans": false
+    }
+  ],
+  "variables": {},
+  "version": "v4"
+}
