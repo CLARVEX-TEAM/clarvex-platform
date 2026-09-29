@@ -258,7 +258,15 @@ export function ResumenDelDia({
             ) : null}
             {performance.goal > 0 ? (
               <div className="mt-5 flex items-baseline justify-between border-t border-white/20 pt-4 text-sm">
-                <span className="opacity-80">Meta de la tienda</span>
+                {/*
+                  ⚠️ Decía «Meta de la tienda» y NO lo es: `performance.goal` es
+                  `Kpi.dailyGoal` de la propia persona --la consulta filtra por
+                  `userId`--. Era la única etiqueta de la app que nombraba a la
+                  tienda, la veía todo el mundo antes de entrar al turno, y a un
+                  asesor le decía que la meta de la tienda son sus $2,718. La de
+                  la tienda de verdad vive en su tarjeta, y solo para gerencia.
+                */}
+                <span className="opacity-80">Tu meta de hoy</span>
                 <span className="font-semibold tabular-nums">{money(performance.goal)}</span>
               </div>
             ) : null}

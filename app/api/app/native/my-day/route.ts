@@ -5,6 +5,8 @@ import { isNativeDeviceError, requireNativeDevice } from "@/lib/native-device-au
 import { progressPercent, shiftSummary } from "@/lib/my-day";
 import { prisma } from "@/lib/prisma";
 import { signR2Url } from "@/lib/r2";
+import { PERSON_WHERE } from "@/lib/store-people";
+import { resumirTienda } from "@/lib/venta-de-tienda";
 import { mergeWithDefaults, outfitFor, type UniformDay, type UniformVariant } from "@/lib/uniforms";
 import { retailMonthBoundsFor } from "@/lib/report-deadlines";
 
@@ -31,7 +33,7 @@ export async function GET(request: Request) {
    */
   const mesRetail = retailMonthBoundsFor(day);
 
-  const [user, store, shift, turnoManana, attendance, kpi, plan, pendings, announcements, uniformRows, corrections, unreadNotifications, pendingCorrections, kudos] = await Promise.all([
+  const [user, store, shift, turnoManana, attendance, kpi, filasDeTienda, plan, pendings, announcements, uniformRows, corrections, unreadNotifications, pendingCorrections, kudos] = await Promise.all([
     prisma.user.findFirst({
       where: { id: session.userId, storeId: session.storeId, active: true },
       select: { id: true, name: true, role: true, photoUrl: true, uniformVariant: true }
@@ -59,6 +61,35 @@ export async function GET(request: Request) {
       orderBy: { updatedAt: "desc" },
       select: { dailyGoal: true, dailySales: true, transactions: true, pieces: true }
     }),
+    /*
+     * La venta de la TIENDA, solo para gerencia.
+     *
+     * ⚠️ El candado va AQUÍ, en la consulta, no al pintar. Trayéndola siempre y
+     * escondiéndola en la pantalla, la venta de la tienda viajaría dentro de la
+     * respuesta que recibe un asesor: la regla de roles dice que no ve ventas ni
+     * metas que no sean las suyas, y eso incluye la respuesta, no solo el píxel.
+     *
+     * ⚠️ `PERSON_WHERE` y no `storeId` a secas: el celular de la tienda está
+     * dado de alta con rol ASESOR, y sin ese filtro entra en la lista como
+     * alguien que no vendió nada. Ya se coló en doce consultas por eso mismo.
+     *
+     * ⚠️ Y son las FILAS, no un `aggregate`: el total de la tarjeta se suma de
+     * las mismas filas que enseña debajo. Con dos consultas, un filtro que se
+     * toque en una y no en la otra deja el total contradiciendo a su lista.
+     */
+    manager
+      ? prisma.kpi.findMany({
+          where: { storeId: session.storeId, date: { gte: range.start, lt: range.end }, user: PERSON_WHERE },
+          select: {
+            userId: true,
+            dailySales: true,
+            dailyGoal: true,
+            transactions: true,
+            pieces: true,
+            user: { select: { name: true } }
+          }
+        })
+      : Promise.resolve([]),
     prisma.dayPlan.findFirst({
       where: {
         storeId: session.storeId,
@@ -157,6 +188,23 @@ export async function GET(request: Request) {
       transactions: kpi?.transactions ?? 0,
       pieces: kpi?.pieces ?? 0
     },
+    /*
+     * ⚠️ `null` para quien no es gerencia, y también para gerencia cuando
+     * NADIE ha capturado todavía. Los dos casos se pintan distinto: el asesor no
+     * ve la tarjeta, y gerencia la ve diciendo que aún no hay captura --que no
+     * es lo mismo que una tienda con cero vendido--.
+     */
+    tienda: resumirTienda(
+      filasDeTienda.map((fila) => ({
+        userId: fila.userId,
+        nombre: fila.user.name,
+        venta: Number(fila.dailySales),
+        meta: Number(fila.dailyGoal),
+        tickets: fila.transactions,
+        piezas: fila.pieces
+      })),
+      session.userId
+    ),
     plan: plan ? {
       id: plan.id,
       focus: plan.focus,

@@ -2,11 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { canManageDataSources } from "@/lib/access-control";
 import { bearerToken, SESSION_COOKIE, verifySessionToken, type Session } from "@/lib/session-token";
 
-const managerRoutes = ["/manager", "/pendientes", "/bitacora", "/comunicados", "/datos", "/escritorio", "/dispositivos",
-  // ⚠️ MAQUETA temporal: los prototipos de la venta de tienda en «Mi día». Va
-  // en gerencia porque es de lo que trata --lo que un asesor NO debe ver-- y se
-  // borra con ella.
-  "/prototipo-venta"];
+const managerRoutes = ["/manager", "/pendientes", "/bitacora", "/comunicados", "/datos", "/escritorio", "/dispositivos"];
 const advisorRoutes = ["/advisor", "/kpis", "/horarios", "/actividad"];
 const sharedRoutes = [
   // Diagnóstico del aparato: lo abre cualquiera con sesión, porque el
@@ -339,11 +335,6 @@ export const config = {
     "/diagnostico",
     "/app",
     "/uniformes/:path*",
-    // ⚠️ MAQUETA temporal: los prototipos de la venta de tienda. Exige sesion
-    // como cualquier pantalla --no ensena datos de nadie, son numeros escritos
-    // a mano, pero una pantalla sin sesion es superficie que hay que justificar
-    // y esta no lo necesita--. Se va con la maqueta.
-    "/prototipo-venta",
     "/solicitudes/:path*",
     "/soporte/:path*",
     "/credencial/:path*",

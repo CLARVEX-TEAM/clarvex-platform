@@ -25,6 +25,8 @@ import { AppFrame, AppHeader, Button, Card, ProgressBar } from "@/components/ui"
 import { ClimaIntro } from "@/components/my-day/ClimaIntro";
 import { Manana, type MananaDatos } from "@/components/my-day/Manana";
 import { ResumenDelDia } from "@/components/my-day/ResumenDelDia";
+import { TarjetaTienda } from "@/components/my-day/TarjetaTienda";
+import type { VentaDeTienda } from "@/lib/venta-de-tienda";
 import type { Clima } from "@/lib/clima";
 import { getSession } from "@/lib/auth";
 import { compressImage } from "@/lib/image-compress";
@@ -69,6 +71,12 @@ type MyDay = {
     minutesLate: number;
   } | null;
   performance: { sales: number; goal: number; progress: number; transactions: number; pieces: number };
+  /**
+   * La venta de la TIENDA. `null` para quien no es gerencia --el servidor ni la
+   * consulta-- y también para gerencia cuando nadie ha capturado todavía; el rol
+   * es lo único que separa los dos casos. Ver `lib/venta-de-tienda.ts`.
+   */
+  tienda?: VentaDeTienda | null;
   plan: { id: string; focus: string; message: string; tasks: Array<{ id: string; title: string; completed: boolean }> } | null;
   pendings: Array<{ id: string; title: string; priority: string; status: string; dueDate: string }>;
   announcements: Array<{ id: string; title: string; body: string; date: string; read: boolean }>;
@@ -433,6 +441,19 @@ export default function MyDayPage() {
             ) : null
           }
         />
+
+        {/*
+          La venta de la TIENDA, justo debajo y solo para gerencia.
+
+          ⚠️ Va en su propia tarjeta a propósito. El recuadro de arriba contesta
+          «¿cómo voy yo?» y esta «¿cómo va la tienda?»: metiéndolas juntas habría
+          que elegir cuál de las dos cifras es la grande, y para gerencia la que
+          de verdad la mide es la de tienda --su comisión sale de la venta de
+          tienda contra el mínimo de tienda-- mientras que la suya sigue siendo
+          la de su turno. Separadas, el recuadro de arriba es EL MISMO que ve un
+          asesor: una composición menos que mantener.
+        */}
+        <TarjetaTienda datos={data.tienda ?? null} esGerencia={data.capabilities.canOpenChecklist} />
 
         {/*
           UNA sola accion principal, y en el extremo del NEUTRO --tinta sobre
