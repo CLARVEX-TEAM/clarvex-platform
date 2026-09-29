@@ -1,4 +1,42 @@
 import FaroSourceMapUploaderPlugin from "@grafana/faro-webpack-plugin";
+import { existsSync, readFileSync } from "node:fs";
+
+/*
+ * ⚠️ El `.env` se lee AQUI, a mano, y no es redundante.
+ *
+ * Next lo carga para la aplicacion, pero evalua ESTE archivo antes: cualquier
+ * `process.env.X` leido aqui arriba sale vacio aunque la variable exista en el
+ * `.env`. Costo un despliegue entero -- la clave guardada, el enlace al `.env`
+ * bien puesto, y el build sin generar un solo source map ni decir por que.
+ *
+ * ⚠️ Escrito a mano y no con `@next/env`: ese paquete es CommonJS y su version
+ * publicada va por delante de la de Next, asi que meterlo solo para esto trae
+ * un desajuste de versiones a cambio de seis lineas.
+ *
+ * ⚠️ Solo LEE, y NO pisa lo que ya venga del entorno: una variable exportada en
+ * el despliegue manda sobre el archivo, que es el orden que espera cualquiera.
+ */
+function leerDelEnv(clave) {
+  if (process.env[clave]) return process.env[clave];
+  // `process.cwd()` y no la URL de este modulo: el build siempre corre desde la
+  // raiz del proyecto, y asi no hay que deshacer el `/C:/` que mete `file://`
+  // en Windows.
+  const ruta = `${process.cwd()}/.env`;
+  if (!existsSync(ruta)) return undefined;
+  for (const linea of readFileSync(ruta, "utf8").split(/\r?\n/)) {
+    // ⚠️ El nombre es lo que va hasta el PRIMER `=`; todo lo demas es el valor,
+    // que puede llevar mas signos igual --una credencial en base64 termina en
+    // `=`--. Cortar por el ultimo se come el valor entero: es exactamente el
+    // fallo que costo cuatro intentos con la credencial de Grafana.
+    const corte = linea.indexOf("=");
+    if (corte > 0 && linea.slice(0, corte).trim() === clave) {
+      return linea.slice(corte + 1).trim().replace(/^["']|["']$/g, "");
+    }
+  }
+  return undefined;
+}
+
+const faroApiKey = leerDelEnv("FARO_API_KEY");
 /** @type {import('next').NextConfig} */
 import { withSentryConfig } from "@sentry/nextjs";
 
@@ -165,7 +203,7 @@ const nextConfig = {
    * De borrarlos despues de la subida se encarga `scripts/borrar-sourcemaps.mjs`,
    * que corre al final del build Y COMPRUEBA que no queda ninguno.
    */
-  productionBrowserSourceMaps: Boolean(process.env.FARO_API_KEY),
+  productionBrowserSourceMaps: Boolean(faroApiKey),
 };
 
 /*
@@ -180,7 +218,7 @@ const nextConfig = {
  * y quien pueda escribir --o leer-- ahi la tiene entera.
  */
 const conFaro = (config) => {
-  if (!process.env.FARO_API_KEY) return config;
+  if (!faroApiKey) return config;
   const anterior = config.webpack;
   return {
     ...config,
@@ -195,7 +233,7 @@ const conFaro = (config) => {
             endpoint: "https://faro-api-prod-us-west-0.grafana.net/faro/api/v1",
             appId: "5687",
             stackId: "1848107",
-            apiKey: process.env.FARO_API_KEY,
+            apiKey: faroApiKey,
             gzipContents: true,
             verbose: false,
           })
