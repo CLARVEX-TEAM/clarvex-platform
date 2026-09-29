@@ -227,30 +227,14 @@ processors:
       hostname_sources: [os]
 
 exporters:
-  otlp:
-    # De la cuenta de SigNoz Cloud; cambia segun la region.
-    endpoint: ${env:SIGNOZ_ENDPOINT}   # ingest.us2.signoz.cloud:443
-    tls:
-      insecure: false
-    headers:
-      signoz-ingestion-key: ${env:SIGNOZ_INGESTION_KEY}
-    # Si SigNoz no contesta, se reintenta y se encola en MEMORIA, acotada. No en
-    # disco: el disco va al 69 % y una cola sin tope ahi es como se llena.
-    retry_on_failure:
-      enabled: true
-      initial_interval: 5s
-      max_interval: 60s
-      max_elapsed_time: 300s
-    sending_queue:
-      enabled: true
-      queue_size: 200
-
-  # Grafana Cloud, en PARALELO a SigNoz.
+  # ⚠️ Solo Grafana. SigNoz se retiro el 29 de septiembre de 2026, cuando Adrian
+  # eligio quedarse con Grafana: su plan gratuito cubre de sobra este volumen
+  # --unos 24,000 logs al dia-- y ahi estan los 25 paneles, las alertas y los
+  # chequeos desde fuera.
   #
-  # ⚠️ Los dos a la vez a proposito y sin coste extra: asi se comparan las dos
-  # interfaces con datos reales antes de apagar una, y el cambio no deja ni un
-  # minuto sin vigilancia. Un exportador que falle NO afecta al otro: cada uno
-  # tiene su cola y sus reintentos.
+  # Sus credenciales siguen en el .env a proposito, sin usarse: la prueba de
+  # SigNoz no habia caducado y volver seria cambiar dos lineas. Se limpian
+  # cuando pase.
   otlphttp/grafana:
     endpoint: ${env:GRAFANA_OTLP_ENDPOINT}
     headers:
@@ -277,12 +261,12 @@ service:
     traces:
       receivers: [otlp]
       processors: [memory_limiter, resourcedetection, batch]
-      exporters: [otlp, otlphttp/grafana]
+      exporters: [otlphttp/grafana]
     metrics:
       receivers: [otlp, hostmetrics, postgresql]
       processors: [memory_limiter, resourcedetection, batch]
-      exporters: [otlp, otlphttp/grafana]
+      exporters: [otlphttp/grafana]
     logs:
       receivers: [otlp, filelog, filelog/proxy, filelog/app]
       processors: [memory_limiter, transform/redactar, resourcedetection, batch]
-      exporters: [otlp, otlphttp/grafana]
+      exporters: [otlphttp/grafana]
