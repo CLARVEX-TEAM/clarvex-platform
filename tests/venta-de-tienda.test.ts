@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { resumirTienda, type FilaKpi } from "../lib/venta-de-tienda";
+import { enTurnoHoy, resumirTienda, type FilaKpi } from "../lib/venta-de-tienda";
 
 /**
  * La venta de tienda de «Mi día».
@@ -139,4 +139,89 @@ test("nadie es «tuyo» si tu no tienes fila hoy", () => {
   const tienda = resumirTienda(EQUIPO, "no-capturo");
   assert.equal(tienda?.personas.some((persona) => persona.esTuyo), false);
   assert.equal(tienda?.capturadas, 3);
+});
+
+/*
+ * ── Solo quien está en turno ──────────────────────────────────────────────
+ *
+ * Reportado desde la tienda el 29 de septiembre de 2026: la lista salía con las
+ * cinco personas en `$0.00`, incluida la que descansaba. No era un fallo de
+ * captura: guardar Cuota Justa escribe la meta diaria de TODA la semana por
+ * adelantado, con venta, tickets y piezas en cero, así que todo el equipo tiene
+ * fila todos los días.
+ */
+
+const HORARIO = [
+  { userId: "u1", status: "WORKING" },
+  { userId: "u2", status: "OFF" },
+  { userId: "yo", status: "WORKING" }
+];
+
+test("⚠️ quien descansa y no vendió NO sale en la lista", () => {
+  const tienda = resumirTienda(
+    [
+      fila({ userId: "u1", nombre: "Itzel Treviño", venta: 6120, meta: 7000, tickets: 12, piezas: 21 }),
+      fila({ userId: "u2", nombre: "Waira Popoca", meta: 7000 }),
+      fila({ userId: "yo", nombre: "Jesús Hernández", venta: 1910, meta: 2718.36, tickets: 4, piezas: 7 })
+    ],
+    "yo",
+    enTurnoHoy(HORARIO)
+  );
+  assert.deepEqual(tienda?.personas.map((p) => p.nombre), ["Itzel Treviño", "Jesús Hernández"]);
+});
+
+test("⚠️ pero la META sigue siendo la de la TIENDA, con ausentes incluidos", () => {
+  // Gerencia se mide contra la meta de la tienda entera, trabaje quien trabaje.
+  // Recortarla a los presentes bajaría el listón según quién descanse ese día.
+  const tienda = resumirTienda(
+    [
+      fila({ userId: "u1", nombre: "Itzel", venta: 6120, meta: 7000 }),
+      fila({ userId: "u2", nombre: "Waira", meta: 7000 }),
+      fila({ userId: "yo", nombre: "Jesús", venta: 1910, meta: 2718.36 })
+    ],
+    "yo",
+    enTurnoHoy(HORARIO)
+  );
+  assert.equal(tienda?.meta, 16718.36);
+});
+
+test("⚠️ quien VENDIÓ sale aunque su horario diga que descansa", () => {
+  // Una venta que existe tiene que verse: es lo único que mantiene la suma de
+  // las filas visibles cuadrando con el total de arriba, y un descuadre de
+  // horario hay que corregirlo, no esconderlo.
+  const filas = [
+    fila({ userId: "u1", nombre: "Itzel", venta: 6120, tickets: 12, piezas: 21 }),
+    fila({ userId: "u2", nombre: "Waira", venta: 900, tickets: 2, piezas: 3 }),
+    fila({ userId: "yo", nombre: "Jesús", venta: 1910, tickets: 4, piezas: 7 })
+  ];
+  const tienda = resumirTienda(filas, "yo", enTurnoHoy(HORARIO));
+  assert.ok(tienda?.personas.some((p) => p.nombre === "Waira"), "Waira vendió y no puede desaparecer");
+  const suma = tienda!.personas.reduce((acc, p) => acc + p.venta, 0);
+  assert.equal(suma, tienda?.venta);
+});
+
+test("⚠️ el CONTEO cuenta como estar en turno", () => {
+  // Ese día venden y tienen meta, igual que cualquier otro. Es el mismo
+  // criterio de `lib/working-today.ts`.
+  const enTurno = enTurnoHoy([{ userId: "u1", status: "INVENTORY" }, { userId: "u2", status: "VACATION" }]);
+  assert.equal(enTurno?.has("u1"), true);
+  assert.equal(enTurno?.has("u2"), false);
+});
+
+test("⚠️ sin horario cargado NO se filtra a nadie", () => {
+  // Un horario que aún no se ha capturado no es «no trabaja nadie». Filtrando
+  // por él, la tarjeta se vaciaría justo los días en que gerencia todavía no lo
+  // ha subido, que es cuando más se mira.
+  assert.equal(enTurnoHoy([]), null);
+  const tienda = resumirTienda(EQUIPO, "yo", enTurnoHoy([]));
+  assert.equal(tienda?.personas.length, 3);
+});
+
+test("⚠️ el endpoint pasa el horario del día a resumirTienda", () => {
+  // Sin esta línea todo lo de arriba queda escrito y sin usar: la pantalla
+  // seguiría enseñando al equipo entero y las pruebas en verde.
+  const ruta = join(__dirname, "..", "app", "api", "app", "native", "my-day", "route.ts");
+  const codigo = readFileSync(ruta, "utf8");
+  assert.match(codigo, /enTurnoHoy\(horariosDeHoy\)/);
+  assert.match(codigo, /prisma\.schedule\.findMany/);
 });

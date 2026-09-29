@@ -6,7 +6,7 @@ import { progressPercent, shiftSummary } from "@/lib/my-day";
 import { prisma } from "@/lib/prisma";
 import { signR2Url } from "@/lib/r2";
 import { PERSON_WHERE } from "@/lib/store-people";
-import { resumirTienda } from "@/lib/venta-de-tienda";
+import { enTurnoHoy, resumirTienda } from "@/lib/venta-de-tienda";
 import { mergeWithDefaults, outfitFor, type UniformDay, type UniformVariant } from "@/lib/uniforms";
 import { retailMonthBoundsFor } from "@/lib/report-deadlines";
 
@@ -33,7 +33,7 @@ export async function GET(request: Request) {
    */
   const mesRetail = retailMonthBoundsFor(day);
 
-  const [user, store, shift, turnoManana, attendance, kpi, filasDeTienda, plan, pendings, announcements, uniformRows, corrections, unreadNotifications, pendingCorrections, kudos] = await Promise.all([
+  const [user, store, shift, turnoManana, attendance, kpi, filasDeTienda, horariosDeHoy, plan, pendings, announcements, uniformRows, corrections, unreadNotifications, pendingCorrections, kudos] = await Promise.all([
     prisma.user.findFirst({
       where: { id: session.userId, storeId: session.storeId, active: true },
       select: { id: true, name: true, role: true, photoUrl: true, uniformVariant: true }
@@ -88,6 +88,18 @@ export async function GET(request: Request) {
             pieces: true,
             user: { select: { name: true } }
           }
+        })
+      : Promise.resolve([]),
+    /*
+     * El horario de la tienda para HOY, que es lo que decide quién sale en la
+     * lista de la tarjeta. Solo para gerencia, igual que las filas de arriba:
+     * el reparto de turnos del equipo no tiene por qué viajar en la respuesta
+     * de un asesor.
+     */
+    manager
+      ? prisma.schedule.findMany({
+          where: { storeId: session.storeId, date: day, user: PERSON_WHERE },
+          select: { userId: true, status: true }
         })
       : Promise.resolve([]),
     prisma.dayPlan.findFirst({
@@ -203,7 +215,8 @@ export async function GET(request: Request) {
         tickets: fila.transactions,
         piezas: fila.pieces
       })),
-      session.userId
+      session.userId,
+      enTurnoHoy(horariosDeHoy)
     ),
     plan: plan ? {
       id: plan.id,
