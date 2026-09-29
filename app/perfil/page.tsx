@@ -11,6 +11,7 @@ import { AppFrame, AppHeader, Badge, Button, Card, ProfileAvatar } from "@/compo
 import { SaveButton } from "@/components/ActionButtons";
 import { AjusteCandado } from "@/components/AjusteCandado";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { SalidaDeKiosko } from "@/components/SalidaDeKiosko";
 import { useToast } from "@/components/Toast";
 import { useTheme, type Theme } from "@/components/ThemeProvider";
 
@@ -48,6 +49,9 @@ export default function ProfilePage() {
   const [confirmarSalida, setConfirmarSalida] = useState(false);
   const [saliendo, setSaliendo] = useState(false);
   const router = useRouter();
+  /* El kiosko está dado de alta con rol `ASESOR`, así que lo que lo distingue
+     es `checklistOnly`, nunca el rol. */
+  const esKiosko = user?.checklistOnly === true;
 
   /*
    * ⚠️ **`replace`, no `push`.** Con `push`, el botón físico de atrás de Android
@@ -62,7 +66,16 @@ export default function ProfilePage() {
   async function cerrarSesion() {
     setSaliendo(true);
     try {
-      await logout();
+      const resultado = await logout();
+      /* En el kiosko esto no se alcanza --ahí se pide el PIN--, pero si el
+         servidor rechaza por cualquier motivo, NO se navega: mandar a /login
+         con la sesión intacta hace creer que se cerró. */
+      if (!resultado.ok) {
+        setSaliendo(false);
+        setConfirmarSalida(false);
+        toast(resultado.error);
+        return;
+      }
       router.replace("/login");
     } catch {
       setSaliendo(false);
@@ -386,6 +399,13 @@ export default function ProfilePage() {
               <LogOut size={17} /> Cerrar sesión
             </button>
 
+            {/* ⚠️ En el celular KIOSKO no basta con confirmar: lo cierra
+                gerencia con su PIN. Es el aparato compartido de la tienda y su
+                sesión es la única puerta a Checklist y Conteos. El candado de
+                verdad vive en el servidor; esto solo pide lo que va a exigir. */}
+            {esKiosko ? (
+              <SalidaDeKiosko abierto={confirmarSalida} onCancelar={() => setConfirmarSalida(false)} />
+            ) : (
             <ConfirmDialog
               open={confirmarSalida}
               title="¿Cerrar sesión?"
@@ -395,6 +415,7 @@ export default function ProfilePage() {
               onConfirm={() => void cerrarSesion()}
               onCancel={() => setConfirmarSalida(false)}
             />
+            )}
           </>
         )}
       </AppFrame>

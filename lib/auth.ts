@@ -99,11 +99,39 @@ export async function createPin(employeeNumber: string, pin: string) {
   });
 }
 
-export async function logout() {
-  await fetch("/api/auth/session", { method: "DELETE" });
+/** Lo que hace falta para cerrar el celular kiosko: el PIN de alguien de gerencia. */
+export type AutorizacionDeSalida = { employeeNumber: string; pin: string };
+
+export type ResultadoSalida =
+  | { ok: true }
+  /** El servidor pide autorización, o la que se dio no vale. */
+  | { ok: false; requierePin: boolean; error: string };
+
+/**
+ * ⚠️ **Ahora puede FALLAR, y por eso devuelve un resultado.**
+ *
+ * En el celular kiosko el servidor exige el PIN de gerencia: es el aparato
+ * compartido de la tienda y su sesión es la única puerta a Checklist y Conteos.
+ * Quien no mire lo que devuelve se irá a `/login` con la sesión intacta, y la
+ * persona verá la pantalla de acceso, entrará con lo que sea y creerá que
+ * funcionó.
+ *
+ * Fuera del kiosko no cambia nada: sin autorización, el servidor cierra como
+ * siempre.
+ */
+export async function logout(autorizacion?: AutorizacionDeSalida): Promise<ResultadoSalida> {
+  const res = await fetch("/api/auth/session", {
+    method: "DELETE",
+    ...(autorizacion ? { headers: { "Content-Type": "application/json" }, body: JSON.stringify(autorizacion) } : {})
+  });
+  if (!res.ok) {
+    const datos = (await res.json().catch(() => ({}))) as { error?: string; requierePin?: boolean };
+    return { ok: false, requierePin: datos.requierePin === true, error: datos.error ?? "No se pudo cerrar la sesión." };
+  }
   // El celular kiosko y las cuentas demo son COMPARTIDOS: sin vaciar la caché
   // del panel, quien entre después vería los datos de quien acaba de salir.
   clearAppDataCache();
+  return { ok: true };
 }
 
 export async function getBiometricRegistrationOptions(): Promise<PublicKeyCredentialCreationOptionsJSON> {

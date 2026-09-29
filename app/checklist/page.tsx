@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import NextImage from "next/image";
 import { ImagenAmpliable } from "@/components/VisorImagen";
 import { Camera, Check, CheckCircle2, FileText, RotateCcw, ChevronDown, Circle, Clock3, ExternalLink, FileCheck2, Image as ImageIcon, Images, LogOut, Moon, RefreshCw, ScanLine, ScrollText, SlidersHorizontal, Sun, X } from "lucide-react";
-import { getSession, logout } from "@/lib/auth";
+import { getSession } from "@/lib/auth";
+import { SalidaDeKiosko } from "@/components/SalidaDeKiosko";
 import { compressImage } from "@/lib/image-compress";
 import { DocScanner } from "@/components/DocScanner";
 import type { User } from "@/lib/types";
@@ -65,6 +66,7 @@ const SECTIONS: { id: Section; label: string; icon: typeof Sun }[] = [
 export default function ChecklistPage() {
   const router = useRouter();
   const [session, setSession] = useState<User | null>(null);
+  const [pidiendoSalida, setPidiendoSalida] = useState(false);
   const [items, setItems] = useState<ChecklistItem[]>([]);
   const [date, setDate] = useState("");
   const [loading, setLoading] = useState(true);
@@ -440,12 +442,18 @@ export default function ChecklistPage() {
   const kiosk = session?.checklistOnly === true;
   return (
     <>
+      <SalidaDeKiosko abierto={pidiendoSalida} onCancelar={() => setPidiendoSalida(false)} />
       <AppHeader
         title="Checklist de tienda"
         subtitle={dateLabel ? dateLabel.charAt(0).toUpperCase() + dateLabel.slice(1) : "Apertura y cierre"}
         backHref={kiosk ? undefined : "/manager"}
         action={kiosk ? (
-          <button type="button" onClick={() => void logout().then(() => router.replace("/login"))} className="flex items-center gap-1.5 rounded-full border border-line px-3 py-1.5 text-xs font-semibold text-muted transition active:scale-95">
+          /* ⚠️ Ya no cierra directo: el kiosko lo cierra gerencia con su PIN.
+             Es el aparato compartido de la tienda, y cerrarlo aquí dejaba a
+             cualquiera entrando con su cuenta personal y el kiosko fuera de
+             servicio. El candado de verdad está en el servidor; esto solo pide
+             lo que el servidor va a exigir. */
+          <button type="button" onClick={() => setPidiendoSalida(true)} className="flex items-center gap-1.5 rounded-full border border-line px-3 py-1.5 text-xs font-semibold text-muted transition active:scale-95">
             <LogOut size={14} />Salir
           </button>
         ) : (
