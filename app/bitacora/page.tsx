@@ -2,11 +2,12 @@
 
 import Image from "next/image";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { BookOpen, CalendarClock, FileText, ImagePlus, X } from "lucide-react";
+import { BookOpen, CalendarClock, FileText, ImagePlus, PenLine, X } from "lucide-react";
 import { fetchAppData, type AppData } from "@/lib/app-data";
-import { AppFrame, AppHeader, Button, Card, EmptyState, FloatingActionButton, Skeleton } from "@/components/ui";
+import { AppFrame, AppHeader, Badge, Button, Card, EmptyState, FloatingActionButton, Skeleton, StatCard } from "@/components/ui";
 import { SelectorChips } from "@/components/ui/SelectorChips";
 import { ResourceDiscussion } from "@/components/ResourceDiscussion";
+import { useSuperficiePapel } from "@/lib/superficie-papel";
 
 /*
  * Las cinco categorias, en un sitio y no repartidas por el JSX. Antes eran
@@ -30,6 +31,13 @@ export default function BitacoraPage() {
    * cuesta un toque. Misma decision que en Pendientes y Comunicados.
    */
   const [creando, setCreando] = useState(false);
+  /*
+   * ⚠️ El rediseño es SOLO de la APK. Fuera de ella --navegador, PWA, iPhone--
+   * la bitácora se ve como antes: formulario siempre abierto, una tarjeta por
+   * registro y el `<select>` de categoría. Ver `lib/superficie-papel.ts`.
+   */
+  const papel = useSuperficiePapel();
+  const formularioAbierto = !papel || creando;
   const [description, setDescription] = useState("");
   const [comment, setComment] = useState("");
   const [evidence, setEvidence] = useState<File | null>(null);
@@ -118,7 +126,7 @@ export default function BitacoraPage() {
                 Ultimo: {latest ? new Date(latest.date).toLocaleDateString("es-MX") : "sin registros"}
               </p>
             </div>
-            <div className="grid size-12 place-items-center rounded-[1.1rem] border border-volt/25 bg-volt/10 text-volt">
+            <div className={`grid size-12 place-items-center rounded-[1.1rem] border ${papel ? "border-volt/25 bg-volt/10 text-volt" : "border-orchid/25 bg-orchid/10 text-orchid"}`}>
               <BookOpen size={21} />
             </div>
           </div>
@@ -130,19 +138,24 @@ export default function BitacoraPage() {
           categorias distintas se han usado. Baja a una linea de pie, que es lo
           que es, y deja el peso visual para los registros.
         */}
+        <div className="fuera-de-papel mb-3 grid grid-cols-2 gap-3">
+          <StatCard compact label="Categorias" value={String(new Set(entries.map((entry) => entry.category)).size)} detail="En uso" tone="mint" />
+          <StatCard compact label="Autores" value={String(new Set(entries.map((entry) => entry.authorId)).size)} detail="Equipo" tone="ember" />
+        </div>
         {entries.length ? (
-          <p className="mb-3 px-1 text-xs text-muted">
+          <p className="solo-papel mb-3 px-1 text-xs text-muted">
             {new Set(entries.map((entry) => entry.authorId)).size} personas han escrito en esta bitacora
           </p>
         ) : null}
 
-        {creando ? (
+        {formularioAbierto ? (
         <Card className="mb-3">
           <div className="flex items-center justify-between gap-3">
             <div>
               <h2 className="text-lg font-semibold">Nuevo registro</h2>
-              <p className="mt-1 text-sm text-muted">Captura eventos relevantes de apertura, cliente, inventario o cierre.</p>
+              <p className={`mt-1 text-sm ${papel ? "text-muted" : "text-ink/50"}`}>Captura eventos relevantes de apertura, cliente, inventario o cierre.</p>
             </div>
+            {!papel ? <PenLine className="text-volt" size={20} /> : (
             <button
               type="button"
               onClick={() => setCreando(false)}
@@ -151,6 +164,7 @@ export default function BitacoraPage() {
             >
               <X size={18} />
             </button>
+            )}
           </div>
           <form className="mt-3 grid gap-2.5" onSubmit={createLog}>
             {/*
@@ -159,14 +173,20 @@ export default function BitacoraPage() {
               pantalla rediseniada. Y con cinco opciones costaba dos toques
               --abrir y elegir-- ver algo que cabe entero en la pantalla.
             */}
+            {papel ? (
             <div>
               <p className="mb-2 text-xs font-bold text-muted">Categoria</p>
               <SelectorChips options={OPCIONES_CATEGORIA} value={category} onChange={setCategory} ariaLabel="Categoria del registro" />
             </div>
+            ) : (
+            <select value={category} onChange={(event) => setCategory(event.target.value as Categoria)} aria-label="Categoria del registro" className="fuera-de-papel min-h-12 rounded-2xl border border-line/80 bg-panel/75 px-3 py-3 text-ink outline-hidden transition focus:border-volt focus:ring-4 focus:ring-volt/15">
+              {CATEGORIAS.map((valor) => <option key={valor}>{valor}</option>)}
+            </select>
+            )}
             <textarea value={description} onChange={(event) => setDescription(event.target.value)} className="min-h-20 rounded-2xl border border-line/80 bg-panel/75 px-3 py-2.5 text-ink outline-hidden transition placeholder:text-ink/34 focus:border-volt focus:ring-4 focus:ring-volt/15" placeholder="Descripcion del registro" required />
             <textarea value={comment} onChange={(event) => setComment(event.target.value)} maxLength={1000} className="min-h-16 rounded-2xl border border-line/80 bg-panel/75 px-3 py-2.5 text-ink outline-hidden transition placeholder:text-ink/34 focus:border-volt focus:ring-4 focus:ring-volt/15" placeholder="Comentario adicional (opcional)" />
             {preview ? (
-              <div className="relative h-40 overflow-hidden rounded-2xl bg-panel">
+              <div className={`relative h-40 overflow-hidden rounded-2xl ${papel ? "bg-panel" : "bg-slate-100 dark:bg-slate-700"}`}>
                 <Image src={preview} alt="Vista previa de evidencia" fill sizes="360px" className="object-cover" unoptimized />
                 <button type="button" onClick={() => setEvidence(null)} className="absolute right-2 top-2 grid size-9 place-items-center rounded-full bg-white/90" aria-label="Quitar evidencia"><X size={16} /></button>
               </div>
@@ -176,7 +196,7 @@ export default function BitacoraPage() {
               <input type="file" accept="image/jpeg,image/png,image/webp" aria-label="Subir archivo de evidencia" className="sr-only" onChange={(event) => setEvidence(event.target.files?.[0] ?? null)} />
             </label>
             {evidence ? <input value={evidenceNote} onChange={(event) => setEvidenceNote(event.target.value)} maxLength={500} className="min-h-12 rounded-2xl border border-line bg-panel px-3 outline-hidden focus:border-volt" placeholder="Nota de evidencia (opcional)" /> : null}
-            {formStatus ? <p className={`text-sm font-semibold ${formStatusType === "success" ? "text-mint" : formStatusType === "error" ? "text-orchid" : "text-muted"}`}>{formStatus}</p> : null}
+            {formStatus ? <p className={`text-sm font-semibold ${formStatusType === "success" ? (papel ? "text-mint" : "text-emerald-600 dark:text-emerald-400") : formStatusType === "error" ? (papel ? "text-orchid" : "text-rose-600 dark:text-rose-400") : "text-muted"}`}>{formStatus}</p> : null}
             <Button type="submit" className="w-full" loading={submitting} success={saved} icon={<FileText size={17} />}>
               Guardar registro
             </Button>
@@ -195,7 +215,32 @@ export default function BitacoraPage() {
           etiqueta de texto: eran una insignia y una fecha pequenia peleando por
           el mismo sitio, y lo que se busca al abrir la bitacora es cuando paso.
         */}
-        {entries.length === 0 ? (
+        {!papel ? (
+          <div className="space-y-3">
+            {entries.length === 0 ? (
+              <Card><EmptyState icon={BookOpen} title="Sin registros aún" description="Captura el primer evento de operación con el formulario de arriba." /></Card>
+            ) : null}
+            {entries.map((entry, index) => (
+              <Card key={entry.id} className="relative overflow-hidden">
+                <div className="absolute bottom-0 left-5 top-11 w-px bg-line/70" />
+                <div className="relative flex gap-3">
+                  <span className="mt-1 grid size-10 shrink-0 place-items-center rounded-2xl border border-mint/25 bg-mint/10 text-mint">
+                    <CalendarClock size={17} />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <Badge>{entry.category}</Badge>
+                      <p className="text-xs text-ink/42">{new Date(entry.date).toLocaleString("es-MX")}</p>
+                    </div>
+                    <p className="mt-2 text-[13px] leading-5 text-ink/80">{entry.description}</p>
+                    <p className="mt-1 text-xs font-semibold text-mint">{index + 1}. {userName(entry.authorId)}</p>
+                    <ResourceDiscussion target={{ logEntryId: entry.id }} />
+                  </div>
+                </div>
+              </Card>
+            ))}
+          </div>
+        ) : entries.length === 0 ? (
           <Card><EmptyState icon={BookOpen} title="Sin registros aún" description="Toca el botón de abajo para capturar el primer evento de operación." /></Card>
         ) : (
           <div className="papel-elev relative overflow-hidden rounded-[20px] border border-line bg-card">
@@ -224,7 +269,7 @@ export default function BitacoraPage() {
         )}
 
         {/* El boton flotante es la unica puerta al formulario, como en Pendientes. */}
-        {!creando ? (
+        {papel && !creando ? (
           <FloatingActionButton onClick={() => setCreando(true)} label="Nuevo registro" />
         ) : null}
       </AppFrame>

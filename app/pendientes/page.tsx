@@ -4,13 +4,14 @@ import { useCallback, useEffect, useState } from "react";
 import { dashboardDateKey } from "@/lib/dashboard-kpi";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { EstadoPendiente } from "@/components/pendientes/EstadoPendiente";
-import { AlertTriangle, ClipboardCheck, Pencil, Plus, Sparkles, Trash2, X } from "lucide-react";
+import { AlertTriangle, ClipboardCheck, Pencil, Plus, Sparkles, Trash2, UserRound, X } from "lucide-react";
 import { fetchAppData, type AppData } from "@/lib/app-data";
 import { useSession } from "@/lib/use-session";
 import { isOpenPending, type Pending, type User } from "@/lib/types";
 import { AppFrame, AppHeader, Badge, Card, EmptyState, FloatingActionButton, priorityTone, Skeleton, statusTone } from "@/components/ui";
 import { ResourceDiscussion } from "@/components/ResourceDiscussion";
-import { SaveButton } from "@/components/ActionButtons";
+import { DeleteButton, SaveButton } from "@/components/ActionButtons";
+import { useSuperficiePapel } from "@/lib/superficie-papel";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { useToast } from "@/components/Toast";
 import { AppDatePicker, AppInput, AppSelect, AppTextarea, type SelectOption } from "@/components/forms";
@@ -60,6 +61,13 @@ export default function PendientesPage() {
    * abierto y el botón flotante, que solo era un ancla hacia él--.
    */
   const [creando, setCreando] = useState(false);
+  /*
+   * ⚠️ El rediseño es SOLO de la APK. Fuera de ella --navegador, PWA, iPhone--
+   * Pendientes se ve como antes: formulario siempre a la vista con el botón
+   * flotante como ancla, rejilla de cuatro datos y `<select>` de estado. Ver
+   * `lib/superficie-papel.ts`.
+   */
+  const papel = useSuperficiePapel();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("OPERACION");
@@ -248,7 +256,7 @@ export default function PendientesPage() {
           todas dejaría de señalar cuál manda. Aquí lo que se viene a ver es la
           LISTA, así que el resumen ocupa un renglón y cede el sitio.
         */}
-        <div className="mb-4 flex items-end justify-between gap-3 px-1">
+        <div className="solo-papel mb-4 flex items-end justify-between gap-3 px-1">
           <div className="flex items-baseline gap-5">
             <div>
               <div className="text-[22px] font-semibold tabular-nums tracking-[-0.02em] text-ink">{abiertos}</div>
@@ -315,7 +323,7 @@ export default function PendientesPage() {
           </Card>
         ) : null}
 
-        {!isAdvisor && (creando || editId) ? (
+        {!isAdvisor && (!papel || creando || editId) ? (
           <Card className="mb-3" id="crear-pendiente">
             <h2 className="mb-4 text-lg font-semibold">{editId ? "Editar pendiente" : "Crear pendiente"}</h2>
             <form className="grid gap-3" onSubmit={savePending}>
@@ -352,7 +360,31 @@ export default function PendientesPage() {
 
         <div className="space-y-2.5">
           <AnimatePresence initial={false}>
-          {visiblePendings.map((pending) => (
+          {visiblePendings.map((pending) => !papel ? (
+            <Card key={pending.id} layout exit={{ opacity: 0, scale: 0.9, x: 60 }}>
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <h2 className="font-semibold">{pending.title}</h2>
+                  <p className="mt-1 text-[13px] leading-5 text-muted">{pending.description}</p>
+                </div>
+                <Badge tone={priorityTone(pending.priority)}>{pending.priority}</Badge>
+              </div>
+              <div className="mt-2.5 grid grid-cols-2 border-y border-white/[0.07]">
+                <Info label="Categoria" value={pending.category} />
+                <Info label="Estado" value={pending.status} tone={statusTone(pending.status)} />
+                <Info label="Responsable" value={userName(pending.ownerId)} icon={<UserRound size={14} />} />
+                <Info label="Limite" value={pending.dueDate} />
+              </div>
+              {!isAdvisor ? (
+                <div className="mt-2.5 grid grid-cols-3 gap-2">
+                  <button onClick={() => editPending(pending)} className="min-h-10 rounded-xl bg-slate-100 dark:bg-slate-700 text-sm font-semibold text-ink">Editar</button>
+                  <select aria-label="Cambiar estado" value={pending.status === "en proceso" ? "EN_PROCESO" : pending.status.toUpperCase()} onChange={(event) => void changeStatus(pending.id, event.target.value as "PENDIENTE" | "EN_PROCESO" | "COMPLETADO")} className="fuera-de-papel min-h-10 rounded-xl border border-line bg-panel px-3 text-sm font-semibold"><option value="PENDIENTE">Pendiente</option><option value="EN_PROCESO">En proceso</option><option value="COMPLETADO">Cerrar</option></select>
+                  <DeleteButton onClick={() => requestDelete(pending.id)} className="w-full">Borrar</DeleteButton>
+                </div>
+              ) : null}
+              <ResourceDiscussion target={{ pendingId: pending.id }} />
+            </Card>
+          ) : (
             <Card key={pending.id} layout exit={{ opacity: 0, scale: 0.9, x: 60 }} className="relative overflow-hidden !p-0">
               {/*
                 ⚠️ Un FILETE de color a la izquierda, por prioridad.
@@ -447,7 +479,8 @@ export default function PendientesPage() {
         </div>
       </AppFrame>
       </PullToRefresh>
-      {!isAdvisor && !creando && !editId ? <FloatingActionButton onClick={() => setCreando(true)} label="Crear pendiente" icon={Plus} /> : null}
+      {!isAdvisor && !papel ? <FloatingActionButton href="#crear-pendiente" label="Crear" icon={Plus} /> : null}
+      {!isAdvisor && papel && !creando && !editId ? <FloatingActionButton onClick={() => setCreando(true)} label="Crear pendiente" icon={Plus} /> : null}
       <ConfirmDialog
         open={deleteTargetId !== null}
         title="¿Eliminar pendiente?"
@@ -471,31 +504,31 @@ export default function PendientesPage() {
               animate={{ y: 0 }}
               exit={{ y: "100%" }}
               transition={{ type: "spring", damping: 25, stiffness: 220 }}
-              className="w-full max-w-lg papel-elev-alta rounded-t-[26px] bg-card border border-line p-6 space-y-4 max-h-[85vh] overflow-y-auto no-scrollbar shadow-2xl"
+              className={papel ? "w-full max-w-lg papel-elev-alta rounded-t-[26px] bg-card border border-line p-6 space-y-4 max-h-[85vh] overflow-y-auto no-scrollbar shadow-2xl" : "w-full max-w-lg rounded-t-[32px] bg-[#0A0A0A] border border-white/10 p-6 space-y-4 max-h-[85vh] overflow-y-auto no-scrollbar shadow-2xl"}
             >
-              <div className="flex items-center justify-between border-b border-line pb-3">
+              <div className={`flex items-center justify-between border-b pb-3 ${papel ? "border-line" : "border-white/5"}`}>
                 <div className="flex items-center gap-2">
-                  <Sparkles className="text-volt" size={20} />
-                  <h3 className="text-sm font-semibold text-ink">Priorización & Handover IA</h3>
+                  <Sparkles className={papel ? "text-volt" : "text-[#2563EB]"} size={20} />
+                  <h3 className={`text-sm font-semibold ${papel ? "text-ink" : "text-white"}`}>Priorización & Handover IA</h3>
                 </div>
                 <button
                   onClick={() => setShowOptModal(false)}
-                  className="rounded-full bg-panel p-1.5 text-muted hover:text-ink transition"
+                  className={papel ? "rounded-full bg-panel p-1.5 text-muted hover:text-ink transition" : "rounded-full bg-white/5 p-1.5 text-slate-400 hover:text-white transition"}
                 >
                   <X size={18} />
                 </button>
               </div>
 
-              <div className="space-y-4 text-xs text-muted leading-relaxed">
+              <div className={`space-y-4 text-xs leading-relaxed ${papel ? "text-muted" : "text-slate-300"}`}>
                 <div>
-                  <h4 className="font-bold text-volt uppercase tracking-wider text-[10px] mb-1.5">⚡ Prioridades Recomendadas</h4>
+                  <h4 className={`font-bold uppercase tracking-wider text-[10px] mb-1.5 ${papel ? "text-volt" : "text-[#2563EB]"}`}>⚡ Prioridades Recomendadas</h4>
                   <div className="space-y-2">
                     {optimization.prioritizedTasks.map((task: any) => {
                       const orig = data.pendings.find((p) => p.id === task.id);
                       return (
-                        <div key={task.id} className="rounded-xl bg-white/5 border border-line p-3 space-y-1">
-                          <p className="font-semibold text-ink">{orig?.title || "Tarea"}</p>
-                          <p className="text-muted">{task.justification}</p>
+                        <div key={task.id} className={`rounded-xl bg-white/5 border p-3 space-y-1 ${papel ? "border-line" : "border-white/5"}`}>
+                          <p className={`font-semibold ${papel ? "text-ink" : "text-white"}`}>{orig?.title || "Tarea"}</p>
+                          <p className={papel ? "text-muted" : "text-slate-400"}>{task.justification}</p>
                         </div>
                       );
                     })}
@@ -504,12 +537,12 @@ export default function PendientesPage() {
 
                 {optimization.duplicates && optimization.duplicates.length > 0 && (
                   <div>
-                    <h4 className="font-bold text-ember uppercase tracking-wider text-[10px] mb-1.5">👯 Tareas Duplicadas Detectadas</h4>
+                    <h4 className={`font-bold uppercase tracking-wider text-[10px] mb-1.5 ${papel ? "text-ember" : "text-yellow-500"}`}>👯 Tareas Duplicadas Detectadas</h4>
                     <div className="space-y-2">
                       {optimization.duplicates.map((dup: any, idx: number) => (
-                        <div key={idx} className="rounded-xl bg-ember/5 border border-ember/30 p-3">
-                          <p className="font-semibold text-ink">Fusión sugerida: &quot;{dup.suggestedTitle}&quot;</p>
-                          <p className="text-muted mt-1 text-[11px]">Cubre {dup.taskIds.length} pendientes repetidos.</p>
+                        <div key={idx} className={`rounded-xl p-3 ${papel ? "bg-ember/5 border border-ember/30" : "bg-yellow-500/5 border border-yellow-500/10"}`}>
+                          <p className={`font-semibold ${papel ? "text-ink" : "text-white"}`}>Fusión sugerida: &quot;{dup.suggestedTitle}&quot;</p>
+                          <p className={`mt-1 text-[11px] ${papel ? "text-muted" : "text-slate-400"}`}>Cubre {dup.taskIds.length} pendientes repetidos.</p>
                         </div>
                       ))}
                     </div>
@@ -517,15 +550,15 @@ export default function PendientesPage() {
                 )}
 
                 <div>
-                  <h4 className="font-bold text-volt uppercase tracking-wider text-[10px] mb-1.5">👤 Asignación de Responsables sugerida</h4>
+                  <h4 className={`font-bold uppercase tracking-wider text-[10px] mb-1.5 ${papel ? "text-volt" : "text-blue-400"}`}>👤 Asignación de Responsables sugerida</h4>
                   <div className="space-y-2">
                     {optimization.suggestions.map((sug: any) => {
                       const orig = data.pendings.find((p) => p.id === sug.taskId);
                       return (
-                        <div key={sug.taskId} className="rounded-xl bg-volt/5 border border-volt/30 p-3 space-y-1">
-                          <p className="font-semibold text-ink">{orig?.title || "Tarea"}</p>
-                          <p className="text-muted leading-normal">
-                            Asignar a: <strong className="text-volt">{sug.recommendedOwnerName}</strong> · {sug.reason}
+                        <div key={sug.taskId} className={`rounded-xl p-3 space-y-1 ${papel ? "bg-volt/5 border border-volt/30" : "bg-blue-500/5 border border-blue-500/10"}`}>
+                          <p className={`font-semibold ${papel ? "text-ink" : "text-white"}`}>{orig?.title || "Tarea"}</p>
+                          <p className={`leading-normal ${papel ? "text-muted" : "text-slate-400"}`}>
+                            Asignar a: <strong className={papel ? "text-volt" : "text-blue-400"}>{sug.recommendedOwnerName}</strong> · {sug.reason}
                           </p>
                         </div>
                       );

@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import NextImage from "next/image";
 import { ImagenAmpliable } from "@/components/VisorImagen";
-import { Camera, Check, CheckCircle2, FileText, RotateCcw, ChevronDown, Circle, Clock3, ExternalLink, FileCheck2, Images, LogOut, Moon, RefreshCw, ScanLine, ScrollText, SlidersHorizontal, Sun, X } from "lucide-react";
+import { Camera, Check, CheckCircle2, FileText, RotateCcw, ChevronDown, Circle, Clock3, ExternalLink, FileCheck2, Image as ImageIcon, Images, LogOut, Moon, RefreshCw, ScanLine, ScrollText, SlidersHorizontal, Sun, X } from "lucide-react";
 import { getSession, logout } from "@/lib/auth";
 import { compressImage } from "@/lib/image-compress";
 import { DocScanner } from "@/components/DocScanner";
@@ -15,6 +15,7 @@ import { NumberTicker } from "@/components/externos/number-ticker";
 import { ShineBorder } from "@/components/externos/shine-border";
 import { enContenedorNativo, scannerDocumentosNativo, urlArchivoNativo } from "@/lib/puente-nativo";
 import { portadaDe } from "@/lib/portada";
+import { useSuperficiePapel } from "@/lib/superficie-papel";
 import { EVENTO_ENTREGA, encolar } from "@/lib/cola-envio";
 import { camposDeEscaneo, camposDeEvidencia, camposDeTarea } from "@/lib/cola-checklist";
 
@@ -75,6 +76,12 @@ export default function ChecklistPage() {
   const [axoError, setAxoError] = useState("");
   const [activeSection, setActiveSection] = useState<Section>("APERTURA");
   const [nativeExperience, setNativeExperience] = useState(false);
+  /*
+   * ⚠️ El rediseño es SOLO de la APK. La versión nativa del checklist ya solo
+   * se pinta dentro de ella; esto cubre lo que comparten las dos --avisos y la
+   * tarjeta de AXO--, que fuera conservan sus colores de antes.
+   */
+  const papel = useSuperficiePapel();
   // Foto recién capturada, esperando que se ajusten las esquinas en el escáner.
   const [scanning, setScanning] = useState<{ item: ChecklistItem; file: File } | null>(null);
 
@@ -448,10 +455,11 @@ export default function ChecklistPage() {
         )}
       />
       <AppFrame>
-        {error ? <Card className="mb-3 text-sm font-semibold text-orchid">{error}</Card> : null}
-        {aviso ? <Card className="mb-3 text-sm font-semibold text-sky">{aviso}</Card> : null}
+        {error ? <Card className={`mb-3 text-sm font-semibold ${papel ? "text-orchid" : "text-rose-700"}`}>{error}</Card> : null}
+        {aviso ? <Card className={`mb-3 text-sm font-semibold ${papel ? "text-sky" : "text-sky-700 dark:text-sky-300"}`}>{aviso}</Card> : null}
         {axoAttendance ? (
           <AxoAttendanceCard
+            papel={papel}
             report={axoAttendance}
             confirming={axoConfirming}
             error={axoError}
@@ -716,7 +724,9 @@ function NativeChecklist({
   );
 }
 
-function AxoAttendanceCard({ report, confirming, error, onConfirm }: {
+function AxoAttendanceCard({ papel, report, confirming, error, onConfirm }: {
+  /** Fuera de la APK, los colores de antes del rediseño. */
+  papel: boolean;
   report: AxoAttendance;
   confirming: boolean;
   error: string;
@@ -724,16 +734,22 @@ function AxoAttendanceCard({ report, confirming, error, onConfirm }: {
 }) {
   const confirmed = report.status === "CONFIRMED";
   const overdue = report.status === "OVERDUE";
+  const tonoIcono = papel
+    ? (confirmed ? "bg-mint/10 text-mint" : overdue ? "bg-orchid/10 text-orchid" : "bg-volt/10 text-volt")
+    : (confirmed ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300" : overdue ? "bg-rose-100 text-rose-700 dark:bg-rose-950/50 dark:text-rose-300" : "bg-blue-100 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300");
+  const tonoEstado = papel
+    ? (confirmed ? "bg-mint/10 text-mint" : overdue ? "bg-orchid/10 text-orchid" : "bg-ember/10 text-ember")
+    : (confirmed ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300" : overdue ? "bg-rose-100 text-rose-700 dark:bg-rose-950/50 dark:text-rose-300" : "bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300");
   return (
     <Card className="mb-3 p-3.5">
       <div className="flex items-start gap-3">
-        <span className={`grid size-10 shrink-0 place-items-center rounded-xl ${confirmed ? "bg-mint/10 text-mint" : overdue ? "bg-orchid/10 text-orchid" : "bg-volt/10 text-volt"}`}>
+        <span className={`grid size-10 shrink-0 place-items-center rounded-xl ${tonoIcono}`}>
           {confirmed ? <CheckCircle2 size={19} /> : <FileCheck2 size={19} />}
         </span>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 className="text-base font-semibold text-ink">Asistencia AXO</h2>
-            <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${confirmed ? "bg-mint/10 text-mint" : overdue ? "bg-orchid/10 text-orchid" : "bg-ember/10 text-ember"}`}>
+            <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${tonoEstado}`}>
               {confirmed ? "Enviado" : overdue ? "Fuera de horario" : `Antes de ${report.dueTime}`}
             </span>
           </div>
@@ -761,7 +777,7 @@ function AxoAttendanceCard({ report, confirming, error, onConfirm }: {
                   <p className="truncate text-xs font-bold text-ink">{person.name}</p>
                   <p className="text-[11px] text-muted">{person.roleLabel} · Entrada programada {person.expectedAt}</p>
                 </div>
-                <span className={`shrink-0 text-[11px] font-bold ${person.arrivedAt ? "text-mint" : "text-ember"}`}>
+                <span className={`shrink-0 text-[11px] font-bold ${person.arrivedAt ? (papel ? "text-mint" : "text-emerald-700 dark:text-emerald-300") : (papel ? "text-ember" : "text-amber-700 dark:text-amber-300")}`}>
                   {person.arrivedAt ?? "Sin captura"}
                 </span>
               </div>
@@ -776,7 +792,7 @@ function AxoAttendanceCard({ report, confirming, error, onConfirm }: {
             href={report.formUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-volt px-4 text-sm font-semibold text-white shadow-[0_8px_20px_rgb(37_99_235/0.22)] transition hover:bg-volt/85 active:scale-95 focus:outline-hidden focus-visible:ring-4 focus-visible:ring-volt/40"
+            className={`inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-volt px-4 text-sm font-semibold text-white shadow-[0_8px_20px_rgb(37_99_235/0.22)] transition ${papel ? "hover:bg-volt/85" : "hover:bg-[#1D4ED8]"} active:scale-95 focus:outline-hidden focus-visible:ring-4 focus-visible:ring-volt/40`}
           >
             <ExternalLink size={17} /> Abrir Forms de AXO
           </a>
@@ -790,7 +806,7 @@ function AxoAttendanceCard({ report, confirming, error, onConfirm }: {
           </button>
         </div>
       ) : null}
-      {error ? <p className="mt-2 text-xs font-semibold text-orchid">{error}</p> : null}
+      {error ? <p className={`mt-2 text-xs font-semibold ${papel ? "text-orchid" : "text-rose-600 dark:text-rose-400"}`}>{error}</p> : null}
       <p className="mt-2 text-[10px] leading-4 text-muted">
         Microsoft conserva la respuesta oficial. Clarvex registra la confirmación de gerencia.
       </p>
@@ -863,7 +879,7 @@ function ChecklistRow({ item, busy, native = false, featured = false, onToggle, 
   return (
     <div className="flex items-center gap-3 py-2.5">
       <button type="button" onClick={onToggle} disabled={busy} aria-pressed={item.completed} className="shrink-0 transition active:scale-90 disabled:opacity-50">
-        {item.completed ? <CheckCircle2 className="text-mint" size={24} /> : <Circle className="text-muted" size={24} />}
+        {item.completed ? <CheckCircle2 className="text-emerald-500" size={24} /> : <Circle className="text-muted" size={24} />}
       </button>
       <div className="min-w-0 flex-1">
         <p className={`text-sm font-bold ${item.completed ? "text-muted line-through" : "text-ink"}`}>{item.label}</p>
@@ -878,7 +894,7 @@ function ChecklistRow({ item, busy, native = false, featured = false, onToggle, 
         <Camera size={16} />
       </button>
       <button type="button" onClick={() => galleryRef.current?.click()} disabled={busy} aria-label="Elegir de galería" className="grid size-9 shrink-0 place-items-center rounded-xl border border-line text-muted transition hover:border-volt hover:text-volt active:scale-90 disabled:opacity-50">
-        <Images size={16} />
+        <ImageIcon size={16} />
       </button>
       <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(event) => { const file = event.target.files?.[0]; if (file) onPhoto(file); event.target.value = ""; }} />
       <input ref={galleryRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(event) => { const file = event.target.files?.[0]; if (file) onPhoto(file); event.target.value = ""; }} />
@@ -986,7 +1002,7 @@ function ScanRow({ item, busy, native = false, featured = false, onNativeScan, o
     <div className="py-2.5">
       <div className="flex items-center gap-3">
         <span className="shrink-0">
-          {done ? <CheckCircle2 className="text-mint" size={22} /> : <Circle className="text-muted" size={22} />}
+          {done ? <CheckCircle2 className="text-emerald-500" size={22} /> : <Circle className="text-muted" size={22} />}
         </span>
         <div className="min-w-0 flex-1">
           <p className="text-sm font-bold text-ink">{item.label}</p>
@@ -1005,7 +1021,7 @@ function ScanRow({ item, busy, native = false, featured = false, onNativeScan, o
                 <NextImage src={scan.url} alt={`Página ${index + 1}`} width={56} height={56} className="size-14 rounded-lg object-cover" unoptimized />
               </ImagenAmpliable>
               <span className="absolute bottom-0 left-0 rounded-tr-md rounded-bl-lg bg-black/60 px-1 text-[9px] font-semibold text-white">{index + 1}</span>
-              <button type="button" onClick={() => onRemove(scan.id)} aria-label="Borrar página" className="absolute -right-1.5 -top-1.5 grid size-5 place-items-center rounded-full bg-orchid text-ink shadow-xs transition active:scale-90">
+              <button type="button" onClick={() => onRemove(scan.id)} aria-label="Borrar página" className="absolute -right-1.5 -top-1.5 grid size-5 place-items-center rounded-full bg-rose-600 text-white shadow-xs transition active:scale-90">
                 <X size={11} />
               </button>
             </div>
@@ -1015,17 +1031,17 @@ function ScanRow({ item, busy, native = false, featured = false, onNativeScan, o
 
       {pages ? (
         <div className="mt-2 flex items-center gap-2 pl-[2.1rem]">
-          <button type="button" onClick={() => void makePdf()} disabled={pdfBusy} className="flex items-center gap-1.5 rounded-xl bg-volt px-3 py-2 text-xs font-semibold text-white transition hover:bg-volt/85 active:scale-95 disabled:opacity-50">
+          <button type="button" onClick={() => void makePdf()} disabled={pdfBusy} className="flex items-center gap-1.5 rounded-xl bg-volt px-3 py-2 text-xs font-semibold text-white transition hover:bg-[#1D4ED8] active:scale-95 disabled:opacity-50">
             <FileText size={15} />{pdfBusy ? "Generando…" : pdf ? "Regenerar PDF" : "Generar PDF y enviar"}
           </button>
           {pdf ? (
-            <a href={pdf.url} target="_blank" rel="noreferrer" className="text-[11px] font-bold text-mint">
+            <a href={pdf.url} target="_blank" rel="noreferrer" className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
               ✓ PDF listo{pdf.sent ? " · enviado a Telegram" : ""}
             </a>
           ) : null}
         </div>
       ) : null}
-      {pdfError ? <p className="mt-1 pl-[2.1rem] text-[11px] font-semibold text-orchid">{pdfError}</p> : null}
+      {pdfError ? <p className="mt-1 pl-[2.1rem] text-[11px] font-semibold text-rose-600">{pdfError}</p> : null}
 
       <input ref={fileRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(event) => { const file = event.target.files?.[0]; if (file) onCapture(file); event.target.value = ""; }} />
     </div>
