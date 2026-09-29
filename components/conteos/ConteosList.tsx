@@ -4,12 +4,14 @@ import { useCallback, useEffect, useState } from "react";
 import { dashboardDateKey } from "@/lib/dashboard-kpi";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowRight, ChevronRight, ScanBarcode, Shirt, SlidersHorizontal } from "lucide-react";
+import { ArrowRight, CalendarCheck, ChevronRight, ClipboardList, Plus, ScanBarcode, Settings2, Shirt, SlidersHorizontal } from "lucide-react";
 import { ShineBorder } from "@/components/externos/shine-border";
 import { NumberTicker } from "@/components/externos/number-ticker";
 import { ShimmerButton } from "@/components/externos/shimmer-button";
 import { getSession } from "@/lib/auth";
 import type { User } from "@/lib/types";
+import { Badge, Card, ProgressBar } from "@/components/ui";
+import { enContenedorNativo } from "@/lib/puente-nativo";
 
 /**
  * Conteos: la pantalla más usada del teléfono --452 marbetes contados en
@@ -27,6 +29,13 @@ import type { User } from "@/lib/types";
  * no cierra los conteos, así que casi siempre hay uno abierto --el 26 de
  * septiembre había ocho--. Ahora ese mismo sitio dice «Seguir contando» y
  * entra.
+ *
+ * ⚠️ **Todo esto es SOLO de la APK.** Fuera de ella --navegador, PWA, iPhone,
+ * escritorio-- se pinta la lista de antes del rediseño, tal cual estaba. No
+ * basta con acotar el CSS a `[data-surface="papel"]`: el marcado también es
+ * nuevo --la tarjeta de degradado, la marca de agua, `ShineBorder`--, y sin la
+ * superficie papel quedaría a medio pintar. Por eso son dos ramas de marcado
+ * sobre el mismo estado, igual que la barra de abajo en `LiquidBottomNav`.
  *
  * Compartida entre `/conteos` y `/escritorio/conteos`.
  */
@@ -57,6 +66,14 @@ export function ConteosListView({ desktop = false }: { desktop?: boolean }) {
   const [totalTags, setTotalTags] = useState(0);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState("");
+  /*
+   * `null` = todavía no se sabe si estamos en la APK. Se decide en un efecto
+   * porque el agente solo existe en el cliente: decidirlo al pintar rompería la
+   * hidratación. Mismo criterio que `LiquidBottomNav`.
+   */
+  const [enApk, setEnApk] = useState<boolean | null>(null);
+
+  useEffect(() => { setEnApk(enContenedorNativo()); }, []);
 
   useEffect(() => {
     getSession().then((s) => {
@@ -98,6 +115,80 @@ export function ConteosListView({ desktop = false }: { desktop?: boolean }) {
 
 
   const ultimo = cerrados[0] ?? null;
+
+  if (enApk === null) return null;
+
+  /*
+   * Fuera de la APK: la lista de antes del rediseño del 28 de septiembre de
+   * 2026 (`bdec39c`), sin cambios. Restaurada del historial.
+   */
+  if (!enApk) {
+    return (
+    <div className={desktop ? "mx-auto max-w-2xl" : undefined}>
+        {manager && (
+          <div className="mb-3 flex gap-2">
+            <button
+              type="button"
+              onClick={() => void createCount()}
+              disabled={creating || !!abierto}
+              className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-volt px-4 py-2.5 text-sm font-semibold text-white transition active:scale-95 disabled:opacity-50"
+            >
+              <Plus size={16} /> {abierto ? "Hay un conteo abierto" : creating ? "Abriendo…" : "Abrir conteo de hoy"}
+            </button>
+            <Link
+              href={`${base}/marbetes`}
+              className="flex items-center gap-2 rounded-2xl border border-line bg-panel px-4 py-2.5 text-sm font-semibold text-ink transition active:scale-95"
+            >
+              <Settings2 size={16} /> Marbetes
+            </Link>
+          </div>
+        )}
+        {/* Relativo a `base`, NUNCA absoluto: ver el comentario de la rama APK. */}
+        <Link
+          href={`${base}/dama`}
+          className="mb-3 flex items-center justify-between gap-2 rounded-2xl border border-line bg-panel px-4 py-3 text-sm font-semibold text-ink transition active:scale-95"
+        >
+          <span className="flex items-center gap-2"><CalendarCheck size={16} /> Conteo diario · Dama</span>
+          <span className="text-xs font-normal text-muted">Piso de venta</span>
+        </Link>
+        {error && <p className="mb-2 text-xs font-semibold text-red-500">{error}</p>}
+        {manager && totalTags === 0 && counts !== null && (
+          <Card className="mb-3 p-4 text-sm font-semibold text-muted">
+            Aún no hay marbetes dados de alta. Ve a <Link className="font-semibold text-volt" href={`${base}/marbetes`}>Marbetes</Link> y captura los rangos de tienda y bodega (una sola vez: son fijos).
+          </Card>
+        )}
+
+        {counts === null ? (
+          <p className="py-8 text-center text-sm font-bold text-muted">Cargando…</p>
+        ) : counts.length === 0 ? (
+          <Card className="p-6 text-center">
+            <ClipboardList className="mx-auto mb-2 text-muted" size={28} />
+            <p className="text-sm font-bold text-muted">Sin conteos todavía. {manager ? "Abre el primero." : "Gerencia abrirá el próximo conteo."}</p>
+          </Card>
+        ) : (
+          <div className="grid gap-2">
+            {counts.map((count) => (
+              <Link key={count.id} href={`${base}/${count.id}`}>
+                <Card className="p-3.5 transition active:scale-[0.99]">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-sm font-semibold capitalize text-ink">{fechaLarga(count.date)}</p>
+                    <Badge tone={count.status === "OPEN" ? "success" : "default"}>
+                      {count.status === "OPEN" ? "En curso" : "Cerrado"}
+                    </Badge>
+                  </div>
+                  <div className="mt-2 flex items-center gap-3">
+                    <div className="flex-1"><ProgressBar value={count.totalTags > 0 ? (count.counted / count.totalTags) * 100 : 0} /></div>
+                    <span className="shrink-0 text-xs font-semibold tabular-nums text-muted">{count.counted}/{count.totalTags}</span>
+                  </div>
+                  <p className="mt-1.5 text-xs font-semibold text-muted">{count.pieces.toLocaleString("es-MX")} piezas contadas</p>
+                </Card>
+              </Link>
+            ))}
+          </div>
+        )}
+    </div>
+    );
+  }
 
   return (
     <div className={desktop ? "mx-auto max-w-2xl" : undefined}>
