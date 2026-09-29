@@ -9,7 +9,7 @@
   ],
   "layout": [
     {
-      "i": "c00b90e0-0db5-4dac-9680-053607fa15f5",
+      "i": "8928337d-44cc-4360-bff6-09da352fb205",
       "x": 0,
       "y": 0,
       "w": 6,
@@ -18,7 +18,7 @@
       "static": false
     },
     {
-      "i": "d51433df-4279-4c09-a4fa-c817b837b7ea",
+      "i": "474af653-4556-4081-9575-3d8366ae3749",
       "x": 6,
       "y": 0,
       "w": 6,
@@ -27,7 +27,7 @@
       "static": false
     },
     {
-      "i": "5e145645-20f1-4f94-8abe-951377bd694d",
+      "i": "765fe1cd-a7b5-4752-ab33-c7ceb9b24bde",
       "x": 0,
       "y": 4,
       "w": 6,
@@ -36,7 +36,7 @@
       "static": false
     },
     {
-      "i": "b27f87ea-ae32-4ebb-8a2e-e2f4f0506039",
+      "i": "e07a6a41-e84f-4ff8-ab2f-ce19babe7195",
       "x": 6,
       "y": 4,
       "w": 6,
@@ -45,7 +45,7 @@
       "static": false
     },
     {
-      "i": "6b008205-5b16-4ff9-b191-4b3dcc04f496",
+      "i": "f2b3347d-cf14-47be-9a64-1d0ab9b7e9f2",
       "x": 0,
       "y": 8,
       "w": 8,
@@ -54,7 +54,7 @@
       "static": false
     },
     {
-      "i": "fcb30f46-aa15-4cac-b0f6-b0d204cdfd32",
+      "i": "49f1ccbc-0701-456a-9c96-37c4f0cabda4",
       "x": 8,
       "y": 8,
       "w": 4,
@@ -63,7 +63,7 @@
       "static": false
     },
     {
-      "i": "c45dd3d9-86ab-47f5-80b2-a165874a74fa",
+      "i": "b9e576e1-1f0d-413b-921d-a60bb7613069",
       "x": 0,
       "y": 12,
       "w": 6,
@@ -72,7 +72,7 @@
       "static": false
     },
     {
-      "i": "b72318a1-f5eb-4eb7-a25c-f0fb42cde8b3",
+      "i": "8bd1aea3-1db8-4309-badb-f9c2fe59b8a4",
       "x": 6,
       "y": 12,
       "w": 6,
@@ -81,7 +81,7 @@
       "static": false
     },
     {
-      "i": "cd295ab6-a009-4c56-b8c7-a8ef85561bd4",
+      "i": "46095f1b-5ba2-40d3-aaa5-d825b4ade14f",
       "x": 0,
       "y": 16,
       "w": 12,
@@ -90,7 +90,7 @@
       "static": false
     },
     {
-      "i": "bfc97fb8-9e87-47e7-bc35-94b436dc1407",
+      "i": "c0d152d6-cd61-4050-a894-ac5b80346b55",
       "x": 0,
       "y": 20,
       "w": 6,
@@ -99,7 +99,7 @@
       "static": false
     },
     {
-      "i": "959a037c-4bf9-4ab0-a5e6-43aa38b12b36",
+      "i": "be1e31ca-122e-4959-9031-3db6a07bfee8",
       "x": 6,
       "y": 20,
       "w": 6,
@@ -108,7 +108,7 @@
       "static": false
     },
     {
-      "i": "cdbb8150-4c0a-4300-b30c-8ee271a156a8",
+      "i": "6b03e46f-9b08-4aa0-91d5-ad3646be5e22",
       "x": 0,
       "y": 24,
       "w": 12,
@@ -119,7 +119,7 @@
   ],
   "widgets": [
     {
-      "id": "c00b90e0-0db5-4dac-9680-053607fa15f5",
+      "id": "8928337d-44cc-4360-bff6-09da352fb205",
       "title": "Disco usado",
       "description": "Con el disco lleno Postgres deja de escribir y la tienda no puede capturar. Es el fallo mas caro de esta maquina.",
       "isStacked": false,
@@ -144,7 +144,7 @@
             "query": ""
           }
         ],
-        "id": "d34b7c90-efb2-4c14-a1e6-b1a1aa9bf34f",
+        "id": "579b7d73-c337-41f8-8faf-2d2a75760058",
         "builder": {
           "queryData": [
             {
@@ -161,19 +161,7 @@
               "spaceAggregation": "sum",
               "functions": [],
               "filters": {
-                "items": [
-                  {
-                    "id": "99689f23",
-                    "key": {
-                      "key": "mountpoint",
-                      "dataType": "string",
-                      "type": "tag",
-                      "isColumn": false
-                    },
-                    "op": "=",
-                    "value": "/hostfs"
-                  }
-                ],
+                "items": [],
                 "op": "AND"
               },
               "expression": "A",
@@ -188,9 +176,15 @@
                   "dataType": "string",
                   "type": "tag",
                   "isColumn": false
+                },
+                {
+                  "key": "mountpoint",
+                  "dataType": "string",
+                  "type": "tag",
+                  "isColumn": false
                 }
               ],
-              "legend": "{{state}}",
+              "legend": "{{mountpoint}} · {{state}}",
               "reduceTo": "last"
             }
           ],
@@ -207,7 +201,7 @@
       "fillSpans": false
     },
     {
-      "id": "d51433df-4279-4c09-a4fa-c817b837b7ea",
+      "id": "474af653-4556-4081-9575-3d8366ae3749",
       "title": "Memoria",
       "description": "3.7 GB en total. Cuando lo disponible baja, el build de Next se va a swap y tarda minutos de mas.",
       "isStacked": false,
@@ -232,7 +226,7 @@
             "query": ""
           }
         ],
-        "id": "c4a4baeb-f951-4933-a6b6-34d7a167f252",
+        "id": "360aff26-badf-424c-a1c4-cf41d9897974",
         "builder": {
           "queryData": [
             {
@@ -283,7 +277,7 @@
       "fillSpans": false
     },
     {
-      "id": "5e145645-20f1-4f94-8abe-951377bd694d",
+      "id": "765fe1cd-a7b5-4752-ab33-c7ceb9b24bde",
       "title": "CPU",
       "description": "Por estado. Un `iowait` alto suele ser el disco, no la CPU.",
       "isStacked": false,
@@ -308,7 +302,7 @@
             "query": ""
           }
         ],
-        "id": "596351e8-c690-43ca-aea7-b8acd7894cfd",
+        "id": "e74dde85-3673-4ced-bcb2-56ef12e4262d",
         "builder": {
           "queryData": [
             {
@@ -359,7 +353,7 @@
       "fillSpans": false
     },
     {
-      "id": "b27f87ea-ae32-4ebb-8a2e-e2f4f0506039",
+      "id": "e07a6a41-e84f-4ff8-ab2f-ce19babe7195",
       "title": "Swap en uso",
       "description": "Ya hay swap tocado en reposo. Si sube mucho, algo se esta comiendo la RAM.",
       "isStacked": false,
@@ -384,7 +378,7 @@
             "query": ""
           }
         ],
-        "id": "34cc21d6-c6ae-43f5-9573-c3aee98587f2",
+        "id": "3cafd5f5-a058-490a-8aa6-ec5808fcd85d",
         "builder": {
           "queryData": [
             {
@@ -435,7 +429,7 @@
       "fillSpans": false
     },
     {
-      "id": "6b008205-5b16-4ff9-b191-4b3dcc04f496",
+      "id": "f2b3347d-cf14-47be-9a64-1d0ab9b7e9f2",
       "title": "Peticiones",
       "description": "Todo lo que entra por el proxy a team.clarvex.tech.",
       "isStacked": false,
@@ -460,7 +454,7 @@
             "query": ""
           }
         ],
-        "id": "98c9be57-10b3-4b3f-9e33-8a8c0e526875",
+        "id": "49811191-b9cb-4b80-a0d5-9788ac4fe2a0",
         "builder": {
           "queryData": [
             {
@@ -479,15 +473,15 @@
               "filters": {
                 "items": [
                   {
-                    "id": "6a9a94bd",
+                    "id": "1691c37d",
                     "key": {
-                      "key": "log_file_name",
+                      "key": "estado",
                       "dataType": "string",
                       "type": "tag",
                       "isColumn": false
                     },
-                    "op": "contains",
-                    "value": "_access.log"
+                    "op": "exists",
+                    "value": ""
                   }
                 ],
                 "op": "AND"
@@ -516,7 +510,7 @@
       "fillSpans": false
     },
     {
-      "id": "fcb30f46-aa15-4cac-b0f6-b0d204cdfd32",
+      "id": "49f1ccbc-0701-456a-9c96-37c4f0cabda4",
       "title": "Errores 5xx",
       "description": "Fallos del servidor. Cualquier cosa por encima de cero merece una mirada.",
       "isStacked": false,
@@ -541,7 +535,7 @@
             "query": ""
           }
         ],
-        "id": "2c69f327-132d-4874-8125-8a252cf4ca24",
+        "id": "a339d5a2-b11b-483c-80f5-62701558e8f8",
         "builder": {
           "queryData": [
             {
@@ -560,26 +554,20 @@
               "filters": {
                 "items": [
                   {
-                    "id": "6a9a94bd",
-                    "key": {
-                      "key": "log_file_name",
-                      "dataType": "string",
-                      "type": "tag",
-                      "isColumn": false
-                    },
-                    "op": "contains",
-                    "value": "_access.log"
-                  },
-                  {
-                    "id": "3914d4df",
+                    "id": "1982829f",
                     "key": {
                       "key": "estado",
                       "dataType": "string",
                       "type": "tag",
                       "isColumn": false
                     },
-                    "op": ">=",
-                    "value": "500"
+                    "op": "in",
+                    "value": [
+                      "500",
+                      "502",
+                      "503",
+                      "504"
+                    ]
                   }
                 ],
                 "op": "AND"
@@ -606,7 +594,7 @@
       "yAxisUnit": "none",
       "thresholds": [
         {
-          "index": "33d73303",
+          "index": "2b789886",
           "keyIndex": 0,
           "moveThreshold": 0,
           "selectedGraph": "value",
@@ -618,7 +606,7 @@
           "thresholdLabel": "revisar"
         },
         {
-          "index": "54a7a9e6",
+          "index": "27eb12db",
           "keyIndex": 0,
           "moveThreshold": 0,
           "selectedGraph": "value",
@@ -633,7 +621,7 @@
       "fillSpans": false
     },
     {
-      "id": "c45dd3d9-86ab-47f5-80b2-a165874a74fa",
+      "id": "b9e576e1-1f0d-413b-921d-a60bb7613069",
       "title": "Por codigo de estado",
       "description": "Un pico de 4xx suele ser un escaner; uno de 5xx somos nosotros.",
       "isStacked": false,
@@ -658,7 +646,7 @@
             "query": ""
           }
         ],
-        "id": "fcd82c81-ef88-460e-ae9e-5f483cc23522",
+        "id": "914d67b0-bcf6-4b4f-b536-9ae9b78177b8",
         "builder": {
           "queryData": [
             {
@@ -677,15 +665,15 @@
               "filters": {
                 "items": [
                   {
-                    "id": "6a9a94bd",
+                    "id": "1691c37d",
                     "key": {
-                      "key": "log_file_name",
+                      "key": "estado",
                       "dataType": "string",
                       "type": "tag",
                       "isColumn": false
                     },
-                    "op": "contains",
-                    "value": "_access.log"
+                    "op": "exists",
+                    "value": ""
                   }
                 ],
                 "op": "AND"
@@ -721,7 +709,7 @@
       "fillSpans": false
     },
     {
-      "id": "b72318a1-f5eb-4eb7-a25c-f0fb42cde8b3",
+      "id": "8bd1aea3-1db8-4309-badb-f9c2fe59b8a4",
       "title": "Rutas mas pedidas",
       "description": "La query va recortada a proposito: esta app pone tokens en la URL.",
       "isStacked": false,
@@ -746,7 +734,7 @@
             "query": ""
           }
         ],
-        "id": "fa678e66-b830-4add-a32b-f61c684c5612",
+        "id": "4beb968c-dfd9-4984-a8f6-4a99fff09d2b",
         "builder": {
           "queryData": [
             {
@@ -765,15 +753,15 @@
               "filters": {
                 "items": [
                   {
-                    "id": "6a9a94bd",
+                    "id": "1691c37d",
                     "key": {
-                      "key": "log_file_name",
+                      "key": "estado",
                       "dataType": "string",
                       "type": "tag",
                       "isColumn": false
                     },
-                    "op": "contains",
-                    "value": "_access.log"
+                    "op": "exists",
+                    "value": ""
                   }
                 ],
                 "op": "AND"
@@ -814,7 +802,7 @@
       "fillSpans": false
     },
     {
-      "id": "cd295ab6-a009-4c56-b8c7-a8ef85561bd4",
+      "id": "46095f1b-5ba2-40d3-aaa5-d825b4ade14f",
       "title": "Sondeos buscando secretos",
       "description": "Peticiones a rutas tipo .env o .git. Ya estaban ocurriendo antes de montar esto; no encontraron nada.",
       "isStacked": false,
@@ -839,7 +827,7 @@
             "query": ""
           }
         ],
-        "id": "8dbaa2d2-c90f-4c3f-a669-d5a591b23ff5",
+        "id": "95dc122d-29ac-49e8-85d0-545abc06b285",
         "builder": {
           "queryData": [
             {
@@ -858,18 +846,7 @@
               "filters": {
                 "items": [
                   {
-                    "id": "6a9a94bd",
-                    "key": {
-                      "key": "log_file_name",
-                      "dataType": "string",
-                      "type": "tag",
-                      "isColumn": false
-                    },
-                    "op": "contains",
-                    "value": "_access.log"
-                  },
-                  {
-                    "id": "9a28b847",
+                    "id": "91cc587c",
                     "key": {
                       "key": "ruta",
                       "dataType": "string",
@@ -924,7 +901,7 @@
       "fillSpans": false
     },
     {
-      "id": "bfc97fb8-9e87-47e7-bc35-94b436dc1407",
+      "id": "c0d152d6-cd61-4050-a894-ac5b80346b55",
       "title": "Crons que FALLARON",
       "description": "Tres estuvieron rotos 24 dias sin que nadie se enterara. Si aqui hay algo, arreglalo hoy.",
       "isStacked": false,
@@ -949,7 +926,7 @@
             "query": ""
           }
         ],
-        "id": "db6364a3-012c-4920-9b0e-62772c5168c5",
+        "id": "503904c2-ca63-4bb6-85df-b82244f788b1",
         "builder": {
           "queryData": [
             {
@@ -968,7 +945,7 @@
               "filters": {
                 "items": [
                   {
-                    "id": "8ccb4838",
+                    "id": "91833260",
                     "key": {
                       "key": "ok",
                       "dataType": "bool",
@@ -1023,7 +1000,7 @@
       "fillSpans": false
     },
     {
-      "id": "959a037c-4bf9-4ab0-a5e6-43aa38b12b36",
+      "id": "be1e31ca-122e-4959-9031-3db6a07bfee8",
       "title": "Ejecuciones por cron",
       "description": "Un cron que deja de aparecer es un cron que dejo de correr, y eso no da ningun error.",
       "isStacked": false,
@@ -1048,7 +1025,7 @@
             "query": ""
           }
         ],
-        "id": "7db20a41-5853-4ff8-b6f0-9c290b16a1ab",
+        "id": "6a1b23dd-b08b-4f6b-8ffa-8540e72489f6",
         "builder": {
           "queryData": [
             {
@@ -1067,7 +1044,7 @@
               "filters": {
                 "items": [
                   {
-                    "id": "1b907bf5",
+                    "id": "9a3b5c3d",
                     "key": {
                       "key": "cron",
                       "dataType": "string",
@@ -1116,7 +1093,7 @@
       "fillSpans": false
     },
     {
-      "id": "cdbb8150-4c0a-4300-b30c-8ee271a156a8",
+      "id": "6b03e46f-9b08-4aa0-91d5-ad3646be5e22",
       "title": "Cuanto tardan los crons",
       "description": "Uno que se alarga de golpe suele ser la base, no el cron.",
       "isStacked": false,
@@ -1141,7 +1118,7 @@
             "query": ""
           }
         ],
-        "id": "7afae183-8c68-4549-a64d-55d3a4ddd82b",
+        "id": "0731ac77-d1b2-44da-8736-c8aca20613d9",
         "builder": {
           "queryData": [
             {
@@ -1160,7 +1137,7 @@
               "filters": {
                 "items": [
                   {
-                    "id": "1b907bf5",
+                    "id": "9a3b5c3d",
                     "key": {
                       "key": "cron",
                       "dataType": "string",

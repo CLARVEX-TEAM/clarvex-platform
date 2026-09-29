@@ -129,9 +129,12 @@ PANELES.append((
         consulta_metrica(
             "system_filesystem_usage",
             "avg",
-            group=[atributo("state")],
-            filtros=[filtro("mountpoint", "=", "/hostfs")],
-            leyenda="{{state}}",
+            # ⚠️ Sin filtrar por punto de montaje. Con `root_path: /hostfs` el
+            # receptor lee el sistema de archivos del anfitrion y reporta SUS
+            # rutas --`/`, no `/hostfs`--, asi que filtrar por `/hostfs` dejaba
+            # el panel vacio. Se agrupa y se ven todos; el que importa es `/`.
+            group=[atributo("state"), atributo("mountpoint")],
+            leyenda="{{mountpoint}} · {{state}}",
         ),
         "bytes",
     ),
@@ -172,7 +175,15 @@ PANELES.append((
 ))
 
 # ----------------------------------------------------------------- TRAFICO --
-PROXY = [filtro("log_file_name", "contains", "_access.log")]
+# ⚠️ Se filtra por un CAMPO QUE SOLO ESTAS LINEAS TIENEN, no por el nombre del
+# archivo. La primera version usaba `log_file_name contains _access.log` y los
+# paneles salieron vacios: SigNoz no nombra igual ese atributo, y una consulta
+# que no casa no da error, da un panel en blanco --que se lee como «no hay
+# trafico» cuando el colector estaba leyendo 45 lineas--.
+#
+# `estado` lo pone el regex del receptor del proxy y no existe en ningun otro
+# log, asi que «tiene estado» es exactamente «es una peticion del proxy».
+PROXY = [filtro("estado", "exists", "")]
 
 PANELES.append((
     panel(
@@ -190,7 +201,11 @@ PANELES.append((
         "Errores 5xx",
         "Fallos del servidor. Cualquier cosa por encima de cero merece una mirada.",
         "value",
-        consulta_log("count", filtros=PROXY + [filtro("estado", ">=", "500")]),
+        # ⚠️ Por lista, no por `>= 500`. El regex del receptor deja `estado`
+        # como TEXTO, y comparar texto con mayor-que da resultados absurdos:
+        # "404" > "500" es falso pero "99" > "500" es cierto. Estos cuatro son
+        # los 5xx que de verdad devuelve nginx.
+        consulta_log("count", filtros=[filtro("estado", "in", ["500", "502", "503", "504"])]),
         "none",
         umbrales=[umbral("revisar", 1, "#F59E0B"), umbral("grave", 20, "#EF4444")],
     ),
@@ -235,7 +250,7 @@ PANELES.append((
         consulta_log(
             "count",
             group=[atributo("ruta"), atributo("red")],
-            filtros=PROXY + [filtro("ruta", "contains", "env")],
+            filtros=[filtro("ruta", "contains", "env")],
             limite=20,
             orden=[{"columnName": "#SIGNOZ_VALUE", "order": "desc"}],
         ),
