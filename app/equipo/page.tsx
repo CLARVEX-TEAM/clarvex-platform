@@ -20,6 +20,13 @@ type Row = {
   paidDays: string; active: boolean; checklistOnly: boolean;
 };
 
+/*
+ * ⚠️ El alta plegada es del rediseño «papel», que es SOLO de la APK. Fuera de
+ * ella el formulario sigue abierto como antes. Decide el CSS con
+ * `.solo-papel`/`.fuera-de-papel` sobre
+ * `data-surface="papel"`, que pone un guion antes del primer pintado
+ * (`app/layout.tsx`): sin parpadeo ni hidratación que romper.
+ */
 export default function TeamDatesPage() {
   const router = useRouter();
   const [rows, setRows] = useState<Row[]>([]);
@@ -188,6 +195,7 @@ export default function TeamDatesPage() {
         ) : null}
 
         {!agregando ? (
+          <div className="solo-papel">
           <button
             type="button"
             onClick={() => setAgregando(true)}
@@ -199,12 +207,14 @@ export default function TeamDatesPage() {
             <span className="flex-1 text-[15px] font-semibold text-ink">Agregar integrante</span>
             <ChevronRight size={17} className="text-muted" />
           </button>
+          </div>
         ) : null}
 
-        {agregando ? (
+        <div className={agregando ? undefined : "fuera-de-papel"}>
         <Card className="mb-4 p-3.5">
           <div className="mb-3 flex items-center justify-between gap-3">
             <p className="flex items-center gap-2 font-semibold text-ink"><UserPlus size={16} />Agregar integrante</p>
+            <div className="solo-papel">
             <button
               type="button"
               onClick={() => setAgregando(false)}
@@ -213,6 +223,7 @@ export default function TeamDatesPage() {
             >
               <X size={18} />
             </button>
+            </div>
           </div>
           <form onSubmit={(event) => void addMember(event)} className="grid grid-cols-2 gap-2">
             <label className="col-span-2 grid gap-1">
@@ -241,7 +252,7 @@ export default function TeamDatesPage() {
             </Button>
           </form>
         </Card>
-        ) : null}
+        </div>
 
         {loading ? (
           <Card className="text-sm font-semibold text-muted">Cargando equipo...</Card>
