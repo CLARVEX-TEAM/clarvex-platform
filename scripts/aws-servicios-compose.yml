@@ -113,39 +113,6 @@ services:
   # el navegador rechazaria las huellas por venir de otro origen —la app tiene
   # WEBAUTHN_ORIGIN en team.clarvex.tech— y el fallo no explicaria por que.
   # Aqui solo hay un HTML de 8 KB, sin peticiones externas.
-  mudanza:
-    image: nginx:alpine
-    container_name: mudanza
-    restart: unless-stopped
-    volumes:
-      - ./mudanza:/usr/share/nginx/html:ro
-    expose:
-      - "80"
-    networks: [clarvex_net]
-
-  # Syncthing: la unica pieza que conecta n8n con la nube personal.
-  #
-  # ⚠️ NO sincroniza la nube entera, solo la carpeta `Buzon` que deja el bot.
-  # Al servidor le quedan ~6 GB libres; traer aqui una nube de 200 GB llenaria
-  # el disco y Postgres dejaria de escribir. Seria tumbar la app de la tienda
-  # por guardar fotos personales.
-  #
-  # ⚠️ NADA de esto sale a internet. El GUI y el puerto de sincronizacion se
-  # publican SOLO en la IP de Tailscale: los dispositivos que sincronizan ya
-  # estan todos en esa red, asi que abrir el 22000 al mundo no aportaria nada
-  # y expondria el contenido.
-  #
-  # ⚠️ Publicar los puertos aqui NO BASTA, y esto no se ve en este archivo.
-  # Con el descubrimiento global encendido, Syncthing averigua la IP publica
-  # del otro aparato y SALE SOLO a internet a buscarlo, aunque el servidor
-  # solo escuche en Tailscale. En la configuracion propia de Syncthing
-  # (/home/ubuntu/stack/syncthing/config.xml, que este repo NO versiona) estan
-  # apagados `globalAnnounceEnabled`, `relaysEnabled` y `natEnabled`, y la PC
-  # tiene una sola direccion fija: tcp://100.85.3.24:22000.
-  #
-  # Al comprobarlo, ojo: cambiar esa configuracion no tira la conexion que ya
-  # estaba abierta, asi que sigue mostrando la ruta vieja. Hay que reiniciar el
-  # contenedor y mirar entonces, o se da por bueno un cambio que no aplico.
   syncthing:
     image: syncthing/syncthing:1
     container_name: syncthing
@@ -163,7 +130,37 @@ services:
       - ./syncthing:/var/syncthing/config
       - /home/ubuntu/buzon:/var/syncthing/Buzon
       - /home/ubuntu/gastos:/var/syncthing/Gastos
+      - /home/ubuntu/documentos:/var/syncthing/Documentos
+      - /home/ubuntu/respaldos:/var/syncthing/Respaldos
+      - /home/ubuntu/compartido:/var/syncthing/Compartido
     networks: [clarvex_net]
+
+  # WebDAV: ver y SUBIR a Documentos y Respaldos desde el telefono (Cx File
+  # Explorer), sin que los archivos vivan en el telefono. Lo que se sube cae
+  # aqui y Syncthing lo baja a la carpeta Nube de la PC.
+  #
+  # Igual que Adminer: el puerto se publica en 127.0.0.1 A PROPOSITO y se entra
+  # por `tailscale serve` (https://clarvex-aws.taile59f37.ts.net:11443), que pone
+  # TLS y solo responde dentro del tailnet. Publicarlo en 0.0.0.0 lo dejaria en
+  # la IP publica con los archivos personales detras.
+  #
+  # Corre como 1000:1000 porque es el usuario de Syncthing: con otro, lo subido
+  # quedaria con un dueno que Syncthing no puede leer y no se sincronizaria.
+  #
+  # Sin red compartida: no necesita hablar con nadie, y asi no alcanza la base.
+  webdav:
+    image: rclone/rclone:1.75.1
+    container_name: webdav
+    restart: unless-stopped
+    user: "1000:1000"
+    command: ["serve", "webdav", "/data", "--addr", ":8080", "--htpasswd", "/auth/htpasswd"]
+    ports:
+      - "127.0.0.1:8090:8080"
+    volumes:
+      - /home/ubuntu/documentos:/data/Documentos
+      - /home/ubuntu/respaldos:/data/Respaldos
+      - /home/ubuntu/compartido:/data/Compartido
+      - ./webdav.htpasswd:/auth/htpasswd:ro
 
   # Adminer: mirar la base de datos desde el navegador, SOLO por Tailscale.
   #
@@ -185,6 +182,45 @@ services:
       - ADMINER_DESIGN=dracula
     ports:
       - "127.0.0.1:8082:8080"
+    networks: [clarvex_net]
+
+  # Colector de OpenTelemetry -> SigNoz Cloud (region us2).
+  #
+  # Su configuracion vive aparte, en otel-collector.yaml, con copia versionada
+  # en el repositorio como scripts/signoz-otel-collector.yaml.
+  #
+  # La clave NO esta aqui: sale del .env, igual que SLACK_ALERT_WEBHOOK. Este
+  # archivo se commitea.
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.109.0
+    container_name: otel-collector
+    restart: unless-stopped
+    command: ["--config=/etc/otel/config.yaml"]
+    environment:
+      - SIGNOZ_ENDPOINT
+      - SIGNOZ_INGESTION_KEY
+      - GRAFANA_OTLP_ENDPOINT
+      - GRAFANA_OTLP_AUTH
+      - POSTGRES_MONITOR_PASS
+    volumes:
+      - ./otel-collector.yaml:/etc/otel/config.yaml:ro
+      # Solo LECTURA y solo lo que hace falta: las metricas de la maquina y los
+      # logs de cron. El colector no tiene por que ver nada mas del disco.
+      - /:/hostfs:ro
+      - /home/ubuntu/logs:/hostlogs:ro
+      # El trafico: los logs de acceso del proxy. Solo lectura.
+      - /home/ubuntu/stack/npm/data/logs:/hostproxy:ro
+      # Los logs de la app que escribe PM2.
+      - /home/ubuntu/.pm2/logs:/hostpm2:ro
+    # ⚠️ Tope de memoria a nivel de Docker, ADEMAS del memory_limiter de su
+    # configuracion. El de dentro decide que telemetria tira; este garantiza
+    # que pase lo que pase no se lleve por delante a Postgres ni al build, que
+    # en una maquina de 3.7 GB con swap tocado es el riesgo real.
+    mem_limit: 300m
+    ports:
+      # ⚠️ Solo loopback: quien manda telemetria es la app, en esta maquina.
+      - "127.0.0.1:4317:4317"
+      - "127.0.0.1:4318:4318"
     networks: [clarvex_net]
 
 networks:
