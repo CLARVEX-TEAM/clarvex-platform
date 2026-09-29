@@ -84,6 +84,29 @@ receivers:
         parse_from: body
         on_error: send
 
+  # Los logs de la propia APP, los que escribe PM2.
+  #
+  # ⚠️ Estaban fuera y es donde viven los errores de Next.js: al montar esto
+  # habia 587 lineas de error sin leer desde el 27 de septiembre. Es el mismo
+  # patron de los 31 logs de cron y de los tres crons rotos 24 dias -- el dato
+  # existia, nadie lo miraba.
+  #
+  # ⚠️ `multiline` porque una traza de pila ocupa veinte lineas. Sin esto cada
+  # linea llega como una entrada suelta y la traza queda troceada e ilegible,
+  # ademas de multiplicar por veinte lo que cuenta la cuota.
+  filelog/app:
+    include: [/hostpm2/clarvex-team-*.log]
+    start_at: end
+    include_file_name: true
+    multiline:
+      # Una entrada nueva empieza con una fecha ISO o con el prefijo de PM2.
+      line_start_pattern: '^(\d{4}-\d{2}-\d{2}|\d+\|)'
+    operators:
+      - type: regex_parser
+        parse_from: attributes["log.file.name"]
+        regex: '^clarvex-team-(?P<flujo>[a-z]+)'
+        on_error: send
+
   # El TRAFICO real: los logs de acceso del proxy. Traen metodo, estado, host,
   # ruta, bytes y agente de cada peticion que entra a team.clarvex.tech.
   #
@@ -229,6 +252,6 @@ service:
       processors: [memory_limiter, resourcedetection, batch]
       exporters: [otlp, otlphttp/grafana]
     logs:
-      receivers: [otlp, filelog, filelog/proxy]
+      receivers: [otlp, filelog, filelog/proxy, filelog/app]
       processors: [memory_limiter, transform/redactar, resourcedetection, batch]
       exporters: [otlp, otlphttp/grafana]
