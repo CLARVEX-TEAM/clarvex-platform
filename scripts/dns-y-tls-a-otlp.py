@@ -95,8 +95,21 @@ def main():
         headers={"Content-Type": "application/json"})
     with urllib.request.urlopen(peticion, timeout=30) as respuesta:
         caidos = [p["attributes"][0]["value"]["stringValue"] for p in resuelve if p["asDouble"] == 0]
-        print(f"{len(DOMINIOS)} dominios · {len(dias)} certificados · HTTP {respuesta.status}"
-              + (f" · SIN RESOLVER: {', '.join(caidos)}" if caidos else ""))
+        # ⚠️ Una linea JSON, como el wrapper de los crons. El colector parsea
+        # todo /home/ubuntu/logs; una linea de texto plano le hace saltar el
+        # `json_parser` y escribir un error cada cinco minutos. No se pierde
+        # nada --la linea pasa igual-- pero un error periodico e inofensivo es
+        # exactamente como un log deja de leerse, que es el fallo que este
+        # proyecto lleva tres veces pagando.
+        print(json.dumps({
+            "ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+            "cron": "dns-tls",
+            "dominios": len(DOMINIOS),
+            "certificados": len(dias),
+            "http": respuesta.status,
+            "ok": not caidos,
+            "sin_resolver": caidos,
+        }, ensure_ascii=False))
         # Sale en 1 si alguno no resuelve, para que el cron lo registre como fallo.
         return 1 if caidos else 0
 
