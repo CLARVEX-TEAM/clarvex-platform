@@ -1,3 +1,4 @@
+import FaroSourceMapUploaderPlugin from "@grafana/faro-webpack-plugin";
 /** @type {import('next').NextConfig} */
 import { withSentryConfig } from "@sentry/nextjs";
 
@@ -152,12 +153,63 @@ const nextConfig = {
       },
     ];
   },
+  /*
+   * ⚠️ Los source maps del cliente se GENERAN solo cuando hay con qué subirlos.
+   *
+   * Simbolizar un error exige tenerlos, y Next los escribe dentro de
+   * `.next/static`, que es la carpeta que se publica. Generarlos sin subirlos
+   * ni borrarlos dejaria el codigo fuente de la app servido en internet: la
+   * logica de comisiones, como se firma la peticion del aparato, todo, y sin
+   * dejar rastro de que alguien lo miro.
+   *
+   * De borrarlos despues de la subida se encarga `scripts/borrar-sourcemaps.mjs`,
+   * que corre al final del build Y COMPRUEBA que no queda ninguno.
+   */
+  productionBrowserSourceMaps: Boolean(process.env.FARO_API_KEY),
+};
+
+/*
+ * El subidor de source maps a Grafana.
+ *
+ * ⚠️ Solo si hay clave. Sin ella el build es el de siempre --no se generan
+ * mapas, no se sube nada-- para que una maquina de desarrollo no intente subir
+ * el codigo fuente a ninguna parte.
+ *
+ * ⚠️ Y la clave NO va en el codigo, a diferencia de la URL del colector. Esta
+ * si es un secreto de verdad: los source maps son la aplicacion sin minificar,
+ * y quien pueda escribir --o leer-- ahi la tiene entera.
+ */
+const conFaro = (config) => {
+  if (!process.env.FARO_API_KEY) return config;
+  const anterior = config.webpack;
+  return {
+    ...config,
+    webpack(webpackConfig, contexto) {
+      const base = anterior ? anterior(webpackConfig, contexto) : webpackConfig;
+      // Solo el paquete del navegador: los mapas del servidor no salen de la
+      // maquina y no hay nada que simbolizar en Grafana.
+      if (!contexto.isServer) {
+        base.plugins.push(
+          new FaroSourceMapUploaderPlugin({
+            appName: "clarvex-app",
+            endpoint: "https://faro-api-prod-us-west-0.grafana.net/faro/api/v1",
+            appId: "5687",
+            stackId: "1848107",
+            apiKey: process.env.FARO_API_KEY,
+            gzipContents: true,
+            verbose: false,
+          })
+        );
+      }
+      return base;
+    },
+  };
 };
 
 // Solo se envuelve con Sentry si hay DSN. Sin DSN el build es idéntico al previo
 // (no se ejecuta el plugin ni se intentan subir source maps).
 export default sentryDsn
-  ? withSentryConfig(nextConfig, {
+  ? withSentryConfig(conFaro(nextConfig), {
       org: process.env.SENTRY_ORG,
       project: process.env.SENTRY_PROJECT,
       // Sin SENTRY_AUTH_TOKEN no se suben source maps: el build no falla, solo
@@ -167,4 +219,4 @@ export default sentryDsn
       silent: true,
       webpack: { treeshake: { removeDebugLogging: true } }
     })
-  : nextConfig;
+  : conFaro(nextConfig);

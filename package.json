@@ -8,7 +8,7 @@
   "packageManager": "pnpm@10.12.1",
   "scripts": {
     "dev": "next dev",
-    "build": "cross-env NODE_OPTIONS=--max-old-space-size=6144 next build",
+    "build": "cross-env NODE_OPTIONS=--max-old-space-size=6144 next build && node scripts/borrar-sourcemaps.mjs",
     "start": "next start",
     "lint": "next lint",
     "test": "cross-env NODE_ENV=test tsx --test tests/*.test.ts",
@@ -58,6 +58,7 @@
     "zod": "^4.5.4"
   },
   "devDependencies": {
+    "@grafana/faro-webpack-plugin": "^0.14.0",
     "@playwright/test": "^1.62.1",
     "@resvg/resvg-js": "^2.6.2",
     "@tailwindcss/postcss": "^4.3.3",
