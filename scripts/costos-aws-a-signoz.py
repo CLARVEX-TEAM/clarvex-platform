@@ -50,15 +50,23 @@ def gasto_por_servicio():
         GroupBy=[{"Type": "DIMENSION", "Key": "SERVICE"}],
     )
     filas = []
+    # ⚠️ TODO se sella con la hora de AHORA, no con la medianoche de su dia.
+    #
+    # Sellado al inicio del dia, el gasto solo aparecia mirando semanas atras:
+    # en una ventana de horas --que es como se mira un panel-- no caia ningun
+    # punto y el panel salia vacio pareciendo que no se gasta nada. Como Gauge
+    # lo correcto es «esto es lo que se sabe del gasto EN ESTE MOMENTO»; el dia
+    # al que corresponde viaja como atributo, asi que no se pierde nada.
+    ahora = int(time.time()) * 10**9
     for periodo in respuesta["ResultsByTime"]:
-        # El inicio del dia, en nanosegundos: es la marca que lleva la metrica.
-        cuando = int(time.mktime(datetime.date.fromisoformat(periodo["TimePeriod"]["Start"]).timetuple())) * 10**9
+        dia = periodo["TimePeriod"]["Start"]
+        cuando = ahora
         for grupo in periodo["Groups"]:
             importe = float(grupo["Metrics"]["UnblendedCost"]["Amount"])
             # Los servicios en cero son casi todos: mandarlos multiplicaria por
             # diez los puntos sin decir nada.
             if importe > 0:
-                filas.append((grupo["Keys"][0], importe, cuando))
+                filas.append((grupo["Keys"][0], importe, cuando, dia))
     return filas
 
 
@@ -70,9 +78,12 @@ def mandar(filas):
         {
             "asDouble": importe,
             "timeUnixNano": str(cuando),
-            "attributes": [{"key": "servicio", "value": {"stringValue": servicio}}],
+            "attributes": [
+                {"key": "servicio", "value": {"stringValue": servicio}},
+                {"key": "dia", "value": {"stringValue": dia}},
+            ],
         }
-        for servicio, importe, cuando in filas
+        for servicio, importe, cuando, dia in filas
     ]
     cuerpo = {
         "resourceMetrics": [{

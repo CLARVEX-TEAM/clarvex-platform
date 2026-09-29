@@ -182,11 +182,17 @@ PANELES = [
            "bytes"), (6, 8, 6, 4)),
 
     # --- el dinero --------------------------------------------------------
-    (serie("Gasto de AWS por servicio",
-           "Bruto antes de creditos, igual que el presupuesto. Se consulta una vez al dia porque cada llamada a Cost Explorer cuesta $0.01.",
+    # ⚠️ TABLA y no serie de tiempo. El gasto es UN dato por dia y por servicio:
+    # dibujado como linea son cuatro puntos sueltos que no cuentan nada, y en una
+    # ventana de horas no cae ninguno. En tabla se lee de un vistazo cuanto y en
+    # que, que es la pregunta real.
+    (tabla("Gasto de AWS por servicio y dia",
+           "Bruto antes de creditos, igual que el presupuesto. Se consulta UNA vez al dia: cada llamada a Cost Explorer cuesta $0.01, o sea ~$7/mes por hora frente a ~$0.30 asi.",
            consulta("metrics", metrica("aws.costo.diario", "avg", "sum"),
-                    group=[campo("servicio")], leyenda="{{servicio}}"),
-           "none"), (0, 12, 12, 4)),
+                    group=[campo("servicio"), campo("dia")], kind="scalar")), (0, 12, 8, 4)),
+    (numero("Gasto total",
+            "Suma de todos los servicios en la ventana elegida. El presupuesto de AWS esta en $45/mes con un ritmo real de ~$31.",
+            consulta("metrics", metrica("aws.costo.diario", "avg", "sum"), kind="scalar")), (8, 12, 4, 4)),
 
     # --- el trafico -------------------------------------------------------
     (serie("Peticiones", "Todo lo que entra por el proxy a team.clarvex.tech.",
