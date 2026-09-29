@@ -147,7 +147,7 @@ export function HorariosWeb() {
               <h2 className="mt-0.5 text-lg font-semibold tracking-[-0.03em] text-ink">Semana {isoWeekNumber(new Date(`${weekStart}T00:00:00Z`))}</h2>
               <p className="text-xs font-semibold text-muted">{rangeLabel}</p>
             </div>
-            <button type="button" onClick={() => moveWeek(1)} className="grid size-11 shrink-0 place-items-center rounded-full bg-slate-100 text-ink transition active:scale-95" aria-label="Semana siguiente"><ChevronRight size={20} /></button>
+            <button type="button" onClick={() => moveWeek(1)} className="grid size-11 shrink-0 place-items-center rounded-full bg-slate-100 dark:bg-slate-800 text-ink transition active:scale-95" aria-label="Semana siguiente"><ChevronRight size={20} /></button>
           </div>
           <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
             <Button variant={weekStart === currentWeek ? "primary" : "ghost"} className="min-h-9 shrink-0 px-3 text-xs" onClick={() => setWeekStart(currentWeek)}>Actual</Button>
