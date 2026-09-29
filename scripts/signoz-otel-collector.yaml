@@ -165,6 +165,27 @@ exporters:
       enabled: true
       queue_size: 200
 
+  # Grafana Cloud, en PARALELO a SigNoz.
+  #
+  # ⚠️ Los dos a la vez a proposito y sin coste extra: asi se comparan las dos
+  # interfaces con datos reales antes de apagar una, y el cambio no deja ni un
+  # minuto sin vigilancia. Un exportador que falle NO afecta al otro: cada uno
+  # tiene su cola y sus reintentos.
+  otlphttp/grafana:
+    endpoint: ${env:GRAFANA_OTLP_ENDPOINT}
+    headers:
+      # `Basic <base64 de instanciaID:token>`, tal como lo arma Grafana. Sale
+      # del .env; aqui no hay ninguna credencial porque esto se commitea.
+      Authorization: ${env:GRAFANA_OTLP_AUTH}
+    retry_on_failure:
+      enabled: true
+      initial_interval: 5s
+      max_interval: 60s
+      max_elapsed_time: 300s
+    sending_queue:
+      enabled: true
+      queue_size: 200
+
 service:
   # ⚠️ El propio colector escribe a su log de Docker, no a SigNoz: si se lo
   # mandara a si mismo, un fallo de envio generaria un log que tampoco se puede
@@ -176,12 +197,12 @@ service:
     traces:
       receivers: [otlp]
       processors: [memory_limiter, resourcedetection, batch]
-      exporters: [otlp]
+      exporters: [otlp, otlphttp/grafana]
     metrics:
       receivers: [otlp, hostmetrics]
       processors: [memory_limiter, resourcedetection, batch]
-      exporters: [otlp]
+      exporters: [otlp, otlphttp/grafana]
     logs:
       receivers: [otlp, filelog, filelog/proxy]
       processors: [memory_limiter, resourcedetection, batch]
-      exporters: [otlp]
+      exporters: [otlp, otlphttp/grafana]
