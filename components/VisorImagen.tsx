@@ -1,5 +1,7 @@
 "use client";
 
+import { Capa } from "@/components/Capa";
+
 /**
  * Visor de imágenes a pantalla completa, con zoom.
  *
@@ -159,6 +161,11 @@ export function VisorImagen({ url, onClose }: { url: string; onClose: () => void
   };
 
   return (
+    /* ⚠️ En `Capa` --portal al `body`--, o la barra de abajo se pinta ENCIMA
+       del visor: dentro de una pantalla, un `fixed` queda atrapado en el
+       contexto de apilamiento del envoltorio y su `z-70` solo compite con
+       sus hermanos. El porqué, en `components/Capa.tsx`. */
+    <Capa>
     <div
       className="fixed inset-0 z-70 flex items-center justify-center overflow-hidden bg-black/95"
       onClick={() => { if (escala <= 1) cerrar(); }}
@@ -225,6 +232,7 @@ export function VisorImagen({ url, onClose }: { url: string; onClose: () => void
         }}
       />
     </div>
+    </Capa>
   );
 }
 

@@ -6,6 +6,7 @@ import { dayLabel, STATUS_LABEL, type AttendanceRecord } from "@/lib/attendance-
 import { Button, Card } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import { AppSelect } from "@/components/forms";
+import { Capa } from "@/components/Capa";
 
 export const EDITABLE_STATUSES: AttendanceStatus[] = ["ON_TIME", "LATE", "ABSENT", "EXCUSED", "REST", "VACATION", "PAID_DAY", "INVENTORY"];
 
@@ -53,6 +54,10 @@ export function EditDayModal({ record, name, onClose, onSaved }: { record: Atten
   const inputClass = "min-h-11 w-full rounded-2xl border border-line bg-panel px-3 text-sm font-bold text-ink outline-hidden focus:border-volt";
 
   return (
+    /* ⚠️ En `Capa` --portal al `body`-- o la barra de abajo lo tapa: dentro de
+       una pantalla, un `fixed` queda atrapado en el contexto de apilamiento
+       del envoltorio. El porqué, en `components/Capa.tsx`. */
+    <Capa>
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-xs p-4 sm:items-center" onClick={onClose}>
       <Card className="w-full max-w-sm p-4" onClick={(event) => event.stopPropagation()}>
         <p className="text-sm font-semibold text-ink">Corregir día</p>
@@ -93,6 +98,7 @@ export function EditDayModal({ record, name, onClose, onSaved }: { record: Atten
         </div>
       </Card>
     </div>
+    </Capa>
   );
 }
 

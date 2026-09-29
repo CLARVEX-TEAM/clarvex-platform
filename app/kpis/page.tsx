@@ -1,4 +1,5 @@
 "use client";
+import { Capa } from "@/components/Capa";
 
 import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
@@ -199,7 +200,11 @@ export default function KpisPage() {
             }}
           />
         ) : null}
+        {/* ⚠️ En `Capa` --portal al `body`-- o la barra de abajo lo tapa: dentro
+            de una pantalla, un `fixed` queda atrapado en el contexto de
+            apilamiento del envoltorio. El porqué, en `components/Capa.tsx`. */}
         {showIaReportModal && iaReport && (
+          <Capa>
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -261,6 +266,7 @@ export default function KpisPage() {
               </div>
             </motion.div>
           </motion.div>
+          </Capa>
         )}
       </AnimatePresence>
     </>
@@ -554,6 +560,8 @@ function TargetSheet({ targets, period, onClose, onSave }: { targets: KpiTarget[
     : (["upt", "aur", "ept", "conversion", "achievement", "ticketElectronicoTienda", "ticketElectronicoAsesor"] as const);
 
   return (
+    /* Mismo motivo que arriba: ver `components/Capa.tsx`. */
+    <Capa>
     <div className="fixed inset-0 z-40 flex items-end justify-center bg-black/50 p-4 backdrop-blur-xs">
       <motion.div
         initial={{ y: "100%", opacity: 0 }}
@@ -602,6 +610,7 @@ function TargetSheet({ targets, period, onClose, onSave }: { targets: KpiTarget[
         </button>
       </motion.div>
     </div>
+    </Capa>
   );
 }
 

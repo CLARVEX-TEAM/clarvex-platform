@@ -13,6 +13,7 @@ import { ResourceDiscussion } from "@/components/ResourceDiscussion";
 import { DeleteButton, SaveButton } from "@/components/ActionButtons";
 import { useSuperficiePapel } from "@/lib/superficie-papel";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { Capa } from "@/components/Capa";
 import { useToast } from "@/components/Toast";
 import { AppDatePicker, AppInput, AppSelect, AppTextarea, type SelectOption } from "@/components/forms";
 import { PullToRefresh } from "@/components/PullToRefresh";
@@ -490,7 +491,15 @@ export default function PendientesPage() {
         onCancel={() => setDeleteTargetId(null)}
       />
 
-      {/* Modal Optimización IA */}
+      {/*
+        Modal Optimización IA.
+
+        ⚠️ Va en `Capa` --portal al `body`-- o la barra de abajo lo tapa. No es
+        cosa de esta hoja: cualquier `fixed` de una pantalla queda atrapado en
+        el contexto de apilamiento que `body > *` le pone al envoltorio de
+        `PageTransition`. El porqué, entero, en `components/Capa.tsx`.
+      */}
+      <Capa>
       <AnimatePresence>
         {showOptModal && optimization && (
           <motion.div
@@ -570,6 +579,7 @@ export default function PendientesPage() {
           </motion.div>
         )}
       </AnimatePresence>
+      </Capa>
     </>
   );
 }

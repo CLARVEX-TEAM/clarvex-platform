@@ -1,4 +1,5 @@
 "use client";
+import { Capa } from "@/components/Capa";
 
 import { useEffect, useRef, useState } from "react";
 import { Check, ImageDown, Loader2, RotateCcw, X } from "lucide-react";
@@ -145,6 +146,10 @@ export function DocScanner({ file, onDone, onCancel, lite = false }: { file: Fil
     : "";
 
   return (
+  /* ⚠️ En `Capa` --portal al `body`-- o la barra de abajo lo tapa: dentro de
+     una pantalla, un `fixed` queda atrapado en el contexto de apilamiento
+     del envoltorio. El porqué, en `components/Capa.tsx`. */
+    <Capa>
     <div className="fixed inset-0 z-50 flex flex-col bg-black/90 backdrop-blur-xs">
       <div className="flex items-center justify-between px-4 pb-1 pt-3 text-white">
         <button type="button" onClick={onCancel} className="flex items-center gap-1.5 text-sm font-bold"><X size={18} />Cancelar</button>
@@ -215,5 +220,6 @@ export function DocScanner({ file, onDone, onCancel, lite = false }: { file: Fil
         </button>
       </div>
     </div>
+    </Capa>
   );
 }
