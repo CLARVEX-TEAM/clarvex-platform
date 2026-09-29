@@ -40,7 +40,14 @@ receivers:
     collection_interval: 60s
     root_path: /hostfs
     scrapers:
+      # ⚠️ `system.cpu.utilization` NO sale por omision: el scraper de CPU solo
+      # emite `system.cpu.time`, que es un contador acumulado y no un
+      # porcentaje. Sin activarla, cualquier panel de «CPU en %» sale vacio sin
+      # decir por que.
       cpu:
+        metrics:
+          system.cpu.utilization:
+            enabled: true
       memory:
       load:
       filesystem:
