@@ -264,7 +264,7 @@ export default function PlanPage() {
                   transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
                 />
               ) : null}
-              <span className={cn("relative", selectedDay === day ? "text-ink" : "text-muted hover:text-ink")}>
+              <span className={cn("relative", selectedDay === day ? "text-white in-data-[surface=papel]:text-ink" : "text-muted hover:text-ink")}>
                 {day}
               </span>
             </motion.button>
@@ -285,7 +285,7 @@ export default function PlanPage() {
             </div>
             <ProgressRing value={dayProgress} size={72} />
           </div>
-          <div className="mt-3 h-2 overflow-hidden rounded-full bg-volt/10">
+          <div className="mt-3 h-2 overflow-hidden rounded-full bg-blue-100 dark:bg-[#2a3a5c] in-data-[surface=papel]:bg-volt/10 dark:in-data-[surface=papel]:bg-volt/10">
             <motion.div
               className="h-full rounded-full bg-linear-to-r from-blue-600 to-cyan-400"
               initial={{ width: 0 }}
@@ -335,11 +335,16 @@ export default function PlanPage() {
         ) : null}
 
         {/* ── Crear plan ── */}
+        {/*
+          ⚠️ Plegar «Crear plan» es del rediseño de la APK. Fuera de ella
+          --navegador, PWA, iPhone-- el formulario se queda abierto como antes:
+          el botón y la X solo se pintan bajo `[data-surface="papel"]`.
+        */}
         {!isAdvisor && !creando ? (
           <button
             type="button"
             onClick={() => setCreando(true)}
-            className="papel-elev tappable mb-3 flex min-h-14 w-full items-center gap-3 rounded-[18px] border border-line bg-card px-4 text-left transition active:scale-[0.99]"
+            className="solo-papel papel-elev tappable mb-3 flex min-h-14 w-full items-center gap-3 rounded-[18px] border border-line bg-card px-4 text-left transition active:scale-[0.99]"
           >
             <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-volt/10 text-volt">
               <Plus size={17} />
@@ -349,8 +354,8 @@ export default function PlanPage() {
           </button>
         ) : null}
 
-        {!isAdvisor && creando ? (
-          <Card className="mb-3">
+        {!isAdvisor ? (
+          <Card className={cn("mb-3", !creando && "fuera-de-papel")}>
             <div className="mb-4 flex items-center justify-between gap-3">
               <h2 className="text-lg font-semibold">Crear plan</h2>
               <button
@@ -366,7 +371,7 @@ export default function PlanPage() {
                 type="button"
                 onClick={() => setCreando(false)}
                 aria-label="Cerrar crear plan"
-                className="tappable grid size-10 shrink-0 place-items-center rounded-xl text-muted transition hover:text-ink"
+                className="solo-papel tappable grid size-10 shrink-0 place-items-center rounded-xl text-muted transition hover:text-ink"
               >
                 <X size={18} />
               </button>
@@ -439,7 +444,7 @@ export default function PlanPage() {
                     {!isAdvisor && plan.published === false ? <Badge tone="warn">Borrador</Badge> : null}
                     <Badge>{money(plan.dailyGoal)}</Badge>
                     {!isAdvisor ? (
-                      <DeleteButton iconOnly onClick={() => setPendingDeleteId(plan.id)} className="size-9 border border-orchid/30 bg-orchid/10" aria-label="Eliminar plan" />
+                      <DeleteButton iconOnly onClick={() => setPendingDeleteId(plan.id)} className="size-9 border border-rose-200/60 bg-rose-50/60 dark:border-rose-500/30 dark:bg-rose-500/10 in-data-[surface=papel]:border-orchid/30 in-data-[surface=papel]:bg-orchid/10 dark:in-data-[surface=papel]:border-orchid/30 dark:in-data-[surface=papel]:bg-orchid/10" aria-label="Eliminar plan" />
                     ) : null}
                   </div>
                 </div>

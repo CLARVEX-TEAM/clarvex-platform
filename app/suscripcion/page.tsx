@@ -82,16 +82,40 @@ export default function SubscriptionPage() {
       <AppHeader title="Suscripción" subtitle="Estado y pago de tu tienda" backHref="/manager" />
       <AppFrame>
         {paidNotice === "ok" ? (
-          <Card className="mb-3 flex items-center gap-2 border border-mint/30 bg-mint/10 p-3 text-sm font-bold text-mint">
+          <Card className="mb-3 flex items-center gap-2 border border-emerald-400/30 bg-emerald-50 p-3 text-sm font-bold text-emerald-700 dark:bg-emerald-950/30 in-data-[surface=papel]:border-mint/30 in-data-[surface=papel]:bg-mint/10 in-data-[surface=papel]:text-mint dark:in-data-[surface=papel]:bg-mint/10">
             <CheckCircle2 size={16} /> Recibimos tu pago. Puede tardar unos minutos en reflejarse.
           </Card>
         ) : null}
-        {error ? <Card className="mb-3 p-3 text-sm font-semibold text-orchid">{error}</Card> : null}
+        {error ? <Card className="mb-3 p-3 text-sm font-semibold text-rose-700 in-data-[surface=papel]:text-orchid">{error}</Card> : null}
 
         {!status ? (
           <Card className="p-4 text-sm font-semibold text-muted">Cargando…</Card>
         ) : (
           <>
+            {/*
+              ⚠️ Fuera de la APK --navegador, PWA, iPhone-- se queda la tarjeta de
+              antes del rediseño. El bloque `.papel-hero` de abajo es solo de la
+              APK: `solo-papel` / `fuera-de-papel` (ver `app/papel.css`) lo deciden
+              por CSS, sin `if` ni riesgo de hidratación.
+            */}
+            <Card className="fuera-de-papel mb-3 p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-muted">{status.storeName}</p>
+                  <h2 className="mt-1 text-2xl font-semibold text-ink">{money(status.amountMxn)}<span className="text-sm font-bold text-muted"> / mes</span></h2>
+                  <p className="mt-0.5 text-xs text-muted">{status.activeUsers} usuario{status.activeUsers === 1 ? "" : "s"} × {money(status.pricePerUserMxn)} · IVA incl.</p>
+                </div>
+                {ui ? <Badge tone={ui.tone}>{ui.label}</Badge> : null}
+              </div>
+              <p className="mt-3 text-sm text-muted">{ui?.text}</p>
+              {status.paidUntil && status.state !== "exenta" ? (
+                <p className="mt-2 text-sm font-bold text-ink">
+                  {status.state === "vencida" ? "Venció el " : "Pagada hasta el "}{fmtDate(status.paidUntil)}
+                  {status.daysLeft !== null && status.daysLeft >= 0 ? <span className="font-semibold text-muted"> · {status.daysLeft} día{status.daysLeft === 1 ? "" : "s"}</span> : null}
+                </p>
+              ) : null}
+            </Card>
+
             {/*
               ⚠️ Esta pantalla contesta UNA pregunta --cuánto y hasta cuándo-- y
               la respuesta estaba en una tarjeta con el mismo peso que el aviso
@@ -105,7 +129,7 @@ export default function SubscriptionPage() {
               menos que el importe, que es justo al revés de lo que importa
               cuando está vencida.
             */}
-            <section className="papel-hero papel-elev-alta relative mb-3 overflow-hidden rounded-[26px]">
+            <section className="solo-papel papel-hero papel-elev-alta relative mb-3 overflow-hidden rounded-[26px]">
               <svg
                 aria-hidden
                 viewBox="0 0 512 512"
