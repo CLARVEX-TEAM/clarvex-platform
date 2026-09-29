@@ -131,19 +131,27 @@
    motivo por el que el fondo no es blanco puro.
 
    ⚠️ **El degradado sale UNA vez por pantalla.** Si aparece en dos sitios deja
-   de marcar cuál manda, que es justo para lo que está. */
-.papel-hero {
+   de marcar cuál manda, que es justo para lo que está.
+
+   ⚠️ **Acotadas a la superficie, como todo lo demás de esta hoja.** Nacieron
+   como clases GLOBALES y por eso el rediseño se veía en la web, la PWA y el
+   iPhone (29 de septiembre de 2026): el atributo solo lo pone la APK, pero
+   estas reglas no lo miraban. Fuera de la APK ahora no hacen nada. Si el
+   bloque que las lleva no existía antes del rediseño, acotar el CSS no basta
+   --quedaría sin fondo, con aspecto roto--: ese marcado se envuelve en
+   `.solo-papel`, más abajo. */
+[data-surface="papel"] .papel-hero {
   background: linear-gradient(135deg, #071F47 0%, #1458BD 58%, #287DFF 100%);
   color: #FFFFFF;
 }
 
-.papel-elev {
+[data-surface="papel"] .papel-elev {
   box-shadow:
     0 1px 2px rgb(7 31 71 / 0.06),
     0 10px 28px rgb(7 31 71 / 0.10);
 }
 
-.papel-elev-alta {
+[data-surface="papel"] .papel-elev-alta {
   box-shadow:
     0 2px 6px rgb(7 31 71 / 0.10),
     0 18px 44px rgb(7 31 71 / 0.20);
@@ -162,4 +170,35 @@
   [data-surface="papel"] .animate-spin-around {
     animation: none !important;
   }
+}
+
+/* ── Marcado exclusivo del rediseño ───────────────────────────────────────
+   El rediseño no solo cambió estilos: AÑADIÓ bloques que antes no existían
+   --la tarjeta de degradado con la marca de agua de Conteos, por ejemplo--.
+   Pantallas y componentes se comparten entre la APK y la web, así que el
+   marcado viaja a las dos. Para decidir qué se pinta dónde sin un solo `if`:
+
+     .solo-papel        se ve SOLO en la APK; fuera, `display: none`.
+     .fuera-de-papel    lo contrario: el marcado de antes, que la APK oculta.
+
+   Un bloque nuevo lleva `solo-papel` y, si sustituyó a otro, el de antes vuelve
+   al lado con `fuera-de-papel`: así web y PWA recuperan su aspecto anterior.
+
+   ⚠️ **Se OCULTA, nunca se re-declara `display` donde sí se ve.** Así el
+   elemento conserva el suyo --`flex`, `grid`, `inline`-- sin que haya que
+   repetirlo aquí. Y el selector pesa más que una utilidad de Tailwind: un
+   `flex` en el mismo elemento no lo vuelve a mostrar, que es justo la trampa
+   del velo de `CandadoHuella`.
+
+   ⚠️ **Es CSS y no un `if` en React a propósito.** El servidor no sabe si lo
+   pide la APK --el atributo lo pone un guion antes del primer pintado--, así
+   que decidirlo en el componente o parpadea o rompe la hidratación. Ojo: el
+   marcado oculto SÍ se descarga y se monta; no metas ahí nada que pida datos
+   que solo existen dentro de la APK. */
+:root:not([data-surface="papel"]) .solo-papel {
+  display: none;
+}
+
+[data-surface="papel"] .fuera-de-papel {
+  display: none;
 }
