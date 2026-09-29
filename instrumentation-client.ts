@@ -1,5 +1,19 @@
 import * as Sentry from "@sentry/nextjs";
 import { humanizeError } from "@/lib/sentry-humanize";
+import { iniciarFaro } from "@/lib/faro";
+
+/*
+ * ⚠️ Faro y Sentry CONVIVEN a proposito, y es temporal.
+ *
+ * Lo nuevo se verifica recibiendo antes de retirar lo viejo. Sentry sale cuando
+ * se compruebe que un error real llega a Grafana y llega LEGIBLE --con sus
+ * source maps--, no antes: quitarlo primero deja la app sin nadie mirando los
+ * errores del navegador, que es la mitad de los que reporta esta tienda.
+ *
+ * No se pisan: cada uno engancha sus propios manejadores y ninguno sustituye
+ * los del otro.
+ */
+iniciarFaro(process.env.NEXT_PUBLIC_APP_VERSION ?? "0.0.0");
 
 // Errores del navegador (PWA en móvil y escritorio).
 const dsn = process.env.NEXT_PUBLIC_SENTRY_DSN;
