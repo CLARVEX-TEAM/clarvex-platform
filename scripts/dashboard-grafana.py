@@ -206,24 +206,43 @@ PANELES.append(panel(
     loki(f'topk(20, sum by (ruta, red) (count_over_time({FLUJO} | ruta =~ `.*(env|git|wp-|php).*` [$__range])))', "", instant=True),
     0, 56, 12, 7, "short"))
 
+# --- la base de datos ------------------------------------------------------
+# ⚠️ Es el otro sitio donde la tienda se para. Hasta ahora solo se veia su
+# SINTOMA --el disco llenandose-- y no su estado: conexiones agotadas, la base
+# creciendo o el vacuum sin pasar no dan ningun error hasta que ya paso.
+PANELES.append(panel(
+    "Postgres · conexiones", "Contra el maximo. Agotarlas deja a la app sin poder hablar con la base, y el sintoma es un 500 generico.",
+    "timeseries", PROM, prom("postgresql_backends", "conexiones"), 0, 55, 6, 6, "short"))
+
+PANELES.append(panel(
+    "Postgres · tamano de la base", "Lo que ocupa. Crece despacio; un salto brusco es una tabla que se descontrolo.",
+    "timeseries", PROM, prom("postgresql_db_size_bytes", "{{postgresql_database_name}}"), 6, 55, 6, 6, "bytes"))
+
+PANELES.append(panel(
+    "Postgres · escrituras y errores", "Commits frente a rollbacks. Un pico de rollbacks es codigo fallando, no la base.",
+    "timeseries", PROM,
+    [{"refId": "A", "datasource": PROM, "expr": "rate(postgresql_commits_total[5m])", "legendFormat": "commits", "range": True},
+     {"refId": "B", "datasource": PROM, "expr": "rate(postgresql_rollbacks_total[5m])", "legendFormat": "rollbacks", "range": True}],
+    0, 61, 12, 6, "short"))
+
 # --- los crons ------------------------------------------------------------
 PANELES.append(panel(
     "Crons que FALLARON", "Tres estuvieron rotos 24 dias sin que nadie se enterara. Si aqui hay algo, arreglalo hoy.",
     "table", LOKI,
     loki(f'sum by (cron, http) (count_over_time({FLUJO} | cron != `` | ok = `false` [$__range]))', "", instant=True),
-    0, 63, 6, 7, "short"))
+    0, 70, 6, 7, "short"))
 
 PANELES.append(panel(
     "Ejecuciones por cron", "Un cron que deja de aparecer es un cron que dejo de correr, y eso no da ningun error.",
     "table", LOKI,
     loki(f'sum by (cron) (count_over_time({FLUJO} | cron != `` [$__range]))', "", instant=True),
-    6, 63, 6, 7, "short"))
+    6, 70, 6, 7, "short"))
 
 PANELES.append(panel(
     "Cuanto tardan los crons", "Uno que se alarga de golpe suele ser la base, no el cron.",
     "timeseries", LOKI,
     loki(f'avg by (cron) (avg_over_time({FLUJO} | cron != `` | unwrap ms [5m]))', "{{cron}}"),
-    0, 70, 12, 7, "ms"))
+    0, 77, 12, 7, "ms"))
 
 
 def main():

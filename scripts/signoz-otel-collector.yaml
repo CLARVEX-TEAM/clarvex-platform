@@ -54,6 +54,28 @@ receivers:
       network:
       paging:
 
+  # Postgres: conexiones, tamano, bloqueos y cache. La base es el otro sitio
+  # donde la tienda se para --si deja de escribir, nadie captura-- y hasta ahora
+  # solo se veia su sintoma (el disco lleno), no su estado.
+  #
+  # ⚠️ Usuario `otel_monitor`, creado con `pg_monitor` y NADA mas: no es
+  # superusuario, no puede crear bases ni roles, y solo lee las vistas de
+  # estadisticas. El rol `clarvex` es superusuario y ahi un error de mas se
+  # lleva datos de verdad; es la misma razon por la que Adminer se mira con
+  # `retool` y no con `clarvex`.
+  #
+  # ⚠️ Y llega por NOMBRE de contenedor, que solo funciona porque los dos estan
+  # en `clarvex_net`. El bridge por omision de Docker no resuelve nombres --es
+  # la trampa que ya costo los 502 de npm--.
+  postgresql:
+    endpoint: clarvex_postgres:5432
+    username: otel_monitor
+    password: ${env:POSTGRES_MONITOR_PASS}
+    databases: [clarvex_team]
+    collection_interval: 60s
+    tls:
+      insecure: true
+
   # Los 31 archivos de log de cron que hoy no mira nadie. Es la razon principal
   # por la que esto existe: tres crons fallaron 24 dias en silencio escribiendo
   # el error correcto en un archivo que nadie abre.
@@ -248,7 +270,7 @@ service:
       processors: [memory_limiter, resourcedetection, batch]
       exporters: [otlp, otlphttp/grafana]
     metrics:
-      receivers: [otlp, hostmetrics]
+      receivers: [otlp, hostmetrics, postgresql]
       processors: [memory_limiter, resourcedetection, batch]
       exporters: [otlp, otlphttp/grafana]
     logs:
