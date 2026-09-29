@@ -11,6 +11,8 @@ import { SegmentedTabs } from "@/components/animate-ui/SegmentedTabs";
 import { PullToRefresh } from "@/components/PullToRefresh";
 import { AppSelect } from "@/components/forms";
 import { TiraSemana } from "@/components/horarios/TiraSemana";
+import { enContenedorNativo } from "@/lib/puente-nativo";
+import { HorariosWeb } from "./HorariosWeb";
 
 type ScheduleStatus = "WORKING" | "OFF" | "VACATION" | "PAID_DAY" | "INVENTORY" | "TERMINATED" | "UNKNOWN";
 type ScheduleItem = {
@@ -56,7 +58,22 @@ const statusConfig: Record<ScheduleStatus, { label: string; tone: "success" | "d
   UNKNOWN: { label: "Sin horario", tone: "default", className: "bg-panel text-muted" }
 };
 
+/*
+ * ⚠️ El rediseño de Horarios es SOLO de la APK. Fuera de ella --navegador,
+ * PWA, iPhone-- se pinta la pantalla de antes, `HorariosWeb`.
+ *
+ * No se decide en el render por lo mismo que `LiquidBottomNav`: el servidor no
+ * sabe si es la APK, y decidirlo ahí rompería la hidratación. Mientras no se
+ * sabe, no se pinta nada: pintar una y cambiar a la otra sería un salto peor.
+ */
 export default function HorariosPage() {
+  const [enApk, setEnApk] = useState<boolean | null>(null);
+  useEffect(() => { setEnApk(enContenedorNativo()); }, []);
+  if (enApk === null) return null;
+  return enApk ? <HorariosApk /> : <HorariosWeb />;
+}
+
+function HorariosApk() {
   const { session } = useSession();
   const [weekStart, setWeekStart] = useState(() => dateKey(startOfWeek(new Date())));
   const [view, setView] = useState<"mine" | "team">("mine");
