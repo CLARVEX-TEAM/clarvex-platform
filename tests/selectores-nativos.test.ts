@@ -33,11 +33,14 @@ const RAIZ = join(__dirname, "..");
  *     y sin rueda del sistema; ahí un `<select>` es lo correcto.
  *   - `conteos/marbetes/imprimir` es una hoja para IMPRIMIR --fondo blanco
  *     fijo, sin cabecera ni barra-- y no vive dentro del rediseño del teléfono.
+ *   - `horarios/HorariosWeb.tsx` es Horarios FUERA de la APK, tal como era
+ *     antes del rediseño; dentro de la APK se pinta `page.tsx`, que no lo usa.
  */
 const FUERA = [
   join("app", "escritorio"),
   join("components", "desktop"),
-  join("app", "conteos", "marbetes", "imprimir")
+  join("app", "conteos", "marbetes", "imprimir"),
+  join("app", "horarios", "HorariosWeb.tsx")
 ];
 
 function pantallas(dir: string): string[] {
