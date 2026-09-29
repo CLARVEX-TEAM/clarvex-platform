@@ -212,6 +212,33 @@ body {
     position: relative;
     z-index: 1;
   }
+
+  /*
+   * ⚠️ **Los contenedores de PORTAL quedan fuera, o la regla de arriba se come
+   * los diálogos.**
+   *
+   * Base UI no mete su diálogo en el `body`: mete PRIMERO un `<div>` suyo, sin
+   * una sola clase, y dentro va el diálogo. Ese `<div>` es `body > *`, así que
+   * la regla de arriba lo posiciona y le pone `z-index: 1` -- y entonces el
+   * `z-70` del diálogo solo compite dentro de él. Resultado: la barra de abajo,
+   * que va en `z-30` en la raíz, se pinta ENCIMA de los botones del diálogo.
+   *
+   * Se reportó desde un teléfono el 29 de septiembre de 2026: «¿Cerrar sesión?»
+   * salía con el título y el texto, y sus dos botones tapados por la barra.
+   *
+   * ⚠️ Es la MISMA causa que `components/Capa.tsx` --ahí está escrita entera--,
+   * una capa más abajo: `Capa` saca el overlay al `body`, pero un portal ajeno
+   * se trae su propio envoltorio y vuelve a caer en la trampa. Por eso esto va
+   * en el CSS y no en cada diálogo: cubre a los que ya existen y a los que
+   * monte cualquier componente de la librería mañana.
+   *
+   * El contenedor no necesita subir por encima del fondo animado: no pinta
+   * nada, solo contiene elementos `fixed` que llevan su propio `z-index`.
+   */
+  body > [data-base-ui-portal] {
+    position: static;
+    z-index: auto;
+  }
 }
 
 [class*="border-white/"] {

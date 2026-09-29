@@ -106,6 +106,25 @@ test("la regla que causa esto sigue en globals.css", () => {
   );
 });
 
+test("⚠️ los contenedores de portal quedan fuera de la regla", () => {
+  /*
+   * Base UI no mete su diálogo en el `body`: mete primero un `<div>` suyo, SIN
+   * clases, y dentro va el diálogo. Ese div es `body > *`, así que sin esta
+   * excepción la regla lo convierte en contexto de apilamiento y el `z-70` del
+   * diálogo vuelve a quedar por debajo de la barra.
+   *
+   * Se reportó desde un teléfono: «¿Cerrar sesión?» salía con el título y el
+   * texto, y los dos botones tapados. Comprobado en el navegador: devolviéndole
+   * `z-index: 1` a ese contenedor, la barra vuelve a taparlos.
+   */
+  const css = readFileSync(join(RAIZ, "app", "globals.css"), "utf8");
+  assert.match(
+    css,
+    /body\s*>\s*\[data-base-ui-portal\]\s*\{[^}]*z-index:\s*auto/,
+    "sin esta excepción, los diálogos de Base UI se pintan debajo de la barra"
+  );
+});
+
 test("Capa hace portal al body y espera al montaje", () => {
   const capa = readFileSync(join(RAIZ, "components", "Capa.tsx"), "utf8");
   assert.match(capa, /createPortal\(children, document\.body\)/);

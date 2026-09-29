@@ -57,6 +57,28 @@ export async function createZendeskTicket(input: ZendeskTicketInput): Promise<Ze
     if (!res.ok) {
       const detail = await res.text().catch(() => "");
       console.error("[zendesk] Error creando ticket — status:", res.status, "body:", detail.slice(0, 300));
+      /*
+       * ⚠️ **401 y 403 no son «inténtalo de nuevo»**, y decirlo así es el fallo
+       * caro: la persona reescribe su caso, lo vuelve a mandar, vuelve a fallar,
+       * y acaba creyendo que soporte no existe. Ningún reintento arregla una
+       * credencial: eso lo arregla quien administra Zendesk.
+       *
+       * Pasó el 29 de septiembre de 2026 --`Couldn't authenticate you`--, y la
+       * causa fue que en `ZENDESK_API_TOKEN` había una CONTRASEÑA en vez de un
+       * token de API: la app manda `correo/token:<valor>`, que es el formato de
+       * token, y con una contraseña eso siempre da 401.
+       *
+       * ⚠️ Y el aviso del log nombra la variable a propósito. El 401 a secas
+       * manda a mirar la red o el subdominio, que es donde NO está.
+       */
+      if (res.status === 401 || res.status === 403) {
+        console.error(
+          "[zendesk] ⚠️ Es la CREDENCIAL, no la petición. `ZENDESK_API_TOKEN` tiene que ser un token de API " +
+          "--Admin Center > Apps and integrations > APIs > Zendesk API--, no la contraseña, y `ZENDESK_EMAIL` " +
+          "tiene que ser una cuenta de AGENTE."
+        );
+        return { ok: false, error: "Soporte no está disponible ahora mismo. No es tu caso: avisa a gerencia." };
+      }
       return { ok: false, error: `Zendesk respondió ${res.status}` };
     }
     const data = (await res.json()) as { ticket?: { id?: number } };
