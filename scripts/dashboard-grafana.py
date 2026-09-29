@@ -118,6 +118,30 @@ PANELES.append(panel(
     "Red", "Lo que entra y sale por la interfaz.",
     "timeseries", PROM, prom("rate(system_network_io_bytes_total[5m])", "{{direction}}"), 8, 14, 4, 6, "Bps"))
 
+# --- el DNS y los certificados -------------------------------------------
+# ⚠️ Van ARRIBA, con el disco, porque son de la misma familia: dejan la tienda
+# inalcanzable sin un solo error en el servidor. La app responde perfecta, PM2
+# dice `online`, la salud da 200 desde dentro, y nadie puede entrar.
+PANELES.append(panel(
+    "¿Resuelven los dominios?", "1 = resuelve. Un dominio que deja de resolver o que apunta a otro sitio no produce ningun error aqui dentro.",
+    "stat", PROM, prom("dns_resuelve_ratio", "{{dominio}}"), 0, 20, 6, 6, "short",
+    {"options": {"colorMode": "background", "textMode": "value_and_name",
+                 "reduceOptions": {"calcs": ["lastNotNull"]}},
+     "fieldConfig": {"defaults": {"unit": "short", "thresholds": {"mode": "absolute", "steps": [
+         {"color": "red", "value": None}, {"color": "green", "value": 1}]}}, "overrides": []}}))
+
+PANELES.append(panel(
+    "Certificado: dias restantes", "El otro fallo mudo. Se renueva solo, pero cuando la renovacion falla nadie se entera hasta que el navegador avisa a la tienda.",
+    "bargauge", PROM, prom("tls_dias_days", "{{dominio}}"), 6, 20, 6, 6, "d",
+    {"options": {"displayMode": "gradient", "orientation": "horizontal",
+                 "reduceOptions": {"calcs": ["lastNotNull"]}},
+     "fieldConfig": {"defaults": {"unit": "d", "max": 90, "min": 0, "thresholds": {"mode": "absolute", "steps": [
+         {"color": "red", "value": None}, {"color": "orange", "value": 14}, {"color": "green", "value": 30}]}}, "overrides": []}}))
+
+PANELES.append(panel(
+    "Tiempo de resolucion DNS", "Si se dispara, el problema esta antes de llegar al servidor.",
+    "timeseries", PROM, prom("dns_tiempo_milliseconds", "{{dominio}}"), 0, 26, 12, 5, "ms"))
+
 # --- el dinero ------------------------------------------------------------
 PANELES.append(panel(
     # ⚠️ `last_over_time(...[24h])` y no la metrica a secas. Prometheus da por
@@ -137,13 +161,13 @@ PANELES.append(panel(
     "Peticiones por minuto", "Todo lo que entra por el proxy.",
     "timeseries", LOKI,
     loki(f'sum(count_over_time({FLUJO} | estado != `` [1m]))', "peticiones"),
-    0, 27, 8, 7, "short"))
+    0, 35, 8, 7, "short"))
 
 PANELES.append(panel(
     "Errores 5xx", "Fallos del servidor. Cualquier cosa por encima de cero merece una mirada.",
     "stat", LOKI,
     loki(f'sum(count_over_time({FLUJO} | estado =~ `5..` [$__range]))', "5xx", instant=True),
-    8, 27, 4, 7, "short",
+    8, 35, 4, 7, "short",
     {"options": {"colorMode": "background", "reduceOptions": {"calcs": ["lastNotNull"]}},
      "fieldConfig": {"defaults": {"unit": "short", "thresholds": {"mode": "absolute", "steps": [
          {"color": "green", "value": None}, {"color": "orange", "value": 1}, {"color": "red", "value": 20}]}}, "overrides": []}}))
@@ -152,38 +176,38 @@ PANELES.append(panel(
     "Por codigo de estado", "Un pico de 4xx suele ser un escaner; uno de 5xx somos nosotros.",
     "timeseries", LOKI,
     loki(f'sum by (estado) (count_over_time({FLUJO} | estado != `` [5m]))', "{{estado}}"),
-    0, 34, 6, 7, "short"))
+    0, 42, 6, 7, "short"))
 
 PANELES.append(panel(
     "Rutas mas pedidas", "La query va recortada del propio cuerpo: esta app pone tokens en la URL.",
     "table", LOKI,
     loki(f'topk(15, sum by (ruta) (count_over_time({FLUJO} | ruta != `` [$__range])))', "", instant=True),
-    6, 34, 6, 7, "short"))
+    6, 42, 6, 7, "short"))
 
 PANELES.append(panel(
     "Sondeos buscando secretos", "Peticiones a rutas tipo .env o .git. Ya estaban ocurriendo antes de montar esto; no encontraron nada.",
     "table", LOKI,
     loki(f'topk(20, sum by (ruta, red) (count_over_time({FLUJO} | ruta =~ `.*(env|git|wp-|php).*` [$__range])))', "", instant=True),
-    0, 41, 12, 7, "short"))
+    0, 49, 12, 7, "short"))
 
 # --- los crons ------------------------------------------------------------
 PANELES.append(panel(
     "Crons que FALLARON", "Tres estuvieron rotos 24 dias sin que nadie se enterara. Si aqui hay algo, arreglalo hoy.",
     "table", LOKI,
     loki(f'sum by (cron, http) (count_over_time({FLUJO} | cron != `` | ok = `false` [$__range]))', "", instant=True),
-    0, 48, 6, 7, "short"))
+    0, 56, 6, 7, "short"))
 
 PANELES.append(panel(
     "Ejecuciones por cron", "Un cron que deja de aparecer es un cron que dejo de correr, y eso no da ningun error.",
     "table", LOKI,
     loki(f'sum by (cron) (count_over_time({FLUJO} | cron != `` [$__range]))', "", instant=True),
-    6, 48, 6, 7, "short"))
+    6, 56, 6, 7, "short"))
 
 PANELES.append(panel(
     "Cuanto tardan los crons", "Uno que se alarga de golpe suele ser la base, no el cron.",
     "timeseries", LOKI,
     loki(f'avg by (cron) (avg_over_time({FLUJO} | cron != `` | unwrap ms [5m]))', "{{cron}}"),
-    0, 55, 12, 7, "ms"))
+    0, 63, 12, 7, "ms"))
 
 
 def main():
