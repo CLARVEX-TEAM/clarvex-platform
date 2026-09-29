@@ -1,4 +1,3 @@
-import * as Sentry from "@sentry/nextjs";
 import { registerOTel } from "@vercel/otel";
 import { OTLPHttpJsonTraceExporter } from "@vercel/otel";
 
@@ -34,20 +33,22 @@ export async function register() {
         traceExporter: new OTLPHttpJsonTraceExporter({ url: `${destino}/v1/traces` }),
       });
     }
-
-    await import("./sentry.server.config");
-  }
-  if (process.env.NEXT_RUNTIME === "edge") {
-    await import("./sentry.edge.config");
   }
 }
 
 /**
  * Errores no manejados de route handlers y server components.
  *
- * ⚠️ Sigue en Sentry A PROPÓSITO mientras las trazas se asientan. El orden es
- * el mismo que con cualquier corte de este proyecto: lo nuevo se verifica
- * recibiendo antes de retirar lo viejo. Quitarlo antes deja producción ciega, y
- * esta app ya ha pagado caro no enterarse de las cosas.
+ * ⚠️ Van a la traza ACTIVA, no a un servicio aparte. Marcarla como fallida y
+ * colgarle la excepción hace que el error aparezca dentro de la peticion que lo
+ * provoco --con su ruta, su duracion y lo que paso antes-- en vez de como un
+ * suceso suelto que hay que correlacionar a mano. Es lo que se gana al unificar
+ * en OpenTelemetry.
  */
-export const onRequestError = Sentry.captureRequestError;
+export async function onRequestError(error: unknown) {
+  const { trace, SpanStatusCode } = await import("@opentelemetry/api");
+  const span = trace.getActiveSpan();
+  if (!span) return;
+  span.recordException(error instanceof Error ? error : new Error(String(error)));
+  span.setStatus({ code: SpanStatusCode.ERROR });
+}

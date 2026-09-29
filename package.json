@@ -31,7 +31,6 @@
     "@opentelemetry/api": "^1.9.1",
     "@opentelemetry/exporter-trace-otlp-http": "^0.222.0",
     "@prisma/client": "5.22.0",
-    "@sentry/nextjs": "^10.72.0",
     "@simplewebauthn/browser": "^13.3.0",
     "@simplewebauthn/server": "^13.3.3",
     "@smithy/node-http-handler": "4.11.3",

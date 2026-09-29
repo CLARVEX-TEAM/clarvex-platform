@@ -1,6 +1,6 @@
 "use client";
 
-import * as Sentry from "@sentry/nextjs";
+import { faro } from "@grafana/faro-web-sdk";
 
 /**
  * Delata el bucle en el que la app rebota entre el panel y el login.
@@ -76,15 +76,24 @@ export function noteLoginBounce(from: string): boolean {
 
   if (!report) return false;
   reported = true;
-  Sentry.captureMessage("Bucle de sesión: la app rebota entre el panel y el login", {
-    level: "error",
-    tags: { problema: "bucle-sesion" },
-    extra: {
-      desde: from,
-      vueltas: bounces.count,
-      segundos: Math.round((now - bounces.first) / 1000)
+  /*
+   * ⚠️ `faro.api` puede no existir todavía: este módulo se importa desde
+   * pantallas que se montan antes de que Faro termine de arrancar, y un bucle
+   * de sesión es justo lo que puede ocurrir en el primer instante de la carga.
+   * Sin la guarda, el aviso del bucle moriría con un `undefined` y el fallo que
+   * viene a delatar seguiría sin verse -- que es como estábamos.
+   */
+  faro?.api?.pushError(
+    new Error("Bucle de sesión: la app rebota entre el panel y el login"),
+    {
+      type: "bucle-sesion",
+      context: {
+        desde: from,
+        vueltas: String(bounces.count),
+        segundos: String(Math.round((now - bounces.first) / 1000))
+      }
     }
-  });
+  );
   return true;
 }
 

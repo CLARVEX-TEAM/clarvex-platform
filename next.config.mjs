@@ -38,21 +38,22 @@ function leerDelEnv(clave) {
 
 const faroApiKey = leerDelEnv("FARO_API_KEY");
 /** @type {import('next').NextConfig} */
-import { withSentryConfig } from "@sentry/nextjs";
 
-const sentryDsn = process.env.NEXT_PUBLIC_SENTRY_DSN ?? "";
 
-// Origen exacto de ingesta de Sentry (p. ej. https://oXXXX.ingest.us.sentry.io).
-// Se deriva del DSN para abrir el CSP solo a ese host, no a *.sentry.io.
-const sentryIngest = sentryDsn
-  ? (() => {
-      try {
-        return new URL(sentryDsn).origin;
-      } catch {
-        return "";
-      }
-    })()
-  : "";
+/*
+ * A donde puede hablar el navegador, ademas de a nosotros mismos.
+ *
+ * ⚠️ SIN ESTO, EL NAVEGADOR BLOQUEA FARO Y NO SE ENTERA NADIE. La CSP corta la
+ * peticion en el cliente: el colector nunca la ve, Grafana dice «Never received
+ * any data» y desde el servidor un `curl` al mismo colector responde 202 --
+ * porque `curl` no obedece la CSP--. Se pierde media hora buscando en el sitio
+ * equivocado; aqui estuvo el fallo real.
+ *
+ * ⚠️ Y va el ORIGEN EXACTO, no `*.grafana.net`. Un comodin abriria tambien
+ * cualquier otra cuenta de Grafana; lo unico que esta app necesita es hablar
+ * con su colector.
+ */
+const faroColector = "https://faro-collector-prod-us-west-0.grafana.net";
 
 const r2PublicUrl = process.env.R2_PUBLIC_URL ?? "";
 const r2Domain = r2PublicUrl
@@ -146,8 +147,7 @@ const nextConfig = {
     // 'unsafe-inline' es necesario para el runtime de Next.js sin nonces en layout;
     // 'unsafe-eval' solo en desarrollo (HMR).
     const scriptSrc = ["'self'", "'unsafe-inline'", process.env.NODE_ENV === "development" ? "'unsafe-eval'" : ""].filter(Boolean).join(" ");
-    // Sentry: solo se abre si hay DSN configurado. Sin DSN, el CSP queda igual.
-    const connectSrc = ["'self'", sentryIngest].filter(Boolean).join(" ");
+    const connectSrc = ["'self'", faroColector].join(" ");
 
     return [
       {
@@ -244,17 +244,16 @@ const conFaro = (config) => {
   };
 };
 
-// Solo se envuelve con Sentry si hay DSN. Sin DSN el build es idéntico al previo
-// (no se ejecuta el plugin ni se intentan subir source maps).
-export default sentryDsn
-  ? withSentryConfig(conFaro(nextConfig), {
-      org: process.env.SENTRY_ORG,
-      project: process.env.SENTRY_PROJECT,
-      // Sin SENTRY_AUTH_TOKEN no se suben source maps: el build no falla, solo
-      // los stack traces salen minificados.
-      authToken: process.env.SENTRY_AUTH_TOKEN,
-      sourcemaps: { disable: !process.env.SENTRY_AUTH_TOKEN },
-      silent: true,
-      webpack: { treeshake: { removeDebugLogging: true } }
-    })
-  : conFaro(nextConfig);
+/*
+ * Sentry se retiro el 29 de septiembre de 2026.
+ *
+ * ⚠️ El motivo no fue preferencia, fue que los dos NO PUEDEN convivir sobre los
+ * source maps: Sentry los genera, los sube y los BORRA, asi que el subidor de
+ * Faro no llegaba a verlos --317 chunks con `_sentryDebugId` en el ultimo
+ * despliegue-- y sin mapas un error del navegador llega como
+ * `at u (chunks/6834-....js:18:106653)`.
+ *
+ * Lo que hacia se reparte: trazas y errores del servidor por OpenTelemetry al
+ * colector, errores del navegador por Faro.
+ */
+export default conFaro(nextConfig);
