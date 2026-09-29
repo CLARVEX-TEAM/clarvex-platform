@@ -8,9 +8,10 @@ import { fetchAppData, type AppData } from "@/lib/app-data";
 import { useSession } from "@/lib/use-session";
 import { ANNOUNCEMENT_REACTIONS } from "@/lib/reactions";
 import type { Announcement, AnnouncementReaction, User } from "@/lib/types";
-import { AppFrame, AppHeader, Card, NotificationCard, ProfileAvatar, ProgressBar, Skeleton } from "@/components/ui";
+import { AppFrame, AppHeader, Badge, Card, NotificationCard, ProfileAvatar, ProgressBar, Skeleton } from "@/components/ui";
 import { AppInput, AppTextarea } from "@/components/forms";
 import { SendButton, SendIconButton } from "@/components/SendButton";
+import { DeleteButton } from "@/components/ActionButtons";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { PullToRefresh } from "@/components/PullToRefresh";
 import { haptic } from "@/lib/haptics";
@@ -18,6 +19,13 @@ import { useToast } from "@/components/Toast";
 
 type Filter = "todos" | "no-leidos" | "importantes";
 
+/*
+ * ⚠️ El rediseño «papel» es SOLO de la APK. Lo que cambió de marcado se pinta
+ * dos veces y decide el CSS, no un efecto: `data-surface="papel"` lo pone un
+ * guion antes del primer pintado (ver `app/layout.tsx`), así que no hay
+ * parpadeo ni hidratación que romper. `.solo-papel` enseña la versión de la
+ * APK y `.fuera-de-papel`, la de antes (las dos en `app/papel.css`).
+ */
 export default function ComunicadosPage() {
   const { session } = useSession();
   const [data, setData] = useState<AppData | null>(null);
@@ -310,6 +318,7 @@ export default function ComunicadosPage() {
         ) : null}
 
         {session?.role !== "ASESOR" && !publicando ? (
+          <div className="solo-papel">
           <button
             type="button"
             onClick={() => setPublicando(true)}
@@ -321,9 +330,12 @@ export default function ComunicadosPage() {
             <span className="flex-1 text-[15px] font-semibold text-ink">Publicar comunicado</span>
             <ChevronRight size={17} className="text-muted" />
           </button>
+          </div>
         ) : null}
 
-        {session?.role !== "ASESOR" && publicando ? (
+        {/* Fuera de la APK el formulario sigue abierto, como antes. */}
+        {session?.role !== "ASESOR" ? (
+          <div className={publicando ? undefined : "fuera-de-papel"}>
           <Card className="mb-3 space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -399,6 +411,7 @@ export default function ComunicadosPage() {
               </SendButton>
             </form>
           </Card>
+          </div>
         ) : null}
 
         <div className="space-y-2.5">
@@ -433,6 +446,41 @@ export default function ComunicadosPage() {
                       que nadie lee. Ahora es una línea con la cuenta y el
                       detalle se despliega solo si alguien pregunta por él.
                     */}
+                    <div className="fuera-de-papel">
+                    <div className="mt-3 flex items-center justify-between gap-2">
+                      <Badge>{item.readBy.length}/{advisors.length}</Badge>
+                      <span className="text-xs font-bold text-muted">lectura del equipo</span>
+                    </div>
+                    <ProgressBar value={readProgress} />
+                    <div className="mt-2 grid gap-0 divide-y divide-white/[0.07] border-t border-white/[0.07]">
+                      {session ? (
+                        <button
+                          onClick={() => void toggleRead(item.id)}
+                          className="flex min-h-11 items-center justify-between py-2"
+                        >
+                          <span className="font-semibold">Mi lectura</span>
+                          <Badge tone={item.readBy.includes(session.id) ? "done" : "warn"}>
+                            {item.readBy.includes(session.id) ? "leido" : "marcar como leido"}
+                          </Badge>
+                        </button>
+                      ) : null}
+
+                      {session?.role !== "ASESOR" ? advisors.map((advisor) => {
+                        const read = item.readBy.includes(advisor.id);
+                        return (
+                          <div
+                            key={advisor.id}
+                            className="flex min-h-10 items-center justify-between py-2 text-sm"
+                          >
+                            <span className="font-semibold">{advisor.name}</span>
+                            <Badge tone={read ? "done" : "warn"}>{read ? "leido" : "pendiente"}</Badge>
+                          </div>
+                        );
+                      }) : null}
+                    </div>
+                    </div>
+
+                    <div className="solo-papel">
                     <div className="mt-3">
                       <div className="flex items-baseline justify-between gap-3 text-sm">
                         <span className="text-muted">Lectura del equipo</span>
@@ -482,10 +530,19 @@ export default function ComunicadosPage() {
                         </div>
                       </details>
                     ) : null}
+                    </div>
                     {session ? <CommentsThread announcementId={item.id} session={session} /> : null}
                     {/* Borrar baja a icono: se usa una vez cada muchas y
                         ocupaba un botón entero al pie de CADA comunicado. */}
                     {session?.role !== "ASESOR" ? (
+                      <div className="fuera-de-papel">
+                        <DeleteButton onClick={() => setPendingDeleteId(item.id)} className="mt-2 w-full">
+                          Eliminar comunicado
+                        </DeleteButton>
+                      </div>
+                    ) : null}
+                    {session?.role !== "ASESOR" ? (
+                      <div className="solo-papel">
                       <div className="mt-2 flex justify-end">
                         <button
                           type="button"
@@ -496,6 +553,7 @@ export default function ComunicadosPage() {
                           <Trash2 size={17} />
                         </button>
                       </div>
+                      </div>
                     ) : null}
                   </>
                 }
@@ -505,6 +563,12 @@ export default function ComunicadosPage() {
           })}
           </AnimatePresence>
           {visibleAnnouncements.length === 0 ? (
+            <>
+            <Card className="fuera-de-papel">
+              <p className="font-semibold">Sin comunicados</p>
+              <p className="mt-2 text-sm text-muted">Los avisos de gerencia apareceran aqui con estado de lectura.</p>
+            </Card>
+            <div className="solo-papel">
             <div className="papel-elev rounded-[20px] border border-line bg-card px-5 py-7 text-center">
               <span className="mx-auto grid size-11 place-items-center rounded-[15px] bg-volt/10 text-volt">
                 <Megaphone size={19} />
@@ -514,6 +578,8 @@ export default function ComunicadosPage() {
                 Los avisos de gerencia aparecerán aquí, con quién los ha leído.
               </p>
             </div>
+            </div>
+            </>
           ) : null}
         </div>
       </AppFrame>
