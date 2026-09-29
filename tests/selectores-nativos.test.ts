@@ -66,6 +66,30 @@ export function sinComentarios(fuente: string): string {
   return fuente.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
 }
 
+/**
+ * ⚠️ **El rediseño es SOLO de la APK.** Fuera de ella --navegador, PWA,
+ * iPhone-- varias pantallas conservan el `<select>` que tenían antes, y ahí no
+ * hay rueda de Android que delate nada. Se permite con UNA condición: que el
+ * propio `<select>` lleve `fuera-de-papel`, que lo oculta dentro de la APK
+ * (`app/papel.css`). Así la regla sigue valiendo donde importa aunque el `if`
+ * de React que lo rodea se equivoque.
+ *
+ * Se mira el trozo que va de `<select` a su primera `<option`, o sea sus
+ * atributos: buscar hasta el `>` no sirve porque `onChange={(e) => …}` ya lleva
+ * uno.
+ */
+export function selectsEnLaApk(fuente: string): number {
+  const limpia = sinComentarios(fuente);
+  let cuenta = 0;
+  for (const coincidencia of limpia.matchAll(/<select[\s>]/g)) {
+    const desde = coincidencia.index ?? 0;
+    const hasta = limpia.indexOf("<option", desde);
+    const atributos = limpia.slice(desde, hasta === -1 ? undefined : hasta);
+    if (!/\bfuera-de-papel\b/.test(atributos)) cuenta++;
+  }
+  return cuenta;
+}
+
 test("ninguna pantalla del telefono usa un <select> nativo", () => {
   const culpables: string[] = [];
 
@@ -73,7 +97,7 @@ test("ninguna pantalla del telefono usa un <select> nativo", () => {
     for (const ruta of pantallas(join(RAIZ, carpeta))) {
       const relativa = relative(RAIZ, ruta);
       if (FUERA.some((fuera) => relativa.startsWith(fuera))) continue;
-      if (/<select[\s>]/.test(sinComentarios(readFileSync(ruta, "utf8")))) {
+      if (selectsEnLaApk(readFileSync(ruta, "utf8")) > 0) {
         culpables.push(relativa.split(sep).join("/"));
       }
     }
@@ -84,8 +108,17 @@ test("ninguna pantalla del telefono usa un <select> nativo", () => {
     [],
     `Estas pantallas usan un <select> nativo, que en Android abre la rueda del ` +
       `sistema: ${culpables.join(", ")}. Cambialo por <SelectorChips> si son ` +
-      `pocas opciones cortas, o por <AppSelect> si es una lista larga o con fotos.`
+      `pocas opciones cortas, o por <AppSelect> si es una lista larga o con fotos. ` +
+      `Si es el marcado de antes del rediseño, solo para fuera de la APK, ponle ` +
+      `la clase fuera-de-papel.`
   );
+});
+
+test("un <select> de fuera de la APK se permite solo si lleva fuera-de-papel", () => {
+  assert.equal(selectsEnLaApk('<select value={x} className="fuera-de-papel min-h-10"><option>a</option></select>'), 0);
+  assert.equal(selectsEnLaApk('<select value={x} onChange={(e) => f(e)} className="min-h-10"><option>a</option></select>'), 1);
+  // La clase en una OPCION no cuenta: lo que se oculta es el selector entero.
+  assert.equal(selectsEnLaApk('<select value={x}><option className="fuera-de-papel">a</option></select>'), 1);
 });
 
 test("la prueba no confunde un <select> nombrado en un comentario", () => {

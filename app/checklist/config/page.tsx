@@ -8,6 +8,7 @@ import type { User } from "@/lib/types";
 import { AppFrame, AppHeader, Button, Card } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import { SelectorChips } from "@/components/ui/SelectorChips";
+import { useSuperficiePapel } from "@/lib/superficie-papel";
 
 type Item = { id: string; key: string; section: "APERTURA" | "CIERRE"; kind: "check" | "scan"; label: string; sortOrder: number };
 const SECTIONS: { id: "APERTURA" | "CIERRE"; label: string }[] = [
@@ -17,6 +18,8 @@ const SECTIONS: { id: "APERTURA" | "CIERRE"; label: string }[] = [
 
 export default function ChecklistConfigPage() {
   const router = useRouter();
+  // Fuera de la APK, los colores de antes del rediseño.
+  const papel = useSuperficiePapel();
   const [items, setItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -118,7 +121,7 @@ export default function ChecklistConfigPage() {
     <>
       <AppHeader title="Editar checklist" subtitle="Puntos de apertura y cierre" backHref="/checklist" />
       <AppFrame>
-        {error ? <Card className="mb-3 text-sm font-semibold text-orchid">{error}</Card> : null}
+        {error ? <Card className={`mb-3 text-sm font-semibold ${papel ? "text-orchid" : "text-rose-700"}`}>{error}</Card> : null}
         {loading ? (
           <Card className="text-sm font-semibold text-muted">Cargando…</Card>
         ) : (
@@ -160,11 +163,12 @@ function ItemRow({ item, canUp, canDown, onRename, onRemove, onMove }: {
   item: Item; canUp: boolean; canDown: boolean;
   onRename: (label: string) => void; onRemove: () => void; onMove: (dir: -1 | 1) => void;
 }) {
+  const papel = useSuperficiePapel();
   const [label, setLabel] = useState(item.label);
   const changed = label.trim() !== item.label && label.trim().length >= 2;
   return (
     <div className="flex items-center gap-2 py-2.5">
-      <span className={cn("grid size-7 shrink-0 place-items-center rounded-lg", item.kind === "scan" ? "bg-volt/10 text-volt" : "bg-panel text-muted")}>
+      <span className={cn("grid size-7 shrink-0 place-items-center rounded-lg", item.kind === "scan" ? (papel ? "bg-volt/10 text-volt" : "bg-blue-100 text-blue-700 dark:bg-blue-950/50 dark:text-blue-200") : "bg-panel text-muted")}>
         {item.kind === "scan" ? <FileText size={14} /> : <ListChecks size={14} />}
       </span>
       <input
@@ -179,7 +183,7 @@ function ItemRow({ item, canUp, canDown, onRename, onRemove, onMove }: {
         <button type="button" onClick={() => onMove(-1)} disabled={!canUp} aria-label="Subir" className="text-muted disabled:opacity-30"><ChevronUp size={16} /></button>
         <button type="button" onClick={() => onMove(1)} disabled={!canDown} aria-label="Bajar" className="text-muted disabled:opacity-30"><ChevronDown size={16} /></button>
       </div>
-      <button type="button" onClick={onRemove} aria-label="Quitar" className="grid size-8 shrink-0 place-items-center rounded-full text-orchid transition hover:bg-orchid/10"><Trash2 size={14} /></button>
+      <button type="button" onClick={onRemove} aria-label="Quitar" className={`grid size-8 shrink-0 place-items-center rounded-full transition ${papel ? "text-orchid hover:bg-orchid/10" : "text-rose-600 hover:bg-rose-50"}`}><Trash2 size={14} /></button>
     </div>
   );
 }
@@ -208,12 +212,17 @@ function AddItem({ section, busy, onAdd }: {
           ariaLabel="Tipo de punto"
           value={kind}
           onChange={setKind}
-          className="order-last basis-full"
+          className="solo-papel order-last basis-full"
           options={[
             { value: "check", label: "Tarea" },
             { value: "scan", label: "Escaneo" }
           ]}
         />
+        {/* Fuera de la APK, el `<select>` de antes; las pastillas son del rediseño. */}
+        <select value={kind} onChange={(event) => setKind(event.target.value as "check" | "scan")} aria-label="Tipo de punto" className="fuera-de-papel min-h-10 rounded-2xl border border-line bg-panel px-2 text-sm font-bold text-ink outline-hidden focus:border-volt">
+          <option value="check">Tarea</option>
+          <option value="scan">Escaneo</option>
+        </select>
         <Button
           type="button"
           variant="primary"
