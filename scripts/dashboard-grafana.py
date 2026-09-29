@@ -156,18 +156,34 @@ PANELES.append(panel(
     "stat", PROM, prom("sum(last_over_time(aws_costo_diario_USD[24h]))", "total"), 8, 20, 4, 7, "currencyUSD",
     {"options": {"colorMode": "background", "graphMode": "area", "reduceOptions": {"calcs": ["lastNotNull"]}}}))
 
+# --- Cloudflare ------------------------------------------------------------
+# ⚠️ Esto es el PUNTO CIEGO de los logs de nginx: lo que Cloudflare atiende o
+# bloquea NO llega al servidor, asi que no deja rastro alli. Y como
+# `team.clarvex.tech` va directo a la EC2 y los otros tres pasan por Cloudflare,
+# aqui se ve la diferencia entre lo que esta detras del filtro y lo que no.
+#
+# ⚠️ Con `last_over_time`: se empuja cada 15 minutos con el dato de la ultima
+# hora cerrada, asi que entre empujon y empujon la serie esta hueca.
+PANELES.append(panel(
+    "Cloudflare · peticiones por hora", "Lo que ve Cloudflare de cada zona. Mandar las 48 horas con su fecha original hace que Prometheus rechace el lote entero por muestra vieja.",
+    "timeseries", PROM, prom("last_over_time(cf_peticiones[2h])", "{{zona}}"), 0, 31, 6, 7, "short"))
+
+PANELES.append(panel(
+    "Cloudflare · amenazas filtradas", "Peticiones que Cloudflare bloqueo ANTES de tu servidor. Estas no aparecen en los logs de nginx, por definicion.",
+    "timeseries", PROM, prom("last_over_time(cf_amenazas[2h])", "{{zona}}"), 6, 31, 6, 7, "short"))
+
 # --- el trafico -----------------------------------------------------------
 PANELES.append(panel(
     "Peticiones por minuto", "Todo lo que entra por el proxy.",
     "timeseries", LOKI,
     loki(f'sum(count_over_time({FLUJO} | estado != `` [1m]))', "peticiones"),
-    0, 35, 8, 7, "short"))
+    0, 42, 8, 7, "short"))
 
 PANELES.append(panel(
     "Errores 5xx", "Fallos del servidor. Cualquier cosa por encima de cero merece una mirada.",
     "stat", LOKI,
     loki(f'sum(count_over_time({FLUJO} | estado =~ `5..` [$__range]))', "5xx", instant=True),
-    8, 35, 4, 7, "short",
+    8, 42, 4, 7, "short",
     {"options": {"colorMode": "background", "reduceOptions": {"calcs": ["lastNotNull"]}},
      "fieldConfig": {"defaults": {"unit": "short", "thresholds": {"mode": "absolute", "steps": [
          {"color": "green", "value": None}, {"color": "orange", "value": 1}, {"color": "red", "value": 20}]}}, "overrides": []}}))
@@ -176,38 +192,38 @@ PANELES.append(panel(
     "Por codigo de estado", "Un pico de 4xx suele ser un escaner; uno de 5xx somos nosotros.",
     "timeseries", LOKI,
     loki(f'sum by (estado) (count_over_time({FLUJO} | estado != `` [5m]))', "{{estado}}"),
-    0, 42, 6, 7, "short"))
+    0, 49, 6, 7, "short"))
 
 PANELES.append(panel(
     "Rutas mas pedidas", "La query va recortada del propio cuerpo: esta app pone tokens en la URL.",
     "table", LOKI,
     loki(f'topk(15, sum by (ruta) (count_over_time({FLUJO} | ruta != `` [$__range])))', "", instant=True),
-    6, 42, 6, 7, "short"))
+    6, 49, 6, 7, "short"))
 
 PANELES.append(panel(
     "Sondeos buscando secretos", "Peticiones a rutas tipo .env o .git. Ya estaban ocurriendo antes de montar esto; no encontraron nada.",
     "table", LOKI,
     loki(f'topk(20, sum by (ruta, red) (count_over_time({FLUJO} | ruta =~ `.*(env|git|wp-|php).*` [$__range])))', "", instant=True),
-    0, 49, 12, 7, "short"))
+    0, 56, 12, 7, "short"))
 
 # --- los crons ------------------------------------------------------------
 PANELES.append(panel(
     "Crons que FALLARON", "Tres estuvieron rotos 24 dias sin que nadie se enterara. Si aqui hay algo, arreglalo hoy.",
     "table", LOKI,
     loki(f'sum by (cron, http) (count_over_time({FLUJO} | cron != `` | ok = `false` [$__range]))', "", instant=True),
-    0, 56, 6, 7, "short"))
+    0, 63, 6, 7, "short"))
 
 PANELES.append(panel(
     "Ejecuciones por cron", "Un cron que deja de aparecer es un cron que dejo de correr, y eso no da ningun error.",
     "table", LOKI,
     loki(f'sum by (cron) (count_over_time({FLUJO} | cron != `` [$__range]))', "", instant=True),
-    6, 56, 6, 7, "short"))
+    6, 63, 6, 7, "short"))
 
 PANELES.append(panel(
     "Cuanto tardan los crons", "Uno que se alarga de golpe suele ser la base, no el cron.",
     "timeseries", LOKI,
     loki(f'avg by (cron) (avg_over_time({FLUJO} | cron != `` | unwrap ms [5m]))', "{{cron}}"),
-    0, 63, 12, 7, "ms"))
+    0, 70, 12, 7, "ms"))
 
 
 def main():
