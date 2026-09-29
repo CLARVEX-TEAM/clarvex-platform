@@ -141,6 +141,32 @@ processors:
     limit_mib: 200
     spike_limit_mib: 50
 
+  # ⚠️ LA REDACCION DE VERDAD, sobre el CUERPO del log.
+  #
+  # Los operadores del receptor solo limpiaban los ATRIBUTOS que extraen; la
+  # linea original seguia viajando entera. Comprobado en Loki: llegaba
+  # `"/api/notifications?limit=10" [Client 189.159.137.108]`, con la query y la
+  # IP completas. Era una redaccion que se creia hecha y no lo estaba, que es
+  # peor que no haberla intentado: se confia en ella.
+  #
+  # Aqui se reescribe el cuerpo, que es lo unico que sale de la maquina.
+  transform/redactar:
+    error_mode: ignore
+    log_statements:
+      - context: log
+        statements:
+          # ⚠️ Las clases `[?]` y `[.]` en vez de `\?` y `\.`, y comillas
+          # simples de YAML en vez de dobles. Una barra invertida aqui pasa por
+          # tres capas --YAML, la cadena de OTTL y el motor de expresiones-- y
+          # en cada una significa algo distinto; la primera version se perdio
+          # por el camino. Sin barras no hay nada que se pueda perder.
+          #
+          # La query, donde esta app pone tokens: `/api/app/apk?t=...` y las
+          # firmas de `/v/<token>`. Se conserva la ruta, que es lo util.
+          - 'replace_pattern(body, "\"([^\"?]*)[?][^\"]*\"", "\"$$1\"")'
+          # La IP del cliente, a su red.
+          - 'replace_pattern(body, "Client ([0-9]+[.][0-9]+[.][0-9]+)[.][0-9]+", "Client $$1.x")'
+
   resourcedetection:
     detectors: [env, system]
     system:
@@ -204,5 +230,5 @@ service:
       exporters: [otlp, otlphttp/grafana]
     logs:
       receivers: [otlp, filelog, filelog/proxy]
-      processors: [memory_limiter, resourcedetection, batch]
+      processors: [memory_limiter, transform/redactar, resourcedetection, batch]
       exporters: [otlp, otlphttp/grafana]
