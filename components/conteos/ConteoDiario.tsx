@@ -22,6 +22,7 @@ import { dashboardDateKey } from "@/lib/dashboard-kpi";
 import { useKeyboardInset } from "@/lib/use-keyboard-inset";
 import { Badge, Card } from "@/components/ui";
 import { ScannerOverlay } from "@/components/conteos/ScannerOverlay";
+import { useTono } from "@/components/conteos/tono";
 
 /**
  * Conteo diario de una sección del piso (hoy, dama).
@@ -48,6 +49,7 @@ type Presente = { userId: string; userName: string; tagNumber: number | null };
 const today = () => dashboardDateKey();
 
 export function ConteoDiarioView({ section = "DAMA", desktop = false }: { section?: string; desktop?: boolean }) {
+  const tono = useTono();
   const [user, setUser] = useState<User | null>(null);
   const [state, setState] = useState<State | null>(null);
   const [error, setError] = useState("");
@@ -251,7 +253,7 @@ export function ConteoDiarioView({ section = "DAMA", desktop = false }: { sectio
   return (
     <div className={desktop ? "mx-auto max-w-2xl space-y-4" : "space-y-4"}>
       {error ? (
-        <Card className="border-orchid/30 bg-orchid/10 p-3 text-sm font-semibold text-orchid">{error}</Card>
+        <Card className={`p-3 text-sm font-semibold ${tono("border-orchid/30 bg-orchid/10 text-orchid", "border-rose-200 bg-rose-50 text-rose-700")}`}>{error}</Card>
       ) : null}
 
       <Card className="p-4">
@@ -367,6 +369,7 @@ export function ConteoDiarioView({ section = "DAMA", desktop = false }: { sectio
 }
 
 function CopyCount({ rows }: { rows: DailyRow[] }) {
+  const tono = useTono();
   const [copied, setCopied] = useState(false);
   const [fallback, setFallback] = useState("");
   const { text, positions, pending } = copyLines(rows);
@@ -393,7 +396,7 @@ function CopyCount({ rows }: { rows: DailyRow[] }) {
         onClick={copy}
         className="flex w-full items-center justify-center gap-2 rounded-xl border border-line px-4 py-3 text-sm font-bold text-ink"
       >
-        {copied ? <CheckCircle2 size={16} className="text-mint" /> : <Copy size={16} />}
+        {copied ? <CheckCircle2 size={16} className={tono("text-mint", "text-emerald-600")} /> : <Copy size={16} />}
         {copied ? `Copiado · ${positions} marbetes` : "Copiar conteo"}
       </button>
       <p className="text-center text-xs text-muted">
@@ -414,6 +417,7 @@ function CopyCount({ rows }: { rows: DailyRow[] }) {
 }
 
 function SummaryBar({ summary }: { summary: DailySummary }) {
+  const tono = useTono();
   return (
     <Card className="grid grid-cols-3 gap-3 p-4 text-center">
       <div>
@@ -428,7 +432,7 @@ function SummaryBar({ summary }: { summary: DailySummary }) {
       </div>
       <div>
         <p className="text-xs font-bold uppercase text-muted">Sin explicar</p>
-        <p className={`text-lg font-black ${summary.unexplained > 0 ? "text-orchid" : "text-mint"}`}>
+        <p className={`text-lg font-black ${summary.unexplained > 0 ? tono("text-orchid", "text-rose-600") : tono("text-mint", "text-emerald-600")}`}>
           {summary.unexplained}
         </p>
       </div>
@@ -441,7 +445,7 @@ function SummaryBar({ summary }: { summary: DailySummary }) {
         </p>
       ) : null}
       {summary.toReview > 0 ? (
-        <p className="col-span-3 text-xs font-semibold text-ember">
+        <p className={`col-span-3 text-xs font-semibold ${tono("text-ember", "text-amber-700")}`}>
           {summary.toReview} justificación(es) por revisar.
         </p>
       ) : null}
@@ -461,6 +465,7 @@ function RowCard({
   /** Nombre de quien tiene este marbete abierto ahora mismo, si hay alguien. */
   contando?: string;
 }) {
+  const tono = useTono();
   const movement = rowMovement(row);
   const check = checkRow(row, rows);
   const pendingSlot = nextSlot(row);
@@ -494,7 +499,7 @@ function RowCard({
         {/* Qué conteo falta. Es lo que la persona necesita saber de un vistazo
             cuando va pasando marbete por marbete con la lista en la mano. */}
         {row.needsRecount ? (
-          <p className="mt-0.5 text-xs font-semibold text-ember">
+          <p className={`mt-0.5 text-xs font-semibold ${tono("text-ember", "text-amber-700")}`}>
             1º {row.count1} y 2º {row.count2} no coinciden · falta el 3º
           </p>
         ) : pendingSlot !== null && row.count1 !== null ? (
@@ -504,10 +509,10 @@ function RowCard({
           <p
             className={`mt-0.5 text-xs font-semibold ${
               check.status === "OK"
-                ? "text-mint"
+                ? tono("text-mint", "text-emerald-700")
                 : check.status === "PENDING"
-                  ? "text-orchid"
-                  : "text-ember"
+                  ? tono("text-orchid", "text-rose-700")
+                  : tono("text-ember", "text-amber-700")
             }`}
           >
             {check.detail}
@@ -517,7 +522,7 @@ function RowCard({
       <div className="shrink-0 text-right">
         <p
           className={`text-base font-black ${
-            movement === null ? "text-muted" : movement < 0 ? "text-orchid" : movement > 0 ? "text-mint" : "text-muted"
+            movement === null ? "text-muted" : movement < 0 ? tono("text-orchid", "text-rose-600") : movement > 0 ? tono("text-mint", "text-emerald-600") : "text-muted"
           }`}
         >
           {movement === null ? "—" : movement > 0 ? `+${movement}` : movement}
@@ -546,6 +551,7 @@ function CaptureSheet({
   onRemove: () => void;
   onRenumber: (newNumber: number) => void;
 }) {
+  const tono = useTono();
   /*
    * Qué conteo se está capturando. Arranca en el que toca: 1º si no hay nada,
    * 2º si ya hay uno, 3º solo cuando el 2º no coincidió con el 1º.
@@ -632,7 +638,7 @@ function CaptureSheet({
         </div>
 
         {row.needsRecount ? (
-          <p className="mb-2 flex items-start gap-1.5 text-xs font-semibold text-ember">
+          <p className={`mb-2 flex items-start gap-1.5 text-xs font-semibold ${tono("text-ember", "text-amber-700")}`}>
             <AlertTriangle size={14} className="mt-px shrink-0" />
             El 1º y el 2º no coincidieron. El 3º decide.
           </p>
@@ -654,7 +660,7 @@ function CaptureSheet({
         {dropped ? (
           <div className="mt-4 space-y-2">
             <p className="flex items-center gap-1.5 text-sm font-bold text-ink">
-              <AlertTriangle size={16} className="text-ember" />
+              <AlertTriangle size={16} className={tono("text-ember", "text-amber-600")} />
               Bajó {-movement} pieza(s). ¿Por qué?
             </p>
             <div className="grid gap-1.5">
@@ -682,7 +688,7 @@ function CaptureSheet({
             {preview.status !== "NONE" ? (
               <p
                 className={`flex items-start gap-1.5 text-xs font-semibold ${
-                  preview.status === "OK" ? "text-mint" : preview.status === "PENDING" ? "text-orchid" : "text-ember"
+                  preview.status === "OK" ? tono("text-mint", "text-emerald-700") : preview.status === "PENDING" ? tono("text-orchid", "text-rose-700") : tono("text-ember", "text-amber-700")
                 }`}
               >
                 {preview.status === "OK" ? <CheckCircle2 size={14} className="mt-px shrink-0" /> : <HelpCircle size={14} className="mt-px shrink-0" />}
@@ -737,7 +743,7 @@ function CaptureSheet({
                   onRemove();
                 }
               }}
-              className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-line px-4 py-2.5 text-sm font-bold text-orchid disabled:opacity-50"
+              className={`flex w-full items-center justify-center gap-1.5 rounded-xl border border-line px-4 py-2.5 text-sm font-bold disabled:opacity-50 ${tono("text-orchid", "text-rose-600")}`}
             >
               <X size={16} />
               Quitar de la sección
