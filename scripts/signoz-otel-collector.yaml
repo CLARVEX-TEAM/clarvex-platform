@@ -102,9 +102,18 @@ receivers:
       # que fallaron» -- que es justo la pregunta por la que esto existe. Con
       # `on_error: send` las lineas que no sean JSON --las de los dos crons que
       # no pasan por el wrapper-- entran igual, como texto.
+      # ⚠️ `send_quiet` y no `send`: la carpeta tiene logs que NO son JSON --el
+      # respaldo, el vigilante, los dos crons que no pasan por el wrapper-- y
+      # con `send` el colector escribia un error por cada linea de esos. 208 en
+      # seis horas, todos inofensivos.
+      #
+      # `send_quiet` deja pasar la linea igual pero sin gritar. Un error
+      # periodico que no significa nada es exactamente como un log deja de
+      # leerse, que es el fallo que este proyecto lleva cuatro veces pagando --y
+      # dos de esas veces las he metido yo esta noche.
       - type: json_parser
         parse_from: body
-        on_error: send
+        on_error: send_quiet
 
   # Los logs de la propia APP, los que escribe PM2.
   #
