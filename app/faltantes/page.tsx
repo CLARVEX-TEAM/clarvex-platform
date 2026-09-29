@@ -159,7 +159,14 @@ export default function FaltantesPage() {
               <span className="text-xs font-bold text-muted">Producto</span>
               <input value={productName} onChange={(event) => setProductName(event.target.value)} maxLength={120} placeholder="Ej. Tenis modelo X talla 27" className={inputClass} />
             </label>
-            <div>
+            {/* Fuera de la APK, el <select> de antes del rediseño; dentro, las pastillas. `solo-papel` / `fuera-de-papel` en `app/papel.css`. */}
+            <label className="fuera-de-papel grid gap-1">
+              <span className="text-xs font-bold text-muted">Tipo</span>
+              <select value={category} onChange={(event) => setCategory(event.target.value)} className={`fuera-de-papel ${inputClass}`}>
+                {INVENTORY_CATEGORIES.map((value) => <option key={value} value={value}>{INVENTORY_CATEGORY_LABELS[value]}</option>)}
+              </select>
+            </label>
+            <div className="solo-papel">
               <p className="mb-2 text-xs font-bold text-muted">Tipo</p>
               <SelectorChips
                 ariaLabel="Tipo de faltante"

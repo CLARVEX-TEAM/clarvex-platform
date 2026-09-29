@@ -140,7 +140,14 @@ export default function CapacitacionPage() {
                 <span className="text-xs font-bold text-muted">Título</span>
                 <input value={title} onChange={(event) => setTitle(event.target.value)} maxLength={160} placeholder="Ej. Manual de atención" className={inputClass} />
               </label>
-              <div>
+              {/* Fuera de la APK, el <select> de antes del rediseño; dentro, las pastillas. `solo-papel` / `fuera-de-papel` en `app/papel.css`. */}
+              <label className="fuera-de-papel grid gap-1">
+                <span className="text-xs font-bold text-muted">Categoría</span>
+                <select value={category} onChange={(event) => setCategory(event.target.value)} className={`fuera-de-papel ${inputClass}`}>
+                  {TRAINING_CATEGORIES.map((value) => <option key={value} value={value}>{TRAINING_CATEGORY_LABELS[value]}</option>)}
+                </select>
+              </label>
+              <div className="solo-papel">
                 <p className="mb-2 text-xs font-bold text-muted">Categoría</p>
                 <SelectorChips
                   ariaLabel="Categoría del material"

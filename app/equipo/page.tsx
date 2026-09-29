@@ -234,7 +234,16 @@ export default function TeamDatesPage() {
               <span className="text-xs font-bold text-muted">Número de empleado</span>
               <input value={newNumber} onChange={(event) => setNewNumber(event.target.value.replace(/\D/g, ""))} required inputMode="numeric" pattern="\d{1,30}" placeholder="95739" className={inputClass} />
             </label>
-            <div className="col-span-2">
+            {/* Fuera de la APK, el <select> de antes del rediseño; dentro, las pastillas. `solo-papel` / `fuera-de-papel` en `app/papel.css`. */}
+            <label className="fuera-de-papel grid gap-1">
+              <span className="text-xs font-bold text-muted">Puesto</span>
+              <select value={newRole} onChange={(event) => setNewRole(event.target.value as typeof newRole)} className={`fuera-de-papel ${inputClass}`}>
+                <option value="ASESOR">Asesor</option>
+                <option value="SUBGERENTE">Subgerente</option>
+                <option value="GERENTE">Gerente</option>
+              </select>
+            </label>
+            <div className="solo-papel col-span-2">
               <p className="mb-2 text-xs font-bold text-muted">Puesto</p>
               <SelectorChips
                 ariaLabel="Puesto de la persona"
