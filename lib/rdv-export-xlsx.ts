@@ -454,11 +454,37 @@ export async function listRdvMonths(storeId: string): Promise<RdvMonthOption[]> 
   return [...meses.values()].filter((mes) => mes.dias > 0).sort((a, b) => (a.start < b.start ? 1 : -1));
 }
 
-function retailMonthFor(selectedDate: Date) {
+/**
+ * El mes RDV al que pertenece una fecha, con TODAS sus semanas.
+ *
+ * Se exporta para poder probarlo: el fallo de las cinco semanas vivía aquí y
+ * su sintoma era un archivo con filas en blanco, no un error.
+ */
+export function retailMonthFor(selectedDate: Date) {
   const firstOfMonth = new Date(Date.UTC(selectedDate.getUTCFullYear(), selectedDate.getUTCMonth(), 1));
   const lastOfMonth = new Date(Date.UTC(selectedDate.getUTCFullYear(), selectedDate.getUTCMonth() + 1, 0));
-  const scanStart = new Date(firstOfMonth.getTime() - 21 * DAY_MS);
-  const scanEnd = new Date(lastOfMonth.getTime() + 21 * DAY_MS);
+  /*
+   * ⚠️ **El barrido tiene que cubrir el mes RETAIL, no el natural, y la fecha
+   * elegida puede ser de OTRO mes natural que el suyo.**
+   *
+   * Con 21 días de margen, exportar con el 30 o el 31 de agosto --que ya son
+   * del mes retail de septiembre-- barría hasta el 21 de septiembre, así que la
+   * semana del 27 de septiembre al 3 de octubre no se miraba nunca: septiembre
+   * se cerraba el 26 y salía con CUATRO semanas. Y al revés, con el 1 al 3 de
+   * octubre se perdía la PRIMERA.
+   *
+   * ⚠️ **Y no daba ningún error.** `daySlots` rellena con `null` hasta 35 y esas
+   * filas se BORRAN, así que el archivo salía con la quinta semana en blanco
+   * --sin fecha y sin día-- como si el mes fuera de cuatro. Reportado desde la
+   * tienda el 29 de septiembre de 2026.
+   *
+   * 42 días = seis semanas a cada lado. Con eso el peor caso cabe de sobra: un
+   * mes retail empieza como mucho seis días antes del día 1 de su mes natural y
+   * termina como mucho seis días después del último, o sea 37 días desde el
+   * extremo contrario.
+   */
+  const scanStart = new Date(firstOfMonth.getTime() - 42 * DAY_MS);
+  const scanEnd = new Date(lastOfMonth.getTime() + 42 * DAY_MS);
   const weeks: RdvWeek[] = [];
   let cursor = reconstructRdvWeek(scanStart).weekStart;
   while (cursor <= scanEnd) {
@@ -468,6 +494,26 @@ function retailMonthFor(selectedDate: Date) {
   const month = selectRetailMonth(buildRetailMonths(weeks), selectedDate);
   if (!month) return null;
   const monthWeeks = weeks.filter((week) => week.weekStart >= month.start && week.weekEnd <= month.end);
+
+  /*
+   * ⚠️ **Las semanas tienen que CUBRIR el mes, de su primer día a su último.**
+   *
+   * Es la guarda del fallo de arriba, y existe porque su síntoma era mudo: un
+   * mes recortado no rompe nada, solo entrega un RDV con la última semana en
+   * blanco, y eso se descubre cuando alguien lo abre y compara con el suyo.
+   * Mejor un error que un archivo que parece bueno.
+   */
+  const cubre =
+    monthWeeks.length > 0 &&
+    monthWeeks[0].weekStart.getTime() === month.start.getTime() &&
+    monthWeeks[monthWeeks.length - 1].weekEnd.getTime() === month.end.getTime();
+  if (!cubre) {
+    throw new Error(
+      `El mes RDV ${month.label} quedó incompleto: va del ${periodDateKey(month.start)} al ${periodDateKey(month.end)} ` +
+      `y solo se resolvieron ${monthWeeks.length} semanas. Es un fallo del cálculo del periodo, no de la captura.`
+    );
+  }
+
   return { ...month, weeks: monthWeeks };
 }
 

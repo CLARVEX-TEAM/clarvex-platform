@@ -276,3 +276,77 @@ test("⚠️ si sobra alguien de un puesto se DETIENE, no se le busca hueco", ()
     /SUBGERENTE/
   );
 });
+
+/*
+ * ── El mes de CINCO semanas ───────────────────────────────────────────────
+ *
+ * Reportado desde la tienda el 29 de septiembre de 2026: «el RDV deja la quinta
+ * semana vacía». No era la captura ni la plantilla --que trae sus cinco bloques,
+ * columnas C a G-- sino el cálculo del periodo.
+ *
+ * ⚠️ Y el síntoma era MUDO: `daySlots` rellena con `null` hasta 35 y esas filas
+ * se borran, así que un mes recortado entrega un archivo que parece bueno, con
+ * la última semana en blanco --sin fecha y sin día--. Se descubre cuando alguien
+ * lo abre y lo compara con el de corporativo.
+ */
+
+import { retailMonthFor } from "../lib/rdv-export-xlsx";
+
+const dia = (iso: string) => new Date(`${iso}T00:00:00.000Z`);
+const clave = (fecha: Date) => fecha.toISOString().slice(0, 10);
+
+test("⚠️ septiembre de 2026 tiene CINCO semanas, se pida con la fecha que se pida", () => {
+  /*
+   * El barrido iba de `primerDíaDelMesNatural − 21` a `últimoDía + 21`. Con el
+   * 30 de agosto --que ya es del mes retail de septiembre-- terminaba el 21 de
+   * septiembre, así que la semana del 27 al 3 de octubre no se miraba NUNCA y
+   * el mes se cerraba el 26, con cuatro semanas. Del 1 al 3 de octubre pasaba lo
+   * simétrico: se perdía la primera.
+   */
+  const fechas = ["2026-08-30", "2026-08-31", "2026-09-01", "2026-09-15", "2026-09-30", "2026-10-01", "2026-10-03"];
+  for (const fecha of fechas) {
+    const mes = retailMonthFor(dia(fecha));
+    assert.ok(mes, `${fecha} no resolvió mes`);
+    assert.equal(mes.weeks.length, 5, `pedido con ${fecha} salió con ${mes.weeks.length} semanas`);
+    assert.equal(clave(mes.start), "2026-08-30", `pedido con ${fecha}`);
+    assert.equal(clave(mes.end), "2026-10-03", `pedido con ${fecha}`);
+  }
+});
+
+test("un mes de cuatro semanas sigue dando cuatro", () => {
+  // Ensanchar el barrido no puede inventar semanas donde no las hay.
+  for (const fecha of ["2026-08-02", "2026-08-15", "2026-08-29"]) {
+    const mes = retailMonthFor(dia(fecha));
+    assert.equal(mes?.weeks.length, 4, `pedido con ${fecha}`);
+    assert.equal(clave(mes!.start), "2026-08-02");
+    assert.equal(clave(mes!.end), "2026-08-29");
+  }
+});
+
+test("⚠️ las semanas CUBREN el mes entero, sin huecos ni solapes", () => {
+  // Es lo que el archivo necesita: 7 filas por semana, de la 10 a la 44. Una
+  // semana que falte en medio correría todas las de abajo.
+  for (let mes = 0; mes < 12; mes += 1) {
+    const resuelto = retailMonthFor(new Date(Date.UTC(2026, mes, 15)));
+    assert.ok(resuelto, `mes ${mes + 1} no resolvió`);
+    assert.equal(clave(resuelto.weeks[0].weekStart), clave(resuelto.start), `mes ${mes + 1} no empieza en su primera semana`);
+    assert.equal(clave(resuelto.weeks.at(-1)!.weekEnd), clave(resuelto.end), `mes ${mes + 1} no termina en su última semana`);
+    for (let i = 1; i < resuelto.weeks.length; i += 1) {
+      const anterior = resuelto.weeks[i - 1].weekEnd.getTime();
+      const actual = resuelto.weeks[i].weekStart.getTime();
+      assert.equal(actual - anterior, 86_400_000, `mes ${mes + 1}: hueco entre la semana ${i} y la ${i + 1}`);
+    }
+  }
+});
+
+test("⚠️ ningún mes se pasa de cinco semanas, que es lo que cabe en la plantilla", () => {
+  // La plantilla tiene 35 filas de día. Un sexto bloque no cabría y el
+  // exportador lanza; esto comprueba que el calendario real nunca lo produce.
+  for (let anio = 2025; anio <= 2030; anio += 1) {
+    for (let mes = 0; mes < 12; mes += 1) {
+      const resuelto = retailMonthFor(new Date(Date.UTC(anio, mes, 15)));
+      assert.ok(resuelto && resuelto.weeks.length >= 4 && resuelto.weeks.length <= 5,
+        `${anio}-${mes + 1} dio ${resuelto?.weeks.length} semanas`);
+    }
+  }
+});
