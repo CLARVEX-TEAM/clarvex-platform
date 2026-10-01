@@ -156,7 +156,22 @@ export default function SolicitudesPage() {
                 division, asi que van dos, cada uno con su titulo -- que ademas
                 se lee sin abrir nada, al contrario que un optgroup.
               */}
-              <div className="col-span-2 grid gap-3">
+              {/* Fuera de la APK, el <select> de antes del rediseño; dentro, las pastillas. `solo-papel` / `fuera-de-papel` en `app/papel.css`. */}
+              <label className="fuera-de-papel grid gap-1">
+                <span className="text-xs font-bold text-muted">Tipo</span>
+                <select value={type} onChange={(event) => setType(event.target.value)} className="fuera-de-papel min-h-11 rounded-2xl border border-line bg-panel px-3 text-sm font-bold text-ink outline-hidden focus:border-volt">
+                  <optgroup label="Día completo">
+                    <option value="VACACIONES">Vacaciones</option>
+                    <option value="DESCANSO">Descanso</option>
+                    <option value="PAGO_DIA">Pago de día</option>
+                  </optgroup>
+                  <optgroup label="Permiso de horas">
+                    <option value="SALIR_TEMPRANO">Salir temprano</option>
+                    <option value="ENTRAR_TARDE">Entrar tarde</option>
+                  </optgroup>
+                </select>
+              </label>
+              <div className="solo-papel col-span-2 grid gap-3">
                 <div>
                   <p className="mb-2 text-xs font-bold text-muted">Día completo</p>
                   <SelectorChips
