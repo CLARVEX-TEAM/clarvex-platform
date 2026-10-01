@@ -24,6 +24,7 @@ import path from "node:path";
 import {
   avisoDeProblemas,
   cadenciaEnHoras,
+  CALLAN_A_PROPOSITO,
   revisarRegistros,
   sinRastro,
   type RegistroCron
@@ -123,9 +124,17 @@ async function main(): Promise<void> {
   // La línea de resumen va SIEMPRE, haya o no problemas: es lo que permite
   // saber después si el vigilante estuvo corriendo de verdad.
   const mudos = sinRastro(registros);
+  /*
+   * ⚠️ Los declarados mudos se NOMBRAN en el resumen. Quedan fuera del aviso
+   * --su silencio no prueba nada-- pero callarlos del todo los volvería
+   * invisibles, y una excepción que nadie vuelve a leer es como se quedan para
+   * siempre. Aquí se ven sin despertar a nadie.
+   */
+  const declarados = registros.filter((r) => CALLAN_A_PROPOSITO.has(r.nombre)).map((r) => r.nombre);
   console.log(
     `[${sello}] [vigilar-crons] revisados ${registros.length}, con problema ${problemas.length}` +
-      (mudos.length > 0 ? `, sin salida todavia: ${mudos.join(", ")}` : "")
+      (mudos.length > 0 ? `, sin salida todavia: ${mudos.join(", ")}` : "") +
+      (declarados.length > 0 ? `, mudos a proposito: ${declarados.join(", ")}` : "")
   );
   for (const p of problemas) console.log(`  · ${p.nombre}: ${p.motivo} — ${p.detalle}`);
 

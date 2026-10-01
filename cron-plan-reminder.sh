@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# Recordatorio del plan del dia. Lo dispara el crontab de root.
+# Recordatorio del plan del dia. Lo dispara el crontab de ubuntu.
 set -uo pipefail
 
-ENV_FILE=/root/clarvex-app/.env
-ENDPOINT=https://app.adrianluna.mx/api/cron/plan-reminder
+ENV_FILE=/home/ubuntu/clarvex/compartido/.env
+ENDPOINT=https://team.clarvex.tech/api/cron/plan-reminder
 TAG=plan-reminder
 
 log() { echo "[$(date -Is)] [$TAG] $*"; }

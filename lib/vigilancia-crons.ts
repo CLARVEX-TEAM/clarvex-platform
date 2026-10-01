@@ -112,8 +112,35 @@ function pareceExito(linea: string): boolean {
   return /"ok"\s*:\s*true/.test(linea) || /\bOK\b/.test(linea);
 }
 
+/**
+ * Crons que CALLAN cuando no hay nada que hacer, con su motivo.
+ *
+ * ⚠️ **Esto no es ceguera, es una declaración.** El vigilante deduce «corrió» de
+ * que su log cambie de fecha, y no le queda otra: desde fuera, un cron que corre
+ * callado y uno muerto se ven exactamente igual. Para los que se callan a
+ * propósito, la deducción es falsa y hay que decírselo.
+ *
+ * ⚠️ **Y el remedio obvio --que escriban siempre-- aquí sale caro.** `gastos`
+ * corre CADA MINUTO: un renglón por ejecución son medio mega al día, y su log ya
+ * llegó a 3.8 MB antes de que alguien lo callara. Un latido diario sí valdría,
+ * pero eso se arregla en el guion, que vive fuera de este repositorio.
+ *
+ * ⚠️ **Lo que se pierde está escrito:** de estos no se sabe si corren. Si uno
+ * importa de verdad, lo correcto es que escriba --aunque sea una vez al día-- y
+ * salga de esta lista, no quedarse aquí para siempre.
+ *
+ * Se descubrió el 30 de septiembre de 2026: el vigilante llevaba OCHO DÍAS
+ * denunciando a `gastos`, que corría perfectamente.
+ */
+export const CALLAN_A_PROPOSITO = new Map<string, string>([
+  ["gastos", "corre cada minuto y solo escribe cuando hay un gasto nuevo; su propio nombre lo dice"]
+]);
+
 export function revisarRegistro(registro: RegistroCron): ProblemaCron | null {
   const { nombre, ultimaLinea, horasSinEscribir, maxHoras } = registro;
+
+  // Declarado mudo: su silencio no prueba nada, ni bueno ni malo.
+  if (CALLAN_A_PROPOSITO.has(nombre)) return null;
 
   if (ultimaLinea === null || horasSinEscribir === null) {
     /*

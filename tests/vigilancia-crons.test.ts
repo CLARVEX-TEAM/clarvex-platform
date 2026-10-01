@@ -195,3 +195,48 @@ test("sin saber cuando se programo, un log ausente NO se denuncia", () => {
   ]);
   assert.deepEqual(mudos, ["energy-checklist-reminder"]);
 });
+
+/*
+ * ── Los crons que callan a propósito ──────────────────────────────────────
+ *
+ * El vigilante deduce «corrió» de que su log cambie de fecha, y no le queda
+ * otra: desde fuera, un cron que corre callado y uno muerto se ven idénticos.
+ *
+ * ⚠️ Costó OCHO DÍAS de aviso falso. `gastos` corre cada minuto y solo escribe
+ * cuando hay un gasto nuevo --su nombre lo dice-- así que al callarse el 21 de
+ * septiembre el vigilante lo dio por muerto. Comprobado lanzándolo a mano:
+ * salía en 0 sin escribir una línea.
+ */
+
+import { CALLAN_A_PROPOSITO } from "../lib/vigilancia-crons";
+
+function registroMudo(nombre: string) {
+  return {
+    nombre,
+    ultimaLinea: "lo que escribió la última vez",
+    // Nueve días sin escribir, con cadencia de una hora: denuncia segura.
+    horasSinEscribir: 24 * 9,
+    maxHoras: 1,
+    horasDesdeElCrontab: 24 * 30
+  };
+}
+
+test("⚠️ un cron declarado mudo NO se denuncia", () => {
+  assert.equal(revisarRegistro(registroMudo("gastos")), null);
+});
+
+test("⚠️ y uno que NO está declarado sigue denunciándose", () => {
+  // La lista tiene que ser una excepción, no un agujero: si esto deja de
+  // fallar, el vigilante se quedó ciego para todos.
+  const problema = revisarRegistro(registroMudo("backup"));
+  assert.ok(problema, "un cron mudo sin declarar tiene que salir en el aviso");
+  assert.equal(problema?.nombre, "backup");
+});
+
+test("⚠️ cada excepción lleva su motivo escrito", () => {
+  // Una excepción sin motivo es una que nadie se atreve a quitar.
+  assert.ok(CALLAN_A_PROPOSITO.size > 0);
+  for (const [nombre, motivo] of CALLAN_A_PROPOSITO) {
+    assert.ok(motivo.trim().length > 20, `${nombre} está en la lista sin explicar por qué`);
+  }
+});

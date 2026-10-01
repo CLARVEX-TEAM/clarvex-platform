@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# Aviso a gerencia de pendientes vencidos. Lo dispara el crontab de root.
+# Aviso a gerencia de pendientes vencidos. Lo dispara el crontab de ubuntu.
 set -uo pipefail
 
-ENV_FILE=/root/clarvex-app/.env
-ENDPOINT=https://app.adrianluna.mx/api/cron/pending-overdue-managers
+ENV_FILE=/home/ubuntu/clarvex/compartido/.env
+ENDPOINT=https://team.clarvex.tech/api/cron/pending-overdue-managers
 TAG=pending-overdue-managers
 
 log() { echo "[$(date -Is)] [$TAG] $*"; }
