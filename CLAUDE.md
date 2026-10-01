@@ -2264,6 +2264,24 @@ Para re-aplicar o cambiar correo:
 powershell -ExecutionPolicy Bypass -File scripts\aws-cost-guardrails.ps1 -AlertEmails admin@dominio.com
 ```
 
+### ⚠️ La cuenta `jhernandezl2c-hash` se renombró a `adrianlunamx`
+
+El 1 de octubre de 2026, misma cuenta --id `277811953`--, solo el nombre.
+
+⚠️ **Lo de abajo conserva el nombre VIEJO a propósito.** Son el registro de lo
+que se hizo entonces: el repositorio se transfirió DESDE `jhernandezl2c-hash/app`
+y la auditoría del 30 de agosto contó a esa cuenta. Reescribirlo haría que las
+órdenes y las URLs de esta página no correspondieran con lo que pasó.
+
+Nada del proyecto dependía del nombre: el repositorio pertenece a la
+organización, el despliegue por OIDC confía en los IDENTIFICADORES numéricos de
+organización y repositorio, y los commits van por correo. Comprobado después
+del cambio: owner activo, `git ls-remote` responde, las claves de despliegue y
+los colaboradores intactos.
+
+⚠️ **Y el nombre viejo quedó LIBRE al soltarlo.** Quien lo registre hereda los
+enlaces y las menciones antiguas de esta página.
+
 ### GitHub: perfil público de CLARVEX-TEAM
 
 Se preparó la presencia pública mínima de la organización antes de transferir el
@@ -2354,7 +2372,7 @@ Configuración conservada:
 - sin webhooks;
 - deploy key `Vps`, retirada (ya no figura el 2 de septiembre de 2026);
 - deploy key `Clarvex aws`, verificada, read-only;
-- colaboradores directos: `jhernandezl2c-hash` admin y `edsomo94` **read**
+- colaboradores directos: `adrianlunamx` admin y `edsomo94` **read**
   (bajado de `write` el 2 de septiembre de 2026). ⚠️ Con `main` sin poder
   protegerse por el plan, un permiso de escritura era empujar directo a la
   rama que despliega. Para devolverselo:
@@ -2393,7 +2411,7 @@ Se completó lo que GitHub Free sí permite sin volver público el código:
   validación. Este hardening no ejecutó ningún despliegue.
 - Repo con descripción, homepage `https://clarvex.tech` y topics técnicos.
 - Invitación pendiente de `esoriamontes@gmail.com` cancelada. El único owner y
-  miembro sigue siendo `jhernandezl2c-hash`; `edsomo94` conserva acceso directo
+  miembro sigue siendo `adrianlunamx`; `edsomo94` conserva acceso directo
   read como outside collaborator; `developers` y `maintainers` siguen vacíos.
 - Deploy key `Vps` retirada; `Clarvex aws` permanece verificada y read-only.
 
