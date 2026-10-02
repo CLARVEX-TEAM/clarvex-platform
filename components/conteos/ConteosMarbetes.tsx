@@ -7,6 +7,8 @@ import { ArrowLeftRight, Plus, Power, Printer, X } from "lucide-react";
 import { getSession } from "@/lib/auth";
 import type { User } from "@/lib/types";
 import type { CycleZone, SerializedTag } from "@/lib/cycle-count";
+import { useCargaConReintento } from "@/lib/use-carga";
+import { NoSePudoCargar } from "@/components/conteos/NoSePudoCargar";
 import { Card } from "@/components/ui";
 import { useTono } from "@/components/conteos/tono";
 
@@ -32,13 +34,16 @@ export function ConteosMarbetesView({ desktop = false }: { desktop?: boolean }) 
     });
   }, [router, desktop]);
 
+  /* ⚠️ Lanza si el servidor no contestó bien: sin eso `tags` se quedaba en
+     `null` y la pantalla en «Cargando…» para siempre. Ver `lib/use-carga.ts`. */
   const load = useCallback(async () => {
     const res = await fetch("/api/conteos/tags", { cache: "no-store" });
+    if (!res.ok) throw new Error(`/api/conteos/tags respondió ${res.status}`);
     const data = (await res.json()) as { tags?: SerializedTag[] };
     setTags(data.tags ?? []);
   }, []);
 
-  useEffect(() => { if (session) void load(); }, [session, load]);
+  const { fallo, cargando, reintentar } = useCargaConReintento(load, session !== null);
 
   async function addRange() {
     setError("");
@@ -153,7 +158,9 @@ export function ConteosMarbetesView({ desktop = false }: { desktop?: boolean }) 
         ) : null}
 
         {/* Listado */}
-        {tags === null ? (
+        {fallo ? (
+          <NoSePudoCargar cargando={cargando} onReintentar={() => void reintentar()} que="los marbetes" />
+        ) : tags === null ? (
           <p className="py-8 text-center text-sm font-bold text-muted">Cargando…</p>
         ) : (
           zones.map((z) => {

@@ -12,6 +12,8 @@ import { getSession } from "@/lib/auth";
 import type { User } from "@/lib/types";
 import { Badge, Card, ProgressBar } from "@/components/ui";
 import { enContenedorNativo } from "@/lib/puente-nativo";
+import { useCargaConReintento } from "@/lib/use-carga";
+import { NoSePudoCargar } from "@/components/conteos/NoSePudoCargar";
 
 /**
  * Conteos: la pantalla más usada del teléfono --452 marbetes contados en
@@ -82,14 +84,24 @@ export function ConteosListView({ desktop = false }: { desktop?: boolean }) {
     });
   }, [router]);
 
+  /*
+   * ⚠️ **Lanza si el servidor no contestó bien, y eso es a propósito.** Antes
+   * esta función no tenía `catch` y `counts` se quedaba en `null`: la pantalla
+   * entraba por la rama de «Cargando…» y ahí se quedaba para siempre, sin
+   * mensaje y sin nada que tocar. `useCargaConReintento` necesita que el fallo
+   * SALGA para poder enseñarlo y reintentarlo al volver la señal.
+   */
   const load = useCallback(async () => {
     const res = await fetch("/api/conteos", { cache: "no-store" });
+    if (!res.ok) throw new Error(`/api/conteos respondió ${res.status}`);
     const data = (await res.json()) as { counts?: CountSummary[]; totalTags?: number };
     setCounts(data.counts ?? []);
     setTotalTags(data.totalTags ?? 0);
   }, []);
 
-  useEffect(() => { if (session) void load(); }, [session, load]);
+  // Espera a la sesión: sin ella la petición saldría en 401 y el fallo que se
+  // enseñaría no sería el de verdad.
+  const { fallo, cargando, reintentar } = useCargaConReintento(load, session !== null);
 
   const manager = session?.role === "GERENTE" || session?.role === "SUBGERENTE";
   const abierto = counts?.find((count) => count.status === "OPEN") ?? null;
@@ -107,7 +119,17 @@ export function ConteosListView({ desktop = false }: { desktop?: boolean }) {
       });
       const data = (await res.json()) as { id?: string; error?: string };
       if (data.error) { setError(data.error); return; }
-      if (data.id) router.push(`${base}/${data.id}`);
+      if (data.id) { router.push(`${base}/${data.id}`); return; }
+      /*
+       * ⚠️ Ni `id` ni `error`: antes esto no entraba en ninguna rama. El botón
+       * se reponía y no pasaba NADA --ni conteo nuevo, ni mensaje-- en la acción
+       * principal de la pantalla principal del flujo que la tienda usa a diario.
+       */
+      setError("El servidor no devolvió el conteo. Vuelve a intentarlo.");
+    } catch {
+      // ⚠️ Antes había `try`/`finally` SIN `catch`: un corte de red lanzaba, el
+      // `finally` reponía el botón y nadie se enteraba. Se lee como «no funciona».
+      setError("No se pudo abrir el conteo. Revisa tu conexión e inténtalo otra vez.");
     } finally {
       setCreating(false);
     }
@@ -158,7 +180,9 @@ export function ConteosListView({ desktop = false }: { desktop?: boolean }) {
           </Card>
         )}
 
-        {counts === null ? (
+        {fallo ? (
+          <NoSePudoCargar cargando={cargando} onReintentar={() => void reintentar()} />
+        ) : counts === null ? (
           <p className="py-8 text-center text-sm font-bold text-muted">Cargando…</p>
         ) : counts.length === 0 ? (
           <Card className="p-6 text-center">
@@ -201,7 +225,9 @@ export function ConteosListView({ desktop = false }: { desktop?: boolean }) {
         el mismo en los tres estados y lo que cambia es lo que dice dentro: el
         dedo aprende UN sitio, no tres.
       */}
-      {counts === null ? (
+      {fallo ? (
+        <NoSePudoCargar cargando={cargando} onReintentar={() => void reintentar()} />
+      ) : counts === null ? (
         <div aria-hidden className="h-[196px] animate-pulse rounded-[26px] bg-panel" />
       ) : (
         <div className="papel-hero papel-elev-alta relative overflow-hidden rounded-[26px]">

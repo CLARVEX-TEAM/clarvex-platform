@@ -1,6 +1,12 @@
 {
   "version": 1,
   "skills": {
+    "ai-interface-reviewer": {
+      "source": "uxuiprinciples/agent-skills",
+      "sourceType": "github",
+      "skillPath": "ai-interface-reviewer/SKILL.md",
+      "computedHash": "036c88e8039b3a6804ee14f403304f81d14596980ba6130e1dccd58a58a6afef"
+    },
     "brandkit": {
       "source": "Leonxlnx/taste-skill",
       "sourceType": "github",
@@ -18,6 +24,12 @@
       "sourceType": "github",
       "skillPath": "skills/taste-skill-v1/SKILL.md",
       "computedHash": "8d59c96751feacf88f341a43151eae6f4fd748978884c4552293b8841573d776"
+    },
+    "flow-checker": {
+      "source": "uxuiprinciples/agent-skills",
+      "sourceType": "github",
+      "skillPath": "flow-checker/SKILL.md",
+      "computedHash": "ca6b9960c2d73f590a68bdf97790010634a2c70e5945e5d2cdbff86399636400"
     },
     "full-output-enforcement": {
       "source": "Leonxlnx/taste-skill",
@@ -61,6 +73,12 @@
       "skillPath": "skills/brutalist-skill/SKILL.md",
       "computedHash": "e66e5a2a8b73cef79ab6546459c665e8b983645689c5f3772f7eed8b9f1e8e0e"
     },
+    "interface-auditor": {
+      "source": "uxuiprinciples/agent-skills",
+      "sourceType": "github",
+      "skillPath": "interface-auditor/SKILL.md",
+      "computedHash": "b23ca6bbee26ccc4ea14404e453ca3cfa0d7cb0edd50c9f48d4fa584a63cddb1"
+    },
     "minimalist-ui": {
       "source": "Leonxlnx/taste-skill",
       "sourceType": "github",
@@ -78,6 +96,30 @@
       "sourceType": "github",
       "skillPath": "skills/stitch-skill/SKILL.md",
       "computedHash": "acf2921a7e50c06e637f072ba52e36a994cbb44ecbe6e31435bc113b894f5499"
+    },
+    "superdesign": {
+      "source": "superdesigndev/superdesign-skill",
+      "sourceType": "github",
+      "skillPath": "skills/superdesign/SKILL.md",
+      "computedHash": "d79ff28d01cb9479e0cccd0ca1c6bbaa2e6a1f97d960f6b610dc578574095097"
+    },
+    "ux-writing": {
+      "source": "content-designer/ux-writing-skill",
+      "sourceType": "github",
+      "skillPath": "SKILL.md",
+      "computedHash": "fe3b9784bab415aa6a857609bab222348ed514537d3dfecbd7c007aeaf945125"
+    },
+    "uxui-evaluator": {
+      "source": "uxuiprinciples/agent-skills",
+      "sourceType": "github",
+      "skillPath": "uxui-evaluator/SKILL.md",
+      "computedHash": "35883cc061c4476346d83c87e96177f494c0f97cd6078dd5d351b21c012e3579"
+    },
+    "vibe-coding-advisor": {
+      "source": "uxuiprinciples/agent-skills",
+      "sourceType": "github",
+      "skillPath": "vibe-coding-advisor/SKILL.md",
+      "computedHash": "dedf2be7e00bd0339c3fed342b6873b0a2136f0e1992a851aeafa2a514a0a892"
     }
   }
 }

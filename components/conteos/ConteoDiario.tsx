@@ -20,6 +20,8 @@ import {
 } from "@/lib/daily-count";
 import { dashboardDateKey } from "@/lib/dashboard-kpi";
 import { useKeyboardInset } from "@/lib/use-keyboard-inset";
+import { useCargaConReintento } from "@/lib/use-carga";
+import { NoSePudoCargar } from "@/components/conteos/NoSePudoCargar";
 import { Badge, Card } from "@/components/ui";
 import { ScannerOverlay } from "@/components/conteos/ScannerOverlay";
 import { useTono } from "@/components/conteos/tono";
@@ -71,17 +73,27 @@ export function ConteoDiarioView({ section = "DAMA", desktop = false }: { sectio
 
   const manager = user?.role === "GERENTE" || user?.role === "SUBGERENTE";
 
+  /*
+   * ⚠️ El `if (response.ok)` de antes DESCARTABA en silencio un 500, un 403 o
+   * un 401: el estado seguía en `null` y la pantalla quedaba igual que sin red.
+   * Desde fuera, «el servidor falló» y «no hay señal» se veían idénticos, y
+   * piden cosas distintas de quien lo vive. Ahora el fallo sale y se enseña.
+   */
   const load = useCallback(async () => {
     const response = await fetch(`/api/conteos/diario?section=${encodeURIComponent(section)}`, {
       cache: "no-store"
     });
-    if (response.ok) setState(await response.json());
+    if (!response.ok) throw new Error(`/api/conteos/diario respondió ${response.status}`);
+    setState(await response.json());
   }, [section]);
 
+  const { fallo, cargando, reintentar } = useCargaConReintento(load);
+
+  /* ⚠️ La carga inicial la hace ahora `useCargaConReintento`, arriba. Dejarla
+     aquí también pediría los datos DOS veces en cada montaje. */
   useEffect(() => {
     getSession().then(setUser);
-    load();
-  }, [load]);
+  }, []);
 
   /**
    * Cierra el marbete y recarga si algo cambió mientras estaba abierto.
@@ -245,6 +257,7 @@ export function ConteoDiarioView({ section = "DAMA", desktop = false }: { sectio
     });
   }
 
+  if (fallo) return <NoSePudoCargar cargando={cargando} onReintentar={() => void reintentar()} que="el conteo" />;
   if (!state) return <p className="px-1 py-6 text-sm text-muted">Cargando…</p>;
 
   const open = state.countId !== null && state.status === "OPEN";

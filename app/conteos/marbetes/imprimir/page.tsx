@@ -17,6 +17,7 @@ export default function ImprimirMarbetesPage() {
   const [tags, setTags] = useState<TagWithQr[] | null>(null);
   const [zone, setZone] = useState<CycleZone | "TODOS">("TODOS");
   const [size, setSize] = useState<"chico" | "mediano">("chico");
+  const [fallo, setFallo] = useState(false);
 
   useEffect(() => {
     getSession().then(async (session) => {
@@ -30,7 +31,10 @@ export default function ImprimirMarbetesPage() {
         svg: await QRCode.toString(tagQrPayload(tag.number), { type: "svg", margin: 0, errorCorrectionLevel: "M" })
       })));
       setTags(withQr);
-    });
+    /* ⚠️ Sin este `catch`, un fallo de red dejaba la pantalla en «Generando
+       códigos…» para siempre: ni mensaje, ni forma de reintentar, y encima
+       esta es la vista que alguien abre justo antes de ir a imprimir. */
+    }).catch(() => setFallo(true));
   }, [router]);
 
   const visible = (tags ?? []).filter((tag) => zone === "TODOS" || tag.zone === zone);
@@ -58,7 +62,13 @@ export default function ImprimirMarbetesPage() {
         </p>
       </div>
 
-      {tags === null ? (
+      {fallo ? (
+        <div className="py-10 text-center">
+          <p className="text-sm font-bold text-slate-900">No se pudieron cargar los marbetes</p>
+          <p className="mt-1 text-sm text-slate-500">Puede ser la señal. Vuelve a abrir esta pantalla.</p>
+          <button type="button" onClick={() => window.location.reload()} className="mt-4 rounded-full border border-slate-300 px-4 py-2 text-sm font-bold">Reintentar</button>
+        </div>
+      ) : tags === null ? (
         <p className="py-10 text-center text-sm font-bold text-slate-400">Generando códigos…</p>
       ) : (
         <div className="flex flex-wrap gap-3 print:gap-2">
