@@ -163,14 +163,21 @@
   background-image: radial-gradient(120% 60% at 50% 0%, rgb(40 125 255 / 0.05) 0%, transparent 60%);
 }
 
-/* ⚠️ El brillo del botón se anima por CSS, así que aquí sí se puede parar.
-   El haz del borde NO: ese va por JavaScript y se decide en el componente. */
-@media (prefers-reduced-motion: reduce) {
-  [data-surface="papel"] .animate-shimmer-slide,
-  [data-surface="papel"] .animate-spin-around {
-    animation: none !important;
-  }
-}
+/* ⚠️ **Aquí vivía el freno del brillo del botón, y se retiró porque sobraba.**
+
+   Paraba `.animate-shimmer-slide` y `.animate-spin-around` con movimiento
+   reducido, pero SOLO dentro de la APK. El 2 de octubre de 2026 el freno pasó al
+   ORIGEN: `components/externos/shimmer-button.tsx` usa ahora `motion-safe:`,
+   igual que su hermano `shine-border`, así que la animación ni siquiera se
+   declara cuando el sistema pide no moverse.
+
+   ⚠️ Y eso además **lo arregla fuera de la APK**, que es donde no estaba: el
+   mismo botón lo usan `/checklist` y el escritorio.
+
+   Dejar la regla aquí habría sido peor que quitarla: al cambiar la clase a
+   `motion-safe:animate-shimmer-slide`, este selector ya no casa con nada. Una
+   regla muerta que parece una protección es como se acaba confiando en algo que
+   no hace nada. */
 
 /* ── Marcado exclusivo del rediseño ───────────────────────────────────────
    El rediseño no solo cambió estilos: AÑADIÓ bloques que antes no existían

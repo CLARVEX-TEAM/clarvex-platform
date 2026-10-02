@@ -375,3 +375,63 @@ rol, que es lo único que justificaría tener dos.
 Los textos de `/checklist` --1,057 líneas-- y los dieciocho mensajes de `/login`.
 Esta pasada cubrió cobro, errores y estados vacíos de los flujos auditados, que
 es lo que pedía el paso 3.
+
+---
+
+## Paso 2 · `/design-auto --bolder` y `--a11y`
+
+Lanzados por el usuario el 2 de octubre de 2026. Modo `polish` y modo `audit`.
+
+### `--bolder` — una sola jugada, y es sustractiva
+
+⚠️ **La pantalla no necesitaba más fuerza: tenía tres firmas compitiendo.** El
+héroe ya trae degradado, marca de agua, brillo superior, un número de 54 px que
+sube al abrir y un botón con destello. Más arriba del mismo archivo está escrito
+el principio: *«un borde que se mueve llama la atención, y si se mueven seis no
+llama ninguno»* — y había **dos**.
+
+POLISH.md define `--bolder` como *«una jugada coherente: … una composición más
+decidida»*, y advierte: *«no hagas que todo sea más fuerte»*. Así que la jugada
+fue hacer del héroe la **única** firma:
+
+> Se retiró el borde con luz de la fila «Conteo diario · Dama». Conserva su
+> sombra, su borde y su icono, que es lo que necesita para leerse como tocable.
+> Es un acceso secundario --el conteo diario no lleva teórico ni cierra ronda--
+> y no tenía por qué pelear con el inventario.
+
+De paso queda una animación continua menos en un teléfono que pasa la jornada
+encendido.
+
+### `--a11y` — dos falsos positivos y un fallo real
+
+⚠️ **Lo que NO resultó ser fallo**, y lo digo porque casi lo reporto:
+
+| Sospecha | Comprobación |
+|---|---|
+| `outline-none` ocho veces, cero `focus-visible` | los ocho **tienen** reemplazo visible: `focus:border-volt` |
+| ¿contrasta ese borde de foco? | medido: **4.64 – 7.91** en los dos temas. WCAG 1.4.11 exige 3:1 |
+
+**A11Y-1 · Dos animaciones ignoraban «reducir movimiento»** · P1 · WCAG 2.2.2 (A)
+
+`ShimmerButton` anima en bucle con `animate-shimmer-slide` y `animate-spin-around`,
+y `NumberTicker` hace subir el número. Ninguno consultaba la preferencia del
+sistema. Su hermano `ShineBorder` sí --usa `motion-safe:`-- y el comentario de
+`ConteosList` ya avisaba de que a los demás **«hay que frenarlos a mano»**. Nadie
+lo había hecho.
+
+⚠️ **Matiz que cambia el alcance, y que solo salió al mirar el CSS compilado:**
+dentro de la APK el destello **ya estaba parado** por una regla de `app/papel.css`.
+Lo que faltaba era **fuera**: el mismo botón lo usan `/checklist` y el escritorio.
+
+**Arreglado en ORIGEN**, no en cada pantalla:
+
+- `shimmer-button.tsx` → `motion-safe:` en sus dos animaciones.
+- `number-ticker.tsx` → con movimiento reducido el número **aparece ya puesto**,
+  sin recorrido y sin espera. El dato se enseña, que es lo que importa.
+- `app/papel.css` → se **retiró** la regla que lo frenaba solo en la APK. Al
+  cambiar la clase ya no casaba con nada: una regla muerta que parece una
+  protección es como se acaba confiando en algo que no hace nada.
+
+**Comprobado en el CSS que sirve el build:** las tres clases viven **dentro** de
+`@media (prefers-reduced-motion: no-preference)`, con **cero** ocurrencias fuera
+y **cero** animaciones sin guarda.

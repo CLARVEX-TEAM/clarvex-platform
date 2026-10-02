@@ -366,7 +366,23 @@ export function ConteosListView({ desktop = false }: { desktop?: boolean }) {
         href={`${base}/dama`}
         className="papel-elev tappable relative mt-6 flex min-h-[72px] items-center gap-3.5 overflow-hidden rounded-[20px] border border-line bg-card px-4 transition active:scale-[0.99]"
       >
-        <ShineBorder borderWidth={2} duration={15} shineColor={["#071F47", "#287DFF", "#8BB8FF"]} />
+        {/*
+          ⚠️ **Aquí ya NO va un borde con luz, y es lo que hace al héroe la firma
+          de la pantalla.**
+
+          El comentario de arriba lo dice solo: «un borde que se mueve llama la
+          atención, y si se mueven seis no llama ninguno». Eran DOS, y con dos ya
+          empieza a pasar: el ojo se reparte entre el degradado y esta fila, que
+          es un acceso secundario --el conteo diario de Dama no es el inventario,
+          no lleva teórico ni cierra ronda--.
+
+          Con uno solo, el degradado manda sin discusión. La fila conserva su
+          sombra, su borde y su icono, que es lo que necesita para leerse como
+          tocable.
+
+          De paso deja de haber una animación continua más en un teléfono que
+          pasa la jornada encendido.
+        */}
         <span className="grid size-11 shrink-0 place-items-center rounded-[15px] bg-volt/10 text-volt">
           <Shirt size={19} />
         </span>

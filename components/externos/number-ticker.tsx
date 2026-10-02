@@ -5,7 +5,7 @@ import { useEffect, useRef, type ComponentPropsWithoutRef } from "react"
 // registro. Son la MISMA libreria con dos nombres de paquete: dejarlo como
 // llego instalaba una segunda copia de 800 KB para exportar exactamente los
 // mismos tres hooks. En un telefono de tienda eso se paga en cada carga.
-import { useInView, useMotionValue, useSpring } from "framer-motion"
+import { useInView, useMotionValue, useReducedMotion, useSpring } from "framer-motion"
 
 import { cn } from "@/lib/utils"
 
@@ -34,13 +34,31 @@ export function NumberTicker({
   })
   const isInView = useInView(ref, { once: true, margin: "0px" })
 
+  /*
+   * ⚠️ **Con movimiento reducido el número NO cuenta: aparece ya puesto.**
+   *
+   * Su hermano `shine-border` ya se apagaba solo --usa `motion-safe:`-- y el
+   * comentario de `ConteosList` avisaba de que a los demás «hay que frenarlos
+   * a mano». Nadie lo hizo, así que en Conteos el avance subía en espiral para
+   * todo el mundo, también para quien pidió al sistema que no se moviera nada.
+   *
+   * Se frena en ORIGEN y no en cada pantalla: así vale igual para el checklist
+   * y el escritorio, que también lo usan.
+   */
+  const reduce = useReducedMotion()
+
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout> | null = null
 
     if (isInView) {
-      timer = setTimeout(() => {
-        motionValue.set(direction === "down" ? startValue : value)
-      }, delay * 1000)
+      // Sin espera y sin recorrido: el dato se enseña, que es lo que importa.
+      if (reduce) {
+        motionValue.jump(direction === "down" ? startValue : value)
+      } else {
+        timer = setTimeout(() => {
+          motionValue.set(direction === "down" ? startValue : value)
+        }, delay * 1000)
+      }
     }
 
     return () => {
@@ -48,7 +66,7 @@ export function NumberTicker({
         clearTimeout(timer)
       }
     }
-  }, [motionValue, isInView, delay, value, direction, startValue])
+  }, [motionValue, isInView, delay, value, direction, startValue, reduce])
 
   useEffect(
     () =>
