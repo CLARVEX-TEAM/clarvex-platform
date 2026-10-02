@@ -759,7 +759,7 @@ function AddBodegaTag({ countId, suggested, disabled, onAdded }: { countId: stri
       setPicked([]);
       onAdded();
     } catch {
-      setError("Sin conexion. Intenta de nuevo.");
+      setError("Sin conexión. Intenta de nuevo.");
     } finally {
       setBusy(false);
     }
@@ -858,8 +858,8 @@ function AddBodegaTag({ countId, suggested, disabled, onAdded }: { countId: stri
         </div>
         <p className="mt-1 text-[11px] font-semibold text-muted">
           {suggested === null
-            ? "Sin numero se usa el siguiente libre."
-            : `Sin numero se usa el ${suggested}. Si estrenas numero, imprime su etiqueta desde Marbetes para poder escanearlo.`}
+            ? "Sin número se usa el siguiente libre."
+            : `Sin número se usa el ${suggested}. Si estrenas número, imprime su etiqueta desde Marbetes para poder escanearlo.`}
         </p>
       </div>
 

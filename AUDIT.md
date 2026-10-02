@@ -298,3 +298,80 @@ con `data-theme`. Medirlo con el atributo da el tema claro y un «pasa» falso.
 A-2 (esqueleto), M-1 (historial sin tope) y M-2 (contraste del héroe `papel-hero`
 dentro de la APK, que es otro par de colores y **no** el medido arriba). Y los
 pasos 2 y 3 del comando: el pulido y la revisión de textos.
+
+---
+
+## Paso 3 · Revisión de textos (`ux-writing`)
+
+Español neutro de México. Quien lee está de pie, con gente delante y la señal
+cayéndose: **cada mensaje tiene que decir el siguiente paso**.
+
+### ✅ Corregido ya — eran errores objetivos, no estilo
+
+| Dónde | Antes | Ahora |
+|---|---|---|
+| `ConteoDetail.tsx:762` | «Sin conex**io**n. Intenta de nuevo.» | «Sin conex**ió**n. Intenta de nuevo.» |
+| `ConteoDetail.tsx:861-862` | «Sin n**u**mero… si estrenas n**u**mero» | «Sin n**ú**mero… si estrenas n**ú**mero» |
+
+⚠️ El primero es el caso que más importa: **el mismo mensaje existía escrito de
+dos formas**, con y sin acento, en el mismo flujo. Una sola palabra mal escrita
+en la pantalla donde se cuenta inventario le quita seriedad a todo lo demás.
+
+### Propuestas — el actual y el nuevo, sin cambiar nada todavía
+
+**C-1 · «No se pudo cargar la suscripción.» no dice qué hacer**
+
+Es un callejón: la persona lee que falló y no sabe si esperar, reintentar o
+llamar. El patrón de error completo es *qué falló · por qué · qué hacer*.
+
+> **Ahora:** No se pudo cargar la suscripción.
+> **Propuesto:** No se pudo cargar tu suscripción. Puede ser la señal. Vuelve a entrar en un momento.
+
+**C-2 · «No se pudo iniciar el pago.» igual, y aquí hay dinero de por medio**
+
+> **Ahora:** No se pudo iniciar el pago.
+> **Propuesto:** No se pudo abrir el pago. No se te cobró nada. Inténtalo otra vez.
+
+⚠️ El «no se te cobró nada» no es relleno: sin eso, quien lo ve no sabe si el
+cargo salió, y lo siguiente es intentarlo otra vez temiendo pagar doble.
+
+**C-3 · «El servidor no devolvió el conteo.» habla de la máquina, no de la persona**
+
+Lo escribí yo hoy al cerrar B-2, y revisándolo no pasa el filtro: nombra una
+pieza interna que a quien cuenta no le dice nada.
+
+> **Ahora:** El servidor no devolvió el conteo. Vuelve a intentarlo.
+> **Propuesto:** No se pudo abrir el conteo. Inténtalo otra vez; si sigue igual, avisa a gerencia.
+
+**C-4 · «Captura las piezas.» no dice qué pasa si está en cero**
+
+> **Ahora:** Captura las piezas.
+> **Propuesto:** Escribe cuántas piezas contaste. Si no hay ninguna, escribe 0.
+
+⚠️ No es un detalle: un marbete vacío y un marbete con cero piezas significan
+cosas distintas en el conteo, y el campo nace vacío a propósito.
+
+**C-5 · Dos formas de decir lo mismo según el puesto**
+
+`ConteosList.tsx:300` escribe «No hay conteo abierto» a gerencia y «Sin conteo
+abierto» al asesor. La diferencia de palabras **no transmite** la diferencia de
+rol, que es lo único que justificaría tener dos.
+
+> **Propuesto, gerencia:** No hay conteo abierto. Abre el de hoy.
+> **Propuesto, asesor:** No hay conteo abierto. Gerencia abrirá el próximo.
+
+### Lo que está bien y no hay que tocar
+
+| Texto | Por qué funciona |
+|---|---|
+| «Sin conexión: la foto quedó guardada y se envía sola al volver la señal.» | dice qué pasó, **que no se perdió** y qué va a ocurrir, sin pedir nada |
+| «Sin conexión y sin sitio para guardar la foto. Inténtalo otra vez.» | distingue el caso peor del anterior, que es justo la distinción que importa |
+| «Captura los rangos de tienda y bodega. Es una sola vez: son fijos.» | el «es una sola vez» quita la duda de si habrá que repetirlo cada conteo |
+| «Ese código no es de un marbete de esta tienda.» | nombra la causa exacta en vez de «código inválido» |
+| «Hay un conteo abierto» en el botón deshabilitado | un botón apagado que **dice por qué** |
+
+### ⚠️ Lo que NO se revisó
+
+Los textos de `/checklist` --1,057 líneas-- y los dieciocho mensajes de `/login`.
+Esta pasada cubrió cobro, errores y estados vacíos de los flujos auditados, que
+es lo que pedía el paso 3.
