@@ -16,6 +16,7 @@ import { GradientText } from "@/components/magic/GradientText";
 import { CommandPalette } from "@/components/desktop/CommandPalette";
 import { resolveSection } from "@/components/desktop/nav";
 import { consumeDesktopFreshLogin } from "@/lib/desktop-profiles";
+import { hayPistaDeDemo } from "@/lib/demo";
 import { noteViewRedirect, prefersDesktop, setViewPreference } from "@/lib/view-mode";
 
 // Ancho mínimo para considerar "escritorio". Por debajo, gerencia usa la app móvil.
@@ -73,14 +74,19 @@ export function DesktopShell({ children }: { children: React.ReactNode }) {
       window.dispatchEvent(new Event("desktop-lock-change"));
     }
 
+    function bloquear() {
+      sessionStorage.removeItem("desktop_unlocked");
+      window.dispatchEvent(new Event("desktop-lock-change"));
+      setChecking(false);
+    }
+
     function finishCheck(session: User | null) {
       if (session && session.role !== "ASESOR") {
         applyUnlock(session);
+        setChecking(false);
       } else {
-        sessionStorage.removeItem("desktop_unlocked");
-        window.dispatchEvent(new Event("desktop-lock-change"));
+        bloquear();
       }
-      setChecking(false);
     }
 
     if (consumeDesktopFreshLogin() || sessionStorage.getItem("desktop_unlocked") === "true") {
@@ -89,6 +95,29 @@ export function DesktopShell({ children }: { children: React.ReactNode }) {
       // la comprobación para siempre; la marca de `sessionStorage` sobrevive y
       // al recargar se vuelve a intentar.
       getSession().then(finishCheck).catch(() => setChecking(false));
+      return;
+    }
+
+    // ⚠️ El DEMO público no puede pasar el candado: pide número de empleado y
+    // PIN, y quien viene del sitio no tiene ninguno de los dos. Sin esto, el
+    // escritorio es una pared para cualquier visitante con computadora —que son
+    // casi todos los que evalúan un software.
+    //
+    // ⚠️ La cookie NO abre nada: solo dice «vale la pena preguntar». Quien
+    // decide es el servidor, y si contesta que no es demo se bloquea igual.
+    if (hayPistaDeDemo()) {
+      getSession()
+        .then((session) => {
+          if (session?.demo) {
+            applyUnlock(session);
+            setChecking(false);
+          } else {
+            bloquear();
+          }
+        })
+        // Un fallo de RED no es «no hay sesión»: se deja de esperar y se
+        // bloquea, que es el lado seguro; al recargar se vuelve a intentar.
+        .catch(() => bloquear());
       return;
     }
 

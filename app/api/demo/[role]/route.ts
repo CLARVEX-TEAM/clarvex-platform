@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { rateLimitAuth } from "@/lib/rate-limit";
 import { clientIp } from "@/lib/request-ip";
 import { createSessionToken, SESSION_COOKIE, sessionCookieOptions } from "@/lib/session";
-import { DEMO_ADVISOR_EMPLOYEE, DEMO_MANAGER_EMPLOYEE, DEMO_STORE_ID } from "@/lib/demo";
+import { DEMO_ADVISOR_EMPLOYEE, DEMO_HINT_COOKIE, DEMO_MANAGER_EMPLOYEE, DEMO_STORE_ID } from "@/lib/demo";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -15,7 +15,17 @@ export const runtime = "nodejs";
  */
 function redirectTo(path: string, token?: string) {
   const response = new NextResponse(null, { status: 303, headers: { Location: path } });
-  if (token) response.cookies.set(SESSION_COOKIE, token, sessionCookieOptions);
+  if (token) {
+    response.cookies.set(SESSION_COOKIE, token, sessionCookieOptions);
+    // Pista legible por el navegador para que el candado del escritorio sepa
+    // que vale la pena preguntar por la sesión. No concede nada: ver DEMO_HINT_COOKIE.
+    response.cookies.set(DEMO_HINT_COOKIE, "1", {
+      path: "/",
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+      httpOnly: false
+    });
+  }
   return response;
 }
 
