@@ -7,6 +7,7 @@
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { extname, join } from "node:path";
 import sharp from "sharp";
+import { exigirMapaDeBits } from "@/lib/sharp-seguro";
 import { plano } from "@/lib/visual-pptx";
 import type { Referencia } from "@/lib/visual-reconocer";
 
@@ -29,6 +30,10 @@ export const PROPUESTA = join(BASE, "propuesta.json");
 const ANCHO = 900;
 
 export async function encoger(contenido: Buffer): Promise<Buffer> {
+  // ⚠️ Estas fotos llegan por Telegram y nadie las revisa. Se comprueba el
+  // formato por los BYTES antes de que `sharp` elija decodificador: ver
+  // `lib/sharp-seguro.ts` y el aviso de librsvg que lo motivó.
+  exigirMapaDeBits(contenido, "La foto del visual");
   return sharp(contenido).resize({ width: ANCHO, withoutEnlargement: true }).jpeg({ quality: 80 }).toBuffer();
 }
 

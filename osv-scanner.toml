@@ -14,3 +14,25 @@
 # Al añadir una entrada aquí, poner SIEMPRE `ignoreUntil` y explicar por qué no
 # se puede parchear todavía. Un ignore sin fecha se vuelve permanente sin que
 # nadie lo haya decidido.
+
+[[IgnoredVulns]]
+id = "GHSA-vfj7-8cjw-p6xm"
+ignoreUntil = 2026-12-15
+reason = """
+braces <=3.0.3: desbordamiento de pila por patrones de llaves muy anidados. Los
+recorridos recursivos del AST no llevan tope de profundidad, asi que un patron
+bajo el limite de caracteres tumba el proceso con un RangeError sin atrapar.
+
+NO HAY VERSION PARCHEADA. El aviso es del 18 de septiembre de 2026 y marca la
+3.0.3 como last_affected: no existe 3.0.4 a la que subir, y la linea 4.x del
+paquete no se ha publicado.
+
+Entra SOLO por eslint-config-next, en devDependencies. Nunca viaja al servidor:
+`next build` no lo incluye en el bundle y PM2 corre la version construida, no
+las herramientas de desarrollo. Los patrones que procesa son los de nuestra
+propia configuracion de ESLint, no entrada de nadie. La superficie real es cero.
+
+Revisar el 15 de diciembre de 2026 por si publican parche. Si para entonces
+sigue sin arreglo y la superficie sigue siendo nula, se renueva la fecha CON una
+nota nueva; no se deja sin fecha.
+"""
