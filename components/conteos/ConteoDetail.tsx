@@ -7,7 +7,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { AlertTriangle, CheckCircle2, Download, Lock, LockOpen, Plus, ScanLine, Trash2, X } from "lucide-react";
 import { getSession } from "@/lib/auth";
 import type { User } from "@/lib/types";
-import { entryCountsDone, entryNeedsRecount, entryReal, entryResolved, parseTagQr, slotFilled, zoneProgress, type CycleZone, type SerializedEntry, type SerializedTag } from "@/lib/cycle-count";
+import { entryCountsDone, entryHasMismatch, entryMismatch, entryNeedsRecount, entryReal, entryResolved, parseTagQr, slotFilled, zoneProgress, type CycleZone, type SerializedEntry, type SerializedTag } from "@/lib/cycle-count";
 import { useKeyboardInset } from "@/lib/use-keyboard-inset";
 import { Badge, Card, ProgressBar } from "@/components/ui";
 import { ScannerOverlay } from "@/components/conteos/ScannerOverlay";
@@ -235,6 +235,7 @@ export function ConteoDetailView({ countId: id, desktop = false }: { countId: st
                   const myOwn = entry ? (entry.count3 ?? entry.count2 ?? entry.count1) : null;
                   const resolved = entry ? entryResolved(entry) : false;
                   const needsRecount = entry ? entryNeedsRecount(entry) : false;
+                  const mismatch = entry ? entryHasMismatch(entry) : false;
                   const countsDone = entry ? entryCountsDone(entry) : 0;
                   const counter = countingByNumber.get(tag.number);
                   return (
@@ -245,7 +246,7 @@ export function ConteoDetailView({ countId: id, desktop = false }: { countId: st
                       className={`relative flex min-h-[3.4rem] flex-col items-center justify-center rounded-2xl border text-center transition active:scale-95 ${
                         counter
                           ? "border-volt/60 bg-volt/10 ring-2 ring-volt/30"
-                          : needsRecount
+                          : needsRecount || mismatch
                             ? tono("border-ember/30 bg-ember/10", "border-amber-400/60 bg-amber-500/10")
                             : resolved
                               ? tono("border-mint/30 bg-mint/10", "border-emerald-400/40 bg-emerald-500/10")
@@ -270,7 +271,7 @@ export function ConteoDetailView({ countId: id, desktop = false }: { countId: st
                       ) : null}
                       <span className={`text-sm font-semibold ${resolved ? tono("text-mint", "text-emerald-600 dark:text-emerald-400") : "text-ink"}`}>{tag.number}</span>
                       <span className="text-[10px] font-bold text-muted">
-                        {needsRecount ? "⚠ recontar" : manager ? (real !== null ? `${real} pzas` : "—") : myOwn !== null ? `${myOwn} pzas` : resolved ? "✓" : "—"}
+                        {needsRecount ? "⚠ recontar" : mismatch ? "⚠ corregir" : manager ? (real !== null ? `${real} pzas` : "—") : myOwn !== null ? `${myOwn} pzas` : resolved ? "✓" : "—"}
                       </span>
                     </button>
                   );
@@ -495,6 +496,40 @@ function CaptureSheet({ countId, tag, entry, isOpen, onClose, onSaved }: {
             {slotFilled(entry, 3) && <> — 3ro: {entry.count3 !== null ? <b className="text-ink">{entry.count3} pzas</b> : <span className="opacity-70">oculto</span>} · {entry.count3ByName}</>}
           </div>
         )}
+
+        {/*
+          El tercer conteo resuelve las piezas pero deja el renglón equivocado
+          capturado: la Mesa de Control suma el 1er conteo contra el teórico, así
+          que un 1ro mal escrito mueve la diferencia aunque el «Real» esté bien.
+          Por eso se dice CUÁL corregir, no solo que hubo discrepancia.
+        */}
+        {entry !== null && (() => {
+          const desajuste = entryMismatch(entry);
+          if (desajuste === null) {
+            return entryHasMismatch(entry) ? (
+              <div className={`mt-2 flex items-start gap-2 rounded-2xl px-3 py-2 text-xs font-semibold ${tono("bg-ember/10 text-ember", "bg-amber-500/10 text-amber-700 dark:text-amber-300")}`}>
+                <AlertTriangle size={14} className="mt-px shrink-0" />
+                <span>Este marbete tiene un conteo mal capturado. Gerencia tiene que corregirlo.</span>
+              </div>
+            ) : null;
+          }
+          return (
+            <div className={`mt-2 flex items-start gap-2 rounded-2xl px-3 py-2 text-xs font-semibold ${tono("bg-ember/10 text-ember", "bg-amber-500/10 text-amber-700 dark:text-amber-300")}`}>
+              <AlertTriangle size={14} className="mt-px shrink-0" />
+              {desajuste.kind === "corregir" ? (
+                <span>
+                  Corrige el {desajuste.slot === 1 ? "1er" : "2do"} conteo: dice{" "}
+                  <b>{desajuste.captured}</b> y los otros dos coinciden en <b>{desajuste.correct}</b>.
+                </span>
+              ) : (
+                <span>
+                  Los tres conteos difieren ({desajuste.values.join(", ")}). No hay mayoría:
+                  hay que volver a contar el marbete.
+                </span>
+              )}
+            </div>
+          );
+        })()}
 
         {isOpen ? (
           <>

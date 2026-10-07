@@ -29,6 +29,9 @@ export type SerializedEntry = {
   slotsFilled?: readonly [boolean, boolean, boolean];
   needsRecount?: boolean;
   resolved?: boolean;
+  /** Hay tercer conteo y uno de los tres no cuadra. Se manda SIEMPRE, también
+   *  en conteo ciego, porque avisar no revela ninguna pieza. */
+  hasMismatch?: boolean;
 };
 
 export type EntryLike = {
@@ -38,7 +41,39 @@ export type EntryLike = {
   slotsFilled?: readonly [boolean, boolean, boolean];
   needsRecount?: boolean;
   resolved?: boolean;
+  hasMismatch?: boolean;
 };
+
+/**
+ * Qué conteo quedó mal cuando hubo que llegar al tercero.
+ *
+ * El tercer conteo resuelve las piezas, pero NO corrige el renglón que estaba
+ * equivocado: queda capturado en la hoja y en la Mesa de Control, donde el
+ * total del 1er conteo se compara contra el teórico. Por eso hay que decir cuál
+ * corregir, no solo que hubo discrepancia.
+ *
+ * ⚠️ Cuando los tres difieren no hay mayoría, así que no se puede señalar un
+ * culpable: ahí lo correcto es volver a contar, no elegir un número.
+ */
+export type EntryMismatch =
+  | { kind: "corregir"; slot: 1 | 2; captured: number; correct: number }
+  | { kind: "sin-mayoria"; values: readonly [number, number, number] }
+  | null;
+
+export function entryMismatch(entry: EntryLike): EntryMismatch {
+  const { count1: c1, count2: c2, count3: c3 } = entry;
+  if (c1 === null || c2 === null || c3 === null) return null; // aún sin tercero
+  if (c1 === c2) return null; // nunca hubo discrepancia
+  if (c3 === c1) return { kind: "corregir", slot: 2, captured: c2, correct: c1 };
+  if (c3 === c2) return { kind: "corregir", slot: 1, captured: c1, correct: c2 };
+  return { kind: "sin-mayoria", values: [c1, c2, c3] as const };
+}
+
+/** ¿El marbete arrastra un conteo mal capturado? Sin revelar las piezas. */
+export function entryHasMismatch(entry: EntryLike): boolean {
+  if (typeof entry.hasMismatch === "boolean") return entry.hasMismatch; // conteo ciego
+  return entryMismatch(entry) !== null;
+}
 
 /** Piezas reales del marbete según la regla del formato. */
 export function entryReal(entry: EntryLike): number | null {
@@ -102,7 +137,8 @@ export function serializeEntry(entry: RawCountEntry, canSeePieces: boolean, view
     count3ByName: entry.count3ByName,
     slotsFilled: [entry.count1 !== null, entry.count2 !== null, entry.count3 !== null] as [boolean, boolean, boolean],
     needsRecount: entryNeedsRecount(entry),
-    resolved: entryReal(entry) !== null
+    resolved: entryReal(entry) !== null,
+    hasMismatch: entryMismatch(entry) !== null
   };
   if (canSeePieces) {
     return { ...common, count1: entry.count1, count2: entry.count2, count3: entry.count3 };

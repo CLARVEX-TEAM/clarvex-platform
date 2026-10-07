@@ -2,6 +2,7 @@ import path from "node:path";
 import { NextResponse } from "next/server";
 import ExcelJS from "exceljs";
 import { requireSession, isApiError } from "@/lib/api";
+import { kardexTheoreticalAt } from "@/lib/inventory-kardex";
 import { fillMesaControl, type MesaControlRow } from "@/lib/mesa-control";
 import { prisma } from "@/lib/prisma";
 
@@ -53,12 +54,28 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     vendedores: [...byRole("ASESOR"), ...byRole("GERENTE").slice(1), ...byRole("SUBGERENTE").slice(1)]
   };
 
+  /**
+   * El teórico sale del KARDEX, igual que en la pantalla del conteo.
+   *
+   * ⚠️ Antes se escribía `count.theoretical`, que es el campo capturado a mano y
+   * lleva vacío desde el 8 de septiembre de 2026: la Mesa de Control salía con
+   * la celda del teórico en blanco y la diferencia no significaba nada. Peor
+   * aún, cuando ese campo SÍ tenía valor no era el mismo que el de la pantalla
+   * —el 18 de agosto decía 6,925 contra 6,885 del kardex—, así que el Excel y
+   * la app enseñaban diferencias de signo contrario para el mismo inventario.
+   *
+   * El manual se conserva como respaldo para los conteos viejos, que son los
+   * únicos que lo tienen.
+   */
+  const kardex = await kardexTheoreticalAt(session.storeId, count.date);
+  const theoretical = kardex?.theoretical ?? count.theoretical;
+
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.readFile(TEMPLATE_PATH);
   fillMesaControl(workbook, {
     date: count.date,
     sucursal: store?.name ?? "",
-    theoretical: count.theoretical,
+    theoretical,
     piso: zoneRows("PISO"),
     bodega: zoneRows("BODEGA"),
     noUpc: count.noUpcItems.map((item) => ({ concept: item.concept, pieces: item.pieces })),
