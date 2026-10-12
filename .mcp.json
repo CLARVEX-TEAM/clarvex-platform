@@ -6,6 +6,57 @@
         "shadcn@latest",
         "mcp"
       ]
+    },
+    "lightcraft": {
+      "command": "D:/Apps/artcraft/lightcraft/lightcraft-0.2.1-windows-x64-portable/lightcraft-cli.exe",
+      "args": [
+        "mcp",
+        "--compact",
+        "--library",
+        "D:/Documents/clarvex-video/salida/lightcraft-biblioteca"
+      ]
+    },
+    "photocraft": {
+      "command": "D:/Apps/artcraft/photocraft/photocraft-0.2.0-windows-x64-portable/photocraft-cli.exe",
+      "args": [
+        "mcp",
+        "--automation-read-root",
+        "D:/Documents/clarvex-video",
+        "--automation-write-root",
+        "D:/Documents/clarvex-video/salida"
+      ]
+    },
+    "vectorcraft": {
+      "command": "D:/Apps/artcraft/vectorcraft/vectorcraft-0.3.1-windows-x64-portable/vectorcraft-cli.exe",
+      "args": [
+        "mcp",
+        "--headless"
+      ]
+    },
+    "printcraft": {
+      "command": "D:/Apps/artcraft/printcraft/printcraft-0.2.1-windows-x64-portable/printcraft-cli.exe",
+      "args": [
+        "mcp"
+      ]
+    },
+    "filmcraft": {
+      "command": "D:/Apps/artcraft/filmcraft/filmcraft-0.6.0-windows-x64-portable/filmcraft-cli.exe",
+      "args": [
+        "mcp"
+      ]
+    },
+    "effectcraft": {
+      "command": "D:/Apps/artcraft/effectcraft/effectcraft-0.8.0-windows-x64-portable/effectcraft-cli.exe",
+      "args": [
+        "mcp",
+        "--autosave"
+      ]
+    },
+    "soundcraft": {
+      "command": "D:/Apps/artcraft/soundcraft/soundcraft-0.5.0-windows-x64-portable/soundcraft-cli.exe",
+      "args": [
+        "mcp"
+      ]
     }
   }
 }
