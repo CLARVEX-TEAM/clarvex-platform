@@ -57,6 +57,13 @@
       "args": [
         "mcp"
       ]
+    },
+    "bria": {
+      "type": "http",
+      "url": "https://mcp.prod.bria-api.com/mcp",
+      "headers": {
+        "api_token": "${BRIA_API_TOKEN}"
+      }
     }
   }
 }

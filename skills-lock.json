@@ -1,6 +1,18 @@
 {
   "version": 1,
   "skills": {
+    "ad-delayer": {
+      "source": "bria-ai/bria-skill",
+      "sourceType": "github",
+      "skillPath": "skills/ad-delayer/SKILL.md",
+      "computedHash": "91744aca8b6e07dec0de74699da78645dfa214137d95c3ad1ec0c91436a3428a"
+    },
+    "ad-resize": {
+      "source": "bria-ai/bria-skill",
+      "sourceType": "github",
+      "skillPath": "skills/ad-resize/SKILL.md",
+      "computedHash": "f211daf80e7d4f07ecaa0b776f813d84b21880e9b3a61ded7151a99337db6df6"
+    },
     "ast-grep": {
       "source": "coleam00/skills",
       "sourceType": "github",
@@ -24,6 +36,12 @@
       "sourceType": "github",
       "skillPath": "skills/brandkit/SKILL.md",
       "computedHash": "735007879f5110aeae1e981a53fe74a12afde70347f9773dacd50e4697a091bf"
+    },
+    "bria-ai": {
+      "source": "bria-ai/bria-skill",
+      "sourceType": "github",
+      "skillPath": "skills/bria-ai/SKILL.md",
+      "computedHash": "b05f317bbc91163b68caefb46c936be66d700d35d01c9891188d348a4dc8b9ef"
     },
     "claude-api": {
       "source": "anthropics/skills",
@@ -67,6 +85,12 @@
       "skillPath": "skills/doc-coauthoring/SKILL.md",
       "computedHash": "62cd7744438ee2aecc986c520bb603988a78ff6aaaf70a471bf4584fe0b78dae"
     },
+    "ecommerce": {
+      "source": "bria-ai/bria-skill",
+      "sourceType": "github",
+      "skillPath": "skills/ecommerce/SKILL.md",
+      "computedHash": "3c56d4e1b6b281a914d540d42a51e50f08eda72f718a42ce07b341dd078f6188"
+    },
     "executing-plans": {
       "source": "obra/superpowers",
       "sourceType": "github",
@@ -108,6 +132,12 @@
       "sourceType": "github",
       "skillPath": "skills/image-to-code-skill/SKILL.md",
       "computedHash": "3d2ac14d956fdafc5500d2108b90895e134d847f9f199e7f1d18bf1f814cf7c8"
+    },
+    "image-utils": {
+      "source": "bria-ai/bria-skill",
+      "sourceType": "github",
+      "skillPath": "skills/image-utils/SKILL.md",
+      "computedHash": "d7104fc8d73e250a5505ef433e390ab3c00db1199e13b741c586c3fe1233ecac"
     },
     "imagegen-frontend-mobile": {
       "source": "Leonxlnx/taste-skill",
@@ -253,6 +283,12 @@
       "skillPath": "skills/remotion-upgrade/SKILL.md",
       "computedHash": "326cf8c9ee7b7ea12bbb8b72ab72776d47e9296588702f113dd0ec10d5a1116f"
     },
+    "remove-background": {
+      "source": "bria-ai/bria-skill",
+      "sourceType": "github",
+      "skillPath": "skills/remove-background/SKILL.md",
+      "computedHash": "b78e782c7c34a3a7150d6e3beb284de09c0cbb0693c3e721ae58539ffb144553"
+    },
     "requesting-code-review": {
       "source": "obra/superpowers",
       "sourceType": "github",
@@ -336,6 +372,18 @@
       "sourceType": "github",
       "skillPath": "skills/verification-before-completion/SKILL.md",
       "computedHash": "b529822bdac4b197b180fe12225cff86b930b65910435103c10622df7f041651"
+    },
+    "vgl": {
+      "source": "bria-ai/bria-skill",
+      "sourceType": "github",
+      "skillPath": "skills/vgl/SKILL.md",
+      "computedHash": "4ad8f7d25d8da28bdba254bbd833b0cb791a54092aba1586f61b801dbf686d34"
+    },
+    "video-remove-background": {
+      "source": "bria-ai/bria-skill",
+      "sourceType": "github",
+      "skillPath": "skills/video-remove-background/SKILL.md",
+      "computedHash": "0ee123e9adca8b8110bb82424969f21234b4c6cd992b155540753b075bb2a507"
     },
     "writing-plans": {
       "source": "obra/superpowers",
