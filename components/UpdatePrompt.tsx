@@ -21,7 +21,7 @@ import { RefreshCw } from "lucide-react";
  * Va en el layout global, no en la pantalla de login: así salta en cualquier
  * ruta, incluida la primera que ve el equipo tras volver a abrir la app.
  */
-export default function UpdatePrompt() {
+export function UpdatePrompt() {
   const [showBanner, setShowBanner] = useState(false);
   const pathname = usePathname();
 
