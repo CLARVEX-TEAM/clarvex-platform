@@ -13,71 +13,65 @@ import { RefreshCw } from "lucide-react";
  * Nadie sabe que hay que hacer eso, y pueden pasar semanas con un bug ya
  * arreglado.
  *
- * Se OFRECE recargar, no se fuerza: alguien podría estar a media captura y
- * perderlo. La decisión es suya.
- */
-const CHECK_INTERVAL_MS = 5 * 60 * 1000;
-
-/**
- * Paginas donde este aviso no tiene sentido.
+ * Se compara la huella del build que trae incrustada el propio cliente
+ * (NEXT_PUBLIC_BUILD_ID, fijada al compilar) con la que devuelve el servidor
+ * (ya reconstruido). Si difieren, el código que corre es viejo y se ofrece
+ * recargar.
  *
- * ⚠️ Es para el equipo que tiene la app INSTALADA. En la pagina publica de
- * producto le dice «actualiza» a alguien que nunca la ha abierto, y aparece
- * flotando encima de la portada.
+ * Va en el layout global, no en la pantalla de login: así salta en cualquier
+ * ruta, incluida la primera que ve el equipo tras volver a abrir la app.
  */
-const SIN_AVISO = ["/producto", "/login", "/terminos", "/uso-aceptable", "/privacidad"];
-
-export function UpdatePrompt() {
+export default function UpdatePrompt() {
+  const [showBanner, setShowBanner] = useState(false);
   const pathname = usePathname();
-  const [stale, setStale] = useState(false);
+
+  // No mostrar el banner en ciertas rutas (ej. la de impresión de etiquetas,
+  // donde un reload podría interrumpir un trabajo en curso).
+  const hideOnRoutes = ["/etiquetas/imprimir"];
+  const shouldHide = hideOnRoutes.some((route) => pathname?.startsWith(route));
 
   useEffect(() => {
-    if (SIN_AVISO.some((ruta) => pathname.startsWith(ruta))) return;
+    if (shouldHide) return;
+
     const current = process.env.NEXT_PUBLIC_BUILD_ID;
-    if (!current) return; // en desarrollo no aplica
+    if (!current || current === "dev") return;
 
-    let cancelled = false;
-
-    async function check() {
+    const checkVersion = async () => {
       try {
-        const response = await fetch("/api/version", { cache: "no-store" });
-        if (!response.ok) return;
-        const payload = await response.json() as { buildId?: string };
-        if (!cancelled && payload.buildId && payload.buildId !== current) {
-          setStale(true);
+        const res = await fetch("/api/version", { cache: "no-store" });
+        if (!res.ok) return;
+        const { buildId } = await res.json();
+        if (buildId && buildId !== current) {
+          setShowBanner(true);
         }
-      } catch {
-        // Sin conexión: se reintenta luego. Nunca molestar por un fallo de red.
+      } catch (_) {
+        // Sin conexión o error: no molestar.
       }
-    }
-
-    void check();
-    const interval = setInterval(() => void check(), CHECK_INTERVAL_MS);
-    // Al volver a la app (que es justo cuando se arrastra el bundle viejo).
-    const onVisible = () => { if (document.visibilityState === "visible") void check(); };
-    document.addEventListener("visibilitychange", onVisible);
-
-    return () => {
-      cancelled = true;
-      clearInterval(interval);
-      document.removeEventListener("visibilitychange", onVisible);
     };
-  }, [pathname]);
 
-  if (!stale) return null;
+    // Comprueba al cargar y luego cada 20 segundos.
+    checkVersion();
+    const interval = setInterval(checkVersion, 20_000);
+    return () => clearInterval(interval);
+  }, [pathname, shouldHide]);
+
+  if (!showBanner) return null;
 
   return (
-    // `data-transient`: avisos que aparecen según el estado del navegador (hay
-    // versión nueva, sin conexión, instalar PWA). Las pruebas visuales los
-    // ocultan porque su presencia depende del entorno, no del diseño, y harían
-    // que la misma pantalla se capturara distinta en cada ejecución.
-    <div data-transient className="fixed inset-x-3 bottom-[calc(6rem+var(--safe-bottom))] z-50 mx-auto max-w-md">
-      <div className="flex items-center gap-3 rounded-2xl border border-volt/30 bg-volt px-4 py-3 shadow-lg">
-        <RefreshCw size={18} className="shrink-0 text-white" />
+    <div className="fixed bottom-4 left-1/2 z-50 w-[calc(100%-2rem)] max-w-md -translate-x-1/2">
+      <div className="flex items-center gap-3 rounded-2xl bg-slate-900 px-4 py-3 shadow-lg shadow-black/20">
+        <RefreshCw className="h-5 w-5 shrink-0 animate-spin text-white [animation-duration:3s]" />
         <p className="flex-1 text-sm font-bold text-white">Hay una versión nueva de la app.</p>
         <button
-          type="button"
-          onClick={() => window.location.reload()}
+          onClick={() => {
+            // Forzamos la recarga con un query param para evitar que el
+            // navegador sirva el HTML desde su caché (aunque el SW no lo cachea,
+            // el disco del navegador sí puede tenerlo). El servidor ignora el
+            // parámetro, pero el navegador lo trata como una URL distinta.
+            const url = new URL(window.location.href);
+            url.searchParams.set("_t", Date.now().toString(36));
+            window.location.href = url.toString();
+          }}
           className="shrink-0 rounded-xl bg-white/20 px-3 py-1.5 text-xs font-semibold text-white transition active:scale-95"
         >
           Actualizar
