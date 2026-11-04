@@ -18,6 +18,7 @@ import {
 } from "@/lib/attendance";
 import { dayBalanceMinutes, DEFAULT_EXIT } from "@/lib/hours-balance";
 import { prisma } from "@/lib/prisma";
+import { todayInMonterrey } from "@/lib/mexico-timezone";
 
 const SOURCE = "AUTO_ASSUMED";
 
@@ -37,9 +38,7 @@ export async function autoAssumeAttendance(
   storeId: string,
   targetDate?: Date
 ): Promise<AutoAssumeResult> {
-  const date = targetDate ?? new Date();
-  // Normalizar a medianoche UTC para que el upsert sea por día
-  const dateKey = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+  const dateKey = targetDate ?? todayInMonterrey();
 
   const result: AutoAssumeResult = {
     storeId,
