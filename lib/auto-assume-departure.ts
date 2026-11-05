@@ -95,8 +95,8 @@ export async function autoAssumeDeparture(
           leftAt: expectedLeave,
           minutesBalance,
           note: att.note
-            ? `${att.note} | Salida asumida automáticamente a las 10:00 PM`
-            : "Salida asumida automáticamente a las 10:00 PM por falta de captura"
+            ? `${att.note} | Salida asumida automáticamente a las 9:00 PM`
+            : "Salida asumida automáticamente a las 9:00 PM por falta de captura"
         }
       });
       result.updated += 1;
