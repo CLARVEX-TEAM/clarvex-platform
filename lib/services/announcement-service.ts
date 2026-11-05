@@ -1,6 +1,8 @@
 import { createNotifications } from "@/lib/notifications";
 import { prisma } from "@/lib/prisma";
 import { dispatchPushToUsers } from "@/lib/push";
+import { signR2Url } from "@/lib/r2";
+import { enviarComunicadoAWhatsApp } from "@/lib/whatsapp";
 import type { Session } from "@/lib/session-token";
 
 // Creación de comunicados en un solo lugar: la reutilizan tanto la ruta
@@ -36,6 +38,13 @@ export async function createAnnouncement(session: Session, input: CreateAnnounce
   });
 
   dispatchPushToUsers(advisorIds, { title: "Nuevo comunicado", body: announcement.title, tag: "comunicado", url: "/comunicados" }).catch(() => undefined);
+
+  // Copia al grupo de WhatsApp de la tienda (fire-and-forget; ver lib/whatsapp.ts).
+  // Solo tiendas en WHATSAPP_ANNOUNCE_STORE_IDS. imageUrl va firmada para que
+  // Evolution pueda bajarla; sin imagen manda solo texto.
+  void signR2Url(announcement.imageUrl)
+    .then((imageUrl) => enviarComunicadoAWhatsApp({ storeId: session.storeId, title: announcement.title, body: announcement.body, imageUrl }))
+    .catch(() => undefined);
 
   return {
     id: announcement.id,
