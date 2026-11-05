@@ -37,12 +37,17 @@ async function post(ruta: string, body: Record<string, unknown>) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 8_000);
   try {
-    await fetch(`${EVOLUTION_URL()}${ruta}`, {
+    const respuesta = await fetch(`${EVOLUTION_URL()}${ruta}`, {
       method: "POST",
       headers: { "Content-Type": "application/json", apikey: EVOLUTION_API_KEY() },
       body: JSON.stringify(body),
       signal: controller.signal
     });
+    // fetch no lanza con un 4xx/5xx: sin esto, un rechazo de Evolution no deja rastro.
+    if (!respuesta.ok) {
+      const detalle = await respuesta.text().catch(() => "");
+      console.error(`[whatsapp] Evolution respondió ${respuesta.status} en ${ruta}: ${detalle.slice(0, 500)}`);
+    }
   } finally {
     clearTimeout(timer);
   }
@@ -77,7 +82,17 @@ export async function enviarComunicadoAWhatsApp(params: {
         text: texto
       });
     }
-  } catch {
-    // Silencio a propósito: el aviso a WhatsApp es un extra, no la comprobación.
+    // Encuesta de confirmación: un toque y WhatsApp notifica el voto (no hace
+    // falta que escriban nada). El workflow de n8n la registra en AnnouncementRead.
+    // Cualquier voto cuenta como leído; dos opciones porque Evolution rechaza menos.
+    await post(`/message/sendPoll/${EVOLUTION_INSTANCE()}`, {
+      number: GROUP_JID(),
+      name: "¿Leíste el comunicado?",
+      selectableCount: 1,
+      values: ["✅ OK, enterado", "👀 Visto"]
+    });
+  } catch (error) {
+    // No se relanza a propósito: el aviso a WhatsApp es un extra, no la comprobación.
+    console.error(`[whatsapp] no se pudo enviar el comunicado: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
