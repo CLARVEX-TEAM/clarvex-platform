@@ -198,7 +198,7 @@ async function recordarCursos(now: Date): Promise<number> {
       const finde = isWeekendDue(t.dueDate) ? " (fin de semana)" : "";
       return `• ${t.title}${finde}`;
     }).join("\n");
-    enviados += await avisar([e], () => `📚 ${nombre}, recuerda tus cursos/capacitaciones:\n${lista}\nAvísanos cómo vas.`);
+    enviados += await avisar([e], () => `📚 ${nombre}, recuerda tus cursos/capacitaciones:\n${lista}\nCuando termines uno, manda aquí la foto de tu evidencia (constancia o captura) y yo la paso a gerencia. 📸`);
   }
   return enviados;
 }
