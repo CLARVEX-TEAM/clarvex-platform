@@ -139,6 +139,9 @@ function isPublicApi(pathname: string): boolean {
   // propio secreto (ADMIN_CAPTURE_SECRET) validado en cada handler.
   if (captureRoutes.has(pathname)) return true;
   if (pathname.startsWith("/api/webhooks/")) return true;
+  // Bot de WhatsApp de la tienda (Evolution → n8n → este endpoint). Valida
+  // su propio secreto (WA_WEBHOOK_SECRET) en el handler.
+  if (pathname.startsWith("/api/webhook/")) return true;
   // Entrada pública al modo demo (crea la sesión demo; rate-limitada en el handler).
   if (pathname.startsWith("/api/demo/")) return true;
   return false;
