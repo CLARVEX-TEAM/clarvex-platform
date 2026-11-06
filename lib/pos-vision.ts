@@ -110,7 +110,14 @@ Correspondencia EXACTA con las columnas (no cambies el orden si hay devoluciones
 - "net", "avgUnits" y "avgAmount" van CON su signo. Si el reporte los muestra en
   negativo, cópialos en negativo: es un día de devoluciones y así tiene que ser.
 - Copia los números exactamente como se ven. No calcules, no corrijas, no
-  redondees. Si un dato no se alcanza a leer, pon null.`;
+  redondees. Si un dato no se alcanza a leer, pon null.
+
+⚠️ ANTES de responder, VERIFICA estas cuentas por cada fila:
+1. gross - discount = afterDiscount (tolerancia 1 centavo)
+2. afterDiscount - returns = net
+3. units / tickets = avgUnits
+4. net / tickets = avgAmount
+Si alguna no cuadra, el número está mal leído: relee esa casilla con cuidado.`;
 
 /**
  * La forma exacta del JSON, para Bedrock; ambos lectores reciben el mapa de columnas.
@@ -149,12 +156,24 @@ tickets es lo ÚNICO que permite detectar después un dígito mal leído en las
 demás columnas. Cópialos con sus decimales exactos, sin redondear.
 
 ⚠️ "tickets" en CERO apaga esa comprobación entera, así que no pongas cero por
-descarte: si la casilla de tickets no se ve, pon null y no un cero.`;
+descarte: si la casilla de tickets no se ve, pon null y no un cero.
+
+⚠️ VERIFICA las cuentas ANTES de responder:
+gross - discount = afterDiscount, afterDiscount - returns = net,
+units / tickets = avgUnits, net / tickets = avgAmount.
+Si no cuadran, el número está mal leído: relee con cuidado.`;
 
 const RELECTURA = `La lectura anterior no superó la validación. Relee TODO el
 documento original, prestando atención a la columna de devoluciones y a los
 importes completos de cada vendedor. No reconstruyas un número a partir de
 otros ni cambies valores para que cuadren: transcribe lo que realmente se ve.
+
+⚠️ ANTES de responder, VERIFICA estas cuentas por cada fila:
+1. gross - discount = afterDiscount (con tolerancia de 1 centavo)
+2. afterDiscount - returns = net
+3. units / tickets = avgUnits
+4. net / tickets = avgAmount
+Si alguna no cuadra, el número está mal leído: relee esa casilla con cuidado.
 
 Comprueba tambien que no se te haya quedado ningun vendedor fuera y que la
 fila "Promedio" del pie este copiada: si las filas no dan ese promedio, es que
