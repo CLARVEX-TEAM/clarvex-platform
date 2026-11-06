@@ -204,13 +204,10 @@ export async function POST(request: Request) {
       `;
 
       for (const g of gerentes) {
-        if (base64) {
-          await enviarMediaPorWhatsApp({
-            phone: g.phone,
-            mediaUrl: `data:image/jpeg;base64,${base64}`,
-            caption
-          });
-        } else {
+        const fotoEnviada = base64
+          ? await enviarMediaPorWhatsApp({ phone: g.phone, mediaUrl: base64, caption })
+          : false;
+        if (!fotoEnviada) {
           await enviarAvisoPorWhatsApp({ phone: g.phone, text: `${caption} (No pude reenviar la foto; pídela en el grupo.)` });
         }
       }
