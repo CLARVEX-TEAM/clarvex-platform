@@ -48,8 +48,10 @@ function isWeekendDue(due: Date): boolean {
 
 type Empleado = { userId: string; name: string; phone: string };
 
-/** Empleados con teléfono que trabajan el día `day` (sin schedule OFF/VACATION/PAID_DAY ese día). */
-async function empleadosQueTrabajan(day: string, userIds: string[]): Promise<Empleado[]> {
+/** Empleados con teléfono que trabajan HOY (sin schedule OFF/VACATION/PAID_DAY en la
+ *  fecha `today`). Se filtra por `date`, no por el día de la semana: la tabla puede
+ *  tener semanas viejas con el mismo `day` (un OFF de otra semana excluía a Jazmín). */
+async function empleadosQueTrabajan(day: string, today: Date, userIds: string[]): Promise<Empleado[]> {
   if (userIds.length === 0) return [];
   return prisma.$queryRaw<Empleado[]>`
     SELECT u.id AS "userId", u.name, p.phone
@@ -61,6 +63,7 @@ async function empleadosQueTrabajan(day: string, userIds: string[]): Promise<Emp
       AND NOT EXISTS (
         SELECT 1 FROM "Schedule" s
         WHERE s."storeId" = ${STORE_ID} AND s."userId" = u.id AND s.day = ${day}
+          AND s.date = ${today}
           AND s.status IN ('OFF','VACATION','PAID_DAY')
       )
   `;
@@ -112,8 +115,8 @@ async function recordarComunicados(now: Date): Promise<number> {
     return status !== "OFF" && status !== "VACATION" && status !== "PAID_DAY";
   };
 
-  const hoyClave = dayKey(now);
-  let enviados = 0;
+  const hoyClave = dayKey(now);
+  let enviados = 0;
   for (const anuncio of anuncios) {
     // Para cada usuario sin leer: si hoy trabajó, su plazo es hoy. Si hoy
     // descansa, su plazo cae en su próximo día laboral y solo se le avisa
@@ -121,7 +124,7 @@ async function recordarComunicados(now: Date): Promise<number> {
     const sinLeer = userIds.filter((uid) => !leidoSet.has(`${anuncio.id}:${uid}`));
     if (sinLeer.length === 0) continue;
     const destinatarios = sinLeer.filter((uid) => trabajaEl(uid, hoyClave));
-    const empleados = await empleadosQueTrabajan(hoyClave, destinatarios);
+    const empleados = await empleadosQueTrabajan(hoyClave, hoy, destinatarios);
     enviados += await avisar(empleados, (e) => {
       const nombre = e.name.split(" ")[0];
       return `📢 ${nombre}, no has leído el comunicado «${anuncio.title}». Confírmalo en la app cuando puedas.`;
@@ -145,7 +148,7 @@ async function recordarTareas(now: Date): Promise<number> {
 
   const ownerIds = [...new Set(pendientes.map((p) => p.ownerId))];
   const hoyClave = dayKey(now);
-  const trabajaronHoy = await empleadosQueTrabajan(hoyClave, ownerIds);
+  const trabajaronHoy = await empleadosQueTrabajan(hoyClave, hoy, ownerIds);
   const porDueno = new Map<string, typeof pendientes>();
   for (const p of pendientes) {
     const lista = porDueno.get(p.ownerId) ?? [];
@@ -179,7 +182,7 @@ async function recordarCursos(now: Date): Promise<number> {
 
   const ownerIds = [...new Set(pendientes.map((p) => p.ownerId))];
   const hoyClave = dayKey(now);
-  const trabajaronHoy = await empleadosQueTrabajan(hoyClave, ownerIds);
+  const trabajaronHoy = await empleadosQueTrabajan(hoyClave, hoy, ownerIds);
   const porDueno = new Map<string, typeof pendientes>();
   for (const p of pendientes) {
     const lista = porDueno.get(p.ownerId) ?? [];
