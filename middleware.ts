@@ -70,7 +70,10 @@ const publicApiExact = new Set([
   // tiene que seguir pidiendo sesión, y una ruta futura ahí debajo no puede
   // quedar pública por herencia. Es el mismo criterio que la nota de
   // `/api/admin/sync-source`.
-  "/api/app/apk"
+  "/api/app/apk",
+  // Recordatorios de WhatsApp desde n8n (workflows «KIMI …»). Lleva su propio
+  // Bearer (KIMI_REMINDER_SECRET) validado en el handler; sin él responde 401.
+  "/api/kimi/reminder-check"
 ]);
 
 /**
