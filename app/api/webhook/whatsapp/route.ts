@@ -177,7 +177,7 @@ export async function POST(request: Request) {
       SELECT up."userId", u.name
       FROM "UserPhone" up
       JOIN "User" u ON u.id = up."userId"
-      WHERE up.phone = ${telefono} AND up."storeId" = ${STORE_ID}
+      WHERE up.phone = ${telefono}
       LIMIT 1
     `;
     const empleado = empleados[0] ?? null;
@@ -194,8 +194,7 @@ export async function POST(request: Request) {
         SELECT up.phone
         FROM "UserPhone" up
         JOIN "User" u ON u.id = up."userId"
-        WHERE up."storeId" = ${STORE_ID}
-          AND (LOWER(u.name) LIKE '%adrian%' OR LOWER(u.name) LIKE '%itzel%')
+        WHERE (LOWER(u.name) LIKE '%adrian%' OR LOWER(u.name) LIKE '%itzel%')
       `;
 
       for (const g of gerentes) {
