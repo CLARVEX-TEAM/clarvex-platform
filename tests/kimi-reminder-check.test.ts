@@ -22,10 +22,10 @@ test("sin Authorization devuelve 401", async () => {
   process.env.CRON_SECRET = "secreto-de-prueba";
   const { POST } = await import("../app/api/kimi/reminder-check/route");
   const res = await POST(
-    new Request("http://localhost/api/kimi/reminder-check", {
+    new Request("http://localhost/api/kimi/reminder-check?type=task", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ type: "task" })
+
     })
   );
   assert.equal(res.status, 401);
@@ -36,13 +36,13 @@ test("con un secreto distinto devuelve 401", async () => {
   process.env.CRON_SECRET = "secreto-de-prueba";
   const { POST } = await import("../app/api/kimi/reminder-check/route");
   const res = await POST(
-    new Request("http://localhost/api/kimi/reminder-check", {
+    new Request("http://localhost/api/kimi/reminder-check?type=task", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: "Bearer otro-secreto"
       },
-      body: JSON.stringify({ type: "task" })
+
     })
   );
   assert.equal(res.status, 401);
@@ -55,13 +55,13 @@ test("sin CRON_SECRET configurado es fail-closed (401)", async () => {
   try {
     const { POST } = await import("../app/api/kimi/reminder-check/route");
     const res = await POST(
-      new Request("http://localhost/api/kimi/reminder-check", {
+      new Request("http://localhost/api/kimi/reminder-check?type=task", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: "Bearer cualquier-cosa"
         },
-        body: JSON.stringify({ type: "task" })
+  
       })
     );
     assert.equal(res.status, 401);

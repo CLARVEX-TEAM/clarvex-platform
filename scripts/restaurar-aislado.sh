@@ -36,9 +36,12 @@ fi
 [[ "$NUEVO_ID" =~ ^[a-f0-9]{64}$ ]] || fatal "Docker no devolvió un ID válido; no se elimina ningún contenedor por nombre."
 ID_CREADO="$NUEVO_ID"
 docker start "$ID_CREADO" >/dev/null
-for intento in $(seq 1 30); do
-  if docker exec "$ID_CREADO" pg_isready -U "$USUARIO" -d "$BASE" >/dev/null 2>&1; then break; fi
-  [ "$intento" -eq 30 ] && fatal "Postgres no arrancó."
+# Por TCP y no por socket: la imagen arranca primero un servidor TEMPORAL que solo
+# escucha en el socket, crea la base y lo reinicia. Por socket, pg_isready dice
+# «listo» ante ese temporal, antes de que exista $BASE.
+for intento in $(seq 1 60); do
+  if docker exec "$ID_CREADO" pg_isready -h 127.0.0.1 -U "$USUARIO" -d "$BASE" >/dev/null 2>&1; then break; fi
+  [ "$intento" -eq 60 ] && fatal "Postgres no arrancó."
   sleep 1
 done
 # Cualquier salida no cero invalida la restauración, aunque no haya texto de error

@@ -11,7 +11,7 @@ export const maxDuration = 60;
 /**
  * Recordatorios privados por WhatsApp (workflow n8n «KIMI …»).
  *
- * Body: { type: "announcement" | "task" | "course" }
+ * Query param: ?type=announcement|task|course
  * - announcement: comunicados sin leer → avisa 3pm/6pm solo si trabajó hoy (si
  *   descansó, recorre el plazo al siguiente día laboral). Avisos 3 y 4 al bot
  *   de las 8:00.
@@ -204,16 +204,13 @@ export async function POST(request: Request) {
   const unauthorized = requireCron(request);
   if (unauthorized) return unauthorized;
 
-  let body: { type?: ReminderType };
-  try {
-    body = (await request.json()) as { type?: ReminderType };
-  } catch {
-    return NextResponse.json({ ok: false, error: "JSON inválido." }, { status: 400 });
-  }
-  const type = body.type;
+  // El tipo viene como query param ?type=announcement|task|course
+  // (más confiable que body JSON con el middleware de Next.js)
+  const url = new URL(request.url);
+  const type = url.searchParams.get("type") as ReminderType | null;
   if (type !== "announcement" && type !== "task" && type !== "course") {
     return NextResponse.json(
-      { ok: false, error: "type debe ser announcement, task o course." },
+      { ok: false, error: "type debe ser announcement, task o course (query param)." },
       { status: 400 }
     );
   }
