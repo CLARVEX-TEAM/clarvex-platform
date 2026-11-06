@@ -69,3 +69,12 @@ test("sin CRON_SECRET configurado es fail-closed (401)", async () => {
     if (prev !== undefined) process.env.CRON_SECRET = prev;
   }
 });
+
+test("el descanso se lee por fecha, nunca por día de la semana", async () => {
+  // Un OFF de otra semana en el mismo día dejaba sin aviso a quien hoy sí trabaja.
+  const { readFileSync } = await import("node:fs");
+  const fuente = readFileSync("app/api/kimi/reminder-check/route.ts", "utf8");
+  assert.match(fuente, /s\.date = \$\{today\}/);
+  assert.doesNotMatch(fuente, /s\.day =/);
+  assert.doesNotMatch(fuente, /schedule\.findMany/);
+});
