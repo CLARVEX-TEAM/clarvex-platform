@@ -9,7 +9,7 @@ import { diezDigitosDelRemitente } from "@/lib/whatsapp-telefono";
  *
  * Bot de la tienda TH SAN AGUSTIN:
  *  1. Si el mensaje trae IMAGEN y el remitente es un empleado con cursos
- *     pendientes → se reenvía la foto a gerencia (Adrián e Itzel) avisando
+ *     pendientes → se reenvía la foto a gerencia (solo Adrián) avisando
  *     quién mandó evidencia y de qué curso.
  *  2. Si es TEXTO de un empleado conocido → responde la IA (Groq) con un tono
  *     de bot de tienda, recordando sus pendientes. Límite: 10 interacciones
@@ -200,7 +200,7 @@ export async function POST(request: Request) {
         SELECT up.phone
         FROM "UserPhone" up
         JOIN "User" u ON u.id = up."userId"
-        WHERE (LOWER(u.name) LIKE '%adrian%' OR LOWER(u.name) LIKE '%itzel%')
+        WHERE LOWER(u.name) LIKE '%adrian%'
       `;
 
       for (const g of gerentes) {
