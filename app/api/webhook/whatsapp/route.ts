@@ -111,12 +111,16 @@ async function obtenerBase64Media(mediaMessage: unknown): Promise<string | null>
 
 async function cursosPendientesTexto(userId: string): Promise<string> {
   const rows = await prisma.$queryRaw<Array<{ title: string }>>`
-    SELECT c.title
-    FROM "UserCourse" uc
-    JOIN "Course" c ON c.id = uc."courseId"
-    WHERE uc."userId" = ${userId}
-      AND uc."storeId" = ${STORE_ID}
-      AND uc.status <> 'COMPLETED'
+    SELECT r.title
+    FROM "TrainingResource" r
+    JOIN "TrainingQuiz" q ON q."resourceId" = r.id
+    WHERE r."storeId" = ${STORE_ID}
+      AND NOT EXISTS (
+        SELECT 1 FROM "TrainingAttempt" a
+        WHERE a."quizId" = q.id
+          AND a."userId" = ${userId}
+          AND a.passed = true
+      )
     LIMIT 3
   `;
   return rows.map((r) => r.title).join(", ");
