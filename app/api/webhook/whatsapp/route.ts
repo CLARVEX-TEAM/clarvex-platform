@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { enviarAvisoPorWhatsApp } from "@/lib/whatsapp-aviso";
 import { enviarMediaPorWhatsApp } from "@/lib/whatsapp-media";
+import { diezDigitosDelRemitente } from "@/lib/whatsapp-telefono";
 
 /**
  * Webhook de Evolution API (mensajes entrantes de WhatsApp, evento MESSAGES_UPSERT).
@@ -39,16 +40,13 @@ Contexto del empleado (nombre, pendientes de hoy) te llega en cada mensaje. Úsa
 
 type MensajeEntrante = {
   remoteJid: string;
+  remoteJidAlt: string | null;
   fromMe: boolean;
   texto: string | null;
   tieneImagen: boolean;
   mediaMessage: unknown | null;
   pushName: string | null;
 };
-
-function normalizarTelefono(jid: string): string {
-  return jid.replace(/@.*$/, "").replace(/\D/g, "");
-}
 
 function extraerMensaje(payload: unknown): MensajeEntrante | null {
   if (!payload || typeof payload !== "object") return null;
@@ -59,6 +57,7 @@ function extraerMensaje(payload: unknown): MensajeEntrante | null {
   const data = (root.data ?? root) as Record<string, unknown>;
   const key = (data.key ?? {}) as Record<string, unknown>;
   const remoteJid = String(key.remoteJid ?? "");
+  const remoteJidAlt = key.remoteJidAlt ? String(key.remoteJidAlt) : null;
   const fromMe = Boolean(key.fromMe);
   if (!remoteJid || fromMe) return null;
   if (remoteJid.includes("@g.us") || remoteJid.includes("status@broadcast")) return null;
@@ -81,7 +80,7 @@ function extraerMensaje(payload: unknown): MensajeEntrante | null {
 
   const pushName = data.pushName ? String(data.pushName) : null;
   if (!texto && !tieneImagen) return null;
-  return { remoteJid, fromMe, texto, tieneImagen, mediaMessage, pushName };
+  return { remoteJid, remoteJidAlt, fromMe, texto, tieneImagen, mediaMessage, pushName };
 }
 
 async function obtenerBase64Media(mediaMessage: unknown): Promise<string | null> {
@@ -174,20 +173,23 @@ export async function POST(request: Request) {
     const msg = extraerMensaje(payload);
     if (!msg) return NextResponse.json({ ok: true, ignorado: true });
 
-    const telefono = normalizarTelefono(msg.remoteJid);
+    const diezDigitos = diezDigitosDelRemitente(msg.remoteJid, msg.remoteJidAlt);
+    if (!diezDigitos) return NextResponse.json({ ok: true, ignorado: true });
 
     // ¿Empleado conocido? (tabla UserPhone, creada a mano en BD)
-    const empleados = await prisma.$queryRaw<Array<{ userId: string; name: string | null }>>`
-      SELECT up."userId", u.name
+    const empleados = await prisma.$queryRaw<Array<{ userId: string; name: string | null; phone: string }>>`
+      SELECT up."userId", u.name, up.phone
       FROM "UserPhone" up
       JOIN "User" u ON u.id = up."userId"
-      WHERE up.phone = ${telefono}
+      WHERE RIGHT(up.phone, 10) = ${diezDigitos}
       LIMIT 1
     `;
     const empleado = empleados[0] ?? null;
+    if (!empleado) return NextResponse.json({ ok: true, ignorado: true });
+    const telefono = empleado.phone;
 
     // ── Caso 1: IMAGEN = evidencia → gerencia ─────────────────────────────
-    if (msg.tieneImagen && empleado) {
+    if (msg.tieneImagen) {
       const nombre = empleado.name ?? msg.pushName ?? telefono;
       const cursos = await cursosPendientesTexto(empleado.userId);
       const detalle = cursos ? ` de su curso "${cursos}"` : "";
@@ -222,7 +224,7 @@ export async function POST(request: Request) {
     }
 
     // ── Caso 2: TEXTO = conversación con límite de 10/día ─────────────────
-    if (!empleado || !msg.texto) return NextResponse.json({ ok: true, ignorado: true });
+    if (!msg.texto) return NextResponse.json({ ok: true, ignorado: true });
 
     const conv = await prisma.$queryRaw<Array<{ id: string; interacciones: number; historial: string }>>`
       SELECT id, interacciones, historial
