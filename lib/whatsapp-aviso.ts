@@ -8,7 +8,7 @@
  * Reglas:
  * 1. Nunca lanza. Si Evolution está caída, el aviso se pierde y se anota en
  *    consola; no se rompe el recordatorio ni la operación de la tienda.
- * 2. Sin `WHATSAPP_EVOLUTION_URL` / `WHATSAPP_EVOLUTION_KEY` no se manda nada.
+ * 2. Sin `WHATSAPP_EVOLUTION_URL` / `WHATSAPP_EVOLUTION_API_KEY` no se manda nada.
  * 3. Timeout para que una Evolution colgada no cuelgue el endpoint.
  */
 
@@ -20,7 +20,7 @@ export type AvisoWhatsApp = {
 
 export async function enviarAvisoPorWhatsApp(aviso: AvisoWhatsApp): Promise<void> {
   const baseUrl = process.env.WHATSAPP_EVOLUTION_URL;
-  const apiKey = process.env.WHATSAPP_EVOLUTION_KEY;
+  const apiKey = process.env.WHATSAPP_EVOLUTION_API_KEY;
   const instance = process.env.WHATSAPP_EVOLUTION_INSTANCE ?? "tienda";
   if (!baseUrl || !apiKey) {
     console.warn("[whatsapp-aviso] Evolution no configurada; se omite el aviso.");
