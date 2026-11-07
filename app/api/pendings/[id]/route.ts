@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { pendingInput, serializePending } from "@/lib/pending";
 import { createNotifications } from "@/lib/notifications";
 import { dispatchPushToUsers } from "@/lib/push";
+import { retirarAvisosDelPendiente } from "@/lib/pendiente-cierre";
 
 export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -38,9 +39,34 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     const owner = await prisma.user.findFirst({ where: { id: parsed.data.ownerId, storeId: session.storeId } });
     if (!owner) return NextResponse.json({ error: "El responsable no pertenece a tu tienda." }, { status: 400 });
   }
-  const { dueDate, ...data } = parsed.data;
+  const { dueDate, cursos, tipo, ...data } = parsed.data;
+  const esCurso = (tipo ?? current.tipo) === "CURSO";
+  if (tipo === "CURSO" && cursos !== undefined && cursos.length === 0) {
+    return NextResponse.json({ error: "Un curso necesita al menos un curso en su matriz." }, { status: 400 });
+  }
   const item = await prisma.$transaction(async (tx) => {
-    const updated = await tx.pending.update({ where: { id: current.id }, data: { ...data, ...(dueDate ? { dueDate: new Date(`${dueDate}T12:00:00.000Z`) } : {}) } });
+    // Cambiar el estatus a mano resuelve cualquier petición de cierre por
+    // WhatsApp: gerencia ya decidió desde la app.
+    const updated = await tx.pending.update({
+      where: { id: current.id },
+      data: {
+        ...data,
+        ...(tipo ? { tipo } : {}),
+        ...(dueDate ? { dueDate: new Date(`${dueDate}T12:00:00.000Z`) } : {}),
+        ...(data.status ? { cierreSolicitadoAt: null } : {})
+      }
+    });
+    // La lista de la matriz se sincroniza por POSICIÓN: renombrar no pierde el
+    // avance, y un curso ya completado nunca se borra al quitarlo de la lista.
+    if (esCurso && cursos) {
+      const existentes = await tx.pendingCurso.findMany({ where: { pendingId: current.id } });
+      for (const [i, nombre] of cursos.entries()) {
+        const previo = existentes.find((c) => c.orden === i + 1);
+        if (!previo) await tx.pendingCurso.create({ data: { pendingId: current.id, orden: i + 1, nombre } });
+        else if (previo.nombre !== nombre) await tx.pendingCurso.update({ where: { id: previo.id }, data: { nombre } });
+      }
+      await tx.pendingCurso.deleteMany({ where: { pendingId: current.id, orden: { gt: cursos.length }, completadoAt: null } });
+    }
     if (parsed.data.ownerId && parsed.data.ownerId !== current.ownerId) {
       await createNotifications(tx, [{
         storeId: session.storeId,
@@ -51,60 +77,13 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       }]);
     }
 
-    // Al cerrar un pendiente hay que retirar sus avisos. Notification no guarda
-    // a qué pendiente pertenece, y nadie los limpiaba: el aviso de "vencido" se
-    // quedaba sin leer en la campana para siempre, así que el usuario seguía
-    // viendo que tenía un pendiente vencido después de haberlo cerrado.
-    if (updated.status === "COMPLETADO") {
-      const readAt = new Date();
-
-      // 1. El aviso directo de asignación lleva el título en el cuerpo, así que
-      //    se identifica sin ambigüedad.
-      await tx.notification.updateMany({
-        where: { storeId: session.storeId, type: "PENDING_ASSIGNED", body: updated.title, readAt: null },
-        data: { readAt }
-      });
-
-      // 2. El recordatorio del cron al responsable ("Tienes N pendientes por
-      //    vencer") lista VARIOS títulos en el cuerpo, así que no se puede
-      //    casar por texto del pendiente. Se identifica por su título fijo, y
-      //    solo se retira si al responsable ya no le queda ninguno abierto.
-      const ownerOpen = await tx.pending.count({
-        where: { storeId: session.storeId, ownerId: updated.ownerId, status: { not: "COMPLETADO" } }
-      });
-      if (ownerOpen === 0) {
-        await tx.notification.updateMany({
-          where: {
-            userId: updated.ownerId, type: "PENDING_ASSIGNED", readAt: null,
-            title: { contains: "por vencer" }
-          },
-          data: { readAt }
-        });
-      }
-
-      // 3. El resumen de gerencia ("N pendientes vencidos en la tienda") se
-      //    retira cuando la tienda se queda sin vencidos.
-      //    Se filtra por título a propósito: un barrido de todos los
-      //    PENDING_ASSIGNED se llevaría por delante un "Pendiente reasignado"
-      //    legítimo de un pendiente que sigue abierto.
-      const storeOverdue = await tx.pending.count({
-        where: { storeId: session.storeId, status: { not: "COMPLETADO" }, dueDate: { lt: readAt } }
-      });
-      if (storeOverdue === 0) {
-        await tx.notification.updateMany({
-          where: {
-            storeId: session.storeId, type: "PENDING_ASSIGNED", readAt: null,
-            title: { contains: "en la tienda" }
-          },
-          data: { readAt }
-        });
-      }
-    }
+    if (updated.status === "COMPLETADO") await retirarAvisosDelPendiente(tx, session.storeId, updated);
 
     return updated;
   });
   if (parsed.data.ownerId && parsed.data.ownerId !== current.ownerId) {
     dispatchPushToUsers([parsed.data.ownerId], { title: "Pendiente reasignado", body: item.title, tag: "pendiente-reasignado", url: "/pendientes" }).catch(() => undefined);
   }
-  return NextResponse.json({ pending: serializePending(item) });
+  const conCursos = await prisma.pending.findUnique({ where: { id: item.id }, include: { cursos: true } });
+  return NextResponse.json({ pending: serializePending(conCursos ?? item) });
 }

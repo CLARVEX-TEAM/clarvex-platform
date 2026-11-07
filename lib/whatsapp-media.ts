@@ -40,7 +40,8 @@ export async function enviarMediaPorWhatsApp(aviso: MediaWhatsApp): Promise<bool
       headers: { "Content-Type": "application/json", apikey: apiKey },
       body: JSON.stringify({
         number,
-        mediatype: "image",
+        // Un PDF va como documento; con «image» WhatsApp no lo abre.
+        mediatype: (aviso.mimetype ?? "image/jpeg").startsWith("image/") ? "image" : "document",
         mimetype: aviso.mimetype ?? "image/jpeg",
         media: aviso.mediaUrl.replace(/^data:[^,]*;base64,/, ""),
         caption: aviso.caption ?? "",

@@ -3,13 +3,13 @@
 import Image from "next/image";
 import { ImagenAmpliable } from "@/components/VisorImagen";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ImagePlus, MessageCircle, Send, X } from "lucide-react";
+import { FileText, ImagePlus, MessageCircle, Send, X } from "lucide-react";
 import { ProfileAvatar } from "@/components/ui";
 
 const MAX_FILES = 5;
 
 type Target = { pendingId: string } | { taskId: string } | { logEntryId: string };
-type EvidenceItem = { id: string; url: string; note: string | null; createdAt: string; uploadedBy: { name: string; photoUrl: string | null } };
+type EvidenceItem = { id: string; url: string; mimeType?: string | null; note: string | null; createdAt: string; uploadedBy: { name: string; photoUrl: string | null } };
 type CommentItem = { id: string; body: string; createdAt: string; author: { name: string; photoUrl: string | null } };
 
 export function ResourceDiscussion({ target, className = "" }: { target: Target; className?: string }) {
@@ -130,7 +130,19 @@ export function ResourceDiscussion({ target, className = "" }: { target: Target;
           {!loading && evidences.length === 0 ? <p className="text-sm text-muted">Aún no hay evidencias.</p> : null}
           {evidences.length > 0 ? (
             <div className="flex gap-2 overflow-x-auto pb-1">
-              {evidences.map((item) => (
+              {evidences.map((item) => item.mimeType?.includes("pdf") ? (
+                // Los certificados llegan en PDF por WhatsApp: se abren, no se pintan.
+                <a
+                  key={item.id}
+                  href={item.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex h-24 w-24 shrink-0 flex-col items-center justify-center gap-1 rounded-xl border border-line bg-white text-xs font-semibold text-ink dark:bg-panel"
+                >
+                  <FileText size={26} className="text-red-500" aria-hidden />
+                  PDF
+                </a>
+              ) : (
                 <ImagenAmpliable key={item.id} src={item.url} alt={item.note || "Evidencia"} className="relative h-24 w-24 shrink-0 overflow-hidden rounded-xl bg-white dark:bg-panel">
                   <Image src={item.url} alt={item.note || "Evidencia"} fill sizes="96px" className="object-cover" />
                 </ImagenAmpliable>

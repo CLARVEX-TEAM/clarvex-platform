@@ -135,7 +135,14 @@ export type Pending = {
   ownerId: string;
   status: PendingStatus;
   dueDate: string;
+  /** «curso»: una matriz de cursos, cada uno con su certificado. */
+  tipo?: "pendiente" | "curso";
+  /** Avisó por WhatsApp que terminó y espera que gerencia lo cierre. */
+  cierreSolicitado?: boolean;
+  cursos?: CursoDePendiente[];
 };
+
+export type CursoDePendiente = { id: string; orden: number; nombre: string; hecho: boolean };
 
 export type LogEntry = {
   id: string;

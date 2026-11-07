@@ -14,8 +14,20 @@ export async function POST(request: Request) {
   if ("response" in parsed) return parsed.response;
   const owner = await prisma.user.findFirst({ where: { id: parsed.data.ownerId, storeId: session.storeId } });
   if (!owner) return NextResponse.json({ error: "El responsable no pertenece a tu tienda." }, { status: 400 });
+  const { cursos, tipo, ...datos } = parsed.data;
+  const esCurso = tipo === "CURSO";
+  if (esCurso && !cursos?.length) return NextResponse.json({ error: "Un curso necesita al menos un curso en su matriz." }, { status: 400 });
   const item = await prisma.$transaction(async (tx) => {
-    const created = await tx.pending.create({ data: { ...parsed.data, dueDate: new Date(`${parsed.data.dueDate}T12:00:00.000Z`), storeId: session.storeId } });
+    const created = await tx.pending.create({
+      data: {
+        ...datos,
+        tipo: esCurso ? "CURSO" : "PENDIENTE",
+        dueDate: new Date(`${datos.dueDate}T12:00:00.000Z`),
+        storeId: session.storeId,
+        ...(esCurso ? { cursos: { create: cursos!.map((nombre, i) => ({ orden: i + 1, nombre })) } } : {})
+      },
+      include: { cursos: true }
+    });
     await createNotifications(tx, [{
       storeId: session.storeId,
       userId: owner.id,

@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import { dashboardDateKey } from "@/lib/dashboard-kpi";
 import { AnimatePresence, motion } from "framer-motion";
 import { ClipboardCheck, Search, Sparkles, Trash2, X } from "lucide-react";
-import type { Pending } from "@/lib/types";
+import type { CursoDePendiente, Pending } from "@/lib/types";
+import { AvanceDeCursos, AvisoCierrePedido, TipoYCursos } from "@/components/pendientes/CursosDelPendiente";
 import { Badge, ProfileAvatar, priorityTone, statusTone } from "@/components/ui";
 import { AppDatePicker, AppInput, AppSelect, AppTextarea, type SelectOption } from "@/components/forms";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
@@ -53,6 +54,8 @@ export default function EscritorioPendientes() {
   const [priority, setPriority] = useState("MEDIA");
   const [ownerId, setOwnerId] = useState("");
   const [dueDate, setDueDate] = useState(todayKey());
+  const [tipo, setTipo] = useState<"PENDIENTE" | "CURSO">("PENDIENTE");
+  const [cursos, setCursos] = useState<string[]>([]);
   const [editId, setEditId] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -113,12 +116,14 @@ export default function EscritorioPendientes() {
   function resetForm() {
     setTitle(""); setDescription(""); setCategory("OPERACION"); setPriority("MEDIA");
     setOwnerId(data?.users[0]?.id ?? ""); setDueDate(todayKey()); setEditId(null);
+    setTipo("PENDIENTE"); setCursos([]);
   }
 
   function editPending(p: Pending) {
     setEditId(p.id); setTitle(p.title); setDescription(p.description);
     setCategory(p.category.toUpperCase()); setPriority(p.priority.toUpperCase());
     setOwnerId(p.ownerId); setDueDate(p.dueDate);
+    setTipo(p.tipo === "curso" ? "CURSO" : "PENDIENTE"); setCursos((p.cursos ?? []).map((c) => c.nombre));
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
@@ -131,7 +136,10 @@ export default function EscritorioPendientes() {
       const response = await fetch(wasEdit ? `/api/pendings/${wasEdit}` : "/api/pendings", {
         method: wasEdit ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, description, category, priority, ownerId, dueDate })
+        body: JSON.stringify({
+          title, description, category, priority, ownerId, dueDate, tipo,
+          ...(tipo === "CURSO" ? { cursos: cursos.map((c) => c.trim()).filter(Boolean) } : {})
+        })
       });
       const payload = await response.json() as { pending?: Pending; error?: string };
       if (!response.ok || !payload.pending) { toast(payload.error ?? "No se pudo guardar.", "error"); return; }
@@ -146,6 +154,19 @@ export default function EscritorioPendientes() {
     } finally {
       setSubmitting(false);
     }
+  }
+
+  /** Gerencia marca o desmarca un curso de la matriz a mano. */
+  async function marcarCurso(pendingId: string, curso: CursoDePendiente, hecho: boolean) {
+    const response = await fetch(`/api/pendings/${pendingId}/cursos`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ cursoId: curso.id, hecho })
+    }).catch(() => null);
+    const payload = response ? ((await response.json().catch(() => ({}))) as { pending?: Pending; error?: string }) : {};
+    if (!response?.ok || !payload.pending) { toast(payload.error ?? "No se pudo marcar.", "error"); return; }
+    const next = payload.pending;
+    setData((prev) => (prev ? { ...prev, pendings: prev.pendings.map((item) => (item.id === pendingId ? next : item)) } : prev));
   }
 
   async function changeStatus(id: string, status: "PENDIENTE" | "EN_PROCESO" | "COMPLETADO") {
@@ -195,6 +216,7 @@ export default function EscritorioPendientes() {
                 <form className="grid gap-3" onSubmit={savePending}>
                   <AppInput label="Título" value={title} onChange={(e) => setTitle(e.target.value)} required />
                   <AppTextarea label="Descripción" value={description} onChange={(e) => setDescription(e.target.value)} required />
+                  <TipoYCursos tipo={tipo} onTipo={setTipo} cursos={cursos} onCursos={setCursos} />
                   <div className="grid grid-cols-2 gap-3">
                     <AppSelect label="Categoría" value={category} onChange={setCategory} options={categoryOptions} />
                     <AppSelect label="Prioridad" value={priority} onChange={setPriority} options={priorityOptions} />
@@ -270,6 +292,8 @@ export default function EscritorioPendientes() {
                           <div className="min-w-0">
                             <h3 className="text-ui font-semibold text-ink">{p.title}</h3>
                             <p className="mt-1 text-ui leading-6 text-muted">{p.description}</p>
+                            <AvanceDeCursos pending={p} onMarcar={(curso, hecho) => marcarCurso(p.id, curso, hecho)} />
+                            <AvisoCierrePedido pending={p} />
                           </div>
                           <Badge tone={priorityTone(p.priority)}>{p.priority}</Badge>
                         </div>

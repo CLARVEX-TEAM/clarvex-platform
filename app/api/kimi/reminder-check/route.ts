@@ -3,6 +3,8 @@ import { requireCron } from "@/lib/cron-auth";
 import { prisma } from "@/lib/prisma";
 import { todayInMonterrey } from "@/lib/mexico-timezone";
 import { enviarAvisoPorWhatsApp } from "@/lib/whatsapp-aviso";
+import { recordatorioSegunEstado } from "@/lib/bot-pendientes-texto";
+import { textoAvance } from "@/lib/cursos-matriz";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -34,6 +36,20 @@ function dayKey(date: Date): string {
     Sun: "Dom", Mon: "Lun", Tue: "Mar", Wed: "Mie", Thu: "Jue", Fri: "Vie", Sat: "Sab"
   };
   return mapa[weekday] ?? "Lun";
+}
+
+const MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
+/** «23 nov», en la zona de la tienda. */
+function fechaCorta(date: Date): string {
+  const p = new Intl.DateTimeFormat("en-US", { timeZone: TIME_ZONE, day: "numeric", month: "numeric" }).formatToParts(date);
+  const dia = p.find((x) => x.type === "day")?.value ?? "";
+  const mes = Number(p.find((x) => x.type === "month")?.value ?? 1);
+  return `${dia} ${MESES[mes - 1]}`;
+}
+
+/** En una matriz de cursos, «Llevas 2 de 6…»; en un pendiente normal, nada. */
+function avanceDe(p: { tipo: string; title: string; cursos: Array<{ id: string; orden: number; nombre: string; completadoAt: Date | null }> }): string | undefined {
+  return p.tipo === "CURSO" && p.cursos.length > 0 ? textoAvance(p.title, p.cursos) : undefined;
 }
 
 function addDays(base: Date, days: number): Date {
@@ -123,7 +139,7 @@ async function recordarTareas(): Promise<number> {
       status: { not: "COMPLETADO" },
       dueDate: { gte: hoy, lt: manana }
     },
-    select: { id: true, title: true, ownerId: true }
+    select: { id: true, title: true, ownerId: true, status: true, cierreSolicitadoAt: true, tipo: true, cursos: { select: { id: true, orden: true, nombre: true, completadoAt: true } } }
   });
   if (pendientes.length === 0) return 0;
 
@@ -139,9 +155,12 @@ async function recordarTareas(): Promise<number> {
   for (const e of trabajaronHoy) {
     const tareas = porDueno.get(e.userId) ?? [];
     if (tareas.length === 0) continue;
-    const nombre = e.name.split(" ")[0];
-    const lista = tareas.map((t) => `• ${t.title}`).join("\n");
-    enviados += await avisar([e], () => `⏰ ${nombre}, tienes pendientes que vencen hoy:\n${lista}\nActualízalos en la app.`);
+    // El mensaje cambia con el estatus; quien ya pidió cierre no recibe nada.
+    const textos = tareas
+      .map((t) => recordatorioSegunEstado({ nombre: e.name, titulo: t.title, estado: t.status, cierrePedido: Boolean(t.cierreSolicitadoAt), vence: "hoy", avance: avanceDe(t) }))
+      .filter((t): t is string => Boolean(t));
+    if (textos.length === 0) continue;
+    enviados += await avisar([e], () => textos.join("\n\n"));
   }
   return enviados;
 }
@@ -156,7 +175,7 @@ async function recordarCursos(): Promise<number> {
       status: { not: "COMPLETADO" },
       dueDate: { gte: en7 }
     },
-    select: { id: true, title: true, ownerId: true, dueDate: true }
+    select: { id: true, title: true, ownerId: true, dueDate: true, status: true, cierreSolicitadoAt: true, tipo: true, cursos: { select: { id: true, orden: true, nombre: true, completadoAt: true } } }
   });
   if (pendientes.length === 0) return 0;
 
@@ -172,12 +191,22 @@ async function recordarCursos(): Promise<number> {
   for (const e of trabajaronHoy) {
     const tareas = porDueno.get(e.userId) ?? [];
     if (tareas.length === 0) continue;
-    const nombre = e.name.split(" ")[0];
-    const lista = tareas.map((t) => {
-      const finde = isWeekendDue(t.dueDate) ? " (fin de semana)" : "";
-      return `• ${t.title}${finde}`;
-    }).join("\n");
-    enviados += await avisar([e], () => `📚 ${nombre}, recuerda tus cursos/capacitaciones:\n${lista}\nCuando termines uno, manda aquí la foto de tu evidencia (constancia o captura) y yo la paso a gerencia. 📸`);
+    // PENDIENTE: «no registras avance». EN PROCESO: «¿cómo vas? si terminaste,
+    // certificado y *terminé*». Quien ya pidió cierre espera a gerencia: nada.
+    const textos = tareas
+      .map((t) =>
+        recordatorioSegunEstado({
+          nombre: e.name,
+          titulo: t.title,
+          estado: t.status,
+          cierrePedido: Boolean(t.cierreSolicitadoAt),
+          vence: `el ${fechaCorta(t.dueDate)}${isWeekendDue(t.dueDate) ? ", fin de semana" : ""}`,
+          avance: avanceDe(t)
+        })
+      )
+      .filter((t): t is string => Boolean(t));
+    if (textos.length === 0) continue;
+    enviados += await avisar([e], () => textos.join("\n\n"));
   }
   return enviados;
 }

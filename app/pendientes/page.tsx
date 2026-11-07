@@ -4,10 +4,11 @@ import { useCallback, useEffect, useState } from "react";
 import { dashboardDateKey } from "@/lib/dashboard-kpi";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { EstadoPendiente } from "@/components/pendientes/EstadoPendiente";
+import { AvanceDeCursos, AvisoCierrePedido, TipoYCursos } from "@/components/pendientes/CursosDelPendiente";
 import { AlertTriangle, ClipboardCheck, Pencil, Plus, Sparkles, Trash2, UserRound, X } from "lucide-react";
 import { fetchAppData, type AppData } from "@/lib/app-data";
 import { useSession } from "@/lib/use-session";
-import { isOpenPending, type Pending, type User } from "@/lib/types";
+import { isOpenPending, type CursoDePendiente, type Pending, type User } from "@/lib/types";
 import { AppFrame, AppHeader, Badge, Card, EmptyState, FloatingActionButton, priorityTone, Skeleton, statusTone } from "@/components/ui";
 import { ResourceDiscussion } from "@/components/ResourceDiscussion";
 import { DeleteButton, SaveButton } from "@/components/ActionButtons";
@@ -75,6 +76,8 @@ export default function PendientesPage() {
   const [priority, setPriority] = useState("MEDIA");
   const [ownerId, setOwnerId] = useState("");
   const [dueDate, setDueDate] = useState(dashboardDateKey());
+  const [tipo, setTipo] = useState<"PENDIENTE" | "CURSO">("PENDIENTE");
+  const [cursos, setCursos] = useState<string[]>([]);
   const [editId, setEditId] = useState<string | null>(null);
   const toast = useToast();
   const [submitting, setSubmitting] = useState(false);
@@ -178,12 +181,14 @@ export default function PendientesPage() {
   function resetForm() {
     setTitle(""); setDescription(""); setCategory("OPERACION"); setPriority("MEDIA");
     setOwnerId(""); setDueDate(dashboardDateKey()); setEditId(null);
+    setTipo("PENDIENTE"); setCursos([]);
   }
 
   function editPending(pending: Pending) {
     setEditId(pending.id); setTitle(pending.title); setDescription(pending.description);
     setCategory(pending.category.toUpperCase()); setPriority(pending.priority.toUpperCase());
     setOwnerId(pending.ownerId); setDueDate(pending.dueDate);
+    setTipo(pending.tipo === "curso" ? "CURSO" : "PENDIENTE"); setCursos((pending.cursos ?? []).map((c) => c.nombre));
     document.getElementById("crear-pendiente")?.scrollIntoView({ behavior: "smooth" });
   }
 
@@ -196,7 +201,10 @@ export default function PendientesPage() {
       const response = await fetch(wasEdit ? `/api/pendings/${wasEdit}` : "/api/pendings", {
         method: wasEdit ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, description, category, priority, ownerId, dueDate })
+        body: JSON.stringify({
+          title, description, category, priority, ownerId, dueDate, tipo,
+          ...(tipo === "CURSO" ? { cursos: cursos.map((c) => c.trim()).filter(Boolean) } : {})
+        })
       });
       const payload = await response.json() as { pending?: Pending; error?: string };
       if (!response.ok || !payload.pending) { toast(payload.error ?? "No se pudo guardar.", "error"); return; }
@@ -209,6 +217,22 @@ export default function PendientesPage() {
       toast("No se pudo guardar.", "error");
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  /** Gerencia marca o desmarca un curso de la matriz a mano. */
+  async function marcarCurso(pendingId: string, curso: CursoDePendiente, hecho: boolean) {
+    try {
+      const response = await fetch(`/api/pendings/${pendingId}/cursos`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cursoId: curso.id, hecho })
+      });
+      const payload = (await response.json()) as { pending?: Pending; error?: string };
+      if (!response.ok || !payload.pending) { toast(payload.error ?? "No se pudo marcar.", "error"); return; }
+      setData((prev) => (prev ? { ...prev, pendings: prev.pendings.map((p) => (p.id === pendingId ? payload.pending! : p)) } : prev));
+    } catch {
+      toast("No se pudo marcar.", "error");
     }
   }
 
@@ -330,6 +354,7 @@ export default function PendientesPage() {
             <form className="grid gap-3" onSubmit={savePending}>
               <AppInput label="Título" value={title} onChange={(e) => setTitle(e.target.value)} required />
               <AppTextarea label="Descripción" value={description} onChange={(e) => setDescription(e.target.value)} required />
+              <TipoYCursos tipo={tipo} onTipo={setTipo} cursos={cursos} onCursos={setCursos} />
               <div className="grid grid-cols-2 gap-3">
                 <AppSelect
                   label="Categoría"
@@ -376,6 +401,8 @@ export default function PendientesPage() {
                 <Info label="Responsable" value={userName(pending.ownerId)} icon={<UserRound size={14} />} />
                 <Info label="Limite" value={pending.dueDate} />
               </div>
+              <AvanceDeCursos pending={pending} onMarcar={isAdvisor ? undefined : (curso, hecho) => marcarCurso(pending.id, curso, hecho)} />
+              <AvisoCierrePedido pending={pending} />
               {!isAdvisor ? (
                 <div className="mt-2.5 grid grid-cols-3 gap-2">
                   <button onClick={() => editPending(pending)} className="min-h-10 rounded-xl bg-slate-100 dark:bg-slate-700 text-sm font-semibold text-ink">Editar</button>
@@ -419,6 +446,8 @@ export default function PendientesPage() {
                   <span aria-hidden>·</span>
                   <span className="lowercase">{pending.category}</span>
                 </div>
+                <AvanceDeCursos pending={pending} onMarcar={isAdvisor ? undefined : (curso, hecho) => marcarCurso(pending.id, curso, hecho)} />
+                <AvisoCierrePedido pending={pending} />
               </div>
 
 
