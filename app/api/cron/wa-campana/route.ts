@@ -11,6 +11,7 @@ import { enviarAvisoPorWhatsApp } from "@/lib/whatsapp-aviso";
 import { firstName } from "@/lib/weekly-close";
 import { appUrl, pesos } from "@/lib/whatsapp-formato";
 import { tarjetaCampana } from "@/lib/whatsapp-tarjeta";
+import { revisarReconocimientos } from "@/lib/reconocimientos-envio";
 
 /**
  * Tailored Help, una vez al día (6 pm de Monterrey):
@@ -148,5 +149,12 @@ export async function POST(request: Request) {
     }
   }
 
-  return NextResponse.json({ ok: true, dia: diaDeCampana, ...resumen });
+  // Reconocimientos que quedaron pendientes: lo guardado de noche, fuera de
+  // horario, y el MVP del domingo. Cada uno se manda una sola vez.
+  let reconocimientos = 0;
+  for (const { storeId } of tiendas) {
+    reconocimientos += (await revisarReconocimientos(storeId).catch(() => ({ enviados: 0 }))).enviados;
+  }
+
+  return NextResponse.json({ ok: true, dia: diaDeCampana, ...resumen, reconocimientos });
 }

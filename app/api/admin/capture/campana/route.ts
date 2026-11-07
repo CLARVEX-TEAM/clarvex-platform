@@ -1,9 +1,10 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { z } from "zod";
 import { requireAdminCapture } from "@/lib/admin-capture-auth";
 import { prisma } from "@/lib/prisma";
 import { montoValido } from "@/lib/campana";
 import { datosDeRango, guardarSemana } from "@/lib/campana-datos";
+import { revisarReconocimientos } from "@/lib/reconocimientos-envio";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -87,5 +88,7 @@ export async function POST(request: Request) {
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "No se pudo guardar." }, { status: 422 });
   }
+  // Felicitaciones al grupo DESPUÉS de contestar: Retool no espera a WhatsApp.
+  after(() => revisarReconocimientos(storeId).catch((e) => console.error("[reconocimientos]", e instanceof Error ? e.message : e)));
   return NextResponse.json({ ok: true });
 }
