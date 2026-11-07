@@ -83,3 +83,13 @@ test("las líneas del cierre semanal", () => {
   assert.match(tienda, /Tailored Help:\* \$150 de \$292/);
   assert.match(tienda, /Persona\s+\$100/);
 });
+
+test("los avisos que esperan solo salen de 8 am a 9 pm de Monterrey", async () => {
+  const { enHorarioDeAvisos } = await import("@/lib/horario-avisos");
+  // Monterrey es UTC-6.
+  assert.equal(enHorarioDeAvisos(new Date("2026-11-08T06:15:00Z")), false); // 12:15 am
+  assert.equal(enHorarioDeAvisos(new Date("2026-11-08T13:59:00Z")), false); // 7:59 am
+  assert.equal(enHorarioDeAvisos(new Date("2026-11-08T14:00:00Z")), true); // 8:00 am
+  assert.equal(enHorarioDeAvisos(new Date("2026-11-09T02:59:00Z")), true); // 8:59 pm
+  assert.equal(enHorarioDeAvisos(new Date("2026-11-09T03:00:00Z")), false); // 9:00 pm
+});
