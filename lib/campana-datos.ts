@@ -100,3 +100,24 @@ export async function guardarSemana(storeId: string, fecha: Date, captura: Captu
     })
   ]);
 }
+
+/**
+ * Para el calendario de Retool: metas, aportes y personas de un rango de días.
+ * Sin resumir: el calendario agrupa por día y por persona por su cuenta.
+ */
+export async function datosDeRango(storeId: string, desde: Date, hasta: Date) {
+  const campana = await campanaActual();
+  if (!campana) return null;
+  const rango = { gte: desde, lte: hasta };
+  const [metas, aportes, personas] = await Promise.all([
+    prisma.campaignGoal.findMany({ where: { campaignId: campana.id, storeId, date: rango }, orderBy: { date: "asc" } }),
+    prisma.campaignEntry.findMany({ where: { campaignId: campana.id, storeId, date: rango }, orderBy: { date: "asc" } }),
+    prisma.user.findMany({ where: { storeId, ...PERSON_WHERE }, select: { id: true, name: true, role: true }, orderBy: { name: "asc" } })
+  ]);
+  return {
+    campana: { nombre: campana.name, inicio: claveFecha(campana.startDate), activa: campana.active },
+    metas: metas.map((m) => ({ fecha: claveFecha(m.date), meta: Number(m.amount) })),
+    aportes: aportes.map((a) => ({ userId: a.userId, fecha: claveFecha(a.date), monto: Number(a.amount), donativos: a.count })),
+    personas: personas.map((p) => ({ userId: p.id, nombre: p.name, rol: p.role }))
+  };
+}
