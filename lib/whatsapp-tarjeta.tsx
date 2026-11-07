@@ -26,11 +26,11 @@ import { pesos, porcentaje } from "@/lib/whatsapp-formato";
  * ⚠️ Sin emojis: el motor de imagen no los trae y los dejaría como cuadros.
  */
 
-const ANCHO = 1080;
-const ALTO = 1350;
+export const ANCHO = 1080;
+export const ALTO = 1350;
 const DIAS = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
 
-const C = {
+export const C = {
   fondo: "#F7F6F2",
   tinta: "#1E2433",
   suave: "#6B7280",
@@ -63,7 +63,7 @@ type Recursos = { fuentes: Array<{ name: string; data: Buffer; weight: 400 | 500
 let recursos: Promise<Recursos> | null = null;
 
 /** Se leen una vez por proceso. */
-function cargarRecursos(): Promise<Recursos> {
+export function cargarRecursos(): Promise<Recursos> {
   recursos ??= (async () => {
     const raiz = process.cwd();
     const fuente = (archivo: string) => readFile(path.join(raiz, "lib/assets/fuentes", archivo));

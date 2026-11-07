@@ -1,8 +1,9 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { z } from "zod";
 import { denyDemo, isApiError, parseJson, requireSession } from "@/lib/api";
 import { TEMA_CAMPANA, montoValido, vistaPara } from "@/lib/campana";
 import { acumuladoCampana, guardarSemana, resumenDeSemana } from "@/lib/campana-datos";
+import { revisarReconocimientos } from "@/lib/reconocimientos-envio";
 import { todayInMonterrey } from "@/lib/mexico-timezone";
 
 export const dynamic = "force-dynamic";
@@ -88,5 +89,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "No se pudo guardar." }, { status: 400 });
   }
   const resumen = await resumenDeSemana(session.storeId, fecha);
+  const storeId = session.storeId;
+  after(() => revisarReconocimientos(storeId).catch((e) => console.error("[reconocimientos]", e instanceof Error ? e.message : e)));
   return NextResponse.json({ ok: true, resumen });
 }
