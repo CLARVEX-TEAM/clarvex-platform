@@ -20,6 +20,7 @@ type Respuesta = {
   activa: boolean;
   tema?: { nombre: string; lema: string };
   gerencia?: boolean;
+  yo?: string;
   resumen?: ResumenSemana;
   acumulado?: { tienda: number; propio: number | null } | null;
 };
@@ -44,7 +45,7 @@ export function BandaCampana({ className = "" }: { className?: string }) {
 
   if (!datos?.activa || !datos.resumen || !datos.tema) return null;
   const { resumen, tema } = datos;
-  const propio = resumen.personas.length === 1 && !datos.gerencia ? resumen.personas[0].total : null;
+  const propio = resumen.personas.find((p) => p.userId === datos.yo)?.total ?? null;
   const ancho = resumen.meta > 0 ? Math.min(100, (resumen.total / resumen.meta) * 100) : 0;
 
   return (

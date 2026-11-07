@@ -50,11 +50,10 @@ test("el resumen suma la meta de la semana y lo de cada quien", () => {
   assert.deepEqual(r.dias.map((d) => d.capturado), [true, true, false, false, false, false, false]);
 });
 
-test("un asesor solo se ve a sí mismo; gerencia ve a todos", () => {
+test("el ranking es de todos: gerencia y asesores, ordenado por monto", () => {
   const r = resumirSemana({ inicio: DOMINGO, metas, personas, aportes: [{ userId: "b", fecha: "2026-11-08", monto: 20, donativos: 1 }] });
-  assert.deepEqual(vistaPara(r, { userId: "a", gerencia: false }).personas.map((p) => p.userId), ["a"]);
-  assert.equal(vistaPara(r, { userId: "a", gerencia: false }).total, 20); // el total de tienda sí lo ve
-  assert.equal(vistaPara(r, { userId: "a", gerencia: true }).personas.length, 2);
+  assert.deepEqual(vistaPara(r).personas.map((p) => p.userId), ["b", "a"]);
+  assert.equal(vistaPara(r).personas[1].total, 0); // quien no ha juntado también aparece
 });
 
 test("sin meta cargada el alcance es null, no 0 %", () => {

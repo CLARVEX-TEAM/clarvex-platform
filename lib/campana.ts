@@ -93,12 +93,13 @@ export function resumirSemana(opciones: {
 }
 
 /**
- * Lo que puede ver cada quien. Un asesor ve el avance de la TIENDA y lo suyo;
- * el desglose por persona es de gerencia, igual que la venta.
+ * Lo que ve cada quien: TODO, ranking incluido. A diferencia de la venta, en
+ * Tailored Help el ranking es público --se manda al grupo cada 4 días-- porque
+ * todos, gerencia y asesores, piden donativos en caja. Ocultarlo en la app y
+ * enseñarlo en el grupo no protegería nada.
  */
-export function vistaPara(resumen: ResumenSemana, opciones: { userId: string; gerencia: boolean }) {
-  if (opciones.gerencia) return resumen;
-  return { ...resumen, personas: resumen.personas.filter((p) => p.userId === opciones.userId) };
+export function vistaPara(resumen: ResumenSemana): ResumenSemana {
+  return resumen;
 }
 
 /** Valida un monto capturado: pesos con hasta dos decimales, no negativo, con tope. */

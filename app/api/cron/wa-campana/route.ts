@@ -18,9 +18,9 @@ import { tarjetaCampana } from "@/lib/whatsapp-tarjeta";
  * 1. **Si vamos bajos**, aviso en privado a quien trabaja hoy. «Bajos» es ir
  *    debajo del 85 % de la meta de los días YA CAPTURADOS de la semana: un día
  *    que gerencia todavía no registra no puede sonar como un día sin donativos.
- * 2. **Cada 4 días**, cómo va la tienda al grupo, con tarjeta. Solo totales: en
- *    el grupo un ranking exhibe a quien va abajo. Es la única excepción a «en el
- *    grupo solo comunicados», y la pidió Adrián.
+ * 2. **Cada 4 días**, cómo va la tienda al grupo, con tarjeta y el RANKING de
+ *    todos, gerencia incluida: todos piden donativos en caja. Es la única
+ *    excepción a «en el grupo solo comunicados», y las dos cosas las pidió Adrián.
  */
 
 export const dynamic = "force-dynamic";
@@ -108,20 +108,26 @@ export async function POST(request: Request) {
           acumuladoCampana(storeId)
         ]);
         const pct = semana.meta > 0 ? Math.round((semana.total / semana.meta) * 100) : null;
+        // Ranking de TODOS --gerencia y asesores--: todos piden donativos en caja.
+        const ranking = semana.personas.map((p) => ({ nombre: p.nombre, total: p.total, donativos: p.donativos }));
+        const medalla = (i: number) => (i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `${i + 1}.`);
         const pie = [
           `💙 *Tailored Help · así vamos*`,
           "",
           `Esta semana llevamos *${pesos(semana.total)}* de ${pesos(semana.meta)}${pct === null ? "" : ` (${pct} %)`}.`,
           `Desde que arrancó la campaña: *${pesos(acumulado?.tienda ?? 0)}* para la escuela Christel House.`,
           "",
-          "¡Gracias a todos! Sigamos invitando a donar en caja. 🙌"
+          "*Ranking de la semana*",
+          ...ranking.map((p, i) => `${medalla(i)} ${firstName(p.nombre)}: *${pesos(p.total)}*`),
+          "",
+          "¡Gracias a todos! Gerencia y asesores, sigamos invitando a donar en caja. 🙌"
         ].join("\n");
         let ok = false;
         try {
           const png = await tarjetaCampana({
             tienda: store?.name ?? "",
             semana: reconstructRdvWeek(hoy).weekNumber,
-            dias: semana.dias.map((d) => ({ fecha: new Date(`${d.fecha}T00:00:00Z`), meta: d.meta, total: d.total, capturado: d.capturado })),
+            ranking,
             totalSemana: semana.total,
             metaSemana: semana.meta,
             totalCampana: acumulado?.tienda ?? 0

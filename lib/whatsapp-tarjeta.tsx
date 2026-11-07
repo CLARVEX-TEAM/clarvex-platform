@@ -452,17 +452,19 @@ export async function tarjetaHorarios(opciones: {
 // ── Tailored Help (al grupo) ────────────────────────────────────────────────
 
 /**
- * Cómo va la TIENDA en la campaña, para el grupo. Solo totales: nada de
- * nombres, porque en el grupo un ranking exhibe a quien va abajo.
+ * Cómo va la tienda en la campaña, para el grupo, con el RANKING de todos
+ * --gerencia y asesores--: todos piden donativos en caja, así lo pidió Adrián.
  */
 export async function tarjetaCampana(opciones: {
   tienda: string;
   semana: number;
-  dias: Array<{ fecha: Date; meta: number; total: number; capturado: boolean }>;
+  ranking: Array<{ nombre: string; total: number; donativos: number }>;
   totalSemana: number;
   metaSemana: number;
   totalCampana: number;
 }): Promise<Buffer> {
+  const mayor = Math.max(1, ...opciones.ranking.map((p) => p.total));
+  const MEDALLAS = ["#E9C46A", "#C9CED6", "#D9A27A"];
   const SALVIA = "#5F7464";
   const pct = opciones.metaSemana > 0 ? Math.round((opciones.totalSemana / opciones.metaSemana) * 100) : null;
   const ancho = opciones.metaSemana > 0 ? Math.min(1, opciones.totalSemana / opciones.metaSemana) : 0;
@@ -497,20 +499,36 @@ export async function tarjetaCampana(opciones: {
           <div style={{ display: "flex", width: `${Math.max(ancho * 100, ancho > 0 ? 4 : 0)}%`, height: 22, borderRadius: 999, background: SALVIA }} />
         </div>
       </Tarjeta>
-      <Tarjeta margenArriba={22} relleno="14px 36px">
-        {opciones.dias.map((d, i) => {
-          const p = d.meta > 0 ? d.total / d.meta : 0;
-          return (
-            <Fila key={i} primera={i === 0} dia={d.fecha} apagada={!d.capturado} alto={62}>
-              <div style={{ display: "flex", alignItems: "center", flexGrow: 1, justifyContent: "space-between" }}>
-                <Barra fraccion={d.capturado ? p : 0} color={p >= 1 ? "#9EDDBE" : "#B9CBB9"} ancho={220} />
-                <span style={{ fontSize: 28, fontWeight: 600, color: d.capturado ? C.tinta : C.tenue }}>
-                  {d.capturado ? `${pesos(d.total)} / ${pesos(d.meta)}` : `meta ${pesos(d.meta)}`}
-                </span>
-              </div>
-            </Fila>
-          );
-        })}
+      <Tarjeta margenArriba={22} relleno="18px 36px">
+        <span style={{ fontSize: 22, fontWeight: 600, color: C.tenue, letterSpacing: 1.5, marginBottom: 6 }}>RANKING DE LA SEMANA</span>
+        {opciones.ranking.map((p, i) => (
+          <div
+            key={p.nombre}
+            style={{ display: "flex", alignItems: "center", height: 66, borderTop: i === 0 ? "none" : `1px solid ${C.linea}` }}
+          >
+            <span
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: 46,
+                height: 46,
+                borderRadius: 46,
+                fontSize: 24,
+                fontWeight: 700,
+                background: i < 3 && p.total > 0 ? MEDALLAS[i] : "#F1F0EB",
+                color: i < 3 && p.total > 0 ? "#FFFFFF" : C.tenue
+              }}
+            >
+              {i + 1}
+            </span>
+            <span style={{ fontSize: 30, fontWeight: 600, marginLeft: 18, width: 230 }}>{firstName(p.nombre)}</span>
+            <div style={{ display: "flex", alignItems: "center", flexGrow: 1, justifyContent: "space-between" }}>
+              <Barra fraccion={p.total / mayor} color="#B9CBB9" ancho={200} />
+              <span style={{ fontSize: 30, fontWeight: 700, color: p.total > 0 ? C.tinta : C.tenue }}>{pesos(p.total)}</span>
+            </div>
+          </div>
+        ))}
       </Tarjeta>
       <div style={{ display: "flex", marginTop: 22, padding: "20px 28px", borderRadius: 30, background: "#E6EDE6", justifyContent: "space-between", alignItems: "center" }}>
         <span style={{ fontSize: 24, color: SALVIA, fontWeight: 500 }}>Desde que arrancó la campaña</span>

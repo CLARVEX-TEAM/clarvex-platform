@@ -16,8 +16,8 @@ function fechaDe(valor: string | null): Date {
 }
 
 /**
- * La semana de Tailored Help de la tienda. Todos ven el avance de la tienda;
- * el desglose por persona solo gerencia (un asesor ve el suyo).
+ * La semana de Tailored Help de la tienda, con el ranking de todos. Capturar
+ * es solo de gerencia.
  */
 export async function GET(request: Request) {
   const session = await requireSession();
@@ -34,7 +34,8 @@ export async function GET(request: Request) {
     activa: true,
     tema: TEMA_CAMPANA,
     gerencia,
-    resumen: vistaPara(resumen, { userId: session.userId, gerencia }),
+    yo: session.userId,
+    resumen: vistaPara(resumen),
     acumulado
   });
 }

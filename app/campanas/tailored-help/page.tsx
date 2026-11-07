@@ -18,6 +18,7 @@ type Respuesta = {
   activa: boolean;
   tema?: { nombre: string; lema: string; causa: string };
   gerencia?: boolean;
+  yo?: string;
   resumen?: ResumenSemana;
   acumulado?: { tienda: number; donativosTienda: number; propio: number | null } | null;
 };
@@ -224,11 +225,13 @@ export default function TailoredHelpPage() {
             ) : null}
 
             <section className="mt-6">
-              <h2 className="text-lg font-semibold tracking-tight text-ink">{datos.gerencia ? "Por persona" : "Lo tuyo"}</h2>
+              <h2 className="text-lg font-semibold tracking-tight text-ink">Ranking de la semana</h2>
+              <p className="text-xs text-muted">Gerencia y asesores: todos pedimos donativos en caja.</p>
               <div className="mt-3 divide-y divide-line rounded-2xl bg-card px-4 shadow-[0_8px_22px_rgb(20_21_26/0.07)]">
-                {resumen.personas.map((p) => (
-                  <div key={p.userId} className="flex min-h-12 items-center gap-3 py-2 text-sm">
-                    <span className="min-w-0 flex-1 truncate text-ink">{p.nombre}</span>
+                {resumen.personas.map((p, i) => (
+                  <div key={p.userId} className={`flex min-h-12 items-center gap-3 py-2 text-sm ${p.userId === datos.yo ? "font-semibold" : ""}`}>
+                    <span className="w-6 text-center text-xs font-bold text-muted">{p.total > 0 && i < 3 ? ["🥇", "🥈", "🥉"][i] : i + 1}</span>
+                    <span className="min-w-0 flex-1 truncate text-ink">{p.nombre}{p.userId === datos.yo ? " (tú)" : ""}</span>
                     {p.donativos > 0 ? <span className="text-xs text-muted">{p.donativos} don.</span> : null}
                     <span className="font-semibold text-ink">{pesos(p.total)}</span>
                   </div>
