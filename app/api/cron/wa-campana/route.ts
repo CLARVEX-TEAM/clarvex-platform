@@ -124,9 +124,12 @@ export async function POST(request: Request) {
         ].join("\n");
         let ok = false;
         try {
+          const siguiente = await resumenDeSemana(storeId, new Date(hoy.getTime() + 7 * DIA_MS)).catch(() => null);
           const png = await tarjetaCampana({
             tienda: store?.name ?? "",
             semana: reconstructRdvWeek(hoy).weekNumber,
+            dias: semana.dias.map((d) => ({ fecha: new Date(`${d.fecha}T00:00:00Z`), meta: d.meta, total: d.total, capturado: d.capturado })),
+            proximaMeta: siguiente && siguiente.meta > 0 ? siguiente.meta : null,
             ranking,
             totalSemana: semana.total,
             metaSemana: semana.meta,

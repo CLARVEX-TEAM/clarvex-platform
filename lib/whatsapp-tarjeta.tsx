@@ -59,7 +59,7 @@ function estado(pct: number | null): { fondo: string; tinta: string; barra: stri
   return { fondo: C.rosa, tinta: C.rosaTinta, barra: "#F4B3BE" };
 }
 
-type Recursos = { fuentes: Array<{ name: string; data: Buffer; weight: 400 | 500 | 600 | 700 }>; logo: string };
+type Recursos = { fuentes: Array<{ name: string; data: Buffer; weight: 400 | 500 | 600 | 700 }>; logo: string; logoCampana: string };
 let recursos: Promise<Recursos> | null = null;
 
 /** Se leen una vez por proceso. */
@@ -67,12 +67,13 @@ function cargarRecursos(): Promise<Recursos> {
   recursos ??= (async () => {
     const raiz = process.cwd();
     const fuente = (archivo: string) => readFile(path.join(raiz, "lib/assets/fuentes", archivo));
-    const [r, m, s, b, logo] = await Promise.all([
+    const [r, m, s, b, logo, logoCampana] = await Promise.all([
       fuente("Geist-Regular.ttf"),
       fuente("Geist-Medium.ttf"),
       fuente("Geist-SemiBold.ttf"),
       fuente("Geist-Bold.ttf"),
-      readFile(path.join(raiz, "public/branding/retool-logo-horizontal.png"))
+      readFile(path.join(raiz, "public/branding/retool-logo-horizontal.png")),
+      readFile(path.join(raiz, "lib/assets/tailored-help-logo.png"))
     ]);
     return {
       fuentes: [
@@ -81,7 +82,8 @@ function cargarRecursos(): Promise<Recursos> {
         { name: "Geist", data: s, weight: 600 },
         { name: "Geist", data: b, weight: 700 }
       ],
-      logo: `data:image/png;base64,${logo.toString("base64")}`
+      logo: `data:image/png;base64,${logo.toString("base64")}`,
+      logoCampana: `data:image/png;base64,${logoCampana.toString("base64")}`
     };
   })();
   return recursos;
@@ -452,88 +454,139 @@ export async function tarjetaHorarios(opciones: {
 // ── Tailored Help (al grupo) ────────────────────────────────────────────────
 
 /**
- * Cómo va la tienda en la campaña, para el grupo, con el RANKING de todos
- * --gerencia y asesores--: todos piden donativos en caja, así lo pidió Adrián.
+ * El informe de Tailored Help para el grupo, con el estilo de la página de
+ * Retool: crema y salvia, el logo de la campaña arriba y la semana en tira de
+ * calendario (meta y lo juntado por día, en verde/amarillo/rojo).
+ *
+ * El ranking --de todos, gerencia y asesores-- solo aparece cuando alguien ya
+ * juntó algo: un ranking de puros $0 no informa nada y se lee como regaño. En
+ * su lugar va la meta de la semana que viene.
  */
 export async function tarjetaCampana(opciones: {
   tienda: string;
   semana: number;
+  dias: Array<{ fecha: Date; meta: number; total: number; capturado: boolean }>;
   ranking: Array<{ nombre: string; total: number; donativos: number }>;
   totalSemana: number;
   metaSemana: number;
   totalCampana: number;
+  /** Meta de la semana siguiente, si ya está cargada. */
+  proximaMeta?: number | null;
 }): Promise<Buffer> {
-  const mayor = Math.max(1, ...opciones.ranking.map((p) => p.total));
-  const MEDALLAS = ["#E9C46A", "#C9CED6", "#D9A27A"];
   const SALVIA = "#5F7464";
+  const CREMA = "#FBF8F2";
+  const { fuentes, logo, logoCampana } = await cargarRecursos();
   const pct = opciones.metaSemana > 0 ? Math.round((opciones.totalSemana / opciones.metaSemana) * 100) : null;
   const ancho = opciones.metaSemana > 0 ? Math.min(1, opciones.totalSemana / opciones.metaSemana) : 0;
-  return aPng((logo) => (
-    <Marco
-      logo={logo}
-      tienda={opciones.tienda}
-      chip={`Tailored Help · Semana ${opciones.semana}`}
-      chipFondo="#E6EDE6"
-      chipTinta={SALVIA}
-      tonos={["#E2EBE2", "#FBF1E6", "#E6EDE6"]}
-    >
-      <div style={{ display: "flex", flexDirection: "column", marginTop: 46 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-          <svg width="34" height="30" viewBox="0 0 24 21">
-            <path d="M12 21 1.7 10.6A6 6 0 0 1 12 3.1a6 6 0 0 1 10.3 7.5Z" fill={SALVIA} />
-          </svg>
-          <span style={{ fontSize: 30, color: SALVIA, fontWeight: 600, letterSpacing: 1 }}>¡JUNTOS CONSTRUIMOS FUTUROS!</span>
-        </div>
-        <span style={{ fontSize: 60, fontWeight: 700, letterSpacing: -2, lineHeight: 1.05, marginTop: 14 }}>Así vamos en donativos</span>
+  const conRanking = opciones.ranking.some((p) => p.total > 0);
+  const MEDALLAS = ["#E9C46A", "#C9CED6", "#D9A27A"];
+  const LETRA = ["D", "L", "M", "M", "J", "V", "S"];
+  const tonoDia = (d: { meta: number; total: number; capturado: boolean }) => {
+    if (!d.capturado || d.meta <= 0) return { fondo: "#F1EFE8", tinta: "#8A8F98" };
+    const p = d.total / d.meta;
+    if (p >= 1) return { fondo: "#D7F2E4", tinta: "#1F7A4D" };
+    if (p >= 0.85) return { fondo: "#FFF1C7", tinta: "#946A00" };
+    return { fondo: "#FDDDE1", tinta: "#B4233C" };
+  };
+
+  const nodo = (
+    <div style={{ display: "flex", flexDirection: "column", width: ANCHO, height: ALTO, background: CREMA, fontFamily: "Geist", color: C.tinta, padding: "56px 64px 48px" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        {/* eslint-disable-next-line @next/next/no-img-element -- motor de imagen, no una página */}
+        <img src={logoCampana} width={430} height={124} alt="" />
+        <span style={{ fontSize: 24, fontWeight: 600, padding: "12px 24px", borderRadius: 999, background: "#E6EDE6", color: SALVIA }}>
+          {`Semana ${opciones.semana}`}
+        </span>
       </div>
-      <Tarjeta margenArriba={34} relleno="30px 40px">
+      <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 18 }}>
+        <svg width="28" height="25" viewBox="0 0 24 21">
+          <path d="M12 21 1.7 10.6A6 6 0 0 1 12 3.1a6 6 0 0 1 10.3 7.5Z" fill={SALVIA} />
+        </svg>
+        <span style={{ fontSize: 26, color: SALVIA, fontWeight: 600, letterSpacing: 0.5 }}>¡Juntos construimos futuros!</span>
+      </div>
+
+      <div style={{ display: "flex", flexDirection: "column", marginTop: 26, padding: "28px 36px", borderRadius: 36, background: "#FFFFFF" }}>
+        <span style={{ fontSize: 24, color: C.suave, fontWeight: 500 }}>Donativos de la semana</span>
         <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between" }}>
-          <div style={{ display: "flex", flexDirection: "column" }}>
-            <span style={{ fontSize: 24, color: C.suave, fontWeight: 500 }}>Esta semana</span>
-            <span style={{ fontSize: 84, fontWeight: 700, letterSpacing: -3, lineHeight: 1.05, color: SALVIA }}>{pesos(opciones.totalSemana)}</span>
-            <span style={{ fontSize: 26, color: C.suave }}>de {pesos(opciones.metaSemana)}</span>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 16 }}>
+            <span style={{ fontSize: 96, fontWeight: 700, letterSpacing: -3, color: SALVIA, lineHeight: 1.05 }}>{pesos(opciones.totalSemana)}</span>
+            <span style={{ fontSize: 30, color: C.suave }}>de {pesos(opciones.metaSemana)}</span>
           </div>
-          <span style={{ fontSize: 56, fontWeight: 700, color: SALVIA, paddingBottom: 12 }}>{pct === null ? "" : `${pct}%`}</span>
+          <span style={{ fontSize: 48, fontWeight: 700, color: SALVIA, paddingBottom: 14 }}>{pct === null ? "" : `${pct}%`}</span>
         </div>
-        <div style={{ display: "flex", marginTop: 22, width: "100%", height: 22, borderRadius: 999, background: "#E6EDE6" }}>
-          <div style={{ display: "flex", width: `${Math.max(ancho * 100, ancho > 0 ? 4 : 0)}%`, height: 22, borderRadius: 999, background: SALVIA }} />
+        <div style={{ display: "flex", marginTop: 16, width: "100%", height: 20, borderRadius: 999, background: "#E6EDE6" }}>
+          <div style={{ display: "flex", width: `${ancho > 0 ? Math.max(ancho * 100, 3) : 0}%`, height: 20, borderRadius: 999, background: SALVIA }} />
         </div>
-      </Tarjeta>
-      <Tarjeta margenArriba={22} relleno="18px 36px">
-        <span style={{ fontSize: 22, fontWeight: 600, color: C.tenue, letterSpacing: 1.5, marginBottom: 6 }}>RANKING DE LA SEMANA</span>
-        {opciones.ranking.map((p, i) => (
-          <div
-            key={p.nombre}
-            style={{ display: "flex", alignItems: "center", height: 66, borderTop: i === 0 ? "none" : `1px solid ${C.linea}` }}
-          >
-            <span
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                width: 46,
-                height: 46,
-                borderRadius: 46,
-                fontSize: 24,
-                fontWeight: 700,
-                background: i < 3 && p.total > 0 ? MEDALLAS[i] : "#F1F0EB",
-                color: i < 3 && p.total > 0 ? "#FFFFFF" : C.tenue
-              }}
-            >
-              {i + 1}
-            </span>
-            <span style={{ fontSize: 30, fontWeight: 600, marginLeft: 18, width: 230 }}>{firstName(p.nombre)}</span>
-            <div style={{ display: "flex", alignItems: "center", flexGrow: 1, justifyContent: "space-between" }}>
-              <Barra fraccion={p.total / mayor} color="#B9CBB9" ancho={200} />
-              <span style={{ fontSize: 30, fontWeight: 700, color: p.total > 0 ? C.tinta : C.tenue }}>{pesos(p.total)}</span>
-            </div>
-          </div>
-        ))}
-      </Tarjeta>
-      <div style={{ display: "flex", marginTop: 22, padding: "20px 28px", borderRadius: 30, background: "#E6EDE6", justifyContent: "space-between", alignItems: "center" }}>
-        <span style={{ fontSize: 24, color: SALVIA, fontWeight: 500 }}>Desde que arrancó la campaña</span>
-        <span style={{ fontSize: 38, fontWeight: 700, color: SALVIA }}>{pesos(opciones.totalCampana)}</span>
       </div>
-    </Marco>
-  ));
+
+      {/* La semana como en el calendario de Retool */}
+      <div style={{ display: "flex", gap: 12, marginTop: 22 }}>
+        {opciones.dias.map((d, i) => {
+          const t = tonoDia(d);
+          return (
+            <div
+              key={i}
+              style={{ display: "flex", flexDirection: "column", flexGrow: 1, flexBasis: 0, alignItems: "center", padding: "16px 0 14px", borderRadius: 24, background: "#FFFFFF", border: "1px solid #EEEDE8" }}
+            >
+              <span style={{ fontSize: 20, fontWeight: 600, color: C.tenue }}>{LETRA[d.fecha.getUTCDay()]}</span>
+              <span style={{ fontSize: 30, fontWeight: 700, marginTop: 2 }}>{d.fecha.getUTCDate()}</span>
+              <span style={{ fontSize: 17, color: C.tenue, marginTop: 4 }}>{`meta ${pesos(d.meta)}`}</span>
+              <span style={{ fontSize: 20, fontWeight: 700, marginTop: 8, padding: "4px 12px", borderRadius: 999, background: t.fondo, color: t.tinta }}>
+                {d.capturado ? pesos(d.total) : "$0"}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+
+      {conRanking ? (
+        <div style={{ display: "flex", flexDirection: "column", marginTop: 22, padding: "16px 36px", borderRadius: 36, background: "#FFFFFF" }}>
+          <span style={{ fontSize: 21, fontWeight: 600, color: C.tenue, letterSpacing: 1.5, marginBottom: 4 }}>RANKING DE LA SEMANA</span>
+          {opciones.ranking.slice(0, 6).map((p, i) => (
+            <div key={p.nombre} style={{ display: "flex", alignItems: "center", height: 58, borderTop: i === 0 ? "none" : `1px solid ${C.linea}` }}>
+              <span
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  width: 42,
+                  height: 42,
+                  borderRadius: 42,
+                  fontSize: 22,
+                  fontWeight: 700,
+                  background: i < 3 && p.total > 0 ? MEDALLAS[i] : "#F1F0EB",
+                  color: i < 3 && p.total > 0 ? "#FFFFFF" : C.tenue
+                }}
+              >
+                {i + 1}
+              </span>
+              <span style={{ fontSize: 28, fontWeight: 600, marginLeft: 18, flexGrow: 1 }}>{firstName(p.nombre)}</span>
+              <span style={{ fontSize: 28, fontWeight: 700, color: p.total > 0 ? C.tinta : C.tenue }}>{pesos(p.total)}</span>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", marginTop: 22, padding: "28px 36px", borderRadius: 36, background: "#FFFFFF" }}>
+          <span style={{ fontSize: 32, fontWeight: 700 }}>¡Arranquemos con todo!</span>
+          <span style={{ fontSize: 25, color: C.suave, marginTop: 10, lineHeight: 1.35 }}>
+            En cada cobro invitemos al cliente a donar en caja. Gerencia y asesores: todos sumamos.
+          </span>
+          {opciones.proximaMeta ? (
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 20, padding: "16px 22px", borderRadius: 22, background: "#E6EDE6" }}>
+              <span style={{ fontSize: 24, color: SALVIA, fontWeight: 600 }}>Meta de la próxima semana</span>
+              <span style={{ fontSize: 34, color: SALVIA, fontWeight: 700 }}>{pesos(opciones.proximaMeta)}</span>
+            </div>
+          ) : null}
+        </div>
+      )}
+
+      <div style={{ display: "flex", marginTop: "auto", alignItems: "center", justifyContent: "space-between" }}>
+        <span style={{ fontSize: 22, color: C.suave }}>{`Desde que arrancó: ${pesos(opciones.totalCampana)} para Christel House México`}</span>
+        {/* eslint-disable-next-line @next/next/no-img-element -- motor de imagen, no una página */}
+        <img src={logo} width={176} height={44} alt="" />
+      </div>
+    </div>
+  );
+  const respuesta = new ImageResponse(nodo, { width: ANCHO, height: ALTO, fonts: fuentes });
+  return Buffer.from(await respuesta.arrayBuffer());
 }
