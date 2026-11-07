@@ -3,7 +3,7 @@ import { requireCron } from "@/lib/cron-auth";
 import { resolveMonterreyDate } from "@/lib/cron-time";
 import { prisma } from "@/lib/prisma";
 import { reporteDeVenta } from "@/lib/reporte-finde";
-import { telefonosDe, whatsappReemplazaPush } from "@/lib/whatsapp-canal";
+import { laboranHoy, telefonosDe, whatsappReemplazaPush } from "@/lib/whatsapp-canal";
 import { enviarAvisoPorWhatsApp } from "@/lib/whatsapp-aviso";
 
 /**
@@ -72,12 +72,14 @@ export async function POST(request: Request) {
       select: { id: true }
     });
     const telefonos = await telefonosDe(gerencia.map((g) => g.id));
+    // Solo a quien labora hoy: en su descanso o pago de día no le toca reportar.
+    const laboran = await laboranHoy(gerencia.map((g) => g.id), hoy);
     const ya = new Set(
       (await prisma.dailyNotificationLog.findMany({ where: { date: dateKey, type: tipo }, select: { employeeId: true } })).map((l) => l.employeeId)
     );
     for (const g of gerencia) {
       const tel = telefonos.get(g.id);
-      if (!tel || ya.has(g.id)) continue;
+      if (!tel || ya.has(g.id) || !laboran.has(g.id)) continue;
       if (!(await enviarAvisoPorWhatsApp({ phone: tel, text: aviso }))) continue;
       await new Promise((r) => setTimeout(r, 1200));
       await enviarAvisoPorWhatsApp({ phone: tel, text: bloque });

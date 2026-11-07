@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { reconstructRdvWeek } from "@/lib/rdv-week";
 import { horariosDeLaSemana as textoHorarios } from "@/lib/whatsapp-mensajes";
 import { tarjetaHorarios } from "@/lib/whatsapp-tarjeta";
+import { laboranHoy } from "@/lib/whatsapp-canal";
 import {
   PAUSA_MS,
   claveDia,
@@ -34,7 +35,8 @@ export const runtime = "nodejs";
 
 const ALERTA = "WA_HORARIOS_SEMANA";
 const ESPERA_MS = 15 * 60_000;
-const VENTANA_MS = 48 * 3_600_000;
+// 7 días: a quien descansa se le guarda el aviso para su siguiente día laboral.
+const VENTANA_MS = 7 * 24 * 3_600_000;
 const DIA_MS = 86_400_000;
 
 export async function POST(request: Request) {
@@ -47,7 +49,7 @@ export async function POST(request: Request) {
   const semanas = [estaSemana, new Date(estaSemana.getTime() + 7 * DIA_MS)];
   const ahora = Date.now();
   const stores = await prisma.store.findMany({ select: { id: true, name: true } });
-  const resumen = { tarjeta: 0, texto: 0, push: 0, sinCambios: 0, semanas: [] as string[] };
+  const resumen = { tarjeta: 0, texto: 0, push: 0, sinCambios: 0, enEspera: 0, semanas: [] as string[] };
 
   for (const store of stores) {
     for (const inicio of semanas) {
@@ -65,9 +67,15 @@ export async function POST(request: Request) {
         select: { userId: true, periodKey: true }
       });
       const telefonos = await telefonosDe(personas.map((p) => p.persona.id));
+      const laboran = await laboranHoy(personas.map((p) => p.persona.id), hoy);
       let enviados = 0;
 
       for (const h of personas) {
+        // Hoy no labora: se le guarda y le llega el siguiente día que labore.
+        if (!laboran.has(h.persona.id)) {
+          resumen.enEspera += 1;
+          continue;
+        }
         const clave = `${semana}:${h.huella}`;
         const suyos = previos.filter((p) => p.userId === h.persona.id);
         if (suyos.some((p) => p.periodKey === clave)) {

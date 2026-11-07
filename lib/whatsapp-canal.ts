@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { dispatchPushToUsers, type PushPayload } from "@/lib/push";
 import { enviarAvisoPorWhatsApp } from "@/lib/whatsapp-aviso";
 import { formatoGenerico } from "@/lib/whatsapp-formato";
+import { todayInMonterrey } from "@/lib/mexico-timezone";
 
 /**
  * Avisos automáticos por WhatsApp EN LUGAR de la notificación.
@@ -46,6 +47,29 @@ export async function telefonosDe(userIds: string[]): Promise<Map<string, string
 
 const esperar = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
+/** Lo que NO es laborar: a quien hoy tiene esto no le llega ningún aviso. */
+export const NO_LABORA = new Set(["OFF", "VACATION", "PAID_DAY", "TERMINATED"]);
+
+/**
+ * De `userIds`, quiénes pueden recibir avisos HOY: los que laboran.
+ *
+ * ⚠️ Regla de Adrián (7 nov 2026): en su día de descanso, vacaciones o pago de
+ * día nadie recibe avisos de la tienda. Ese día Itzel tenía pago de día y le
+ * llegaron el resumen de la mañana, el de media jornada y el reporte de venta.
+ *
+ * Quien NO tiene horario capturado hoy sí recibe: hay tiendas que no capturan
+ * horarios, y callarlas por eso las dejaría sin ningún aviso.
+ */
+export async function laboranHoy(userIds: string[], hoy: Date = todayInMonterrey()): Promise<Set<string>> {
+  if (userIds.length === 0) return new Set();
+  const libres = await prisma.schedule.findMany({
+    where: { userId: { in: userIds }, date: hoy, status: { in: [...NO_LABORA] as Array<"OFF" | "VACATION" | "PAID_DAY" | "TERMINATED"> } },
+    select: { userId: true }
+  });
+  const fuera = new Set(libres.map((l) => l.userId));
+  return new Set(userIds.filter((id) => !fuera.has(id)));
+}
+
 export type AvisoProgramado = PushPayload & {
   /** Texto propio para WhatsApp; sin él se arma uno a partir del título y el cuerpo. */
   whatsapp?: string | ((userId: string) => string | null);
@@ -55,9 +79,12 @@ export type AvisoProgramado = PushPayload & {
  * Devuelve cuántos salieron por cada canal, para el resumen del cron.
  */
 export async function avisar(userIds: string[], aviso: AvisoProgramado): Promise<{ whatsapp: number; push: number }> {
-  const unicos = [...new Set(userIds)];
-  if (unicos.length === 0) return { whatsapp: 0, push: 0 };
   const { whatsapp, ...payload } = aviso;
+  // Solo a quien labora hoy, por WhatsApp Y por notificación: un aviso en su
+  // día libre molesta igual llegue por donde llegue.
+  const laboran = process.env.NODE_ENV === "test" ? new Set(userIds) : await laboranHoy([...new Set(userIds)]);
+  const unicos = [...new Set(userIds)].filter((id) => laboran.has(id));
+  if (unicos.length === 0) return { whatsapp: 0, push: 0 };
 
   if (!whatsappReemplazaPush() || process.env.NODE_ENV === "test") {
     await dispatchPushToUsers(unicos, payload);
