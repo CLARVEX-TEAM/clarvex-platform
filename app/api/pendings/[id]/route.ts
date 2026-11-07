@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { pendingInput, serializePending } from "@/lib/pending";
 import { createNotifications } from "@/lib/notifications";
 import { dispatchPushToUsers } from "@/lib/push";
+import { retirarAvisosDelPendiente } from "@/lib/pendiente-cierre";
 
 export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -40,7 +41,12 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   }
   const { dueDate, ...data } = parsed.data;
   const item = await prisma.$transaction(async (tx) => {
-    const updated = await tx.pending.update({ where: { id: current.id }, data: { ...data, ...(dueDate ? { dueDate: new Date(`${dueDate}T12:00:00.000Z`) } : {}) } });
+    // Cambiar el estatus a mano resuelve cualquier petición de cierre por
+    // WhatsApp: gerencia ya decidió desde la app.
+    const updated = await tx.pending.update({
+      where: { id: current.id },
+      data: { ...data, ...(dueDate ? { dueDate: new Date(`${dueDate}T12:00:00.000Z`) } : {}), ...(data.status ? { cierreSolicitadoAt: null } : {}) }
+    });
     if (parsed.data.ownerId && parsed.data.ownerId !== current.ownerId) {
       await createNotifications(tx, [{
         storeId: session.storeId,
@@ -51,55 +57,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       }]);
     }
 
-    // Al cerrar un pendiente hay que retirar sus avisos. Notification no guarda
-    // a qué pendiente pertenece, y nadie los limpiaba: el aviso de "vencido" se
-    // quedaba sin leer en la campana para siempre, así que el usuario seguía
-    // viendo que tenía un pendiente vencido después de haberlo cerrado.
-    if (updated.status === "COMPLETADO") {
-      const readAt = new Date();
-
-      // 1. El aviso directo de asignación lleva el título en el cuerpo, así que
-      //    se identifica sin ambigüedad.
-      await tx.notification.updateMany({
-        where: { storeId: session.storeId, type: "PENDING_ASSIGNED", body: updated.title, readAt: null },
-        data: { readAt }
-      });
-
-      // 2. El recordatorio del cron al responsable ("Tienes N pendientes por
-      //    vencer") lista VARIOS títulos en el cuerpo, así que no se puede
-      //    casar por texto del pendiente. Se identifica por su título fijo, y
-      //    solo se retira si al responsable ya no le queda ninguno abierto.
-      const ownerOpen = await tx.pending.count({
-        where: { storeId: session.storeId, ownerId: updated.ownerId, status: { not: "COMPLETADO" } }
-      });
-      if (ownerOpen === 0) {
-        await tx.notification.updateMany({
-          where: {
-            userId: updated.ownerId, type: "PENDING_ASSIGNED", readAt: null,
-            title: { contains: "por vencer" }
-          },
-          data: { readAt }
-        });
-      }
-
-      // 3. El resumen de gerencia ("N pendientes vencidos en la tienda") se
-      //    retira cuando la tienda se queda sin vencidos.
-      //    Se filtra por título a propósito: un barrido de todos los
-      //    PENDING_ASSIGNED se llevaría por delante un "Pendiente reasignado"
-      //    legítimo de un pendiente que sigue abierto.
-      const storeOverdue = await tx.pending.count({
-        where: { storeId: session.storeId, status: { not: "COMPLETADO" }, dueDate: { lt: readAt } }
-      });
-      if (storeOverdue === 0) {
-        await tx.notification.updateMany({
-          where: {
-            storeId: session.storeId, type: "PENDING_ASSIGNED", readAt: null,
-            title: { contains: "en la tienda" }
-          },
-          data: { readAt }
-        });
-      }
-    }
+    if (updated.status === "COMPLETADO") await retirarAvisosDelPendiente(tx, session.storeId, updated);
 
     return updated;
   });

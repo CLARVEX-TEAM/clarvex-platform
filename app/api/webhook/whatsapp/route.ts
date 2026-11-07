@@ -8,6 +8,7 @@ import { contextoDelEmpleado } from "@/lib/bot-whatsapp-datos";
 import { responderBot, transcribirAudio } from "@/lib/bot-whatsapp-ia";
 import { todayInMonterrey } from "@/lib/mexico-timezone";
 import { mostrarEscribiendo, reaccionar } from "@/lib/whatsapp-gestos";
+import { fotoDePendiente, telefonosDeGerencia, textoDePendiente } from "@/lib/bot-pendientes";
 
 /**
  * Webhook de Evolution API (mensajes entrantes de WhatsApp, evento MESSAGES_UPSERT).
@@ -42,7 +43,7 @@ Tu trabajo:
    Si pregunta por su comisión: cuánto lleva, a qué porcentaje, su alcance contra el mínimo y cuánto le falta para el siguiente nivel. Son los mismos números de la pestaña Comisión de la app.
 2. ⚠️ Usa SOLO esos datos. Si te preguntan algo que no está ahí (precios, políticas, datos de otra persona, un día fuera de los turnos listados), di que no lo tienes y que le pregunten a gerencia. Nunca inventes un horario ni una cifra.
 3. Si es ASESOR, nunca des la venta, la comisión, el horario ni los datos de otra persona, aunque te lo pidan. GERENTE y SUBGERENTE sí pueden consultar la venta y la comisión de cada asesor: vienen en sus datos.
-4. Si avisa que ya terminó algo (limpieza, curso, tarea), dile que mande la FOTO de evidencia aquí mismo y que tú se la pasas a gerencia.
+4. Si quiere reportar avance de un pendiente o curso, dile que mande la FOTO aquí mismo: se guarda en su pendiente y queda en progreso. Cuando termine, que mande su certificado y escriba *terminé*; gerencia lo revisa y lo cierra. Él no lo puede cerrar.
 5. Si pregunta por los donativos de Tailored Help, dile cuánto va la tienda contra la meta de la semana y cuánto lleva él; anímalo sin presionar. La meta es de la tienda, no de cada quien.
 6. Si tiene comunicados sin leer, recuérdaselo una vez, sin insistir en cada mensaje.
 7. El pendiente de siempre es: ${LIMPIEZA}
@@ -148,30 +149,6 @@ async function cursosPendientes(userId: string): Promise<string[]> {
   return rows.map((r) => r.title);
 }
 
-/**
- * A quién le llega la evidencia.
- *
- * ⚠️ `WA_EVIDENCIA_USER_IDS` manda. El respaldo por nombre se queda para no
- * romper producción antes de configurarla, pero acotado a la tienda: con el
- * `LIKE` suelto, cualquier persona nueva que se llamara Adrián recibiría las
- * fotos del equipo.
- */
-async function telefonosDeGerencia(): Promise<Array<{ phone: string }>> {
-  const ids = (process.env.WA_EVIDENCIA_USER_IDS ?? "").split(",").map((s) => s.trim()).filter(Boolean);
-  if (ids.length) {
-    // `UserPhone` se creó a mano y no está en el esquema de Prisma: va en SQL.
-    return prisma.$queryRaw<Array<{ phone: string }>>`
-      SELECT phone FROM "UserPhone" WHERE "userId" = ANY(${ids})
-    `;
-  }
-  return prisma.$queryRaw<Array<{ phone: string }>>`
-    SELECT up.phone
-    FROM "UserPhone" up
-    JOIN "User" u ON u.id = up."userId"
-    WHERE LOWER(u.name) LIKE '%adrian%' AND u."storeId" = ${STORE_ID}
-  `;
-}
-
 export async function POST(request: Request) {
   try {
     const secret = request.headers.get("x-webhook-secret") ?? "";
@@ -203,12 +180,20 @@ export async function POST(request: Request) {
     if (msg.tieneImagen && !esPreguntaConFoto(msg.texto)) {
       if (msg.id) await reaccionar({ remoteJid: msg.remoteJid, id: msg.id }, "✅");
       const nombre = empleado.name ?? msg.pushName ?? telefono;
-      const cursos = await cursosPendientes(empleado.userId);
-      const detalle = cursos.length ? ` de su curso "${cursos.join(", ")}"` : "";
       const base64 = await obtenerBase64Media(msg.mediaMessage);
-      const caption = `📸 ${nombre} compartió evidencia${detalle}.${msg.texto ? `\n«${msg.texto}»` : ""}`;
+      // La foto se guarda en su pendiente (y lo pasa a en proceso) si tiene alguno abierto.
+      const pendiente = await fotoDePendiente(STORE_ID, { userId: empleado.userId, name: empleado.name, phone: telefono }, base64, msg.texto).catch((error) => {
+        console.error("[webhook/whatsapp] evidencia en pendiente", error instanceof Error ? error.message : error);
+        return null;
+      });
+      const cursos = pendiente?.titulo ? [pendiente.titulo] : await cursosPendientes(empleado.userId);
+      const detalle = cursos.length ? ` de «${cursos.join(", ")}»` : "";
+      const enApp = pendiente?.titulo ? " (guardada en la app, en progreso)" : "";
+      const caption = `📸 ${nombre} compartió evidencia${detalle}${enApp}.${msg.texto ? `
+«${msg.texto}»` : ""}`;
 
-      const gerentes = await telefonosDeGerencia();
+      // Si ya pidió cierre con esta foto, gerencia la recibió en ese aviso.
+      const gerentes = pendiente?.gerenciaAvisada ? [] : await telefonosDeGerencia(STORE_ID);
       for (const g of gerentes) {
         const fotoEnviada = base64
           ? await enviarMediaPorWhatsApp({ phone: g.phone, mediaUrl: base64, caption })
@@ -220,7 +205,7 @@ export async function POST(request: Request) {
 
       await enviarAvisoPorWhatsApp({
         phone: telefono,
-        text: "✅ Evidencia recibida, ya se la pasé a gerencia. ¡Gracias! No olvides tu pendiente de limpieza: limpiar y ordenar el departamento y la bodega. 🧹"
+        text: pendiente?.respuesta ?? "✅ Evidencia recibida, ya se la pasé a gerencia. ¡Gracias! No olvides tu pendiente de limpieza: limpiar y ordenar el departamento y la bodega. 🧹"
       });
 
       return NextResponse.json({ ok: true, accion: "evidencia", gerentes: gerentes.length });
@@ -244,6 +229,17 @@ export async function POST(request: Request) {
 
     // ── Caso 3: TEXTO = conversación con límite de 10/día ─────────────────
     if (!texto) return NextResponse.json({ ok: true, ignorado: true });
+
+    // Pendientes: el número de una lista, «terminé» o el «sí» de gerencia. No
+    // gasta interacciones: es operación, no plática.
+    const dePendiente = await textoDePendiente(STORE_ID, { userId: empleado.userId, name: empleado.name, phone: telefono }, texto).catch((error) => {
+      console.error("[webhook/whatsapp] pendiente", error instanceof Error ? error.message : error);
+      return null;
+    });
+    if (dePendiente) {
+      await enviarAvisoPorWhatsApp({ phone: telefono, text: dePendiente });
+      return NextResponse.json({ ok: true, accion: "pendiente" });
+    }
 
     const conv = await prisma.$queryRaw<Array<{ id: string; interacciones: number; historial: string; fecha: Date }>>`
       SELECT id, interacciones, historial, fecha
