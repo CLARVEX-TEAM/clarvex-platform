@@ -160,6 +160,8 @@ export function cierreDeSemana(opciones: {
   dias: DiaVenta[];
   ventaAnterior: number | null;
   conTarjeta?: boolean;
+  /** Línea de la campaña vigente (Tailored Help), si hay. */
+  campana?: string | null;
 }): string {
   const a = analizarSemana(opciones.dias, opciones.ventaAnterior);
   const filas = opciones.dias.map((d) => {
@@ -179,6 +181,7 @@ export function cierreDeSemana(opciones: {
     ...(opciones.conTarjeta ? [""] : [tabla(filas)]),
     ...lineasDeAnalisis(a),
     ...(pendientes ? ["", "_Hay días sin captura; el total puede cambiar._"] : []),
+    ...(opciones.campana ? ["", opciones.campana] : []),
     "",
     `👉 ${appUrl("/kpis")}`
   ].join("\n");
@@ -190,6 +193,7 @@ export function cierreDeSemanaTienda(opciones: {
   fin: Date;
   personas: Array<{ nombre: string; venta: number; meta: number }>;
   ventaAnterior: number | null;
+  campana?: string | null;
 }): string {
   const venta = opciones.personas.reduce((t, p) => t + p.venta, 0);
   const meta = opciones.personas.reduce((t, p) => t + p.meta, 0);
@@ -208,6 +212,7 @@ export function cierreDeSemanaTienda(opciones: {
     `Venta *${pesos(venta)}* de ${pesos(meta)}${pct === null ? "" : ` → *${pct} %* ${semaforo(pct)}`}`,
     ...(vs === null ? [] : [vs >= 0 ? `📈 ${vs} % arriba de la semana pasada` : `📉 ${Math.abs(vs)} % abajo de la semana pasada`]),
     tabla(filas),
+    ...(opciones.campana ? [opciones.campana, ""] : []),
     `👉 ${appUrl("/kpis")}`
   ].join("\n");
 }
@@ -279,4 +284,21 @@ export function horariosDeLaSemana(opciones: {
     "",
     `👉 ${appUrl("/horarios")}`
   ].join("\n");
+}
+
+// ── Tailored Help ───────────────────────────────────────────────────────────
+
+/** La línea de la campaña en el cierre de una persona. La meta es de la tienda. */
+export function lineaCampanaPersona(propio: number, tienda: number, meta: number): string {
+  const pct = porcentaje(tienda, meta);
+  return `💙 *Tailored Help:* aportaste *${pesos(propio)}* esta semana. La tienda juntó ${pesos(tienda)} de ${pesos(meta)}${pct === null ? "" : ` (${pct} %)`}. ¡Gracias por sumar!`;
+}
+
+/** El bloque de la campaña en el cierre de tienda (gerencia): total y quién aportó. */
+export function lineaCampanaTienda(tienda: number, meta: number, personas: Array<{ nombre: string; total: number }>): string {
+  const pct = porcentaje(tienda, meta);
+  const filas = personas.map((p) => [firstName(p.nombre), pesos(p.total)]);
+  filas.push(["Tienda", pesos(tienda)]);
+  const titulo = `💙 *Tailored Help:* ${pesos(tienda)} de ${pesos(meta)}${pct === null ? "" : ` → *${pct} %* ${semaforo(pct)}`}`;
+  return [titulo, tabla(filas)].join("\n");
 }

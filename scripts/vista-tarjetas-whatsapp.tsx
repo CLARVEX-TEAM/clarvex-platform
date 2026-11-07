@@ -24,3 +24,11 @@ import { tarjetaHorarios } from "@/lib/whatsapp-tarjeta";
     dias: st.map((s, i) => ({ fecha: d(i), status: s, inicio: i === 1 ? "13:00" : "10:30", fin: i === 1 ? "21:00" : "19:00" })) }));
   console.log("horarios ok");
 })();
+import { tarjetaCampana } from "@/lib/whatsapp-tarjeta";
+(async () => {
+  const metas = [43, 22, 22, 43, 43, 54, 65];
+  const totales = [50, 18, 30, 40, 0, 0, 0];
+  writeFileSync(`${S}/tarjeta-campana.png`, await tarjetaCampana({ tienda: "TH San Agustín", semana: 45, totalSemana: 138, metaSemana: 292, totalCampana: 355,
+    dias: metas.map((m, i) => ({ fecha: d(i), meta: m, total: totales[i], capturado: i < 4 })) }));
+  console.log("campaña ok");
+})();

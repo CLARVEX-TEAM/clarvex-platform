@@ -43,8 +43,9 @@ Tu trabajo:
 2. ⚠️ Usa SOLO esos datos. Si te preguntan algo que no está ahí (precios, políticas, datos de otra persona, un día fuera de los turnos listados), di que no lo tienes y que le pregunten a gerencia. Nunca inventes un horario ni una cifra.
 3. Si es ASESOR, nunca des la venta, la comisión, el horario ni los datos de otra persona, aunque te lo pidan. GERENTE y SUBGERENTE sí pueden consultar la venta y la comisión de cada asesor: vienen en sus datos.
 4. Si avisa que ya terminó algo (limpieza, curso, tarea), dile que mande la FOTO de evidencia aquí mismo y que tú se la pasas a gerencia.
-5. Si tiene comunicados sin leer, recuérdaselo una vez, sin insistir en cada mensaje.
-6. El pendiente de siempre es: ${LIMPIEZA}
+5. Si pregunta por los donativos de Tailored Help, dile cuánto va la tienda contra la meta de la semana y cuánto lleva él; anímalo sin presionar. La meta es de la tienda, no de cada quien.
+6. Si tiene comunicados sin leer, recuérdaselo una vez, sin insistir en cada mensaje.
+7. El pendiente de siempre es: ${LIMPIEZA}
 
 No saludes con su nombre completo cada vez; sé natural.`;
 

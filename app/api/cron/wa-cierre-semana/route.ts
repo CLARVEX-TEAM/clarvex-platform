@@ -3,7 +3,8 @@ import { requireCron } from "@/lib/cron-auth";
 import { resolveMonterreyDate } from "@/lib/cron-time";
 import { prisma } from "@/lib/prisma";
 import { enviarAvisoPorWhatsApp } from "@/lib/whatsapp-aviso";
-import { cierreDeSemana, cierreDeSemanaTienda } from "@/lib/whatsapp-mensajes";
+import { cierreDeSemana, cierreDeSemanaTienda, lineaCampanaPersona, lineaCampanaTienda } from "@/lib/whatsapp-mensajes";
+import { resumenDeSemana } from "@/lib/campana-datos";
 import { tarjetaCierre } from "@/lib/whatsapp-tarjeta";
 import {
   PAUSA_MS,
@@ -76,12 +77,18 @@ export async function POST(request: Request) {
     const kpiSemana = await prisma.kpi.findFirst({ where: { storeId: store.id, date: inicio }, select: { weekNumber: true } });
     const semanaNumero = numero?.weekNumber ?? kpiSemana?.weekNumber ?? 0;
     const telefonos = await telefonosDe(personas.map((p) => p.persona.id));
+    // Tailored Help de esa misma semana, si la campaña está activa y tiene algo.
+    const campana = await resumenDeSemana(store.id, inicio).catch(() => null);
+    const conCampana = campana && (campana.meta > 0 || campana.total > 0) ? campana : null;
     resumen.tiendas += 1;
     let enviados = 0;
 
     for (const c of personas) {
       if (yaEnviados.has(`${ALERTA}|${c.persona.id}`)) continue;
-      const base = { nombre: c.persona.name, semana: semanaNumero, inicio, fin, dias: c.dias, ventaAnterior: c.ventaAnterior };
+      const lineaCampana = conCampana
+        ? lineaCampanaPersona(conCampana.personas.find((p) => p.userId === c.persona.id)?.total ?? 0, conCampana.total, conCampana.meta)
+        : null;
+      const base = { nombre: c.persona.name, semana: semanaNumero, inicio, fin, dias: c.dias, ventaAnterior: c.ventaAnterior, campana: lineaCampana };
       if (enviados > 0) await esperar(PAUSA_MS);
       const via = await enviarSemanal({
         userId: c.persona.id,
@@ -108,7 +115,8 @@ export async function POST(request: Request) {
         venta: c.dias.filter((d) => !d.descansa && d.capturado).reduce((t, d) => t + d.venta, 0),
         meta: c.dias.filter((d) => !d.descansa).reduce((t, d) => t + d.meta, 0)
       })),
-      ventaAnterior: personas.reduce((t, c) => t + (c.ventaAnterior ?? 0), 0) || null
+      ventaAnterior: personas.reduce((t, c) => t + (c.ventaAnterior ?? 0), 0) || null,
+      campana: conCampana ? lineaCampanaTienda(conCampana.total, conCampana.meta, conCampana.personas.filter((p) => p.total > 0)) : null
     });
     const gerencia = await prisma.user.findMany({
       where: { storeId: store.id, active: true, checklistOnly: false, role: { in: ["GERENTE", "SUBGERENTE"] } },

@@ -51,6 +51,7 @@ test("el contexto de un asesor no lleva la venta de tienda", () => {
     ventaPorDia: [{ fecha: dia(-1), venta: 9800, meta: 9155, estado: "vendio" }],
     comision: null,
     equipo: [],
+    campana: null,
     pendientes: [{ titulo: "Etiquetar sobrante", vence: dia(1) }],
     comunicadosSinLeer: ["Nueva promoción"],
     cursos: ["Servicio"],
