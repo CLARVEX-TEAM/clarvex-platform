@@ -16,6 +16,7 @@ import {
   telefonosDe,
   whatsappReemplazaPush
 } from "@/lib/whatsapp-semanal";
+import { enHorarioDeAvisos } from "@/lib/horario-avisos";
 
 /**
  * «Ya están tus horarios», a cada quien por WhatsApp con su tarjeta, cuando
@@ -43,6 +44,7 @@ export async function POST(request: Request) {
   const unauthorized = requireCron(request);
   if (unauthorized) return unauthorized;
   if (!whatsappReemplazaPush()) return NextResponse.json({ ok: true, apagado: true });
+  if (!enHorarioDeAvisos()) return NextResponse.json({ ok: true, fueraDeHorario: true });
 
   const { utcDate: hoy } = resolveMonterreyDate();
   const estaSemana = domingoDe(hoy);

@@ -17,6 +17,7 @@ import {
   telefonosDe,
   whatsappReemplazaPush
 } from "@/lib/whatsapp-semanal";
+import { enHorarioDeAvisos } from "@/lib/horario-avisos";
 
 /**
  * El cierre de la semana que terminó el sábado: a cada quien su venta y su
@@ -43,6 +44,7 @@ export async function POST(request: Request) {
   const unauthorized = requireCron(request);
   if (unauthorized) return unauthorized;
   if (!whatsappReemplazaPush()) return NextResponse.json({ ok: true, apagado: true });
+  if (!enHorarioDeAvisos()) return NextResponse.json({ ok: true, fueraDeHorario: true });
 
   const { utcDate: hoy, weekday } = resolveMonterreyDate();
   // Solo domingo (0) y lunes (1): después, el cierre ya no es noticia.
