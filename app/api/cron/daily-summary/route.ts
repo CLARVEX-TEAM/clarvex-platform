@@ -6,6 +6,7 @@ import { resolveMonterreyDate } from "@/lib/cron-time";
 import { buildAdvisorMessage, buildManagerSummary } from "@/lib/daily-summary";
 import { createNotifications, type NotificationInput } from "@/lib/notifications";
 import { avisar } from "@/lib/whatsapp-canal";
+import { cierreDelDia, cierreDelDiaTienda } from "@/lib/whatsapp-mensajes";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -31,7 +32,7 @@ export async function POST(request: Request) {
     byCase: {} as Record<string, number>
   };
 
-  type PushJob = { userIds: string[]; payload: { title: string; body: string; tag: string; url: string } };
+  type PushJob = { userIds: string[]; payload: { title: string; body: string; tag: string; url: string; whatsapp?: string } };
 
   for (const store of stores) {
     const [advisors, managers, dayKpis, daySchedules, sentLogs] = await Promise.all([
@@ -83,7 +84,16 @@ export async function POST(request: Request) {
         body: message.body
       });
       logsToCreate.push({ employeeId: advisor.id, date: dateKey, type: LOG_TYPE, case: message.case, sent: true });
-      pushJobs.push({ userIds: [advisor.id], payload: { title: message.title, body: message.body, tag: PUSH_TAG, url: "/kpis" } });
+      pushJobs.push({
+        userIds: [advisor.id],
+        payload: {
+          title: message.title,
+          body: message.body,
+          tag: PUSH_TAG,
+          url: "/kpis",
+          whatsapp: cierreDelDia({ nombre: advisor.name, fecha: utcDate, venta: sales, meta: goal, cuerpo: message.body })
+        }
+      });
 
       if (message.case === "A" || message.case === "B") overGoal += 1;
       else if (message.case === "C") near += 1;
@@ -107,7 +117,16 @@ export async function POST(request: Request) {
         });
         logsToCreate.push({ employeeId: id, date: dateKey, type: LOG_TYPE, case: null, sent: true });
       }
-      pushJobs.push({ userIds: managerIds, payload: { title: managerMessage.title, body: managerMessage.body, tag: PUSH_TAG, url: "/kpis" } });
+      pushJobs.push({
+        userIds: managerIds,
+        payload: {
+          title: managerMessage.title,
+          body: managerMessage.body,
+          tag: PUSH_TAG,
+          url: "/kpis",
+          whatsapp: cierreDelDiaTienda({ fecha: utcDate, venta: storeSales, meta: storeGoal, enMeta: overGoal, cerca: near, abajo: below })
+        }
+      });
       summary.managersNotified += managerIds.length;
     }
 
