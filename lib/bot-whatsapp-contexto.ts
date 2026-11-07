@@ -24,6 +24,31 @@ export type VentaBot = {
   ultimaCaptura: Date | null;
 };
 
+/**
+ * ⚠️ Un día sin venta NO es un día sin captura. Antes el bot solo veía los días
+ * con venta y le decía a quien no vendió el lunes que «el lunes no está
+ * capturado». Se decide por la TIENDA: si alguien capturó ese día, el día está
+ * capturado, y la persona vendió lo que diga su fila (o cero).
+ */
+export type DiaBot = {
+  fecha: Date;
+  venta: number;
+  meta: number;
+  estado: "vendio" | "sin-venta" | "descanso" | "sin-captura";
+};
+
+/** La misma lectura que la pestaña KPIs → Comisión (`buildCommissionPerson`). */
+export type ComisionBot = {
+  nombre: string;
+  venta: number;
+  minimo: number;
+  alcance: number;
+  porcentaje: number;
+  monto: number;
+  tieneMinimo: boolean;
+  siguiente: { faltan: number; porcentaje: number } | null;
+};
+
 export type ContextoBot = {
   nombre: string;
   rol: string;
@@ -31,8 +56,11 @@ export type ContextoBot = {
   turnos: TurnoBot[];
   ventaPersonal: VentaBot | null;
   ventaTienda: VentaBot | null;
-  /** Días del mes retail con venta capturada, en orden. */
-  ventaPorDia: Array<{ fecha: Date; venta: number; meta: number }>;
+  /** Cada día del mes retail hasta el último que la TIENDA capturó, en orden. */
+  ventaPorDia: DiaBot[];
+  comision: ComisionBot | null;
+  /** Solo gerencia: venta y comisión de cada asesor del mes. */
+  equipo: ComisionBot[];
   pendientes: Array<{ titulo: string; vence: Date }>;
   comunicadosSinLeer: string[];
   cursos: string[];
@@ -73,6 +101,8 @@ export function describirTurno(turno: TurnoBot, hoy: Date): string {
 }
 
 const PESOS = new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN", maximumFractionDigits: 0 });
+/** La comisión va con centavos: es el número que la persona compara con su recibo. */
+const CENTAVOS = new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN", minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 /**
  * ⚠️ La venta se captura al día siguiente, así que «hoy» casi nunca está. Se dice
@@ -85,9 +115,54 @@ export function describirVenta(etiqueta: string, venta: VentaBot): string {
   return `${etiqueta}: ${PESOS.format(venta.venta)} de ${PESOS.format(venta.meta)}${alcance} (capturado hasta el ${fechaCorta(venta.ultimaCaptura)})`;
 }
 
-export function describirDia(d: { fecha: Date; venta: number; meta: number }): string {
+export function describirDia(d: DiaBot): string {
+  const dia = fechaCorta(d.fecha);
+  if (d.estado === "descanso") return `${dia}: descanso`;
+  if (d.estado === "sin-captura") return `${dia}: la tienda aún no captura ese día`;
   const alcance = d.meta > 0 ? ` (${Math.round((d.venta / d.meta) * 100)} %)` : "";
-  return `${fechaCorta(d.fecha)} ${PESOS.format(d.venta)} de ${PESOS.format(d.meta)}${alcance}`;
+  if (d.estado === "sin-venta") return `${dia}: ${PESOS.format(0)}, no vendió${d.meta > 0 ? ` (meta ${PESOS.format(d.meta)})` : ""}`;
+  return `${dia}: ${PESOS.format(d.venta)} de ${PESOS.format(d.meta)}${alcance}`;
+}
+
+const DESCANSOS = new Set(["OFF", "VACATION", "PAID_DAY", "TERMINATED"]);
+
+/**
+ * Los días del mes, del primero al último que la TIENDA capturó. Sin Prisma:
+ * recibe lo ya consultado.
+ */
+export function armarDias(opciones: {
+  inicio: Date;
+  /** Último día con captura de la tienda; `null` si el mes no tiene ninguna. */
+  hasta: Date | null;
+  capturados: Set<string>;
+  filas: Map<string, { venta: number; meta: number }>;
+  horarios: Map<string, string>;
+}): DiaBot[] {
+  if (!opciones.hasta) return [];
+  const dias: DiaBot[] = [];
+  for (let t = opciones.inicio.getTime(); t <= opciones.hasta.getTime(); t += 86_400_000) {
+    const fecha = new Date(t);
+    const clave = fecha.toISOString().slice(0, 10);
+    const fila = opciones.filas.get(clave);
+    const venta = fila?.venta ?? 0;
+    const meta = fila?.meta ?? 0;
+    const horario = opciones.horarios.get(clave);
+    let estado: DiaBot["estado"];
+    if (!opciones.capturados.has(clave)) estado = "sin-captura";
+    else if (venta !== 0) estado = "vendio";
+    else if ((horario && DESCANSOS.has(horario)) || (!horario && meta <= 0)) estado = "descanso";
+    else estado = "sin-venta";
+    dias.push({ fecha, venta, meta, estado });
+  }
+  return dias;
+}
+
+export function describirComision(c: ComisionBot): string {
+  if (!c.tieneMinimo) return `${c.nombre}: sin mínimo de comisión cargado este mes`;
+  const siguiente = c.siguiente && c.siguiente.faltan > 0
+    ? `; le faltan ${PESOS.format(c.siguiente.faltan)} de venta para subir a ${c.siguiente.porcentaje} %`
+    : "";
+  return `${c.nombre}: comisión ${CENTAVOS.format(c.monto)} (${c.porcentaje} %), venta ${PESOS.format(c.venta)} contra mínimo ${PESOS.format(c.minimo)} = ${Math.round(c.alcance)} % de alcance${siguiente}`;
 }
 
 export function armarContexto(c: ContextoBot): string {
@@ -100,7 +175,9 @@ export function armarContexto(c: ContextoBot): string {
   );
 
   if (c.ventaPersonal) lineas.push(describirVenta("Su venta del mes retail", c.ventaPersonal) + ".");
-  if (c.ventaPorDia.length) lineas.push(`Su venta por día este mes: ${c.ventaPorDia.map(describirDia).join("; ")}.`);
+  if (c.ventaPorDia.length) lineas.push(`Su venta por día este mes (días capturados por la tienda): ${c.ventaPorDia.map(describirDia).join("; ")}.`);
+  if (c.comision) lineas.push(`Su comisión del mes retail a la fecha (la misma de la app): ${describirComision(c.comision)}.`);
+  if (c.equipo.length) lineas.push(`Comisiones de su equipo este mes (solo gerencia puede verlas): ${c.equipo.map(describirComision).join("; ")}.`);
   if (c.ventaTienda) lineas.push(describirVenta("Venta de la tienda del mes retail", c.ventaTienda) + ".");
 
   const pendientes = [c.tareaFija, ...c.pendientes.map((p) => `${p.titulo} (vence ${fechaCorta(p.vence)})`)];
