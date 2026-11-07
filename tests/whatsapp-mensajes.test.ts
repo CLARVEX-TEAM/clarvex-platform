@@ -104,3 +104,23 @@ test("el análisis dice el día más bajo solo si quedó debajo de la meta", () 
   const todoEnMeta = lineasDeAnalisis(analizarSemana([semana[0], semana[3]], null));
   assert.ok(!todoEnMeta.some((l) => l.includes("día más bajo")));
 });
+
+test("los horarios dicen el turno de cada día y cuántos días trabaja", async () => {
+  const { horariosDeLaSemana, textoTurno } = await import("@/lib/whatsapp-mensajes");
+  assert.equal(textoTurno({ fecha: d(0), status: "WORKING", inicio: "10:30", fin: "19:00" }), "10:30 – 19:00");
+  assert.equal(textoTurno({ fecha: d(0), status: "INVENTORY", inicio: "08:00", fin: "16:00" }), "Inventario · 08:00 – 16:00");
+  assert.equal(textoTurno({ fecha: d(0), status: "OFF", inicio: null, fin: null }), "Descanso");
+  assert.equal(textoTurno({ fecha: d(0), status: "WORKING", inicio: null, fin: null }), "Hora por confirmar");
+  assert.equal(textoTurno({ fecha: d(0), status: "SIN_CAPTURA", inicio: null, fin: null }), "Por definir");
+  const dias = [
+    { fecha: d(0), status: "WORKING", inicio: "10:30", fin: "19:00" },
+    { fecha: d(1), status: "OFF", inicio: null, fin: null }
+  ];
+  const pie = horariosDeLaSemana({ nombre: "ALGUIEN", inicio: d(0), fin: d(6), dias, actualizacion: false, conTarjeta: true });
+  assert.match(pie, /Ya están tus horarios/);
+  assert.match(pie, /Trabajas \*1 día\*/);
+  const completo = horariosDeLaSemana({ nombre: "ALGUIEN", inicio: d(0), fin: d(6), dias, actualizacion: true });
+  assert.match(completo, /Se actualizó tu horario/);
+  assert.match(completo, /Lun 9\s+Descanso/);
+  assert.match(completo, /\/horarios$/);
+});

@@ -211,3 +211,50 @@ export function cierreDeSemanaTienda(opciones: {
     `👉 ${appUrl("/kpis")}`
   ].join("\n");
 }
+
+// ── Horarios de la semana ───────────────────────────────────────────────────
+
+export type DiaHorario = { fecha: Date; status: string; inicio: string | null; fin: string | null };
+
+/** «10:30 – 21:00», «Descanso»… El mismo vocabulario que la pantalla de Horarios. */
+export function textoTurno(d: DiaHorario): string {
+  switch (d.status) {
+    case "OFF":
+      return "Descanso";
+    case "VACATION":
+      return "Vacaciones";
+    case "PAID_DAY":
+      return "Día pagado";
+    case "TERMINATED":
+      return "Sin turno";
+    case "SIN_CAPTURA":
+      return "Por definir";
+    default: {
+      const horas = d.inicio && d.fin ? `${d.inicio} – ${d.fin}` : "Hora por confirmar";
+      return d.status === "INVENTORY" ? `Inventario · ${horas}` : horas;
+    }
+  }
+}
+
+export function horariosDeLaSemana(opciones: {
+  nombre: string;
+  inicio: Date;
+  fin: Date;
+  dias: DiaHorario[];
+  actualizacion: boolean;
+  conTarjeta?: boolean;
+}): string {
+  const trabaja = opciones.dias.filter((d) => d.status === "WORKING" || d.status === "INVENTORY").length;
+  const titulo = opciones.actualizacion ? "🔄 *Se actualizó tu horario*" : "🗓️ *Ya están tus horarios*";
+  return [
+    titulo,
+    `_${rangoSemana(opciones.inicio, opciones.fin)}_`,
+    "",
+    `${saludo(opciones.nombre)} ${opciones.actualizacion ? "gerencia cambió tu horario, queda así:" : "esta es tu semana:"}`,
+    opciones.conTarjeta
+      ? `Trabajas *${trabaja} ${trabaja === 1 ? "día" : "días"}* esta semana.`
+      : tabla(opciones.dias.map((d) => [diaCorto(d.fecha), textoTurno(d)])),
+    "",
+    `👉 ${appUrl("/horarios")}`
+  ].join("\n");
+}

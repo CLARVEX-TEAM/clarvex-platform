@@ -5,7 +5,7 @@ import { dispatchPushToUsers } from "@/lib/push";
 import { enviarAvisoPorWhatsApp } from "@/lib/whatsapp-aviso";
 import { enviarMediaPorWhatsApp } from "@/lib/whatsapp-media";
 import { telefonosDe, whatsappReemplazaPush } from "@/lib/whatsapp-canal";
-import type { DiaMeta, DiaVenta } from "@/lib/whatsapp-mensajes";
+import type { DiaHorario, DiaMeta, DiaVenta } from "@/lib/whatsapp-mensajes";
 
 /**
  * Datos y envío de los dos avisos semanales: metas y cierre.
@@ -120,6 +120,45 @@ export async function cierreDeLaSemana(storeId: string, inicio: Date): Promise<{
     })
     .filter((c) => c.dias.some((d) => !d.descansa && (d.meta > 0 || d.venta !== 0)));
   return { personas: resultado, sabadoCapturado: semana.capturados.has(claveDia(fechas[6])) };
+}
+
+// ── Horarios ────────────────────────────────────────────────────────────────
+
+export type HorariosDePersona = { persona: Persona; dias: DiaHorario[]; huella: string };
+
+/**
+ * Horarios de una semana y cuándo se tocaron por última vez. Solo entra quien
+ * tiene al menos un día capturado; un día sin fila sale «Por definir».
+ */
+export async function horariosDeLaSemana(storeId: string, inicio: Date): Promise<{ personas: HorariosDePersona[]; ultimoCambio: Date | null }> {
+  const fin = new Date(inicio.getTime() + 6 * DIA_MS);
+  const [personas, filas] = await Promise.all([
+    personasDe(storeId),
+    prisma.schedule.findMany({
+      where: { storeId, date: { gte: inicio, lte: fin } },
+      select: { userId: true, date: true, status: true, startTime: true, endTime: true, updatedAt: true }
+    })
+  ]);
+  const ultimoCambio = filas.reduce<Date | null>((max, f) => (!max || f.updatedAt > max ? f.updatedAt : max), null);
+  const porClave = new Map(filas.map((f) => [`${f.userId}|${claveDia(f.date)}`, f]));
+  const fechas = diasDeLaSemana(inicio);
+  const resultado = personas
+    .map((persona) => {
+      const dias = fechas.map((fecha): DiaHorario => {
+        const f = porClave.get(`${persona.id}|${claveDia(fecha)}`);
+        return f
+          ? { fecha, status: f.status as string, inicio: f.startTime, fin: f.endTime }
+          : { fecha, status: "SIN_CAPTURA", inicio: null, fin: null };
+      });
+      const huella = createHash("sha1")
+        .update(JSON.stringify(dias.map((d) => [d.status, d.inicio, d.fin])))
+        .digest("hex")
+        .slice(0, 12);
+      return { persona, dias, huella };
+    })
+    // Quien no tiene nada esa semana (baja reciente, alta pendiente) no recibe una semana vacía.
+    .filter((h) => h.dias.some((d) => d.status !== "SIN_CAPTURA" && d.status !== "TERMINATED"));
+  return { personas: resultado, ultimoCambio };
 }
 
 // ── Envío ───────────────────────────────────────────────────────────────────
