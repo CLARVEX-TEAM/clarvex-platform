@@ -448,3 +448,92 @@ export async function tarjetaHorarios(opciones: {
     </Marco>
   ));
 }
+
+// ── Tailored Help (al grupo) ────────────────────────────────────────────────
+
+/**
+ * Cómo va la tienda en la campaña, para el grupo, con el RANKING de todos
+ * --gerencia y asesores--: todos piden donativos en caja, así lo pidió Adrián.
+ */
+export async function tarjetaCampana(opciones: {
+  tienda: string;
+  semana: number;
+  ranking: Array<{ nombre: string; total: number; donativos: number }>;
+  totalSemana: number;
+  metaSemana: number;
+  totalCampana: number;
+}): Promise<Buffer> {
+  const mayor = Math.max(1, ...opciones.ranking.map((p) => p.total));
+  const MEDALLAS = ["#E9C46A", "#C9CED6", "#D9A27A"];
+  const SALVIA = "#5F7464";
+  const pct = opciones.metaSemana > 0 ? Math.round((opciones.totalSemana / opciones.metaSemana) * 100) : null;
+  const ancho = opciones.metaSemana > 0 ? Math.min(1, opciones.totalSemana / opciones.metaSemana) : 0;
+  return aPng((logo) => (
+    <Marco
+      logo={logo}
+      tienda={opciones.tienda}
+      chip={`Tailored Help · Semana ${opciones.semana}`}
+      chipFondo="#E6EDE6"
+      chipTinta={SALVIA}
+      tonos={["#E2EBE2", "#FBF1E6", "#E6EDE6"]}
+    >
+      <div style={{ display: "flex", flexDirection: "column", marginTop: 46 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+          <svg width="34" height="30" viewBox="0 0 24 21">
+            <path d="M12 21 1.7 10.6A6 6 0 0 1 12 3.1a6 6 0 0 1 10.3 7.5Z" fill={SALVIA} />
+          </svg>
+          <span style={{ fontSize: 30, color: SALVIA, fontWeight: 600, letterSpacing: 1 }}>¡JUNTOS CONSTRUIMOS FUTUROS!</span>
+        </div>
+        <span style={{ fontSize: 60, fontWeight: 700, letterSpacing: -2, lineHeight: 1.05, marginTop: 14 }}>Así vamos en donativos</span>
+      </div>
+      <Tarjeta margenArriba={34} relleno="30px 40px">
+        <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between" }}>
+          <div style={{ display: "flex", flexDirection: "column" }}>
+            <span style={{ fontSize: 24, color: C.suave, fontWeight: 500 }}>Esta semana</span>
+            <span style={{ fontSize: 84, fontWeight: 700, letterSpacing: -3, lineHeight: 1.05, color: SALVIA }}>{pesos(opciones.totalSemana)}</span>
+            <span style={{ fontSize: 26, color: C.suave }}>de {pesos(opciones.metaSemana)}</span>
+          </div>
+          <span style={{ fontSize: 56, fontWeight: 700, color: SALVIA, paddingBottom: 12 }}>{pct === null ? "" : `${pct}%`}</span>
+        </div>
+        <div style={{ display: "flex", marginTop: 22, width: "100%", height: 22, borderRadius: 999, background: "#E6EDE6" }}>
+          <div style={{ display: "flex", width: `${Math.max(ancho * 100, ancho > 0 ? 4 : 0)}%`, height: 22, borderRadius: 999, background: SALVIA }} />
+        </div>
+      </Tarjeta>
+      <Tarjeta margenArriba={22} relleno="18px 36px">
+        <span style={{ fontSize: 22, fontWeight: 600, color: C.tenue, letterSpacing: 1.5, marginBottom: 6 }}>RANKING DE LA SEMANA</span>
+        {opciones.ranking.map((p, i) => (
+          <div
+            key={p.nombre}
+            style={{ display: "flex", alignItems: "center", height: 66, borderTop: i === 0 ? "none" : `1px solid ${C.linea}` }}
+          >
+            <span
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: 46,
+                height: 46,
+                borderRadius: 46,
+                fontSize: 24,
+                fontWeight: 700,
+                background: i < 3 && p.total > 0 ? MEDALLAS[i] : "#F1F0EB",
+                color: i < 3 && p.total > 0 ? "#FFFFFF" : C.tenue
+              }}
+            >
+              {i + 1}
+            </span>
+            <span style={{ fontSize: 30, fontWeight: 600, marginLeft: 18, width: 230 }}>{firstName(p.nombre)}</span>
+            <div style={{ display: "flex", alignItems: "center", flexGrow: 1, justifyContent: "space-between" }}>
+              <Barra fraccion={p.total / mayor} color="#B9CBB9" ancho={200} />
+              <span style={{ fontSize: 30, fontWeight: 700, color: p.total > 0 ? C.tinta : C.tenue }}>{pesos(p.total)}</span>
+            </div>
+          </div>
+        ))}
+      </Tarjeta>
+      <div style={{ display: "flex", marginTop: 22, padding: "20px 28px", borderRadius: 30, background: "#E6EDE6", justifyContent: "space-between", alignItems: "center" }}>
+        <span style={{ fontSize: 24, color: SALVIA, fontWeight: 500 }}>Desde que arrancó la campaña</span>
+        <span style={{ fontSize: 38, fontWeight: 700, color: SALVIA }}>{pesos(opciones.totalCampana)}</span>
+      </div>
+    </Marco>
+  ));
+}

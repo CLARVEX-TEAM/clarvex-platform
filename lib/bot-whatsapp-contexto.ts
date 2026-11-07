@@ -61,6 +61,8 @@ export type ContextoBot = {
   comision: ComisionBot | null;
   /** Solo gerencia: venta y comisión de cada asesor del mes. */
   equipo: ComisionBot[];
+  /** Tailored Help ya redactado; null sin campaña activa. */
+  campana: string | null;
   pendientes: Array<{ titulo: string; vence: Date }>;
   comunicadosSinLeer: string[];
   cursos: string[];
@@ -179,6 +181,7 @@ export function armarContexto(c: ContextoBot): string {
   if (c.comision) lineas.push(`Su comisión del mes retail a la fecha (la misma de la app): ${describirComision(c.comision)}.`);
   if (c.equipo.length) lineas.push(`Comisiones de su equipo este mes (solo gerencia puede verlas): ${c.equipo.map(describirComision).join("; ")}.`);
   if (c.ventaTienda) lineas.push(describirVenta("Venta de la tienda del mes retail", c.ventaTienda) + ".");
+  if (c.campana) lineas.push(c.campana);
 
   const pendientes = [c.tareaFija, ...c.pendientes.map((p) => `${p.titulo} (vence ${fechaCorta(p.vence)})`)];
   if (c.cursos.length) pendientes.push(`cursos sin aprobar: ${c.cursos.join(", ")}`);
@@ -226,4 +229,29 @@ export function turnosAlternados(
   }
   while (limpios.length && limpios[0].role !== "user") limpios.shift();
   return limpios;
+}
+
+/**
+ * Tailored Help en una línea para el bot. La meta es de la TIENDA: a la
+ * persona se le dice cuánto aporta, nunca una meta propia que no existe.
+ */
+export function describirCampana(opciones: {
+  semanaTienda: number;
+  semanaMeta: number;
+  propioSemana: number | null;
+  propioTotal: number | null;
+  tiendaTotal: number;
+  equipo: Array<{ nombre: string; total: number }> | null;
+}): string {
+  const alcance = opciones.semanaMeta > 0 ? ` (${Math.round((opciones.semanaTienda / opciones.semanaMeta) * 100)} %)` : "";
+  const partes = [
+    `Campaña Tailored Help (donativos en caja para la escuela Christel House; la meta es de la TIENDA, por día): esta semana la tienda lleva ${PESOS.format(opciones.semanaTienda)} de ${PESOS.format(opciones.semanaMeta)}${alcance}, y ${PESOS.format(opciones.tiendaTotal)} desde que arrancó`
+  ];
+  if (opciones.propioSemana !== null) {
+    partes.push(`esta persona aportó ${PESOS.format(opciones.propioSemana)} esta semana y ${PESOS.format(opciones.propioTotal ?? 0)} en toda la campaña`);
+  }
+  if (opciones.equipo?.length) {
+    partes.push(`por persona esta semana (solo gerencia): ${opciones.equipo.map((p) => `${p.nombre} ${PESOS.format(p.total)}`).join(", ")}`);
+  }
+  return partes.join("; ") + ".";
 }

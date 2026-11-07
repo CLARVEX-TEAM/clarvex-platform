@@ -24,3 +24,9 @@ import { tarjetaHorarios } from "@/lib/whatsapp-tarjeta";
     dias: st.map((s, i) => ({ fecha: d(i), status: s, inicio: i === 1 ? "13:00" : "10:30", fin: i === 1 ? "21:00" : "19:00" })) }));
   console.log("horarios ok");
 })();
+import { tarjetaCampana } from "@/lib/whatsapp-tarjeta";
+(async () => {
+  writeFileSync(`${S}/tarjeta-campana.png`, await tarjetaCampana({ tienda: "TH San Agustín", semana: 45, totalSemana: 138, metaSemana: 292, totalCampana: 355,
+    ranking: [["JESUS ADRIAN HERNANDEZ LUNA", 52], ["WAIRA ZITLALI POPOCA", 38], ["ALONSO TREVIÑO", 26], ["ITZEL SAIDY REYES BAUTISTA", 22], ["JAZMIN CASTRO ZUÑIGA", 0]].map(([nombre, total]) => ({ nombre: String(nombre), total: Number(total), donativos: 0 })) }));
+  console.log("campaña ok");
+})();

@@ -4,7 +4,8 @@ import { PERSON_WHERE } from "@/lib/store-people";
 import { buildCommissionPerson, type CommissionPersonInternal } from "@/lib/commission-read";
 import { getKpiReport } from "@/lib/services/kpi-service";
 import type { Role } from "@/lib/types";
-import { armarDias, type ComisionBot, type ContextoBot, type TurnoBot, type VentaBot } from "@/lib/bot-whatsapp-contexto";
+import { resumenDeSemana, acumuladoCampana } from "@/lib/campana-datos";
+import { armarDias, describirCampana, type ComisionBot, type ContextoBot, type TurnoBot, type VentaBot } from "@/lib/bot-whatsapp-contexto";
 
 /**
  * Las consultas detrás del contexto del bot. Todo se filtra por la persona que
@@ -86,7 +87,7 @@ export async function contextoDelEmpleado(opciones: {
   const mes = retailMonthBoundsFor(hoy);
   const enMes = { date: { gte: mes.start, lte: mes.end } };
 
-  const [turnos, pendientes, comunicados, capturasTienda, filas, horarios, comision] = await Promise.all([
+  const [turnos, pendientes, comunicados, capturasTienda, filas, horarios, comision, campanaSemana, campanaTotal] = await Promise.all([
     // ⚠️ Por `date`, nunca por `day`: la tabla guarda semanas viejas con el mismo
     // nombre de día, y ya excluyó a alguien que sí trabajaba.
     prisma.schedule.findMany({
@@ -114,7 +115,9 @@ export async function contextoDelEmpleado(opciones: {
     comisiones({ userId, storeId, rol, nombre: usuario?.name ?? "", hoy }).catch((error) => {
       console.error("[bot-whatsapp] comisión", error instanceof Error ? error.message : error);
       return { propia: null, equipo: [] };
-    })
+    }),
+    resumenDeSemana(storeId, hoy).catch(() => null),
+    acumuladoCampana(storeId, userId).catch(() => null)
   ]);
 
   const capturados = new Set(capturasTienda.map((k) => clave(k.date)));
@@ -140,6 +143,16 @@ export async function contextoDelEmpleado(opciones: {
     }),
     comision: comision.propia,
     equipo: comision.equipo,
+    campana: campanaSemana && campanaTotal
+      ? describirCampana({
+          semanaTienda: campanaSemana.total,
+          semanaMeta: campanaSemana.meta,
+          propioSemana: campanaSemana.personas.find((p) => p.userId === userId)?.total ?? 0,
+          propioTotal: campanaTotal.propio,
+          tiendaTotal: campanaTotal.tienda,
+          equipo: GERENCIA.has(rol) ? campanaSemana.personas.map((p) => ({ nombre: p.nombre, total: p.total })) : null
+        })
+      : null,
     pendientes: pendientes.map((p) => ({ titulo: p.title, vence: p.dueDate })),
     comunicadosSinLeer: comunicados.map((a) => a.title),
     cursos: opciones.cursos,

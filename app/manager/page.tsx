@@ -1,5 +1,6 @@
 "use client";
 
+import { BandaCampana } from "@/components/campana/BandaCampana";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -314,6 +315,7 @@ export default function ManagerDashboard() {
         </motion.div>
 
         <div className="mt-3">
+          <BandaCampana className="mb-4" />
           <QuickActions variant="manager" delay={0.32} />
           <UniformToday />
         </div>

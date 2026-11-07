@@ -34,6 +34,7 @@ export const ROUTES_WITH_NAV = new Set([
   "/advisor",
   "/asistencia",
   "/bitacora",
+  "/campanas/tailored-help",
   "/capacitacion",
   "/chat",
   "/checklist",

@@ -115,6 +115,8 @@ model Store {
   screenViews                    ScreenView[]
   nativeDevices                  NativeDevice[]
   attendanceCorrectionRequests   AttendanceCorrectionRequest[]
+  campaignGoals                  CampaignGoal[]
+  campaignEntries                CampaignEntry[]
 }
 
 model StoreFixture {
@@ -266,6 +268,7 @@ model User {
   reviewedAttendanceCorrections AttendanceCorrectionRequest[] @relation("AttendanceCorrectionReviewer")
   supportCases                  SupportCase[]
   screenViews                   ScreenView[]
+  campaignEntries               CampaignEntry[]
 }
 
 model TrainingResource {
@@ -2022,4 +2025,52 @@ model ScreenView {
   @@index([route, createdAt])
   @@index([storeId, createdAt])
   @@index([userId, createdAt])
+}
+
+/// Campaña de la tienda (p. ej. Tailored Help, donativos en caja para Christel House).
+/// La meta llega del corporativo por tienda y por DÍA; lo de cada quien lo captura gerencia a mano.
+model Campaign {
+  id        String          @id @default(cuid())
+  slug      String          @unique
+  name      String
+  startDate DateTime        @db.Date
+  endDate   DateTime?       @db.Date
+  active    Boolean         @default(true)
+  createdAt DateTime        @default(now())
+  goals     CampaignGoal[]
+  entries   CampaignEntry[]
+}
+
+model CampaignGoal {
+  id         String   @id @default(cuid())
+  campaignId String
+  storeId    String
+  date       DateTime @db.Date
+  amount     Decimal  @db.Decimal(12, 2)
+  updatedBy  String?
+  updatedAt  DateTime @updatedAt
+  campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  store      Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, storeId, date])
+}
+
+model CampaignEntry {
+  id         String   @id @default(cuid())
+  campaignId String
+  storeId    String
+  userId     String
+  date       DateTime @db.Date
+  amount     Decimal  @db.Decimal(12, 2)
+  /// Cuántos donativos (tickets con donativo); opcional, 0 si no se lleva.
+  count      Int      @default(0)
+  updatedBy  String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  store      Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, userId, date])
+  @@index([campaignId, storeId, date])
 }
