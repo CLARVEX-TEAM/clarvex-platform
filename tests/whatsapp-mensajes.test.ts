@@ -105,22 +105,27 @@ test("el análisis dice el día más bajo solo si quedó debajo de la meta", () 
   assert.ok(!todoEnMeta.some((l) => l.includes("día más bajo")));
 });
 
-test("los horarios dicen el turno de cada día y cuántos días trabaja", async () => {
-  const { horariosDeLaSemana, textoTurno } = await import("@/lib/whatsapp-mensajes");
+test("los horarios usan las palabras de la tienda, Entrada y Salida y la semana retail", async () => {
+  const { horariosDeLaSemana, textoTurno, etiquetaTurno, entradaSalida } = await import("@/lib/whatsapp-mensajes");
+  const { reconstructRdvWeek } = await import("@/lib/rdv-week");
+  assert.equal(reconstructRdvWeek(d(0)).weekNumber, 45); // domingo 8 nov 2026 = semana 45, como en el RDV
+  assert.equal(reconstructRdvWeek(d(6)).weekNumber, 45); // el sábado sigue en la misma semana
   assert.equal(textoTurno({ fecha: d(0), status: "WORKING", inicio: "10:30", fin: "19:00" }), "10:30 – 19:00");
-  assert.equal(textoTurno({ fecha: d(0), status: "INVENTORY", inicio: "08:00", fin: "16:00" }), "Inventario · 08:00 – 16:00");
-  assert.equal(textoTurno({ fecha: d(0), status: "OFF", inicio: null, fin: null }), "Descanso");
-  assert.equal(textoTurno({ fecha: d(0), status: "WORKING", inicio: null, fin: null }), "Hora por confirmar");
-  assert.equal(textoTurno({ fecha: d(0), status: "SIN_CAPTURA", inicio: null, fin: null }), "Por definir");
+  assert.equal(textoTurno({ fecha: d(0), status: "INVENTORY", inicio: "08:00", fin: "16:00" }), "Conteo · 08:00 – 16:00");
+  assert.equal(etiquetaTurno({ fecha: d(0), status: "PAID_DAY", inicio: null, fin: null }), "Pago día");
+  assert.equal(etiquetaTurno({ fecha: d(0), status: "SIN_CAPTURA", inicio: null, fin: null }), "Por definir");
+  assert.deepEqual(entradaSalida({ fecha: d(0), status: "WORKING", inicio: null, fin: null }), { entrada: "—", salida: "—" });
+  assert.equal(entradaSalida({ fecha: d(0), status: "OFF", inicio: null, fin: null }), null);
   const dias = [
     { fecha: d(0), status: "WORKING", inicio: "10:30", fin: "19:00" },
     { fecha: d(1), status: "OFF", inicio: null, fin: null }
   ];
-  const pie = horariosDeLaSemana({ nombre: "ALGUIEN", inicio: d(0), fin: d(6), dias, actualizacion: false, conTarjeta: true });
-  assert.match(pie, /Ya están tus horarios/);
-  assert.match(pie, /Trabajas \*1 día\*/);
-  const completo = horariosDeLaSemana({ nombre: "ALGUIEN", inicio: d(0), fin: d(6), dias, actualizacion: true });
-  assert.match(completo, /Se actualizó tu horario/);
+  const pie = horariosDeLaSemana({ nombre: "ALGUIEN", semana: 45, inicio: d(0), fin: d(6), dias, actualizacion: false, conTarjeta: true });
+  assert.match(pie, /Tus horarios · Semana 45/);
+  assert.match(pie, /Laboras \*1 día\*/);
+  const completo = horariosDeLaSemana({ nombre: "ALGUIEN", semana: 45, inicio: d(0), fin: d(6), dias, actualizacion: true });
+  assert.match(completo, /Se actualizó tu horario · Semana 45/);
+  assert.match(completo, /Día\s+Entrada\s+Salida/);
+  assert.match(completo, /Dom 8\s+10:30\s+19:00/);
   assert.match(completo, /Lun 9\s+Descanso/);
-  assert.match(completo, /\/horarios$/);
 });

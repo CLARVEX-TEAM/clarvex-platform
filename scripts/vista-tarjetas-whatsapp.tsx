@@ -20,7 +20,7 @@ const metas = [9154.76, 6210, 0, 6210, 7350, 9800, 12450];
 import { tarjetaHorarios } from "@/lib/whatsapp-tarjeta";
 (async () => {
   const st = ["WORKING", "WORKING", "OFF", "WORKING", "INVENTORY", "WORKING", "VACATION"];
-  writeFileSync(`${S}/tarjeta-horarios.png`, await tarjetaHorarios({ nombre: "ALONSO TREVIÑO", tienda: "TH San Agustín", inicio: d(0), fin: d(6), actualizacion: false,
+  writeFileSync(`${S}/tarjeta-horarios.png`, await tarjetaHorarios({ nombre: "ALONSO TREVIÑO", tienda: "TH San Agustín", semana: 45, inicio: d(0), fin: d(6), actualizacion: false,
     dias: st.map((s, i) => ({ fecha: d(i), status: s, inicio: i === 1 ? "13:00" : "10:30", fin: i === 1 ? "21:00" : "19:00" })) }));
   console.log("horarios ok");
 })();
