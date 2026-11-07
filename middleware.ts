@@ -107,6 +107,8 @@ const captureRoutes = new Set([
   "/api/admin/capture/goals",
   "/api/admin/capture/weekly-performance",
   "/api/admin/capture/weekly-performance/export",
+  // Tailored Help: calendario de metas y donativos por persona.
+  "/api/admin/capture/campana",
   "/api/admin/capture/discounts",
   "/api/admin/capture/electronic-tickets",
   // Kardex de inventario: movimientos (GET/POST) y rondas (abrir/cerrar).
