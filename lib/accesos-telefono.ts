@@ -11,6 +11,7 @@ import {
   Clock,
   CreditCard,
   GraduationCap,
+  Heart,
   HeartHandshake,
   MessageSquare,
   PackageSearch,
@@ -60,6 +61,7 @@ export const ACCESOS_GERENCIA: AccesoTelefono[] = [
   { href: "/capacitacion", icon: GraduationCap, label: "Capacitación" },
   { href: "/encuestas", icon: ClipboardCheck, label: "Encuestas" },
   { href: "/conteos", icon: Boxes, label: "Conteos" },
+  { href: "/campanas/tailored-help", icon: Heart, label: "Tailored Help" },
   // ⚠️ «Equipo» no estaba en la rejilla anterior: colgaba de un botón suelto de
   // `/manager`, así que dentro de la APK se quedó sin entrada igual que los
   // demás. Es donde se capturan los correos reales y se marca el celular de la
@@ -82,7 +84,8 @@ export const ACCESOS_ASESOR: AccesoTelefono[] = [
   { href: "/faltantes", icon: PackageSearch, label: "Faltantes" },
   { href: "/capacitacion", icon: GraduationCap, label: "Capacitación" },
   { href: "/encuestas", icon: ClipboardCheck, label: "Encuestas" },
-  { href: "/conteos", icon: Boxes, label: "Conteos" }
+  { href: "/conteos", icon: Boxes, label: "Conteos" },
+  { href: "/campanas/tailored-help", icon: Heart, label: "Tailored Help" }
 ];
 
 /** Los puestos que ven la lista de gerencia. */
