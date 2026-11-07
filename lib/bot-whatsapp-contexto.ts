@@ -31,6 +31,8 @@ export type ContextoBot = {
   turnos: TurnoBot[];
   ventaPersonal: VentaBot | null;
   ventaTienda: VentaBot | null;
+  /** Días del mes retail con venta capturada, en orden. */
+  ventaPorDia: Array<{ fecha: Date; venta: number; meta: number }>;
   pendientes: Array<{ titulo: string; vence: Date }>;
   comunicadosSinLeer: string[];
   cursos: string[];
@@ -83,6 +85,11 @@ export function describirVenta(etiqueta: string, venta: VentaBot): string {
   return `${etiqueta}: ${PESOS.format(venta.venta)} de ${PESOS.format(venta.meta)}${alcance} (capturado hasta el ${fechaCorta(venta.ultimaCaptura)})`;
 }
 
+export function describirDia(d: { fecha: Date; venta: number; meta: number }): string {
+  const alcance = d.meta > 0 ? ` (${Math.round((d.venta / d.meta) * 100)} %)` : "";
+  return `${fechaCorta(d.fecha)} ${PESOS.format(d.venta)} de ${PESOS.format(d.meta)}${alcance}`;
+}
+
 export function armarContexto(c: ContextoBot): string {
   const lineas = [`Empleado: ${c.nombre} (${c.rol}). Hoy es ${fechaCorta(c.hoy)}.`];
 
@@ -93,6 +100,7 @@ export function armarContexto(c: ContextoBot): string {
   );
 
   if (c.ventaPersonal) lineas.push(describirVenta("Su venta del mes retail", c.ventaPersonal) + ".");
+  if (c.ventaPorDia.length) lineas.push(`Su venta por día este mes: ${c.ventaPorDia.map(describirDia).join("; ")}.`);
   if (c.ventaTienda) lineas.push(describirVenta("Venta de la tienda del mes retail", c.ventaTienda) + ".");
 
   const pendientes = [c.tareaFija, ...c.pendientes.map((p) => `${p.titulo} (vence ${fechaCorta(p.vence)})`)];

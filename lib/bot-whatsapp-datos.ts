@@ -46,7 +46,7 @@ export async function contextoDelEmpleado(opciones: {
   const rol = usuario?.role ?? "ASESOR";
   const mes = retailMonthBoundsFor(hoy);
 
-  const [turnos, ventaPersonal, ventaTienda, pendientes, comunicados] = await Promise.all([
+  const [turnos, ventaPersonal, ventaTienda, pendientes, comunicados, dias] = await Promise.all([
     // ⚠️ Por `date`, nunca por `day`: la tabla guarda semanas viejas con el mismo
     // nombre de día, y ya excluyó a alguien que sí trabajaba.
     prisma.schedule.findMany({
@@ -71,6 +71,11 @@ export async function contextoDelEmpleado(opciones: {
       orderBy: { createdAt: "desc" },
       take: 3,
       select: { title: true }
+    }),
+    prisma.kpi.findMany({
+      where: { userId, storeId, date: { gte: mes.start, lte: mes.end }, ...CON_CAPTURA },
+      orderBy: { date: "asc" },
+      select: { date: true, dailySales: true, dailyGoal: true }
     })
   ]);
 
@@ -83,6 +88,7 @@ export async function contextoDelEmpleado(opciones: {
     ),
     ventaPersonal,
     ventaTienda,
+    ventaPorDia: dias.map((d) => ({ fecha: d.date, venta: Number(d.dailySales), meta: Number(d.dailyGoal) })),
     pendientes: pendientes.map((p) => ({ titulo: p.title, vence: p.dueDate })),
     comunicadosSinLeer: comunicados.map((a) => a.title),
     cursos: opciones.cursos,

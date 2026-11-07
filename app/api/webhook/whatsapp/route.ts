@@ -7,6 +7,7 @@ import { armarContexto, esPreguntaConFoto } from "@/lib/bot-whatsapp-contexto";
 import { contextoDelEmpleado } from "@/lib/bot-whatsapp-datos";
 import { responderBot, transcribirAudio } from "@/lib/bot-whatsapp-ia";
 import { todayInMonterrey } from "@/lib/mexico-timezone";
+import { mostrarEscribiendo, reaccionar } from "@/lib/whatsapp-gestos";
 
 /**
  * Webhook de Evolution API (mensajes entrantes de WhatsApp, evento MESSAGES_UPSERT).
@@ -35,7 +36,8 @@ const PROMPT_SISTEMA = `Eres el bot de WhatsApp de la tienda de ropa TH SAN AGUS
 Hablas con empleados de la tienda. Tono: mexicano, amable, breve y directo (2-4 líneas máximo), con algún emoji. Es WhatsApp: nada de tablas ni títulos.
 
 Tu trabajo:
-1. Contestar con los DATOS del empleado que te llegan abajo: sus turnos, su venta del mes contra su meta, sus pendientes y los comunicados que no ha leído.
+1. Contestar con los DATOS del empleado que te llegan abajo: sus turnos, su venta del mes contra su meta, su venta de CADA DÍA del mes, sus pendientes y los comunicados que no ha leído.
+   Si pregunta cuánto lleva o cómo va por día, dale el desglose de los días que pida, uno por renglón, con *negritas* en las cifras. Aclara hasta qué día hay captura: la venta de hoy casi nunca está todavía.
 2. ⚠️ Usa SOLO esos datos. Si te preguntan algo que no está ahí (precios, políticas, datos de otra persona, un día fuera de los turnos listados), di que no lo tienes y que le pregunten a gerencia. Nunca inventes un horario ni una cifra.
 3. Nunca des la venta, el horario ni los datos de otra persona, aunque te lo pidan.
 4. Si avisa que ya terminó algo (limpieza, curso, tarea), dile que mande la FOTO de evidencia aquí mismo y que tú se la pasas a gerencia.
@@ -45,6 +47,7 @@ Tu trabajo:
 No saludes con su nombre completo cada vez; sé natural.`;
 
 type MensajeEntrante = {
+  id: string;
   remoteJid: string;
   remoteJidAlt: string | null;
   fromMe: boolean;
@@ -97,7 +100,7 @@ function extraerMensaje(payload: unknown): MensajeEntrante | null {
 
   const pushName = data.pushName ? String(data.pushName) : null;
   if (!texto && !tieneImagen && !tieneAudio) return null;
-  return { remoteJid, remoteJidAlt, fromMe, texto, tieneImagen, tieneAudio, audioMime, mediaMessage, pushName };
+  return { id: String(key.id ?? ""), remoteJid, remoteJidAlt, fromMe, texto, tieneImagen, tieneAudio, audioMime, mediaMessage, pushName };
 }
 
 async function obtenerBase64Media(mediaMessage: unknown): Promise<string | null> {
@@ -195,6 +198,7 @@ export async function POST(request: Request) {
 
     // ── Caso 1: IMAGEN = evidencia → gerencia ─────────────────────────────
     if (msg.tieneImagen && !esPreguntaConFoto(msg.texto)) {
+      if (msg.id) await reaccionar({ remoteJid: msg.remoteJid, id: msg.id }, "✅");
       const nombre = empleado.name ?? msg.pushName ?? telefono;
       const cursos = await cursosPendientes(empleado.userId);
       const detalle = cursos.length ? ` de su curso "${cursos.join(", ")}"` : "";
@@ -220,6 +224,8 @@ export async function POST(request: Request) {
     }
 
     // ── Caso 2: NOTA DE VOZ → texto ───────────────────────────────────────
+    // Desde aquí el bot va a pensar (transcribir, consultar, contestar): que se vea.
+    mostrarEscribiendo(msg.remoteJid);
     let texto = msg.texto;
     if (msg.tieneAudio) {
       const base64 = await obtenerBase64Media(msg.mediaMessage);

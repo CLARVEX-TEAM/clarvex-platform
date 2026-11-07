@@ -45,6 +45,7 @@ test("el contexto de un asesor no lleva la venta de tienda", () => {
     turnos: [],
     ventaPersonal: { venta: 1000, meta: 2000, ultimaCaptura: HOY },
     ventaTienda: null,
+    ventaPorDia: [{ fecha: dia(-1), venta: 9800, meta: 9155 }],
     pendientes: [{ titulo: "Etiquetar sobrante", vence: dia(1) }],
     comunicadosSinLeer: ["Nueva promoción"],
     cursos: ["Servicio"],
@@ -55,6 +56,7 @@ test("el contexto de un asesor no lleva la venta de tienda", () => {
   assert.match(texto, /no hay horario capturado/);
   assert.match(texto, /Limpiar la bodega · Etiquetar sobrante \(vence martes 10 nov\) · cursos sin aprobar: Servicio/);
   assert.match(texto, /Nueva promoción/);
+  assert.match(texto, /Su venta por día este mes: domingo 8 nov \$9,800 de \$9,155 \(107 %\)/);
 });
 
 test("una foto con pregunta se contesta; sin pie o con un comentario es evidencia", () => {
