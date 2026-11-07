@@ -3,7 +3,17 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { ImageResponse } from "next/og";
 import { firstName } from "@/lib/weekly-close";
-import { analizarSemana, rangoSemana, textoTurno, totalMetas, type DiaHorario, type DiaMeta, type DiaVenta } from "@/lib/whatsapp-mensajes";
+import {
+  analizarSemana,
+  entradaSalida,
+  etiquetaTurno,
+  rangoSemana,
+  totalMetas,
+  trabajaEseDia,
+  type DiaHorario,
+  type DiaMeta,
+  type DiaVenta
+} from "@/lib/whatsapp-mensajes";
 import { pesos, porcentaje } from "@/lib/whatsapp-formato";
 
 /**
@@ -349,7 +359,7 @@ export async function tarjetaCierre(opciones: {
 
 // ── Horarios de la semana ───────────────────────────────────────────────────
 
-/** Pastel por tipo de día: trabajo en cielo, inventario en lavanda, ausencias en gris o durazno. */
+/** Pastel por tipo de día: Laborando en cielo, Conteo en lavanda, Vacaciones y Pago día en durazno. */
 function tonoTurno(status: string): { fondo: string; tinta: string } {
   if (status === "WORKING") return { fondo: C.cielo, tinta: C.cieloTinta };
   if (status === "INVENTORY") return { fondo: C.lavanda, tinta: C.lavandaTinta };
@@ -357,43 +367,83 @@ function tonoTurno(status: string): { fondo: string; tinta: string } {
   return { fondo: "#F1F0EB", tinta: C.tenue };
 }
 
+/**
+ * Como la hoja de horarios de la tienda: día, Entrada y Salida, y en los días
+ * que no se trabaja la palabra de la hoja (Descanso, Vacaciones, Pago día…).
+ */
 export async function tarjetaHorarios(opciones: {
   nombre: string;
   tienda: string;
+  semana: number;
   inicio: Date;
   fin: Date;
   dias: DiaHorario[];
   actualizacion: boolean;
 }): Promise<Buffer> {
-  const trabaja = opciones.dias.filter((d) => d.status === "WORKING" || d.status === "INVENTORY").length;
+  const trabaja = opciones.dias.filter(trabajaEseDia).length;
+  const COL = 190;
   return aPng((logo) => (
     <Marco
       logo={logo}
       tienda={opciones.tienda}
-      chip={opciones.actualizacion ? "Horario actualizado" : "Horarios"}
+      chip={`Semana ${opciones.semana}${opciones.actualizacion ? " · actualizada" : ""}`}
       chipFondo={C.menta}
       chipTinta={C.mentaTinta}
       tonos={["#D8F1E5", "#DCEBFF", "#E8E3FF"]}
     >
-      <Titulo texto="Tu semana" nombre={firstName(opciones.nombre)} rango={rangoSemana(opciones.inicio, opciones.fin)} />
-      <Tarjeta margenArriba={40} relleno="30px 40px">
-        <span style={{ fontSize: 24, color: C.suave, fontWeight: 500 }}>Días de trabajo</span>
-        <span style={{ fontSize: 96, fontWeight: 700, letterSpacing: -3, lineHeight: 1.1, color: C.mentaTinta }}>{`${trabaja} de 7`}</span>
+      <Titulo texto="Tus horarios" nombre={firstName(opciones.nombre)} rango={rangoSemana(opciones.inicio, opciones.fin)} />
+      <Tarjeta margenArriba={36} relleno="26px 40px">
+        <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between" }}>
+          <span style={{ fontSize: 26, color: C.suave, fontWeight: 500 }}>Días laborando</span>
+          <span style={{ fontSize: 72, fontWeight: 700, letterSpacing: -2, color: C.mentaTinta }}>{`${trabaja} de 7`}</span>
+        </div>
       </Tarjeta>
-      <Tarjeta margenArriba={24}>
+      <Tarjeta margenArriba={22} relleno="16px 36px 22px">
+        <div style={{ display: "flex", alignItems: "center", height: 54, fontSize: 22, fontWeight: 600, color: C.tenue, letterSpacing: 1.5 }}>
+          <span style={{ width: 260 }}>DÍA</span>
+          <div style={{ display: "flex", flexGrow: 1, justifyContent: "flex-end" }}>
+            <span style={{ width: COL, display: "flex", justifyContent: "center" }}>ENTRADA</span>
+            <span style={{ width: COL, display: "flex", justifyContent: "center" }}>SALIDA</span>
+          </div>
+        </div>
         {opciones.dias.map((d, i) => {
           const tono = tonoTurno(d.status);
-          const libre = d.status !== "WORKING" && d.status !== "INVENTORY";
+          const es = entradaSalida(d);
+          const pastilla = (texto: string, ancho: number) => (
+            <span
+              style={{
+                display: "flex",
+                justifyContent: "center",
+                width: ancho,
+                fontSize: 30,
+                fontWeight: 600,
+                padding: "10px 0",
+                borderRadius: 999,
+                background: tono.fondo,
+                color: tono.tinta
+              }}
+            >
+              {texto}
+            </span>
+          );
           return (
-            <Fila key={i} primera={i === 0} dia={d.fecha} apagada={libre} alto={80}>
-              <div style={{ display: "flex", flexGrow: 1, justifyContent: "flex-end" }}>
-                <span style={{ fontSize: 30, fontWeight: 600, padding: "10px 24px", borderRadius: 999, background: tono.fondo, color: tono.tinta }}>
-                  {textoTurno(d)}
-                </span>
+            <Fila key={i} primera={false} dia={d.fecha} apagada={!es} alto={78}>
+              <div style={{ display: "flex", flexGrow: 1, justifyContent: "flex-end", gap: 14 }}>
+                {es ? (
+                  <>
+                    {pastilla(es.entrada, COL - 14)}
+                    {pastilla(es.salida, COL - 14)}
+                  </>
+                ) : (
+                  pastilla(etiquetaTurno(d), COL * 2 - 14)
+                )}
               </div>
             </Fila>
           );
         })}
+        {opciones.dias.some((d) => d.status === "INVENTORY") ? (
+          <span style={{ fontSize: 22, color: C.lavandaTinta, marginTop: 14 }}>Los días en lavanda son de Conteo.</span>
+        ) : null}
       </Tarjeta>
     </Marco>
   ));

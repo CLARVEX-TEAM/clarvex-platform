@@ -216,44 +216,66 @@ export function cierreDeSemanaTienda(opciones: {
 
 export type DiaHorario = { fecha: Date; status: string; inicio: string | null; fin: string | null };
 
-/** «10:30 – 21:00», «Descanso»… El mismo vocabulario que la pantalla de Horarios. */
+/**
+ * Las palabras del archivo de horarios de la tienda (`SCHEDULE_STATUS_LABELS`):
+ * Laborando, Descanso, Vacaciones, Pago día, Conteo, Baja. Así lo lee el equipo
+ * en la tienda y así tiene que leerlo en su WhatsApp.
+ */
+const ETIQUETAS: Record<string, string> = {
+  WORKING: "Laborando",
+  OFF: "Descanso",
+  VACATION: "Vacaciones",
+  PAID_DAY: "Pago día",
+  INVENTORY: "Conteo",
+  TERMINATED: "Baja",
+  SIN_CAPTURA: "Por definir"
+};
+
+export const trabajaEseDia = (d: DiaHorario) => d.status === "WORKING" || d.status === "INVENTORY";
+
+export function etiquetaTurno(d: DiaHorario): string {
+  return ETIQUETAS[d.status] ?? d.status;
+}
+
+/** Entrada y salida del día; `null` cuando el día no se trabaja. Sin hora capturada, «—». */
+export function entradaSalida(d: DiaHorario): { entrada: string; salida: string } | null {
+  if (!trabajaEseDia(d)) return null;
+  return { entrada: d.inicio || "—", salida: d.fin || "—" };
+}
+
+/** «10:30 – 21:00», «Conteo · 08:00 – 16:00», «Descanso»… */
 export function textoTurno(d: DiaHorario): string {
-  switch (d.status) {
-    case "OFF":
-      return "Descanso";
-    case "VACATION":
-      return "Vacaciones";
-    case "PAID_DAY":
-      return "Día pagado";
-    case "TERMINATED":
-      return "Sin turno";
-    case "SIN_CAPTURA":
-      return "Por definir";
-    default: {
-      const horas = d.inicio && d.fin ? `${d.inicio} – ${d.fin}` : "Hora por confirmar";
-      return d.status === "INVENTORY" ? `Inventario · ${horas}` : horas;
-    }
-  }
+  const es = entradaSalida(d);
+  if (!es) return etiquetaTurno(d);
+  const horas = d.inicio && d.fin ? `${es.entrada} – ${es.salida}` : "Hora por confirmar";
+  return d.status === "INVENTORY" ? `Conteo · ${horas}` : horas;
 }
 
 export function horariosDeLaSemana(opciones: {
   nombre: string;
+  /** Número de la semana retail (domingo a sábado), el mismo del RDV. */
+  semana: number;
   inicio: Date;
   fin: Date;
   dias: DiaHorario[];
   actualizacion: boolean;
   conTarjeta?: boolean;
 }): string {
-  const trabaja = opciones.dias.filter((d) => d.status === "WORKING" || d.status === "INVENTORY").length;
-  const titulo = opciones.actualizacion ? "🔄 *Se actualizó tu horario*" : "🗓️ *Ya están tus horarios*";
+  const trabaja = opciones.dias.filter(trabajaEseDia).length;
+  const titulo = opciones.actualizacion
+    ? `🔄 *Se actualizó tu horario · Semana ${opciones.semana}*`
+    : `🗓️ *Tus horarios · Semana ${opciones.semana}*`;
+  const filas = [["Día", "Entrada", "Salida"]];
+  for (const d of opciones.dias) {
+    const es = entradaSalida(d);
+    filas.push(es ? [diaCorto(d.fecha), es.entrada, es.salida] : [diaCorto(d.fecha), etiquetaTurno(d), ""]);
+  }
   return [
     titulo,
     `_${rangoSemana(opciones.inicio, opciones.fin)}_`,
     "",
-    `${saludo(opciones.nombre)} ${opciones.actualizacion ? "gerencia cambió tu horario, queda así:" : "esta es tu semana:"}`,
-    opciones.conTarjeta
-      ? `Trabajas *${trabaja} ${trabaja === 1 ? "día" : "días"}* esta semana.`
-      : tabla(opciones.dias.map((d) => [diaCorto(d.fecha), textoTurno(d)])),
+    `${saludo(opciones.nombre)} ${opciones.actualizacion ? "gerencia cambió tu horario, queda así:" : "ya está tu horario de la semana:"}`,
+    opciones.conTarjeta ? `Laboras *${trabaja} ${trabaja === 1 ? "día" : "días"}* esta semana.` : tabla(filas),
     "",
     `👉 ${appUrl("/horarios")}`
   ].join("\n");

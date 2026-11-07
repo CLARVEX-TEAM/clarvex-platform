@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireCron } from "@/lib/cron-auth";
 import { resolveMonterreyDate } from "@/lib/cron-time";
 import { prisma } from "@/lib/prisma";
+import { reconstructRdvWeek } from "@/lib/rdv-week";
 import { horariosDeLaSemana as textoHorarios } from "@/lib/whatsapp-mensajes";
 import { tarjetaHorarios } from "@/lib/whatsapp-tarjeta";
 import {
@@ -73,7 +74,8 @@ export async function POST(request: Request) {
           resumen.sinCambios += 1;
           continue;
         }
-        const base = { nombre: h.persona.name, inicio, fin, dias: h.dias, actualizacion: suyos.length > 0 };
+        // La semana retail de la tienda (domingo a sábado), numerada como en el RDV.
+        const base = { nombre: h.persona.name, semana: reconstructRdvWeek(inicio).weekNumber, inicio, fin, dias: h.dias, actualizacion: suyos.length > 0 };
         if (enviados > 0) await esperar(PAUSA_MS);
         const via = await enviarSemanal({
           userId: h.persona.id,
