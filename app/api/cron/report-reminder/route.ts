@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { requireCron } from "@/lib/cron-auth";
 import { resolveMonterreyDate } from "@/lib/cron-time";
 import { prisma } from "@/lib/prisma";
-import { dispatchPushToUsers } from "@/lib/push";
+import { avisar } from "@/lib/whatsapp-canal";
 import { reminderForStore } from "@/lib/services/report-reminder";
 
 export const dynamic = "force-dynamic";
@@ -46,7 +46,7 @@ export async function POST(request: Request) {
   for (const [storeId, userIds] of byStore) {
     const reminder = await reminderForStore(storeId, today.utcDate);
     if (!reminder) continue;
-    await dispatchPushToUsers(userIds, {
+    await avisar(userIds, {
       title: reminder.kind === "QUINCENA" ? "📋 Cierre de quincena" : "⏰ Cierre del mes retail",
       body: reminder.message,
       tag: "reporte-asistencia",

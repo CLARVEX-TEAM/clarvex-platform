@@ -5,7 +5,7 @@ import { requireCron } from "@/lib/cron-auth";
 import { resolveMonterreyDate } from "@/lib/cron-time";
 import { createNotifications, type NotificationInput } from "@/lib/notifications";
 import { prisma } from "@/lib/prisma";
-import { dispatchPushToUsers } from "@/lib/push";
+import { avisar } from "@/lib/whatsapp-canal";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -93,7 +93,7 @@ export async function POST(request: Request) {
     });
 
     // El push no debe tumbar la alarma: la notificación en la app ya quedó.
-    await dispatchPushToUsers(managerIds, {
+    await avisar(managerIds, {
       title: message.title,
       body: message.body,
       tag: PUSH_TAG,

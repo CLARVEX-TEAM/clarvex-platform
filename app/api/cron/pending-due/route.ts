@@ -4,7 +4,7 @@ import { NotificationType } from "@prisma/client";
 import { resolveMonterreyDate } from "@/lib/cron-time";
 import { buildPendingDueReminder } from "@/lib/daily-summary";
 import { createNotifications, type NotificationInput } from "@/lib/notifications";
-import { dispatchPushToUsers } from "@/lib/push";
+import { avisar } from "@/lib/whatsapp-canal";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -69,7 +69,7 @@ export async function POST(request: Request) {
       await tx.dailyNotificationLog.createMany({ data: logsToCreate, skipDuplicates: true });
     });
 
-    await Promise.allSettled(pushJobs.map((job) => dispatchPushToUsers([job.userId], { title: job.title, body: job.body, tag: PUSH_TAG, url: "/pendientes" }).catch(() => undefined)));
+    await Promise.allSettled(pushJobs.map((job) => avisar([job.userId], { title: job.title, body: job.body, tag: PUSH_TAG, url: "/pendientes" }).catch(() => undefined)));
     summary.ownersNotified += pushJobs.length;
   }
 

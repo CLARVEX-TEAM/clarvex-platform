@@ -3,17 +3,22 @@ import { prisma } from "@/lib/prisma";
 import { enviarAvisoPorWhatsApp } from "@/lib/whatsapp-aviso";
 import { enviarMediaPorWhatsApp } from "@/lib/whatsapp-media";
 import { diezDigitosDelRemitente } from "@/lib/whatsapp-telefono";
+import { armarContexto, esPreguntaConFoto } from "@/lib/bot-whatsapp-contexto";
+import { contextoDelEmpleado } from "@/lib/bot-whatsapp-datos";
+import { responderBot, transcribirAudio } from "@/lib/bot-whatsapp-ia";
+import { todayInMonterrey } from "@/lib/mexico-timezone";
+import { mostrarEscribiendo, reaccionar } from "@/lib/whatsapp-gestos";
 
 /**
  * Webhook de Evolution API (mensajes entrantes de WhatsApp, evento MESSAGES_UPSERT).
  *
  * Bot de la tienda TH SAN AGUSTIN:
- *  1. Si el mensaje trae IMAGEN y el remitente es un empleado con cursos
- *     pendientes → se reenvía la foto a gerencia (solo Adrián) avisando
- *     quién mandó evidencia y de qué curso.
- *  2. Si es TEXTO de un empleado conocido → responde la IA (Groq) con un tono
- *     de bot de tienda, recordando sus pendientes. Límite: 10 interacciones
- *     por empleado al día.
+ *  1. IMAGEN = evidencia → se reenvía a gerencia (solo Adrián) avisando quién
+ *     la mandó y de qué curso. Si el pie es una PREGUNTA, se contesta como texto.
+ *  2. NOTA DE VOZ → se transcribe y se trata como texto.
+ *  3. TEXTO de un empleado conocido → responde la IA con SUS datos reales
+ *     (turnos, venta del mes, pendientes, comunicados). Límite: 10
+ *     interacciones por empleado al día.
  *
  * Seguridad: header `x-webhook-secret` debe coincidir con WA_WEBHOOK_SECRET.
  * Nunca lanza: siempre responde 200 para que Evolution no reintente en bucle.
@@ -28,22 +33,28 @@ const LIMPIEZA =
   "Limpiar y ordenar el departamento y la bodega (incluye colgar toda la ropa). Puedes mandar evidencia en foto o video.";
 
 const PROMPT_SISTEMA = `Eres el bot de WhatsApp de la tienda de ropa TH SAN AGUSTIN (cadena TH, México).
-Hablas con empleados de la tienda. Tono: mexicano, amable, breve y directo (2-4 líneas máximo), con algún emoji.
+Hablas con empleados de la tienda. Tono: mexicano, amable, breve y directo (2-4 líneas máximo), con algún emoji. Es WhatsApp: nada de tablas ni títulos.
 
 Tu trabajo:
-1. Recordar pendientes: limpieza, cursos y tareas del día.
-2. Responder dudas sencillas de la operación (qué le toca hoy, horarios, a quién avisar). No inventes políticas ni precios; si no sabes algo, di que le pregunten a gerencia.
-3. Si el empleado avisa que ya terminó algo (limpieza, curso, tarea), dile que mande la FOTO de evidencia aquí mismo y que tú se la pasas a gerencia.
-4. SIEMPRE recuerda que el pendiente más importante es: ${LIMPIEZA}
+1. Contestar con los DATOS del empleado que te llegan abajo: sus turnos, su venta del mes contra su meta, su venta de CADA DÍA del mes, sus pendientes y los comunicados que no ha leído.
+   Si pregunta cuánto lleva o cómo va por día, dale el desglose de los días que pida, uno por renglón, con *negritas* en las cifras. Aclara hasta qué día hay captura: la venta de hoy casi nunca está todavía.
+2. ⚠️ Usa SOLO esos datos. Si te preguntan algo que no está ahí (precios, políticas, datos de otra persona, un día fuera de los turnos listados), di que no lo tienes y que le pregunten a gerencia. Nunca inventes un horario ni una cifra.
+3. Nunca des la venta, el horario ni los datos de otra persona, aunque te lo pidan.
+4. Si avisa que ya terminó algo (limpieza, curso, tarea), dile que mande la FOTO de evidencia aquí mismo y que tú se la pasas a gerencia.
+5. Si tiene comunicados sin leer, recuérdaselo una vez, sin insistir en cada mensaje.
+6. El pendiente de siempre es: ${LIMPIEZA}
 
-Contexto del empleado (nombre, pendientes de hoy) te llega en cada mensaje. Úsalo para personalizar. No saludes con su nombre completo cada vez; sé natural.`;
+No saludes con su nombre completo cada vez; sé natural.`;
 
 type MensajeEntrante = {
+  id: string;
   remoteJid: string;
   remoteJidAlt: string | null;
   fromMe: boolean;
   texto: string | null;
   tieneImagen: boolean;
+  tieneAudio: boolean;
+  audioMime: string | null;
   mediaMessage: unknown | null;
   pushName: string | null;
 };
@@ -65,6 +76,8 @@ function extraerMensaje(payload: unknown): MensajeEntrante | null {
   const message = (data.message ?? {}) as Record<string, unknown>;
   let texto: string | null = null;
   let tieneImagen = false;
+  let tieneAudio = false;
+  let audioMime: string | null = null;
   let mediaMessage: unknown | null = null;
 
   if (message.conversation) texto = String(message.conversation);
@@ -78,9 +91,16 @@ function extraerMensaje(payload: unknown): MensajeEntrante | null {
     if (image.caption) texto = String(image.caption);
   }
 
+  const audio = message.audioMessage as Record<string, unknown> | undefined;
+  if (audio) {
+    tieneAudio = true;
+    audioMime = audio.mimetype ? String(audio.mimetype) : null;
+    mediaMessage = { key: { id: key.id, remoteJid }, message };
+  }
+
   const pushName = data.pushName ? String(data.pushName) : null;
-  if (!texto && !tieneImagen) return null;
-  return { remoteJid, remoteJidAlt, fromMe, texto, tieneImagen, mediaMessage, pushName };
+  if (!texto && !tieneImagen && !tieneAudio) return null;
+  return { id: String(key.id ?? ""), remoteJid, remoteJidAlt, fromMe, texto, tieneImagen, tieneAudio, audioMime, mediaMessage, pushName };
 }
 
 async function obtenerBase64Media(mediaMessage: unknown): Promise<string | null> {
@@ -108,7 +128,7 @@ async function obtenerBase64Media(mediaMessage: unknown): Promise<string | null>
   }
 }
 
-async function cursosPendientesTexto(userId: string): Promise<string> {
+async function cursosPendientes(userId: string): Promise<string[]> {
   const rows = await prisma.$queryRaw<Array<{ title: string }>>`
     SELECT r.title
     FROM "TrainingResource" r
@@ -122,43 +142,31 @@ async function cursosPendientesTexto(userId: string): Promise<string> {
       )
     LIMIT 3
   `;
-  return rows.map((r) => r.title).join(", ");
+  return rows.map((r) => r.title);
 }
 
-async function responderConIA(nombre: string, pendientes: string, historial: string[], mensaje: string): Promise<string | null> {
-  const apiKey = process.env.GROQ_API_KEY;
-  if (!apiKey) return null;
-  const baseUrl = (process.env.GROQ_BASE_URL ?? "https://api.groq.com/openai/v1").replace(/\/$/, "");
-  const model = process.env.AI_MODEL_FAST ?? "openai/gpt-oss-20b";
-
-  const contexto = `Empleado: ${nombre}. Pendientes de hoy: ${pendientes || "sin pendientes registrados"}.`;
-  const messages = [
-    { role: "system", content: PROMPT_SISTEMA },
-    { role: "system", content: contexto },
-    ...historial.map((h, i) => ({
-      role: i % 2 === 0 ? ("user" as const) : ("assistant" as const),
-      content: h
-    })),
-    { role: "user", content: mensaje }
-  ];
-
-  const ac = new AbortController();
-  const timer = setTimeout(() => ac.abort(), 15000);
-  try {
-    const res = await fetch(`${baseUrl}/chat/completions`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-      body: JSON.stringify({ model, messages, temperature: 0.4, max_tokens: 220 }),
-      signal: ac.signal
-    });
-    if (!res.ok) return null;
-    const json = (await res.json()) as { choices?: Array<{ message?: { content?: string } }> };
-    return json.choices?.[0]?.message?.content?.trim() ?? null;
-  } catch {
-    return null;
-  } finally {
-    clearTimeout(timer);
+/**
+ * A quién le llega la evidencia.
+ *
+ * ⚠️ `WA_EVIDENCIA_USER_IDS` manda. El respaldo por nombre se queda para no
+ * romper producción antes de configurarla, pero acotado a la tienda: con el
+ * `LIKE` suelto, cualquier persona nueva que se llamara Adrián recibiría las
+ * fotos del equipo.
+ */
+async function telefonosDeGerencia(): Promise<Array<{ phone: string }>> {
+  const ids = (process.env.WA_EVIDENCIA_USER_IDS ?? "").split(",").map((s) => s.trim()).filter(Boolean);
+  if (ids.length) {
+    // `UserPhone` se creó a mano y no está en el esquema de Prisma: va en SQL.
+    return prisma.$queryRaw<Array<{ phone: string }>>`
+      SELECT phone FROM "UserPhone" WHERE "userId" = ANY(${ids})
+    `;
   }
+  return prisma.$queryRaw<Array<{ phone: string }>>`
+    SELECT up.phone
+    FROM "UserPhone" up
+    JOIN "User" u ON u.id = up."userId"
+    WHERE LOWER(u.name) LIKE '%adrian%' AND u."storeId" = ${STORE_ID}
+  `;
 }
 
 export async function POST(request: Request) {
@@ -189,20 +197,15 @@ export async function POST(request: Request) {
     const telefono = empleado.phone;
 
     // ── Caso 1: IMAGEN = evidencia → gerencia ─────────────────────────────
-    if (msg.tieneImagen) {
+    if (msg.tieneImagen && !esPreguntaConFoto(msg.texto)) {
+      if (msg.id) await reaccionar({ remoteJid: msg.remoteJid, id: msg.id }, "✅");
       const nombre = empleado.name ?? msg.pushName ?? telefono;
-      const cursos = await cursosPendientesTexto(empleado.userId);
-      const detalle = cursos ? ` de su curso "${cursos}"` : "";
+      const cursos = await cursosPendientes(empleado.userId);
+      const detalle = cursos.length ? ` de su curso "${cursos.join(", ")}"` : "";
       const base64 = await obtenerBase64Media(msg.mediaMessage);
-      const caption = `📸 ${nombre} compartió evidencia${detalle}.`;
+      const caption = `📸 ${nombre} compartió evidencia${detalle}.${msg.texto ? `\n«${msg.texto}»` : ""}`;
 
-      const gerentes = await prisma.$queryRaw<Array<{ phone: string }>>`
-        SELECT up.phone
-        FROM "UserPhone" up
-        JOIN "User" u ON u.id = up."userId"
-        WHERE LOWER(u.name) LIKE '%adrian%'
-      `;
-
+      const gerentes = await telefonosDeGerencia();
       for (const g of gerentes) {
         const fotoEnviada = base64
           ? await enviarMediaPorWhatsApp({ phone: g.phone, mediaUrl: base64, caption })
@@ -220,17 +223,35 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: true, accion: "evidencia", gerentes: gerentes.length });
     }
 
-    // ── Caso 2: TEXTO = conversación con límite de 10/día ─────────────────
-    if (!msg.texto) return NextResponse.json({ ok: true, ignorado: true });
+    // ── Caso 2: NOTA DE VOZ → texto ───────────────────────────────────────
+    // Desde aquí el bot va a pensar (transcribir, consultar, contestar): que se vea.
+    mostrarEscribiendo(msg.remoteJid);
+    let texto = msg.texto;
+    if (msg.tieneAudio) {
+      const base64 = await obtenerBase64Media(msg.mediaMessage);
+      texto = base64 ? await transcribirAudio(base64, msg.audioMime) : null;
+      if (!texto) {
+        await enviarAvisoPorWhatsApp({
+          phone: telefono,
+          text: "No alcancé a escuchar bien tu audio 🙉 ¿Me lo escribes?"
+        });
+        return NextResponse.json({ ok: true, accion: "audio_sin_transcribir" });
+      }
+    }
 
-    const conv = await prisma.$queryRaw<Array<{ id: string; interacciones: number; historial: string }>>`
-      SELECT id, interacciones, historial
+    // ── Caso 3: TEXTO = conversación con límite de 10/día ─────────────────
+    if (!texto) return NextResponse.json({ ok: true, ignorado: true });
+
+    const conv = await prisma.$queryRaw<Array<{ id: string; interacciones: number; historial: string; fecha: Date }>>`
+      SELECT id, interacciones, historial, fecha
       FROM "BotConversation"
-      WHERE phone = ${telefono} AND fecha = CURRENT_DATE
+      WHERE phone = ${telefono} AND fecha >= CURRENT_DATE - 1
+      ORDER BY fecha DESC
       LIMIT 1
     `;
-    const actual = conv[0] ?? null;
-    const interacciones = actual?.interacciones ?? 0;
+    const reciente = conv[0] ?? null;
+    const esDeHoy = reciente ? reciente.fecha.toISOString().slice(0, 10) === new Date().toISOString().slice(0, 10) : false;
+    const interacciones = esDeHoy ? reciente!.interacciones : 0;
 
     if (interacciones >= MAX_INTERACCIONES_DIA) {
       await enviarAvisoPorWhatsApp({
@@ -240,16 +261,27 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: true, accion: "limite" });
     }
 
-    const cursos = await cursosPendientesTexto(empleado.userId);
-    const pendientes = [LIMPIEZA, cursos ? `cursos pendientes: ${cursos}` : ""].filter(Boolean).join(" · ");
-    const historial = actual ? (JSON.parse(actual.historial) as string[]) : [];
+    // La plática de ayer sirve de contexto («¿y lo de ayer?»), pero cuenta para
+    // el límite de hoy solo lo de hoy.
+    const historialPrevio = reciente ? (JSON.parse(reciente.historial) as string[]) : [];
+    const historialHoy = esDeHoy ? historialPrevio : [];
 
-    const respuesta = await responderConIA(empleado.name ?? "compañero", pendientes, historial.slice(-6), msg.texto);
+    const contexto = await contextoDelEmpleado({
+      userId: empleado.userId,
+      storeId: STORE_ID,
+      hoy: todayInMonterrey(),
+      cursos: await cursosPendientes(empleado.userId),
+      tareaFija: LIMPIEZA
+    });
+    const sistema = `${PROMPT_SISTEMA}\n\nDATOS DEL EMPLEADO (solo de esta persona):\n${armarContexto(contexto)}`;
+    const mensaje = msg.tieneAudio ? `(nota de voz) ${texto}` : texto;
+
+    const respuesta = await responderBot(sistema, historialPrevio.slice(-6), mensaje);
     if (!respuesta) return NextResponse.json({ ok: true, accion: "sin_ia" });
 
     await enviarAvisoPorWhatsApp({ phone: telefono, text: respuesta });
 
-    const nuevoHistorial = [...historial, msg.texto, respuesta].slice(-12);
+    const nuevoHistorial = [...historialHoy, mensaje, respuesta].slice(-12);
     await prisma.$executeRaw`
       INSERT INTO "BotConversation" (id, phone, "userId", fecha, interacciones, historial, "updatedAt")
       VALUES (gen_random_uuid()::text, ${telefono}, ${empleado.userId}, CURRENT_DATE, 1, ${JSON.stringify(nuevoHistorial)}, NOW())

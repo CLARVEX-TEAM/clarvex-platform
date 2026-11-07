@@ -1,13 +1,27 @@
 {
+  "id": "waavisos13150001",
   "name": "WA - Aviso sin entrada 13:15",
+  "active": true,
   "nodes": [
     {
-      "parameters": { "rule": { "interval": [ { "field": "cronExpression", "expression": "15 13 * * *" } ] } },
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "15 13 * * *"
+            }
+          ]
+        }
+      },
       "id": "sched1315",
       "name": "13:15 diario",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
-      "position": [240, 300]
+      "position": [
+        240,
+        300
+      ]
     },
     {
       "parameters": {
@@ -19,8 +33,16 @@
       "name": "Sin capturar hoy",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.5,
-      "position": [460, 300],
-      "credentials": { "postgres": { "id": "PON_ID_POSTGRES", "name": "Clarvex Postgres" } }
+      "position": [
+        460,
+        300
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "clarvexpgwabot01",
+          "name": "Clarvex Postgres"
+        }
+      }
     },
     {
       "parameters": {
@@ -30,31 +52,77 @@
       "name": "Armar mensaje",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [680, 300]
+      "position": [
+        680,
+        300
+      ]
     },
     {
       "parameters": {
         "method": "POST",
         "url": "http://evolution-api:8080/message/sendText/tienda",
-        "sendHeaders": true,
-        "headerParameters": { "parameters": [ { "name": "apikey", "value": "LLAVE-ROTADA-20261105" } ] },
+        "sendHeaders": false,
         "sendBody": true,
         "specifyBody": "json",
-  [jsonBody: usa expresion {{ }} y credencial Evolution API tienda - ver n8n]
-        "options": {}
+        "jsonBody": "={{ JSON.stringify({ number: \"5213344882950\", text: $json.text, delay: 1200 }) }}",
+        "options": {},
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
       },
       "id": "send1315",
-      "name": "Enviar WhatsApp",
+      "name": "Enviar a Adrián",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [900, 300]
+      "position": [
+        900,
+        300
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "clarvexevowabot01",
+          "name": "Evolution API tienda"
+        }
+      }
     }
   ],
   "connections": {
-    "13:15 diario": { "main": [ [ { "node": "Sin capturar hoy", "type": "main", "index": 0 } ] ] },
-    "Sin capturar hoy": { "main": [ [ { "node": "Armar mensaje", "type": "main", "index": 0 } ] ] },
-    "Armar mensaje": { "main": [ [ { "node": "Enviar WhatsApp", "type": "main", "index": 0 } ] ] }
+    "13:15 diario": {
+      "main": [
+        [
+          {
+            "node": "Sin capturar hoy",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sin capturar hoy": {
+      "main": [
+        [
+          {
+            "node": "Armar mensaje",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Armar mensaje": {
+      "main": [
+        [
+          {
+            "node": "Enviar a Adrián",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
   },
-  "settings": { "timezone": "America/Monterrey" }
+  "settings": {
+    "timezone": "America/Monterrey"
+  },
+  "pinData": null,
+  "versionId": "6899a028-293c-4ca0-b714-68a6e237f1f1"
 }
-

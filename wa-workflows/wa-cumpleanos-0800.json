@@ -1,0 +1,184 @@
+{
+  "id": "wacump001",
+  "name": "WA - Cumpleanos y aniversarios 08:00",
+  "active": true,
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 8 * * *"
+            }
+          ]
+        }
+      },
+      "id": "schedCumple",
+      "name": "08:00 diario",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        240,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT COALESCE(NULLIF(TRIM(u.\"name\"),''), u.\"email\") AS \"fullName\", 'cumple' AS \"type\", 0 AS \"years\", (SELECT up.phone FROM \"UserPhone\" up WHERE up.\"userId\" = u.id LIMIT 1) AS \"phone\" FROM \"User\" u WHERE u.\"storeId\" = 'clarvex-demo-store' AND u.\"active\" = true AND u.\"isDemo\" = false AND u.\"checklistOnly\" = false AND u.\"birthDate\" IS NOT NULL AND to_char(u.\"birthDate\",'MM-DD') = to_char((now() AT TIME ZONE 'America/Monterrey'),'MM-DD') UNION ALL SELECT COALESCE(NULLIF(TRIM(u.\"name\"),''), u.\"email\"), 'aniversario', date_part('year', now() AT TIME ZONE 'America/Monterrey')::int - date_part('year', u.\"hireDate\")::int, (SELECT up.phone FROM \"UserPhone\" up WHERE up.\"userId\" = u.id LIMIT 1) AS \"phone\" FROM \"User\" u WHERE u.\"storeId\" = 'clarvex-demo-store' AND u.\"active\" = true AND u.\"isDemo\" = false AND u.\"checklistOnly\" = false AND u.\"hireDate\" IS NOT NULL AND to_char(u.\"hireDate\",'MM-DD') = to_char((now() AT TIME ZONE 'America/Monterrey'),'MM-DD') AND date_part('year', now() AT TIME ZONE 'America/Monterrey')::int - date_part('year', u.\"hireDate\")::int >= 1 ORDER BY \"type\";",
+        "options": {}
+      },
+      "id": "pgCumple",
+      "name": "Quien celebra hoy",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        460,
+        300
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "clarvexpgwabot01",
+          "name": "Clarvex Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const rows = $input.all().map(i => i.json);\nif (rows.length === 0) return [];\nconst lines = rows.map(r => {\n  if (r.type === 'cumple') return '🎂 ¡Hoy cumple años *' + r.fullName + '*! ¡Felicítalo! 🎉';\n  return '🎊 *' + r.fullName + '* cumple ' + r.years + (r.years === 1 ? ' año' : ' años') + ' con nosotros. ¡Gracias por tu trabajo! 💪';\n});\nconst text = '🎉 *Celebraciones de hoy* 🎉\\n\\n' + lines.join('\\n\\n');\nreturn [{ json: { text } }];"
+      },
+      "id": "fmtCumple",
+      "name": "Armar mensaje del grupo",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        680,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://evolution-api:8080/message/sendText/tienda",
+        "sendHeaders": false,
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ number: \"120363118015934948@g.us\", text: $json.text, delay: 1200 }) }}",
+        "options": {},
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "id": "sendCumple",
+      "name": "Mensaje al grupo",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        900,
+        300
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "clarvexevowabot01",
+          "name": "Evolution API tienda"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Una felicitación en privado a quien celebra hoy. Sin teléfono registrado no\n// se manda nada: el mensaje del grupo ya lo nombra.\nconst nombreCorto = (n) => {\n  const p = String(n || '').trim().split(/\\s+/);\n  const primero = (p[0] || '').toUpperCase() === 'JESUS' && (p[1] || '').toUpperCase() === 'ADRIAN' ? p[1] : (p[0] || '');\n  return primero.charAt(0).toUpperCase() + primero.slice(1).toLowerCase();\n};\nreturn $input.all().map(i => i.json).filter(r => r.phone).map(r => {\n  const nombre = nombreCorto(r.fullName);\n  const text = r.type === 'cumple'\n    ? '🎂 *¡Feliz cumpleaños, ' + nombre + '!* 🎉\\n\\nDe parte de todo el equipo de TH San Agustín te deseamos un día increíble. ¡Que te la pases súper bien! 🥳'\n    : '🎊 *¡Feliz aniversario, ' + nombre + '!*\\n\\nHoy cumples ' + r.years + (r.years === 1 ? ' año' : ' años') + ' con nosotros. Gracias por tu trabajo y tu compromiso. 💪';\n  return { json: { phone: r.phone, text } };\n});"
+      },
+      "id": "626c6994-6f74-493e-a0c1-15e2cd5e4d17",
+      "name": "Armar felicitación privada",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        680,
+        520
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://evolution-api:8080/message/sendText/tienda",
+        "sendHeaders": false,
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ number: $json.phone, text: $json.text, delay: 1200 }) }}",
+        "options": {},
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "id": "a39ee7fc-2735-47b8-b0db-c860edc3bcf8",
+      "name": "Felicitar en privado",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        900,
+        520
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "clarvexevowabot01",
+          "name": "Evolution API tienda"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "08:00 diario": {
+      "main": [
+        [
+          {
+            "node": "Quien celebra hoy",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Quien celebra hoy": {
+      "main": [
+        [
+          {
+            "node": "Armar mensaje del grupo",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Armar felicitación privada",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Armar mensaje del grupo": {
+      "main": [
+        [
+          {
+            "node": "Mensaje al grupo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Armar felicitación privada": {
+      "main": [
+        [
+          {
+            "node": "Felicitar en privado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "timezone": "America/Monterrey"
+  },
+  "pinData": {},
+  "versionId": "a8094fba-960c-4066-84f8-a985cf6718e6"
+}

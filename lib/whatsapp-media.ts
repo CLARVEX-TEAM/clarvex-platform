@@ -12,6 +12,9 @@ export type MediaWhatsApp = {
   /** URL pública o base64 de la imagen; un prefijo `data:` se quita antes de enviar. */
   mediaUrl: string;
   caption?: string;
+  /** Por omisión JPEG: el reenvío de evidencias. Las tarjetas van en PNG. */
+  mimetype?: string;
+  fileName?: string;
 };
 
 /**
@@ -38,10 +41,10 @@ export async function enviarMediaPorWhatsApp(aviso: MediaWhatsApp): Promise<bool
       body: JSON.stringify({
         number,
         mediatype: "image",
-        mimetype: "image/jpeg",
+        mimetype: aviso.mimetype ?? "image/jpeg",
         media: aviso.mediaUrl.replace(/^data:[^,]*;base64,/, ""),
         caption: aviso.caption ?? "",
-        fileName: "evidencia.jpg"
+        fileName: aviso.fileName ?? "evidencia.jpg"
       }),
       signal: ac.signal
     });
