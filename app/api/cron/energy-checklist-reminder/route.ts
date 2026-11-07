@@ -5,7 +5,7 @@ import { resolveMonterreyDate } from "@/lib/cron-time";
 import { createNotifications, type NotificationInput } from "@/lib/notifications";
 import { isEnergyChecklistDay } from "@/lib/operational-checklist-reminders";
 import { prisma } from "@/lib/prisma";
-import { dispatchPushToUsers } from "@/lib/push";
+import { avisar } from "@/lib/whatsapp-canal";
 import { filterUsersWithoutAlert, recordRetailAlerts, RETAIL_ALERT_TYPES } from "@/lib/retail-alert-log";
 
 export const dynamic = "force-dynamic";
@@ -85,7 +85,7 @@ export async function POST(request: Request) {
     });
 
     if (recipients.length === 0) continue;
-    await dispatchPushToUsers(recipients, {
+    await avisar(recipients, {
       title,
       body,
       tag: "checklist-energia",

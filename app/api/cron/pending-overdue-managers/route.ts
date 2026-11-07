@@ -3,7 +3,7 @@ import { requireCron } from "@/lib/cron-auth";
 import { resolveMonterreyDate } from "@/lib/cron-time";
 import { buildPendingOverdueManagersSummary } from "@/lib/daily-summary";
 import { createNotifications, type NotificationInput } from "@/lib/notifications";
-import { dispatchPushToUsers } from "@/lib/push";
+import { avisar } from "@/lib/whatsapp-canal";
 import { prisma } from "@/lib/prisma";
 import { filterUsersWithoutAlert, recordRetailAlerts, RETAIL_ALERT_TYPES } from "@/lib/retail-alert-log";
 import { NotificationType } from "@prisma/client";
@@ -86,7 +86,7 @@ export async function POST(request: Request) {
 
     if (recipients.length === 0) continue;
 
-    await dispatchPushToUsers(recipients, {
+    await avisar(recipients, {
       title: message.title,
       body: message.body,
       tag: PUSH_TAG,

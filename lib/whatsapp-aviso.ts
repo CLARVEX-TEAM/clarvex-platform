@@ -18,13 +18,17 @@ export type AvisoWhatsApp = {
   text: string;
 };
 
-export async function enviarAvisoPorWhatsApp(aviso: AvisoWhatsApp): Promise<void> {
+/**
+ * Devuelve si Evolution lo aceptó: quien avisa por WhatsApp EN LUGAR de la
+ * notificación necesita saberlo para caer a la notificación cuando falla.
+ */
+export async function enviarAvisoPorWhatsApp(aviso: AvisoWhatsApp): Promise<boolean> {
   const baseUrl = process.env.WHATSAPP_EVOLUTION_URL;
   const apiKey = process.env.WHATSAPP_EVOLUTION_API_KEY;
   const instance = process.env.WHATSAPP_EVOLUTION_INSTANCE ?? "tienda";
   if (!baseUrl || !apiKey) {
     console.warn("[whatsapp-aviso] Evolution no configurada; se omite el aviso.");
-    return;
+    return false;
   }
 
   const number = aviso.phone.includes("@") ? aviso.phone : `${aviso.phone}@s.whatsapp.net`;
@@ -44,10 +48,12 @@ export async function enviarAvisoPorWhatsApp(aviso: AvisoWhatsApp): Promise<void
         `[whatsapp-aviso] Evolution respondió ${response.status} al avisar a ${aviso.phone}: ${body.slice(0, 200)}`
       );
     }
+    return response.ok;
   } catch (error) {
     console.error(
       `[whatsapp-aviso] no se pudo enviar el aviso a ${aviso.phone}: ${error instanceof Error ? error.message : String(error)}`
     );
+    return false;
   } finally {
     clearTimeout(timer);
   }

@@ -5,7 +5,7 @@ import { NotificationType } from "@prisma/client";
 import { resolveMonterreyDate } from "@/lib/cron-time";
 import { buildLowPerformanceManagerSummary } from "@/lib/daily-summary";
 import { createNotifications, type NotificationInput } from "@/lib/notifications";
-import { dispatchPushToUsers } from "@/lib/push";
+import { avisar } from "@/lib/whatsapp-canal";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -91,7 +91,7 @@ export async function POST(request: Request) {
       });
     });
 
-    await dispatchPushToUsers(managerIds, { title: message.title, body: message.body, tag: PUSH_TAG, url: "/kpis" }).catch(() => undefined);
+    await avisar(managerIds, { title: message.title, body: message.body, tag: PUSH_TAG, url: "/kpis" }).catch(() => undefined);
     summary.managersNotified += managerIds.length;
     summary.storesAlerted += 1;
   }

@@ -5,7 +5,7 @@ import { monterreyMinutesOfDay, resolveMonterreyDate } from "@/lib/cron-time";
 import { createNotifications } from "@/lib/notifications";
 import { prisma } from "@/lib/prisma";
 import { NOTIFIABLE_WHERE } from "@/lib/store-people";
-import { dispatchPushToUsers } from "@/lib/push";
+import { avisar } from "@/lib/whatsapp-canal";
 import { shiftReminderText, shouldSendShiftReminder } from "@/lib/shift-reminder";
 
 export const dynamic = "force-dynamic";
@@ -77,7 +77,7 @@ export async function POST(request: Request) {
   }
 
   if (pushes.length > 0) {
-    await Promise.allSettled(pushes.map((push) => dispatchPushToUsers([push.userId], {
+    await Promise.allSettled(pushes.map((push) => avisar([push.userId], {
       title: push.title,
       body: push.body,
       tag: `turno-${today.dateKey}`,

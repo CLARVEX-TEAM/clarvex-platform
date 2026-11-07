@@ -5,7 +5,7 @@ import { NotificationType } from "@prisma/client";
 import { resolveMonterreyDate } from "@/lib/cron-time";
 import { buildGoalReachedMessage } from "@/lib/daily-summary";
 import { createNotifications, type NotificationInput } from "@/lib/notifications";
-import { dispatchPushToUsers } from "@/lib/push";
+import { avisar } from "@/lib/whatsapp-canal";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -62,7 +62,7 @@ export async function POST(request: Request) {
     });
 
     await Promise.allSettled(
-      pushJobs.map((job) => dispatchPushToUsers(job.userIds, job.payload).catch(() => undefined))
+      pushJobs.map((job) => avisar(job.userIds, job.payload).catch(() => undefined))
     );
   }
 

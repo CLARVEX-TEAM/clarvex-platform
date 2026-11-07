@@ -4,7 +4,7 @@ import { resolveMonterreyDate } from "@/lib/cron-time";
 import { cronManagerSession } from "@/lib/cron-store-session";
 import { buildWeekGoal100Message, buildWeekGoal80Message } from "@/lib/daily-summary";
 import { createNotifications, type NotificationInput } from "@/lib/notifications";
-import { dispatchPushToUsers } from "@/lib/push";
+import { avisar } from "@/lib/whatsapp-canal";
 import { prisma } from "@/lib/prisma";
 import {
   filterUsersWithoutAlert,
@@ -148,7 +148,7 @@ export async function POST(request: Request) {
     });
 
     await Promise.allSettled(
-      pushJobs.map((job) => dispatchPushToUsers(job.userIds, job.payload).catch(() => undefined))
+      pushJobs.map((job) => avisar(job.userIds, job.payload).catch(() => undefined))
     );
   }
 

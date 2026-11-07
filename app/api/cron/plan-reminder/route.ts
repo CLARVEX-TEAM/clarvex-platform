@@ -3,7 +3,7 @@ import { requireCron } from "@/lib/cron-auth";
 import { NotificationType } from "@prisma/client";
 import { resolveMonterreyDate } from "@/lib/cron-time";
 import { createNotifications, type NotificationInput } from "@/lib/notifications";
-import { dispatchPushToUsers } from "@/lib/push";
+import { avisar } from "@/lib/whatsapp-canal";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -63,7 +63,7 @@ export async function POST(request: Request) {
     });
 
     await Promise.allSettled(
-      pushJobs.map((job) => dispatchPushToUsers([job.userId], { title: job.title, body: job.body, tag: PUSH_TAG, url: "/plan" }).catch(() => undefined))
+      pushJobs.map((job) => avisar([job.userId], { title: job.title, body: job.body, tag: PUSH_TAG, url: "/plan" }).catch(() => undefined))
     );
   }
 

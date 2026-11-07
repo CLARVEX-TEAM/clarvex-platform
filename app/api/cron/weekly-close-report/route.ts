@@ -6,7 +6,7 @@ import { money } from "@/lib/format";
 import { aggregateKpis, aggregateStore, aggregateStoreTraffic } from "@/lib/kpi-report";
 import { createNotifications, type NotificationInput } from "@/lib/notifications";
 import { prisma } from "@/lib/prisma";
-import { dispatchPushToUsers } from "@/lib/push";
+import { avisar } from "@/lib/whatsapp-canal";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -96,7 +96,7 @@ export async function POST(request: Request) {
     });
 
     if (managerIds.length > 0) {
-      await dispatchPushToUsers(managerIds, { title: pushTitle, body: pushBody, tag: PUSH_TAG, url: reportUrl }).catch(() => undefined);
+      await avisar(managerIds, { title: pushTitle, body: pushBody, tag: PUSH_TAG, url: reportUrl }).catch(() => undefined);
     }
     summary.reportsSent += 1;
   }
