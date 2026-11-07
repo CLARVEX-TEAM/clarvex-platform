@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { ImageResponse } from "next/og";
 import { firstName } from "@/lib/weekly-close";
-import { analizarSemana, rangoSemana, totalMetas, type DiaMeta, type DiaVenta } from "@/lib/whatsapp-mensajes";
+import { analizarSemana, rangoSemana, textoTurno, totalMetas, type DiaHorario, type DiaMeta, type DiaVenta } from "@/lib/whatsapp-mensajes";
 import { pesos, porcentaje } from "@/lib/whatsapp-formato";
 
 /**
@@ -343,6 +343,58 @@ export async function tarjetaCierre(opciones: {
           </div>
         ))}
       </div>
+    </Marco>
+  ));
+}
+
+// ── Horarios de la semana ───────────────────────────────────────────────────
+
+/** Pastel por tipo de día: trabajo en cielo, inventario en lavanda, ausencias en gris o durazno. */
+function tonoTurno(status: string): { fondo: string; tinta: string } {
+  if (status === "WORKING") return { fondo: C.cielo, tinta: C.cieloTinta };
+  if (status === "INVENTORY") return { fondo: C.lavanda, tinta: C.lavandaTinta };
+  if (status === "VACATION" || status === "PAID_DAY") return { fondo: C.durazno, tinta: C.duraznoTinta };
+  return { fondo: "#F1F0EB", tinta: C.tenue };
+}
+
+export async function tarjetaHorarios(opciones: {
+  nombre: string;
+  tienda: string;
+  inicio: Date;
+  fin: Date;
+  dias: DiaHorario[];
+  actualizacion: boolean;
+}): Promise<Buffer> {
+  const trabaja = opciones.dias.filter((d) => d.status === "WORKING" || d.status === "INVENTORY").length;
+  return aPng((logo) => (
+    <Marco
+      logo={logo}
+      tienda={opciones.tienda}
+      chip={opciones.actualizacion ? "Horario actualizado" : "Horarios"}
+      chipFondo={C.menta}
+      chipTinta={C.mentaTinta}
+      tonos={["#D8F1E5", "#DCEBFF", "#E8E3FF"]}
+    >
+      <Titulo texto="Tu semana" nombre={firstName(opciones.nombre)} rango={rangoSemana(opciones.inicio, opciones.fin)} />
+      <Tarjeta margenArriba={40} relleno="30px 40px">
+        <span style={{ fontSize: 24, color: C.suave, fontWeight: 500 }}>Días de trabajo</span>
+        <span style={{ fontSize: 96, fontWeight: 700, letterSpacing: -3, lineHeight: 1.1, color: C.mentaTinta }}>{`${trabaja} de 7`}</span>
+      </Tarjeta>
+      <Tarjeta margenArriba={24}>
+        {opciones.dias.map((d, i) => {
+          const tono = tonoTurno(d.status);
+          const libre = d.status !== "WORKING" && d.status !== "INVENTORY";
+          return (
+            <Fila key={i} primera={i === 0} dia={d.fecha} apagada={libre} alto={80}>
+              <div style={{ display: "flex", flexGrow: 1, justifyContent: "flex-end" }}>
+                <span style={{ fontSize: 30, fontWeight: 600, padding: "10px 24px", borderRadius: 999, background: tono.fondo, color: tono.tinta }}>
+                  {textoTurno(d)}
+                </span>
+              </div>
+            </Fila>
+          );
+        })}
+      </Tarjeta>
     </Marco>
   ));
 }

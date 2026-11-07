@@ -20,6 +20,11 @@ import {
  * Corre cada 15 minutos y manda cuando Cuota Justa lleva 15 minutos sin
  * guardarse: así, cinco guardados seguidos no son cinco mensajes.
  *
+ * ⚠️ **Solo guardados RECIENTES (48 h).** La primera versión tomaba cualquier
+ * semana con metas guardadas que no hubiera terminado: al encenderla un sábado
+ * le habría mandado a todo el equipo las metas de la semana que acababa ese
+ * mismo día, guardadas seis días antes.
+ *
  * ⚠️ **La huella decide, no la hora.** Se guarda una por persona y semana en
  * `RetailAlertLog`; si las metas de alguien cambian después, le llega «se
  * actualizaron tus metas», y si no cambian, un guardado más no le manda nada.
@@ -30,6 +35,7 @@ export const runtime = "nodejs";
 
 const ALERTA = "WA_METAS_SEMANA";
 const ESPERA_MS = 15 * 60_000;
+const VENTANA_MS = 48 * 3_600_000;
 
 export async function POST(request: Request) {
   const unauthorized = requireCron(request);
@@ -38,7 +44,7 @@ export async function POST(request: Request) {
 
   const { utcDate: hoy } = resolveMonterreyDate();
   const cierres = await prisma.weeklyPerformanceClose.findMany({
-    where: { quotaSavedAt: { not: null, lte: new Date(Date.now() - ESPERA_MS) }, weekEnd: { gte: hoy } },
+    where: { quotaSavedAt: { gte: new Date(Date.now() - VENTANA_MS), lte: new Date(Date.now() - ESPERA_MS) }, weekEnd: { gte: hoy } },
     select: { storeId: true, weekStart: true, weekEnd: true, weekNumber: true, store: { select: { name: true } } }
   });
 
