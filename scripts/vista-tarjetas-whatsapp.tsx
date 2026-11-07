@@ -26,7 +26,15 @@ import { tarjetaHorarios } from "@/lib/whatsapp-tarjeta";
 })();
 import { tarjetaCampana } from "@/lib/whatsapp-tarjeta";
 (async () => {
-  writeFileSync(`${S}/tarjeta-campana.png`, await tarjetaCampana({ tienda: "TH San Agustín", semana: 45, totalSemana: 138, metaSemana: 292, totalCampana: 355,
-    ranking: [["JESUS ADRIAN HERNANDEZ LUNA", 52], ["WAIRA ZITLALI POPOCA", 38], ["ALONSO TREVIÑO", 26], ["ITZEL SAIDY REYES BAUTISTA", 22], ["JAZMIN CASTRO ZUÑIGA", 0]].map(([nombre, total]) => ({ nombre: String(nombre), total: Number(total), donativos: 0 })) }));
+  // Semana 44 de San Agustín tal cual: metas reales y nada juntado todavía.
+  const metas44 = [43, 22, 22, 22, 22, 33, 54];
+  const nombres = ["JESUS ADRIAN HERNANDEZ LUNA", "WAIRA ZITLALI POPOCA", "ALONSO TREVIÑO", "ITZEL SAIDY REYES BAUTISTA", "JAZMIN CASTRO ZUÑIGA"];
+  writeFileSync(`${S}/tarjeta-campana.png`, await tarjetaCampana({ tienda: "TH San Agustín", semana: 44, totalSemana: 0, metaSemana: 218, totalCampana: 0, proximaMeta: 292,
+    dias: metas44.map((m, i) => ({ fecha: d(i - 7), meta: m, total: 0, capturado: false })),
+    ranking: nombres.map((nombre) => ({ nombre, total: 0, donativos: 0 })) }));
+  // Y una semana con donativos, para ver el ranking.
+  writeFileSync(`${S}/tarjeta-campana-ranking.png`, await tarjetaCampana({ tienda: "TH San Agustín", semana: 45, totalSemana: 138, metaSemana: 292, totalCampana: 138,
+    dias: [43, 22, 22, 43, 43, 54, 65].map((m, i) => ({ fecha: d(i), meta: m, total: [50, 18, 30, 40, 0, 0, 0][i], capturado: i < 4 })),
+    ranking: [[nombres[0], 52], [nombres[1], 38], [nombres[2], 26], [nombres[3], 22], [nombres[4], 0]].map(([nombre, total]) => ({ nombre: String(nombre), total: Number(total), donativos: 0 })) }));
   console.log("campaña ok");
 })();
