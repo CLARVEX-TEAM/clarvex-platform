@@ -57,6 +57,8 @@ type MensajeEntrante = {
   fromMe: boolean;
   texto: string | null;
   tieneImagen: boolean;
+  /** Tipo del archivo: la foto o el PDF (los certificados de Crehana llegan en PDF). */
+  mediaMime: string;
   tieneAudio: boolean;
   audioMime: string | null;
   mediaMessage: unknown | null;
@@ -80,6 +82,7 @@ function extraerMensaje(payload: unknown): MensajeEntrante | null {
   const message = (data.message ?? {}) as Record<string, unknown>;
   let texto: string | null = null;
   let tieneImagen = false;
+  let mediaMime = "image/jpeg";
   let tieneAudio = false;
   let audioMime: string | null = null;
   let mediaMessage: unknown | null = null;
@@ -92,7 +95,20 @@ function extraerMensaje(payload: unknown): MensajeEntrante | null {
   if (image) {
     tieneImagen = true;
     mediaMessage = { key: { id: key.id, remoteJid }, message };
+    if (image.mimetype) mediaMime = String(image.mimetype);
     if (image.caption) texto = String(image.caption);
+  }
+
+  // Un PDF o una imagen mandados como DOCUMENTO cuentan igual que una foto: así
+  // llegan los certificados. Con pie, WhatsApp los envuelve en otro mensaje.
+  const conPie = message.documentWithCaptionMessage as { message?: Record<string, unknown> } | undefined;
+  const documento = (message.documentMessage ?? conPie?.message?.documentMessage) as Record<string, unknown> | undefined;
+  const mimeDocumento = documento?.mimetype ? String(documento.mimetype) : "";
+  if (documento && (mimeDocumento.includes("pdf") || mimeDocumento.startsWith("image/"))) {
+    tieneImagen = true;
+    mediaMime = mimeDocumento;
+    mediaMessage = { key: { id: key.id, remoteJid }, message };
+    if (documento.caption) texto = String(documento.caption);
   }
 
   const audio = message.audioMessage as Record<string, unknown> | undefined;
@@ -104,7 +120,7 @@ function extraerMensaje(payload: unknown): MensajeEntrante | null {
 
   const pushName = data.pushName ? String(data.pushName) : null;
   if (!texto && !tieneImagen && !tieneAudio) return null;
-  return { id: String(key.id ?? ""), remoteJid, remoteJidAlt, fromMe, texto, tieneImagen, tieneAudio, audioMime, mediaMessage, pushName };
+  return { id: String(key.id ?? ""), remoteJid, remoteJidAlt, fromMe, texto, tieneImagen, mediaMime, tieneAudio, audioMime, mediaMessage, pushName };
 }
 
 async function obtenerBase64Media(mediaMessage: unknown): Promise<string | null> {
@@ -182,7 +198,7 @@ export async function POST(request: Request) {
       const nombre = empleado.name ?? msg.pushName ?? telefono;
       const base64 = await obtenerBase64Media(msg.mediaMessage);
       // La foto se guarda en su pendiente (y lo pasa a en proceso) si tiene alguno abierto.
-      const pendiente = await fotoDePendiente(STORE_ID, { userId: empleado.userId, name: empleado.name, phone: telefono }, base64, msg.texto).catch((error) => {
+      const pendiente = await fotoDePendiente(STORE_ID, { userId: empleado.userId, name: empleado.name, phone: telefono }, base64, msg.texto, msg.mediaMime).catch((error) => {
         console.error("[webhook/whatsapp] evidencia en pendiente", error instanceof Error ? error.message : error);
         return null;
       });
@@ -196,7 +212,13 @@ export async function POST(request: Request) {
       const gerentes = pendiente?.gerenciaAvisada ? [] : await telefonosDeGerencia(STORE_ID);
       for (const g of gerentes) {
         const fotoEnviada = base64
-          ? await enviarMediaPorWhatsApp({ phone: g.phone, mediaUrl: base64, caption })
+          ? await enviarMediaPorWhatsApp({
+              phone: g.phone,
+              mediaUrl: base64,
+              caption,
+              mimetype: msg.mediaMime,
+              fileName: msg.mediaMime.includes("pdf") ? "certificado.pdf" : "evidencia.jpg"
+            })
           : false;
         if (!fotoEnviada) {
           await enviarAvisoPorWhatsApp({ phone: g.phone, text: `${caption} (No pude reenviar la foto; pídela en el grupo.)` });

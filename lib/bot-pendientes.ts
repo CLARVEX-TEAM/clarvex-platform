@@ -4,6 +4,8 @@ import { storeKey } from "@/lib/r2-keys";
 import { enviarAvisoPorWhatsApp } from "@/lib/whatsapp-aviso";
 import { enviarMediaPorWhatsApp } from "@/lib/whatsapp-media";
 import { retirarAvisosDelPendiente } from "@/lib/pendiente-cierre";
+import { leerCertificado } from "@/lib/certificado-ia";
+import { avanceDeMatriz, cursoDelCertificado, esDeLaPersona, textoAvance, type CursoMatriz } from "@/lib/cursos-matriz";
 import {
   avisoCerrado,
   avisoGerenciaCierre,
@@ -30,12 +32,26 @@ import {
 const ESPERA_MS = 30 * 60_000;
 
 type Empleado = { userId: string; name: string | null; phone: string };
-type Abierto = { id: string; title: string; status: "PENDIENTE" | "EN_PROCESO" | "COMPLETADO"; cierreSolicitadoAt: Date | null };
+type Abierto = {
+  id: string;
+  title: string;
+  status: "PENDIENTE" | "EN_PROCESO" | "COMPLETADO";
+  cierreSolicitadoAt: Date | null;
+  tipo: string;
+  cursos: CursoMatriz[];
+};
 
 async function abiertosDe(storeId: string, userId: string): Promise<Abierto[]> {
   return prisma.pending.findMany({
     where: { storeId, ownerId: userId, status: { not: "COMPLETADO" } },
-    select: { id: true, title: true, status: true, cierreSolicitadoAt: true },
+    select: {
+      id: true,
+      title: true,
+      status: true,
+      cierreSolicitadoAt: true,
+      tipo: true,
+      cursos: { select: { id: true, orden: true, nombre: true, completadoAt: true }, orderBy: { orden: "asc" } }
+    },
     orderBy: { dueDate: "asc" }
   });
 }
@@ -73,13 +89,16 @@ async function telefonoDe(userId: string): Promise<string | null> {
   return filas[0]?.phone ?? null;
 }
 
-async function guardarEvidencia(storeId: string, userId: string, pendingId: string | null, base64: string, nota: string | null) {
+async function guardarEvidencia(storeId: string, userId: string, pendingId: string | null, base64: string, nota: string | null, mime = "image/jpeg") {
   const limpio = base64.replace(/^data:[^,]+,/, "");
   const bytes = new Uint8Array(Buffer.from(limpio, "base64"));
-  const key = storeKey(storeId, "evidences", `${userId}-${Date.now()}-${crypto.randomUUID()}.jpg`);
-  const url = await uploadToR2(key, bytes, "image/jpeg");
+  const esPdf = mime.includes("pdf");
+  const extension = esPdf ? "pdf" : mime.includes("png") ? "png" : "jpg";
+  const tipo = esPdf ? "application/pdf" : mime.includes("png") ? "image/png" : "image/jpeg";
+  const key = storeKey(storeId, "evidences", `${userId}-${Date.now()}-${crypto.randomUUID()}.${extension}`);
+  const url = await uploadToR2(key, bytes, tipo);
   return prisma.evidence.create({
-    data: { storeId, uploadedById: userId, pendingId, url, fileName: "whatsapp.jpg", mimeType: "image/jpeg", note: nota ? `WhatsApp: ${nota}`.slice(0, 500) : "Por WhatsApp" },
+    data: { storeId, uploadedById: userId, pendingId, url, fileName: `whatsapp.${extension}`, mimeType: tipo, note: nota ? `WhatsApp: ${nota}`.slice(0, 500) : "Por WhatsApp" },
     select: { id: true }
   });
 }
@@ -108,13 +127,16 @@ async function pedirCierre(storeId: string, empleado: Empleado, p: Abierto): Pro
     where: { id: p.id },
     data: { cierreSolicitadoAt: new Date(), ...(p.status === "PENDIENTE" ? { status: "EN_PROCESO" } : {}) }
   });
-  const ultima = await prisma.evidence.findFirst({ where: { pendingId: p.id }, orderBy: { createdAt: "desc" }, select: { url: true } });
+  const ultima = await prisma.evidence.findFirst({ where: { pendingId: p.id }, orderBy: { createdAt: "desc" }, select: { url: true, mimeType: true } });
   const peticiones = await peticionesDeCierre(storeId);
   const numero = peticiones.length > 1 ? peticiones.findIndex((x) => x.id === p.id) + 1 : null;
   const texto = avisoGerenciaCierre(empleado.name ?? "", p.title, Boolean(ultima), numero);
   const firmada = ultima ? await signR2Url(ultima.url, 6 * 60 * 60) : null;
   for (const g of await telefonosDeGerencia(storeId)) {
-    const conFoto = firmada ? await enviarMediaPorWhatsApp({ phone: g.phone, mediaUrl: firmada, caption: texto }) : false;
+    const mimetype = ultima?.mimeType ?? "image/jpeg";
+    const conFoto = firmada
+      ? await enviarMediaPorWhatsApp({ phone: g.phone, mediaUrl: firmada, caption: texto, mimetype, fileName: mimetype.includes("pdf") ? "certificado.pdf" : "evidencia.jpg" })
+      : false;
     if (!conFoto) await enviarAvisoPorWhatsApp({ phone: g.phone, text: texto });
   }
   return respuestaTermine(p.title, Boolean(ultima));
@@ -124,19 +146,33 @@ async function pedirCierre(storeId: string, empleado: Empleado, p: Abierto): Pro
  * Una FOTO de un empleado. Devuelve qué contestarle y para qué pendiente era,
  * o `null` si no tiene pendientes abiertos (entonces sigue el camino de siempre).
  */
-export async function fotoDePendiente(storeId: string, empleado: Empleado, base64: string | null, nota: string | null): Promise<{ respuesta: string; titulo: string | null; gerenciaAvisada?: boolean } | null> {
+export async function fotoDePendiente(
+  storeId: string,
+  empleado: Empleado,
+  base64: string | null,
+  nota: string | null,
+  mime = "image/jpeg"
+): Promise<{ respuesta: string; titulo: string | null; gerenciaAvisada?: boolean } | null> {
   const abiertos = await abiertosDe(storeId, empleado.userId);
   if (abiertos.length === 0 || !base64) return null;
+
+  // ── ¿Certificado de un curso de su matriz? Lo lee la IA; decide el código.
+  const matrices = abiertos.filter((p) => p.tipo === "CURSO" && p.cursos.length > 0);
+  if (matrices.length > 0) {
+    const lectura = await leerCertificado(base64, mime);
+    if (lectura?.esCertificado) return certificado(storeId, empleado, matrices, lectura, base64, nota, mime);
+  }
+
   if (abiertos.length === 1) {
     const p = abiertos[0];
-    await guardarEvidencia(storeId, empleado.userId, p.id, base64, nota);
+    await guardarEvidencia(storeId, empleado.userId, p.id, base64, nota, mime);
     // El certificado con el pie «ya terminé» es foto Y petición de cierre.
-    if (!p.cierreSolicitadoAt && diceQueTermino(nota)) return { respuesta: await pedirCierre(storeId, empleado, p), titulo: p.title, gerenciaAvisada: true };
+    if (!p.cierreSolicitadoAt && p.tipo !== "CURSO" && diceQueTermino(nota)) return { respuesta: await pedirCierre(storeId, empleado, p), titulo: p.title, gerenciaAvisada: true };
     await marcarEnProceso(p);
-    return { respuesta: respuestaAvance(p.title, Boolean(p.cierreSolicitadoAt)), titulo: p.title };
+    return { respuesta: respuestaDeAvance(p), titulo: p.title };
   }
   // Varios abiertos: la foto se guarda sin pendiente y se pregunta de cuál es.
-  const ev = await guardarEvidencia(storeId, empleado.userId, null, base64, nota);
+  const ev = await guardarEvidencia(storeId, empleado.userId, null, base64, nota, mime);
   await esperar(empleado.userId, "foto", { ids: abiertos.map((p) => p.id), evidenciaId: ev.id });
   return { respuesta: preguntaCual("foto", abiertos.map((p) => p.title)), titulo: null };
 }
@@ -158,8 +194,9 @@ export async function textoDePendiente(storeId: string, empleado: Empleado, text
       if (espera.accion === "foto" && datos.evidenciaId) {
         await prisma.evidence.updateMany({ where: { id: datos.evidenciaId, uploadedById: empleado.userId, pendingId: null }, data: { pendingId: p.id } });
         await marcarEnProceso(p);
-        return respuestaAvance(p.title, Boolean(p.cierreSolicitadoAt));
+        return respuestaDeAvance(p);
       }
+      if (p.tipo === "CURSO" && p.cursos.length > 0) return terminoMatriz(p);
       return pedirCierre(storeId, empleado, p);
     }
   }
@@ -197,11 +234,76 @@ export async function textoDePendiente(storeId: string, empleado: Empleado, text
   // 3. ¿Avisa que terminó?
   if (diceQueTermino(texto)) {
     const abiertos = (await abiertosDe(storeId, empleado.userId)).filter((p) => !p.cierreSolicitadoAt);
-    if (abiertos.length === 1) return pedirCierre(storeId, empleado, abiertos[0]);
+    if (abiertos.length === 1) {
+      const p = abiertos[0];
+      return p.tipo === "CURSO" && p.cursos.length > 0 ? terminoMatriz(p) : pedirCierre(storeId, empleado, p);
+    }
     if (abiertos.length > 1) {
       await esperar(empleado.userId, "termine", { ids: abiertos.map((p) => p.id) });
       return preguntaCual("termine", abiertos.map((p) => p.title));
     }
   }
   return null;
+}
+
+/** Avance de un pendiente; en una matriz, cuántos cursos lleva y cómo se completan. */
+function respuestaDeAvance(p: Abierto): string {
+  if (p.tipo !== "CURSO" || p.cursos.length === 0) return respuestaAvance(p.title, Boolean(p.cierreSolicitadoAt));
+  return `✅ Guardé tu avance de *${p.title}* y quedó *en progreso*.\n${textoAvance(p.title, p.cursos)}\n\nCuando termines un curso, mándame su *certificado* (PDF o captura) y lo marco solito 📄`;
+}
+
+/**
+ * «Terminé» en una matriz: no se le pide cierre a gerencia a ciegas. Cada curso
+ * se completa con su certificado, y al llegar el último la petición sale sola.
+ */
+function terminoMatriz(p: Abierto): string {
+  const { faltan } = avanceDeMatriz(p.cursos);
+  if (faltan.length === 0) return `Ya tienes todos los cursos de *${p.title}* 🎉 Gerencia está revisando para cerrarlo.`;
+  return `¡Vas muy bien! 💪 ${textoAvance(p.title, p.cursos)}\nMándame el *certificado* de cada uno (PDF o captura) y lo marco como completado.`;
+}
+
+/**
+ * Un certificado: si es de un curso de su matriz y está a SU nombre, ese curso
+ * queda completado. Al completar el último se le pide el cierre a gerencia.
+ */
+async function certificado(
+  storeId: string,
+  empleado: Empleado,
+  matrices: Abierto[],
+  lectura: { nombre: string | null; curso: string | null },
+  base64: string,
+  nota: string | null,
+  mime: string
+): Promise<{ respuesta: string; titulo: string | null; gerenciaAvisada?: boolean }> {
+  const encontrado = matrices.map((m) => ({ m, curso: cursoDelCertificado(lectura.curso, m.cursos) })).find((x) => x.curso);
+  const matriz = encontrado?.m ?? matrices[0];
+  const ev = await guardarEvidencia(storeId, empleado.userId, matriz.id, base64, nota, mime);
+  await marcarEnProceso(matriz);
+
+  if (!encontrado?.curso) {
+    return {
+      respuesta: `📄 Recibí un certificado${lectura.curso ? ` de *${lectura.curso}*` : ""}, pero no es de ningún curso de *${matriz.title}*. Lo guardé y se lo pasé a gerencia.\n${textoAvance(matriz.title, matriz.cursos)}`,
+      titulo: `${matriz.title} (certificado que no es de la matriz${lectura.curso ? `: ${lectura.curso}` : ""})`
+    };
+  }
+  const curso = encontrado.curso;
+  if (!esDeLaPersona(lectura.nombre, empleado.name ?? "")) {
+    return {
+      respuesta: `📄 Este certificado de *${curso.nombre}* está a nombre de *${lectura.nombre ?? "otra persona"}*, así que no lo puedo marcar como tuyo. Lo guardé y se lo pasé a gerencia; si es un error, ellos lo marcan en la app.`,
+      titulo: `${matriz.title} · ${curso.nombre} (a nombre de ${lectura.nombre ?? "?"})`
+    };
+  }
+  if (curso.completadoAt) {
+    return { respuesta: `📄 *${curso.nombre}* ya lo tenías completado 👌\n${textoAvance(matriz.title, matriz.cursos)}`, titulo: `${matriz.title} · ${curso.nombre} (ya estaba)` };
+  }
+
+  await prisma.pendingCurso.update({ where: { id: curso.id }, data: { completadoAt: new Date(), evidenceId: ev.id } });
+  const cursos = matriz.cursos.map((c) => (c.id === curso.id ? { ...c, completadoAt: new Date() } : c));
+  const avance = textoAvance(matriz.title, cursos);
+  const titulo = `${matriz.title} · ${curso.nombre} ✅`;
+  if (avanceDeMatriz(cursos).faltan.length === 0 && !matriz.cierreSolicitadoAt) {
+    await pedirCierre(storeId, empleado, { ...matriz, status: "EN_PROCESO" });
+    return { respuesta: `✅ Certificado de *${curso.nombre}* registrado.\n${avance}\n\nLe avisé a gerencia para que revise y cierre tu matriz 🙌`, titulo, gerenciaAvisada: true };
+  }
+  return { respuesta: `✅ Certificado de *${curso.nombre}* registrado como completado.\n${avance}`, titulo };
 }

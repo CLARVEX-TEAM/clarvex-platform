@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { todayInMonterrey } from "@/lib/mexico-timezone";
 import { enviarAvisoPorWhatsApp } from "@/lib/whatsapp-aviso";
 import { recordatorioSegunEstado } from "@/lib/bot-pendientes-texto";
+import { textoAvance } from "@/lib/cursos-matriz";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -44,6 +45,11 @@ function fechaCorta(date: Date): string {
   const dia = p.find((x) => x.type === "day")?.value ?? "";
   const mes = Number(p.find((x) => x.type === "month")?.value ?? 1);
   return `${dia} ${MESES[mes - 1]}`;
+}
+
+/** En una matriz de cursos, «Llevas 2 de 6…»; en un pendiente normal, nada. */
+function avanceDe(p: { tipo: string; title: string; cursos: Array<{ id: string; orden: number; nombre: string; completadoAt: Date | null }> }): string | undefined {
+  return p.tipo === "CURSO" && p.cursos.length > 0 ? textoAvance(p.title, p.cursos) : undefined;
 }
 
 function addDays(base: Date, days: number): Date {
@@ -133,7 +139,7 @@ async function recordarTareas(): Promise<number> {
       status: { not: "COMPLETADO" },
       dueDate: { gte: hoy, lt: manana }
     },
-    select: { id: true, title: true, ownerId: true, status: true, cierreSolicitadoAt: true }
+    select: { id: true, title: true, ownerId: true, status: true, cierreSolicitadoAt: true, tipo: true, cursos: { select: { id: true, orden: true, nombre: true, completadoAt: true } } }
   });
   if (pendientes.length === 0) return 0;
 
@@ -151,7 +157,7 @@ async function recordarTareas(): Promise<number> {
     if (tareas.length === 0) continue;
     // El mensaje cambia con el estatus; quien ya pidió cierre no recibe nada.
     const textos = tareas
-      .map((t) => recordatorioSegunEstado({ nombre: e.name, titulo: t.title, estado: t.status, cierrePedido: Boolean(t.cierreSolicitadoAt), vence: "hoy" }))
+      .map((t) => recordatorioSegunEstado({ nombre: e.name, titulo: t.title, estado: t.status, cierrePedido: Boolean(t.cierreSolicitadoAt), vence: "hoy", avance: avanceDe(t) }))
       .filter((t): t is string => Boolean(t));
     if (textos.length === 0) continue;
     enviados += await avisar([e], () => textos.join("\n\n"));
@@ -169,7 +175,7 @@ async function recordarCursos(): Promise<number> {
       status: { not: "COMPLETADO" },
       dueDate: { gte: en7 }
     },
-    select: { id: true, title: true, ownerId: true, dueDate: true, status: true, cierreSolicitadoAt: true }
+    select: { id: true, title: true, ownerId: true, dueDate: true, status: true, cierreSolicitadoAt: true, tipo: true, cursos: { select: { id: true, orden: true, nombre: true, completadoAt: true } } }
   });
   if (pendientes.length === 0) return 0;
 
@@ -194,7 +200,8 @@ async function recordarCursos(): Promise<number> {
           titulo: t.title,
           estado: t.status,
           cierrePedido: Boolean(t.cierreSolicitadoAt),
-          vence: `el ${fechaCorta(t.dueDate)}${isWeekendDue(t.dueDate) ? ", fin de semana" : ""}`
+          vence: `el ${fechaCorta(t.dueDate)}${isWeekendDue(t.dueDate) ? ", fin de semana" : ""}`,
+          avance: avanceDe(t)
         })
       )
       .filter((t): t is string => Boolean(t));

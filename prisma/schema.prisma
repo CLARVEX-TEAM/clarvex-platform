@@ -732,11 +732,14 @@ model Pending {
   /// La persona avisó por WhatsApp que terminó y espera que gerencia lo cierre.
   /// No es un estatus: el pendiente sigue EN_PROCESO hasta que gerencia decida.
   cierreSolicitadoAt DateTime?
+  /// "PENDIENTE" o "CURSO". Un curso es una matriz: varios cursos, cada uno con su certificado.
+  tipo               String          @default("PENDIENTE")
   dueDate            DateTime
   createdAt          DateTime        @default(now())
   updatedAt          DateTime        @updatedAt
   comments           Comment[]
   evidences          Evidence[]
+  cursos             PendingCurso[]
   owner              User            @relation("PendingOwner", fields: [ownerId], references: [id])
   store              Store           @relation(fields: [storeId], references: [id])
 }
@@ -2088,4 +2091,20 @@ model BotEspera {
   datos     Json
   expiraAt  DateTime
   createdAt DateTime @default(now())
+}
+
+/// Un curso de una matriz (pendiente de tipo CURSO). Se completa con su
+/// certificado: lo lee la IA del bot o lo marca gerencia en la app.
+model PendingCurso {
+  id           String    @id @default(cuid())
+  pendingId    String
+  /// 1, 2, 3… en el orden en que se capturaron.
+  orden        Int
+  nombre       String
+  completadoAt DateTime?
+  /// La evidencia (certificado) con la que se completó.
+  evidenceId   String?
+  pending      Pending   @relation(fields: [pendingId], references: [id], onDelete: Cascade)
+
+  @@unique([pendingId, orden])
 }

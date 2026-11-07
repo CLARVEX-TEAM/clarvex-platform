@@ -4,6 +4,7 @@ import { buildUserDashboardKpi, dashboardDateKey, dashboardDateRange } from "@/l
 import { toKpiPayload } from "@/lib/kpi-payload";
 import { prisma } from "@/lib/prisma";
 import { signR2Url } from "@/lib/r2";
+import { serializarCursos } from "@/lib/pending";
 import { hoursBalances } from "@/lib/hours-account";
 import { paidDaysBalances } from "@/lib/paid-days-account";
 import { vacationBalances } from "@/lib/vacation-account";
@@ -43,7 +44,7 @@ export async function GET(request: Request) {
       select: { dailyGoal: true, dailySales: true, transactions: true, pieces: true, traffic: true }
     }),
     prisma.dayPlan.findMany({ where: { storeId: session.storeId, ...(manager ? {} : { userId: session.userId, publishedAt: { not: null } }) }, include: { activities: true }, orderBy: { date: "desc" } }),
-    prisma.pending.findMany({ where: { storeId: session.storeId, ...(manager ? {} : { ownerId: session.userId }) }, orderBy: [{ priority: "desc" }, { dueDate: "asc" }] }),
+    prisma.pending.findMany({ where: { storeId: session.storeId, ...(manager ? {} : { ownerId: session.userId }) }, include: { cursos: true }, orderBy: [{ priority: "desc" }, { dueDate: "asc" }] }),
     prisma.storeLog.findMany({ where: { storeId: session.storeId, ...(manager ? {} : { authorId: session.userId }) }, orderBy: { createdAt: "asc" } }),
     prisma.announcement.findMany({ where: { storeId: session.storeId }, include: { reads: true, reactions: true }, orderBy: { createdAt: "desc" } }),
     prisma.schedule.findMany({ where: { storeId: session.storeId, ...own }, orderBy: [{ userId: "asc" }, { date: "asc" }] }),
@@ -160,7 +161,7 @@ export async function GET(request: Request) {
     kpis: kpis.map(toKpiPayload),
     dashboardDaily,
     plans: plans.map((plan) => ({ id: plan.id, userId: plan.userId, date: plan.date.toISOString().slice(0, 10), dailyGoal: Number(plan.dailyGoal), focus: plan.focus, message: plan.message, published: plan.publishedAt !== null, activities: plan.activities.map((activity) => ({ id: activity.id, title: activity.title, completed: activity.completed, autoKey: activity.autoKey })) })),
-    pendings: pendings.map((pending) => ({ id: pending.id, title: pending.title, description: pending.description, category: lower(pending.category), priority: lower(pending.priority), ownerId: pending.ownerId, status: lower(pending.status), dueDate: pending.dueDate.toISOString().slice(0, 10) })),
+    pendings: pendings.map((pending) => ({ id: pending.id, title: pending.title, description: pending.description, category: lower(pending.category), priority: lower(pending.priority), ownerId: pending.ownerId, status: lower(pending.status), dueDate: pending.dueDate.toISOString().slice(0, 10), tipo: pending.tipo === "CURSO" ? ("curso" as const) : ("pendiente" as const), cierreSolicitado: Boolean(pending.cierreSolicitadoAt), cursos: serializarCursos(pending.cursos) })),
     logEntries: logEntries.map((entry, index) => ({ id: entry.id, date: entry.createdAt.toISOString(), authorId: entry.authorId, category: entry.category, description: entry.description, evidenceUrl: signedLogEvidence[index] })),
     announcements: announcements.map((announcement, index) => ({ id: announcement.id, title: announcement.title, body: announcement.body, imageUrl: signedAnnouncementImages[index], authorId: announcement.authorId, date: announcement.createdAt.toISOString().slice(0, 10), readBy: announcement.reads.map((read) => read.userId), reactions: announcement.reactions.map((reaction) => ({ emoji: reaction.emoji, userId: reaction.userId })) })),
     // date + status: la fuente de verdad de quién trabaja cada día es el archivo

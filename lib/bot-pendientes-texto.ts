@@ -89,11 +89,26 @@ export const avisoCerrado = (titulo: string) => `🎉 Gerencia revisó y cerró 
 export const avisoRegresado = (titulo: string) =>
   `Gerencia revisó *${titulo}* y todavía le falta algo, así que sigue *en progreso*. Pregúntales qué falta 🙏`;
 
-export function recordatorioSegunEstado(opciones: { nombre: string; titulo: string; estado: EstadoPendiente; cierrePedido: boolean; vence?: string }): string | null {
+/**
+ * `avance`: en una matriz de cursos, «Llevas 2 de 6…». Con él, el recordatorio
+ * pide el CERTIFICADO de cada curso en vez de un «terminé».
+ */
+export function recordatorioSegunEstado(opciones: {
+  nombre: string;
+  titulo: string;
+  estado: EstadoPendiente;
+  cierrePedido: boolean;
+  vence?: string;
+  avance?: string;
+}): string | null {
   const { titulo } = opciones;
   const nombre = primerNombre(opciones.nombre);
   const vence = opciones.vence ? ` (vence ${opciones.vence})` : "";
   if (opciones.estado === "COMPLETADO" || opciones.cierrePedido) return null;
+  if (opciones.avance) {
+    const cabeza = opciones.estado === "PENDIENTE" ? `todavía no registras avance en *${titulo}*${vence}.` : `¿cómo vas con *${titulo}*${vence}? 💪`;
+    return `📚 ${nombre}, ${cabeza}\n${opciones.avance}\nCuando termines un curso, mándame su *certificado* (PDF o captura) y lo marco solito 📄`;
+  }
   if (opciones.estado === "PENDIENTE") {
     return `📚 ${nombre}, todavía no registras avance en *${titulo}*${vence}.\nCuando avances, mándame aquí una foto y lo paso a *en progreso* 📸`;
   }
