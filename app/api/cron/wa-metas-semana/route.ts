@@ -4,6 +4,7 @@ import { resolveMonterreyDate } from "@/lib/cron-time";
 import { prisma } from "@/lib/prisma";
 import { metasDeLaSemana as textoMetas } from "@/lib/whatsapp-mensajes";
 import { tarjetaMetas } from "@/lib/whatsapp-tarjeta";
+import { laboranHoy } from "@/lib/whatsapp-canal";
 import {
   PAUSA_MS,
   claveDia,
@@ -35,7 +36,9 @@ export const runtime = "nodejs";
 
 const ALERTA = "WA_METAS_SEMANA";
 const ESPERA_MS = 15 * 60_000;
-const VENTANA_MS = 48 * 3_600_000;
+// 7 días y no 48 h: a quien descansa se le guarda el aviso para su siguiente
+// día laboral, y un descanso de dos días no puede hacérselo perder.
+const VENTANA_MS = 7 * 24 * 3_600_000;
 
 export async function POST(request: Request) {
   const unauthorized = requireCron(request);
@@ -44,11 +47,11 @@ export async function POST(request: Request) {
 
   const { utcDate: hoy } = resolveMonterreyDate();
   const cierres = await prisma.weeklyPerformanceClose.findMany({
-    where: { quotaSavedAt: { gte: new Date(Date.now() - VENTANA_MS), lte: new Date(Date.now() - ESPERA_MS) }, weekEnd: { gte: hoy } },
+    where: { quotaSavedAt: { gte: new Date(Date.now() - VENTANA_MS), lte: new Date(Date.now() - ESPERA_MS) }, weekEnd: { gt: hoy } },
     select: { storeId: true, weekStart: true, weekEnd: true, weekNumber: true, store: { select: { name: true } } }
   });
 
-  const resumen = { semanas: cierres.length, tarjeta: 0, texto: 0, push: 0, sinCambios: 0 };
+  const resumen = { semanas: cierres.length, tarjeta: 0, texto: 0, push: 0, sinCambios: 0, enEspera: 0 };
 
   for (const cierre of cierres) {
     const semana = claveDia(cierre.weekStart);
@@ -58,9 +61,15 @@ export async function POST(request: Request) {
       select: { userId: true, periodKey: true }
     });
     const telefonos = await telefonosDe(metas.map((m) => m.persona.id));
+    const laboran = await laboranHoy(metas.map((m) => m.persona.id), hoy);
     let enviados = 0;
 
     for (const m of metas) {
+      // Hoy no labora: se le guarda y le llega el siguiente día que labore.
+      if (!laboran.has(m.persona.id)) {
+        resumen.enEspera += 1;
+        continue;
+      }
       const clave = `${semana}:${m.huella}`;
       const suyos = previos.filter((p) => p.userId === m.persona.id);
       if (suyos.some((p) => p.periodKey === clave)) {

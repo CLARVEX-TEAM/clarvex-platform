@@ -6,6 +6,7 @@ import { enviarAvisoPorWhatsApp } from "@/lib/whatsapp-aviso";
 import { cierreDeSemana, cierreDeSemanaTienda, lineaCampanaPersona, lineaCampanaTienda } from "@/lib/whatsapp-mensajes";
 import { resumenDeSemana } from "@/lib/campana-datos";
 import { tarjetaCierre } from "@/lib/whatsapp-tarjeta";
+import { laboranHoy } from "@/lib/whatsapp-canal";
 import {
   PAUSA_MS,
   cierreDeLaSemana,
@@ -52,7 +53,7 @@ export async function POST(request: Request) {
   const ultimaLlamada = weekday === 1 && horaMonterrey() >= 12;
 
   const stores = await prisma.store.findMany({ select: { id: true, name: true } });
-  const resumen = { semana, tiendas: 0, tarjeta: 0, texto: 0, push: 0, esperando: 0 };
+  const resumen = { semana, tiendas: 0, tarjeta: 0, texto: 0, push: 0, esperando: 0, enEspera: 0 };
 
   for (const store of stores) {
     const { personas, sabadoCapturado } = await cierreDeLaSemana(store.id, inicio);
@@ -77,6 +78,7 @@ export async function POST(request: Request) {
     const kpiSemana = await prisma.kpi.findFirst({ where: { storeId: store.id, date: inicio }, select: { weekNumber: true } });
     const semanaNumero = numero?.weekNumber ?? kpiSemana?.weekNumber ?? 0;
     const telefonos = await telefonosDe(personas.map((p) => p.persona.id));
+    const laboran = await laboranHoy(personas.map((p) => p.persona.id), hoy);
     // Tailored Help de esa misma semana, si la campaña está activa y tiene algo.
     const campana = await resumenDeSemana(store.id, inicio).catch(() => null);
     const conCampana = campana && (campana.meta > 0 || campana.total > 0) ? campana : null;
@@ -84,6 +86,11 @@ export async function POST(request: Request) {
     let enviados = 0;
 
     for (const c of personas) {
+      // Hoy no labora: se le guarda y le llega el siguiente día que labore.
+      if (!laboran.has(c.persona.id)) {
+        resumen.enEspera += 1;
+        continue;
+      }
       if (yaEnviados.has(`${ALERTA}|${c.persona.id}`)) continue;
       const lineaCampana = conCampana
         ? lineaCampanaPersona(conCampana.personas.find((p) => p.userId === c.persona.id)?.total ?? 0, conCampana.total, conCampana.meta)
@@ -123,7 +130,9 @@ export async function POST(request: Request) {
       select: { id: true }
     });
     const telGerencia = await telefonosDe(gerencia.map((g) => g.id));
+    const gerenciaLabora = await laboranHoy(gerencia.map((g) => g.id), hoy);
     for (const g of gerencia) {
+      if (!gerenciaLabora.has(g.id)) continue;
       const tel = telGerencia.get(g.id);
       if (!tel || yaEnviados.has(`${ALERTA_TIENDA}|${g.id}`)) continue;
       await esperar(PAUSA_MS);
