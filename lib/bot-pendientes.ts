@@ -5,6 +5,7 @@ import { enviarAvisoPorWhatsApp } from "@/lib/whatsapp-aviso";
 import { enviarMediaPorWhatsApp } from "@/lib/whatsapp-media";
 import { retirarAvisosDelPendiente } from "@/lib/pendiente-cierre";
 import { leerCertificado } from "@/lib/certificado-ia";
+import { cerrarMatrizSiTermino } from "@/lib/matriz-cierre";
 import { avanceDeMatriz, cursoDelCertificado, esDeLaPersona, textoAvance, type CursoMatriz } from "@/lib/cursos-matriz";
 import {
   avisoCerrado,
@@ -258,7 +259,7 @@ function respuestaDeAvance(p: Abierto): string {
  */
 function terminoMatriz(p: Abierto): string {
   const { faltan } = avanceDeMatriz(p.cursos);
-  if (faltan.length === 0) return `Ya tienes todos los cursos de *${p.title}* 🎉 Gerencia está revisando para cerrarlo.`;
+  if (faltan.length === 0) return `Ya tienes todos los cursos de *${p.title}* 🎉 Quedó como completado.`;
   return `¡Vas muy bien! 💪 ${textoAvance(p.title, p.cursos)}\nMándame el *certificado* de cada uno (PDF o captura) y lo marco como completado.`;
 }
 
@@ -293,17 +294,21 @@ async function certificado(
       titulo: `${matriz.title} · ${curso.nombre} (a nombre de ${lectura.nombre ?? "?"})`
     };
   }
-  if (curso.completadoAt) {
-    return { respuesta: `📄 *${curso.nombre}* ya lo tenías completado 👌\n${textoAvance(matriz.title, matriz.cursos)}`, titulo: `${matriz.title} · ${curso.nombre} (ya estaba)` };
-  }
-
-  await prisma.pendingCurso.update({ where: { id: curso.id }, data: { completadoAt: new Date(), evidenceId: ev.id } });
-  const cursos = matriz.cursos.map((c) => (c.id === curso.id ? { ...c, completadoAt: new Date() } : c));
+  // Se marca solo si sigue sin marcar: con varios certificados a la vez, el
+  // mismo curso no se cuenta dos veces.
+  const marcado = await prisma.pendingCurso.updateMany({ where: { id: curso.id, completadoAt: null }, data: { completadoAt: new Date(), evidenceId: ev.id } });
+  // El avance se cuenta con la lista DE LA BASE, ya con este curso y los que
+  // hayan llegado a la vez. Ver `lib/matriz-cierre.ts`.
+  const { cerrada, cursos } = await cerrarMatrizSiTermino(storeId, matriz.id);
   const avance = textoAvance(matriz.title, cursos);
+  if (marcado.count === 0) {
+    return { respuesta: `📄 *${curso.nombre}* ya lo tenías completado 👌\n${avance}`, titulo: `${matriz.title} · ${curso.nombre} (ya estaba)` };
+  }
   const titulo = `${matriz.title} · ${curso.nombre} ✅`;
-  if (avanceDeMatriz(cursos).faltan.length === 0 && !matriz.cierreSolicitadoAt) {
-    await pedirCierre(storeId, empleado, { ...matriz, status: "EN_PROCESO" });
-    return { respuesta: `✅ Certificado de *${curso.nombre}* registrado.\n${avance}\n\nLe avisé a gerencia para que revise y cierre tu matriz 🙌`, titulo, gerenciaAvisada: true };
+  if (cerrada) {
+    const aviso = `🎓 ${primerNombre(empleado.name ?? "")} completó los ${cursos.length} cursos de *${matriz.title}* con sus certificados y quedó como *completado*. Si algo no cuadra, puedes reabrirlo en la app.`;
+    for (const g of await telefonosDeGerencia(storeId)) await enviarAvisoPorWhatsApp({ phone: g.phone, text: aviso });
+    return { respuesta: `✅ Certificado de *${curso.nombre}* registrado.\n${avance}\n\nTu curso quedó como *completado*. ¡Felicidades! 🙌`, titulo };
   }
   return { respuesta: `✅ Certificado de *${curso.nombre}* registrado como completado.\n${avance}`, titulo };
 }
