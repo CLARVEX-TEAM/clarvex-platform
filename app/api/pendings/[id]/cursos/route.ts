@@ -3,6 +3,7 @@ import { z } from "zod";
 import { isApiError, parseJson, requireSession } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
 import { serializePending } from "@/lib/pending";
+import { cerrarMatrizSiTermino, reabrirMatrizSiFalta } from "@/lib/matriz-cierre";
 
 export const dynamic = "force-dynamic";
 
@@ -26,6 +27,9 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     where: { id: curso.id },
     data: parsed.data.hecho ? { completadoAt: curso.completadoAt ?? new Date() } : { completadoAt: null, evidenceId: null }
   });
+  // Palomear el último cierra la matriz; desmarcar uno de una cerrada la reabre.
+  if (parsed.data.hecho) await cerrarMatrizSiTermino(session.storeId, id);
+  else await reabrirMatrizSiFalta(session.storeId, id);
   const pending = await prisma.pending.findUnique({ where: { id }, include: { cursos: true } });
   return NextResponse.json({ pending: pending ? serializePending(pending) : null });
 }
