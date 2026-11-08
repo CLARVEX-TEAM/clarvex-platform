@@ -17,7 +17,8 @@ import {
   preguntaCual,
   primerNombre,
   respuestaAvance,
-  respuestaTermine
+  respuestaTermine,
+  PIDE_CERTIFICADO
 } from "@/lib/bot-pendientes-texto";
 
 /**
@@ -250,7 +251,7 @@ export async function textoDePendiente(storeId: string, empleado: Empleado, text
 /** Avance de un pendiente; en una matriz, cuántos cursos lleva y cómo se completan. */
 function respuestaDeAvance(p: Abierto): string {
   if (p.tipo !== "CURSO" || p.cursos.length === 0) return respuestaAvance(p.title, Boolean(p.cierreSolicitadoAt));
-  return `✅ Guardé tu avance de *${p.title}* y quedó *en progreso*.\n${textoAvance(p.title, p.cursos)}\n\nCuando termines un curso, mándame su *certificado* (PDF o captura) y lo marco solito 📄`;
+  return `✅ Guardé tu avance de *${p.title}* y quedó *en progreso*.\n${textoAvance(p.title, p.cursos)}\n\n${PIDE_CERTIFICADO}`;
 }
 
 /**
@@ -260,7 +261,7 @@ function respuestaDeAvance(p: Abierto): string {
 function terminoMatriz(p: Abierto): string {
   const { faltan } = avanceDeMatriz(p.cursos);
   if (faltan.length === 0) return `Ya tienes todos los cursos de *${p.title}* 🎉 Quedó como completado.`;
-  return `¡Vas muy bien! 💪 ${textoAvance(p.title, p.cursos)}\nMándame el *certificado* de cada uno (PDF o captura) y lo marco como completado.`;
+  return `¡Vas muy bien! 💪 ${textoAvance(p.title, p.cursos)}\n${PIDE_CERTIFICADO}`;
 }
 
 /**
