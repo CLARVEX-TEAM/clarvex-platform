@@ -7,8 +7,9 @@ import { laboranHoy, telefonosDe, whatsappReemplazaPush } from "@/lib/whatsapp-c
 import { enviarAvisoPorWhatsApp } from "@/lib/whatsapp-aviso";
 
 /**
- * Sábados y domingos a las 3 y a las 6 (Monterrey), a gerencia, el reporte de
- * venta del día listo para copiar y mandar a la plaza.
+ * Sábados y domingos a las 3, a las 6 y a las 9:05 (Monterrey), a gerencia, el
+ * reporte de venta del día listo para copiar y mandar a la plaza. El de las 9:05
+ * se añadió el 8 nov 2026: es el del cierre del día.
  *
  * Son DOS mensajes: uno que dice qué es y de qué hora es la venta, y el bloque
  * solo, para que al copiarlo no se lleve nada más pegado.
@@ -21,7 +22,7 @@ import { enviarAvisoPorWhatsApp } from "@/lib/whatsapp-aviso";
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-const HORAS = new Set(["15", "18"]);
+const HORAS = new Set(["15", "18", "21"]);
 
 function horaDe(fecha: Date): string {
   return new Intl.DateTimeFormat("es-MX", { timeZone: "America/Monterrey", hour: "numeric", minute: "2-digit", hour12: true }).format(fecha);
@@ -33,7 +34,7 @@ export async function POST(request: Request) {
   if (!whatsappReemplazaPush()) return NextResponse.json({ ok: true, apagado: true });
 
   const hora = new URL(request.url).searchParams.get("hora") ?? "";
-  if (!HORAS.has(hora)) return NextResponse.json({ ok: false, error: "hora debe ser 15 o 18" }, { status: 400 });
+  if (!HORAS.has(hora)) return NextResponse.json({ ok: false, error: "hora debe ser 15, 18 o 21" }, { status: 400 });
   const { utcDate: hoy, dateKey, weekday } = resolveMonterreyDate();
   // Solo sábado (6) y domingo (0).
   if (weekday !== 6 && weekday !== 0) return NextResponse.json({ ok: true, fueraDeDia: true });
@@ -64,8 +65,8 @@ export async function POST(request: Request) {
 
     const bloque = reporteDeVenta({ tienda: store.name, meta, uplift: cierre ? Number(cierre.upliftPercent) : 15, venta, tickets, trafico });
     const aviso = capturado
-      ? `📋 *Reporte de venta de las ${hora === "15" ? "3" : "6"} pm* — listo para copiar 👇\n_Venta capturada a las ${ultima ? horaDe(ultima) : "—"}._`
-      : `📋 *Reporte de venta de las ${hora === "15" ? "3" : "6"} pm*\n⚠️ Todavía no hay venta capturada de hoy: captúrala y el reporte de abajo sale en $0.00.`;
+      ? `📋 *Reporte de venta de las ${Number(hora) - 12} pm* — listo para copiar 👇\n_Venta capturada a las ${ultima ? horaDe(ultima) : "—"}._`
+      : `📋 *Reporte de venta de las ${Number(hora) - 12} pm*\n⚠️ Todavía no hay venta capturada de hoy: captúrala y el reporte de abajo sale en $0.00.`;
 
     const gerencia = await prisma.user.findMany({
       where: { storeId: store.id, active: true, checklistOnly: false, role: { in: ["GERENTE", "SUBGERENTE"] } },
