@@ -49,7 +49,7 @@ test("el cron del recordatorio usa el filtro de avisos, no `active` a secas", ()
    */
   const ruta = path.join(__dirname, "..", "app", "api", "cron", "shift-reminder", "route.ts");
   const fuente = readFileSync(ruta, "utf8");
-  assert.match(fuente, /user:\s*NOTIFIABLE_WHERE/, "el cron tiene que filtrar con NOTIFIABLE_WHERE");
+  assert.match(fuente, /user:\s*(?:NOTIFIABLE_WHERE|\{\s*\.\.\.NOTIFIABLE_WHERE\b)/,"el cron tiene que filtrar con NOTIFIABLE_WHERE");
   assert.equal(/user:\s*\{\s*active:\s*true\s*\}/.test(fuente), false, "el filtro corto dejaba pasar demo y kiosko");
 });
 

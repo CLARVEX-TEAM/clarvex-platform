@@ -20,3 +20,12 @@ export function shiftReminderText(startTime: string, zone: string | null): { tit
     body: zone ? `Prepárate para tu jornada. Hoy estarás en ${zone}.` : "Prepárate para tu jornada y revisa los detalles en Mi día."
   };
 }
+
+/**
+ * Quién recibe el recordatorio de turno: solo asesores.
+ *
+ * ⚠️ Gerencia no (8 nov 2026, a petición de Adrián): conoce su horario y ya le
+ * llegan los avisos de AXO y el arranque del día a la misma hora. El aviso de
+ * turno era un mensaje más en una mañana que ya traía seis.
+ */
+export const ROLES_CON_RECORDATORIO_DE_TURNO = ["ASESOR"] as const;

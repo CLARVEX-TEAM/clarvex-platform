@@ -6,7 +6,7 @@ import { createNotifications } from "@/lib/notifications";
 import { prisma } from "@/lib/prisma";
 import { NOTIFIABLE_WHERE } from "@/lib/store-people";
 import { avisar } from "@/lib/whatsapp-canal";
-import { shiftReminderText, shouldSendShiftReminder } from "@/lib/shift-reminder";
+import { ROLES_CON_RECORDATORIO_DE_TURNO, shiftReminderText, shouldSendShiftReminder } from "@/lib/shift-reminder";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -40,7 +40,7 @@ export async function POST(request: Request) {
          * acotada— así que es el único que podía mandarle un aviso a la demo, y
          * se lo mandó. Ver `NOTIFIABLE_WHERE`.
          */
-        user: NOTIFIABLE_WHERE
+        user: { ...NOTIFIABLE_WHERE, role: { in: [...ROLES_CON_RECORDATORIO_DE_TURNO] } }
       },
       select: { userId: true, storeId: true, startTime: true, zone: true }
     }),

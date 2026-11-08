@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { shiftReminderText, shouldSendShiftReminder, timeToMinutes } from "../lib/shift-reminder";
+import { ROLES_CON_RECORDATORIO_DE_TURNO, shiftReminderText, shouldSendShiftReminder, timeToMinutes } from "../lib/shift-reminder";
 
 test("convierte horarios válidos a minutos y rechaza entradas ambiguas", () => {
   assert.equal(timeToMinutes("10:30"), 630);
@@ -23,4 +23,14 @@ test("el recordatorio incluye la zona cuando está disponible", () => {
     body: "Prepárate para tu jornada. Hoy estarás en Piso de venta."
   });
   assert.match(shiftReminderText("10:30", null).body, /Mi día/);
+});
+
+test("el recordatorio de turno es solo para asesores, no para gerencia", () => {
+  assert.deepEqual([...ROLES_CON_RECORDATORIO_DE_TURNO], ["ASESOR"]);
+});
+
+test("la consulta del cron filtra por esos puestos", async () => {
+  const { readFile } = await import("node:fs/promises");
+  const ruta = await readFile(new URL("../app/api/cron/shift-reminder/route.ts", import.meta.url), "utf8");
+  assert.match(ruta, /role: \{ in: \[\.\.\.ROLES_CON_RECORDATORIO_DE_TURNO\] \}/);
 });
