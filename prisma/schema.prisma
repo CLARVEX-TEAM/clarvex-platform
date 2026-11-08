@@ -93,6 +93,7 @@ model Store {
   pendings                       Pending[]
   schedules                      Schedule[]
   attendances                    Attendance[]
+  marcajeFotos                   MarcajeFoto[]
   shiftSwaps                     ShiftSwap[]
   uniformDays                    UniformDay[]
   shiftRequests                  ShiftRequest[]
@@ -245,6 +246,7 @@ model User {
   deviceTokens                  DeviceToken[]
   schedules                     Schedule[]
   attendances                   Attendance[]
+  marcajeFotos                  MarcajeFoto[]
   shiftRequests                 ShiftRequest[]                @relation("ShiftRequester")
   swapsRequested                ShiftSwap[]                   @relation("SwapRequester")
   swapsReceived                 ShiftSwap[]                   @relation("SwapTarget")
@@ -602,6 +604,31 @@ model ShiftSwap {
 /// La hoja solo guarda el día en curso, así que el cron la baja varias veces al
 /// día y la conserva aquí. De esta tabla salen los reportes de nómina (faltas
 /// quincenales; retardos, domingos y festivos mensuales).
+
+/// La foto de la pantalla «Marcar entrada/salida» del POS que cada quien manda
+/// al bot de WhatsApp. Es la evidencia que gerencia adjunta al Forms de AXO.
+/// Una por persona, día y acción: la última que manda sustituye a la anterior.
+model MarcajeFoto {
+  id        String   @id @default(cuid())
+  storeId   String
+  userId    String
+  /// Medianoche UTC del día de tienda, igual que `Attendance.date`.
+  date      DateTime
+  /// ENTRADA o SALIDA.
+  accion    String
+  /// Hora del POS, HH:MM en 24 horas.
+  hora      String
+  url       String
+  mimeType  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  store     Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date, accion])
+  @@index([storeId, date])
+}
+
 model Attendance {
   id              String           @id @default(cuid())
   storeId         String

@@ -9,13 +9,21 @@ import { responderBot, transcribirAudio } from "@/lib/bot-whatsapp-ia";
 import { todayInMonterrey } from "@/lib/mexico-timezone";
 import { mostrarEscribiendo, reaccionar } from "@/lib/whatsapp-gestos";
 import { fotoDePendiente, telefonosDeGerencia, textoDePendiente } from "@/lib/bot-pendientes";
+import { clasificarFoto } from "@/lib/foto-bot-ia";
+import { registrarMarcaje } from "@/lib/marcaje-registro";
+import { resolveMonterreyDate } from "@/lib/cron-time";
 
 /**
  * Webhook de Evolution API (mensajes entrantes de WhatsApp, evento MESSAGES_UPSERT).
  *
  * Bot de la tienda TH SAN AGUSTIN:
- *  1. IMAGEN = evidencia → se reenvía a gerencia (solo Adrián) avisando quién
- *     la mandó y de qué curso. Si el pie es una PREGUNTA, se contesta como texto.
+ *  1. IMAGEN → la IA dice qué es (`lib/foto-bot-ia.ts`):
+ *     - la pantalla «Marcar entrada/salida» del POS → registra la asistencia y
+ *       guarda la foto para el Forms de AXO;
+ *     - certificado u otra → evidencia de su pendiente, que se reenvía a
+ *       gerencia. Si no tiene pendientes y no es certificado, se le pregunta
+ *       qué es en vez de reenviar una foto suelta.
+ *     Si el pie es una PREGUNTA, se contesta como texto.
  *  2. NOTA DE VOZ → se transcribe y se trata como texto.
  *  3. TEXTO de un empleado conocido → responde la IA con SUS datos reales
  *     (turnos, venta del mes, pendientes, comunicados). Límite: 10
@@ -197,11 +205,39 @@ export async function POST(request: Request) {
       if (msg.id) await reaccionar({ remoteJid: msg.remoteJid, id: msg.id }, "✅");
       const nombre = empleado.name ?? msg.pushName ?? telefono;
       const base64 = await obtenerBase64Media(msg.mediaMessage);
+
+      // ¿Qué es? Si la IA no contesta, sigue el camino de siempre.
+      const clase = base64 ? await clasificarFoto(base64, msg.mediaMime) : null;
+      if (clase?.tipo === "marcaje" && clase.marcaje && base64) {
+        const marcaje = await registrarMarcaje({
+          storeId: STORE_ID,
+          remitente: { userId: empleado.userId, name: empleado.name },
+          lectura: clase.marcaje,
+          hoy: resolveMonterreyDate().dateKey,
+          base64,
+          mime: msg.mediaMime
+        }).catch((error) => {
+          console.error("[webhook/whatsapp] marcaje", error instanceof Error ? error.message : error);
+          return { respuesta: "No pude registrar tu asistencia 😓 Mándame la foto otra vez en un momento.", registrado: false };
+        });
+        await enviarAvisoPorWhatsApp({ phone: telefono, text: marcaje.respuesta });
+        return NextResponse.json({ ok: true, accion: "marcaje", registrado: marcaje.registrado });
+      }
+
       // La foto se guarda en su pendiente (y lo pasa a en proceso) si tiene alguno abierto.
       const pendiente = await fotoDePendiente(STORE_ID, { userId: empleado.userId, name: empleado.name, phone: telefono }, base64, msg.texto, msg.mediaMime).catch((error) => {
         console.error("[webhook/whatsapp] evidencia en pendiente", error instanceof Error ? error.message : error);
         return null;
       });
+      // Ni marcaje, ni certificado, ni pendiente abierto: se pregunta en vez de
+      // mandarle a gerencia una foto que nadie sabe de qué es.
+      if (!pendiente && clase?.tipo === "otra") {
+        await enviarAvisoPorWhatsApp({
+          phone: telefono,
+          text: "📸 Recibí tu foto, ¿de qué es?\n• Si es tu *entrada*, mándame la foto de la pantalla *Marcar entrada* del POS.\n• Si es *evidencia* de un pendiente o curso, dime de cuál."
+        });
+        return NextResponse.json({ ok: true, accion: "foto_sin_tipo" });
+      }
       const cursos = pendiente?.titulo ? [pendiente.titulo] : await cursosPendientes(empleado.userId);
       const detalle = cursos.length ? ` de «${cursos.join(", ")}»` : "";
       const enApp = pendiente?.titulo ? " (guardada en la app, en progreso)" : "";
