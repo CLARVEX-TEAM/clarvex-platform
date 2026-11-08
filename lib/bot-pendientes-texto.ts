@@ -14,7 +14,14 @@
  * certificado, y quien lo revisa es gerencia.
  */
 
-export type EstadoPendiente = "PENDIENTE" | "EN_PROCESO" | "COMPLETADO";
+/**
+ * Lo que se le dice a quien manda un avance que NO es certificado. Un curso
+ * solo se completa con el certificado porque supervisión los pide.
+ */
+export const PIDE_CERTIFICADO =
+  "Para marcar un curso como *completado*, mándame *foto, captura o PDF de su certificado*: supervisión los pide 📄";
+
+export type EstadoPendiente ="PENDIENTE" | "EN_PROCESO" | "COMPLETADO";
 
 /**
  * «Ya terminé», «acabé el curso», «ya lo completé»…
@@ -107,7 +114,7 @@ export function recordatorioSegunEstado(opciones: {
   if (opciones.estado === "COMPLETADO" || opciones.cierrePedido) return null;
   if (opciones.avance) {
     const cabeza = opciones.estado === "PENDIENTE" ? `todavía no registras avance en *${titulo}*${vence}.` : `¿cómo vas con *${titulo}*${vence}? 💪`;
-    return `📚 ${nombre}, ${cabeza}\n${opciones.avance}\nCuando termines un curso, mándame su *certificado* (PDF o captura) y lo marco solito 📄`;
+    return `📚 ${nombre}, ${cabeza}\n${opciones.avance}\n${PIDE_CERTIFICADO}`;
   }
   if (opciones.estado === "PENDIENTE") {
     return `📚 ${nombre}, todavía no registras avance en *${titulo}*${vence}.\nCuando avances, mándame aquí una foto y lo paso a *en progreso* 📸`;
