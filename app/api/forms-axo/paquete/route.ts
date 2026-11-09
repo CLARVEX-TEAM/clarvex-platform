@@ -38,7 +38,7 @@ export async function GET(request: Request) {
   if (!forms) return NextResponse.json({ error: "Tu tienda no tiene configurado el Forms de AXO." }, { status: 404 });
 
   const hoy = resolveMonterreyDate();
-  const [turnos, marcajes] = await Promise.all([
+  const [turnos, marcajes, asistencias] = await Promise.all([
     prisma.schedule.findMany({
       where: { storeId: datos.storeId, date: hoy.utcDate, status: { in: ["WORKING", "INVENTORY"] }, user: PERSON_WHERE },
       select: { startTime: true, user: { select: { id: true, name: true, role: true } } }
@@ -46,8 +46,11 @@ export async function GET(request: Request) {
     prisma.marcajeFoto.findMany({
       where: { storeId: datos.storeId, date: hoy.utcDate, accion: "ENTRADA" },
       select: { userId: true, hora: true, url: true, mimeType: true }
-    })
+    }),
+    // Sin foto, la hora sale de la asistencia capturada (Retool o el pase de lista).
+    prisma.attendance.findMany({ where: { storeId: datos.storeId, date: hoy.utcDate }, select: { userId: true, arrivedAt: true } })
   ]);
+  const llegada = new Map(asistencias.map((a) => [a.userId, a.arrivedAt]));
   const nombreCompleto = new Map(turnos.map((t) => [t.user.id, t.user.name]));
   const lugares = ordenDelForms(
     turnos.map((t) => ({ userId: t.user.id, name: t.user.name, role: t.user.role, expectedAt: expectedEntry(t.startTime) })),
@@ -65,7 +68,7 @@ export async function GET(request: Request) {
     salida.push({
       etiqueta: l.etiqueta,
       nombre: nombreCompleto.get(l.userId) ?? l.nombre,
-      hora: l.foto?.hora ?? null,
+      hora: l.foto?.hora ?? llegada.get(l.userId) ?? null,
       foto
     });
   }
