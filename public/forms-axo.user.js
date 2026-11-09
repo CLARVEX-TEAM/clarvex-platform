@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Clarvex — Llenar el Forms de asistencia AXO
 // @namespace    https://team.clarvex.tech
-// @version      1.0.0
+// @version      1.2.0
 // @description  Llena el Forms de asistencia de AXO con los datos y las fotos de entrada de hoy. NUNCA lo envía: tú revisas y picas Enviar.
 // @match        https://forms.cloud.microsoft/*
 // @match        https://forms.office.com/*
@@ -20,9 +20,9 @@
  *  1. Pide a Clarvex el paquete de HOY con tu código personal (se lo pides al
  *     bot de WhatsApp: «código forms»).
  *  2. Página 1: elige TIENDA y SUPERVISOR y pone la FECHA. Pica «Siguiente».
- *  3. Página 2: por cada «Nombre …» (Gerente, Subgerente, Asesor 1…) escribe el
- *     nombre, la hora de ingreso y adjunta la foto del marcaje.
- *  4. Se DETIENE. Nunca pica «Enviar».
+ *  3. Luego, una página por puesto (Gerente, Subgerente, Asesor 1…): escribe el
+ *     nombre, la hora de ingreso y adjunta la foto del marcaje, y pica «Siguiente».
+ *  4. Se DETIENE en la última página (la foto grupal). Nunca pica «Enviar».
  *
  * ⚠️ Los campos se buscan por su TÍTULO, no por su posición. Si AXO cambia
  * el Forms y algo no se encuentra, lo dice y no adivina.
@@ -166,9 +166,31 @@
     return true;
   }
 
-  function fechaForms(iso) {
+  const MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
+
+  /*
+   * ⚠️ La FECHA no se puede escribir: es un selector de fecha que borra lo que
+   * no tecleó una persona (probado el 8 nov 2026). Se abre su calendario con el
+   * icono y se pica el día, que tiene aria-label «8, noviembre, 2026».
+   */
+  async function ponerFecha(pregunta, iso) {
     const [a, m, d] = iso.split("-").map(Number);
-    return d + "/" + m + "/" + a; // el Forms pide d/M/yyyy
+    const input = pregunta.el.querySelector("input");
+    const esperado = d + "/" + m + "/" + a;
+    if (input && input.value === esperado) return true;
+    const icono = pregunta.el.querySelector('i[data-icon-name="Calendar"]') || input;
+    if (!icono) return false;
+    icono.click();
+    await esperar(600);
+    const etiqueta = d + ", " + MESES[m - 1] + ", " + a;
+    const dia = [...document.querySelectorAll('[role="dialog"] button')].find((b) => b.getAttribute("aria-label") === etiqueta);
+    if (!dia) {
+      document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+      return false;
+    }
+    dia.click();
+    await esperar(500);
+    return !input || input.value === esperado;
   }
 
   async function pagina1(p, notas) {
@@ -179,9 +201,7 @@
     if (!tienda || !supervisor || !fecha) return false; // no estamos en la página 1
     if (!(await elegir(tienda, p.tienda))) notas.push("⚠️ No encontré la tienda «" + p.tienda + "» en la lista.");
     if (!(await elegir(supervisor, p.supervisor))) notas.push("⚠️ No encontré al supervisor «" + p.supervisor + "» en la lista.");
-    const inputFecha = fecha.el.querySelector("input");
-    if (inputFecha) escribir(inputFecha, fechaForms(p.fecha));
-    else notas.push("⚠️ No encontré el campo de fecha.");
+    if (!(await ponerFecha(fecha, p.fecha))) notas.push("⚠️ No pude poner la fecha: elígela a mano.");
     await esperar(400);
     const siguiente = [...document.querySelectorAll("button")].find((b) => plano(b.innerText) === "siguiente");
     if (!siguiente) return true;
@@ -199,39 +219,76 @@
     return m ? m[1] : null;
   }
 
-  async function pagina2(p, notas) {
+  const titulosDePagina = () => preguntas().map((q) => q.titulo).join("|");
+
+  /*
+   * ⚠️ El Forms trae UNA PÁGINA POR PUESTO (visto el 8 nov 2026): Gerente,
+   * Subgerente, Subgerente Jr., Almacenista, Asesor 1…7 y al final la foto
+   * grupal con el botón «Enviar». Se recorre página por página con «Siguiente»
+   * y se detiene en la que ya no lo tiene. «Enviar» no se toca nunca.
+   */
+  async function personal(p, notas) {
     const porLugar = new Map(p.lugares.map((l) => [plano(l.etiqueta), l]));
     const usados = new Set();
     let actual = null;
-    for (const q of preguntas()) {
-      const lugar = lugarDe(q.titulo);
-      if (q.titulo.startsWith("nombre ")) {
-        actual = lugar ? porLugar.get(lugar) || null : null; // Subgerente Jr., Almacenista: vacíos
-        if (actual) {
+    for (let pagina = 0; pagina < 25; pagina++) {
+      for (const q of preguntas()) {
+        if (q.titulo.startsWith("nombre ")) {
+          const lugar = lugarDe(q.titulo);
+          actual = lugar ? porLugar.get(lugar) || null : null; // Subgerente Jr., Almacenista: vacíos
+          if (actual) {
+            const input = q.el.querySelector("input,textarea");
+            if (input) escribir(input, actual.nombre);
+            usados.add(plano(actual.etiqueta));
+          }
+          continue;
+        }
+        if (!actual) continue;
+        if (q.titulo.startsWith("hora de ingreso")) {
           const input = q.el.querySelector("input,textarea");
-          if (input) escribir(input, actual.nombre);
-          usados.add(plano(actual.etiqueta));
+          if (input && actual.hora) escribir(input, actual.hora);
+          else if (!actual.hora) notas.push("⏳ " + actual.etiqueta + " (" + actual.nombre + "): sin hora de entrada.");
+          continue;
         }
-        continue;
-      }
-      if (!actual) continue;
-      if (q.titulo === "hora de ingreso") {
-        const input = q.el.querySelector("input,textarea");
-        if (input && actual.hora) escribir(input, actual.hora);
-        continue;
-      }
-      if (q.titulo.startsWith("imagen de checado")) {
-        if (!actual.foto) notas.push("⏳ " + actual.etiqueta + " (" + actual.nombre + "): no ha mandado su foto al bot.");
-        else if (!(await adjuntar(q, actual.foto, plano(actual.etiqueta).replace(/\s+/g, "-") + ".jpg"))) {
-          notas.push("⚠️ " + actual.etiqueta + ": no pude adjuntar la foto, adjúntala a mano.");
+        if (q.titulo.startsWith("imagen de checado")) {
+          if (!actual.foto) notas.push("⏳ " + actual.etiqueta + " (" + actual.nombre + "): no ha mandado su foto al bot.");
+          else if (!(await adjuntar(q, actual.foto, plano(actual.etiqueta).replace(/\s+/g, "-") + ".jpg"))) {
+            notas.push("⚠️ " + actual.etiqueta + ": no pude adjuntar la foto, adjúntala a mano.");
+          }
+          actual = null; // una foto y una hora por persona
         }
-        actual = { ...actual, foto: null, hora: null }; // una foto y una hora por persona
+      }
+      const siguiente = [...document.querySelectorAll("button")].find((b) => plano(b.innerText) === "siguiente");
+      if (!siguiente) break; // la última página: la de «Enviar»
+      const antes = titulosDePagina();
+      await esperar(300);
+      siguiente.click();
+      for (let i = 0; i < 30 && titulosDePagina() === antes; i++) await esperar(250);
+      if (titulosDePagina() === antes) {
+        const alertas = [...document.querySelectorAll('[role="alert"]')].map((a) => a.innerText).filter(Boolean);
+        notas.push("⚠️ El Forms no pasó de página" + (alertas.length ? ": " + alertas.join(" ") : "."));
+        break;
       }
     }
     for (const l of p.lugares) {
       if (!usados.has(plano(l.etiqueta))) notas.push("⚠️ " + l.etiqueta + " (" + l.nombre + ") no tiene lugar en el Forms: llénalo a mano.");
     }
     return usados.size;
+  }
+
+  /*
+   * ⚠️ El Forms abre donde te quedaste la última vez (guarda un borrador en el
+   * navegador). Visto el 8 nov 2026: abrió directo en la última página y el
+   * botón no llenaba a nadie. Se regresa con «Atrás» hasta la de la tienda.
+   */
+  async function alInicio() {
+    for (let i = 0; i < 25 && !preguntas().some((q) => q.titulo === "tienda"); i++) {
+      const atras = [...document.querySelectorAll("button")].find((b) => plano(b.innerText) === "atras");
+      if (!atras) break;
+      const antes = titulosDePagina();
+      atras.click();
+      for (let j = 0; j < 30 && titulosDePagina() === antes; j++) await esperar(200);
+    }
   }
 
   async function llenar() {
@@ -244,10 +301,11 @@
       throw e;
     }
     const notas = [];
+    await alInicio();
     await pagina1(paquete, notas);
     aviso("Llenando al personal…");
     await esperar(800);
-    const llenos = await pagina2(paquete, notas);
+    const llenos = await personal(paquete, notas);
     const resumen = [
       "✅ Listo: llené " + llenos + " persona(s) del " + paquete.fecha + ".",
       notas.length ? "\n" + notas.join("\n") : "",
