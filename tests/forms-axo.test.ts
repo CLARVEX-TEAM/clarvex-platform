@@ -37,11 +37,17 @@ const script = readFileSync(path.join(__dirname, "..", "public", "forms-axo.user
 
 test("el script NUNCA pica Enviar", () => {
   assert.equal(/enviar"|submit/i.test(script.replace(/\/\/.*$|\/\*[\s\S]*?\*\//gm, "")), false);
-  assert.match(script, /plano\(b\.innerText\) === "siguiente"/);
+  assert.match(script, /data-automation-id="nextButton"/);
+  assert.equal(script.includes("submitButton\"]"), false, "el botón de Enviar no se busca nunca");
 });
 
 test("el script solo habla con Clarvex y solo corre en Microsoft Forms", () => {
   const cabecera = script.slice(0, script.indexOf("==/UserScript=="));
   assert.deepEqual([...cabecera.matchAll(/@connect\s+(\S+)/g)].map((m) => m[1]), ["team.clarvex.tech"]);
   assert.deepEqual([...cabecera.matchAll(/@match\s+(\S+)/g)].map((m) => m[1]), ["https://forms.cloud.microsoft/*", "https://forms.office.com/*"]);
+});
+
+test("el script no depende del idioma del Forms (en inglés dice «Next» y «November»)", () => {
+  assert.equal(/=== "siguiente"|=== "atras"/.test(script), false);
+  assert.match(script, /\["noviembre", "november"\]/);
 });

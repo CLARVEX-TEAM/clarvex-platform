@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Clarvex — Llenar el Forms de asistencia AXO
 // @namespace    https://team.clarvex.tech
-// @version      1.2.0
+// @version      1.3.0
 // @description  Llena el Forms de asistencia de AXO con los datos y las fotos de entrada de hoy. NUNCA lo envía: tú revisas y picas Enviar.
 // @match        https://forms.cloud.microsoft/*
 // @match        https://forms.office.com/*
@@ -166,7 +166,19 @@
     return true;
   }
 
-  const MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
+  /*
+   * ⚠️ Los botones se buscan por su `data-automation-id`, NUNCA por el texto: el
+   * Forms sale en el idioma del navegador. En el Firefox de Adrián salió en
+   * inglés («Next») y la v1.2 no pasó de la primera página (8 nov 2026).
+   * «submitButton» (Enviar) no se busca en ningún sitio.
+   */
+  const botonSiguiente = () => document.querySelector('button[data-automation-id="nextButton"]');
+
+  const MESES = [
+    ["enero", "january"], ["febrero", "february"], ["marzo", "march"], ["abril", "april"],
+    ["mayo", "may"], ["junio", "june"], ["julio", "july"], ["agosto", "august"],
+    ["septiembre", "september"], ["octubre", "october"], ["noviembre", "november"], ["diciembre", "december"]
+  ];
 
   /*
    * ⚠️ La FECHA no se puede escribir: es un selector de fecha que borra lo que
@@ -176,21 +188,25 @@
   async function ponerFecha(pregunta, iso) {
     const [a, m, d] = iso.split("-").map(Number);
     const input = pregunta.el.querySelector("input");
-    const esperado = d + "/" + m + "/" + a;
-    if (input && input.value === esperado) return true;
+    // En español el Forms escribe d/M/yyyy; en inglés, M/d/yyyy.
+    const valida = () => !input || input.value === d + "/" + m + "/" + a || input.value === m + "/" + d + "/" + a;
+    if (input && input.value && valida()) return true;
     const icono = pregunta.el.querySelector('i[data-icon-name="Calendar"]') || input;
     if (!icono) return false;
     icono.click();
     await esperar(600);
-    const etiqueta = d + ", " + MESES[m - 1] + ", " + a;
-    const dia = [...document.querySelectorAll('[role="dialog"] button')].find((b) => b.getAttribute("aria-label") === etiqueta);
+    // El aria-label del día va en el idioma del navegador: «8, noviembre, 2026» o «8, November, 2026».
+    const dia = [...document.querySelectorAll('[role="dialog"] button')].find((b) => {
+      const partes = plano(b.getAttribute("aria-label")).split(/[\s,]+/);
+      return partes.includes(String(d)) && partes.includes(String(a)) && MESES[m - 1].some((mes) => partes.includes(mes));
+    });
     if (!dia) {
       document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
       return false;
     }
     dia.click();
     await esperar(500);
-    return !input || input.value === esperado;
+    return valida();
   }
 
   async function pagina1(p, notas) {
@@ -203,7 +219,7 @@
     if (!(await elegir(supervisor, p.supervisor))) notas.push("⚠️ No encontré al supervisor «" + p.supervisor + "» en la lista.");
     if (!(await ponerFecha(fecha, p.fecha))) notas.push("⚠️ No pude poner la fecha: elígela a mano.");
     await esperar(400);
-    const siguiente = [...document.querySelectorAll("button")].find((b) => plano(b.innerText) === "siguiente");
+    const siguiente = botonSiguiente();
     if (!siguiente) return true;
     siguiente.click();
     for (let i = 0; i < 20 && preguntas().some((q) => q.titulo === "tienda"); i++) await esperar(300);
@@ -258,7 +274,7 @@
           actual = null; // una foto y una hora por persona
         }
       }
-      const siguiente = [...document.querySelectorAll("button")].find((b) => plano(b.innerText) === "siguiente");
+      const siguiente = botonSiguiente();
       if (!siguiente) break; // la última página: la de «Enviar»
       const antes = titulosDePagina();
       await esperar(300);
@@ -283,7 +299,7 @@
    */
   async function alInicio() {
     for (let i = 0; i < 25 && !preguntas().some((q) => q.titulo === "tienda"); i++) {
-      const atras = [...document.querySelectorAll("button")].find((b) => plano(b.innerText) === "atras");
+      const atras = document.querySelector('button[data-automation-id="backButton"]');
       if (!atras) break;
       const antes = titulosDePagina();
       atras.click();
