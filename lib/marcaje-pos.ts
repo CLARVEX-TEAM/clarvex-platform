@@ -86,38 +86,64 @@ export function numeroLimpio(texto: string | null | undefined): string | null {
   return solo.length >= 3 && solo.length <= 12 ? solo : null;
 }
 
+const minutos = (hhmm: string) => Number(hhmm.slice(0, 2)) * 60 + Number(hhmm.slice(3, 5));
+
+/** Una «salida» a menos de esto de la entrada no es una salida: es la foto de la entrada. */
+export const MINUTOS_MISMA_MARCA = 60;
+
 /**
  * Qué se escribe con una foto, dado el día de hoy en Monterrey.
  *
- * - La pantalla y su hora: la entrada (o la salida) de HOY.
- * - El «Estado», si es la SALIDA de AYER: la salida real de ayer. Pisa la que
- *   puso la auto-asunción de las 10 pm, que es una suposición.
- * - El «Estado», si es la ENTRADA de hoy (foto de la pantalla de salida): la
- *   entrada de hoy, pero solo si todavía no hay una.
+ * ⚠️ **La acción se deduce del «Estado», no del título.** El 9 nov 2026 llegaron
+ * dos fotos que el título engañaba:
+ *  - la de Waira venía recortada, sin el título, y la IA dijo «salida»;
+ *  - la de Alonso era la pantalla de DESPUÉS de marcar la entrada (Estado:
+ *    «Marcar entrada - hoy 10:44», y ya ofrecía «Marcar salida»).
+ * El «Estado» siempre se ve: si lo último fue una salida, esto es la entrada; si
+ * lo último fue la entrada de hoy hace unos minutos, la foto ES esa entrada.
+ *
+ * Además, si el «Estado» es la SALIDA de AYER, es la salida real de ayer y pisa
+ * la que puso la auto-asunción de las 10 pm, que es una suposición.
  */
 export function planDeMarcaje(lectura: LecturaMarcaje, hoy: string): PlanMarcaje {
   const numero = numeroLimpio(lectura.numeroEmpleado);
   const fecha = fechaIso(lectura.fecha);
   const hora = hora24(lectura.hora);
-  if (!numero || !fecha || !hora || !lectura.pantalla) return { ok: false, motivo: "ilegible" };
-  if (fecha !== hoy) return { ok: false, motivo: "otro-dia", fecha };
-
-  const escrituras: Escritura[] = [
-    { fecha: hoy, campo: lectura.pantalla === "entrada" ? "arrivedAt" : "leftAt", hora, soloSiFalta: false }
-  ];
-
   const ultima = lectura.ultimaMarca;
   const fechaUltima = fechaIso(ultima?.fecha);
   const horaUltima = hora24(ultima?.hora);
-  if (ultima && fechaUltima && horaUltima) {
-    if (ultima.accion === "salida" && fechaUltima === diaAnterior(hoy)) {
-      escrituras.push({ fecha: fechaUltima, campo: "leftAt", hora: horaUltima, soloSiFalta: false });
+  const hayUltima = Boolean(ultima && fechaUltima && horaUltima);
+
+  const pantalla: Pantalla | null = hayUltima ? (ultima!.accion === "salida" ? "entrada" : "salida") : lectura.pantalla;
+  if (!numero || !fecha || !hora || !pantalla) return { ok: false, motivo: "ilegible" };
+  if (fecha !== hoy) return { ok: false, motivo: "otro-dia", fecha };
+
+  // La pantalla de después de marcar: la foto es la entrada que acaba de hacer.
+  if (
+    pantalla === "salida" && hayUltima && ultima!.accion === "entrada" && fechaUltima === hoy &&
+    minutos(hora) - minutos(horaUltima!) < MINUTOS_MISMA_MARCA
+  ) {
+    return {
+      ok: true,
+      numeroEmpleado: numero,
+      pantalla: "entrada",
+      hora: horaUltima!,
+      escrituras: [{ fecha: hoy, campo: "arrivedAt", hora: horaUltima!, soloSiFalta: false }]
+    };
+  }
+
+  const escrituras: Escritura[] = [
+    { fecha: hoy, campo: pantalla === "entrada" ? "arrivedAt" : "leftAt", hora, soloSiFalta: false }
+  ];
+  if (hayUltima) {
+    if (ultima!.accion === "salida" && fechaUltima === diaAnterior(hoy)) {
+      escrituras.push({ fecha: fechaUltima, campo: "leftAt", hora: horaUltima!, soloSiFalta: false });
     }
-    if (ultima.accion === "entrada" && fechaUltima === hoy && lectura.pantalla === "salida") {
-      escrituras.push({ fecha: hoy, campo: "arrivedAt", hora: horaUltima, soloSiFalta: true });
+    if (ultima!.accion === "entrada" && fechaUltima === hoy && pantalla === "salida") {
+      escrituras.push({ fecha: hoy, campo: "arrivedAt", hora: horaUltima!, soloSiFalta: true });
     }
   }
-  return { ok: true, numeroEmpleado: numero, pantalla: lectura.pantalla, hora, escrituras };
+  return { ok: true, numeroEmpleado: numero, pantalla, hora, escrituras };
 }
 
 /**

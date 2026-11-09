@@ -56,7 +56,7 @@ test("una foto de otro día NO registra nada", () => {
 test("si falta el número, la fecha o la hora, se pide otra foto", () => {
   assert.deepEqual(planDeMarcaje({ ...EDUARDO, numeroEmpleado: null }, "2026-11-08"), { ok: false, motivo: "ilegible" });
   assert.deepEqual(planDeMarcaje({ ...EDUARDO, hora: "10:4" }, "2026-11-08"), { ok: false, motivo: "ilegible" });
-  assert.deepEqual(planDeMarcaje({ ...EDUARDO, pantalla: null }, "2026-11-08"), { ok: false, motivo: "ilegible" });
+  assert.deepEqual(planDeMarcaje({ ...EDUARDO, pantalla: null, ultimaMarca: null }, "2026-11-08"), { ok: false, motivo: "ilegible" });
 });
 
 test("una última salida que no es de ayer no se toca", () => {
@@ -129,4 +129,46 @@ test("el paquete del Forms va en su orden y nombra a quien falta", () => {
   const texto = resumenParaForms(lugares);
   assert.match(texto, /✅ Asesor 1 — Eduardo \(10:43\)/);
   assert.match(texto, /Falta foto de: \*Itzel, Jesus, Waira\*/);
+});
+
+// Las dos fotos reales del 9 nov 2026 que el título engañaba.
+test("Waira: foto recortada sin título, la IA dice «salida», pero el Estado dice que es la ENTRADA", () => {
+  const plan = planDeMarcaje(
+    { pantalla: "salida", numeroEmpleado: "100200", fecha: "09/11/2026", hora: "10:43 a. m.", ultimaMarca: { accion: "salida", fecha: "08/11/2026", hora: "09:00 p. m." } },
+    "2026-11-09"
+  );
+  assert.ok(plan.ok);
+  assert.equal(plan.pantalla, "entrada");
+  assert.deepEqual(plan.escrituras, [
+    { fecha: "2026-11-09", campo: "arrivedAt", hora: "10:43", soloSiFalta: false },
+    { fecha: "2026-11-08", campo: "leftAt", hora: "21:00", soloSiFalta: false }
+  ]);
+});
+
+test("Alonso: la pantalla de DESPUÉS de marcar entrada es la foto de esa entrada, no una salida", () => {
+  const plan = planDeMarcaje(
+    { pantalla: "salida", numeroEmpleado: "113642", fecha: "09/11/2026", hora: "10:44 a. m.", ultimaMarca: { accion: "entrada", fecha: "09/11/2026", hora: "10:44 a. m." } },
+    "2026-11-09"
+  );
+  assert.ok(plan.ok);
+  assert.equal(plan.pantalla, "entrada");
+  assert.equal(plan.hora, "10:44");
+  assert.deepEqual(plan.escrituras, [{ fecha: "2026-11-09", campo: "arrivedAt", hora: "10:44", soloSiFalta: false }]);
+});
+
+test("una salida de verdad, horas después de la entrada, sigue siendo salida", () => {
+  const plan = planDeMarcaje(
+    { pantalla: "entrada", numeroEmpleado: "113642", fecha: "09/11/2026", hora: "09:02 p. m.", ultimaMarca: { accion: "entrada", fecha: "09/11/2026", hora: "10:44 a. m." } },
+    "2026-11-09"
+  );
+  assert.ok(plan.ok);
+  assert.equal(plan.pantalla, "salida");
+  assert.equal(plan.escrituras[0].campo, "leftAt");
+  assert.equal(plan.escrituras[0].hora, "21:02");
+});
+
+test("sin Estado legible, manda el título", () => {
+  const plan = planDeMarcaje({ ...EDUARDO, ultimaMarca: null }, "2026-11-08");
+  assert.ok(plan.ok);
+  assert.equal(plan.pantalla, "entrada");
 });

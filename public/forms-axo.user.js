@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Clarvex — Llenar el Forms de asistencia AXO
 // @namespace    https://team.clarvex.tech
-// @version      1.3.0
+// @version      1.4.0
 // @description  Llena el Forms de asistencia de AXO con los datos y las fotos de entrada de hoy. NUNCA lo envía: tú revisas y picas Enviar.
 // @match        https://forms.cloud.microsoft/*
 // @match        https://forms.office.com/*
@@ -276,10 +276,19 @@
       }
       const siguiente = botonSiguiente();
       if (!siguiente) break; // la última página: la de «Enviar»
+      /*
+       * ⚠️ Con una foto recién adjuntada, «Siguiente» no avanza hasta que el
+       * archivo termina de subir (9 nov 2026: se quedó en la del subgerente).
+       * Se vuelve a picar cada segundo y medio, hasta 30 segundos.
+       */
       const antes = titulosDePagina();
       await esperar(300);
-      siguiente.click();
-      for (let i = 0; i < 30 && titulosDePagina() === antes; i++) await esperar(250);
+      for (let intento = 0; intento < 20 && titulosDePagina() === antes; intento++) {
+        const boton = botonSiguiente();
+        if (!boton) break;
+        boton.click();
+        for (let i = 0; i < 6 && titulosDePagina() === antes; i++) await esperar(250);
+      }
       if (titulosDePagina() === antes) {
         const alertas = [...document.querySelectorAll('[role="alert"]')].map((a) => a.innerText).filter(Boolean);
         notas.push("⚠️ El Forms no pasó de página" + (alertas.length ? ": " + alertas.join(" ") : "."));
