@@ -11,7 +11,7 @@
 export type PersonaDelDia = { userId: string; name: string; role: string; expectedAt: string };
 export type FotoDelDia = { userId: string; hora: string; url: string; mimeType: string };
 
-export type LugarEnForms = { etiqueta: string; nombre: string; foto: FotoDelDia | null };
+export type LugarEnForms = { userId: string; etiqueta: string; nombre: string; foto: FotoDelDia | null };
 
 const ORDEN: Record<string, number> = { GERENTE: 0, SUBGERENTE: 1, ASESOR: 2 };
 
@@ -22,7 +22,7 @@ export function ordenDelForms(personas: PersonaDelDia[], fotos: FotoDelDia[]): L
     .sort((a, b) => (ORDEN[a.role] ?? 3) - (ORDEN[b.role] ?? 3) || a.expectedAt.localeCompare(b.expectedAt) || a.name.localeCompare(b.name, "es"))
     .map((p) => {
       const etiqueta = p.role === "GERENTE" ? "Gerente" : p.role === "SUBGERENTE" ? "Subgerente" : `Asesor ${++asesor}`;
-      return { etiqueta, nombre: primerNombre(p.name), foto: fotoDe.get(p.userId) ?? null };
+      return { userId: p.userId, etiqueta, nombre: primerNombre(p.name), foto: fotoDe.get(p.userId) ?? null };
     });
 }
 
