@@ -73,7 +73,11 @@ const publicApiExact = new Set([
   "/api/app/apk",
   // Recordatorios de WhatsApp desde n8n (workflows «KIMI …»). Lleva su propio
   // Bearer (KIMI_REMINDER_SECRET) validado en el handler; sin él responde 401.
-  "/api/kimi/reminder-check"
+  "/api/kimi/reminder-check",
+  // El botón «Llenar desde Clarvex» corre DENTRO del Forms de AXO, en otro
+  // sitio, y no lleva la cookie. Se autoriza con el código personal de
+  // `lib/forms-axo.ts` (firmado con otra llave que la sesión) y solo lee.
+  "/api/forms-axo/paquete"
 ]);
 
 /**

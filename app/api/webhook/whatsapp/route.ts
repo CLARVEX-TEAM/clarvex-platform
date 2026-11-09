@@ -11,6 +11,7 @@ import { mostrarEscribiendo, reaccionar } from "@/lib/whatsapp-gestos";
 import { fotoDePendiente, telefonosDeGerencia, textoDePendiente } from "@/lib/bot-pendientes";
 import { clasificarFoto } from "@/lib/foto-bot-ia";
 import { registrarMarcaje } from "@/lib/marcaje-registro";
+import { crearCodigoForms, FORMS_AXO, pideCodigoForms, URL_DEL_SCRIPT } from "@/lib/forms-axo";
 import { resolveMonterreyDate } from "@/lib/cron-time";
 
 /**
@@ -287,6 +288,32 @@ export async function POST(request: Request) {
 
     // ── Caso 3: TEXTO = conversación con límite de 10/día ─────────────────
     if (!texto) return NextResponse.json({ ok: true, ignorado: true });
+
+    // «código forms»: el código personal del botón que llena el Forms de AXO.
+    // Solo gerencia de una tienda con el Forms configurado.
+    if (pideCodigoForms(texto)) {
+      const quien = await prisma.user.findUnique({
+        where: { id: empleado.userId },
+        select: { id: true, storeId: true, role: true, active: true, sessionVersion: true }
+      });
+      const puede = quien?.active && (quien.role === "GERENTE" || quien.role === "SUBGERENTE") && FORMS_AXO[quien.storeId];
+      if (!quien || !puede) {
+        await enviarAvisoPorWhatsApp({ phone: telefono, text: "El código del Forms es solo para gerencia 🙏" });
+        return NextResponse.json({ ok: true, accion: "codigo_forms_negado" });
+      }
+      const codigo = await crearCodigoForms({ id: quien.id, storeId: quien.storeId, sessionVersion: quien.sessionVersion });
+      await enviarAvisoPorWhatsApp({
+        phone: telefono,
+        text: `🔑 Tu código para el botón *Llenar desde Clarvex* del Forms. Vale 6 meses y es *solo tuyo*: no lo reenvíes.
+
+1. Si no lo tienes, instala el script: ${URL_DEL_SCRIPT}
+2. Abre el Forms, pica el botón y pega el código cuando te lo pida.
+
+El código va en el siguiente mensaje 👇`
+      });
+      await enviarAvisoPorWhatsApp({ phone: telefono, text: codigo });
+      return NextResponse.json({ ok: true, accion: "codigo_forms" });
+    }
 
     // Pendientes: el número de una lista, «terminé» o el «sí» de gerencia. No
     // gasta interacciones: es operación, no plática.
