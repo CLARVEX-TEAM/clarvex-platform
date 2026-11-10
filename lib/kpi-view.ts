@@ -8,7 +8,7 @@ import { periodDateKey, type KpiPeriod } from "@/lib/kpi-period";
 import type { KpiReportItem } from "@/lib/kpi-report";
 import type { CommissionRule, Role } from "@/lib/types";
 
-export type KpiTab = "resumen" | "ventas" | "comision" | "ranking" | "historico" | "recibo";
+export type KpiTab = "resumen" | "ventas" | "dias" | "comision" | "ranking" | "historico" | "recibo";
 export type KpiTarget = { id: string; metric: string; value: number; period: string };
 // `levelLabel` viene de projectMonthlyCommission: es el rótulo ya resuelto del
 // nivel —la tasa, o el importe si el bracket paga fijo—. Sin él, la proyección
@@ -78,6 +78,7 @@ export const METRIC_ACCENT: Record<string, { chip: string; spark: string }> = {
 export const KPI_TABS: { id: KpiTab; label: string }[] = [
   { id: "resumen", label: "Resumen" },
   { id: "ventas", label: "Ventas" },
+  { id: "dias", label: "Por día" },
   { id: "comision", label: "Comisión" },
   { id: "ranking", label: "Ranking" },
   { id: "historico", label: "Histórico" },

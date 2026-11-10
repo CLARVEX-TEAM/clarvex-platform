@@ -23,6 +23,7 @@ import { targetValue } from "@/lib/electronic-tickets";
 import { useKpiDerived, useKpiReceipts, useKpiReport, useKpiTargets } from "@/lib/use-kpis";
 import { Badge, Card, ProfileAvatar, ProgressBar } from "@/components/ui";
 import { KpiHistoryView } from "@/components/KpiHistory";
+import { KpiDiasView } from "@/components/KpiDias";
 import { useTheme } from "@/components/ThemeProvider";
 import { useDesktopChrome } from "@/components/desktop/DesktopChrome";
 import { SegmentedTabs, type SegmentedTabOption } from "@/components/animate-ui/SegmentedTabs";
@@ -186,6 +187,7 @@ export default function EscritorioKpis() {
             {activeTab === "ventas" ? <VentasView activeKpi={activeKpi} team={report?.team ?? []} progress={progress} periodLabel={periodLabel} /> : null}
             {activeTab === "comision" ? <ComisionView activeKpi={commissionKpi ?? activeKpi} rules={report?.commissionRules ?? []} simulatedSales={simulatedSales} setSimulatedSales={setSimulatedSales} activeRule={activeRule} appliedPercent={appliedPercent} simulatedCommission={simulatedCommission} simulatedAchievement={simulatedAchievement} commissionRole={commissionRole} periodLabel={periodLabel} projection={monthProjection} hasMinimum={hasCommissionMinimum} /> : null}
             {activeTab === "ranking" ? <RankingView ranking={report?.team ?? []} periodLabel={periodLabel} isAdvisor={isAdvisor} currentUserId={report?.currentUserId} /> : null}
+            {activeTab === "dias" ? <div className="mx-auto max-w-3xl"><KpiDiasView start={report?.startDate} end={report?.endDate} periodLabel={periodLabel} /></div> : null}
             {activeTab === "historico" ? <div className="mx-auto max-w-3xl"><KpiHistoryView /></div> : null}
             {activeTab === "recibo" ? <ReciboView receipts={receipts} loading={receiptsLoading} isManager={isManager} /> : null}
           </motion.div>
