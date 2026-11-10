@@ -21,6 +21,7 @@ import { achievementTone, AppFrame, AppHeader, Badge, Card, EmptyState, ProfileA
 import { TabsLinea } from "@/components/ui/TabsLinea";
 import { AppSelect } from "@/components/forms";
 import { KpiHistoryView } from "@/components/KpiHistory";
+import { KpiDiasView } from "@/components/KpiDias";
 import { PullToRefresh } from "@/components/PullToRefresh";
 import { useTheme } from "@/components/ThemeProvider";
 import { SegmentedTabs, type SegmentedTabOption } from "@/components/animate-ui/SegmentedTabs";
@@ -176,6 +177,7 @@ export default function KpisPage() {
               </>
             ) : null}
               {activeTab === "ventas" ? <VentasView activeKpi={activeKpi} chartData={chartData} progress={progress} periodLabel={periodLabel} /> : null}
+              {activeTab === "dias" ? <KpiDiasView start={report?.startDate} end={report?.endDate} periodLabel={periodLabel} /> : null}
               {activeTab === "comision" ? <ComisionView activeKpi={commissionKpi ?? activeKpi} rules={report?.commissionRules ?? []} simulatedSales={simulatedSales} setSimulatedSales={setSimulatedSales} activeRule={activeRule} appliedPercent={appliedPercent} simulatedCommission={simulatedCommission} simulatedAchievement={simulatedAchievement} commissionRole={commissionRole} periodLabel={periodLabel} projection={monthProjection} hasMinimum={hasCommissionMinimum} /> : null}
               {activeTab === "ranking" ? <RankingView ranking={report?.team ?? []} periodLabel={periodLabel} isAdvisor={isAdvisor} currentUserId={report?.currentUserId} /> : null}
               {activeTab === "historico" ? <KpiHistoryView /> : null}
