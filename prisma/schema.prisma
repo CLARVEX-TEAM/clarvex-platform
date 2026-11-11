@@ -2139,3 +2139,20 @@ model PendingCurso {
 
   @@unique([pendingId, orden])
 }
+
+/// Un Pixel Watch esperando que alguien de gerencia lo vincule por el bot
+/// («reloj K7M4QX»). Ver `lib/reloj.ts`. Se borra al entregar el token.
+model RelojVinculo {
+  id          String    @id @default(cuid())
+  /// Lo que se enseña en el reloj y se le manda al bot.
+  codigo      String    @unique
+  /// Huella del secreto que solo conoce el reloj: así nadie más recoge el token.
+  secretoHash String    @unique
+  /// Quién lo aprobó desde el bot.
+  userId      String?
+  aprobadoAt  DateTime?
+  expiraAt    DateTime
+  createdAt   DateTime  @default(now())
+
+  @@index([expiraAt])
+}
