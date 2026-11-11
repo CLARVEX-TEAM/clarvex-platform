@@ -22,6 +22,7 @@ export async function GET() {
   const domingo = new Date(hoy.utcDate.getTime() - hoy.weekday * 86_400_000);
   const inicio = domingo.toISOString().slice(0, 10);
 
+  const tienda = await prisma.store.findUnique({ where: { id: session.storeId }, select: { name: true } });
   const filas = await prisma.kpi.findMany({
     where: { storeId: session.storeId, date: { gte: domingo, lte: hoy.utcDate }, user: { checklistOnly: false } },
     select: {
@@ -51,7 +52,7 @@ export async function GET() {
     .reduce<Date | null>((max, f) => (!max || f.updatedAt > max ? f.updatedAt : max), null);
 
   return NextResponse.json(
-    { fecha: hoy.dateKey, hoy: deHoy, semana, actualizado: actualizado?.toISOString() ?? null },
+    { fecha: hoy.dateKey, tienda: tienda?.name ?? null, hoy: deHoy, semana, actualizado: actualizado?.toISOString() ?? null },
     { headers: { "Cache-Control": "private, no-store" } }
   );
 }
