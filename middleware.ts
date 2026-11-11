@@ -77,7 +77,12 @@ const publicApiExact = new Set([
   // El botón «Llenar desde Clarvex» corre DENTRO del Forms de AXO, en otro
   // sitio, y no lleva la cookie. Se autoriza con el código personal de
   // `lib/forms-axo.ts` (firmado con otra llave que la sesión) y solo lee.
-  "/api/forms-axo/paquete"
+  "/api/forms-axo/paquete",
+  // El Pixel Watch: no tiene cookie. `vincular` lo usa el reloj antes de tener
+  // nada (con su propio secreto y límite de intentos) y `venta` se autoriza con
+  // el token de `lib/reloj.ts`. Las dos solo leen o esperan aprobación.
+  "/api/reloj/vincular",
+  "/api/reloj/venta"
 ]);
 
 /**

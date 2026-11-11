@@ -12,6 +12,7 @@ import { fotoDePendiente, telefonosDeGerencia, textoDePendiente } from "@/lib/bo
 import { clasificarFoto } from "@/lib/foto-bot-ia";
 import { registrarMarcaje } from "@/lib/marcaje-registro";
 import { crearCodigoForms, FORMS_AXO, pideCodigoForms, URL_DEL_SCRIPT } from "@/lib/forms-axo";
+import { pideVincularReloj } from "@/lib/reloj";
 import { resolveMonterreyDate } from "@/lib/cron-time";
 
 /**
@@ -313,6 +314,28 @@ El código va en el siguiente mensaje 👇`
       });
       await enviarAvisoPorWhatsApp({ phone: telefono, text: codigo });
       return NextResponse.json({ ok: true, accion: "codigo_forms" });
+    }
+
+    // «reloj K7M4QX»: vincula el Pixel Watch que enseña ese código. Solo gerencia:
+    // el reloj enseña la venta de toda la tienda.
+    const codigoReloj = pideVincularReloj(texto);
+    if (codigoReloj) {
+      const quien = await prisma.user.findUnique({ where: { id: empleado.userId }, select: { role: true, active: true } });
+      if (!quien?.active || (quien.role !== "GERENTE" && quien.role !== "SUBGERENTE")) {
+        await enviarAvisoPorWhatsApp({ phone: telefono, text: "El reloj con la venta de la tienda es solo para gerencia 🙏" });
+        return NextResponse.json({ ok: true, accion: "reloj_negado" });
+      }
+      const aprobado = await prisma.relojVinculo.updateMany({
+        where: { codigo: codigoReloj, aprobadoAt: null, expiraAt: { gt: new Date() } },
+        data: { userId: empleado.userId, aprobadoAt: new Date() }
+      });
+      await enviarAvisoPorWhatsApp({
+        phone: telefono,
+        text: aprobado.count
+          ? "⌚ ¡Listo! Tu reloj ya quedó conectado. En unos segundos verás la venta de la tienda."
+          : "🤔 No encontré ese código, o ya venció. Pide uno nuevo en el reloj y mándamelo otra vez."
+      });
+      return NextResponse.json({ ok: true, accion: aprobado.count ? "reloj_vinculado" : "reloj_codigo_invalido" });
     }
 
     // Pendientes: el número de una lista, «terminé» o el «sí» de gerencia. No
