@@ -1,7 +1,7 @@
 import {
   Award, Boxes, CalendarRange, ChartColumn, ClipboardCheck, ClipboardList,
   CalendarCheck, FileClock, Gauge, GraduationCap, Megaphone, MessagesSquare, NotebookPen, PackageSearch,
-  PackageOpen, PencilLine, ShieldCheck, Target, TriangleAlert, Users
+  PackageOpen, PencilLine, Radio, ShieldCheck, Target, TriangleAlert, Users
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -26,6 +26,7 @@ export const navGroups: NavGroup[] = [
     items: [
       { href: "/escritorio", label: "Dashboard", icon: Gauge, keywords: "inicio resumen panel home" },
       { href: "/escritorio/kpis", label: "KPIs", icon: ChartColumn, keywords: "venta meta upt aur ept conversion alcance" },
+      { href: "/escritorio/en-vivo", label: "Venta en vivo", icon: Radio, keywords: "tele tv pantalla tiempo real ranking hoy buen fin temporada" },
       { href: "/escritorio/equipo", label: "Equipo", icon: Users, keywords: "asesores colaboradores personal gente" },
       { href: "/escritorio/horarios", label: "Horarios", icon: CalendarRange, keywords: "turnos agenda semana descanso" },
       { href: "/escritorio/asistencia", label: "Asistencia", icon: CalendarCheck, keywords: "llegadas retardos faltas checada banco de horas nomina blitz incidencias" }
