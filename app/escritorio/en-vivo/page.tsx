@@ -2,6 +2,7 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowLeft, Clock3, Expand, Minimize, Percent, Receipt, Shirt, Target, TrendingDown, TrendingUp, Users } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -210,7 +211,10 @@ function Encabezado({ datos, ahora, error, completa, onCompleta }: { datos: Resp
         <Link href="/escritorio" aria-label="Salir del panel" className="grid size-10 place-items-center rounded-full bg-[#F1EFEA] text-[#5B6175] transition hover:bg-[#E9E6DF]">
           <ArrowLeft size={18} />
         </Link>
-        <div className="grid size-11 place-items-center rounded-2xl bg-gradient-to-br from-[#B9AEFF] to-[#8FD3FF] text-lg font-black text-white">C</div>
+        <div className="relative size-11 shrink-0 overflow-hidden rounded-2xl shadow-[0_4px_14px_-4px_rgba(37,99,235,0.45)]">
+          {/* El logo de marca real, el mismo de la barra del escritorio. */}
+          <Image src="/icon-512.png" alt="Clarvex" fill sizes="44px" priority className="object-cover" />
+        </div>
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#7C6CF2]">Venta en vivo</p>
           <p className="text-lg font-semibold leading-tight lg:text-xl">{datos?.tienda ?? "Tu tienda"}</p>
