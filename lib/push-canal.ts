@@ -15,3 +15,15 @@
  * allí señalando aquí. Cambiar este valor obliga a cambiar aquel.
  */
 export const CANAL_AVISOS_ID = "clarvex-avisos";
+
+/**
+ * La venta en vivo: UNA notificación que se reemplaza a sí misma cada vez que
+ * se captura venta. Importancia BAJA, o sea sin sonido ni vibración, porque en
+ * temporada alta se actualiza muchas veces al día (ver `lib/venta-en-vivo.ts`).
+ *
+ * ⚠️ Si el canal no existe en el teléfono, Android usa el de reserva del
+ * manifiesto, que es el de avisos, y SUENA en cada actualización. Por eso el
+ * servidor solo la manda a aparatos que confirmaron haberlo creado
+ * (`DeviceToken.canalVentaEnVivo`).
+ */
+export const CANAL_VENTA_ID = "clarvex-venta-en-vivo";

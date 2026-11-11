@@ -1,6 +1,6 @@
 import { SignJWT } from "jose/jwt/sign";
 import { importPKCS8 } from "jose/key/import";
-import { CANAL_AVISOS_ID } from "@/lib/push-canal";
+import { CANAL_AVISOS_ID, CANAL_VENTA_ID } from "@/lib/push-canal";
 
 /**
  * Notificaciones a la app de Android por Firebase Cloud Messaging.
@@ -140,6 +140,11 @@ export type MensajeFcm = {
   icon?: string;
   tag?: string;
   url?: string;
+  /**
+   * Al canal SILENCIOSO de la venta en vivo, sin sonido. Quien llama solo debe
+   * mandarlo a aparatos con `canalVentaEnVivo`: en otro, sonaría.
+   */
+  silencioso?: boolean;
 };
 
 export type ResultadoFcm = {
@@ -160,7 +165,7 @@ export type ResultadoFcm = {
  * Con las dos, el sistema la muestra siempre y `data.url` dice adónde llevar a
  * la persona al tocarla.
  */
-function construirMensaje(token: string, payload: MensajeFcm) {
+export function construirMensaje(token: string, payload: MensajeFcm) {
   const tag = payload.tag ?? "clarvex-notification";
   const url = payload.url ?? "/notificaciones";
   return {
@@ -181,10 +186,11 @@ function construirMensaje(token: string, payload: MensajeFcm) {
         notification: {
           tag,
           // El canal decide el sonido; ver `lib/push-canal.ts`.
-          channelId: CANAL_AVISOS_ID,
+          channelId: payload.silencioso ? CANAL_VENTA_ID : CANAL_AVISOS_ID,
           icon: "ic_stat_clarvex",
           color: "#2563EB",
-          defaultSound: true
+          defaultSound: !payload.silencioso,
+          ...(payload.silencioso ? { notificationPriority: "PRIORITY_LOW" as const } : {})
         },
         // 24 h de vida si el teléfono está sin señal, igual que el TTL de Web Push.
         ttl: "86400s"

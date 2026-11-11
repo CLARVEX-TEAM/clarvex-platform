@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { Bell, X } from "lucide-react";
-import { appNativa, CANAL_AVISOS, dispositivoClarvexNativo, enContenedorNativo, plataformaNativa, pushNativo, rutaInternaDeNotificacion, type PluginPush } from "@/lib/puente-nativo";
+import { appNativa, CANAL_AVISOS, CANAL_VENTA, dispositivoClarvexNativo, enContenedorNativo, plataformaNativa, pushNativo, rutaInternaDeNotificacion, type PluginPush } from "@/lib/puente-nativo";
 import { nativeDeviceFetch, registerNativeDevice } from "@/lib/native-device-client";
 
 /**
@@ -107,7 +107,7 @@ export async function guardarTokenNativo(token: string): Promise<boolean> {
     // de su llave. Las APK anteriores conservan el registro compatible de abajo.
     await registerNativeDevice();
     const identity = await identityPlugin.identidad();
-    const body = JSON.stringify({ token, platform, ...version, installationId: identity.installationId });
+    const body = JSON.stringify({ token, platform, ...version, installationId: identity.installationId, ...(canalVentaListo ? { canalVenta: true } : {}) });
     res = await nativeDeviceFetch("/api/push/device", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -117,7 +117,7 @@ export async function guardarTokenNativo(token: string): Promise<boolean> {
     res = await fetch("/api/push/device", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token, platform, ...version }),
+      body: JSON.stringify({ token, platform, ...version, ...(canalVentaListo ? { canalVenta: true } : {}) }),
     });
   }
   if (res.status === 401) return false;
@@ -154,7 +154,16 @@ export function recordarDescarte() {
 // El canal tiene que existir ANTES de que llegue la primera notificación: si no
 // existe, Android la coloca en el de reserva de Firebase --importancia media-- y
 // entra muda. Crear uno que ya está no falla ni pierde los ajustes de la persona.
+/** ¿Este aparato ya tiene el canal silencioso de la venta en vivo? Ver `CANAL_VENTA_ID`. */
+let canalVentaListo = false;
+
 async function prepararYRegistrar(plugin: PluginPush) {
+  try {
+    await plugin.createChannel(CANAL_VENTA);
+    canalVentaListo = true;
+  } catch (error) {
+    console.warn("[push nativo] No se pudo crear el canal de venta en vivo:", (error as Error).message);
+  }
   try {
     await plugin.createChannel(CANAL_AVISOS);
   } catch (error) {
