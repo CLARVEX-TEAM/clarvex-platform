@@ -1,4 +1,4 @@
-import { CANAL_AVISOS_ID } from "@/lib/push-canal";
+import { CANAL_AVISOS_ID, CANAL_VENTA_ID } from "@/lib/push-canal";
 
 /**
  * Acceso a la capa nativa cuando la app corre dentro del contenedor de Android.
@@ -60,6 +60,15 @@ export const CANAL_AVISOS: CanalPush = {
   name: "Avisos de Clarvex",
   description: "Metas, pendientes, comunicados y alertas de la tienda.",
   importance: 5,
+  visibility: 0
+};
+
+/** Silencioso (importancia 2) y privado: ver `CANAL_VENTA_ID`. */
+export const CANAL_VENTA: CanalPush = {
+  id: CANAL_VENTA_ID,
+  name: "Venta en vivo",
+  description: "Tu venta del día, actualizada sin sonar cada vez que se captura.",
+  importance: 2,
   visibility: 0
 };
 

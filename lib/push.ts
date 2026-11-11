@@ -18,7 +18,15 @@ if (vapidPublicKey && vapidPrivateKey) {
 
 export const VAPID_PUBLIC_KEY = vapidPublicKey;
 
-export type PushPayload = { title: string; body: string; icon?: string; tag?: string; url?: string };
+export type PushPayload = {
+  title: string;
+  body: string;
+  icon?: string;
+  tag?: string;
+  url?: string;
+  /** La venta en vivo: sin sonido, y en Android solo a aparatos con el canal silencioso. */
+  silencioso?: boolean;
+};
 
 /**
  * Manda la notificación por los DOS caminos que existen hoy:
@@ -58,14 +66,16 @@ export async function dispatchPushToUsers(userIds: string[], payload: PushPayloa
  */
 async function enviarNativo(userIds: string[], payload: PushPayload) {
   const aparatos = await prisma.deviceToken.findMany({
-    where: { userId: { in: userIds }, user: { active: true } },
+    // ⚠️ Lo silencioso SOLO a quien tiene el canal silencioso: en otro aparato
+    // caería en el de avisos y sonaría en cada actualización.
+    where: { userId: { in: userIds }, user: { active: true }, ...(payload.silencioso ? { canalVentaEnVivo: true } : {}) },
     select: { token: true }
   });
   if (aparatos.length === 0) return;
 
   const { caducados } = await enviarPorFcm(
     aparatos.map((a) => a.token),
-    { title: payload.title, body: payload.body, icon: payload.icon, tag: payload.tag, url: payload.url }
+    { title: payload.title, body: payload.body, icon: payload.icon, tag: payload.tag, url: payload.url, silencioso: payload.silencioso }
   );
 
   if (caducados.length > 0) {
@@ -108,7 +118,8 @@ async function enviarWebPush(userIds: string[], payload: PushPayload) {
             body: payload.body,
             icon: payload.icon ?? "/icon-192.png",
             tag,
-            url: payload.url ?? "/notificaciones"
+            url: payload.url ?? "/notificaciones",
+            silencioso: payload.silencioso === true
           }),
           {
             urgency: "high",        // máxima prioridad: mejor oportunidad contra No Molestar en Android

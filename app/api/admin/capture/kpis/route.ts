@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireAdminCapture } from "@/lib/admin-capture-auth";
 import { captureKpis } from "@/lib/kpi-capture";
+import { resolveMonterreyDate } from "@/lib/cron-time";
+import { avisarVentaEnVivo } from "@/lib/venta-en-vivo";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -73,6 +75,14 @@ export async function POST(request: Request) {
   const outcome = await captureKpis(parsed.data.storeId, parsed.data.entries, parsed.data.traffic ?? []);
   if (!outcome.ok) {
     return NextResponse.json({ error: "Hay filas invalidas.", detail: outcome.errors }, { status: 422 });
+  }
+
+  // La venta en vivo: si se capturó venta de HOY, a cada quien se le actualiza
+  // su notificación silenciosa. Sin esperar: la captura ya quedó y una
+  // notificación no puede hacerla esperar ni fallar.
+  const hoy = resolveMonterreyDate();
+  if (parsed.data.entries.some((e) => e.date === hoy.dateKey) && outcome.result.recordsCreated + outcome.result.recordsUpdated > 0) {
+    void avisarVentaEnVivo(parsed.data.storeId, hoy.utcDate);
   }
 
   return NextResponse.json({ ok: true, ...outcome.result });

@@ -61,8 +61,11 @@ self.addEventListener("push", (event) => {
       badge: badgeUrl,
       tag: data.tag,
       data: { url: data.url || "/notificaciones" },
-      renotify: true,
-      vibrate: [200, 100, 200]
+      // La venta en vivo se actualiza muchas veces al día: reemplaza la
+      // anterior (mismo tag) sin sonar ni vibrar.
+      renotify: !data.silencioso,
+      silent: Boolean(data.silencioso),
+      ...(data.silencioso ? {} : { vibrate: [200, 100, 200] })
     })
   );
 });

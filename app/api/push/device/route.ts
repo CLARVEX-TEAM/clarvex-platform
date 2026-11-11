@@ -34,7 +34,9 @@ const esquema = z.object({
    */
   appBuild: z.number().int().positive().max(1_000_000).optional(),
   appVersion: z.string().min(1).max(32).optional(),
-  installationId: z.string().uuid().optional()
+  installationId: z.string().uuid().optional(),
+  /** El aparato ya creó el canal silencioso de la venta en vivo (ver `CANAL_VENTA_ID`). */
+  canalVenta: z.literal(true).optional()
 });
 
 export async function POST(request: Request) {
@@ -45,7 +47,7 @@ export async function POST(request: Request) {
   const parsed = await parseJson(request, esquema);
   if ("response" in parsed) return parsed.response;
 
-  const { token, platform, appBuild, appVersion, installationId } = parsed.data;
+  const { token, platform, appBuild, appVersion, installationId, canalVenta } = parsed.data;
   let nativeDeviceId: string | undefined;
   if (installationId) {
     const device = await requireNativeDevice(signedRequest, session);
@@ -65,7 +67,9 @@ export async function POST(request: Request) {
   // de ese aparato.
   const version = {
     ...(appBuild === undefined ? {} : { appBuild }),
-    ...(appVersion === undefined ? {} : { appVersion })
+    ...(appVersion === undefined ? {} : { appVersion }),
+    // Solo se ENCIENDE: una app vieja que no lo informa no puede apagarlo.
+    ...(canalVenta ? { canalVentaEnVivo: true } : {})
   };
 
   await prisma.deviceToken.upsert({
