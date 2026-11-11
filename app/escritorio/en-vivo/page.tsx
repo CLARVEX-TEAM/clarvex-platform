@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowLeft, Crown, Expand, Minimize, TrendingDown, TrendingUp } from "lucide-react";
+import { ArrowLeft, Clock3, Expand, Minimize, Percent, Receipt, Shirt, Target, TrendingDown, TrendingUp, Users } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -14,11 +14,12 @@ import { cn } from "@/lib/utils";
 
 /*
  * «Venta en vivo»: el monitor de la tienda en temporada alta, para la tele o la
- * laptop. Estilo sala de control: siempre oscuro, cifras grandes y tabulares,
- * reloj al segundo, ritmo esperado a esa hora y cinta de noticias.
+ * laptop. Fondo claro y tonos pastel (elegido por Adrián el 11 nov 2026), cifras
+ * grandes y tabulares, reloj al segundo, ritmo esperado a esa hora, podio y
+ * cinta de titulares.
  *
- * Se refresca cada 30 s, no deja apagar la pantalla (Wake Lock) y celebra con
- * confeti cuando alguien cruza su meta.
+ * Se pide cada 2 segundos (también por Adrián): la venta se ve en cuanto se
+ * captura. Una sola petición a la vez, y ninguna con la pestaña oculta.
  *
  * ⚠️ Enseña la venta de TODO el equipo: vive bajo /escritorio, que es solo de
  * gerencia, y su API exige GERENTE o SUBGERENTE. No ponerlo donde lo vea el
@@ -36,7 +37,7 @@ type Respuesta = {
   actualizado: string | null;
 };
 
-const REFRESCO_MS = 30_000;
+const REFRESCO_MS = 2_000;
 const ZONA = "America/Monterrey";
 const FECHA = new Intl.DateTimeFormat("es-MX", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" });
 const DIA_CORTO = new Intl.DateTimeFormat("es-MX", { weekday: "short", timeZone: "UTC" });
@@ -51,11 +52,12 @@ function minutosMonterrey(ms: number) {
   return h * 60 + m;
 }
 
+/** Pastel de fondo, tono medio de la barra y tono fuerte del texto, por estado. */
 const TONOS = {
-  bien: { texto: "text-emerald-300", barra: "from-emerald-500 to-emerald-300", solido: "#34d399", brillo: "shadow-[0_0_24px_rgba(52,211,153,0.35)]" },
-  cerca: { texto: "text-amber-300", barra: "from-amber-500 to-amber-300", solido: "#fbbf24", brillo: "shadow-[0_0_24px_rgba(251,191,36,0.3)]" },
-  abajo: { texto: "text-rose-300", barra: "from-rose-500 to-rose-300", solido: "#fb7185", brillo: "shadow-[0_0_24px_rgba(251,113,133,0.3)]" },
-  nada: { texto: "text-slate-500", barra: "from-slate-600 to-slate-500", solido: "#64748b", brillo: "" }
+  bien: { fondo: "bg-[#DDF5EA]", barra: "bg-[#5CC99A]", texto: "text-[#1F8A5B]", hex: "#5CC99A" },
+  cerca: { fondo: "bg-[#FFF1D6]", barra: "bg-[#F6BE5B]", texto: "text-[#B7791F]", hex: "#F6BE5B" },
+  abajo: { fondo: "bg-[#FFE3E6]", barra: "bg-[#F38C9A]", texto: "text-[#C2455A]", hex: "#F38C9A" },
+  nada: { fondo: "bg-[#EEF0F4]", barra: "bg-[#C9CEDA]", texto: "text-[#8A90A2]", hex: "#C9CEDA" }
 } as const;
 type Tono = keyof typeof TONOS;
 function tonoDe(alcance: number | null, capturado = true): Tono {
@@ -76,8 +78,12 @@ export default function VentaEnVivoPage() {
   const yaFestejados = useRef<Set<string>>(new Set());
   const ventaAnterior = useRef<number | null>(null);
   const primeraCarga = useRef(true);
+  const enCurso = useRef(false);
 
   const cargar = useCallback(async () => {
+    // Cada 2 s: si la anterior sigue en camino o la pestaña está oculta, se salta.
+    if (enCurso.current || document.visibilityState === "hidden") return;
+    enCurso.current = true;
     try {
       const r = await fetch("/api/en-vivo", { cache: "no-store" });
       if (!r.ok) throw new Error(r.status === 403 ? "Este panel es solo para gerencia." : "Sin conexión con Clarvex.");
@@ -105,6 +111,8 @@ export default function VentaEnVivoPage() {
       primeraCarga.current = false;
     } catch (e) {
       setError(e instanceof Error ? e.message : "Sin conexión con Clarvex.");
+    } finally {
+      enCurso.current = false;
     }
   }, []);
 
@@ -154,26 +162,29 @@ export default function VentaEnVivoPage() {
   const subidaVisible = subida && ahora - subida.en < 3 * 60_000 ? subida : null;
 
   return createPortal(
-    <div className="fixed inset-0 z-[80] overflow-y-auto bg-[#04060a] font-sans text-slate-100 antialiased">
+    <div className="fixed inset-0 z-[80] overflow-y-auto bg-[#F7F5F1] font-sans text-[#1F2433] antialiased [color-scheme:light]">
       <Confetti show={festejo} />
-      {/* Fondo: rejilla fina y dos halos, como un monitor de sala de control. */}
-      <div className="pointer-events-none fixed inset-0 bg-[linear-gradient(rgba(148,163,184,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(148,163,184,0.05)_1px,transparent_1px)] bg-[size:48px_48px]" />
-      <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(60%_50%_at_15%_0%,rgba(37,99,235,0.22),transparent),radial-gradient(50%_40%_at_100%_100%,rgba(16,185,129,0.12),transparent)]" />
+      {/* Manchas pastel suaves al fondo. */}
+      <div className="pointer-events-none fixed -left-40 -top-40 size-[520px] rounded-full bg-[#E9E3FF] opacity-70 blur-3xl" />
+      <div className="pointer-events-none fixed -right-32 top-1/3 size-[460px] rounded-full bg-[#DCEEFF] opacity-70 blur-3xl" />
+      <div className="pointer-events-none fixed -bottom-40 left-1/3 size-[520px] rounded-full bg-[#FFE6D6] opacity-60 blur-3xl" />
 
       <div className="relative mx-auto flex min-h-full max-w-[1920px] flex-col gap-4 p-4 lg:gap-5 lg:p-6 2xl:p-8">
-        <BarraSuperior datos={datos} ahora={ahora} error={error} completa={completa} onCompleta={alternarCompleta} />
+        <Encabezado datos={datos} ahora={ahora} error={error} completa={completa} onCompleta={alternarCompleta} />
 
         {!datos ? (
-          <div className="grid flex-1 place-items-center text-slate-500">{error ?? "Conectando con la venta de hoy…"}</div>
+          <div className="grid flex-1 place-items-center text-[#8A90A2]">{error ?? "Conectando con la venta de hoy…"}</div>
         ) : (
           <>
             <div className="grid flex-1 gap-4 lg:gap-5 xl:grid-cols-12">
-              <div className="flex flex-col gap-4 lg:gap-5 xl:col-span-8">
-                <Hero venta={venta} meta={meta} alcance={hoy?.alcance ?? null} ritmo={ritmo} vsRitmo={vsRitmo} subida={subidaVisible} ahora={ahora} />
+              <div className="flex flex-col gap-4 lg:gap-5 xl:col-span-7">
+                <VentaDeHoy venta={venta} meta={meta} alcance={hoy?.alcance ?? null} ritmo={ritmo} vsRitmo={vsRitmo} subida={subidaVisible} ahora={ahora} />
                 <Indicadores hoy={hoy} falta={Math.max(0, meta - venta)} />
+              </div>
+              <div className="flex flex-col gap-4 lg:gap-5 xl:col-span-5">
+                <Podio hoy={hoy} />
                 <Semana semana={datos.semana} hoyIso={datos.fecha} />
               </div>
-              <Ranking hoy={hoy} />
             </div>
             <Cinta datos={datos} vsRitmo={vsRitmo} />
           </>
@@ -184,49 +195,47 @@ export default function VentaEnVivoPage() {
   );
 }
 
-function Panel({ className, children }: { className?: string; children: React.ReactNode }) {
-  return (
-    <section className={cn("relative overflow-hidden rounded-3xl border border-white/[0.08] bg-gradient-to-b from-white/[0.05] to-white/[0.015] shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] backdrop-blur-sm", className)}>
-      {children}
-    </section>
-  );
+function Tarjeta({ className, children }: { className?: string; children: React.ReactNode }) {
+  return <section className={cn("relative overflow-hidden rounded-[28px] bg-white/85 shadow-[0_10px_40px_-12px_rgba(31,36,51,0.12)] ring-1 ring-[#1F2433]/[0.04] backdrop-blur", className)}>{children}</section>;
 }
 
-function Etiqueta({ children, className }: { children: React.ReactNode; className?: string }) {
-  return <p className={cn("text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400", className)}>{children}</p>;
+function Rotulo({ children, className }: { children: React.ReactNode; className?: string }) {
+  return <p className={cn("text-xs font-semibold uppercase tracking-[0.18em] text-[#8A90A2]", className)}>{children}</p>;
 }
 
-function BarraSuperior({ datos, ahora, error, completa, onCompleta }: { datos: Respuesta | null; ahora: number; error: string | null; completa: boolean; onCompleta: () => void }) {
+function Encabezado({ datos, ahora, error, completa, onCompleta }: { datos: Respuesta | null; ahora: number; error: string | null; completa: boolean; onCompleta: () => void }) {
   return (
-    <header className="flex flex-wrap items-center justify-between gap-4">
+    <header className="flex flex-wrap items-center justify-between gap-3 rounded-[24px] bg-white/80 px-4 py-3 shadow-[0_6px_24px_-12px_rgba(31,36,51,0.15)] ring-1 ring-[#1F2433]/[0.04] backdrop-blur lg:px-5">
       <div className="flex items-center gap-3">
-        <Link href="/escritorio" aria-label="Salir del panel" className="grid size-10 place-items-center rounded-xl border border-white/10 bg-white/5 text-slate-400 transition hover:text-white">
+        <Link href="/escritorio" aria-label="Salir del panel" className="grid size-10 place-items-center rounded-full bg-[#F1EFEA] text-[#5B6175] transition hover:bg-[#E9E6DF]">
           <ArrowLeft size={18} />
         </Link>
-        <div className="grid size-10 place-items-center rounded-xl bg-gradient-to-br from-blue-500 to-blue-700 text-lg font-black shadow-[0_0_20px_rgba(37,99,235,0.5)]">C</div>
+        <div className="grid size-11 place-items-center rounded-2xl bg-gradient-to-br from-[#B9AEFF] to-[#8FD3FF] text-lg font-black text-white">C</div>
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-blue-400">Clarvex · Sala de ventas</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#7C6CF2]">Venta en vivo</p>
           <p className="text-lg font-semibold leading-tight lg:text-xl">{datos?.tienda ?? "Tu tienda"}</p>
         </div>
       </div>
 
-      <div className="flex items-center gap-3">
-        <span className={cn("flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-bold uppercase tracking-[0.2em]", error ? "bg-amber-500/15 text-amber-300" : "bg-rose-500/15 text-rose-300")}>
+      <div className="flex items-center gap-2.5">
+        <span className={cn("flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-bold uppercase tracking-[0.16em]", error ? "bg-[#FFF1D6] text-[#B7791F]" : "bg-[#FFE3E6] text-[#C2455A]")}>
           <span className="relative flex size-2.5">
-            <span className={cn("absolute inline-flex size-full animate-ping rounded-full opacity-75", error ? "bg-amber-400" : "bg-rose-500")} />
-            <span className={cn("relative inline-flex size-2.5 rounded-full", error ? "bg-amber-400" : "bg-rose-500")} />
+            <span className={cn("absolute inline-flex size-full animate-ping rounded-full opacity-70", error ? "bg-[#F6BE5B]" : "bg-[#F38C9A]")} />
+            <span className={cn("relative inline-flex size-2.5 rounded-full", error ? "bg-[#F6BE5B]" : "bg-[#E8566C]")} />
           </span>
           {error ? "Reconectando" : "En vivo"}
         </span>
-        <span className="hidden text-sm text-slate-400 md:inline">{error ?? ultimaCaptura(datos?.actualizado ?? null, ahora)}</span>
+        <span className="hidden items-center gap-1.5 text-sm text-[#5B6175] md:flex">
+          <Clock3 size={15} /> {error ?? ultimaCaptura(datos?.actualizado ?? null, ahora)}
+        </span>
       </div>
 
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-3">
         <div className="text-right">
           <p className="font-mono text-3xl font-semibold tabular-nums tracking-tight lg:text-4xl">{RELOJ.format(new Date(ahora))}</p>
-          <p className="text-xs text-slate-400">{datos ? mayuscula(FECHA.format(new Date(`${datos.fecha}T00:00:00Z`))) : ""}</p>
+          <p className="text-xs text-[#8A90A2]">{datos ? mayuscula(FECHA.format(new Date(`${datos.fecha}T00:00:00Z`))) : ""}</p>
         </div>
-        <button type="button" onClick={onCompleta} aria-label={completa ? "Salir de pantalla completa" : "Pantalla completa"} className="grid size-10 place-items-center rounded-xl border border-white/10 bg-white/5 text-slate-400 transition hover:text-white">
+        <button type="button" onClick={onCompleta} aria-label={completa ? "Salir de pantalla completa" : "Pantalla completa"} className="grid size-10 place-items-center rounded-full bg-[#F1EFEA] text-[#5B6175] transition hover:bg-[#E9E6DF]">
           {completa ? <Minimize size={18} /> : <Expand size={18} />}
         </button>
       </div>
@@ -242,74 +251,75 @@ function ultimaCaptura(iso: string | null, ahora: number) {
   return `Última captura: ${HORA_CORTA.format(new Date(iso))}`;
 }
 
-function Hero({ venta, meta, alcance, ritmo, vsRitmo, subida, ahora }: { venta: number; meta: number; alcance: number | null; ritmo: number; vsRitmo: number | null; subida: { monto: number } | null; ahora: number }) {
-  const t = TONOS[tonoDe(alcance, venta !== 0)];
+function VentaDeHoy({ venta, meta, alcance, ritmo, vsRitmo, subida, ahora }: { venta: number; meta: number; alcance: number | null; ritmo: number; vsRitmo: number | null; subida: { monto: number } | null; ahora: number }) {
+  const tono = tonoDe(alcance, venta !== 0);
+  const t = TONOS[tono];
   const lleno = Math.max(0, Math.min(100, alcance ?? 0));
   const marca = Math.max(0, Math.min(100, ritmo * 100));
   return (
-    <Panel className="p-6 lg:p-8">
-      <div className="flex flex-wrap items-start justify-between gap-6">
+    <Tarjeta className="bg-gradient-to-br from-[#F1EDFF] via-white to-[#EAF6FF] p-6 lg:p-8">
+      <div className="flex flex-wrap items-center justify-between gap-6">
         <div className="min-w-0">
-          <Etiqueta>Venta de hoy</Etiqueta>
-          <div className="mt-2 flex flex-wrap items-end gap-x-5 gap-y-2">
-            <Cifra valor={venta} className="text-[clamp(56px,7.5vw,148px)] font-semibold leading-[0.9] tracking-tighter" />
+          <Rotulo>Venta de hoy</Rotulo>
+          <div className="mt-2 flex flex-wrap items-end gap-x-4 gap-y-2">
+            <Cifra valor={venta} className="text-[clamp(52px,5.6vw,140px)] font-bold leading-[0.95] tracking-tight" />
             <AnimatePresence>
               {subida ? (
                 <motion.span
                   key={subida.monto}
-                  initial={{ opacity: 0, y: 12 }}
-                  animate={{ opacity: 1, y: 0 }}
+                  initial={{ opacity: 0, y: 12, scale: 0.9 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0 }}
-                  className="mb-2 flex items-center gap-1.5 rounded-full bg-emerald-500/15 px-3 py-1.5 text-base font-semibold text-emerald-300 lg:text-lg"
+                  className="mb-3 flex items-center gap-1.5 rounded-full bg-[#DDF5EA] px-3.5 py-1.5 text-lg font-semibold text-[#1F8A5B]"
                 >
                   <TrendingUp size={18} /> +{sinCentavos(subida.monto)}
                 </motion.span>
               ) : null}
             </AnimatePresence>
           </div>
-          <p className="mt-3 text-base text-slate-400 lg:text-lg">
+          <p className="mt-3 text-lg text-[#5B6175]">
             {meta > 0 ? (
-              <>Meta <span className="font-semibold text-slate-200">{sinCentavos(meta)}</span> · {venta >= meta ? <span className="font-semibold text-emerald-300">¡meta del día lograda! 🎉</span> : <>faltan <span className="font-semibold text-white">{sinCentavos(meta - venta)}</span></>}</>
+              <>Meta <span className="font-semibold text-[#1F2433]">{sinCentavos(meta)}</span> · {venta >= meta ? <span className="font-semibold text-[#1F8A5B]">¡meta del día lograda! 🎉</span> : <>faltan <span className="font-semibold text-[#1F2433]">{sinCentavos(meta - venta)}</span></>}</>
             ) : "Sin meta capturada para hoy"}
           </p>
         </div>
-        <Anillo valor={alcance} color={t.solido} />
+        <Medidor valor={alcance} tono={tono} />
       </div>
 
-      {/* La barra del día: relleno = venta, marca blanca = dónde «debería» ir a esta hora. */}
-      <div className="mt-9">
-        <div className="relative h-5 rounded-full bg-white/[0.06]">
+      {/* La barra del día: relleno = venta; la marca = dónde «debería» ir a esta hora. */}
+      <div className="mt-10">
+        <div className="relative h-6 rounded-full bg-[#EEF0F4]">
           <motion.div
-            className={cn("absolute inset-y-0 left-0 rounded-full bg-gradient-to-r", t.barra, t.brillo)}
+            className={cn("absolute inset-y-0 left-0 rounded-full", t.barra)}
             initial={{ width: 0 }}
             animate={{ width: `${lleno}%` }}
             transition={{ duration: 1.1, ease: [0.22, 1, 0.36, 1] }}
           />
           {meta > 0 && marca > 0 && marca < 100 ? (
-            <div className="absolute -top-2 -bottom-2 w-0.5 rounded-full bg-white shadow-[0_0_10px_rgba(255,255,255,0.8)]" style={{ left: `${marca}%` }}>
-              <span className="absolute -top-6 left-1/2 -translate-x-1/2 whitespace-nowrap text-[11px] font-semibold uppercase tracking-wider text-slate-300">
-                Ritmo {HORA_CORTA.format(new Date(ahora))}
+            <div className="absolute -bottom-1.5 -top-1.5 w-1 -translate-x-1/2 rounded-full bg-[#7C6CF2]" style={{ left: `${marca}%` }}>
+              <span className="absolute -top-7 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-[#7C6CF2] px-2 py-0.5 text-[11px] font-semibold text-white">
+                ritmo {HORA_CORTA.format(new Date(ahora))}
               </span>
             </div>
           ) : null}
         </div>
         <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-sm">
-          <span className="text-slate-500">
+          <span className="text-[#8A90A2]">
             {ritmo <= 0 ? "La tienda abre a las 11:00: el ritmo empieza a contar a esa hora" : ritmo >= 1 ? "Tienda cerrada: así terminó el día" : `Ritmo estimado: a esta hora se espera el ${Math.round(ritmo * 100)} % de la meta`}
           </span>
           {vsRitmo != null && venta !== 0 ? (
-            <span className={cn("flex items-center gap-1.5 font-semibold", vsRitmo >= 0 ? "text-emerald-300" : "text-rose-300")}>
-              {vsRitmo >= 0 ? <TrendingUp size={16} /> : <TrendingDown size={16} />}
+            <span className={cn("flex items-center gap-1.5 rounded-full px-3 py-1 font-semibold", vsRitmo >= 0 ? "bg-[#DDF5EA] text-[#1F8A5B]" : "bg-[#FFE3E6] text-[#C2455A]")}>
+              {vsRitmo >= 0 ? <TrendingUp size={15} /> : <TrendingDown size={15} />}
               {vsRitmo >= 0 ? `${sinCentavos(vsRitmo)} arriba del ritmo` : `${sinCentavos(-vsRitmo)} abajo del ritmo`}
             </span>
           ) : null}
         </div>
       </div>
-    </Panel>
+    </Tarjeta>
   );
 }
 
-/** Una cifra de dinero que «sube» cuando cambia, y parpadea en verde. */
+/** Una cifra de dinero que «sube» cuando cambia, y se tiñe de verde un momento. */
 function Cifra({ valor, className }: { valor: number; className?: string }) {
   const [mostrado, setMostrado] = useState(valor);
   const [subio, setSubio] = useState(false);
@@ -329,32 +339,25 @@ function Cifra({ valor, className }: { valor: number; className?: string }) {
     cuadro = requestAnimationFrame(paso);
     return () => cancelAnimationFrame(cuadro);
   }, [valor]);
-  return (
-    <p className={cn("tabular-nums transition-[color,text-shadow] duration-700", subio ? "text-emerald-300 [text-shadow:0_0_30px_rgba(52,211,153,0.6)]" : valor < 0 ? "text-rose-300" : "text-white", className)}>
-      {money(mostrado)}
-    </p>
-  );
+  return <p className={cn("tabular-nums transition-colors duration-700", subio ? "text-[#1F8A5B]" : valor < 0 ? "text-[#C2455A]" : "text-[#1F2433]", className)}>{money(mostrado)}</p>;
 }
 
-function Anillo({ valor, color }: { valor: number | null; color: string }) {
-  const r = 54;
-  const c = 2 * Math.PI * r;
+/** Medio círculo, como un velocímetro: más fácil de leer de lejos que un anillo. */
+function Medidor({ valor, tono }: { valor: number | null; tono: Tono }) {
+  const t = TONOS[tono];
   const lleno = Math.max(0, Math.min(100, valor ?? 0));
+  const largo = Math.PI * 80;
   return (
-    <div className="relative size-40 shrink-0 2xl:size-52">
-      <svg viewBox="0 0 128 128" className="size-full -rotate-90" style={{ filter: `drop-shadow(0 0 14px ${color}55)` }}>
-        <circle cx="64" cy="64" r={r} fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth="11" />
-        <motion.circle
-          cx="64" cy="64" r={r} fill="none" stroke={color} strokeWidth="11" strokeLinecap="round" strokeDasharray={c}
-          initial={{ strokeDashoffset: c }} animate={{ strokeDashoffset: c - (lleno / 100) * c }} transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1] }}
+    <div className={cn("relative flex w-48 shrink-0 flex-col items-center rounded-[24px] px-4 pb-4 pt-5 2xl:w-64", t.fondo)}>
+      <svg viewBox="0 0 200 110" className="w-full">
+        <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="rgba(255,255,255,0.9)" strokeWidth="18" strokeLinecap="round" />
+        <motion.path
+          d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke={t.hex} strokeWidth="18" strokeLinecap="round" strokeDasharray={largo}
+          initial={{ strokeDashoffset: largo }} animate={{ strokeDashoffset: largo - (lleno / 100) * largo }} transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1] }}
         />
       </svg>
-      <div className="absolute inset-0 grid place-items-center text-center">
-        <div>
-          <p className="text-4xl font-semibold tabular-nums 2xl:text-5xl" style={{ color }}>{valor == null ? "—" : `${Math.round(valor)}%`}</p>
-          <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-[0.25em] text-slate-500">de la meta</p>
-        </div>
-      </div>
+      <p className={cn("-mt-8 text-4xl font-bold tabular-nums 2xl:-mt-9 2xl:text-6xl", t.texto)}>{valor == null ? "—" : `${Math.round(valor)}%`}</p>
+      <p className="mt-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#5B6175]">de la meta del día</p>
     </div>
   );
 }
@@ -364,22 +367,96 @@ function Indicadores({ hoy, falta }: { hoy: DiaDeVenta | null; falta: number }) 
   const piezas = hoy?.piezas ?? 0;
   const venta = hoy?.capturado ? hoy.venta : 0;
   const items = [
-    { etiqueta: "Tickets", valor: String(tickets) },
-    { etiqueta: "Piezas", valor: String(piezas) },
-    { etiqueta: "Conversión", valor: hoy?.trafico ? `${((tickets / hoy.trafico) * 100).toFixed(1)}%` : "—" },
-    { etiqueta: "Ticket prom.", valor: tickets ? sinCentavos(venta / tickets) : "—" },
-    { etiqueta: "Piezas x ticket", valor: tickets ? (piezas / tickets).toFixed(2) : "—" },
-    { etiqueta: "Faltan", valor: hoy && hoy.meta > 0 ? sinCentavos(falta) : "—", resalte: falta > 0 }
+    { etiqueta: "Tickets", valor: String(tickets), icono: Receipt, fondo: "bg-[#DCEEFF]", tinta: "text-[#2F6FB3]" },
+    { etiqueta: "Piezas", valor: String(piezas), icono: Shirt, fondo: "bg-[#E9E3FF]", tinta: "text-[#6A55E0]" },
+    { etiqueta: "Conversión", valor: hoy?.trafico ? `${((tickets / hoy.trafico) * 100).toFixed(1)}%` : "—", icono: Users, fondo: "bg-[#DDF5EA]", tinta: "text-[#1F8A5B]" },
+    { etiqueta: "Ticket prom.", valor: tickets ? sinCentavos(venta / tickets) : "—", icono: Percent, fondo: "bg-[#FFE6D6]", tinta: "text-[#C76A2E]" },
+    { etiqueta: "Piezas x ticket", valor: tickets ? (piezas / tickets).toFixed(2) : "—", icono: Shirt, fondo: "bg-[#FFF4C7]", tinta: "text-[#A27C0B]" },
+    { etiqueta: "Faltan", valor: hoy && hoy.meta > 0 ? sinCentavos(falta) : "—", icono: Target, fondo: "bg-[#FFE3E6]", tinta: "text-[#C2455A]" }
   ];
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:gap-4 xl:grid-cols-6">
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:gap-4">
       {items.map((it) => (
-        <Panel key={it.etiqueta} className="px-4 py-3.5 2xl:px-5 2xl:py-4">
-          <Etiqueta className="text-[10px]">{it.etiqueta}</Etiqueta>
-          <p className={cn("mt-1.5 truncate text-2xl font-semibold tabular-nums tracking-tight 2xl:text-4xl", it.resalte ? "text-amber-200" : "text-white")}>{it.valor}</p>
-        </Panel>
+        <div key={it.etiqueta} className={cn("rounded-[24px] p-4 2xl:p-5", it.fondo)}>
+          <div className={cn("flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em]", it.tinta)}>
+            <it.icono size={16} /> {it.etiqueta}
+          </div>
+          <p className="mt-2 truncate text-3xl font-bold tabular-nums tracking-tight 2xl:text-4xl">{it.valor}</p>
+        </div>
       ))}
     </div>
+  );
+}
+
+/** Los tres primeros en podio y el resto en lista. */
+function Podio({ hoy }: { hoy: DiaDeVenta | null }) {
+  const personas = hoy?.personas ?? [];
+  const conVenta = personas.filter((p) => p.capturado && p.venta > 0);
+  const podio = conVenta.slice(0, 3);
+  const resto = personas.filter((p) => !podio.includes(p));
+  // Orden visual del podio: 2.º, 1.º, 3.º
+  const orden = [podio[1], podio[0], podio[2]];
+  const estilos = [
+    { alto: "h-24", fondo: "bg-[#E7EAF1]", medalla: "🥈" },
+    { alto: "h-32", fondo: "bg-[#FFF1C9]", medalla: "🥇" },
+    { alto: "h-20", fondo: "bg-[#FBE2D2]", medalla: "🥉" }
+  ];
+  return (
+    <Tarjeta className="flex flex-col p-6">
+      <div className="mb-4 flex items-baseline justify-between">
+        <Rotulo>Ranking de hoy</Rotulo>
+        <span className="text-xs text-[#8A90A2]">{personas.length} en piso</span>
+      </div>
+
+      {podio.length > 0 ? (
+        <div className="grid grid-cols-3 items-end gap-3">
+          {orden.map((p, i) =>
+            p ? (
+              <motion.div key={p.userId} layout className="flex flex-col items-center text-center">
+                <span className={cn("mb-1 leading-none", i === 1 ? "text-4xl" : "text-3xl")}>{estilos[i].medalla}</span>
+                <ProfileAvatar name={p.nombre} photoUrl={p.photoUrl} size={i === 1 ? "lg" : "md"} />
+                <p className="mt-2 w-full truncate text-base font-semibold">{nombreCorto(p.nombre)}</p>
+                <Cifra valor={p.venta} className={cn("font-bold", i === 1 ? "text-2xl" : "text-xl")} />
+                <span className={cn("mt-0.5 text-sm font-semibold", TONOS[tonoDe(p.alcance, p.capturado)].texto)}>{p.alcance != null ? `${Math.round(p.alcance)}%` : ""}</span>
+                <div className={cn("mt-2 w-full rounded-t-2xl", estilos[i].alto, estilos[i].fondo)} />
+              </motion.div>
+            ) : (
+              <div key={`vacio-${i}`} />
+            )
+          )}
+        </div>
+      ) : (
+        <p className="py-10 text-center text-[#8A90A2]">Todavía no hay venta capturada hoy.</p>
+      )}
+
+      {resto.length > 0 ? (
+        <ul className="mt-4 space-y-2">
+          <AnimatePresence initial={false}>
+            {resto.map((p) => <Fila key={p.userId} p={p} lugar={personas.indexOf(p) + 1} />)}
+          </AnimatePresence>
+        </ul>
+      ) : null}
+    </Tarjeta>
+  );
+}
+
+function Fila({ p, lugar }: { p: PersonaDelDia; lugar: number }) {
+  const t = TONOS[tonoDe(p.alcance, p.capturado)];
+  return (
+    <motion.li layout initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex items-center gap-3 rounded-2xl bg-[#F7F5F1] px-3 py-2.5">
+      <span className="w-6 text-center font-semibold tabular-nums text-[#8A90A2]">{lugar}</span>
+      <ProfileAvatar name={p.nombre} photoUrl={p.photoUrl} size="sm" />
+      <div className="min-w-0 flex-1">
+        <div className="flex items-baseline justify-between gap-3">
+          <p className="truncate font-semibold">{nombreCorto(p.nombre)}</p>
+          <p className="shrink-0 font-semibold tabular-nums">{p.capturado ? sinCentavos(p.venta) : "—"}</p>
+        </div>
+        <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-white">
+          <motion.div className={cn("h-full rounded-full", t.barra)} initial={{ width: 0 }} animate={{ width: `${Math.max(0, Math.min(100, p.alcance ?? 0))}%` }} transition={{ duration: 0.9 }} />
+        </div>
+      </div>
+      <span className={cn("w-12 text-right text-sm font-semibold tabular-nums", t.texto)}>{p.capturado && p.alcance != null ? `${Math.round(p.alcance)}%` : ""}</span>
+    </motion.li>
   );
 }
 
@@ -388,111 +465,45 @@ function Semana({ semana, hoyIso }: { semana: Respuesta["semana"]; hoyIso: strin
   const alcance = semana.meta > 0 ? (semana.venta / semana.meta) * 100 : null;
   const t = TONOS[tonoDe(alcance)];
   return (
-    <Panel className="p-6">
+    <Tarjeta className="p-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <Etiqueta>Semana hasta hoy</Etiqueta>
-          <p className="mt-1 text-3xl font-semibold tabular-nums tracking-tight 2xl:text-4xl">{sinCentavos(semana.venta)}</p>
+          <Rotulo>Semana hasta hoy</Rotulo>
+          <p className="mt-1 text-3xl font-bold tabular-nums tracking-tight">{sinCentavos(semana.venta)}</p>
         </div>
-        <div className="text-right">
-          <p className={cn("text-3xl font-semibold tabular-nums", t.texto)}>{alcance == null ? "—" : `${Math.round(alcance)}%`}</p>
-          <p className="text-xs text-slate-500">de {sinCentavos(semana.meta)}</p>
-        </div>
+        <span className={cn("rounded-full px-3 py-1 text-lg font-bold tabular-nums", t.fondo, t.texto)}>{alcance == null ? "—" : `${Math.round(alcance)}%`}</span>
       </div>
-      <div className="mt-6 grid h-40 grid-cols-7 items-end gap-3">
+      <div className="mt-5 grid h-32 grid-cols-7 items-end gap-2.5">
         {Array.from({ length: 7 }, (_, i) => {
           const fecha = new Date(new Date(`${semana.inicio}T00:00:00Z`).getTime() + i * 86_400_000).toISOString().slice(0, 10);
           const d = semana.dias.find((x) => x.fecha === fecha);
           const td = TONOS[tonoDe(d && d.meta > 0 ? (d.venta / d.meta) * 100 : null, Boolean(d?.capturado))];
           const esHoy = fecha === hoyIso;
           return (
-            <div key={fecha} className="flex h-full flex-col items-center gap-2">
-              <span className="h-4 text-[11px] font-semibold tabular-nums text-slate-400">{d?.capturado ? `${Math.round(d.venta / 1000)}k` : ""}</span>
+            <div key={fecha} className="flex h-full flex-col items-center gap-1.5">
               <div className="relative w-full flex-1">
-                {d && d.meta > 0 ? <span className="absolute inset-x-0 bottom-0 rounded-lg border border-dashed border-white/15 bg-white/[0.03]" style={{ height: `${(d.meta / maximo) * 100}%` }} /> : null}
+                {d && d.meta > 0 ? <span className="absolute inset-x-0 bottom-0 rounded-xl bg-[#EEF0F4]" style={{ height: `${(d.meta / maximo) * 100}%` }} /> : null}
                 {d?.capturado ? (
                   <motion.span
-                    className={cn("absolute inset-x-1 bottom-0 rounded-lg bg-gradient-to-t", td.barra, esHoy && td.brillo)}
+                    className={cn("absolute inset-x-1 bottom-0 rounded-xl", td.barra)}
                     initial={{ height: 0 }}
                     animate={{ height: `${(Math.max(d.venta, 0) / maximo) * 100}%` }}
                     transition={{ duration: 0.9, delay: i * 0.05 }}
                   />
                 ) : null}
               </div>
-              <span className={cn("text-xs font-semibold uppercase tracking-wider", esHoy ? "text-blue-400" : "text-slate-500")}>
+              <span className={cn("rounded-full px-2 py-0.5 text-xs font-semibold uppercase", esHoy ? "bg-[#7C6CF2] text-white" : "text-[#8A90A2]")}>
                 {DIA_CORTO.format(new Date(`${fecha}T00:00:00Z`)).replace(/\./g, "").slice(0, 3)}
               </span>
             </div>
           );
         })}
       </div>
-    </Panel>
+    </Tarjeta>
   );
 }
 
-function Ranking({ hoy }: { hoy: DiaDeVenta | null }) {
-  const personas = hoy?.personas ?? [];
-  return (
-    <Panel className="flex flex-col p-6 xl:col-span-4">
-      <div className="mb-5 flex items-baseline justify-between">
-        <Etiqueta>Ranking de hoy</Etiqueta>
-        <span className="text-xs text-slate-500">{personas.length} en piso</span>
-      </div>
-      {personas.length > 0 ? (
-        <ul className="flex flex-1 flex-col gap-3">
-          <AnimatePresence initial={false}>
-            {personas.map((p, i) => <Persona key={p.userId} p={p} lugar={i + 1} />)}
-          </AnimatePresence>
-        </ul>
-      ) : (
-        <p className="grid flex-1 place-items-center py-16 text-center text-slate-500">Todavía no hay venta capturada hoy.</p>
-      )}
-    </Panel>
-  );
-}
-
-function Persona({ p, lugar }: { p: PersonaDelDia; lugar: number }) {
-  const t = TONOS[tonoDe(p.alcance, p.capturado)];
-  const lider = lugar === 1 && p.capturado && p.venta > 0;
-  return (
-    <motion.li
-      layout
-      initial={{ opacity: 0, x: 16 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0 }}
-      transition={{ type: "spring", stiffness: 300, damping: 30 }}
-      className={cn(
-        "relative flex items-center gap-4 overflow-hidden rounded-2xl border p-4",
-        lider ? "border-amber-400/40 bg-gradient-to-r from-amber-400/15 to-transparent shadow-[0_0_30px_rgba(251,191,36,0.15)]" : "border-white/[0.06] bg-white/[0.03]"
-      )}
-    >
-      <span className={cn("w-8 text-center text-2xl font-semibold tabular-nums", lider ? "text-amber-300" : "text-slate-600")}>
-        {lider ? <Crown size={26} className="mx-auto" /> : lugar}
-      </span>
-      <ProfileAvatar name={p.nombre} photoUrl={p.photoUrl} size="md" />
-      <div className="min-w-0 flex-1">
-        <div className="flex items-baseline justify-between gap-3">
-          <p className="truncate text-lg font-semibold 2xl:text-xl">{nombreCorto(p.nombre)}</p>
-          <Cifra valor={p.capturado ? p.venta : 0} className="shrink-0 text-xl font-semibold 2xl:text-2xl" />
-        </div>
-        <div className="relative mt-2 h-2.5 overflow-hidden rounded-full bg-white/[0.07]">
-          <motion.div
-            className={cn("h-full rounded-full bg-gradient-to-r", t.barra)}
-            initial={{ width: 0 }}
-            animate={{ width: `${Math.max(0, Math.min(100, p.alcance ?? 0))}%` }}
-            transition={{ duration: 1, ease: [0.22, 1, 0.36, 1] }}
-          />
-        </div>
-        <div className="mt-1.5 flex justify-between gap-3 text-sm text-slate-400">
-          <span className="truncate">{p.capturado ? `${p.tickets} tickets · ${p.piezas} piezas` : "Sin captura"}{p.meta > 0 ? ` · meta ${sinCentavos(p.meta)}` : ""}</span>
-          {p.alcance != null && p.capturado ? <span className={cn("font-semibold tabular-nums", t.texto)}>{Math.round(p.alcance)}%</span> : null}
-        </div>
-      </div>
-    </motion.li>
-  );
-}
-
-/** La cinta de abajo: titulares que pasan solos, como en un monitor de noticias. */
+/** La cinta de abajo: titulares que pasan solos. */
 function Cinta({ datos, vsRitmo }: { datos: Respuesta; vsRitmo: number | null }) {
   const titulares = useMemo(() => {
     const hoy = datos.hoy;
@@ -511,13 +522,13 @@ function Cinta({ datos, vsRitmo }: { datos: Respuesta; vsRitmo: number | null })
     if (hoy?.tickets) lista.push(`🧾 ${hoy.tickets} tickets y ${hoy.piezas} piezas hoy`);
     return lista.length ? lista : ["Esperando la primera captura del día…"];
   }, [datos, vsRitmo]);
-  const texto = titulares.join("     •     ");
+  const texto = titulares.join("      ·      ");
   return (
-    <div className="relative flex items-center overflow-hidden rounded-2xl border border-white/[0.08] bg-black/40">
-      <span className="z-10 shrink-0 bg-blue-600 px-4 py-3 text-xs font-bold uppercase tracking-[0.2em] shadow-[8px_0_16px_rgba(4,6,10,0.9)]">Al momento</span>
-      <div className="relative flex-1 overflow-hidden py-3">
+    <div className="relative flex items-center overflow-hidden rounded-full bg-white/85 shadow-[0_6px_24px_-12px_rgba(31,36,51,0.15)] ring-1 ring-[#1F2433]/[0.04]">
+      <span className="z-10 m-1.5 shrink-0 rounded-full bg-gradient-to-r from-[#B9AEFF] to-[#8FD3FF] px-4 py-2 text-xs font-bold uppercase tracking-[0.16em] text-white">Al momento</span>
+      <div className="relative flex-1 overflow-hidden py-2.5">
         <motion.div
-          className="flex w-max gap-16 whitespace-nowrap text-base text-slate-200 lg:text-lg"
+          className="flex w-max gap-16 whitespace-nowrap text-lg text-[#3A4055]"
           animate={{ x: ["0%", "-50%"] }}
           transition={{ duration: Math.max(25, texto.length * 0.18), ease: "linear", repeat: Infinity }}
         >
