@@ -1,0 +1,433 @@
+.panel {
+  --fondo: #f2f5fa;
+  --tinta: #132541;
+  --suave: #50617a;
+  --linea: #dce4ef;
+  --azul: #285bd1;
+  --bien: #14634f;
+  --bien-fondo: #dcefe7;
+  --cerca: #795005;
+  --cerca-fondo: #faedce;
+  --bajo: #9a3c51;
+  --bajo-fondo: #fae6ea;
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  overflow: auto;
+  color-scheme: light;
+  background: var(--fondo);
+  color: var(--tinta);
+  font-family: var(--font-geist), system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.9375rem;
+  line-height: 1.4;
+}
+
+.panel ::selection {
+  background: #c9dcff;
+  color: var(--tinta);
+}
+
+.layout {
+  width: min(100%, 120rem);
+  min-height: 100%;
+  margin-inline: auto;
+  padding: 1.25rem;
+}
+
+.cabecera {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 1rem;
+  padding-block: 0.25rem 1.125rem;
+  border-bottom: 1px solid var(--linea);
+}
+
+.identidad, .reloj, .conexion {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.identidad h1 {
+  margin: 0;
+  font-size: 1.4375rem;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+}
+
+.identidad p, .reloj p, .conexion {
+  color: var(--suave);
+  font-size: 0.875rem;
+}
+
+.logo {
+  flex: none;
+  border-radius: 0.75rem;
+}
+
+.reloj {
+  justify-content: flex-end;
+  text-align: right;
+}
+
+.reloj time {
+  color: var(--tinta);
+  font-size: 1.625rem;
+  font-weight: 650;
+  line-height: 1.15;
+}
+
+.control {
+  display: grid;
+  flex: none;
+  width: 2.75rem;
+  height: 2.75rem;
+  place-items: center;
+  border: 1px solid var(--linea);
+  border-radius: 0.75rem;
+  background: #fff;
+  color: var(--tinta);
+  cursor: pointer;
+}
+
+.control:hover { background: #e8efff; }
+.control:focus-visible, .aviso a:focus-visible { outline: 2px solid var(--azul); outline-offset: 3px; }
+
+.estado {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.375rem 0.625rem;
+  border-radius: 0.375rem;
+  background: var(--cerca-fondo);
+  color: var(--cerca);
+  font-weight: 650;
+}
+
+.estado::before {
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 50%;
+  background: currentColor;
+  content: "";
+}
+
+.estado[data-activo="true"] { background: var(--bien-fondo); color: var(--bien); }
+
+.monitor {
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr);
+  grid-template-areas: "venta equipo" "semana equipo";
+  grid-template-rows: auto 1fr;
+  align-items: stretch;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.venta, .equipo, .semana {
+  min-width: 0;
+  border: 1px solid var(--linea);
+  border-radius: 1rem;
+}
+
+.venta {
+  grid-area: venta;
+  padding: 1.25rem 1.375rem 0;
+  border-color: #d1dff6;
+  background: #e7effd;
+}
+
+.resumen, .tituloSeccion {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.resumen h2, .tituloSeccion h2 {
+  font-size: 1.125rem;
+  font-weight: 680;
+  letter-spacing: -0.02em;
+}
+
+.total {
+  color: #102b65;
+  font-size: clamp(2.5rem, 5vw, 6.25rem);
+  font-weight: 720;
+  line-height: 1.02;
+  letter-spacing: -0.04em;
+  overflow-wrap: anywhere;
+}
+
+.total[data-negativo="true"] { color: var(--bajo); }
+
+.alcance, .porcentaje {
+  --estado-tinta: var(--suave);
+  --estado-fondo: #eef1f6;
+  color: var(--estado-tinta);
+  background: var(--estado-fondo);
+}
+
+.panel [data-tono="meta"] { --estado-tinta: var(--bien); --estado-fondo: var(--bien-fondo); }
+.panel [data-tono="cerca"] { --estado-tinta: var(--cerca); --estado-fondo: var(--cerca-fondo); }
+.panel [data-tono="bajo"] { --estado-tinta: var(--bajo); --estado-fondo: var(--bajo-fondo); }
+
+.alcance {
+  display: grid;
+  flex: none;
+  justify-items: center;
+  padding: 0.5rem 0.875rem;
+  border-radius: 0.75rem;
+}
+
+.alcance strong {
+  font-size: clamp(1.5rem, 2.5vw, 3rem);
+  line-height: 1.15;
+  font-weight: 700;
+}
+
+.alcance span, .nota { font-size: 0.875rem; }
+.nota { margin-top: 0.375rem; color: var(--suave); }
+
+.metas, .indicadores {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.metas {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 8rem), 1fr));
+  margin-top: 1.125rem;
+}
+
+.metas dt, .indicadores dt, .tituloSeccion p, .tituloSeccion > span {
+  color: var(--suave);
+  font-size: 0.875rem;
+}
+
+.metas dd, .indicadores dd {
+  font-size: 1.375rem;
+  font-weight: 680;
+  letter-spacing: -0.025em;
+  overflow-wrap: anywhere;
+}
+
+.subida dd { display: flex; align-items: center; gap: 0.375rem; color: var(--bien); }
+
+.ritmo { margin-top: 1rem; }
+
+.pista {
+  position: relative;
+  height: 0.625rem;
+  border-radius: 0.375rem;
+  background: #c8d8f4;
+}
+
+.pista span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--azul);
+}
+
+.pista i {
+  position: absolute;
+  top: -0.1875rem;
+  bottom: -0.1875rem;
+  width: 0.1875rem;
+  border-radius: 0.125rem;
+  background: #172c57;
+  transform: translateX(-50%);
+}
+
+.leyendaRitmo {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.375rem 0.75rem;
+  margin-top: 0.375rem;
+  color: var(--suave);
+  font-size: 0.875rem;
+}
+
+.leyendaRitmo [data-tono] { color: var(--estado-tinta); font-weight: 650; }
+
+.indicadores {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  margin-top: 1rem;
+  padding-block: 0.75rem;
+  border-top: 1px solid #c7d7ef;
+}
+
+.equipo, .semana { padding: 1.125rem 1.25rem; background: #fff; }
+.equipo { grid-area: equipo; }
+.semana { grid-area: semana; }
+
+.tabla {
+  width: 100%;
+  margin-top: 0.875rem;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.tabla thead th {
+  padding: 0.5rem 0.3125rem;
+  color: var(--suave);
+  font-size: 0.875rem;
+  font-weight: 550;
+}
+
+.tabla td, .tabla tbody th {
+  padding: 0.625rem 0.3125rem;
+  border-top: 1px solid var(--linea);
+  font-weight: 630;
+  text-align: right;
+  vertical-align: middle;
+}
+
+.tabla td, .tabla thead th:not(:first-child) { text-align: right; }
+.tabla tbody th { width: 100%; text-align: left; }
+.tabla td:not(:first-child) { white-space: nowrap; }
+.tabla .puesto { min-width: 1.5rem; color: var(--suave); text-align: center; }
+
+.persona {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  overflow-wrap: anywhere;
+}
+
+.avatar {
+  width: 1.875rem;
+  height: 1.875rem;
+  border-radius: 0.5rem;
+  background: #e8effd;
+  color: #214fba;
+  box-shadow: none;
+  outline: none;
+  --tw-ring-shadow: 0 0 transparent;
+}
+
+.porcentaje {
+  display: inline-block;
+  min-width: 3rem;
+  padding: 0.1875rem 0.375rem;
+  border-radius: 0.375rem;
+  text-align: center;
+  font-size: 0.875rem;
+  font-weight: 680;
+}
+
+.totalSemana {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+}
+
+.totalSemana strong { font-size: 1.375rem; letter-spacing: -0.025em; }
+
+.leyendaSemana {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.875rem;
+  margin-top: 0.375rem;
+  color: var(--suave);
+  font-size: 0.8125rem;
+}
+
+.leyendaSemana span::before {
+  display: inline-block;
+  width: 0.5625rem;
+  height: 0.5625rem;
+  margin-inline-end: 0.3125rem;
+  border-radius: 0.125rem;
+  background: #dce6f8;
+  content: "";
+}
+
+.leyendaSemana span:first-child::before { background: var(--azul); }
+
+.grafica {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 0.625rem;
+  margin-top: 0.25rem;
+}
+
+.grafica li { display: grid; justify-items: center; gap: 0.25rem; }
+
+.barras {
+  position: relative;
+  width: min(70%, 3.5rem);
+  height: 4rem;
+  border-bottom: 1px solid var(--linea);
+}
+
+.barras span {
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  border-radius: 0.1875rem 0.1875rem 0 0;
+  background: #dce6f8;
+}
+
+.barras [data-venta] { inset-inline: 20%; background: var(--azul); }
+
+.dia {
+  padding: 0.125rem 0.375rem;
+  color: var(--suave);
+  font-size: 0.8125rem;
+  text-transform: capitalize;
+}
+
+.grafica [aria-current] .dia { border-radius: 0.25rem; background: #e8efff; color: #214fba; font-weight: 680; }
+
+.aviso {
+  display: grid;
+  justify-items: center;
+  gap: 0.75rem;
+  padding: 5rem 1rem;
+  text-align: center;
+  color: var(--suave);
+}
+
+.aviso a { color: #214fba; text-decoration: underline; }
+
+@media (min-width: 100rem) and (min-height: 56rem) {
+  .layout { padding: 1.75rem 2.5rem; }
+  .monitor { gap: 1.25rem; margin-top: 1.25rem; }
+  .venta, .equipo, .semana { padding-inline: 1.75rem; }
+  .venta, .equipo, .semana { padding-top: 1.5rem; }
+  .equipo, .semana { padding-bottom: 1.5rem; }
+  .resumen h2, .tituloSeccion h2 { font-size: 1.375rem; }
+  .metas { margin-top: 1.5rem; }
+  .indicadores { margin-top: 1.25rem; padding-block: 1rem; }
+  .metas dt, .indicadores dt, .leyendaRitmo, .tituloSeccion p, .tituloSeccion > span { font-size: 1rem; }
+  .metas dd, .indicadores dd, .totalSemana strong { font-size: 1.75rem; }
+  .tabla { font-size: 1.125rem; }
+  .tabla td, .tabla tbody th { padding-block: 0.875rem; }
+  .porcentaje, .dia { font-size: 1rem; }
+  .barras { height: 6rem; }
+}
+
+@media (max-width: 62rem) {
+  .monitor { grid-template-columns: 1fr; grid-template-areas: "venta" "equipo" "semana"; }
+  .cabecera { grid-template-columns: minmax(0, 1fr) auto; }
+  .conexion { grid-row: 2; grid-column: 1 / -1; }
+}
+
+@media (max-width: 36rem) {
+  .layout { padding: 0.875rem; }
+  .cabecera { gap: 0.625rem; }
+  .identidad, .reloj { gap: 0.375rem; }
+  .logo { width: 2rem; height: 2rem; }
+  .identidad h1, .reloj time { font-size: 1.0625rem; }
+  .identidad p, .reloj p { font-size: 0.75rem; }
+  .venta, .equipo, .semana { padding-inline: 0.75rem; }
+  .indicadores { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .metas dd, .indicadores dd, .totalSemana strong { font-size: 1.125rem; }
+  .tabla { font-size: 0.875rem; }
+  .avatar { display: none; }
+  .grafica { gap: 0.125rem; }
+}
