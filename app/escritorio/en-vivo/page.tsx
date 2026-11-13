@@ -28,6 +28,7 @@ const DIA = new Intl.DateTimeFormat("es-MX", { weekday: "short", timeZone: "UTC"
 const RELOJ = new Intl.DateTimeFormat("es-MX", { timeZone: ZONA, hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23" });
 const HORA = new Intl.DateTimeFormat("es-MX", { timeZone: ZONA, hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
 const PESOS = new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN", maximumFractionDigits: 0, minimumFractionDigits: 0 });
+const PESOS_COMPACTOS = new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN", notation: "compact", maximumFractionDigits: 1 });
 const limitar = (valor: number) => Math.max(0, Math.min(100, valor));
 const fechaUtc = (fecha: string) => new Date(fecha + "T00:00:00Z");
 
@@ -219,38 +220,39 @@ export default function VentaEnVivoPage() {
         {datos ? (
           <div className={styles.monitor}>
             <section aria-labelledby="venta-hoy" className={styles.venta}>
-              <div className={styles.resumen}>
-                <div>
+              <div className={styles.frente}>
+                <div className={styles.resumen}>
                   <h2 id="venta-hoy">Venta de hoy</h2>
                   <p className={styles.total} data-negativo={venta < 0}>{capturado ? money(venta) : "—"}</p>
                   {!capturado && <p className={styles.nota}>Aún no hay venta capturada hoy.</p>}
+                  {subidaVisible !== null && (
+                    <p className={styles.subida}><TrendingUp size={17} aria-hidden /> +{PESOS.format(subidaVisible)} desde la captura anterior</p>
+                  )}
+                  {meta > 0 && (
+                    <div className={styles.ritmo}>
+                      <div className={styles.pista} aria-hidden="true">
+                        <span style={{width: limitar(capturado ? hoy.alcance ?? 0 : 0) + "%"}} />
+                        <i style={{left: limitar(ritmo * 100) + "%"}} />
+                      </div>
+                      <div className={styles.leyendaRitmo}>
+                        <span>Ritmo estimado · {porcentaje(ritmo * 100)}</span>
+                        {vsRitmo !== null && (
+                          <span data-tono={vsRitmo < 0 ? "bajo" : "meta"}>
+                            {vsRitmo === 0 ? "En ritmo" : PESOS.format(Math.abs(vsRitmo)) + (vsRitmo > 0 ? " arriba" : " abajo")}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
                 <div className={styles.alcance} data-tono={tono(capturado ? hoy.alcance : null)}>
-                  <strong>{porcentaje(capturado ? hoy.alcance : null)}</strong>
-                  <span>de la meta</span>
+                  <dl className={styles.metas}>
+                    <div><dt>Meta del día</dt><dd>{meta > 0 ? PESOS.format(meta) : "—"}</dd></div>
+                    <div><dt>{meta > 0 && venta > meta ? "Sobre la meta" : "Faltan para la meta"}</dt><dd>{meta > 0 && capturado ? PESOS.format(Math.abs(meta - venta)) : "—"}</dd></div>
+                  </dl>
+                  <p><strong>{porcentaje(capturado ? hoy.alcance : null)}</strong><span>de la meta</span></p>
                 </div>
               </div>
-              <dl className={styles.metas}>
-                <div><dt>Meta del día</dt><dd>{meta > 0 ? PESOS.format(meta) : "—"}</dd></div>
-                <div><dt>{meta > 0 && venta > meta ? "Sobre la meta" : "Faltan para la meta"}</dt><dd>{meta > 0 && capturado ? PESOS.format(Math.abs(meta - venta)) : "—"}</dd></div>
-                {subidaVisible !== null && <div className={styles.subida}><dt>Último aumento</dt><dd><TrendingUp size={17} aria-hidden /> +{PESOS.format(subidaVisible)}</dd></div>}
-              </dl>
-              {meta > 0 && (
-                <div className={styles.ritmo}>
-                  <div className={styles.pista} aria-hidden="true">
-                    <span style={{width: limitar(capturado ? hoy.alcance ?? 0 : 0) + "%"}} />
-                    <i style={{left: limitar(ritmo * 100) + "%"}} />
-                  </div>
-                  <div className={styles.leyendaRitmo}>
-                    <span>Ritmo estimado · {porcentaje(ritmo * 100)}</span>
-                    {vsRitmo !== null && (
-                      <span data-tono={vsRitmo < 0 ? "bajo" : "meta"}>
-                        {vsRitmo === 0 ? "En ritmo" : PESOS.format(Math.abs(vsRitmo)) + (vsRitmo > 0 ? " arriba" : " abajo")}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              )}
               <Indicadores hoy={datos.hoy} />
             </section>
             <Equipo hoy={datos.hoy} />
@@ -302,7 +304,7 @@ function Equipo({ hoy }: { hoy: DiaDeVenta | null }) {
           <thead><tr><th scope="col" colSpan={2}>Persona</th><th scope="col">Venta</th><th scope="col">Alcance</th></tr></thead>
           <tbody>
             {filas.map((p, indice) => (
-              <tr key={p.userId}>
+              <tr key={p.userId} data-lider={indice === 0 && p.capturado && p.venta > 0}>
                 <td className={styles.puesto}>{p.capturado ? indice + 1 : "—"}</td>
                 <th scope="row">
                   <span className={styles.persona}>
@@ -342,10 +344,11 @@ function Semana({ semana, hoyIso }: { semana: Respuesta["semana"]; hoyIso: strin
           const fecha = new Date(fechaUtc(semana.inicio).getTime() + i * 86_400_000).toISOString().slice(0, 10);
           const dia = dias.get(fecha);
           const etiqueta = DIA.format(fechaUtc(fecha)).replace(".", "");
-          const detalle = (dia?.capturado ? "Venta " + PESOS.format(dia.venta) : "Sin captura") +
+          const detalle = (dia?.capturado ? "Venta " + PESOS.format(dia.venta) : fecha > hoyIso ? "Día próximo" : "Sin captura") +
             (dia && dia.meta > 0 ? ", meta " + PESOS.format(dia.meta) : "");
           return (
             <li key={fecha} aria-current={fecha === hoyIso ? "date" : undefined} aria-label={etiqueta + ", " + detalle} title={detalle}>
+              <span className={styles.ventaDia} aria-hidden="true">{dia?.capturado ? PESOS_COMPACTOS.format(dia.venta) : "—"}</span>
               <div className={styles.barras} aria-hidden="true">
                 {dia && dia.meta > 0 && <span style={{height: (dia.meta / maximo) * 100 + "%"}} />}
                 {dia?.capturado && dia.venta > 0 && <span data-venta style={{height: (dia.venta / maximo) * 100 + "%"}} />}

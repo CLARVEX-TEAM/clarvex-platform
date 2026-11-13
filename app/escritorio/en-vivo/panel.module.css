@@ -1,9 +1,9 @@
 .panel {
-  --fondo: #f2f5fa;
-  --tinta: #132541;
-  --suave: #50617a;
-  --linea: #dce4ef;
-  --azul: #285bd1;
+  --fondo: #f4f3ef;
+  --tinta: #152743;
+  --suave: #506079;
+  --linea: #dce3eb;
+  --azul: #2755c4;
   --bien: #14634f;
   --bien-fondo: #dcefe7;
   --cerca: #795005;
@@ -29,6 +29,8 @@
 }
 
 .layout {
+  display: flex;
+  flex-direction: column;
   width: min(100%, 120rem);
   min-height: 100%;
   margin-inline: auto;
@@ -118,9 +120,10 @@
 
 .monitor {
   display: grid;
-  grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr);
-  grid-template-areas: "venta equipo" "semana equipo";
-  grid-template-rows: auto 1fr;
+  flex: 1;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  grid-template-areas: "venta venta" "equipo semana";
+  grid-template-rows: auto minmax(min-content, 1fr);
   align-items: stretch;
   gap: 1rem;
   margin-top: 1rem;
@@ -134,12 +137,19 @@
 
 .venta {
   grid-area: venta;
-  padding: 1.25rem 1.375rem 0;
+  overflow: hidden;
   border-color: #d1dff6;
   background: #e7effd;
 }
 
-.resumen, .tituloSeccion {
+.frente {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(15rem, 31%);
+}
+
+.resumen { min-width: 0; padding: 1.125rem 1.5rem; }
+
+.tituloSeccion {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -154,7 +164,8 @@
 
 .total {
   color: #102b65;
-  font-size: clamp(2.5rem, 5vw, 6.25rem);
+  margin-top: 0.25rem;
+  font-size: clamp(2.5rem, 6.6vw, 8rem);
   font-weight: 720;
   line-height: 1.02;
   letter-spacing: -0.04em;
@@ -163,7 +174,7 @@
 
 .total[data-negativo="true"] { color: var(--bajo); }
 
-.alcance, .porcentaje {
+.porcentaje {
   --estado-tinta: var(--suave);
   --estado-fondo: #eef1f6;
   color: var(--estado-tinta);
@@ -175,17 +186,26 @@
 .panel [data-tono="bajo"] { --estado-tinta: var(--bajo); --estado-fondo: var(--bajo-fondo); }
 
 .alcance {
+  --fondo-meta: #d8e5fc;
+  --tinta-meta: #173974;
   display: grid;
-  flex: none;
-  justify-items: center;
-  padding: 0.5rem 0.875rem;
-  border-radius: 0.75rem;
+  align-content: space-between;
+  gap: 1.25rem;
+  min-width: 0;
+  padding: 1.25rem 1.5rem;
+  border-inline-start: 1px solid #c8d8ee;
+  background: var(--fondo-meta);
+  color: var(--tinta-meta);
 }
 
+.alcance[data-tono="meta"] { --fondo-meta: #dcefe7; --tinta-meta: #154e40; border-color: #c4e1d6; }
+.alcance p { display: flex; align-items: baseline; gap: 0.625rem; }
+
 .alcance strong {
-  font-size: clamp(1.5rem, 2.5vw, 3rem);
-  line-height: 1.15;
+  font-size: clamp(2.375rem, 5vw, 5.75rem);
+  line-height: 0.98;
   font-weight: 700;
+  letter-spacing: -0.04em;
 }
 
 .alcance span, .nota { font-size: 0.875rem; }
@@ -197,8 +217,7 @@
 }
 
 .metas {
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 8rem), 1fr));
-  margin-top: 1.125rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .metas dt, .indicadores dt, .tituloSeccion p, .tituloSeccion > span {
@@ -213,7 +232,7 @@
   overflow-wrap: anywhere;
 }
 
-.subida dd { display: flex; align-items: center; gap: 0.375rem; color: var(--bien); }
+.subida { display: flex; align-items: center; gap: 0.375rem; margin-top: 0.375rem; color: var(--bien); font-weight: 650; }
 
 .ritmo { margin-top: 1rem; }
 
@@ -255,14 +274,14 @@
 
 .indicadores {
   grid-template-columns: repeat(5, minmax(0, 1fr));
-  margin-top: 1rem;
-  padding-block: 0.75rem;
+  padding: 0.75rem 1.5rem;
   border-top: 1px solid #c7d7ef;
+  background: #f7faff;
 }
 
 .equipo, .semana { padding: 1.125rem 1.25rem; background: #fff; }
 .equipo { grid-area: equipo; }
-.semana { grid-area: semana; }
+.semana { grid-area: semana; display: flex; flex-direction: column; }
 
 .tabla {
   width: 100%;
@@ -290,6 +309,8 @@
 .tabla tbody th { width: 100%; text-align: left; }
 .tabla td:not(:first-child) { white-space: nowrap; }
 .tabla .puesto { min-width: 1.5rem; color: var(--suave); text-align: center; }
+.tabla [data-lider="true"] { background: #e7f3ee; }
+.tabla [data-lider="true"] .puesto { color: var(--bien); }
 
 .persona {
   display: flex;
@@ -331,7 +352,7 @@
   display: flex;
   justify-content: flex-end;
   gap: 0.875rem;
-  margin-top: 0.375rem;
+  margin-top: 0.625rem;
   color: var(--suave);
   font-size: 0.8125rem;
 }
@@ -350,17 +371,30 @@
 
 .grafica {
   display: grid;
+  flex: 1;
   grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 0.625rem;
-  margin-top: 0.25rem;
+  margin-top: 0.625rem;
 }
 
-.grafica li { display: grid; justify-items: center; gap: 0.25rem; }
+.grafica li {
+  display: grid;
+  grid-template-rows: auto minmax(3.5rem, 1fr) auto;
+  justify-items: center;
+  gap: 0.3125rem;
+  min-width: 0;
+  padding: 0.25rem 0 0.125rem;
+  border-radius: 0.375rem;
+}
+
+.grafica li[aria-current] { background: #edf3ff; }
+.ventaDia { color: var(--suave); font-size: clamp(0.625rem, 1vw, 0.875rem); font-weight: 600; text-align: center; }
+.grafica [aria-current] .ventaDia { color: #214fba; }
 
 .barras {
   position: relative;
   width: min(70%, 3.5rem);
-  height: 4rem;
+  min-height: 3.5rem;
   border-bottom: 1px solid var(--linea);
 }
 
@@ -397,22 +431,30 @@
 @media (min-width: 100rem) and (min-height: 56rem) {
   .layout { padding: 1.75rem 2.5rem; }
   .monitor { gap: 1.25rem; margin-top: 1.25rem; }
-  .venta, .equipo, .semana { padding-inline: 1.75rem; }
-  .venta, .equipo, .semana { padding-top: 1.5rem; }
-  .equipo, .semana { padding-bottom: 1.5rem; }
+  .resumen, .alcance, .equipo, .semana { padding: 1.5rem 1.875rem; }
   .resumen h2, .tituloSeccion h2 { font-size: 1.375rem; }
-  .metas { margin-top: 1.5rem; }
-  .indicadores { margin-top: 1.25rem; padding-block: 1rem; }
+  .indicadores { padding: 1rem 1.875rem; }
   .metas dt, .indicadores dt, .leyendaRitmo, .tituloSeccion p, .tituloSeccion > span { font-size: 1rem; }
   .metas dd, .indicadores dd, .totalSemana strong { font-size: 1.75rem; }
   .tabla { font-size: 1.125rem; }
   .tabla td, .tabla tbody th { padding-block: 0.875rem; }
   .porcentaje, .dia { font-size: 1rem; }
-  .barras { height: 6rem; }
+  .barras { width: min(75%, 4.5rem); }
+  .ventaDia { font-size: 1rem; }
+}
+
+@media (min-width: 62.001rem) and (max-height: 51rem) {
+  .layout { padding-block: 1rem; }
+  .cabecera { padding-bottom: 0.875rem; }
+  .monitor { gap: 0.75rem; margin-top: 0.75rem; }
+  .resumen, .alcance, .equipo, .semana { padding-block: 0.875rem; }
+  .indicadores { padding-block: 0.625rem; }
+  .tabla { margin-top: 0.5rem; }
+  .tabla td, .tabla tbody th { padding-block: 0.4375rem; }
 }
 
 @media (max-width: 62rem) {
-  .monitor { grid-template-columns: 1fr; grid-template-areas: "venta" "equipo" "semana"; }
+  .monitor { grid-template-columns: minmax(0, 1fr); grid-template-areas: "venta" "equipo" "semana"; grid-template-rows: auto; }
   .cabecera { grid-template-columns: minmax(0, 1fr) auto; }
   .conexion { grid-row: 2; grid-column: 1 / -1; }
 }
@@ -424,7 +466,9 @@
   .logo { width: 2rem; height: 2rem; }
   .identidad h1, .reloj time { font-size: 1.0625rem; }
   .identidad p, .reloj p { font-size: 0.75rem; }
-  .venta, .equipo, .semana { padding-inline: 0.75rem; }
+  .frente { grid-template-columns: 1fr; }
+  .resumen, .alcance, .indicadores, .equipo, .semana { padding-inline: 0.75rem; }
+  .alcance { border-inline-start: 0; border-top: 1px solid #c8d8ee; gap: 0.75rem; }
   .indicadores { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .metas dd, .indicadores dd, .totalSemana strong { font-size: 1.125rem; }
   .tabla { font-size: 0.875rem; }
