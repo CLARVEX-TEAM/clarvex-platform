@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useId, useState } from "react";
+import Image from "next/image";
+import logoBuenFin from "@/public/branding/buen-fin-2026.webp";
 import { buenFinActivo, siguienteCambioBuenFin } from "@/lib/buen-fin";
 import styles from "./BuenFinBanner.module.css";
 
@@ -48,17 +50,23 @@ export function BuenFinBanner({ variante = "compacta" }: { variante?: "compacta"
 
   return (
     <section className={styles.banner} data-variante={variante} aria-labelledby={titulo}>
-      <div className={styles.contenido}>
-        <h2 className={styles.titulo} id={titulo}>El Buen Fin 2026</h2>
-        <p className={styles.fechas}>
-          <time dateTime="2026-11-13">13</time>–<time dateTime="2026-11-17">17 de noviembre</time>
-        </p>
-        <p className={styles.mensaje}>Cada venta cuenta para alcanzar la meta.</p>
+      <div className={styles.campana}>
+        <div>
+          <h2 className={styles.titulo} id={titulo}>El Buen Fin 2026</h2>
+          <p className={styles.fechas}>
+            <time dateTime="2026-11-13">13</time>–<time dateTime="2026-11-17">17 de noviembre</time>
+          </p>
+          <p className={styles.mensaje}>Cada venta cuenta para alcanzar la meta.</p>
+        </div>
+        <div className={styles.ventas} aria-hidden="true">
+          <span />
+          <span />
+          <span />
+        </div>
       </div>
-      <div className={styles.ventas} aria-hidden="true">
-        <span />
-        <span />
-        <span />
+      <div className={styles.marca}>
+        {/* Versión horizontal completa del paquete Descargable_El_Buen_Fin_2026.zip de elbuenfin.org. */}
+        <Image src={logoBuenFin} alt="Logotipo de El Buen Fin y MIPYMES" unoptimized />
       </div>
     </section>
   );

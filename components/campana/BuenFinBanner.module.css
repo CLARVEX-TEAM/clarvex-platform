@@ -1,28 +1,30 @@
 .banner {
+  --buen-fin-rojo: #ed1c24;
+  --buen-fin-negro: #231f20;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: end;
-  gap: 0.625rem;
-  isolation: isolate;
-  padding: 0.875rem 1rem;
-  border: 1px solid #3b4784;
+  overflow: hidden;
+  border: 1px solid #4e3e40;
   border-radius: 1rem;
-  color: #f9f8ff;
-  background:
-    radial-gradient(ellipse at 100% 0%, rgb(167 48 147 / 24%), transparent 56%),
-    linear-gradient(114deg, #101a38 6%, #172852 58%, #251d43 100%);
+  color: #fff;
+  background: var(--buen-fin-negro);
   font-family: var(--font-geist), ui-sans-serif, system-ui, sans-serif;
 }
 
 :global(.dark) .banner {
-  border-color: #465087;
-  background:
-    radial-gradient(ellipse at 100% 0%, rgb(164 54 153 / 20%), transparent 56%),
-    linear-gradient(114deg, #0d1328 6%, #142144 58%, #211933 100%);
+  border-color: #6b5053;
 }
 
 .banner[data-variante="compacta"] {
   margin-block-start: 0.75rem;
+}
+
+.campana {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 0.625rem;
+  padding: 0.875rem 1rem;
+  background: linear-gradient(112deg, var(--buen-fin-negro) 36%, #492127);
 }
 
 .titulo {
@@ -35,15 +37,15 @@
 
 .fechas {
   margin: 0.25rem 0 0;
-  color: #ebc9ff;
+  color: #ffb7bb;
   font-size: 0.75rem;
   font-weight: 600;
   line-height: 1.35;
 }
 
 .mensaje {
-  margin: 0.5rem 0 0;
-  color: #dbe6ff;
+  margin: 0.375rem 0 0;
+  color: #fff1ef;
   font-size: 0.8125rem;
   line-height: 1.4;
 }
@@ -53,34 +55,51 @@
   align-items: end;
   gap: 0.25rem;
   height: 2.875rem;
-  padding: 0 0.125rem;
-  border-bottom: 1px solid rgb(189 192 255 / 40%);
+  padding-inline: 0.125rem;
+  border-bottom: 1px solid rgb(255 183 187 / 42%);
 }
 
 .ventas span {
   width: 0.5625rem;
   height: 29%;
   border-radius: 2px 2px 0 0;
-  background: linear-gradient(0deg, #2b64dd, #6093fa);
+  background: #aa4249;
 }
 
 .ventas span:nth-child(2) {
   height: 51%;
-  background: linear-gradient(0deg, #4c52c8, #a597f7);
+  background: #db5058;
 }
 
 .ventas span:nth-child(3) {
   height: 77%;
-  background: linear-gradient(0deg, #8051d4, #ef9be3);
+  background: var(--buen-fin-rojo);
+}
+
+.marca {
+  display: grid;
+  place-items: center;
+  border-block-start: 2px solid var(--buen-fin-rojo);
+  background: #fff;
+}
+
+.marca img {
+  display: block;
+  width: min(100%, 15rem);
+  height: auto;
 }
 
 .banner ::selection {
-  color: #151232;
-  background: #ebc9ff;
+  color: var(--buen-fin-negro);
+  background: #ffb7bb;
 }
 
 @media (min-width: 48rem) {
   .banner[data-variante="amplia"] {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .banner[data-variante="amplia"] .campana {
     align-items: center;
     gap: 2rem;
     padding: 1.25rem 1.75rem;
@@ -97,17 +116,34 @@
 
   .banner[data-variante="amplia"] .ventas {
     gap: 0.5rem;
-    height: 4rem;
-    padding-inline: 0.625rem;
+    height: 3.5rem;
   }
 
   .banner[data-variante="amplia"] .ventas span {
-    width: 1rem;
+    width: 0.875rem;
+  }
+
+  .banner[data-variante="amplia"] .marca {
+    padding-inline: 0.75rem;
+    border-block-start: 0;
+    border-inline-start: 2px solid var(--buen-fin-rojo);
+  }
+
+  .banner[data-variante="amplia"] .marca img {
+    width: 18rem;
   }
 }
 
 @media (forced-colors: active) {
+  .campana {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   .ventas {
     display: none;
+  }
+
+  .marca {
+    forced-color-adjust: none;
   }
 }
