@@ -27,6 +27,7 @@ import { Manana, type MananaDatos } from "@/components/my-day/Manana";
 import { ResumenDelDia } from "@/components/my-day/ResumenDelDia";
 import { TarjetaTienda } from "@/components/my-day/TarjetaTienda";
 import { BandaCampana } from "@/components/campana/BandaCampana";
+import { BuenFinBanner } from "@/components/campana/BuenFinBanner";
 import type { VentaDeTienda } from "@/lib/venta-de-tienda";
 import type { Clima } from "@/lib/clima";
 import { getSession } from "@/lib/auth";
@@ -455,6 +456,8 @@ export default function MyDayPage() {
           asesor: una composición menos que mantener.
         */}
         <TarjetaTienda datos={data.tienda ?? null} esGerencia={data.capabilities.canOpenChecklist} />
+
+        <BuenFinBanner />
 
         {/* Tailored Help: se pinta solo mientras la campaña esté activa. */}
         <BandaCampana />

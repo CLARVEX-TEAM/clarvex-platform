@@ -1,6 +1,7 @@
 "use client";
 
 import { BandaCampana } from "@/components/campana/BandaCampana";
+import { BuenFinBanner } from "@/components/campana/BuenFinBanner";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -260,6 +261,8 @@ export default function ManagerDashboard() {
           delay={0.08}
           beam
         />
+
+        <BuenFinBanner />
 
         <div className="mt-3">
           <QuickKpiGrid cards={kpiCards} delay={0.16} />

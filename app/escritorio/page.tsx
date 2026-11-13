@@ -14,6 +14,7 @@ import { DesktopError } from "@/components/desktop/DesktopError";
 import { DeskTrendChart, Sparkline } from "@/components/desktop/DeskCharts";
 import { InventoryCard } from "@/components/desktop/InventoryCard";
 import { DeskMeter, DeskReveal } from "@/components/desktop/DeskUI";
+import { BuenFinBanner } from "@/components/campana/BuenFinBanner";
 
 /** Días hasta el próximo cumpleaños (para ordenar por más cercano). */
 function daysUntilBirthday(birthDate?: string | null): number {
@@ -112,6 +113,8 @@ export default function EscritorioDashboard() {
 
   return (
     <div className="space-y-9">
+      <BuenFinBanner variante="amplia" />
+
       {/* ─── Franja partida: la cifra del día y lo que requiere acción, mismo peso ──
            Las entradas van escalonadas por bandas, no por elemento: escalonar
            cada fila de la tabla se percibiría como lentitud, no como pulido. */}
