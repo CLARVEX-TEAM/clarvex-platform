@@ -65,8 +65,8 @@ export function BuenFinBanner({ variante = "compacta" }: { variante?: "compacta"
         </div>
       </div>
       <div className={styles.marca}>
-        {/* Versión horizontal completa del paquete Descargable_El_Buen_Fin_2026.zip de elbuenfin.org. */}
-        <Image src={logoBuenFin} alt="Logotipo de El Buen Fin y MIPYMES" unoptimized />
+        {/* Emblema de El Buen Fin extraído del arte horizontal de Descargable_El_Buen_Fin_2026.zip. */}
+        <Image src={logoBuenFin} alt="Logotipo de El Buen Fin" unoptimized />
       </div>
     </section>
   );

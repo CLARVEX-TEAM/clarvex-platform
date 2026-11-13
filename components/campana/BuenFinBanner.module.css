@@ -2,6 +2,7 @@
   --buen-fin-rojo: #ed1c24;
   --buen-fin-negro: #231f20;
   display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   overflow: hidden;
   border: 1px solid #4e3e40;
   border-radius: 1rem;
@@ -20,9 +21,7 @@
 
 .campana {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: end;
-  gap: 0.625rem;
+  align-items: center;
   padding: 0.875rem 1rem;
   background: linear-gradient(112deg, var(--buen-fin-negro) 36%, #492127);
 }
@@ -51,7 +50,7 @@
 }
 
 .ventas {
-  display: flex;
+  display: none;
   align-items: end;
   gap: 0.25rem;
   height: 2.875rem;
@@ -79,13 +78,14 @@
 .marca {
   display: grid;
   place-items: center;
-  border-block-start: 2px solid var(--buen-fin-rojo);
+  padding: 0.625rem;
+  border-inline-start: 2px solid var(--buen-fin-rojo);
   background: #fff;
 }
 
 .marca img {
   display: block;
-  width: min(100%, 15rem);
+  width: 4rem;
   height: auto;
 }
 
@@ -95,12 +95,8 @@
 }
 
 @media (min-width: 48rem) {
-  .banner[data-variante="amplia"] {
-    grid-template-columns: minmax(0, 1fr) auto;
-  }
-
   .banner[data-variante="amplia"] .campana {
-    align-items: center;
+    grid-template-columns: minmax(0, 1fr) auto;
     gap: 2rem;
     padding: 1.25rem 1.75rem;
   }
@@ -115,6 +111,7 @@
   }
 
   .banner[data-variante="amplia"] .ventas {
+    display: flex;
     gap: 0.5rem;
     height: 3.5rem;
   }
@@ -124,22 +121,20 @@
   }
 
   .banner[data-variante="amplia"] .marca {
-    padding-inline: 0.75rem;
-    border-block-start: 0;
-    border-inline-start: 2px solid var(--buen-fin-rojo);
+    padding-inline: 1.25rem;
   }
 
   .banner[data-variante="amplia"] .marca img {
-    width: 18rem;
+    width: 6rem;
   }
 }
 
 @media (forced-colors: active) {
-  .campana {
+  .banner .campana {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .ventas {
+  .banner[data-variante="amplia"] .ventas {
     display: none;
   }
 
