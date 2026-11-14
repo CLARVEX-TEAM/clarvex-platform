@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { requireCron } from "@/lib/cron-auth";
 import { NotificationType } from "@prisma/client";
 import { resolveMonterreyDate, retailWeekRange } from "@/lib/cron-time";
+import { tiendasParaCierreBuenFin } from "@/lib/cierre-buen-fin";
 import { buildWeeklyAdvisorMessage, buildWeeklyManagerSummary } from "@/lib/daily-summary";
 import { createNotifications, type NotificationInput } from "@/lib/notifications";
 import { avisar } from "@/lib/whatsapp-canal";
@@ -22,7 +23,9 @@ export async function POST(request: Request) {
   const unauthorized = requireCron(request);
   if (unauthorized) return unauthorized;
 
-  const { dateKey, utcDate } = resolveMonterreyDate();
+  const ahora = new Date();
+  const fecha = resolveMonterreyDate(ahora);
+  const { dateKey, utcDate } = fecha;
   const { weekStart, weekEnd } = retailWeekRange(utcDate);
   const prevWeekEnd = new Date(weekStart);
   prevWeekEnd.setUTCDate(prevWeekEnd.getUTCDate() - 1);
@@ -30,7 +33,10 @@ export async function POST(request: Request) {
   prevWeekStart.setUTCDate(prevWeekStart.getUTCDate() - 6);
   const rangeLabel = `${formatDay(weekStart)} - ${formatDay(weekEnd)}`;
 
-  const stores = await prisma.store.findMany({ select: { id: true } });
+  const stores = await prisma.store.findMany({
+    where: tiendasParaCierreBuenFin("semanal", fecha, ahora),
+    select: { id: true }
+  });
 
   const summary = {
     date: dateKey,
