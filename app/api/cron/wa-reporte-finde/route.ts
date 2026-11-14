@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireCron } from "@/lib/cron-auth";
 import { resolveMonterreyDate } from "@/lib/cron-time";
+import { tiendasParaCierreBuenFin } from "@/lib/cierre-buen-fin";
 import { prisma } from "@/lib/prisma";
 import { reporteDeVenta } from "@/lib/reporte-finde";
 import { laboranHoy, telefonosDe, whatsappReemplazaPush } from "@/lib/whatsapp-canal";
@@ -35,12 +36,16 @@ export async function POST(request: Request) {
 
   const hora = new URL(request.url).searchParams.get("hora") ?? "";
   if (!HORAS.has(hora)) return NextResponse.json({ ok: false, error: "hora debe ser 15, 18 o 21" }, { status: 400 });
-  const { utcDate: hoy, dateKey, weekday } = resolveMonterreyDate();
+  const ahora = new Date();
+  const fecha = resolveMonterreyDate(ahora);
+  const { utcDate: hoy, dateKey, weekday } = fecha;
   // Solo sábado (6) y domingo (0).
   if (weekday !== 6 && weekday !== 0) return NextResponse.json({ ok: true, fueraDeDia: true });
 
   const tipo = `WA_REPORTE_FINDE_${hora}`;
-  const stores = await prisma.store.findMany({ select: { id: true, name: true } });
+  const where = hora === "21" ? tiendasParaCierreBuenFin("plaza", fecha, ahora) : undefined;
+  const stores = await prisma.store.findMany({ where, select: { id: true, name: true } });
+  const titulo = typeof where?.id === "string" ? "Reporte de cierre de venta" : `Reporte de venta de las ${Number(hora) - 12} pm`;
   const resumen = { enviados: 0, tiendas: 0 };
 
   for (const store of stores) {
@@ -65,8 +70,8 @@ export async function POST(request: Request) {
 
     const bloque = reporteDeVenta({ tienda: store.name, meta, uplift: cierre ? Number(cierre.upliftPercent) : 15, venta, tickets, trafico });
     const aviso = capturado
-      ? `📋 *Reporte de venta de las ${Number(hora) - 12} pm* — listo para copiar 👇\n_Venta capturada a las ${ultima ? horaDe(ultima) : "—"}._`
-      : `📋 *Reporte de venta de las ${Number(hora) - 12} pm*\n⚠️ Todavía no hay venta capturada de hoy: captúrala y el reporte de abajo sale en $0.00.`;
+      ? `📋 *${titulo}* — listo para copiar 👇\n_Venta capturada a las ${ultima ? horaDe(ultima) : "—"}._`
+      : `📋 *${titulo}*\n⚠️ Todavía no hay venta capturada de hoy: captúrala y el reporte de abajo sale en $0.00.`;
 
     const gerencia = await prisma.user.findMany({
       where: { storeId: store.id, active: true, checklistOnly: false, role: { in: ["GERENTE", "SUBGERENTE"] } },

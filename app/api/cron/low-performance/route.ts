@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { requireCron } from "@/lib/cron-auth";
 import { NotificationType } from "@prisma/client";
 import { resolveMonterreyDate } from "@/lib/cron-time";
+import { tiendasParaCierreBuenFin } from "@/lib/cierre-buen-fin";
 import { buildLowPerformanceManagerSummary } from "@/lib/daily-summary";
 import { createNotifications, type NotificationInput } from "@/lib/notifications";
 import { avisar } from "@/lib/whatsapp-canal";
@@ -21,9 +22,14 @@ export async function POST(request: Request) {
   const unauthorized = requireCron(request);
   if (unauthorized) return unauthorized;
 
-  const { dateKey, utcDate } = resolveMonterreyDate();
+  const ahora = new Date();
+  const fecha = resolveMonterreyDate(ahora);
+  const { dateKey, utcDate } = fecha;
   const thresholdPct = Math.round(THRESHOLD * 100);
-  const stores = await prisma.store.findMany({ select: { id: true } });
+  const stores = await prisma.store.findMany({
+    where: tiendasParaCierreBuenFin("desempeno", fecha, ahora),
+    select: { id: true }
+  });
 
   const summary = {
     date: dateKey,

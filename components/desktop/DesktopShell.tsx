@@ -173,6 +173,7 @@ export function DesktopShell({ children }: { children: React.ReactNode }) {
   }
 
   const section = resolveSection(pathname);
+  const isDashboard = pathname === "/escritorio";
   const todayLabel = new Date().toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long" });
 
   if (checking) {
@@ -192,9 +193,9 @@ export function DesktopShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <DesktopChromeProvider>
+    <DesktopChromeProvider user={user}>
       <div data-surface="desk" data-rail-pinned={pinned} className="relative min-h-screen">
-        <DeskBackdrop />
+        {!isDashboard && <DeskBackdrop />}
         <a href="#desk-main" className="desk-skip">Saltar al contenido</a>
 
         <DeskRail
@@ -220,26 +221,28 @@ export function DesktopShell({ children }: { children: React.ReactNode }) {
                   la superficie, y por eso funciona: aparece en las 18 páginas
                   como firma, no como adorno repetido. Los colores se aclaran en
                   oscuro para que el barrido no abra un bache de contraste. */}
-              <GradientText
+              {isDashboard ? (
+                <h1 className="truncate text-lead font-semibold leading-tight tracking-[-0.02em] text-ink">Panel de gerencia</h1>
+              ) : <GradientText
                 as="h1"
                 via={isDark ? ["#709DF6", "#C7DBFF"] : ["#2563EB", "#93BBFF"]}
                 className="block truncate text-lead font-semibold leading-tight tracking-[-0.02em]"
               >
                 {section.title}
-              </GradientText>
-              {section.subtitle ? (
+              </GradientText>}
+              {!isDashboard && section.subtitle ? (
                 <p className="truncate text-caption text-muted">{section.subtitle}</p>
               ) : null}
             </div>
 
-            <div className="flex shrink-0 items-center gap-3">
-              <div className="hidden text-right leading-tight xl:block">
+            <div className={isDashboard ? "flex min-w-0 items-center gap-3" : "flex shrink-0 items-center gap-3"}>
+              <div className={isDashboard ? "min-w-0 text-right leading-tight" : "hidden text-right leading-tight xl:block"}>
                 {user.storeName ? (
-                  <p className="text-ui font-medium text-ink">{user.storeName}</p>
+                  <p className={isDashboard ? "truncate text-ui font-medium text-ink" : "text-ui font-medium text-ink"} title={isDashboard ? user.storeName : undefined}>{user.storeName}</p>
                 ) : null}
                 {/* first-letter y no `capitalize`: capitalize pone mayúscula en
                     CADA palabra y deja "Jueves, 30 De Julio". */}
-                <p className="text-caption lowercase text-muted first-letter:uppercase">{todayLabel}</p>
+                {!isDashboard && <p className="text-caption lowercase text-muted first-letter:uppercase">{todayLabel}</p>}
               </div>
               <FreshnessPill />
               <button
